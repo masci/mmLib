@@ -1,4 +1,4 @@
-/* pdbmodule.c - PDB parser/accelorator for mmLib
+/* glaccel.c - OpenGL C accelorator for GLViewer.py
  *
  */
 #include "Python.h"
@@ -99,7 +99,6 @@ gl_rmatrixz(float u[3], float R[16])
     R[9] = 0.0;           /* R23 */
     R[10] = n[2];         /* R33 */
   } else {
-
     R[0] = n[2]*n[0]/d;   /* R11 */
     R[1] = n[2]*n[1]/d;   /* R21 */
     R[2] = -d;            /* R31 */
@@ -111,11 +110,10 @@ gl_rmatrixz(float u[3], float R[16])
     R[8] = n[0];          /* R13 */
     R[9] = n[1];          /* R23 */
     R[10] = n[2];         /* R33 */
-
   }
 
-  R[3] = 0.0;
-  R[7] = 0.0;
+  R[3]  = 0.0;
+  R[7]  = 0.0;
   R[11] = 0.0;
   R[15] = 1.0;
 }
@@ -191,6 +189,60 @@ glaccel_tube(PyObject *self, PyObject *args)
   Py_INCREF(Py_None);
   return Py_None;
 }
+
+
+/* functions for the rendering of a rod
+ */ 
+static PyObject *
+glaccel_rod(PyObject *self, PyObject *args)
+{
+  float        v1[3], v2[3];
+  float        radius;
+  float        rod_v[3], rod_len;
+  float        R[16];
+  GLUquadric  *rod_quad;
+
+  if (!PyArg_ParseTuple(args, "fffffff", 
+			&v1[0], &v1[1], &v1[2], 
+			&v2[0], &v2[1], &v2[2], 
+			&radius)) {
+    return NULL;
+  }
+  
+  rod_v[0]   = v2[0] - v1[0];
+  rod_v[1]   = v2[1] - v1[1];
+  rod_v[2]   = v2[2] - v1[2];
+  rod_len    = length(rod_v);
+
+  glEnable(GL_LIGHTING);
+  rod_quad = gluNewQuadric();
+
+  glPushMatrix();
+
+  /* rotation matrix to align the current OpenGL coordinate
+   * system such that the vector axis is along the z axis
+   */
+  gl_rmatrixz(rod_v, R);
+  
+  R[12] = v1[0];
+  R[13] = v1[1];
+  R[14] = v1[2];
+  
+  glMultMatrixf(R);
+
+  gluDisk(rod_quad, 0.0, radius, 10, 5);
+  gluCylinder(rod_quad, radius, radius, rod_len , 10, 1);
+  glTranslatef(0.0, 0.0, rod_len);
+  gluDisk(rod_quad, 0.0, radius, 10, 5);
+
+  glPopMatrix();
+
+  gluDeleteQuadric(rod_quad);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 
 /* functions for the rendering of atomic thermal peanuts
  */
@@ -722,6 +774,11 @@ static PyMethodDef GLAccelMethods[] = {
    glaccel_tube,
    METH_VARARGS,
    "Renders a tube."},
+
+  {"rod",
+   glaccel_rod,
+   METH_VARARGS,
+   "Renders a rod."},
 
   {"Upeanut",
    glaccel_Upeanut,

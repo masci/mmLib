@@ -558,66 +558,16 @@ class OpenGLRenderMethods(object):
         """Draw a vector axis using the current set material at position
         with the given radius.
         """
+        ## don't bother redering small axes -- they look like junk
         if allclose(length(axis), 0.0):
             return
-
-        axis_cap_length     = 0.01 * length(axis)
-        axis_length         = length(axis) - 2*axis_cap_length
-        axis_cap_tip_radius = 0.75 * radius
-
-        glEnable(GL_LIGHTING)
-        quad = gluNewQuadric()
-	gluQuadricNormals(quad, GLU_SMOOTH)
-
-        glPushMatrix()
-
-        ## rotation matrix to align the current OpenGL coordinate
-        ## system such that the vector axis is along the z axis
-        R = transpose(rmatrixz(axis))
-        glMultMatrixf(
-            (R[0,0],           R[1,0],      R[2,0], 0.0,
-             R[0,1],           R[1,1],      R[2,1], 0.0,
-             R[0,2],           R[1,2],      R[2,2], 0.0,
-             position[0], position[1], position[2], 1.0) )
-
-        gluDisk(quad, 0.0, axis_cap_tip_radius, 10, 5)
-        gluCylinder(quad, axis_cap_tip_radius, radius, axis_cap_length, 10, 5)
-        glTranslatef(0.0, 0.0, axis_cap_length)
-	gluCylinder(quad, radius, radius, axis_length , 10, 1) 
-        glTranslatef(0.0, 0.0, axis_length)
-        gluCylinder(quad, radius, axis_cap_tip_radius, axis_cap_length, 10, 5)
-        glTranslatef(0.0, 0.0, axis_cap_length)
-        gluDisk(quad, 0.0, axis_cap_tip_radius, 10, 5)
-
-        glPopMatrix()
-
-    def glr_rod(self, pos1, pos2, radius):
-        """Draws a solid rod from pos1 to pos2.
-        """
-        rod                = pos2 - pos1
-        rod_length         = length(rod)
-
-        glEnable(GL_LIGHTING)
-        quad = gluNewQuadric()
-	gluQuadricNormals(quad, GLU_SMOOTH)
-
-        glPushMatrix()
-
-        ## rotation matrix to align the current OpenGL coordinate
-        ## system such that the vector axis is along the z axis
-        R = transpose(rmatrixz(rod))
-        glMultMatrixf(
-            (R[0,0],           R[1,0],      R[2,0], 0.0,
-             R[0,1],           R[1,1],      R[2,1], 0.0,
-             R[0,2],           R[1,2],      R[2,2], 0.0,
-             pos1[0],         pos1[1],    pos1[2], 1.0) )
-
-        gluDisk(quad, 0.0, radius, 10, 5)
-	gluCylinder(quad, radius, radius, rod_length , 10, 1) 
-        glTranslatef(0.0, 0.0, rod_length)
-        gluDisk(quad, 0.0, radius, 10, 5)
-
-        glPopMatrix()
+        
+        end = position + axis
+        
+        glaccel.rod(
+            position[0], position[1], position[2],
+            end[0], end[1], end[2],
+            radius)
 
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
@@ -626,29 +576,6 @@ class OpenGLRenderMethods(object):
             pos1[0], pos1[1], pos1[2],
             pos2[0], pos2[1], pos2[2],
             radius)
-        return
-
-        tube                = pos2 - pos1
-        tube_length         = length(tube)
-
-        glEnable(GL_LIGHTING)
-        quad = gluNewQuadric()
-	gluQuadricNormals(quad, GLU_SMOOTH)
-
-        glPushMatrix()
-
-        ## rotation matrix to align the current OpenGL coordinate
-        ## system such that the vector axis is along the z axis
-        R = transpose(rmatrixz(tube))
-        glMultMatrixf(
-            (R[0,0],           R[1,0],      R[2,0], 0.0,
-             R[0,1],           R[1,1],      R[2,1], 0.0,
-             R[0,2],           R[1,2],      R[2,2], 0.0,
-             pos1[0],         pos1[1],    pos1[2], 1.0) )
-
-	gluCylinder(quad, radius, radius, tube_length , 10, 1) 
-
-        glPopMatrix()
 
     def glr_sphere(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
@@ -1116,6 +1043,13 @@ class GLAtomList(GLDrawList):
               "type":      "boolean",
               "default":   False,
               "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "hydrogen_visible",
+              "desc":      "Show Hydrogens",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
 
         ## lines
         self.glo_add_property(
@@ -1366,8 +1300,13 @@ class GLAtomList(GLDrawList):
         side_chain_visible = self.properties["side_chain_visible"]
         hetatm_visible     = self.properties["hetatm_visible"]
         water_visible      = self.properties["water_visible"]
+        hydrogen_visible   = self.properties["hydrogen_visible"]
 
         for atm in self.glal_iter_atoms():
+            if hydrogen_visible==False:
+                if atm.element=="H":
+                    continue
+
             frag = atm.get_fragment()
             
             if frag.is_amino_acid()==True:
@@ -1402,8 +1341,10 @@ class GLAtomList(GLDrawList):
         """
         atoms = {}
         for atmX in self.glal_iter_atoms_filtered():
-            atoms[atmX] = self.calc_position(atmX.position)
+            atoms[atmX] = self.glal_calc_position(atmX.position)
 
+        #self.draw_Udiff2(atoms)
+        
         ## drawing functions requiring neighboring atoms
         if self.properties["trace"]==True:
             self.draw_trace()
@@ -1422,7 +1363,7 @@ class GLAtomList(GLDrawList):
         """
         atoms = {}
         for atmX in self.glal_iter_atoms_filtered():
-            atoms[atmX] = self.calc_position(atmX.position)
+            atoms[atmX] = self.glal_calc_position(atmX.position)
         
         self.glal_draw_atoms(atoms, True)
         
@@ -1460,7 +1401,7 @@ class GLAtomList(GLDrawList):
             for draw_func in draw_funcs:
                 draw_func(atm, pos)
     
-    def calc_position(self, pos):
+    def glal_calc_position(self, pos):
         """Calculate a position vector with respect to the
         proeprty: atom_origin.
         """
@@ -1468,7 +1409,7 @@ class GLAtomList(GLDrawList):
             pos = pos - self.properties["atom_origin"]
         return pos
     
-    def get_color(self, atm):
+    def glal_calc_color(self, atm):
         """Sets the open-gl color for the atom.
         """
         ## case 1: set color by color callback function
@@ -1505,7 +1446,7 @@ class GLAtomList(GLDrawList):
         else:
             radius = 2.0
 
-        r, g, b = self.get_color(atm)
+        r, g, b = self.glal_calc_color(atm)
 
         if self.properties["cpk_opacity_occupancy"]==True:
             a = atm.occupancy
@@ -1533,8 +1474,7 @@ class GLAtomList(GLDrawList):
             return
         
         self.glr_Uaxes(
-            pos,
-            U,
+            pos, U,
             self.properties["adp_prob"],
             self.properties["U_color"],
             1.0)
@@ -1546,12 +1486,10 @@ class GLAtomList(GLDrawList):
         if U==None:
             return
         
-        r, g, b = self.get_color(atm) 
+        r, g, b = self.glal_calc_color(atm) 
         self.glr_set_material_rgb(r, g, b, self.properties["ellipse_opacity"])
         self.glr_Uellipse(
-            pos,
-            U,
-            self.properties["adp_prob"])
+            pos, U, self.properties["adp_prob"])
 
     def draw_Urms(self, atm, pos):
         """Draw the ADP determined RMS displacement surface.
@@ -1560,7 +1498,7 @@ class GLAtomList(GLDrawList):
         if U==None:
             return
         
-        r, g, b = self.get_color(atm)        
+        r, g, b = self.glal_calc_color(atm)        
         self.glr_set_material_rgb(r, g, b, self.properties["rms_opacity"])
         self.glr_Urms(pos, U)
 
@@ -1573,7 +1511,7 @@ class GLAtomList(GLDrawList):
         glBegin(GL_LINES)
 
         for atm, pos in atoms.items():
-            glColor3f(*self.get_color(atm))
+            glColor3f(*self.glal_calc_color(atm))
 
             ## if there are bonds, then draw the lines 1/2 way to the
             ## bonded atoms
@@ -1599,7 +1537,7 @@ class GLAtomList(GLDrawList):
         stick_radius = self.properties["stick_radius"]
 
         for atm, pos in atoms.items():
-            r, g, b = self.get_color(atm)
+            r, g, b = self.glal_calc_color(atm)
             self.glr_set_material_rgb(r, g, b, 1.0)
 
             ## if there are bonds, then draw the lines 1/2 way to the
@@ -1617,13 +1555,105 @@ class GLAtomList(GLDrawList):
 
             ## draw ball
             self.glr_sphere(pos, ball_radius, 10)
-            
+
+    def draw_Udiff(self, atoms):
+        ball_radius  = self.properties["ball_radius"]
+        stick_radius = self.properties["stick_radius"]
+
+        visited = {}
+
+        for atm, pos in atoms.items():
+            ## if there are bonds, then draw the lines 1/2 way to the
+            ## bonded atoms
+            for bond in atm.iter_bonds():
+
+                if visited.has_key(bond):
+                    continue
+
+                atm2 = bond.get_partner(atm)
+
+                try:
+                    pos2 = atoms[atm2]
+                except KeyError:
+                    continue
+
+                v    = pos2 - pos
+                n    = normalize(v)
+                end  = pos + v
+
+                U  = atm.get_U()
+                U2 = atm2.get_U()
+
+                rms  = math.sqrt(matrixmultiply(n, matrixmultiply(U, n)))
+                rms2 = math.sqrt(matrixmultiply(n, matrixmultiply(U2, n)))
+
+                rms_diff = abs(rms - rms2)
+
+                rms_diff = rms_diff  * 50.0
+                self.glr_set_material_rgb(
+                    1.0 - rms_diff, 1.0 - rms_diff, 1.0, 1.0)
+
+                self.glr_tube(pos, end, stick_radius)
+
+            self.glr_set_material_rgb(1.0, 1.0, 1.0, 1.0)
+            self.glr_sphere(pos, ball_radius, 10)
+
+    def draw_Udiff2(self, atoms):
+        ball_radius  = self.properties["ball_radius"] + 0.01
+        stick_radius = self.properties["stick_radius"] + 0.01
+
+        visited = {}
+        atom_list = atoms.items()
+
+        for atm1, pos1 in atom_list:
+            visited[atm1] = True
+            for atm2, pos2 in atom_list:
+                if visited.has_key(atm2):
+                    continue
+
+                if atm1.alt_loc!=atm2.alt_loc:
+                    if atm1.alt_loc!="" and atm2.alt_loc!="":
+                        continue
+
+                v = pos2 - pos1
+
+                if length(v) > 5.0:
+                    continue
+
+                if atm1.get_bond(atm2)==None:
+                    tube_radius = 0.25 * stick_radius
+                else:
+                    tube_radius = stick_radius
+                
+                n    = normalize(v)
+                end  = pos1 + v
+
+                U1 = atm1.get_U()
+                U2 = atm2.get_U()
+
+                rms1 = math.sqrt(matrixmultiply(n, matrixmultiply(U1, n)))
+                rms2 = math.sqrt(matrixmultiply(n, matrixmultiply(U2, n)))
+
+                rms_diff = abs(rms1 - rms2)
+
+                if rms_diff > 0.005:
+                    continue
+
+                rms_diff = rms_diff  * 20.0
+                self.glr_set_material_rgb(
+                    1.0 - rms_diff, 1.0 - rms_diff, 1.0, 1.0)
+
+                self.glr_tube(pos1, end, tube_radius)
+
+            self.glr_set_material_rgb(1.0, 1.0, 1.0, 1.0)
+            self.glr_sphere(pos1, ball_radius, 10)
+
     def draw_cross(self, atm, pos):
         """Draws atom with a cross of lines.
         """
         self.glr_cross(
             pos,
-            self.get_color(atm),
+            self.glal_calc_color(atm),
             self.properties["line_width"])
 
     def draw_trace(self):
@@ -1654,7 +1684,7 @@ class GLAtomList(GLDrawList):
                     except KeyError:
                         last_pos = None
                     else:
-                        pos = self.calc_position(atm.position)
+                        pos = self.glal_calc_position(atm.position)
                         if last_pos==None:
                             last_pos = pos
                         else:
@@ -2288,7 +2318,7 @@ class GLTLSAtomList(GLAtomList):
 
         for atm in self.tls_group:
             self.glr_Uaxes(
-                self.calc_position(atm.position),
+                self.glal_calc_position(atm.position),
                 T,
                 self.properties["adp_prob"],
                 color,
@@ -2305,7 +2335,7 @@ class GLTLSAtomList(GLAtomList):
 
         for atm in self.tls_group:
             self.glr_Uellipse(
-                self.calc_position(atm.position),
+                self.glal_calc_position(atm.position),
                 T,
                 self.properties["adp_prob"])
 
@@ -2320,7 +2350,7 @@ class GLTLSAtomList(GLAtomList):
         self.glr_set_material_rgb(r, g, b, a)
 
         for atm in self.atom_list:
-            self.glr_Urms(self.calc_position(atm.position), T)
+            self.glr_Urms(self.glal_calc_position(atm.position), T)
    
     def draw_CA_lines(self):
         glDisable(GL_LIGHTING)        

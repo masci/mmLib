@@ -17,9 +17,10 @@ import sys
 from distutils.core import setup, Extension
 from distutils.command.install_data import install_data
 
+
 class package_install_data(install_data):
     def run(self):
-        #need to change self.install_dir to the actual library dir
+        ## need to change self.install_dir to the actual library dir
         install_cmd = self.get_finalized_command('install')
         self.install_dir = getattr(install_cmd, 'install_lib')
         return install_data.run(self)
@@ -50,6 +51,8 @@ def library_data():
     return inst_list
 
 def extension_list():
+    """Assemble the list of C extensions which need to be compiled.
+    """
     elist = [
         ## PDB File Accelerator
         Extension(
@@ -73,6 +76,8 @@ def extension_list():
     return elist
 
 def run_setup():
+    """Invoke the Python Distutils setup function.
+    """
     s0 = setup(
         cmdclass = {'install_data': package_install_data},
         
@@ -87,11 +92,15 @@ def run_setup():
         )
 
 def make_doc():
+    """This is a special function to generate the documentation with
+    Epidoc.  It once used happydoc.
+    """
     #os.system("happydoc -d doc -t 'PyMMLib Documentation' --no-comments "\
     #          "--no-private-names mmLib")
     os.system(
         'epydoc --html --output doc --name "mmLib Documentation" '\
         'mmLib mmLib/Extensions') 
+
 
 if __name__ == "__main__":
     if sys.argv[1] == "doc":

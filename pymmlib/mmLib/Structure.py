@@ -1966,9 +1966,10 @@ class Atom(object):
         """Returns the Bond connecting self with the argument atom.
         """
         assert isinstance(atom, Atom)
+        assert atom!=self
 
         for bond in self.bond_list:
-            if atom == bond.atom1 or atom == bond.atom2:
+            if atom==bond.atom1 or atom==bond.atom2:
                 return bond
         return None
 
