@@ -1,4 +1,6 @@
 include *.txt
+recursive-include mmLib/Data *
 recursive-include examples *.py
 recursive-include applications *.py
+recursive-include tests *.py
 recursive-include doc *
