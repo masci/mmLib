@@ -165,13 +165,12 @@ class Structure(object):
         iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects.
         """
-        visited = []
-
+        visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
-                    visited.insert(0, bond)
+                    visited[bond] = True
 
     def iter_alpha_helicies(self):
         """Iterates over all alpha helicies in the Structure.
@@ -429,12 +428,12 @@ class Chain(object):
         """Iterates over all Bond objects attached to Atom objects within the
         Chain.
         """
-        visited = []
+        visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
-                    visited.insert(0, bond)
+                    visited[bond] = True
 
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain object, updating the chain_id
@@ -675,13 +674,12 @@ class Fragment(object):
         """Iterates over all Bond objects.  The iteration is preformed by
         iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects."""
-        visited = []
-
+        visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
-                    visited.insert(0, bond)
+                    visited[bond] = True
 
     def get_offset_fragment(self, offset):
         """Returns the fragment in the same chain at integer offset from

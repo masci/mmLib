@@ -132,25 +132,12 @@ class StructureBuilder:
         ## being passed to the naming service
 
         ## absence of requred fields
-        if not atm.chain_id or not atm.fragment_id or not atm.name:
+        if atm.chain_id == "" or \
+           atm.fragment_id == "" or \
+           atm.name == "":
+
             self.name_service_list.append(atm)
             return atm
-
-        try:
-            frag = self.struct[atm.chain_id][atm.fragment_id]
-        except KeyError:
-            pass
-        else:
-            if frag.res_name != atm.res_name:
-                self.name_service_list.append(atm)
-                return atm
-                
-            for atmx in frag.atom_list:
-                if atm.name == atmx.name and \
-                   atm.alt_loc == atmx.alt_loc and \
-                   atm.model == atmx.model:
-                    self.name_service_list.append(atm)
-                    return atm
 
         self.place_atom(atm)
         return atm
@@ -161,7 +148,9 @@ class StructureBuilder:
         """
         ## pack atom into its fragment, create necessary parents
         ## add chain
-        if not self.cache_chain or self.cache_chain.chain_id != atm.chain_id:
+        if self.cache_chain == None or \
+           self.cache_chain.chain_id != atm.chain_id:
+
             try:
                 self.cache_chain = self.struct[atm.chain_id]
             except KeyError:
@@ -169,9 +158,10 @@ class StructureBuilder:
                 self.struct.add_chain(self.cache_chain, delay_sort = True)
 
         ## add fragment
-        if not self.cache_frag or \
-               self.cache_frag.fragment_id != atm.fragment_id or \
-               self.cache_frag.chain_id != atm.chain_id:
+        if self.cache_frag == None or \
+           self.cache_frag.fragment_id != atm.fragment_id or \
+           self.cache_frag.chain_id != atm.chain_id:
+
             try:
                 self.cache_frag = self.cache_chain[atm.fragment_id]
             except KeyError:
@@ -195,9 +185,19 @@ class StructureBuilder:
                     self.cache_frag, delay_sort = True)
 
         ## sanity check: if this fails, then the name service failed
-        assert atm.chain_id == self.cache_chain.chain_id
-        assert atm.fragment_id == self.cache_frag.fragment_id
-        assert atm.res_name == self.cache_frag.res_name
+
+        ## if this residue has a different name than the one the atom
+        ## belongs to, then it needs to go to the name service
+        if self.cache_frag.res_name != atm.res_name:
+            self.name_service_list.append(atm)
+            return
+
+        for atmx in self.cache_frag.atom_list:
+            if atm.name == atmx.name and \
+               atm.alt_loc == atmx.alt_loc and \
+               atm.model == atmx.model:
+                self.name_service_list.append(atm)
+                return
 
         ## add atom
         self.cache_frag.add_atom(atm)
@@ -354,7 +354,6 @@ class StructureBuilder:
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
-        print self.struct.cifdb
         pass
     
     def read_end(self):
