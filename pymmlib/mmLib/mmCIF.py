@@ -893,9 +893,8 @@ class mmCIFFileBuilder:
         "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd", "pdbx_auth_seq_id",
         "pdbx_auth_comp_id", "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
 
-    copy_cifdb_tables = [
-        "entry","audit_author","struct","struct_keywords","struct_conf",
-        "struct_siite_gen"]
+    cifdb_omit_list = [
+        "entity", "cell", "symmetry", "atom_site", "atom_site_anisotrop"]
 
     def __init__(self, struct, cif_file):
         self.struct = struct
@@ -905,14 +904,11 @@ class mmCIFFileBuilder:
         ## maps fragment -> entity_id
         self.entity_id_map = {}
 
-        ## these tables can be copied directly from the structure's
-        ## cif database
-        for tbl in self.copy_cifdb_tables:
-            try:
-                cpy = copy.deepcopy(self.struct.cifdb[tbl])
-            except KeyError:
-                continue
-            self.cif_data.append(cpy)
+        ## tables which are not generated from the structure hierarchy
+        ## can be copied directly from the structure's cif database
+        for table in self.struct.cifdb:
+            if table.name not in self.cifdb_omit_list:
+                self.cif_data.append(copy.deepcopy(table))
 
         ## these tables need to be formed from the atom structure
         self.add_entity()
@@ -1049,7 +1045,7 @@ class mmCIFFileBuilder:
         else:
             asrow["group_PDB"] = "HETATM"
 
-        asrow["id"] = atom_site.index(asrow) + 1
+        asrow["id"] = asrow.table.index(asrow) + 1
         asrow["label_entity_id"] = self.entity_id_map[atm.get_fragment()]
         asrow["auth_atom_id"] = atm.name
         asrow["auth_comp_id"] = atm.res_name

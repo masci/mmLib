@@ -123,7 +123,8 @@ class PDBRecord(dict):
         """Call reccat, then split the result by the seperator.
         """
         listx = self.reccat(rec_list, field).split(sep)
-        return [x.strip() for x in listx]
+        listx = [x.strip() for x in listx]
+        return listx
 
     def reccat_tuplelist(self, rec_list, field, sep1, sep2):
         """Call reccat_list with sep1 as the list seperator, then split
@@ -1359,17 +1360,26 @@ class PDBFile(list):
                     pfunc_cb(name, pfunc(recs))
 
         cont_list = []
+
         for i in range(len(self)):
+
+            ## current record
             rec = self[i]
+
+            ## next record
             try:
                 nrec = self[i+1]
             except IndexError:
                 nrec = None
 
+            ## check next record for continuation
             if nrec and rec._name == nrec._name:
                 if nrec.has_key("continuation"):
                     cont_list.append(rec)
                 else:
+                    if cont_list:
+                        call_processor(cont_list)
+                        cont_list = []
                     call_processor(rec)
             else:
                 if cont_list:
@@ -1385,33 +1395,6 @@ class PDBFile(list):
                 
         if cont_list:
             call_processor(cont_list)
-
-    def select_record_list(self, *nvlist):
-        """Preforms a SQL-like 'AND' select aginst all the records in the
-        PDB file.  The arguments are a variable list of tuples of the form:
-          (<column-name>, <column-value>)
-        For example:
-          select_record_list(('_name','ATOM  '),('resName', 'LYS'))
-        returns a list of ATOM records which are part of a LYS residue.
-        """
-        ## clever optimization trickies
-        (attr, val) = nvlist[0]
-
-        rec_list = []
-        for rec in self:
-            if rec.get(attr) != val:
-                continue
-
-            add = 1
-            for (attr, val) in nvlist:
-                if rec.get(attr) != val:
-                    add = 0
-                    break
-
-            if add:
-                rec_list.append(rec)
-
-        return rec_list
 
 
 class PDBFileBuilder:
