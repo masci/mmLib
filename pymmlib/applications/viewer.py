@@ -51,6 +51,11 @@ def markup_matrix3(tensor):
 
 
 
+###############################################################################
+### GTK OpenGL Viewer Widget Using GtkGlExt/PyGtkGLExt
+###
+### see http://gtkglext.sourceforge.net/
+###
 
 class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def __init__(self):
@@ -96,10 +101,36 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         
         gl_drawable.gl_end()
 
-    def gl_redraw(self):
-        self.queue_draw()
+    def map(self, glarea):
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK   |
+                        gtk.gdk.BUTTON_RELEASE_MASK |
+                        gtk.gdk.BUTTON_MOTION_MASK  |
+                        gtk.gdk.POINTER_MOTION_MASK)
+        return gtk.TRUE
 
-    def destroy(self, glarea):
+    def unmap(self, glarea):
+        return gtk.TRUE
+
+    def realize(self, glarea):
+        if self.gl_begin()==True:
+            self.glv_init()
+            self.gl_end()
+        return gtk.TRUE
+
+    def configure_event(self, glarea, event):
+        x, y, width, height = glarea.get_allocation()
+
+        if self.gl_begin()==True:
+            self.glv_resize(width, height)
+            self.gl_end()
+
+        self.queue_draw()
+        return gtk.TRUE
+
+    def expose_event(self, glarea, event):
+        if self.gl_begin()==True:
+            self.glv_render()
+            self.gl_end()
         return gtk.TRUE
 
     def button_press_event(self, glarea, event):
@@ -113,71 +144,37 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         x = 0.0
         y = 0.0
         z = 0.0
+
+        rotx = 0.0
+        roty = 0.0
+        rotz = 0.0
         
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            self.roty += 360.0 * ((event.x - self.beginx) / float(width)) 
-            self.rotx += 360.0 * ((event.y - self.beginy) / float(height))
+            roty += 360.0 * ((event.x - self.beginx) / float(width)) 
+            rotx += 360.0 * ((event.y - self.beginy) / float(height))
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
             z = 50.0 * ((event.y - self.beginy) / float(height))
-            #self.rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
-            
+            #rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
+
         elif (event.state & gtk.gdk.BUTTON3_MASK):
             x = 50.0 * ((event.x - self.beginx) / float(height))
             y = 50.0 * (-(event.y - self.beginy) / float(height))
 
-        self.gl_translate(x, y, z)
+        self.glv_translate(x, y, z)
+        self.glv_rotate(rotx, roty, rotz)
 
         self.beginx = event.x
         self.beginy = event.y
 
         self.queue_draw()
 
-    def configure_event(self, glarea, event):
-        x, y, width, height = glarea.get_allocation()
+    def destroy(self, glarea):
+        ## XXX: delete all opengl draw lists
+        return gtk.TRUE
 
-        if self.gl_begin()==True:
-            self.gl_resize(width, height)
-            self.gl_end()
-
+    def glv_redraw(self):
         self.queue_draw()
-        return gtk.TRUE
-
-    def map(self, glarea):
-        self.add_events(gtk.gdk.BUTTON_PRESS_MASK   |
-                        gtk.gdk.BUTTON_RELEASE_MASK |
-                        gtk.gdk.BUTTON_MOTION_MASK  |
-                        gtk.gdk.POINTER_MOTION_MASK)
-        return gtk.TRUE
-
-    def unmap(self, glarea):
-        return gtk.TRUE
-
-    def realize(self, glarea):
-        if self.gl_begin()==True:
-            self.gl_init()
-            self.gl_end()
-        return gtk.TRUE
-
-    def expose_event(self, glarea, event):
-        if self.gl_begin()==True:
-            self.gl_render()
-            self.gl_end()
-        return gtk.TRUE
-
-    def add_struct(self, struct):
-        """Adds a structure to this viewer, and returns the GLStructure
-        object so it can be manipulated.
-        """
-        gl_struct = GLStructure(struct=struct)
-        self.add_draw_list(gl_struct)
-        return gl_struct
-
-    def remove_struct(self, struct):
-        """Removes structure from the viewer.
-        """
-        pass
-
 
 
 class StructDetailsDialog(gtk.Dialog):
@@ -273,7 +270,19 @@ class StructDetailsDialog(gtk.Dialog):
                           struct_obj.calc_anisotropy())
 
 
+
+
+###############################################################################
+### GLProperty Browser Components
+###
+
+
 class ColorOptionMenu(gtk.OptionMenu):
+    """Specialized option menu for choosing colors.  This is quite
+    primitive right now, and needs more colors and a custom color
+    selection dialog.
+    """
+    
     def __init__(self):
         gtk.OptionMenu.__init__(self)
 
@@ -321,6 +330,11 @@ class ColorOptionMenu(gtk.OptionMenu):
 
 
 class MaterialOptionMenu(gtk.OptionMenu):
+    """Specialized option menu for selecting OpenGL materials.
+    This could use some extension, including writing a dialog for
+    defining new materials.
+    """
+
     def __init__(self):
         gtk.OptionMenu.__init__(self)
 
@@ -343,72 +357,82 @@ class MaterialOptionMenu(gtk.OptionMenu):
         return self.material_name_list[index]
     
 
-class GLPropertyEditor(gtk.Frame):
+class GLPropertyEditor(gtk.Notebook):
     """Gtk Widget which generates a customized editing widget for a
     GLObject widget supporting GLProperties.
     """
     def __init__(self, gl_object):
-        gtk.Frame.__init__(self)
+        gtk.Notebook.__init__(self)
+        self.set_scrollable(gtk.TRUE)
         self.connect("destroy", self.destroy)
 
         self.gl_object = gl_object
         self.gl_object.glo_add_update_callback(self.properties_update_cb)
-        
+
+        ## property name -> widget dictionary
         self.prop_widget_dict = {}
 
-        ## count the number of properties to be displayed
+        ## count the number of properties/pages to be displayed
+        page_prop_dict = {}
         num_props = 0
         for prop_desc in self.gl_object.glo_iter_property_desc():
-            if prop_desc.get("hidden", False)!=True:
-                num_props += 1
-        
-        ## table
-        table = gtk.Table(2, num_props, gtk.FALSE)
-        self.add(table)
-        table.set_border_width(5)
-        table.set_row_spacings(5)
-        table.set_col_spacings(10)
-        table_row = 0
-
-        size_group = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)    
-
-        ## boolean types first since the toggle widgets don't look good mixed
-        ## with the entry widgets
-        for prop in self.gl_object.glo_iter_property_desc():
-            if prop.get("hidden", False)==True:
+            if prop_desc.get("hidden", False)==True:
                 continue
 
-            ## only handling boolean right now
-            if prop["type"]!="boolean":
-                continue
-
-            edit_widget = self.new_property_edit_widget(prop)
-            self.prop_widget_dict[prop["name"]] = edit_widget 
-
-            align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
-            align.add(edit_widget)
-
-            table.attach(align, 0, 2, table_row, table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
-            table_row += 1
-
-        ## create and layout the editing widgets
-        for prop in self.gl_object.glo_iter_property_desc():
-            if prop.get("hidden", False)==True:
-                continue
+            catagory = prop_desc.get("catagory", "Visualization")
+            try:
+                page_prop_dict[catagory].append(prop_desc)
+            except KeyError:
+                page_prop_dict[catagory] = [prop_desc]
             
-            ## boolean types were already handled
-            if prop["type"]=="boolean":
-                continue
+        ## add Notebook pages and tables
+        table_dict = {}
+        for catagory, prop_list in page_prop_dict.items():
+            num_props = len(prop_list)
 
-            label_widget = self.new_property_label_widget(prop)
-            table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+            table = gtk.Table(2, num_props, gtk.FALSE)
+            self.append_page(table, gtk.Label(catagory))
 
-            edit_widget = self.new_property_edit_widget(prop)
-            self.prop_widget_dict[prop["name"]] = edit_widget 
+            table.set_border_width(5)
+            table.set_row_spacings(5)
+            table.set_col_spacings(10)
 
-            size_group.add_widget(edit_widget)
-            table.attach(edit_widget, 1, 2, table_row, table_row+1, 0, 0, 0, 0)
-            table_row += 1
+            table_row = 0
+
+            size_group = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+
+            ## boolean types first since the toggle widgets don't look good mixed
+            ## with the entry widgets
+            for prop in prop_list:
+                ## only handling boolean right now
+                if prop["type"]!="boolean":
+                    continue
+
+                edit_widget = self.new_property_edit_widget(prop)
+                self.prop_widget_dict[prop["name"]] = edit_widget 
+
+                align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
+                align.add(edit_widget)
+
+                table.attach(align, 0, 2, table_row, table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
+                table_row += 1
+
+            ## create and layout the editing widgets
+            for prop in prop_list:
+                ## boolean types were already handled
+                if prop["type"]=="boolean":
+                    continue
+
+                label_widget = self.new_property_label_widget(prop)
+                #table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+                table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
+
+                edit_widget = self.new_property_edit_widget(prop)
+                self.prop_widget_dict[prop["name"]] = edit_widget 
+
+                size_group.add_widget(edit_widget)
+                table.attach(edit_widget, 1, 2, table_row, table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
+                table_row += 1
 
         self.properties_update_cb(self.gl_object.properties)
 
@@ -466,16 +490,22 @@ class GLPropertyEditor(gtk.Frame):
                     widget.set_active(gtk.TRUE)
                 else:
                     widget.set_active(gtk.FALSE)
-
+            elif prop_desc["type"]=="integer":
+                text = str(self.gl_object.properties[name])
+                widget.set_text(text)
             elif prop_desc["type"]=="float":
                 text = str(self.gl_object.properties[name])
                 widget.set_text(text)
-
+            elif prop_desc["type"]=="array(3)":
+                widget.set_markup(markup_vector3(self.gl_object.properties[name]))
+            elif prop_desc["type"]=="array(3,3)":
+                widget.set_markup(markup_matrix3(self.gl_object.properties[name]))
             elif prop_desc["type"]=="color":
                 widget.set_color(self.gl_object.properties[name])
-
             elif prop_desc["type"]=="material":
                 widget.set_material(self.gl_object.properties[name])
+            else:
+                widget.set_text(str(self.gl_object.properties[name]))
 
     def update(self):
         """Read values from widgets and apply them to the gl_object
@@ -523,9 +553,15 @@ class GLPropertyEditor(gtk.Frame):
 
 
 class GLPropertyTreeControl(gtk.TreeView):
-    def __init__(self, context):
-        self.context   = context
-        self.path_dict = {}
+    """Hierarchical tree view of the GLObjects which make up
+    the molecular viewer.  The purpose of this widget is to alllow
+    easy navigation through the hierarchy.
+    """
+    
+    def __init__(self, gl_object_root, glo_select_cb):
+        self.gl_object_root = gl_object_root
+        self.glo_select_cb  = glo_select_cb
+        self.path_glo_dict  = {}
         
         gtk.TreeView.__init__(self)
         self.get_selection().set_mode(gtk.SELECTION_BROWSE)
@@ -537,51 +573,122 @@ class GLPropertyTreeControl(gtk.TreeView):
         self.set_model(self.model)
 
         cell = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("Structure", cell)
-        column.add_attribute(cell, "text", 0)
-        self.append_column(column)
+        self.column = gtk.TreeViewColumn("OpenGL Renderer", cell)
+        self.column.add_attribute(cell, "text", 0)
+        self.append_column(self.column)
 
-        self.redraw()
+        self.rebuild_gl_object_tree()
 
     def row_activated_cb(self, tree_view, path, column):
         """Retrieve selected node, then call the correct set method for the
         type.
         """
-        self.context.set_selected_struct_obj(self.resolv_path(path))
-    
+        glo = self.get_gl_object(path)
+        self.glo_select_cb(glo)
+
     def button_release_event_cb(self, tree_view, bevent):
         """
         """
-        pass
+        x = int(bevent.x)
+        y = int(bevent.y)
 
-    def resolv_path(self, path):
-        """Get the item in the tree view at the specified path.
+        try:
+            (path, col, x, y) = self.get_path_at_pos(x, y)
+        except TypeError:
+            return gtk.FALSE
+
+        self.row_activated(path, self.column)
+        return gtk.FALSE
+
+    def get_gl_object(self, path):
+        """Return the GLObject from the treeview path.
         """
-        itemx = self.struct_list
-        for i in path:
-            itemx = itemx[i]
-        return itemx
-        
-    def redraw(self):
+        glo = self.path_glo_dict[path]
+        return glo
+
+    def rebuild_gl_object_tree(self):
         """Clear and refresh the view of the widget according to the
         self.struct_list
         """
-        self.model.clear()
-        self.recursive_redraw(self.context.gl_viewer)
-        
-    def recurive_redraw(self, gl_object, parent_iter = None):
-        """
-        """
-        iter = self.model.append(parent_iter)
-        self.model.set(iter, 0, str(gl_object.__class__.__name__))
 
-        for child in gl_object.iter_children():
-            self.recurive_redraw(child, iter)
+        ## first get a refernence to the current selection
+        ## so it can be restored after the reset if it hasn't
+        ## been removed
+        model, iter = self.get_selection().get_selected()
+        if iter!=None:
+            selected_glo = self.path_glo_dict[model.get_path(iter)]
+        else:
+            selected_glo = None
+
+        ## now record how the tree is expanded so the expansion
+        ## can be restored after rebuilding
+        expansion_dict = {}
+        for path, glo in self.path_glo_dict.items():
+            expansion_dict[glo] = self.row_expanded(path)
+
+        ## rebuild the tree view using recursion
+        self.path_glo_dict = {}
+        self.model.clear()
+        
+        def redraw_recurse(glo, parent_iter):
+            iter = self.model.append(parent_iter)
+            path = self.model.get_path(iter)
+
+            self.path_glo_dict[path] = glo
+            
+            self.model.set(iter, 0, glo.glo_name())
+
+            for child in glo.glo_iter_children():
+                redraw_recurse(child, iter)
+    
+        redraw_recurse(self.gl_object_root, None)
+
+        ## restore expansions and selections
+        for path, glo in self.path_glo_dict.items():
+            try:
+                expanded = expansion_dict[glo]
+            except KeyError:
+                continue
+            if expanded==gtk.TRUE:
+                for i in range(1, len(path)):
+                    self.expand_row(path[:i], gtk.FALSE)
+
+        if selected_glo!=None:
+            self.select_gl_object(selected_glo)
+
+    def select_gl_object(self, target_glo):
+        """Selects a gl_object which must be a glo_root or a
+        decendant of glo_root.
+        """
+        ## try to find and select target_glo
+        for path, glo in self.path_glo_dict.items():
+            if id(glo)==id(target_glo):
+
+                for i in range(1, len(path)):
+                    self.expand_row(path[:i], gtk.FALSE)
+
+                self.get_selection().select_path(path)
+                self.glo_select_cb(glo)
+                return
+
+        ## unable to find target_glo, select the root
+        self.select_gl_object(self.gl_object_root)
+        self.glo_select_cb(self.gl_object_root)
 
 
 class GLPropertyEditDialog(gtk.Dialog):
+    """Open a dialog for editing a single GLObject properties.
+    """
+
     def __init__(self, parent_window, gl_object):
-        gtk.Dialog.__init__(self, "Edit GLProperties", parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
+        title = "Edit GLProperties: %s" % (gl_object.glo_name())
+
+        gtk.Dialog.__init__(
+            self,
+            title,
+            parent_window,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
+
         self.set_resizable(gtk.FALSE)
         self.connect("response", self.response_cb)
 
@@ -603,15 +710,35 @@ class GLPropertyEditDialog(gtk.Dialog):
 class GLPropertyBrowserDialog(gtk.Dialog):
     """
     """
-    def __init__(self, parent_window, gl_object):
-        gtk.Dialog.__init__(self, "Edit GLProperties", parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
+    def __init__(self, parent_window, glo_root):
+        gl_object_root = glo_root
+        title = "Browse OpenGL Properties: %s" % (gl_object_root.glo_name())
+
+        gtk.Dialog.__init__(
+            self,
+            title,
+            parent_window,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
+
         self.connect("response", self.response_cb)
-
-        self.gl_prop_editor = GLPropertyEditor(gl_object)
-        self.vbox.pack_start(self.gl_prop_editor, gtk.TRUE, gtk.TRUE, 0)
-
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+
+        ## widgets
+        self.hpaned = gtk.HPaned()
+        self.vbox.pack_start(self.hpaned, gtk.TRUE, gtk.TRUE, 0)
+        self.hpaned.set_border_width(2)
+
+        ## property tree control
+        self.gl_tree_ctrl = GLPropertyTreeControl(
+            gl_object_root,
+            self.gl_tree_ctrl_selected)
+
+        self.hpaned.add1(self.gl_tree_ctrl)
+
+        ## always start with the root selected
+        self.gl_prop_editor = None
+        self.select_gl_object(gl_object_root)
 
         self.show_all()
 
@@ -621,10 +748,47 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         if response_code==100:
             self.gl_prop_editor.update()    
 
+    def rebuild_gl_object_tree(self):
+        """Rebuilds the GLObject tree view.
+        """
+        self.gl_tree_ctrl.rebuild_gl_object_tree()
+
+    def gl_tree_ctrl_selected(self, glo):
+        """Callback invoked by the GLPropertyTreeControl when a
+        GLObject is selected
+        """
+        ## remove the current property editor if there is one
+        if self.gl_prop_editor!=None:
+            if self.gl_prop_editor.gl_object==glo:
+                return
+
+            self.hpaned.remove(self.gl_prop_editor)
+            self.gl_prop_editor = None
+
+        ## create new property editor
+        self.gl_prop_editor = GLPropertyEditor(glo)
+        self.hpaned.add2(self.gl_prop_editor)
+        self.gl_prop_editor.show_all()
+
+    def select_gl_object(self, glo):
+        """Selects the given GLObject for editing by
+        simulating a selection through the GLPropertyTreeControl.
+        """
+        self.gl_tree_ctrl.select_gl_object(glo)
+
+
+###############################################################################
+### TLS Analysis Dialog 
+###
+
 
 class TLSDialog(gtk.Dialog):
-    """Dialog for TLS analysis of a structure.
+    """Dialog for the visualization and analysis of TLS model parameters
+    describing rigid body motion of a structure.  The TLS model parameters
+    can either be extracted from PDB REMARK statements, or loaded from a
+    CCP4/REFMAC TLSIN file.
     """    
+
     def __init__(self, **args):
         self.main_window    = args["main_window"]
         self.struct_context = args["struct_context"]
@@ -708,6 +872,8 @@ class TLSDialog(gtk.Dialog):
         self.load_PDB(self.struct_context.struct.path)
 
     def response_cb(self, dialog, response_code):
+        """Responses to dialog events.
+        """
         if response_code==gtk.RESPONSE_CLOSE:
             self.destroy()
             
@@ -723,10 +889,17 @@ class TLSDialog(gtk.Dialog):
             file_sel.destroy()
             
         elif response_code==101 and self.sel_tls_group!=None:
-            prop_dialog = GLPropertyEditDialog(self, self.sel_tls_group.gl_tls)
-            prop_dialog.present()
+            ## use the GLPropertyBrowserDialog associated with
+            ## the application main window to present the
+            ## properties of the gl_tls object for modification
+            
+            self.main_window.edit_properties_gl_object(
+                self.sel_tls_group.gl_tls)
 
     def destroy_cb(self, *args):
+        """Destroy the TLS dialog and everything it has built
+        in the GLObject viewer.
+        """
         self.clear_tls_groups()
 
     def get_tls_group(self, path):
@@ -737,6 +910,8 @@ class TLSDialog(gtk.Dialog):
         self.sel_tls_group = self.tls_group_list[row]
 
     def view_toggled(self, cell, path):
+        """Visible/Hidden TLS representation.
+        """
         ## why, oh why??
         path = int(path)
 
@@ -753,6 +928,8 @@ class TLSDialog(gtk.Dialog):
             tls_group.gl_tls.glo_update_properties(visible=True)
 
     def animate_toggled(self, cell, path):
+        """Start/Stop TLS Animation.
+        """
         path      = int(path)
         tls_group = self.tls_group_list[path]
 
@@ -776,6 +953,26 @@ class TLSDialog(gtk.Dialog):
         self.struct_context.gl_struct.glo_add_child(tls_group.gl_tls)
         tls_group.gl_tls.glo_add_update_callback(self.update_cb)
 
+        ## rebuild GUI viewers
+        self.main_window.gl_prop_browser_rebuild_gl_object_tree()
+        self.redraw_treeview()
+
+    def clear_tls_groups(self):
+        """Remove the current TLS groups, including destroying
+        the tls.gl_tls OpenGL renderer
+        """
+        gl_viewer = self.main_window.struct_gui.gtkglviewer
+
+        for tls_group in self.tls_group_list:
+            gl_viewer.glv_remove_draw_list(tls_group.gl_tls)
+            tls_group.gl_tls.glo_remove_update_callback(self.update_cb)
+            del tls_group.gl_tls
+        
+        self.tls_group_list = []
+        self.animation_list = []
+
+        ## rebuild GUI viewers
+        self.main_window.gl_prop_browser_rebuild_gl_object_tree()
         self.redraw_treeview()
 
     def update_cb(self, updates={}, actions=[]):
@@ -792,20 +989,6 @@ class TLSDialog(gtk.Dialog):
 
             i += 1
 
-    def clear_tls_groups(self):
-        """Remove the current TLS groups, including destroying
-        the tls.gl_tls OpenGL renderer
-        """
-        gl_viewer = self.main_window.struct_gui.gtkglviewer
-
-        for tls_group in self.tls_group_list:
-            gl_viewer.remove_draw_list(tls_group.gl_tls)
-            tls_group.gl_tls.glo_remove_update_callback(self.update_cb)
-            del tls_group.gl_tls
-        
-        self.tls_group_list = []
-        self.animation_list = []
-        
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
         """
@@ -885,7 +1068,16 @@ class TLSDialog(gtk.Dialog):
         return gtk.TRUE
 
         
+
+###############################################################################
+### Hierarchical GTK Treeview control for browsing a list of
+### mmLib.Structure objects
+###
+
 class StructureTreeControl(gtk.TreeView):
+    """
+    """
+
     def __init__(self, context):
         self.context = context
         self.struct_list = []
@@ -958,7 +1150,19 @@ class StructureTreeControl(gtk.TreeView):
         self.redraw()
 
 
+
+###############################################################################
+### Application Window and Multi-Document tabs
+### 
+###
+
+
+
 class StructureGUI(object):
+    """This will become a notebook page when I get around to implementing
+    a multi-tab interface.
+    """
+
     def __init__(self, context):
         self.context = context        
     
@@ -1062,6 +1266,7 @@ class MainWindow(object):
         self.struct_context_list = []
         self.sel_struct_context  = None
         self.sel_struct_obj      = None
+        self.gl_prop_browser     = None
         self.view_cmds           = ViewCommands()
         self.color_cmds          = ColorCommands()
         self.quit_notify_cb      = quit_notify_cb
@@ -1074,43 +1279,48 @@ class MainWindow(object):
         self.window = gtk.Window()
         self.set_title("")
         self.window.set_default_size(500, 400)
-        self.window.connect('destroy', self.quit_cb, self)
+        self.window.connect('destroy', self.file_quit, self)
 
         table = gtk.Table(1, 4, gtk.FALSE)
         self.window.add(table)
 
         ## file menu bar
         file_menu_items = [
-            ('/_File',            None,          None,               0,'<Branch>'),
-            ('/File/_New Window', None,          self.new_window_cb, 0,'<StockItem>',gtk.STOCK_NEW),
-            ('/File/_Open',       None,          self.open_cb,       0,'<StockItem>',gtk.STOCK_OPEN),
-            ('/File/sep1',        None,          None,               0,'<Separator>'),
-            ('/File/_Quit',      '<control>Q',   self.quit_cb,       0,'<StockItem>',gtk.STOCK_QUIT) ]
+            ('/_File',            None,          None,                 0,'<Branch>'),
+            ('/File/_New Window', None,          self.file_new_window, 0,'<StockItem>',gtk.STOCK_NEW),
+            ('/File/_Open',       None,          self.file_open,       0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/sep1',        None,          None,                 0,'<Separator>'),
+            ('/File/_Quit',      '<control>Q',   self.file_quit,       0,'<StockItem>',gtk.STOCK_QUIT) ]
+
+        edit_menu_items = [
+            ('/_Edit',            None,          None,                  0,'<Branch>'),
+            ('/Edit/_Properties', None,          self.edit_properties,  0, None) ]
 
         view_menu_items = [
             ('/_View', None, None, 0, '<Branch>') ]
         
         for view_cmd in self.view_cmds:
             view_menu_items.append(
-                (view_cmd["menu path"], None, self.view_menu_cb, view_cmd["action"], '<CheckItem>') )
+                (view_cmd["menu path"], None, self.view_menu, view_cmd["action"], '<CheckItem>') )
 
         color_menu_items = [
             ('/_Colors', None, None, 0, '<Branch>') ]
         
         for color_cmd in self.color_cmds:
             color_menu_items.append(
-                (color_cmd["menu path"], None, self.color_menu_cb, color_cmd["action"]) )
+                (color_cmd["menu path"], None, self.color_menu, color_cmd["action"]) )
             
         tools_menu_items = [
             ('/_Tools', None, None, 0, '<Branch>'),
-            ('/Tools/Selected Item Details...', None, self.details_dialog_cb, 0, None),
-            ('/Tools/TLS Analysis...',          None, self.tls_dialog_cb,     0, None) ]
+            ('/Tools/Selected Item Details...', None, self.tools_details,      0, None),
+            ('/Tools/TLS Analysis...',          None, self.tools_tls_analysis, 0, None) ]
 
         help_menu_items = [
             ('/_Help',       None, None, 0, '<Branch>'),
             ('/Help/_About', None, None, 0, None) ]
 
         menu_items = file_menu_items +\
+                     edit_menu_items +\
                      view_menu_items +\
                      color_menu_items +\
                      tools_menu_items +\
@@ -1174,13 +1384,14 @@ class MainWindow(object):
 
         self.window.show_all()
 
-    def new_window_cb(self, *args):
-        pass
-
-    def new_tab_cb(self, *args):
+    def file_new_window(self, *args):
+        """File->New Window
+        """
         pass
         
-    def open_cb(self, *args):
+    def file_open(self, *args):
+        """File->Open
+        """
         if hasattr(self, "file_selector"):
             self.file_selector.present()
             return
@@ -1203,13 +1414,47 @@ class MainWindow(object):
     def open_cancel_cb(self, *args):
         self.destroy_file_selector()
 
-    def quit_cb(self, *args):
+    def file_quit(self, *args):
+        """File->Quit
+        """
         self.quit_notify_cb(self.window, self)
 
-    def error_dialog(self, text):
-        print text
+    def edit_properties(self, *args):
+        """Edit->Properties (GLPropertyBrowserDialog)
+        """
+        if self.gl_prop_browser==None:
+            self.gl_prop_browser = GLPropertyBrowserDialog(
+                self.window,
+                self.struct_gui.gtkglviewer)
 
-    def details_dialog_cb(self, *args):
+            self.gl_prop_browser.connect(
+                "destroy",
+                self.gl_prop_browser_destroy)
+
+        self.gl_prop_browser.present()
+
+    def edit_properties_gl_object(self, gl_object):
+        """Opens/Presents the GLPropertyBrowser Dialog and selects
+        gl_object for editing.
+        """
+        self.edit_properties()
+        self.gl_prop_browser.select_gl_object(gl_object)
+
+    def gl_prop_browser_destroy(self, widget):
+        """Callback when the GLProeriesBrowser is destroyed.
+        """
+        self.gl_prop_browser = None
+
+    def gl_prop_browser_rebuild_gl_object_tree(self):
+        """This rebuilds the GLPropertiesBrowser when any
+        GLObject is added or removed from it.
+        """
+        if self.gl_prop_browser!=None:
+            self.gl_prop_browser.rebuild_gl_object_tree()
+
+    def tools_details(self, *args):
+        """Tools->Selected Item Details
+        """
         if self.sel_struct_obj == None:
             self.error_dialog("No Structure Selected.")
             return
@@ -1217,7 +1462,10 @@ class MainWindow(object):
         details.set_struct_obj(self.sel_struct_obj)
         details.present()
 
-    def tls_dialog_cb(self, *args):
+    def tools_tls_analysis(self, *args):
+        """Tools->TLS Analysis
+        """
+
         if self.sel_struct_context==None:
             return
         tls = TLSDialog(
@@ -1225,8 +1473,8 @@ class MainWindow(object):
             struct_context = self.sel_struct_context)
         tls.present()
 
-    def view_menu_cb(self, callback_action, widget):
-        """Callback for the View menu.
+    def view_menu(self, callback_action, widget):
+        """View->[All Items]
         """
         if self.sel_struct_context==None:
             return
@@ -1239,8 +1487,8 @@ class MainWindow(object):
             visible = False
         self.sel_struct_context.gl_struct.properties.update(**{property: visible})            
 
-    def color_menu_cb(self, callback_action, widget):
-        """Callback for the Color menu.
+    def color_menu(self, callback_action, widget):
+        """Color->[All Items]
         """
         if self.sel_struct_context==None:
             return
@@ -1282,6 +1530,20 @@ class MainWindow(object):
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
 
+    def error_dialog(self, text):
+        """Display modeal error dialog box containing the error text.
+        """
+        dialog = gtk.MessageDialog(
+            self.window,
+            gtk.DIALOG_DESTROY_WITH_PARENT,
+            gtk.MESSAGE_ERROR,
+            gtk.BUTTONS_CLOSE,
+            text)
+        
+        dialog.run()
+        dialog.destroy()
+
+
     def load_file(self, path):
         """Loads the structure file specified in the path.
         """
@@ -1295,7 +1557,7 @@ class MainWindow(object):
 
         struct.path = path
         
-        gl_struct = self.struct_gui.gtkglviewer.add_struct(struct)
+        gl_struct = self.struct_gui.gtkglviewer.glv_add_struct(struct)
 
         struct_context = StructureContext(struct, gl_struct)
         self.struct_context_list.append(struct_context)

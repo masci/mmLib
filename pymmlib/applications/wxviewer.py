@@ -34,9 +34,11 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
     """
     def __init__(self, parent):
         self.init = False
-        self.mmlib_glviewer = GLViewer()
         self.x = 0
         self.y = 0
+
+        self.glv = GLViewer()
+        self.glv.glv_redraw = self.glv_redraw
         
         wx.glcanvas.GLCanvas.__init__(self, parent, -1)
         
@@ -63,7 +65,7 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
             return
         
         self.SetCurrent()
-        self.mmlib_glviewer.gl_resize(width, height)
+        self.glv.glv_resize(width, height)
         self.SwapBuffers()
 
     def on_paint(self, event):
@@ -73,13 +75,13 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
         self.SetCurrent()
 
         if self.init==False:
-            self.mmlib_glviewer.gl_init()
+            self.glv.glv_init()
             self.init = True
 
             w, h = self.GetClientSize()
-            self.mmlib_glviewer.gl_resize(w, h)
+            self.glv.glv_resize(w, h)
         
-        self.mmlib_glviewer.gl_render()
+        self.glv.glv_render()
         self.SwapBuffers()
 
     def on_mouse_down(self, event):
@@ -101,8 +103,8 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
         width, height = self.GetClientSize()
             
         if event.LeftIsDown():
-            self.mmlib_glviewer.roty += 360.0 * ((evx - self.beginx) / float(width)) 
-            self.mmlib_glviewer.rotx += 360.0 * ((evy - self.beginy) / float(height))
+            self.glv.roty += 360.0 * ((evx - self.beginx) / float(width)) 
+            self.glv.rotx += 360.0 * ((evy - self.beginy) / float(height))
 
         elif event.MiddleIsDown():
             z = 50.0 * ((evy - self.beginy) / float(height))
@@ -111,9 +113,12 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
             x = 50.0 * ( (evx - self.beginx) / float(height))
             y = 50.0 * (-(evy - self.beginy) / float(height))
 
-        self.mmlib_glviewer.gl_translate(x, y, z)
+        self.glv.glv_translate(x, y, z)
         self.beginx, self.beginy = evx, evy
 
+        self.Refresh(False)
+
+    def glv_redraw(self):
         self.Refresh(False)
 
 
@@ -143,6 +148,9 @@ class AppFrame(wx.Frame):
         self.Close()
         
     def load_structure(self, path):
+        """Load to current notebook tab, or new notebook
+        tab.
+        """
         struct = LoadStructure(
             fil              = path,
             update_cb        = self.update_cb,
@@ -158,8 +166,7 @@ class AppFrame(wx.Frame):
         """Adds a structure to this viewer, and returns the GLStructure
         object so it can be manipulated.
         """
-        gl_struct = GLStructure(struct=struct)
-        self.glviewer.mmlib_glviewer.add_draw_list(gl_struct)
+        gl_struct = self.glviewer.glv.glv_add_struct(struct)
 
 
 class App(wx.App):

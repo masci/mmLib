@@ -846,7 +846,6 @@ class TLSGroup(AtomList):
 
         T',S',L': T,L,S tensors in origonal coordinate system
                   with the origin shifted to the center of reaction.
-        
         """
         calcs = {}
 
@@ -927,7 +926,7 @@ class TLSGroup(AtomList):
         Sp = self.S + matrixmultiply(self.L, PRHOt)
         calcs["S'"] = Sp
 
-        # calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+        ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
         Tp = self.T + \
              matrixmultiply(PRHO, self.S) + \
              matrixmultiply(St, PRHOt) + \

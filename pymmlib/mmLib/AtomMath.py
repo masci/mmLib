@@ -75,10 +75,14 @@ def rmatrixz(u):
     u, v, w = normalize(u)
 
     d = math.sqrt(u*u + v*v)
-    
-    Rxz = array([ [  u/d, v/d,  0.0 ],
-                  [ -v/d, u/d,  0.0 ],
-                  [  0.0, 0.0,  1.0 ] ])
+
+    if d!=0.0:
+        Rxz = array([ [  u/d, v/d,  0.0 ],
+                      [ -v/d, u/d,  0.0 ],
+                      [  0.0, 0.0,  1.0 ] ])
+    else:
+        Rxz = identity(3)
+
 
     Rxz2z = array([ [   w, 0.0,    -d],
                     [ 0.0, 1.0,   0.0],
