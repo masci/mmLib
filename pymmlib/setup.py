@@ -58,6 +58,16 @@ def extension_list():
             include_dirs = [],
             library_dirs = [],
             libraries    = []),
+
+        ## OpenGL Accelerator
+        Extension(
+            "glaccel", 
+            ["src/glaccel.c"],
+            include_dirs = ["/usr/X11/include",
+                            "/usr/X11R6/include"],
+            library_dirs = ["/usr/X11/lib",
+                            "/usr/X11R6/lib"],
+            libraries    = ["m", "X11", "Xi", "Xext", "Xmu", "GL", "GLU"]),
     ]
     return elist
 
@@ -71,7 +81,7 @@ def run_setup():
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
         packages     = ["mmLib", "mmLib/Extensions"],
-#        ext_modules  = extension_list(),
+        ext_modules  = extension_list(),
         data_files   = library_data()
         )
 

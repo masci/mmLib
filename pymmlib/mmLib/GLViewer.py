@@ -15,6 +15,7 @@ from mmTypes        import *
 from Structure      import *
 from Extensions.TLS import *
 
+import glaccel
 
 ## MISC Constents
 
@@ -572,7 +573,7 @@ class OpenGLRenderMethods(object):
 
         ## rotation matrix to align the current OpenGL coordinate
         ## system such that the vector axis is along the z axis
-        R = inverse(rmatrixz(axis))
+        R = transpose(rmatrixz(axis))
         glMultMatrixf(
             (R[0,0],           R[1,0],      R[2,0], 0.0,
              R[0,1],           R[1,1],      R[2,1], 0.0,
@@ -604,7 +605,7 @@ class OpenGLRenderMethods(object):
 
         ## rotation matrix to align the current OpenGL coordinate
         ## system such that the vector axis is along the z axis
-        R = inverse(rmatrixz(rod))
+        R = transpose(rmatrixz(rod))
         glMultMatrixf(
             (R[0,0],           R[1,0],      R[2,0], 0.0,
              R[0,1],           R[1,1],      R[2,1], 0.0,
@@ -632,7 +633,7 @@ class OpenGLRenderMethods(object):
 
         ## rotation matrix to align the current OpenGL coordinate
         ## system such that the vector axis is along the z axis
-        R = inverse(rmatrixz(tube))
+        R = transpose(rmatrixz(tube))
         glMultMatrixf(
             (R[0,0],           R[1,0],      R[2,0], 0.0,
              R[0,1],           R[1,1],      R[2,1], 0.0,
@@ -729,146 +730,24 @@ class OpenGLRenderMethods(object):
         given the gaussian variance-covariance matrix U at the given position.
         C=1.8724 = 68%
         """
-        C2 = GAUSS3C[prob]**2
         Ui = inverse(U)
-        
-        def ellipse_surface_func(x):
-            d = matrixmultiply(x, matrixmultiply(Ui, x))
-            
-            try:
-                vec = math.sqrt(C2 / d) * x
-                return vec
 
-            except ValueError:
-                print "ellipse_surface_func: U not positive definate"
-                return zeros(3, Float)
-
-        self.glr_radial_surface(position, ellipse_surface_func, 3)
+        glaccel.Uellipse(
+            position[0], position[1], position[2],
+            Ui[0,0], Ui[1,1], Ui[2,2], Ui[0,1], Ui[0,2], Ui[1,2],
+            GAUSS3C[prob],
+            3)
 
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of the
         gaussian variance-covariance matrix U at the given position.  This
         is a peanut-shaped surface. (Note: reference the peanut paper!)
         """
-        def rms_surface_func(v):
-            return v * math.sqrt(abs(matrixmultiply(v, matrixmultiply(U, v))))
-        self.glr_radial_surface(position, rms_surface_func, 3)
-
-    def glr_radial_surface(self, position, func, depth):
-        """
-        """
-        delta = 1.0e-7
         
-        glPushMatrix()
-        glTranslatef(*position)
-        
-        glEnable(GL_LIGHTING)
-        glEnable(GL_NORMALIZE) ## let OpenGL normalize the normals
-        glBegin(GL_TRIANGLES)
-        
-        for v1, v2, v3 in self.glr_iter_triangle_tesselation_cache(depth):
-            u1 = func(v1)
-            u2 = func(v2)
-            u3 = func(v3)
-
-            ## normals are computed numericly
-            v21 = delta * (v2 - v1)
-            v31 = delta * (v3 - v1)
-            v32 = delta * (v3 - v2)
-
-            d21 = func(normalize(v1 + v21))
-            d31 = func(normalize(v1 + v31))
-            n1  = cross(d21-u1, d31-u1)
-
-            d32 = func(normalize(v2 + v32))
-            d12 = func(normalize(v2 - v21))
-            n2  = cross(d32-u2, d12-u2)
-
-            d13 = func(normalize(v3 - v31))
-            d23 = func(normalize(v3 - v32))
-            n3  = cross(d13-u3, d23-u3)
-                
-            glNormal3f(*n1)
-            glVertex3f(*u1)
-
-            glNormal3f(*n2)
-            glVertex3f(*u2)
-
-            glNormal3f(*n3)
-            glVertex3f(*u3)
-
-        glEnd()
-        glDisable(GL_NORMALIZE)
-        glPopMatrix()
-
-    def glr_iter_triangle_tesselation_cache(self, depth):
-        """Caches expensive tesselation vericies.
-        """
-        if hasattr(self, "glr_tess_cache")==False:
-            self.glr_tess_cache = {}
-
-        try:
-
-            return iter(self.glr_tess_cache[depth])
-        except KeyError:
-            print "createing cache"
-            self.glr_tess_cache[depth] = list(
-                self.glr_iter_triangle_tesselation(depth))
-            return self.glr_tess_cache[depth]
-
-    def glr_iter_triangle_tesselation(self, depth):
-        """Iterates 3-tuples of unit vector length triangle vericies.  The
-        triangle verticies are all yielded in counter-clockwise order, and
-        the depth specifies the recursion depth of the algorithm.  
-        """
-
-        def tesselate(rdepth, v1, v2, v3):
-            ## step 1: bisect the triangle edges
-            v12 = (0.5 * (v2 - v1)) + v1
-            v23 = (0.5 * (v3 - v2)) + v2
-            v31 = (0.5 * (v1 - v3)) + v3
-
-            ## step 2: form 4 triangles and either yield or recuse
-
-            ## if we are at the given depth, then yield the triangle
-            ## vertex
-            rdepth -= 1
-
-            if rdepth==0:
-                yield normalize(v1),  normalize(v12), normalize(v31)
-                yield normalize(v2),  normalize(v23), normalize(v12)
-                yield normalize(v3),  normalize(v31), normalize(v23)
-                yield normalize(v12), normalize(v23), normalize(v31)
-            else:
-                for tri1, tri2, tri3 in tesselate(rdepth, v1, v12, v31):
-                    yield tri1, tri2, tri3
-                for tri1, tri2, tri3 in tesselate(rdepth, v2, v23, v12):
-                    yield tri1, tri2, tri3
-                for tri1, tri2, tri3 in tesselate(rdepth, v3, v31, v23):
-                    yield tri1, tri2, tri3       
-                for tri1, tri2, tri3 in tesselate(rdepth, v12, v23, v31):
-                    yield tri1, tri2, tri3
-        
-        x = array([1.0, 0.0, 0.0])
-        y = array([0.0, 1.0, 0.0])
-        z = array([0.0, 0.0, 1.0])
-        
-        for tri1, tri2, tri3 in tesselate(depth, x, y, z):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, x, -z, y):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, x, z, -y):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, x, -y, -z):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, -x, z, y):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, -x, y, -z):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, -x, -y, z):
-            yield tri1, tri2, tri3
-        for tri1, tri2, tri3 in tesselate(depth, -x, -z, -y):
-            yield tri1, tri2, tri3
+        glaccel.Upeanut(
+            position[0], position[1], position[2],
+            U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
+            3)
 
 
 class GLDrawList(GLObject, OpenGLRenderMethods):
@@ -2414,7 +2293,7 @@ class GLTLSAtomList(GLAtomList):
             self.glr_Uaxes(
                 self.calc_position(atm.position),
                 T,
-                self.properties["Ut_prob"],
+                self.properties["adp_prob"],
                 color,
                 1.0)
 
@@ -2431,7 +2310,7 @@ class GLTLSAtomList(GLAtomList):
             self.glr_Uellipse(
                 self.calc_position(atm.position),
                 T,
-                self.properties["Ut_prob"])
+                self.properties["adp_prob"])
 
     def draw_Ut_rms(self, atm):
         """Draw the ADP determined RMS displacement surface of the T tensor
@@ -3610,7 +3489,7 @@ class GLViewer(GLObject):
         t     = self.properties["t"]
         delta = array([x, y, z])
         
-        upt = matrixmultiply(inverse(R), delta) + t
+        upt = matrixmultiply(transpose(R), delta) + t
         self.properties.update(t=upt)
 
     def glv_rotate(self, alpha, beta, gamma):
@@ -3620,15 +3499,15 @@ class GLViewer(GLObject):
         R = self.properties["R"]
 
         Rx = rmatrixu(
-            matrixmultiply(inverse(R), array([1.0, 0.0, 0.0])),
+            matrixmultiply(transpose(R), array([1.0, 0.0, 0.0])),
             math.radians(alpha))
 
         Ry = rmatrixu(
-            matrixmultiply(inverse(R), array([0.0, 1.0, 0.0])),
+            matrixmultiply(transpose(R), array([0.0, 1.0, 0.0])),
             math.radians(beta))
 
         Rz = rmatrixu(
-            matrixmultiply(inverse(R), array([0.0, 0.0, 1.0])),
+            matrixmultiply(transpose(R), array([0.0, 0.0, 1.0])),
             math.radians(gamma))
 
         Rxyz = matrixmultiply(Rz, matrixmultiply(Ry, Rx))

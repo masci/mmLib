@@ -1028,7 +1028,7 @@ class GLPropertyTreeControl(gtk.TreeView):
         except TypeError:
             return gtk.FALSE
 
-        self.row_activated(path, self.column)
+        self.row_activated_cb(tree_view, path, col)
         return gtk.FALSE
 
     def get_gl_object(self, path):
@@ -1445,13 +1445,15 @@ class TLSDialog(gtk.Dialog):
     def load_TLSOUT(self, path):
         """Load TLS descriptions from a REMAC/CCP4 TLSOUT file.
         """
-        print "## loading = ",path
-        
         self.clear_tls_groups()
+        try:
+            fil = open(path, "r")
+        except IOError:
+            return
 
         tls_file = TLSInfoList()
-        tls_file.load_refmac_tlsout_file(open(path, "r"))
-    
+        tls_file.load_refmac_tlsout_file(fil)
+        
         for tls_info in tls_file:
             tls_group = tls_info.make_tls_group(self.struct_context.struct)
             tls_group.tls_info = tls_info
@@ -1462,12 +1464,14 @@ class TLSDialog(gtk.Dialog):
         """
         self.clear_tls_groups()
 
-        tls_analysis = TLSStructureAnalysis(self.struct_context.struct)
-        stats_list   = tls_analysis.fit_TLS_segments()
+        dialog = TLSSearchDialog(
+            main_window    = self.main_window,
+            struct_context = self.struct_context)
 
-        for stats in stats_list:
-            if stats["adv_DP2"]>0.02:
-                continue
+        dialog.run()
+        dialog.destroy()
+
+        for stats in dialog.tls_stats_list:
             self.add_tls_group(stats["tls"])
         
     def markup_tls_name(self, tls_info):
@@ -1525,7 +1529,166 @@ class TLSDialog(gtk.Dialog):
             tls_group.gl_tls.properties.update(time=self.animation_time)
         return gtk.TRUE
 
+
+class DictListTreeView(gtk.TreeView):
+    def __init__(self,
+                 column_list    = ["Empty"],
+                 dict_list      = [],
+                 selection_mode = gtk.SELECTION_BROWSE):
+
+        ## DistList state
+        self.column_list = column_list
+        self.dict_list   = []
+
+        ## gtk.TreeView Init
+        gtk.TreeView.__init__(self)
         
+        self.get_selection().set_mode(selection_mode)
+
+        self.connect("row-activated", self.row_activated_cb)
+        self.connect("button-release-event", self.button_release_event_cb)
+
+
+        model_data_types = []
+        for i in range(len(self.column_list)):
+            model_data_types.append(gobject.TYPE_STRING)
+
+        self.model = gtk.TreeStore(*model_data_types)
+        self.set_model(self.model)
+
+        ## add cell renderers
+        for i in range(len(self.column_list)):
+            column_desc = self.column_list[i]
+            cell        = gtk.CellRendererText()
+            column      = gtk.TreeViewColumn(column_desc, cell)
+
+            column.add_attribute(cell, "text", i)
+            self.append_column(column)
+
+        ## populate list if needed
+        if len(dict_list)>0:
+            self.set_dict_list(dict_list)
+
+    def row_activated_cb(self, tree_view, path, column):
+        """Retrieve selected node, then call the correct set method for the
+        type.
+        """
+        pass
+    
+    def button_release_event_cb(self, tree_view, bevent):
+        """
+        """
+        x = int(bevent.x)
+        y = int(bevent.y)
+
+        try:
+            (path, col, x, y) = self.get_path_at_pos(x, y)
+        except TypeError:
+            return gtk.FALSE
+
+        self.row_activated_cb(tree_view, path, col)
+        return gtk.FALSE
+
+    def set_dict_list(self, dict_list):
+        """
+        """
+        self.dict_list = dict_list
+        self.model.clear()
+
+        for dictX in self.dict_list:
+            iter = self.model.append(None)
+
+            for i in range(len(self.column_list)):
+                column_desc = self.column_list[i]
+                self.model.set(iter, i, dictX[column_desc])
+
+    
+class TLSSearchDialog(gtk.Dialog):
+    """
+    """    
+    def __init__(self, **args):
+        self.main_window    = args["main_window"]
+        self.struct_context = args["struct_context"]
+        self.sel_tls_group  = None
+
+        self.tls_stats_list = []
+
+        gtk.Dialog.__init__(
+            self,
+            "TLS Search: %s" % (str(self.struct_context.struct)),
+            self.main_window.window,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
+
+        self.add_button("Accept", gtk.RESPONSE_OK)
+        self.add_button("Cancel", gtk.RESPONSE_CANCEL)
+
+        self.set_default_size(400, 400)
+        
+        self.connect("destroy", self.destroy_cb)
+        self.connect("response", self.response_cb)
+
+        ##
+        self.dp2_entry = gtk.Entry()
+        self.vbox.add(self.dp2_entry)
+        self.dp2_entry.set_text("0.03")
+
+        self.run_button = gtk.Button("Run Analysis")
+        self.vbox.add(self.run_button)
+        self.run_button.connect("clicked", self.run_tls_analysis, None)
+        
+        ## make the print box
+        sw = gtk.ScrolledWindow()
+        self.vbox.add(sw)
+        sw.set_border_width(5)
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+     
+        self.treeview = DictListTreeView(
+            column_list=["Residue Range", "R", "DP2"])
+        sw.add(self.treeview)
+       
+        self.show_all()
+
+    def response_cb(self, dialog, response_code):
+        """Responses to dialog events.
+        """
+        if response_code==gtk.RESPONSE_CLOSE or response_code==gtk.RESPONSE_CANCEL:
+            pass
+        elif response_code==gtk.RESPONSE_OK:
+            pass
+
+    def destroy_cb(self, *args):
+        """Destroy the TLS dialog and everything it has built
+        in the GLObject viewer.
+        """
+        pass
+    
+    def run_tls_analysis(self, *args):
+        """
+        """
+        try:
+            max_DP2 = float(self.dp2_entry.get_text())
+        except ValueError:
+            max_DP2 = 1.0
+        
+        tls_analysis = TLSStructureAnalysis(self.struct_context.struct)
+        stats_list   = tls_analysis.fit_TLS_segments()
+
+        self.tls_stats_list = []
+        for stats in stats_list:
+
+            if stats["adv_DP2"]>max_DP2:
+                continue
+
+            stats["Residue Range"] = stats["name"]
+            stats["R"]             = "%.3f" % (stats["R"])
+            stats["DP2"]           = "%.4f" % (stats["adv_DP2"])
+
+            self.tls_stats_list.append(stats)
+
+        self.treeview.set_dict_list(self.tls_stats_list)
+
+
 
 ###############################################################################
 ### Hierarchical GTK Treeview control for browsing a list of

@@ -313,28 +313,29 @@ class Library(LibraryInterface):
         except KeyError:
             pass
 
-        ## form path to locate the monomer library file
-        try:
-            r0 = res_name[0].upper()
-        except IndexError:
-            return None
-
         ## this hack is necessary beause most PDB files do not have
         ## a indicator in the 3-letter-code for RNA or DNA
         dna_map = {
-            "C+": "C", "Cr": "C",
-            "G+": "G", "Gr": "G",
-            "A+": "A", "Ar": "A",
-            "T+": "T", "Tr": "T",
-            "U+": "U", "Ur": "U"
+            "C+": "C", "Cr": "C", "+C": "C",
+            "G+": "G", "Gr": "G", "+G": "G",
+            "A+": "A", "Ar": "A", "+A": "A",
+            "T+": "T", "Tr": "T", "+T": "T",
+            "U+": "U", "Ur": "U", "+U": "U",
             }
 
         try:
-            fil_name = "%s.cif" % (dna_map[res_name].upper())
+            lookup_name = dna_map[res_name]
         except KeyError:
-            fil_name = "%s.cif" % (res_name.upper())
-            
-        path = os.path.join(self.mon_lib_path, r0, fil_name)
+            lookup_name = res_name.upper()
+
+        ## form path to locate the monomer library file
+        try:
+            r0 = lookup_name[0]
+        except IndexError:
+            return None
+
+        fil_name = "%s.cif" % (lookup_name.upper())
+        path     = os.path.join(self.mon_lib_path, r0, fil_name)
         
         if os.path.isfile(path):
             mon = Monomer(res_name = res_name,
