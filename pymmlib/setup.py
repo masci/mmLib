@@ -7,7 +7,7 @@
 
 import os
 import sys
-
+import copy
 
 ## try to import the distutils package
 try:
@@ -374,6 +374,48 @@ def check_deps():
 
     print "="*79
 
+def buildlib():
+    import urllib
+
+    LIB_PATH = os.path.join("mmLib", "Data", "Monomers")
+    TMP_PATH = "public-component-erf.cif"
+    URL      = "http://pdb.rutgers.edu/public-component-erf.cif"
+    
+    print "[BUILDLIB] downloading %s" % (URL)
+
+    fil = open(TMP_PATH, "w")
+
+    opener = urllib.FancyURLopener()
+    con = opener.open(URL)
+    for ln in con.readlines():
+        fil.write(ln)
+    con.close()
+    fil.close()
+
+    print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
+
+    import mmLib.mmCIF
+
+    cif_file = mmLib.mmCIF.mmCIFFile()
+    cif_file.load_file(TMP_PATH)
+
+    if not os.path.isdir(LIB_PATH):
+        os.mkdir(LIB_PATH)
+
+    for cif_data in cif_file:
+
+        mkdir_path = os.path.join(LIB_PATH, cif_data.name[0])
+        if not os.path.isdir(mkdir_path):
+            os.mkdir(mkdir_path)
+
+        save_path = os.path.join(mkdir_path, "%s.cif" % (cif_data.name))
+
+        print "[BUILDLIB] writing %s" % (save_path)
+        
+        cf = mmLib.mmCIF.mmCIFFile()
+        cf.append(copy.deepcopy(cif_data))
+        cf.save_file(save_path)
+
 
 def usage():
     """Print setup.py usage.
@@ -402,7 +444,11 @@ def usage():
     print "    doc"
     print "        Build the mmLib developers documentation using the"
     print "        Epidoc program."
-    print
+    print "    buildlib"
+    print "        Download the RCSB monomer library from"
+    print "        http://pdb.rutgers.edu/public-component-erf.cif and"
+    print "        use it to build the mmLib monomer library in"
+    print "        mmLib/Data/Monomers"
     
 
 if __name__ == "__main__":
@@ -419,6 +465,9 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == "checkdeps":
         check_deps()
+
+    elif sys.argv[1] == "buildlib":
+        buildlib()
 
     else:
         if DISTUTILS_FOUND==True:
