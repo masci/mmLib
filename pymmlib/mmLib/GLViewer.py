@@ -3942,7 +3942,11 @@ class GLViewer(GLObject, OpenGLRenderMethods):
 
             c = cross(p2, p1)
 
-            a = normalize(c)
+            try:
+                a = normalize(c)
+            except OverflowError:
+                return
+
             theta = length(c) * math.pi/2.0
 
         ## XY trackball rotation
@@ -4093,9 +4097,6 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         R   = self.properties["R"]
         cor = self.properties["cor"]
 
-        ## sphere at 0,0,0
-        self.glr_sphere((0.0, 0.0, 0.0), 1.0, 20)
-        
         glMultMatrixf(
             (R[0,0],           R[1,0],      R[2,0], 0.0,
              R[0,1],           R[1,1],      R[2,1], 0.0,
