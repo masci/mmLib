@@ -7,8 +7,9 @@ for the identification and construction of biopolymers and ligands.
 """
 import os
 import sys
+
 from mmTypes import *
-from mmCIF import mmCIFFile
+from mmCIF   import mmCIFFile
 
     
 ###############################################################################
@@ -88,7 +89,7 @@ class MonomerInterface(object):
 class LibraryInterface(object):
     """The public interface for implementing new Library classes
     """
-    def get_element(self, element):
+    def get_element(self, symbol):
         """Return the corresponding Element description instance for
         the given element symbol.  Returns None if no description is
         found.
@@ -242,7 +243,7 @@ class Monomer(MonomerInterface):
         """Returns True if the Monomer is a water molecule,
         otherwise returns False.
         """
-        return self.name == "HOH"
+        return self.res_name == "HOH"
 
     def get_polymer_bond_list(self, mon1, mon2):
         """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
@@ -308,7 +309,7 @@ class Library(LibraryInterface):
     def get_monomer(self, res_name):
         """Loads and caches the monomer description.
         """
-        assert type(res_name) == StringType
+        assert type(res_name)==StringType
         
         try:
             return self.monomer_dict[res_name]

@@ -6,16 +6,17 @@
 The mmCIF and PDB file formats are currently supported.
 """
 import os
-from mmTypes import *
-from  StructureBuilder import PDBStructureBuilder, mmCIFStructureBuilder
-from mmCIF import mmCIFFile
-from mmCIFBuilder import mmCIFFileBuilder
-from PDB import PDBFile
-from PDBBuilder import PDBFileBuilder
+
+from mmTypes      import *
+from mmCIF        import mmCIFFile
+from mmCIFBuilder import mmCIFStructureBuilder, mmCIFFileBuilder
+from PDB          import PDBFile
+from PDBBuilder   import PDBStructureBuilder, PDBFileBuilder
 
 
 def decode_format(path):
-    """Returns the 3-letter MIME code for the file format."""
+    """Returns the 3-letter MIME code for the file format.
+    """
     ## check/remove compressed file extention
     if path and type(path) == StringType:
         (base, ext) = os.path.splitext(path)
@@ -74,7 +75,6 @@ def LoadStructure(**args):
 
 def SaveStructure(**args):
     """Saves a Structure object into a supported file type.
-
     fil = <file object or path; required>
     struct = <mmLib.Structure object to save; required>
     format = <PDB|CIF; defaults to PDB>
@@ -112,6 +112,6 @@ def SaveStructure(**args):
 ### <TESTING>
 if __name__ == "__main__":
     import sys
-    struct = LoadStructure(sys.argv[1], build_properties=("polymers","bonds"))
-    SaveStructure(sys.stdout, struct, "PDB")
+    struct = LoadStructure(fil = sys.argv[1])
+    SaveStructure(fil=sys.stdout, struct=struct)
 ### </TESTING>

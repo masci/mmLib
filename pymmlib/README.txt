@@ -1,4 +1,4 @@
-mmLib-0.8: Python Macromolecular Library (mmLib)
+﻿mmLib-0.8: Python Macromolecular Library (mmLib)
 http://pymmlib.sourceforget.net/
 -------------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ To hijack CCP4's monomer library:
 
 HARDWARE::
 If you want to use the GLViewer.py module, or use the mmLib Molecular 
-Viewer, you will need OpenGL hardware acceloration provided by your video
+Viewer, you will need OpenGL hardware acceleration provided by your video
 card and driver.  I have tested this on a NVIDIA 5200FX using RedHat 9.0
 and the latest NVIDIA-6106 driver.  This is the only driver which will 
 support the mmLib viewer's tabbed browsing feature.  It's likely other

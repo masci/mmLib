@@ -46,6 +46,7 @@ class mmCIFSyntaxError(Exception):
     """Base class of errors raised by Structure objects.
     """
     def __init__(self, line_num, text):
+        Exception.__init__(self)
         self.line_num = line_num
         self.text = text
 
@@ -93,6 +94,7 @@ class mmCIFRow(dict):
                 return self[key]
             except KeyError:
                 continue
+        return None
 
 
 class mmCIFTable(list):
@@ -153,7 +155,6 @@ class mmCIFTable(list):
                 self.append(row)
 
     def __delitem__(self, i):
-        assert isinstance(row, mmCIFRow)
         self.remove(self[i])
 
     def get(self, x, default=None):
@@ -241,13 +242,6 @@ class mmCIFTable(list):
             except KeyError:
                 pass
         return dictx
-
-    def debug(self):
-        print "mmCIFTable::%s" % (self.name)
-        for row in self:
-            for col in self.columns:
-                print "%s=%s" % (col, row.get(col))[:80]
-            print "---"
 
 
 class mmCIFData(list):
@@ -381,11 +375,6 @@ class mmCIFData(list):
         """
         table_name, column = self.split_tag(tag)
         self[table_name][column] = value
-        
-    def debug(self):
-        print "mmCIFData::%s" % (self._name)
-        for ctable in self:
-            ctable.debug()
 
 
 class mmCIFSave(mmCIFData):
@@ -400,13 +389,13 @@ class mmCIFFile(list):
     """Class representing a mmCIF files.
     """
     def __deepcopy__(self, memo):
-        file = mmCIFFile()
+        cif_file = mmCIFFile()
         for data in self:
-            file.append(copy.deepcopy(data, memo))
-        return file
+            cif_file.append(copy.deepcopy(data, memo))
+        return cif_file
 
     def __eq__(self, other):
-        return id(self) == id(other)
+        return id(self)==id(other)
 
     def __getitem__(self, x):
         """Retrieve a mmCIFData object by index or name.
@@ -801,7 +790,6 @@ class mmCIFFileParser(object):
 
             file_iter = FileIter(fil)
 
-
         ## parse file, yielding tokens for self.parser()
         while 1:
             try:
@@ -810,7 +798,11 @@ class mmCIFFileParser(object):
                 break
             else:
                 self.line_number += 1
-                fil_read_bytes   += len(ln)
+                fil_read_bytes += len(ln)
+
+            ## make sure the line isn't too long
+            if len(ln)>MAX_LINE:
+                self.syntax_error("line exceeds maximum length")
 
             ## call update callback
             if self.update_cb != None:
@@ -913,13 +905,13 @@ class mmCIFFileWriter(object):
             return x, "mstring"
         
         if x.count(" ")!=0 or x.count("\t")!=0 or x.count("#")!=0:
-            if len(x) > MAX_LINE-2:
+            if len(x)>MAX_LINE-2:
                 return x, "mstring"
-            if x.count("' ")!=0:
+            if x.count("' ")!=0 or x.count('" ')!=0:
                 return x, "mstring"
             return x, "qstring"
 
-        if len(x) < MAX_LINE:
+        if len(x)<MAX_LINE:
             return x, "token"
         else:
             return x, "mstring"
@@ -989,8 +981,11 @@ class mmCIFFileWriter(object):
             elif dtype == "qstring":
                 if len(x) > vmax:
                     strx += "\n"
-                strx += "'%s'\n" % (x)
-                self.write(strx)
+                    self.write(strx)
+                    self.write_mstring(x)
+                else:
+                    strx += "'%s'\n" % (x)
+                    self.write(strx)
 
             elif dtype == "mstring":
                 strx += "\n"

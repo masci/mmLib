@@ -8,8 +8,9 @@ from __future__ import generators
 import re
 import sys
 import string
+import fpformat
 
-from mmLib.mmTypes import *
+from mmLib.mmTypes   import *
 from mmLib.Structure import *
 
 
@@ -448,13 +449,13 @@ class TLSGroup(AtomList):
         self.origin         = zeros(3, Float)
         self.T              = array([[0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]])
+                                     [0.0, 0.0, 0.0]], Float)
         self.L              = array([[0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]])
+                                     [0.0, 0.0, 0.0]], Float)
         self.S              = array([[0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]])
+                                     [0.0, 0.0, 0.0]], Float)
 
     def __str__(self):
         tstr  = "TLS %s\n" % (self.name)
@@ -508,61 +509,6 @@ class TLSGroup(AtomList):
         self.S = array([[s11, s12, s13],
                         [s21, s22, s23],
                         [s31, s32, s33]]) * deg2rad
-
-    def assert_COR_independent(self):
-        """Called by calc_TLS_least_squares_fit to re-fit the TLS tensors from
-        a different center of calculations, then shift to the COR and verify
-        the two origin of calculations produce the same results.
-        """
-        import random
-        
-        random_shift = array([random.random()*20.0 - 10.0,
-                              random.random()*20.0 - 10.0,
-                              random.random()*20.0 - 10.0])
-
-        tls_check = TLSGroup(self)
-        tls_check.origin = self.origin + random_shift
-        tls_check.calc_TLS_least_squares_fit()
-
-        calc       = self.calc_COR()
-        calc_check = tls_check.calc_COR()
-
-        assert len(self)==len(tls_check)
-
-        for i in range(len(self)):
-            atmi  = self[i]
-            atmci = tls_check[i]
-
-            assert atmi==atmci
-            assert allclose(atmi.position,atmci.position)
-            assert allclose(atmi.get_U(),atmci.get_U())
-
-            U = self.calc_Utls(self.T, self.L, self.S,
-                               atmi.position - tls.origin)
-
-            Ucheck = tls_check.calc_Utls(tls_check.T, tls_check.L, tls_check.S,
-                                         atmci.position - tls_check.origin)
-
-            try:
-                assert allclose(U, Ucheck, 1.0e-4)
-            except AssertionError:
-                print atm
-                print_U(U)
-                print_U(Ucheck)
-                raise
-
-        try:
-            assert allclose(calc["COR"], calc_check["COR"], 1.0e-4)
-        except AssertionError:
-            print "COR:       ", calc["COR"]
-            print "COR_CHECK: ", calc_check["COR"]
-            raise
-
-        assert allclose(calc["T'"],  calc_check["T'"],  1.0e-4)
-        assert allclose(calc["L'"],  calc_check["L'"],  1.0e-4)
-        assert allclose(calc["S'"],  calc_check["S'"],  1.0e-4)
-
-        return True
 
     def calc_TLS_least_squares_fit(self):
         """Perform a least-squares fit of the atoms contained in self
@@ -837,10 +783,12 @@ class TLSGroup(AtomList):
         for atm, Utls in self.iter_atm_Utls():
 
             ## normalize the trace of Utls
-            eval, evec = eigenvectors(Utls)
-            eveci      = inverse(evec)
+            eval_U, evec_U = eigenvectors(Utls)
+            evec_Ui        = inverse(evec_U)
             
-            U2 = matrixmultiply(evec,matrixmultiply(Utls, transpose(evec)))
+            U2 = matrixmultiply(
+                evec_U,
+                matrixmultiply(Utls, transpose(evec_U)))
             
             U2    = U2 * U2B
             scale = B / trace(U2)
@@ -849,15 +797,18 @@ class TLSGroup(AtomList):
             assert allclose(trace(U2), B)
 
             U2    = U2 * B2U
-
-            UNtls = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
-
+            UNtls = matrixmultiply(
+                evec_Ui,
+                matrixmultiply(U2, transpose(evec_Ui)))
+            
             ## normalize the trace of atm.U
-            U          = atm.get_U().copy()
-            eval, evec = eigenvectors(U)
-            eveci      = inverse(evec)
+            U              = atm.get_U().copy()
+            eval_U, evec_U = eigenvectors(U)
+            evec_Ui        = inverse(evec_U)
             
-            U2 = matrixmultiply(evec,matrixmultiply(U, transpose(evec)))
+            U2 = matrixmultiply(
+                evec_U,
+                matrixmultiply(U, transpose(evec_U)))
 
             U2    = U2 * U2B
             scale = B / trace(U2)
@@ -865,9 +816,10 @@ class TLSGroup(AtomList):
 
             assert allclose(trace(U2), B)
             
-            U2    = U2 * B2U
-
-            UN = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+            U2 = U2 * B2U
+            UN = matrixmultiply(
+                evec_Ui,
+                matrixmultiply(U2, transpose(evec_Ui)))
 
             assert allclose(trace(UN), trace(UNtls))
             
@@ -966,7 +918,7 @@ class TLSGroup(AtomList):
         else:
             crho2 = 0.0
 
-        crho = array([crho0, crho1, crho2])
+        crho = array([crho0, crho1, crho2], Float)
 
         calcs["RHO^"] = crho
         
@@ -974,17 +926,17 @@ class TLSGroup(AtomList):
         rho = matrixmultiply(evec_L, crho)
         
         calcs["RHO"] = rho
-        calcs["COR"] = array(self.origin) + rho
+        calcs["COR"] = array(self.origin, Float) + rho
 
         ## set up the origin shift matrix PRHO WRT orthogonal axes
         PRHO = array([ [    0.0,  rho[2], -rho[1]],
                        [-rho[2],     0.0,  rho[0]],
-                       [ rho[1], -rho[0],     0.0] ])
+                       [ rho[1], -rho[0],     0.0] ], Float)
 
         ## set up the origin shift matrix cPRHO WRT libration axes
         cPRHO = array([ [    0.0,  crho[2], -crho[1]],
                         [-crho[2],     0.0,  crho[0]],
-                        [ crho[1], -crho[0],     0.0] ])
+                        [ crho[1], -crho[0],     0.0] ], Float)
 
         ## calculate tranpose of cPRHO, ans cS
         cSt = transpose(cS)
@@ -1047,19 +999,19 @@ class TLSGroup(AtomList):
         ## libration axis 1 shift in the L coordinate system
         
         if cL[0,0]>=small:
-            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
+            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
         else:
             cL1rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
         if cL[1,1]>=small:
-            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
+            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
         else:
             cL2rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
         if cL[2,2]>=small:
-            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0])
+            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
             
         else:
             cL3rho = zeros(3, Float)

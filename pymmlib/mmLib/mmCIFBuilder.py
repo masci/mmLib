@@ -6,8 +6,12 @@
 """
 from __future__ import generators
 import copy
-from mmTypes import *
-from mmCIF import *
+
+
+from mmTypes          import *
+from mmCIF            import *
+from Structure        import *
+from StructureBuilder import *
 
 
 mmCIFStandardColumnsMap = {
@@ -89,6 +93,369 @@ mmCIFStandardColumnsMap = {
                             "pdbx_auth_asym_id",
                             "pdbx_auth_atom_id"]
     }
+
+
+
+
+
+
+
+class mmCIFStructureBuilder(StructureBuilder):
+    """Builds a new Structure object by loading a mmCIF file.
+    """
+    def setmaps(self, smap, skey, dmap, dkey, default = None):
+        """For string converisons, treat question marks as blank.
+        """
+        ## get data from smap
+        x = None
+        try:
+            x = smap[skey]
+        except KeyError:
+            pass
+
+        ## set default under conditions
+        if x == None or x == "?":
+            if default == None:
+                return False
+            else:
+                dmap[dkey] = default
+                return True
+            
+        ## set dmap
+        try:
+            dmap[dkey] = str(x)
+        except ValueError:
+            return False
+
+        return True
+
+    def read_start(self, fil, update_cb = None):
+        ## parse the mmCIF file
+        self.cif_file = mmCIFFile()
+        self.cif_file.load_file(fil, update_cb)
+
+        ## for a mmCIF file for a structure, assume the first data item
+        ## contains the structure
+        self.cif_data = self.cif_file[0]
+        self.set_atom_site_data_columns()
+
+        ## maintain a map of atom_site.id -> atm
+        self.atom_site_id_map = {}
+
+    def set_atom_site_auth(self):
+        """Read atom_site.auth_ labels for atom definitions.
+        """
+        self.atom_id = "auth_atom_id"
+        self.alt_id = "auth_alt_id"
+        self.comp_id = "auth_comp_id"
+        self.seq_id = "auth_seq_id"
+        self.asym_id = "auth_asym_id"
+        self.ptnr1_atom_id = "ptnr1_auth_atom_id"
+        self.ptnr1_comp_id = "ptnr1_auth_comp_id"
+        self.ptnr1_asym_id = "ptnr1_auth_asym_id"
+        self.ptnr1_seq_id = "ptnr1_auth_seq_id"
+        self.ptnr2_atom_id = "ptnr2_auth_atom_id"
+        self.ptnr2_comp_id = "ptnr2_auth_comp_id"
+        self.ptnr2_asym_id = "ptnr2_auth_asym_id"
+        self.ptnr2_seq_id = "ptnr2_auth_seq_id"
+        
+    def set_atom_site_label(self):
+        """Read atom_site.label_ items for atom definitions.
+        """
+        self.atom_id = "label_atom_id"
+        self.alt_id = "label_alt_id"
+        self.comp_id = "label_comp_id"
+        self.seq_id = "label_seq_id"
+        self.asym_id = "label_asym_id"
+        self.ptnr1_atom_id = "ptnr1_label_atom_id"
+        self.ptnr1_comp_id = "ptnr1_label_comp_id"
+        self.ptnr1_asym_id = "ptnr1_label_asym_id"
+        self.ptnr1_seq_id = "ptnr1_label_seq_id"
+        self.ptnr2_atom_id = "ptnr2_label_atom_id"
+        self.ptnr2_comp_id = "ptnr2_label_comp_id"
+        self.ptnr2_asym_id = "ptnr2_label_asym_id"
+        self.ptnr2_seq_id = "ptnr2_label_seq_id"
+
+    def set_atom_site_data_columns(self):
+        """Choose to use atom_site.auth_ labels, or atom_site.label_
+        """
+        try:
+            atom_site_table = self.cif_data["atom_site"]
+        except KeyError:
+            return
+
+        ## count the number of columns which exist for the auth_ style
+        ## columns and label_ style columns
+        auth_cols  = ["auth_atom_id", "auth_comp_id", "auth_seq_id",
+                      "auth_asym_id"]
+
+        label_cols = ["label_atom_id", "label_comp_id", "label_seq_id",
+                      "label_asym_id"]
+        
+        auth_count = 0
+        for col in auth_cols:
+            if col in atom_site_table.columns:
+                auth_count += 1
+        
+        label_count = 0
+        for col in label_cols:
+            if col in atom_site_table.columns:
+                label_count += 1
+        
+        if auth_count>=label_count:
+            self.set_atom_site_auth()
+        else:
+            self.set_atom_site_label()
+
+    def read_atoms(self):
+        try:
+            atom_site_table = self.cif_data["atom_site"]
+        except KeyError:
+            warning("read_atoms: atom_site table not found")
+            return
+
+        try:
+            aniso_table = self.cif_data["atom_site_anisotrop"]
+        except KeyError:
+            aniso_table = None
+        else:
+            aniso_dict  = aniso_table.row_index_dict("id")
+        
+        for atom_site in atom_site_table:
+            try:
+                atom_site_id = atom_site["id"]
+            except KeyError:
+                warning("unable to find id for atom_site row")
+                continue
+
+            atm_map = {}
+
+            self.setmaps(atom_site, self.atom_id, atm_map, "name")
+            self.setmaps(atom_site, self.alt_id,  atm_map, "alt_loc")
+            self.setmaps(atom_site, self.comp_id, atm_map, "res_name")
+            self.setmaps(atom_site, self.seq_id,  atm_map, "fragment_id")
+            self.setmaps(atom_site, self.asym_id, atm_map, "chain_id")
+
+            self.setmaps(atom_site, "type_symbol", atm_map, "element")
+            setmapf(atom_site, "cartn_x", atm_map, "x")
+            setmapf(atom_site, "cartn_y", atm_map, "y")
+            setmapf(atom_site, "cartn_z", atm_map, "z")
+            setmapf(atom_site, "occupancy", atm_map, "occupancy")
+            setmapf(atom_site, "b_iso_or_equiv", atm_map, "temp_factor")
+            setmapf(atom_site, "cartn_x_esd", atm_map, "sig_x")
+            setmapf(atom_site, "cartn_y_esd", atm_map, "sig_y")
+            setmapf(atom_site, "cartn_z_esd", atm_map, "sig_z")
+            setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
+
+            setmapf(atom_site, "b_iso_or_equiv_esd",
+                    atm_map,   "sig_temp_factor")
+
+            setmapi(atom_site, "pdbx_pdb_model_num",
+                    atm_map,   "model_id")
+
+            if aniso_table != None:
+                try:
+                    aniso = aniso_dict[atom_site_id]
+                except KeyError:
+                    warning("unable to find aniso row for atom")
+                else:
+                    setmapf(aniso, "u[1][1]", atm_map, "u11")
+                    setmapf(aniso, "u[2][2]", atm_map, "u22")
+                    setmapf(aniso, "u[3][3]", atm_map, "u33")
+                    setmapf(aniso, "u[1][2]", atm_map, "u12")
+                    setmapf(aniso, "u[1][3]", atm_map, "u13")
+                    setmapf(aniso, "u[2][3]", atm_map, "u23")
+
+                    setmapf(aniso, "u[1][1]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "u[2][2]_esd", atm_map, "sig_u22")
+                    setmapf(aniso, "u[3][3]_esd", atm_map, "sig_u33")
+                    setmapf(aniso, "u[1][2]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "u[1][3]_esd", atm_map, "sig_u13")
+                    setmapf(aniso, "u[2][3]_esd", atm_map, "sig_u23")
+
+            atm = self.load_atom(atm_map)
+            self.atom_site_id_map[atom_site_id] = atm
+
+    def read_metadata(self):
+        ## copy selected mmCIF tables to the structure's mmCIF database
+        skip_tables = ["atom_site",
+                       "atom_site_anisotrop",
+                       "atom_sites_alt"]
+        
+        for table in self.cif_data:
+            if table.name not in skip_tables:
+                self.struct.cifdb.add_table(table)
+
+        ## read unit cell table
+        self.read_unit_cell()
+        ## read bond information
+        self.read_struct_conn()
+
+    def read_unit_cell(self):
+        """Load unit cell and symmetry tables.
+        """
+        ucell_map = {}
+        
+        try:
+            entry_id = self.cif_data["entry"]["id"]
+        except KeyError:
+            warning("read_unit_cell: entry id not found")
+            return
+
+        try:
+            cell_table = self.cif_data["cell"]
+        except KeyError:
+            warning("read_unit_cell: cell table not found")
+        else:
+            cell = cell_table.get_row(("entry_id", entry_id))
+            if cell != None:
+                setmapf(cell, "length_a", ucell_map, "a")
+                setmapf(cell, "length_b", ucell_map, "b")
+                setmapf(cell, "length_c", ucell_map, "c")
+                setmapf(cell, "angle_alpha", ucell_map, "alpha")
+                setmapf(cell, "angle_beta", ucell_map, "beta")
+                setmapf(cell, "angle_gamma", ucell_map, "gamma")
+                setmapi(cell, "z_pdb", ucell_map, "z")
+
+        try:
+            symmetry_table = self.cif_data["symmetry"]
+        except KeyError:
+            warning("read_unit_cell: symmetry table not found")
+        else:
+            symm = symmetry_table.get_row(("entry_id", entry_id))
+            if symm != None:
+                self.setmaps(symm, "space_group_name_H-M",
+                             ucell_map, "space_group")
+        
+        self.load_unit_cell(ucell_map)
+
+    def read_struct_conn(self):
+        """Read bond information form the struct_conn and struct_conn_type
+        sections.
+        """
+        ## only read these types of bonds for now
+        bond_type_list = [
+            "disulf", "covale",
+            ]
+
+        try:
+            atom_site = self.cif_data["atom_site"]
+        except KeyError:
+            warning("read_struct_conn: atom_site table not found")
+            return
+
+        try:
+            struct_conn_table = self.cif_data["struct_conn"]
+        except KeyError:
+            warning("read_struct_conn: struct_conn table not found")
+            return
+
+        bond_map = {}
+
+        for row in struct_conn_table:
+            conn_type = row.get("conn_type_id")
+            if conn_type not in bond_type_list:
+                continue
+            
+            asym_id1 = row.get(self.ptnr1_asym_id)
+            seq_id1  = row.get(self.ptnr1_seq_id)
+            comp_id1 = row.get(self.ptnr1_comp_id)
+            atom_id1 = row.get(self.ptnr1_atom_id)
+            symm1    = row.get("ptnr1_symmetry")
+
+            asym_id2 = row.get(self.ptnr2_asym_id)
+            seq_id2  = row.get(self.ptnr2_seq_id)
+            comp_id2 = row.get(self.ptnr2_comp_id)
+            atom_id2 = row.get(self.ptnr2_atom_id)
+            symm2    = row.get("ptnr2_symmetry")
+
+            ## check for these special mmCIF tokens
+            if conn_type == "disulf":
+                atom_id1 = atom_id2 = "SG"
+
+            as1 = atom_site.get_row(
+                (self.asym_id, asym_id1),
+                (self.seq_id,  seq_id1),
+                (self.comp_id, comp_id1),
+                (self.atom_id, atom_id1))
+
+            as2 = atom_site.get_row(
+                (self.asym_id, asym_id2),
+                (self.seq_id,  seq_id2),
+                (self.comp_id, comp_id2),
+                (self.atom_id, atom_id2))
+
+            if not as1 or not as2:
+                warning("read_struct_conn: atom not found id: " + \
+                        row.get("id","[No ID]"))
+                
+                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id1, seq_id1, comp_id1, atom_id1, symm1))
+                
+                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id2, seq_id2, comp_id2, atom_id2, symm2))
+
+                continue
+
+            try:
+                atm1 = self.atom_site_id_map[as1["id"]]
+                atm2 = self.atom_site_id_map[as2["id"]]
+            except KeyError:
+                warning("read_struct_conn: atom_site_id_map incorrect id: " + \
+                        row.get("id", "[No ID]"))
+
+                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id1, seq_id1, comp_id1, atom_id1, symm1))
+                
+                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id2, seq_id2, comp_id2, atom_id2, symm2))
+
+                continue
+
+            if id(atm1) < id(atm2):
+                bnd = (atm1, atm2)
+            else:
+                bnd = (atm2, atm1)
+
+            try:
+                bond_map[bnd]["bond_type"] = conn_type
+            except KeyError:
+                bond_map[bnd] = {"bond_type": conn_type}
+
+            if symm1:
+                bond_map[bnd]["symop1"] = symm1
+            if symm2:
+                bond_map[bnd]["symop2"] = symm2
+
+        ## load the bonds
+        self.load_bonds(bond_map)
+
+    def read_struct_conf(self):
+        """Reads the struct_conf table getting information on alpha
+        helicies and turns in the structure.
+        """
+        try:
+            struct_conf = self.cif_data["struct_conf"]
+        except KeyError:
+            return
+
+        ## iterate over struct_conf and create the helix_list
+        helix_list = []
+        
+        for row in struct_conf:
+            ## check for required fields
+            try:
+                row["id"]
+                row["conf_type_id"]
+            except KeyError:
+                continue
+
+            ## if this is a alpha helix
+            if row["conf_type_id"].startswith("HELIX"):
+                helix = {"helix_id":    row["id"],
+                         "helix_class": row["conf_type_id"]}
+
+                           
 
 
 class mmCIFFileBuilder(object):
@@ -197,8 +564,8 @@ class mmCIFFileBuilder(object):
                     poly_type = "polydeoxyribonucleotide"
                     
                 else:
-                    details = "unknown polymer"
-                    type    = "other"
+                    details   = "unknown polymer"
+                    poly_type = "other"
                 
                 row = mmCIFRow()
                 entity.append(row)

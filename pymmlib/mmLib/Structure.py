@@ -19,6 +19,12 @@ class StructureError(Exception):
     """
     pass
 
+class FinishMe(StructureError):
+    """Raised for API methods which are not implemented yet.
+    """
+    def __str__(self):
+        return "Please implement this method!"
+
 class ModelOverwrite(StructureError):
     """Raised by Structure.add_model() when a Model added to a Structure
     has the same model_id of a Model already in the Structure.
@@ -44,6 +50,7 @@ class AtomOverwrite(StructureError):
     name, and alt_loc as a Atom already in the Structure or Fragment.
     """
     def __init__(self, text):
+        StructureError.__init__(self)
         self.text = text
     def __str__(self):
         return self.text
@@ -200,14 +207,14 @@ class Structure(object):
         if isinstance(model_chain, Model):
             self.model_list.remove(model_chain)
             del self.model_dict[model_chain.model_id]
-            del model_chain.structure
-            for chain in model_chain.iter_chains():
-                del chain.structure
+            model_chain.structure = None
+
         elif isinstance(model_chain, Chain):
             try:
                 self.model.remove(model_chain)
             except AttributeError:
                 raise ValueError, model_chain
+
         raise TypeError, model_chain
 
     def sort(self):
@@ -218,7 +225,7 @@ class Structure(object):
         for model in self.model_list:
             model.sort()
 
-    def add_model(self, model, delay_sort = True):
+    def add_model(self, model, delay_sort=True):
         """Adds a Model to a Structure.  Raises the ModelOverwrite exception
         if the model_id of the Model matches the model_id of a Model
         already in the Structure.  If there are no Models in the Structure,
@@ -229,18 +236,27 @@ class Structure(object):
         if self.model_dict.has_key(model.model_id):
             raise ModelOverwrite()
 
-        if self.model == None:
+        ## set default model if not set
+        if self.model==None:
             self.model = model
 
         self.model_list.append(model)
         self.model_dict[model.model_id] = model
 
         model.structure = self
-        for chain in model.iter_chains():
-            chain.structure = self
 
-    def add_chain(self, chain, delay_sort = True):
-        """Adds a Chain object to the Structure.
+        if not delay_sort:
+            self.model_list.sort()
+
+    def remove_model(self, model):
+        """Removes a child Model object.
+        """
+        assert isinstance(model, Model)
+        raise FinishMe()
+
+    def add_chain(self, chain, delay_sort=True):
+        """Adds a Chain object to the Structure.  Creates necessary parent
+        Model if necessary
         """
         assert isinstance(chain, Chain)
 
@@ -249,10 +265,23 @@ class Structure(object):
         except KeyError:
             model = Model(model_id = chain.model_id)
             self.add_model(model)
-            model.add_chain(chain)
 
-        if delay_sort == False:
+        model.add_chain(chain)
+
+        if not delay_sort:
             self.model.chain_list.sort()
+
+    def remove_chain(self, chain):
+        assert isinstance(chain, Chain)
+        raise FinishMe()
+
+    def add_fragment(self, fragment):
+        assert isinstance(fragment, Fragment)
+        raise FinishMe()
+
+    def remove_fragment(self, fragment):
+        assert isinstance(fragment, Fragment)
+        raise FinishMe()
 
     def add_atom(self, atom):
         """Adds a Atom object to the Structure.  If a collision occurs, a
@@ -300,6 +329,11 @@ class Structure(object):
                 raise FragmentOverwrite()
 
         frag.add_atom(atom)
+
+    def remove_atom(self, atom):
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
 
     def get_structure(self):
         """Returns self.
@@ -482,9 +516,8 @@ class Structure(object):
         tables for monomers retrieved from the Library implementation
         of the Structure.
         """
-        for model in self.iter_models():
-            for frag in self.iter_fragments():
-                frag.create_bonds()
+        for frag in self.iter_fragments():
+            frag.create_bonds()
 
         self.add_bonds_from_distance()
 
@@ -494,6 +527,8 @@ class Model(object):
     """
     def __init__(self, model_id=1, **args):
         assert type(model_id)==IntType
+
+        self.structure        = None
 
         self.model_id         = model_id
         self.chain_dict       = {}
@@ -547,7 +582,7 @@ class Model(object):
         """Removes a Chain from the Model,, given the chain_id or index of
         the Chain in the Model.
         """
-        self.remove(self[chain_idx])
+        self.remove_chain(self[chain_idx])
 
     def __iter__(self):
         """Iterates the Chain objects in the Model.
@@ -561,7 +596,7 @@ class Model(object):
             return self.chain_list.__contains__(chain_idx)
         elif type(chain_idx) == StringType:
             return self.chain_dict.__contains__(chain_idx)
-        raise TypeError, x
+        raise TypeError, chain_idx
 
     def index(self, chain):
         """Returns the numeric index of the Chain object in the Model.
@@ -572,15 +607,7 @@ class Model(object):
     def remove(self, chain):
         """Removes the Chain from the Model.
         """
-        assert isinstance(chain, Chain)
-
-        self.chain_list.remove(chain)
-        del self.chain_dict[chain.chain_id]
-        del chain.model
-        try:
-            del chain.structure
-        except AttributeError:
-            pass
+        self.remove_chain(chain)
 
     def sort(self):
         """Sorts all Chains in the Model by their chain_id.
@@ -589,7 +616,7 @@ class Model(object):
         for chain in self.chain_list:
             chain.sort()
 
-    def add_chain(self, chain, delay_sort = False):
+    def add_chain(self, chain, delay_sort=False):
         """Adds a Chain to the Model.
         """
         assert isinstance(chain, Chain)
@@ -600,13 +627,33 @@ class Model(object):
         self.chain_list.append(chain)
         self.chain_dict[chain.chain_id] = chain
         chain.model = self
-        try:
-            chain.structure = self.structure
-        except AttributeError:
-            pass
 
-        if delay_sort == False:
+        if not delay_sort:
             self.chain_list.sort()
+
+    def remove_chain(self, chain):
+        """Removes the Chain from the Model.
+        """
+        assert isinstance(chain, Chain)
+        self.chain_list.remove(chain)
+        del self.chain_dict[chain.chain_id]
+        chain.model = None
+
+    def add_fragment(self, fragment):
+        assert isinstance(fragment, Fragment)
+        raise FinishMe()
+
+    def remove_fragment(self, fragment):
+        assert isinstance(fragment, Fragment)
+        raise FinishMe()
+
+    def add_atom(self, atom):
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
+    def remove_atom(self, atom):
+        assert isinstance(atom, Atom)
+        raise FinishMe()
 
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix object to the Model.
@@ -615,6 +662,13 @@ class Model(object):
         self.alpha_helix_list.append(alpha_helix)
         alpha_helix.model = self
 
+    def remove_alpha_helix(self, alpha_helix):
+        """Removes a AlphaHelix object from the Model.
+        """
+        assert isinstance(alpha_helix, AlphaHelix)
+        self.alpha_helix_list.remove(alpha_helix)
+        alpha_helix.model = None
+        
     def iter_alpha_helicies(self):
         """Iterates over all AlphaHelix objects in the Model.
         """
@@ -627,6 +681,13 @@ class Model(object):
         self.beta_sheet_list.append(beta_sheet)
         beta_sheet.model = self
 
+    def remove_beta_sheet(self, beta_sheet):
+        """Removes a BetaSheet object from the Model.
+        """
+        assert isinstance(beta_sheet, BetaSheet)
+        self.beta_sheet_list.remove(beta_sheet)
+        beta_sheet.model = None
+
     def iter_beta_sheets(self):
         """Iterate over all child BetaSheet objects in the Model.
         """
@@ -635,8 +696,16 @@ class Model(object):
     def add_site(self, site):
         """Adds a Site (of interest) object to the Model.
         """
+        assert isinstance(site, Site)
         self.site_list.append(site)
         site.model = self
+
+    def remove_site(self, site):
+        """Removes a Site (of interest) object from the Model.
+        """
+        assert isinstance(site, Site)
+        self.site_list.append(site)
+        site.model = None
 
     def iter_sites(self):
         """Iterate over all active/important sites defined in the Structure.
@@ -761,6 +830,9 @@ class Segment(object):
         assert type(model_id) == IntType
         assert type(chain_id) == StringType
 
+        self.model    = None
+        self.chain    = None
+
         self.model_id = model_id
         self.chain_id = chain_id
 
@@ -820,16 +892,8 @@ class Segment(object):
         """Returns a Segment to be used in a slice.
         """
         segment = Segment(model_id=self.model_id, chain_id=self.chain_id)
-
-        try:
-            segment.model = self.model
-        except AttributeError:
-            pass
-        try:
-            segment.structure = self.structure
-        except AttrubuteError:
-            pass
-
+        segment.chain = self.chain
+        segment.model = self.model
         return segment
 
     def __index_slice__(self, start, stop):
@@ -838,7 +902,7 @@ class Segment(object):
         segment = self.__segment_slice__()
 
         for frag in self.fragment_list[start:stop]:
-            segment.add_fragment(fragment, delay_sort=True)
+            segment.add_fragment(frag, delay_sort=True)
         
         return segment
 
@@ -851,21 +915,21 @@ class Segment(object):
         ## if the start fragment_id is not given, then start adding
         ## from the beginning of the Segment
         if start_frag_id==None:
-            add = True
+            addflag = True
         else:
-            add = False
+            addflag = False
 
         for frag in self:
             ## loop until the start_frag_id Fragment is found
-            if add==False:
-                if fragment_id_ge(frag.fragment_id, start_frag_id)==True:
-                    add = True
+            if not addflag:
+                if fragment_id_ge(frag.fragment_id, start_frag_id):
+                    addflag = True
                 else:
                     continue
 
             ## stop when the stop_frag_id is found
             if stop_frag_id!=None:
-                if fragment_id_gt(frag.fragment_id, stop_frag_id)==True:
+                if fragment_id_gt(frag.fragment_id, stop_frag_id):
                     break
 
             segment.add_fragment(frag, delay_sort=True)
@@ -928,24 +992,22 @@ class Segment(object):
         raise TypeError, fragment_idx
 
     def index(self, fragment):
-        """Return the 0-based index of the framgent in the segment list.
+        """Return the 0-based index of the Framgent in the segment list.
         """
         return self.fragment_list.index(fragment)
 
     def remove(self, fragment):
-        """Remove the Fragment from the segment.
+        """Remove the Fragment from the Segment.
         """
-        self.fragment_list.remove(frag)
-        del self.fragment_dict[fragment.fragment_id]
-        del fragment.chain
+        self.remove_fragment(fragment)
 
     def sort(self):
-        """Sort the Fragments in the segment into proper order.
+        """Sort the Fragments in the Segment into proper order.
         """
         self.fragment_list.sort()
         
     def add_fragment(self, fragment, delay_sort=False):
-        """Adds a Fragment instance to the segment.  If delay_sort is True,
+        """Adds a Fragment instance to the Segment.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         segment.
         """
@@ -958,8 +1020,28 @@ class Segment(object):
         self.fragment_list.append(fragment)
         self.fragment_dict[fragment.fragment_id] = fragment
 
-        if delay_sort == False:
+        if not delay_sort:
             self.fragment_list.sort()
+
+    def remove_fragment(self, fragment):
+        """Removes a Fragment object from the Segment.
+        """
+        assert isinstance(fragment, Fragment)
+        self.fragment_list.remove(fragment)
+        del self.fragment_dict[fragment.fragment_id]
+
+    def add_atom(self, atom):
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
+    def remove_atom(self, atom):
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
+    def get_chain(self):
+        """Returns the Chain object this Segment is part of.
+        """
+        return self.chain
 
     def get_model(self):
         """Returns the parent Model object.
@@ -969,7 +1051,7 @@ class Segment(object):
     def get_structure(self):
         """Returns the parent Structure object.
         """
-        return self.structure
+        return self.model.structure
 
     def get_fragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its fragment_id.
@@ -1093,6 +1175,8 @@ class Chain(Segment):
 
         Segment.__init__(self, **args)
 
+        self.model = None
+
         ## the sequence list contains a list 3-letter residue names
         self.sequence = None
 
@@ -1114,22 +1198,39 @@ class Chain(Segment):
             chain.add_fragment(copy.deepcopy(fragment, memo))
         return chain
         
+    def __segment_slice__(self):
+        """Returns a Segment to be used in a slice, but when a Chain is
+        sliced, the Segment.chain attribute gets set.
+        """
+        segment = Segment.__segment_slice__(self)
+        segment.chain = self
+        return segment
+    
     def add_fragment(self, fragment, delay_sort=False):
-        """Adds a Fragment instance to the chain.  If delay_sort is True,
+        """Adds a Fragment instance to the Chain.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         chain.
         """
         Segment.add_fragment(self, fragment, delay_sort)
         fragment.chain = self
+
+    def remove(self, fragment):
+        """Remove the Fragment from the Chain.
+        """
+        Segment.remove(self, fragment)
+        fragment.chain = None
         
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain, updating the chain_id
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        try:             self.structure[chain_id]
-        except KeyError: pass
-        else:            raise ValueError, chain_id
+        try:
+            self.model.structure[chain_id]
+        except KeyError:
+            pass
+        else:
+            raise ValueError, chain_id
 
         ## set the new chain_id in all the additional groups
 
@@ -1144,7 +1245,7 @@ class Chain(Segment):
                 atm.chain_id = chain_id
 
         ## resort the parent structure
-        self.structure.sort()
+        self.model.structure.sort()
 
 
 class Fragment(object):
@@ -1167,6 +1268,8 @@ class Fragment(object):
         assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id)    == StringType
+
+        self.chain           = None
 
         self.res_name        = res_name
         self.fragment_id     = fragment_id
@@ -1267,37 +1370,30 @@ class Fragment(object):
         name    = atom.name
         alt_loc = atom.alt_loc
 
-        if alt_loc == "":
-
-            try:
-                altloc = self.alt_loc_dict[name]
-
-            except KeyError:
-                ## case 1:
+        if alt_loc=="":
+            if not self.alt_loc_dict.has_key(name):
+                ## CASE:
                 ##     add atom without alt_loc partners to the fragment
                 ## procedure:
                 ##     check if a atom with the same name is already in the
                 ##     fragment, and raise a AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
 
-                try:
-                    atomA = self.atom_dict[name]
-
-                except KeyError:
-                    ## case 1:
-                    ##     add atom to the fragment
+                if not self.atom_dict.has_key(name):
                     self.atom_order_list.append(atom)
                     self.atom_list.append(atom)
                     self.atom_dict[name] = atom
-                    
-                else:
-                    ## case 1.5:
+
+                else:                    
+                    ## CASE:
                     ##     multiple atoms with the same name, without
                     ##     alt_loc labels, but they are really alt_loc
                     ##     partners
+
+                    atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    if atomA.occupancy < 1.0 and atom.occupancy < 1.0:
+                    if atomA.occupancy<1.0 and atom.occupancy<1.0:
                         iA = self.atom_order_list.index(atomA)
 
                         self.alt_loc_dict[name] = altloc = Altloc()
@@ -1312,38 +1408,35 @@ class Fragment(object):
                             "overwrite %s with %s" % (atomA, atom))
 
             else:
-                ## case 2:
+                ## CASE:
                 ##    adding atom without alt_loc, but partner atoms
                 ##    are already in the fragment with alt_loc
                 ## procedure:
                 ##    set the atom.alt_loc to the next reasonable alt_loc
                 ##    and add it to the fragment
+                altloc = self.alt_loc_dict[name]
                 altloc.add_atom(atom)
                 self.set_alt_loc(self.default_alt_loc)
 
-        else: ## alt_loc != ""
+                
+        else: ## alt_loc!=""
 
-            try:
-                altloc = self.alt_loc_dict[name]
+            ## CASE:
+            ##     add a atom with alt_loc partners to the
+            ##     fragment for the first time
+            ## procedure:
+            ##    *check for atoms without alt_locs already in the
+            ##     fragment, and 
+            ##    *create new Altloc, and place it in the
+            ##     alt_loc_dict under the atom name
+            ##    *add the atom to the atom_order_list to preserve
+            ##     sequential order of added atoms
+            ##    *place atom in the atom_list and atom_dict 
 
-            except KeyError:
-                ## case 2:
-                ##     add a atom with alt_loc partners to the
-                ##     fragment for the first time
-                ## procedure:
-                ##    *check for atoms without alt_locs already in the
-                ##     fragment, and 
-                ##    *create new Altloc, and place it in the
-                ##     alt_loc_dict under the atom name
-                ##    *add the atom to the atom_order_list to preserve
-                ##     sequential order of added atoms
-                ##    *place atom in the atom_list and atom_dict 
+            if not self.alt_loc_dict.has_key(name):
 
-                try:
-                    atomA = self.atom_dict[name]
-
-                except KeyError:
-                    ## case 2:
+                if not self.atom_dict.has_key(name):
+                    ## CASE:
                     ##     add a atom with alt_loc partners to the
                     ##     fragment for the first time
                     self.alt_loc_dict[name] = altloc = Altloc()
@@ -1355,12 +1448,13 @@ class Fragment(object):
                     self.atom_dict[name] = atom
 
                 else:
-                    ## case 3:
+                    ## CASE:
                     ##     add atom with alt_loc, but there is already a
                     ##     atom in the fragment with a null alt_loc which
                     ##     needs to be given a valid alt_loc and placed
                     ##     in the Altloc container before adding the new
                     ##     atom
+                    atomA = self.atom_dict[name]
                     iA = self.atom_order_list.index(atomA)
 
                     self.alt_loc_dict[name] = altloc = Altloc()
@@ -1370,10 +1464,11 @@ class Fragment(object):
                     altloc.add_atom(atom)
 
             else:
-                ## case 4:
+                ## CASE:
                 ##     add a atom with alt_loc partners to the
                 ##     fragment when there are already alt_loc
                 ##     partner atoms in the fragment
+                altloc = self.alt_loc_dict[name]
                 altloc.add_atom(atom)
 
             self.set_alt_loc(self.default_alt_loc)
@@ -1486,7 +1581,7 @@ class Fragment(object):
     def get_structure(self):
         """Returns the parent Structure object.
         """
-        return self.chain.structure
+        return self.chain.model.structure
 
     def set_fragment_id(self, fragment_id):
         """Sets a new ID for the Fragment object, updating the fragment_id
@@ -1516,7 +1611,7 @@ class Fragment(object):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.
         """
-        mon = self.chain.structure.library.get_monomer(self.res_name)
+        mon = self.chain.model.structure.library.get_monomer(self.res_name)
         if mon == None:
             return
 
@@ -1550,7 +1645,7 @@ class Fragment(object):
         """Returns True if the Fragment is a water molecule, returns False
         otherwise.
         """
-        return self.chain.structure.library.is_water(self.res_name)
+        return self.chain.model.structure.library.is_water(self.res_name)
 
 
 class Residue(Fragment):
@@ -1595,7 +1690,7 @@ class Residue(Fragment):
         if next_res == None:
             return
 
-        library = self.chain.structure.library
+        library = self.chain.model.structure.library
         mon1 = library.get_monomer(self.res_name)
         mon2 = library.get_monomer(next_res.res_name)
         if mon1 == None or mon2 == None:
@@ -1751,7 +1846,7 @@ class AminoAcidResidue(Residue):
         """Calculates the given torsion angle for the monomer.  The torsion
         angles are defined by name in monomers.cif.
         """
-        mon = self.chain.structure.library.get_monomer(self.res_name)
+        mon = self.chain.model.structure.library.get_monomer(self.res_name)
         try:
             (atom1_name,
              atom2_name,
@@ -1826,7 +1921,7 @@ class Altloc(dict):
     occupancies.
     """
     def __deepcopy__(self, memo):
-        altloc = AltLoc()
+        altloc = Altloc()
         for atom in self.values():
             altloc.add_atom(copy.deepcopy(atom, memo))
         return altloc
@@ -1923,6 +2018,9 @@ class Atom(object):
         assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id)    == StringType
+
+        self.fragment        = None
+        self.altloc          = None
 
         self.name            = name
         self.alt_loc         = alt_loc
@@ -2111,24 +2209,23 @@ class Atom(object):
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
         """
-        try:
-            return len(self.altloc)
-        except AttributeError:
+        if self.altloc==None:
             return 0
+        return len(self.altloc)
 
     def __getitem__(self, alt_loc):
         """This is a alternative to calling get_alt_loc, but a KeyError
-        exception is raised if the alt_loc Atom is not found.  Posiible
-        arguments are:
+        exception is raised if the alt_loc Atom is not found.
         """
-        if type(alt_loc) == StringType:
-            try:
-                return self.altloc[alt_loc]
-            except AttributeError:
-                if self.alt_loc == alt_loc:
-                    return self
-                raise KeyError
-        raise TypeError, alt_loc
+        assert type(alt_loc)==StringType
+        
+        if self.altloc==None:
+            if self.alt_loc==alt_loc:
+                return self
+            raise KeyError, alt_loc
+
+        else:
+            return self.altloc[alt_loc]
 
     def __delitem__(self, x):
         """Deletes the alternate conformation of the atom matching the
@@ -2153,15 +2250,18 @@ class Atom(object):
         the Atom.  The argument can be a alt_loc label, or a Atom object.
         """
         if isinstance(atom_alt_loc, Atom):
-            try:
-                return self.altloc[atom_alt_loc.alt_loc] == atom_alt_loc
-            except AttributeError:
-                return atom_alt_loc == self
-        elif type(atom_alt_loc) == StringType:
-            try:
+            if self.altloc==None:
+                return atom_alt_loc==self
+            else:
+                return self.altloc[atom_alt_loc.alt_loc]==atom_alt_loc
+
+        elif type(atom_alt_loc)==StringType:
+            if self.altloc==None:
+                return atom_alt_loc==self.alt_loc
+            else:
                 return self.altloc.__contains__(atom_alt_loc)
-            except AttributeError:
-                return atom_alt_loc == self.alt_loc
+            
+        return False
 
     def remove(self, atom):
         """Removes the argument Atom from the Altloc. 
@@ -2169,12 +2269,8 @@ class Atom(object):
         try:
             self.fragment.remove(atom)
         except AttributeError:
-            try:
+            if self.altloc!=None and self.altloc.has_key(atom.alt_loc):
                 del self.altloc[atom.alt_loc]
-            except AttributeError:
-                pass
-            else:
-                del self.altloc
 
     def get_alt_loc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument.
@@ -2189,18 +2285,6 @@ class Atom(object):
         alphabetical order of the alt_loc labels, within the current model.
         """
         return iter(self)
-
-    def get_model(self, model):
-        """Returns the atom in the argument model number.  Uses the Structure
-        default_alt_loc.  Return None if the atom is not found.
-        """
-        pass
-    
-    def iter_model(self):
-        """Iterates over all models of this atom matching the structure
-        wide default_alt_loc.
-        """
-        pass
 
     def create_bond(self,
                     atom              = None,
@@ -2241,52 +2325,47 @@ class Atom(object):
         """
         assert isinstance(atom, Atom)
 
-        try:
-            self_altloc = self.altloc
-        except AttributeError:
-            try:
-                atom_altloc = atom.altloc
-            except AttributeError:
+        if self.altloc==None:
+            if atom.altloc==None:
                 ## case 1: self has no alt_loc, atom no alt_loc
                 self.create_bond(
-                    atom = atom,
-                    bond_type = bond_type,
-                    atom1_symop = atom1_symop,
-                    atom2_symop = atom2_symop,
+                    atom              = atom,
+                    bond_type         = bond_type,
+                    atom1_symop       = atom1_symop,
+                    atom2_symop       = atom2_symop,
                     standard_res_bond = standard_res_bond)
             else:
                 ## case 2: self.has no alt_loc, atom has alt_loc
-                for atmx in atom_altloc.values():
+                for atmx in atom.altloc.values():
                     self.create_bond(
-                        atom = atmx,
-                        bond_type = bond_type,
-                        atom1_symop = atom1_symop,
-                        atom2_symop = atom2_symop,
+                        atom              = atmx,
+                        bond_type         = bond_type,
+                        atom1_symop       = atom1_symop,
+                        atom2_symop       = atom2_symop,
                         standard_res_bond = standard_res_bond)
+
+
         else:
-            try:
-                atom_altloc = atom.altloc
-            except AttributeError:
+            if atom.altloc==None:
                 ## case 3: self has alt_loc, atom has no alt_loc
-                for (alt_loc, atmx) in self_altloc.items():
+                for (alt_loc, atmx) in self.altloc.items():
                     atmx.create_bond(
-                        atom = atom,
-                        bond_type = bond_type,
-                        atom1_symop = atom1_symop,
-                        atom2_symop = atom2_symop,
+                        atom              = atom,
+                        bond_type         = bond_type,
+                        atom1_symop       = atom1_symop,
+                        atom2_symop       = atom2_symop,
                         standard_res_bond = standard_res_bond)
+
             else:
                 ## case 4: self has alt_loc, atom has alt_loc
-                for (alt_loc, atmx) in self_altloc.items():
-                    try:
+                for (alt_loc, atmx) in self.altloc.items():
+                    if atom.altloc.has_key(alt_loc):
                         atmx.create_bond(
-                            atom = atom_altloc[alt_loc],
-                            bond_type = bond_type,
-                            atom1_symop = atom1_symop,
-                            atom2_symop = atom2_symop,
+                            atom              = atom.altloc[alt_loc],
+                            bond_type         = bond_type,
+                            atom1_symop       = atom1_symop,
+                            atom2_symop       = atom2_symop,
                             standard_res_bond = standard_res_bond)
-                    except KeyError:
-                        continue
 
     def get_bond(self, atom):
         """Returns the Bond connecting self with the argument atom.
@@ -2329,7 +2408,7 @@ class Atom(object):
     def get_structure(self):
         """Returns the parent Structure object.
         """
-        return self.fragment.chain.structure
+        return self.fragment.chain.model.structure
 
     def set_U(self, u11, u22, u33, u12, u13, u23):
         """Sets the symmetric U tensor from the six unique values.
@@ -2565,6 +2644,8 @@ class AlphaHelix(object):
         assert type(res_name2)     == StringType
         assert type(details)       == StringType
 
+        self.model        = None
+
         self.helix_id     = helix_id
         self.helix_class  = helix_class
         self.helix_length = helix_length
@@ -2713,6 +2794,8 @@ class Strand(object):
         assert type(reg_prev_frag_id)  == StringType
         assert type(reg_prev_res_name) == StringType
         assert type(reg_prev_atom)     == StringType
+
+        self.beta_sheet            = None
         
         self.chain_id1             = chain_id1
         self.fragment_id1          = frag_id1
@@ -2843,6 +2926,8 @@ class BetaSheet(object):
 
         assert type(sheet_id) == StringType
         
+        self.model       = None
+
         self.sheet_id    = sheet_id
         self.strand_list = []
 
@@ -2912,6 +2997,8 @@ class Site(object):
         assert type(site_id)            == StringType
         assert type(fragment_list)      == ListType
 
+        self.model              = None
+
         self.site_id            = site_id
         self.fragment_dict_list = fragment_list
 
@@ -2926,7 +3013,7 @@ class Site(object):
         if fragment!=None:
             fragment_dict["fragment"]    = fragment
             fragment_dict["chain_id"]    = fragment.chain_id
-            fragment_dict["fragment_id"] = fragment.fragment_id
+            fragment_dict["frag_id"]     = fragment.fragment_id
             fragment_dict["res_name"]    = fragment.res_name
             
             if fragment_dict not in self.fragment_dict_list:
@@ -2943,7 +3030,7 @@ class Site(object):
         for frag_dict in self.fragment_dict_list:
             try:
                 chain = self.model[frag_dict["chain_id"]]
-                frag  = chain[frag_dict["fragment_id"]]
+                frag  = chain[frag_dict["frag_id"]]
             except KeyError:
                 self.add_fragment(frag_dict, None)
                 continue
@@ -3087,20 +3174,6 @@ class AtomList(list):
         return (adv_aniso1 / num_atoms,
                 adv_aniso2 / num_atoms,
                 adv_aniso3 / num_atoms)
-
-    def calc_adv_temp_factor(self):
-        """Calculates the adverage temperature factor of all contained
-        Atom instances and returns the adverage temperature factor.
-        """
-        num_tf = 0
-        adv_tf = 0.0
-
-        for atm in self:
-            if atm.temp_factor != None:
-                adv_tf += atm.temp_factor
-                num_tf += 1
-
-        return adv_tf / num_tf
 
     
 ### <testing>

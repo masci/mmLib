@@ -4,6 +4,9 @@
 import sys
 import time
 import copy
+import weakref
+import gc
+
 import test_util
 from mmLib.FileLoader import LoadStructure, SaveStructure, decode_format
 from mmLib.Structure import *
@@ -64,7 +67,7 @@ def atom_test(atom, stats):
 
     len(atom)
     
-    alt_loc = atom.fragment.chain.structure.default_alt_loc
+    alt_loc = atom.get_structure().default_alt_loc
 
     atom.get_fragment()
     atom.get_chain()
@@ -106,7 +109,7 @@ def fragment_test(frag, stats):
     frag.get_model()
     frag.get_structure()
 
-    alt_loc = frag.chain.structure.default_alt_loc
+    alt_loc = frag.get_structure().default_alt_loc
 
     ## test iter_atoms
     visited_atm_list = []
@@ -437,8 +440,14 @@ def save_verify(struct, stats):
 
     struct_stats.print_stats()
     
-    
 
+WEAKREF_LIST = []
+WEAKREF_PATH = {}
+def weakref_callback(ref):
+    print "STRUCTURE DESTROYED: ",WEAKREF_PATH[ref]
+    del WEAKREF_PATH[ref]
+    WEAKREF_LIST.remove(ref)
+    
 
 def main(walk_path, start_path):
     print "Running Python Macromolecular Library Test Program"
@@ -447,12 +456,19 @@ def main(walk_path, start_path):
     print "runs into any problems."
     print
 
+
     for path in test_util.walk_pdb_cif(walk_path, start_path):
         print "[%s]" % (path)
         time1 = time.time()
-        
+
+        stats  = Stats()
         struct = LoadStructure(fil = path)        
-        stats = Stats()
+
+        ## track memory leaks
+        sref = weakref.ref(struct, weakref_callback)
+        WEAKREF_PATH[sref] = path
+        WEAKREF_LIST.append(sref)
+
 
         ## test the mmLib.Structure object API and
         ## with massive sanity checking
@@ -502,6 +518,19 @@ def main(walk_path, start_path):
 
         time2 = time.time()
         print "Tests Time (sec)-----:",int(time2-time1)
+
+
+        ## dereference!
+        struct    = None
+        struct_cp = None
+        stats     = None
+        stats_cp  = None
+
+        ## force garbage collection
+        gc.collect()
+        print
+
+
 
 def usage():
     print "usage: mmlib_test.py <PDB/mmCIF file or directory of files>"

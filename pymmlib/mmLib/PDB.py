@@ -1586,7 +1586,7 @@ class RecordProcessor(object):
         if hasattr(self.processor, process):
             getattr(self.processor, process)(recs)
         elif hasattr(self.processor, "process_default"):
-            getattr(self.processor, "process_default")(recs)
+            self.processor.process_default(recs)
 
         ## call preprocessor and processor for records
         if hasattr(rec, "process"):

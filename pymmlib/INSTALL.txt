@@ -1,18 +1,18 @@
-Python Macromolecular Library Installation Guide
+﻿Python Macromolecular Library Installation Guide
 -------------------------------------------------------------------------------
 
 SUPPORTED OPERATING SYSTEMS::
 
 It should be possible to get mmLib running on any decent UNIX system, and
-this installation guide should be usefull for any UNIX installation, but it
+this installation guide should be usefully for any UNIX installation, but it
 is really written with a Linux installation in mind.
 
 
 DEPENDANCY CHECKING::
 
 Once you have downloaded mmLib, you need to check to see if all the
-dependancies it requires are installed.  The easiest way to do this is to
-use the dependancy checking mode of the mmLib setup.py program.  Once mmLib
+dependencies it requires are installed.  The easiest way to do this is to
+use the dependency checking mode of the mmLib setup.py program.  Once mmLib
 has been downloaded, issue the following commands:
 
 # tar xzf pymmlib-0.8.tar.gz
@@ -22,7 +22,7 @@ has been downloaded, issue the following commands:
 PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM
  
 ===============================================================================
-Running Depancy Checks
+Running Dependency Checks
 -------------------------------------------------------------------------------
 OK:    Python 2.3.4 Found.
 OK:    Python Distutils found.
@@ -36,11 +36,11 @@ OK:    PyGtkGLExt found.
 
 If you're really lucky (you won't be), you'll get that output and you can 
 move to the "EASY INSTALLATION" section.  Otherwise, gather and install the
-dependancies which are not found.  If you don't want to use the mmLib 
+dependencies which are not found.  If you don't want to use the mmLib 
 Molecular Viewer, you won't need any of the OpenGL or PyGTK/PyGtkGLExt 
 modules, and you can proceed to the "EASY INSTALLATION" section.
 
-Some of the dependancies you'll need are likely to exist as optional packages
+Some of the dependencies you'll need are likely to exist as optional packages
 you didn't install from your Linux installation disks.  Here's the list:
 
 * Python >= 2.2.1, but 2.3.x works much better.  
@@ -49,7 +49,7 @@ you didn't install from your Linux installation disks.  Here's the list:
   installed from packages, you will need to install the python-devel packages.
   Instructions for compiling Python from source are given below.  I've found
   some problems with the proper distutils not being shipped with Mandrake 9.x
-  Python distributions, even whent the python-devel package is installed.
+  Python distributions, even when the python-devel package is installed.
   This is a really annoying problem, since it's just a couple of small files
   they left out.  I might include them in mmLib if it is too much of a 
   issue.
@@ -58,12 +58,12 @@ you didn't install from your Linux installation disks.  Here's the list:
   URL: http://www.pfdubois.com/numpy/
   Most distributions have this as a package.  However, it is almost as easy
   to compile and install it from source after the python-devel package is
-  installed.  Instructuions are given below.
+  installed.  Instructions are given below.
 
 * OpenGL/GLUT (optional for mmLib Viewer)
   URL: Your install disks.
-  The OpenGL libraries should come with your Linux ditribution, but it's
-  possible they are not installed by default, or the deveopment packages are
+  The OpenGL libraries should come with your Linux distribution, but it's
+  possible they are not installed by default, or the development packages are
   not installed by default.  Make sure they are.  There is one additional
   library, GLUT, which is usually not installed by default.  You need 
   the glut and glut-devel package, which is sometimes named FreeGLUT.
@@ -75,14 +75,14 @@ you didn't install from your Linux installation disks.  Here's the list:
   Gtk is the GUI toolkit used by the applications in mmLib.  You will need
   gtk+-2.x and the development packages installed.  Gtk versions 2.x are
   very compatible, and chances are the one that comes with your Linux 
-  distro will work once the development packages are installed.
+  distribution will work once the development packages are installed.
 
 * PyOpenGL
   URL: http://pyopengl.sourceforge.net/
   This is the python bindings to OpenGL.  They may come as packages with 
-  the Linux distro called python-opengl or somthing like that.  Once the
+  the Linux distribution called python-opengl or something like that.  Once the
   OpenGL/GLUT libraries are installed, PyOpenGL is really trivial to install
-  from source, the proceedure is identical to the Numeric Python installation
+  from source, the procedure is identical to the Numeric Python installation
   detailed below.
 
 * GtkGlExt
@@ -135,18 +135,18 @@ about what is going on here, read the next section.
 LINUX AND PYTHON::
 
 Many Linux distributions split the Python distribution into
-separate packages.  Most Linux distributions use the Redhat
+separate packages.  Most Linux distributions use the RedHat
 Package Manager (.rpm) format, and have a python-*.rpm 
 and python-dev-*.rpm/python-devel-*.rpm packages for the 
 complete distribution.  However, I've noticed some 
-Linux distributions are missing importent Python libraries
+Linux distributions are missing important Python libraries
 even when both of these packages are installed, causing the
 mmLib installer to fail.
 
 For this reason, you may have to compile and install Python from 
 source.  This may sound difficult, but in my experience it 
 is usually easier than finding the python-devel-*.rpm for
-your distribution.  I reccomend compiling and installing Python-2.3.3
+your distribution.  I recommend compiling and installing Python-2.3.3
 from http://www.python.org.  
 
 
