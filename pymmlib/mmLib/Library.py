@@ -6,6 +6,7 @@
 ## NOTES:
 ## Standard Van der Walls radii are from J.Phys.Chem., 68, 441, 1964.
 import os
+from mmLib.mmCIF import mmCIFFile
 
 """Monomer and element library data classes.  The Library classes are used
 for the identification and construction of biopolymers and ligands.
@@ -53,7 +54,12 @@ class Monomer(object):
         self.one_letter_name   = ""
         self.atom_list         = []
         self.bond_list         = []
-
+        self.chi1_definition   = None
+        self.chi2_definition   = None
+        self.chi3_definition   = None
+        self.chi4_definition   = None
+        self.pucker_definition = None
+        
         ## add attributes specific to mmLib which are not in most
         ## libraries
         try:
@@ -70,8 +76,6 @@ class Monomer(object):
         """Load monomer description from monomer library files located
         in Data/Monomers
         """
-        from mmLib.mmCIF import mmCIFFile
-
         cfile = mmCIFFile()
         cfile.load_file(path)
 
