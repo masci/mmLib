@@ -171,7 +171,7 @@ _element.name                  Carbon
 _element.number                6
 _element.atomic_weight         12.010700
 _element.van_der_walls_radius  1.700000
-_element.color_rgb             '#FFFF00'
+_element.color_rgb             '#AAAAAA'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0

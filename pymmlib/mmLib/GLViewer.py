@@ -591,6 +591,8 @@ class OpenGLRenderMethods(object):
         glPopMatrix()
 
     def glr_rod(self, pos1, pos2, radius):
+        """Draws a solid rod from pos1 to pos2.
+        """
         rod                = pos2 - pos1
         rod_length         = length(rod)
 
@@ -613,6 +615,31 @@ class OpenGLRenderMethods(object):
 	gluCylinder(quad, radius, radius, rod_length , 10, 1) 
         glTranslatef(0.0, 0.0, rod_length)
         gluDisk(quad, 0.0, radius, 10, 5)
+
+        glPopMatrix()
+
+    def glr_tube(self, pos1, pos2, radius):
+        """Draws a hollow tube beginning at pos1, and ending at pos2.
+        """
+        tube                = pos2 - pos1
+        tube_length         = length(tube)
+
+        glEnable(GL_LIGHTING)
+        quad = gluNewQuadric()
+	gluQuadricNormals(quad, GLU_SMOOTH)
+
+        glPushMatrix()
+
+        ## rotation matrix to align the current OpenGL coordinate
+        ## system such that the vector axis is along the z axis
+        R = inverse(rmatrixz(tube))
+        glMultMatrixf(
+            (R[0,0],           R[1,0],      R[2,0], 0.0,
+             R[0,1],           R[1,1],      R[2,1], 0.0,
+             R[0,2],           R[1,2],      R[2,2], 0.0,
+             pos1[0],         pos1[1],    pos1[2], 1.0) )
+
+	gluCylinder(quad, radius, radius, tube_length , 10, 1) 
 
         glPopMatrix()
 
@@ -1307,7 +1334,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Trace Stick Radius",
               "catagory":   "Trace",
               "type":       "float",
-              "default":    0.1,
+              "default":    0.2,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "trace_color",
@@ -1666,7 +1693,7 @@ class GLAtomList(GLDrawList):
 
                 start = pos
                 end   = start + ((pos2 - pos) / 2)
-                self.glr_rod(start, end, stick_radius)
+                self.glr_tube(start, end, stick_radius)
 
         ## draw ball
         self.glr_cpk(pos, ball_radius, 10)
@@ -1712,7 +1739,7 @@ class GLAtomList(GLDrawList):
                             last_pos = pos
                         else:
                             self.glr_cpk(last_pos, trace_radius, 10)
-                            self.glr_rod(last_pos, pos, trace_radius)
+                            self.glr_tube(last_pos, pos, trace_radius)
                             last_pos = pos
 
             if last_pos!=None:
@@ -3248,10 +3275,14 @@ class GLChain(GLAtomList):
                 yield atm
 
     def glal_iter_fragments(self):
+        """The GLAtomList implementation of this is slow.
+        """
         for frag in self.chain.iter_fragments():
             yield frag
 
     def glal_iter_chains(self):
+        """The GLAtomList implementation of this is slow.
+        """
         yield self.chain
 
 
@@ -3293,12 +3324,14 @@ class GLStructure(GLDrawList):
         self.glo_add_property(
             { "name":     "axes_visible",
               "desc":     "Show Cartesian Axes",
+              "catagory": "Show/Hide",
               "type":     "boolean",
               "default":  True,
               "action":  "redraw" })
         self.glo_add_property(
             { "name":     "unit_cell_visible",
               "desc":     "Show Unit Cell",
+              "catagory": "Show/Hide",
               "type":     "boolean",
               "default":  True,
               "action":   "redraw" })        
