@@ -604,6 +604,61 @@ class TLSGroup(AtomList):
                         [s21, s22, s23],
                         [s31, s32, s33]]) * deg2rad
 
+    def assert_COR_independent(self):
+        """Called by calc_TLS_least_squares_fit to re-fit the TLS tensors from
+        a different center of calculations, then shift to the COR and verify
+        the two origin of calculations produce the same results.
+        """
+        import random
+        
+        random_shift = array([random.random()*20.0 - 10.0,
+                              random.random()*20.0 - 10.0,
+                              random.random()*20.0 - 10.0])
+
+        tls_check = TLSGroup(self)
+        tls_check.origin = self.origin + random_shift
+        tls_check.calc_TLS_least_squares_fit()
+
+        calc       = self.calc_COR()
+        calc_check = tls_check.calc_COR()
+
+        assert len(self)==len(tls_check)
+
+        for i in range(len(self)):
+            atmi  = self[i]
+            atmci = tls_check[i]
+
+            assert atmi==atmci
+            assert allclose(atmi.position,atmci.position)
+            assert allclose(atmi.get_U(),atmci.get_U())
+
+            U = self.calc_Utls(self.T, self.L, self.S,
+                               atmi.position - tls.origin)
+
+            Ucheck = tls_check.calc_Utls(tls_check.T, tls_check.L, tls_check.S,
+                                         atmci.position - tls_check.origin)
+
+            try:
+                assert allclose(U, Ucheck, 1.0e-4)
+            except AssertionError:
+                print atm
+                print_U(U)
+                print_U(Ucheck)
+                raise
+
+        try:
+            assert allclose(calc["COR"], calc_check["COR"], 1.0e-4)
+        except AssertionError:
+            print "COR:       ", calc["COR"]
+            print "COR_CHECK: ", calc_check["COR"]
+            raise
+
+        assert allclose(calc["T'"],  calc_check["T'"],  1.0e-4)
+        assert allclose(calc["L'"],  calc_check["L'"],  1.0e-4)
+        assert allclose(calc["S'"],  calc_check["S'"],  1.0e-4)
+
+        return True
+
     def calc_TLS_least_squares_fit(self):
         """Perform a least-squares fit of the atoms contained in self
         to the three TLS tensors: self.T, self.L, and self.S using the
@@ -718,8 +773,7 @@ class TLSGroup(AtomList):
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
                          [ C[S31], C[S32], C[S33] ] ], Float)
-
-
+        
     def calc_TLS_dP2_fit(self):
         """
         """
@@ -1194,6 +1248,109 @@ class TLSGroup(AtomList):
         out.write(string.join(listx, "\n"))
 
 
+class TLSStructureAnalysis(object):
+    """
+    """
+    def __init__(self, struct):
+        self.struct = struct
+
+    def iter_segments(self, chain, seg_len):
+        """This iteratar yields a series of AtomList objects.  The first
+        AtomList is all the atoms in the chain's first seg_len residues.
+        The AtomLists yielded after the first one are formed by moving the
+        starting residue up by one, and including all the atoms in the next
+        seg_len residues.  The iteration terminates when there are are
+        less than seg_len residues left in the chain from the iterators
+        current position.
+        """
+        res_segment = []
+        
+        for res in chain.iter_amino_acids():
+            res_segment.append(res)
+
+            if len(res_segment)<seg_len:
+                continue
+
+            if len(res_segment)>seg_len:
+                res_segment = res_segment[1:]
+
+            atom_list = AtomList()
+            for rx in res_segment:
+                for atm in rx.iter_atoms():
+                    atom_list.append(atm)
+
+            yield res_segment[:], atom_list
+
+    def fit_TLS_segments(self,
+                         residue_width           = 6,
+                         use_side_chains         = True,
+                         filter_neg_eigen_values = True):
+        """
+        """
+
+        ## list of all TLS groups
+        stats_list = []
+
+        for chain in self.struct.iter_chains():
+            for res_segment, seg_atom_list in self.iter_segments(chain,
+                                                                 residue_width):
+
+                stats         = {}
+                stats["name"] = "%s-%s" % (res_segment[0].fragment_id,
+                                           res_segment[-1].fragment_id)
+
+                ## new tls group for segment
+                tls      = stats["tls"] = TLSGroup()
+                tls.name = stats["name"]
+
+                ## filter the atoms going into the TLS group                
+                for atm in seg_atom_list:
+                    ## don't include atoms which are not at full occupancy
+                    if atm.occupancy<1.0:
+                        continue
+                    ## don't add hydrogens
+                    if atm.element=="H":
+                        continue
+                    if use_side_chains==False:
+                        if atm.name not in ["C", "N", "CA", "O"]:
+                            continue
+                    tls.append(atm)
+
+                ## skip if there are not enough atoms in the TLS group after
+                ## filtering
+                if len(tls)==0:
+                    continue
+
+                ## set the origin of the TLS group to the centroid, and also
+                ## save it under calc_origin because origin will be overwritten
+                ## using the COR after the least squares fit
+                tls.origin = stats["calc_origin"] = tls.calc_centroid()
+
+                ## calculate tensors and print
+                tls.calc_TLS_least_squares_fit()
+                calc = tls.shift_COR()
+
+                if filter_neg_eigen_values==True:
+                    if min(eigenvalues(tls.L))<=0.0:
+                        continue
+                    elif min(eigenvalues(tls.T))<=0.0:
+                        continue
+                    elif  min(eigenvalues(calc["rT'"]))<=0.0:
+                        continue
+
+                ## this TLS group passes all our tests -- add it to the
+                ## stats list
+                stats_list.append(stats)
+
+                stats["R"]                  = tls.calc_R()
+                stats["adv_DP2"]            = tls.calc_adv_DP2uij()
+                stats["adv_normalized_DP2"] = tls.calc_adv_normalized_DP2uij()
+                stats["Suij"]               = tls.calc_adv_Suij()
+
+        return stats_list    
+
+
+## <testing>
 if __name__ == "__main__":
     print "==============================================="
     print "TEST CASE 1: TLS Class"
@@ -1238,3 +1395,4 @@ if __name__ == "__main__":
         print "-----------------------"
 
     print "==============================================="
+## </testing>

@@ -211,7 +211,8 @@ class Structure(object):
             self.model.chain_list.sort()
 
     def add_atom(self, atom):
-        """
+        """Adds a Atom object to the Structure.  If a collision occurs, a
+        error is raised.
         """
         assert isinstance(atom, Atom)
 
@@ -539,7 +540,7 @@ class Model(object):
 
         if delay_sort == False:
             self.chain_list.sort()
-            
+        
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
@@ -1310,8 +1311,17 @@ class Fragment(object):
         PDB defined standard residues.  PDB standard residues are amino
         and nucleic acid residues.
         """
-        return isinstance(self, AminoAcidResidue) or \
-               isinstance(self, NucleicAcidResidue)
+        return 
+
+    def is_amino_acid(self):
+        """Returns True if the Fragment is a Amino Acid residue.
+        """
+        return False
+
+    def is_nucleic_acid(self):
+        """Returns True if the Fragment is a Nucleic Acid residue.
+        """
+        return False
 
     def is_water(self):
         """Returns True if the Fragment is a water molecule, returns False
@@ -1380,6 +1390,24 @@ class AminoAcidResidue(Residue):
     """A subclass of Residue representing one amino acid residue in a
     polypeptide chain.
     """
+    def is_standard_residue(self):
+        """Returns True if the Fragment/Residue object is one of the
+        PDB defined standard residues.  PDB standard residues are amino
+        and nucleic acid residues.
+        """
+        return True
+    
+    def is_amino_acid(self):
+        """Returns True if the Fragment is a Amino Acid residue.
+        """
+        return True
+
+    def is_water(self):
+        """Returns True if the Fragment is a water molecule, returns False
+        otherwise.
+        """
+        return False
+    
     def calc_mainchain_bond_length(self):
         """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
         CA-(next)N).  The result is returned as a 5-tuple in that order.  Bond
@@ -1549,7 +1577,23 @@ class NucleicAcidResidue(Residue):
     """A subclass of Residue representing one nuclic acid in a strand of
     DNA or RNA.
     """
-    pass
+    def is_standard_residue(self):
+        """Returns True if the Fragment/Residue object is one of the
+        PDB defined standard residues.  PDB standard residues are amino
+        and nucleic acid residues.
+        """
+        return True
+
+    def is_nucleic_acid(self):
+        """Returns True if the Fragment is a Nucleic Acid residue.
+        """
+        return True
+
+    def is_water(self):
+        """Returns True if the Fragment is a water molecule, returns False
+        otherwise.
+        """
+        return False
 
 
 class Altloc(dict):

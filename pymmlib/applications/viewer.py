@@ -1461,8 +1461,13 @@ class TLSDialog(gtk.Dialog):
         """
         self.clear_tls_groups()
 
-        for tls_group in fit_TLS_segments(self.struct_context.struct):
-            self.add_tls_group(tls_group)
+        tls_analysis = TLSStructureAnalysis(self.struct_context.struct)
+        stats_list   = tls_analysis.fit_TLS_segments()
+
+        for stats in stats_list:
+            if stats["adv_DP2"]>0.02:
+                continue
+            self.add_tls_group(stats["tls"])
         
     def markup_tls_name(self, tls_info):
         listx = []
@@ -2057,6 +2062,10 @@ class MainWindow(object):
         for view_cmd in self.view_cmds:
             property  = view_cmd["glstruct property"]
             menu_item = self.item_factory.get_item(view_cmd["menu path"])
+
+            menu_item.set_active(gtk.FALSE)
+            continue
+
             if struct_context.gl_struct.properties[property]==False:
                 menu_item.set_active(gtk.FALSE)
             else:
