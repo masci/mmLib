@@ -237,7 +237,7 @@ class Structure(object):
             raise ModelOverwrite()
 
         ## set default model if not set
-        if self.default_model==None:
+        if not self.default_model:
             self.default_model = model
 
         self.model_list.append(model)
@@ -521,33 +521,39 @@ class Structure(object):
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix to the default Model object.
         """
+        assert self.default_model!=None
         self.default_model.add_alpha_helix(alpha_helix)
 
     def iter_alpha_helicies(self):
         """Iterates over all child AlphaHelix objects in the default
         Model.
         """
-        return self.default_model.iter_alpha_helicies()
+        if self.default_model:
+            return self.default_model.iter_alpha_helicies()
 
     def add_beta_sheet(self, beta_sheet):
+        """Adds a BetaSheet to the default Model object.
         """
-        """
+        assert self.default_model!=None
         self.default_model.add_beta_sheet(beta_sheet)
         
     def iter_beta_sheets(self):
         """Iterate over all beta sheets in the Structure.
         """
-        return self.default_model.iter_beta_sheets()
+        if self.default_model:
+            return self.default_model.iter_beta_sheets()
 
     def add_site(self, site):
+        """Adds a Site object to the default Model.
         """
-        """
+        assert self.default_model!=None
         self.default_model.add_site(site)
 
     def iter_sites(self):
         """Iterate over all active/important sites defined in the Structure.
         """
-        return self.default_model.iter_sites()
+        if self.default_model:
+            return self.default_model.iter_sites()
 
     def add_bonds_from_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
