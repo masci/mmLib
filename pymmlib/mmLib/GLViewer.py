@@ -12,61 +12,77 @@ from Structure import *
 
 
 class GLDrawList(object):
+    """Fundamental OpenGL rigid entity.
+    """
     def __init__(self):
-        self.name   = None
-        self.origin = Vector(0.0, 0.0, 0.0)
-        self.axes   = identity(3)
-        self.rotx   = 0.0
-        self.roty   = 0.0
-        self.rotz   = 0.0
+        self.gl_name = None
+        self.origin  = Vector(0.0, 0.0, 0.0)
+        self.axes    = identity(3)
+        self.rotx    = 0.0
+        self.roty    = 0.0
+        self.rotz    = 0.0
 
-    def gl_compile_list(self, execute = False):
-        if self.name != None:
-            self.gl_delete_list()
-        self.name = glGenLists(1)
-        debug("gl_compile_list name="+str(self.name))
-        if execute:
-            glNewList(self.name, GL_COMPILE_AND_EXECUTE)
+    def gl_call_list_render(self, render = True):
+        """Compile or force a recompile of this object's gl_draw list, and
+        render the scene.  Rendering the scene can be bypassed if
+        this method is called with render = False.
+        """
+        if self.gl_name != None:
+            glPushMatrix()
+            glTranslatef(*self.origin)
+            glRotatef(
+                self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
+            glRotatef(
+                self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
+            glRotatef(
+                self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
+            glCallList(self.gl_name)
+            glPopMatrix()
+            return
+
+        self.gl_name = glGenLists(1)
+        debug("gl_compile_list name = " + str(self.gl_name))
+
+        if render:
+            glPushMatrix()
+            glTranslatef(*self.origin)
+            glRotatef(
+                self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
+            glRotatef(
+                self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
+            glRotatef(
+                self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
+
+            glNewList(self.gl_name, GL_COMPILE_AND_EXECUTE)
+            self.gl_draw()
+            glEndList()
+
+            glPopMatrix()
+            
         else:
-            glNewList(self.name, GL_COMPILE)
-        self.gl_draw()
-        glEndList()
+             glNewList(self.gl_name, GL_COMPILE)
+             self.gl_draw()
+             glEndList()
 
     def gl_delete_list(self):
-        if self.name != None:
-            glDeleteLists(self.name, 1)
-            self.name = None
+        """Delete the currently compiled glList for this object.  This forces
+        a recompile next time gl_call_list_render() is invoked.  It also
+        should be called before a GLDrawList is dereferenced so that unused
+        compiled glLists are not left in the OpenGL libraries.
+        """
+        if self.gl_name != None:
+            glDeleteLists(self.gl_name, 1)
+            self.gl_name = None
 
-    def gl_call_list(self):
-        glPushMatrix()
-        glTranslatef(*self.origin)
-	glRotatef(self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
-	glRotatef(self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
-        glRotatef(self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
-        glCallList(self.name)
-        glPopMatrix()
-        
     def gl_draw(self):
+        """Implement in subclass to draw somthing.
+        """
         pass
 
-
-class GLUnitCellDrawList(GLDrawList):
-    def __init__(self, unit_cell):
-        GLDrawList.__init__(self)
-        self.unit_cell = unit_cell
-
-        ## draw constents
-        self.cell_line_width = 2.0
-        self.axis_line_width = 10.0
-
-        ## reflection properties of material
-        self.ambient  = 0.4
-        self.diffuse  = 0.8
-        self.specular = 1.0
-
-    def set_material(self, r, g, b, br):
-        alpha = 1.0
-
+    def set_material(self, r=1.0, g=1.0, b=1.0, br=1.0, alpha=1.0):
+        """Utility function used in subclasses to set material properties
+        before drawing.
+        """
         amb_r = self.ambient * r * br
         amb_g = self.ambient * g * br
         amb_b = self.ambient * b * br
@@ -80,6 +96,58 @@ class GLUnitCellDrawList(GLDrawList):
 	glMaterial(GL_FRONT, GL_DIFFUSE, [dif_r, dif_r, dif_r, alpha])
 	glMaterial(GL_FRONT, GL_SPECULAR,[spe_r, spe_r, spe_r, alpha])
 	glMaterial(GL_FRONT, GL_SHININESS, shine)
+
+
+class GLAxes(GLDrawList):
+    """Draw orthogonal axes in red = x, green = y, blue = z.
+    """
+    def __init__(self):
+        GLDrawList.__init__(self)
+        self.axis_line_width = 10.0
+
+        ## reflection properties of material
+        self.ambient  = 1.0
+        self.diffuse  = 1.0
+        self.specular = 1.0
+        self.material = (1.0, 1.0, 1.0, 1.0)
+
+    def draw_axis(self):
+        def axis_line(v1, v2):
+            glLineWidth(self.axis_line_width)
+            glBegin(GL_LINES)
+            glVertex3f(*v1)
+            glVertex3f(*v2)
+            glEnd()
+                    
+        self.set_material(1.0, 0.0, 0.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(200.0, 0.0, 0.0))
+
+        self.set_material(0.0, 1.0, 0.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(1.0, 200.0, 0.0))
+
+        self.set_material(0.0, 0.0, 1.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(0.0, 0.0, 200.0))
+
+    def gl_draw(self):
+        self.set_material(*self.material)
+        self.draw_axis()
+
+
+class GLUnitCell(GLDrawList):
+    """Draw unit cell.
+    """
+    def __init__(self, unit_cell):
+        GLDrawList.__init__(self)
+        self.unit_cell = unit_cell
+
+        ## draw constents
+        self.cell_line_width = 2.0
+
+        ## reflection properties of material
+        self.ambient  = 1.0
+        self.diffuse  = 1.0
+        self.specular = 1.0
+        self.material = (1.0, 1.0, 1.0, 1.0)
 
     def draw_cell(self, x1, y1, z1, x2, y2, z2):
         """Draw the unit cell lines in a rectangle starting at fractional
@@ -115,30 +183,12 @@ class GLUnitCellDrawList(GLDrawList):
                 glVertex3f(* i*a + j*b + (z2+1)*c)
                 glEnd()
 
-    def draw_axis(self):
-        def axis_line(v1, v2):
-            glLineWidth(self.axis_line_width)
-            glBegin(GL_LINES)
-            glVertex3f(*v1)
-            glVertex3f(*v2)
-            glEnd()
-                    
-        self.set_material(1.0, 0.0, 0.0, 1.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(200.0, 0.0, 0.0))
-
-        self.set_material(0.0, 1.0, 0.0, 1.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(1.0, 200.0, 0.0))
-
-        self.set_material(0.0, 0.0, 1.0, 1.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(0.0, 0.0, 200.0))
-
     def gl_draw(self):
-        self.set_material(1.0, 1.0, 1.0, 1.0)
+        self.set_material(*self.material)
         self.draw_cell(-1, -1, -1, 0, 0, 0)
-        self.draw_axis()
 
 
-class GLAtomDrawList(GLDrawList, AtomList):
+class GLAtomList(GLDrawList, AtomList):
     """OpenGL renderer for a list of atoms.
     """
     def __init__(self):
@@ -152,29 +202,13 @@ class GLAtomDrawList(GLDrawList, AtomList):
         self.ambient  = 0.4
         self.diffuse  = 0.8
         self.specular = 1.0
+        self.material = (1.0, 1.0, 1.0, 1.0)
 
         ## defaults
         self.sphere_quality = 12
         self.line_width     = 3.0
         self.atom_draw_func = self.draw_bond
         self.atom_origin    = None
-
-    def set_material(self, r, g, b, br):
-        alpha = 1.0
-
-        amb_r = self.ambient * r * br
-        amb_g = self.ambient * g * br
-        amb_b = self.ambient * b * br
-
-        dif_r = self.diffuse * br
-        spe_r = self.specular * br
-
-        shine = 50.0 * br
-        
-	glMaterial(GL_FRONT, GL_AMBIENT, [amb_r, amb_g, amb_b, alpha])
-	glMaterial(GL_FRONT, GL_DIFFUSE, [dif_r, dif_r, dif_r, alpha])
-	glMaterial(GL_FRONT, GL_SPECULAR,[spe_r, spe_r, spe_r, alpha])
-	glMaterial(GL_FRONT, GL_SHININESS, shine)
 
     def draw_cpk(self, atm, symop = None):
         """Draw a atom as a CPK sphere.
@@ -185,7 +219,7 @@ class GLAtomDrawList(GLDrawList, AtomList):
             self.set_material(r, g, b, 1.0)
             radius = el.van_der_waals_radius
         else:
-            self.set_material(1.0, 1.0, 1.0, 1.0)
+            self.set_material(*self.material)
             radius = 2.0
 
         glPushMatrix()
@@ -207,14 +241,12 @@ class GLAtomDrawList(GLDrawList, AtomList):
             self.set_material(1.0, 1.0, 1.0, 1.0)
         
         glLineWidth(self.line_width)
-        if atm.bond_list:
+
+        ## if there are bonds, then draw the lines 1/2 way to the
+        ## bonded atoms
+        if len(atm.bond_list) > 0:
             for bond in atm.iter_bonds():
                 atm2 = bond.get_partner(atm)
-
-                if bond.bond_type != None:
-                    glLineWidth(10.0)
-                else:
-                    glLineWidth(self.line_width)
 
                 if self.atom_origin:
                     start = atm.position - self.atom_origin
@@ -227,6 +259,55 @@ class GLAtomDrawList(GLDrawList, AtomList):
                 glVertex3f(*start)
                 glVertex3f(*end)
                 glEnd()
+
+        ## if there are no bonds, draw a small cross-point 
+        else:
+            start = atm.position - Vector(0.25, 0.0, 0.0)
+            end   = atm.position + Vector(0.25, 0.0, 0.0)
+            glBegin(GL_LINES)
+            glVertex3f(*start)
+            glVertex3f(*end)
+            glEnd()
+            
+            start = atm.position - Vector(0.0, 0.25, 0.0)
+            end   = atm.position + Vector(0.0, 0.25, 0.0)
+            glBegin(GL_LINES)
+            glVertex3f(*start)
+            glVertex3f(*end)
+            glEnd()
+
+            start = atm.position - Vector(0.0, 0.0, 0.25)
+            end   = atm.position + Vector(0.0, 0.0, 0.25)
+            glBegin(GL_LINES)
+            glVertex3f(*start)
+            glVertex3f(*end)
+            glEnd()
+
+    def draw_U_axes(self, atm, symop = None):
+        """Draw principal thermal axes for atom.
+        """
+        if atm.U == None:
+            return
+
+        evec, eval = eigenvectors(atm.U)
+
+        glLineWidth(self.line_width)
+        
+        glBegin(GL_LINES)
+        glVertex3f(*atm.position - evec[0])
+        glVertex3f(*atm.position + evec[0])
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex3f(*atm.position - evec[1])
+        glVertex3f(*atm.position + evec[1])
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex3f(*atm.position - evec[2])
+        glVertex3f(*atm.position + evec[2])
+        glEnd()
+
 
     def draw_atom_old(self, atm, symm = True):
         ## draw symmetry equivelent positions
@@ -330,6 +411,59 @@ class GLAtomDrawList(GLDrawList, AtomList):
         return success
 
 
+class GLStructure(GLDrawList):
+    def __init__(self, struct):
+        GLDrawList.__init__(self)
+
+        self.struct       = struct
+        self.gl_axes      = None
+        self.gl_unit_cell = None
+        self.draw_lists   = []
+
+    def gl_call_list_render(self, render=True):
+        for draw_list in self.draw_lists:
+            draw_list.gl_call_list_render(render=render)
+
+    def gl_draw(self):
+        for draw_list in self.draw_lists:
+            draw_list.gl_call_list_render()
+
+    def show_axes(self, show):
+        """True/False to show the coordinate axes.
+        """
+        if show == True and self.gl_axes == None:
+            self.gl_axes = GLAxes()
+            self.draw_lists.append(self.gl_axes)
+            
+        elif show == False and self.gl_axes != None:
+            self.draw_lists.remove(self.gl_axes)
+            self.gl_axes.gl_delete_list()
+            self.gl_axes = None
+            self.gl_delete_list()
+
+    def show_unit_cell(self, show):
+        """True/False to show the unit cell.
+        """
+        if show == True and self.gl_unit_cell == None:
+            self.gl_unit_cell = GLUnitCell(self.struct.unit_cell)
+            self.draw_lists.append(self.gl_unit_cell)
+            
+        elif show == False and self.gl_unit_cell != None:
+            self.draw_lists.remove(self.gl_unit_cell)
+            self.gl_unit_cell.gl_delete_list()
+            self.gl_unit_cell = None
+            self.gl_delete_list()
+
+    def show_atoms(self):
+        """Temp.
+        """
+        gl_atom_list = GLAtomList()
+        self.draw_lists.append(gl_atom_list)
+        
+        for atm in self.struct.iter_atoms():
+            gl_atom_list.append(atm)
+
+
 class GLViewer(list):
     """This class renders a list of GLDrawList (or subclasses of) onto
     the given glcontext and gldrawable objects.  The glcontext and gldrawable
@@ -431,10 +565,7 @@ class GLViewer(list):
         glRotatef(self.rotz, 0.0, 0.0, 1.0)
 
         for draw_list in self:
-            if draw_list.name == None:
-                draw_list.gl_compile_list(execute = 1)
-            else:
-                draw_list.gl_call_list()
+            draw_list.gl_call_list_render(render=True)
             
 	if self.gldrawable.is_double_buffered():
             self.gldrawable.swap_buffers()

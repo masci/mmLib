@@ -45,17 +45,16 @@ def LoadStructure(**args):
     except KeyError:
         raise TypeError,"LoadStructure(fil=) argument required"
 
-    format = args.get("format") or decode_format(fil)
-
-    library = args.get("library")
-
-    struct = args.get("struct") or args.get("structure")
-
+    update_cb        = args.get("update_cb")
+    format           = args.get("format") or decode_format(fil)
+    library          = args.get("library")
+    struct           = args.get("struct") or args.get("structure")
     build_properties = args.get("build_properties", ())
 
     if format == "PDB":
         return PDBStructureBuilder(
             fil              = fil,
+            update_cb        = update_cb,
             library          = library,
             build_properties = build_properties,
             struct           = struct).struct
@@ -63,6 +62,7 @@ def LoadStructure(**args):
     elif format == "CIF":
         return mmCIFStructureBuilder(
             fil              = fil,
+            update_cb        = update_cb,
             library          = library,
             build_properties = build_properties,
             struct           = struct).struct

@@ -17,19 +17,16 @@ class StructureBuilder(object):
     StructureBuilder must be subclassed with a working parse_format()
     method to implement a working builder.
     """
-    def __init__(self,
-                 fil = None,
-                 struct = None,
-                 library = None,
-                 build_properties = ()):
-
-        ## contstruct the Structure graph we are building
-        self.struct = struct or Structure(library = library)
+    def __init__(self, **args):
+        ## allocate a new Structure object for building if one was not
+        ## passed to the StructureBuilder
+        self.struct = args.get("struct") or \
+                      Structure(library = args.get("library"))
 
         ## what items are going to be built into the Structure graph
         ## follow up with adding structural components which depend on
         ## other components
-        self.build_properties = build_properties
+        self.build_properties = args.get("build_properties") or ()
 
         ## caches used while building
         self.cache_chain = None
@@ -39,7 +36,7 @@ class StructureBuilder(object):
         self.halt = 0
 
         ## build the structure by executing this fixed sequence of methods
-        self.read_start(fil)
+        self.read_start(args.get("fil"), args.get("update_cb"))
         if not self.halt: self.read_start_finalize()
         if not self.halt: self.read_atoms()
         if not self.halt: self.read_atoms_finalize()
@@ -456,9 +453,9 @@ class PDBStructureBuilder(StructureBuilder):
                 fragment_id += rec[icode]
         return fragment_id
     
-    def read_start(self, fil):
+    def read_start(self, fil, update_cb = None):
         self.pdb_file = PDB.PDBFile()
-        self.pdb_file.load_file(fil)
+        self.pdb_file.load_file(fil, update_cb)
 
     def load_atom(self, atm_map):
         """Override load_atom to maintain a serial_num->atm map.
@@ -1127,7 +1124,7 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         return True
 
-    def read_start(self, fil):
+    def read_start(self, fil, update_cb = None):
         ## optionally use the "auth" mmCIF labels 
         if not "label" in self.build_properties:
             self.atom_id = "auth_atom_id"
@@ -1160,7 +1157,7 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         ## parse the mmCIF file
         self.cif_file = mmCIF.mmCIFFile()
-        self.cif_file.load_file(fil)
+        self.cif_file.load_file(fil, update_cb)
 
         ## for a mmCIF file for a structure, assume the first data item
         ## contains the structure
@@ -1168,7 +1165,6 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         ## maintain a map of atom_site.id -> atm
         self.atom_site_id_map = {}
-        
 
     def read_atoms(self):
         try:

@@ -360,11 +360,11 @@ class mmCIFFile(list):
         except KeyError:
             return default
         
-    def load_file(self, fil):
+    def load_file(self, fil, update_cb = None):
         """Load and append the mmCIF data from file object fil into self.
         """
         fil = OpenFile(fil, "r")
-        mmCIFFileParser().parse_file(fil, self)
+        mmCIFFileParser().parse_file(fil, self, update_cb)
 
     def save_file(self, fil):
         fil = OpenFile(fil, "w")
@@ -402,7 +402,8 @@ class mmCIFFileParser(object):
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
     data hierarchy.
     """
-    def parse_file(self, fil, cif_file):
+    def parse_file(self, fil, cif_file, update_cb = None):
+        self.update_cb = update_cb
         self.line_number = 0
 
         token_iter = self.gen_token_iter(fil)
@@ -577,8 +578,15 @@ class mmCIFFileParser(object):
 
              ")")
 
-        file_iter = iter(fil)
+        ## get file size for update callbacks
+        percent_done = 0
+        fil_read_bytes = 0
+        
+        fil.seek(0, 2)
+        fil_size_bytes = fil.tell()
+        fil.seek(0, 0)
 
+        file_iter = iter(fil)
         while 1:
             try:
                 ln = file_iter.next()
@@ -586,6 +594,14 @@ class mmCIFFileParser(object):
                 break
             else:
                 self.line_number += 1
+                fil_read_bytes   += len(ln)
+
+            ## call update callback
+            if self.update_cb != None:
+                pdone = (fil_read_bytes * 100)/fil_size_bytes
+                if pdone != percent_done:
+                    percent_done = pdone
+                    self.update_cb(percent_done)
 
             ## skip comments
             if ln.startswith("#"):

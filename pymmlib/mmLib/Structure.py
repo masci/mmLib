@@ -1386,6 +1386,11 @@ class Atom(object):
         evals = eigenvalues(self.U)
         ansotropy = min(evals) / max(evals)
         return ansotropy
+
+    def calc_ccuij(self, atm):
+        """
+        """
+        pass
         
     def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the

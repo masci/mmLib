@@ -12,112 +12,6 @@ from mmLib.mmTypes import *
 from mmLib.Structure import *
 
 
-class RefmacTLSFile:
-    """This class reads and writes TLS information stored in the same
-    format as REFMAC from CCP4 >= 4.1.0.
-    """
-
-    re_RANGE  = re.compile(
-        "^RANGE\s+\'([A-Z])\s*([^\']+)\'\s+\'([A-Z])\s*([^\']+)\'\s*(\w+).*$")
-    re_ORIGIN = re.compile(
-        "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$")
-    re_T      = re.compile(
-        "^T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
-    re_L      = re.compile(
-        "^L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
-    re_S      = re.compile(
-        "^S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"\
-        "\s+(\S+).*$")
-
-    def __init__(self):
-        self.tls_list = []
-
-    def __str__(self):
-        tstr  = "TLS %s\n" % (self.name)
-        for ((chain_id1, frag_id1),(chain_id2, frag_id2)) in self.range_list:
-            tstr += "RANGE '%s%s' '%s%s'ALL\n" % (
-                chain_id1, frag_id1.rjust(5), chain_id2, frag_id2.rjust(5))
-        tstr += "ORIGIN  %f %f %f\n" % (
-            self.origin[0], self.origin[1], self.origin[2])
-        tstr += "T %f %f %f %f %f %f\n" % (
-            self.T[0,0], self.T[1,1], self.T[2,2], self.T[0,1], self.T[0,2],
-            self.T[1,2])
-        tstr += "L %f %f %f %f %f %f\n" % (
-            self.L[0,0], self.L[1,1], self.L[2,2], self.L[0,1], self.L[0,2],
-            self.L[1,2])
-        tstr += "S %f %f %f %f %f %f %f %f\n" % (
-            self.S[1,1]-self.S[0,0], self.S[0,0]-self.S[2,2], self.S[0,1],
-            self.S[0,2], self.S[1,2], self.S[1,0], self.S[2,0], self.S[2,1])
-
-        return tstr
-
-    def load(self, fil):
-        """Read the TLS information from file object fil, and store that
-        inforamtion in the class instance variables.
-        """
-        self.tls_list = []
-
-        while 1:
-            ln = fil.readline()
-            if not ln: break
-            if not ln.strip(): continue
-
-            if ln[:3] == "TLS":
-                tls = TLS()
-                residue_selection_list = []
-
-                tls.name = ln[4:].strip()
-
-                while 1:
-                    ln = fil.readline()
-                    if not ln: break
-
-                    m = self.re_RANGE.match(ln)
-                    if m:
-                        (chain1, frag_id1, chain2, frag_id2, cmd)=m.groups()
-                        residue_selection_list.append(
-                            (chain1, frag_id1, chain2, frag_id2, cmd))
-                        continue
-
-                    m = self.re_ORIGIN.match(ln)
-                    if m:
-                        (x, y, z)=m.groups()
-                        tls.setOrigin(float(x), float(y), float(z))
-                        continue
-
-                    m = self.re_T.match(ln)
-                    if m:
-                        (t11, t22, t33, t12, t13, t23)=m.groups()
-                        tls.setT(float(t11), float(t22), float(t33),
-                                 float(t12), float(t13), float(t23))
-                        continue
-
-                    m = self.re_L.match(ln)
-                    if m:
-                        (l11, l22, l33, l12, l13, l23)=m.groups()
-                        tls.setL(float(l11), float(l22), float(l33),
-                                 float(l12), float(l13), float(l23))
-                        continue
-
-                    m = self.re_S.match(ln)
-                    if m:
-                        (s2211, s1133, s12, s13, s23, s21, s31, s32)=m.groups()
-                        tls.setS(float(s2211), float(s1133),
-                                 float(s12), float(s13), float(s23),
-                                 float(s21), float(s31), float(s32))
-                        break
-
-                tls_list.append((tls, residue_selection_list))
-
-    def set_structure_atoms(self, struct):
-        """For each TLS group in the Refmac input file, there are one
-        or more RANGE records describing the residues included in the
-        TLS group.  This method uses these ranges to set each TLS
-        instance tls.atom_list method.
-        """
-        pass
-
-
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
@@ -160,9 +54,7 @@ class TLSGroup(AtomList):
     def set_origin(self, x, y, z):
         """Sets the x, y, z components of the TLS origin vector.
         """
-        self.origin[0] = x
-        self.origin[1] = y
-        self.origin[2] = z
+        self.origin = Vector(x, y, z)
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
         """Sets the components of the symmetric T tensor.
@@ -191,7 +83,7 @@ class TLSGroup(AtomList):
         self.L[2,1] = l23
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
-        """Sets teh componets of the asymmetric S tenssor.  The trace
+        """Sets the componets of the asymmetric S tenssor.  The trace
         of the S tensor is set with the standard convention of
         the Trace(S) = 0.
         """
@@ -217,14 +109,15 @@ class TLSGroup(AtomList):
         A = zeros((len(self)*6, 21), Float)
         b = zeros((len(self)*6, 1),  Float)
 
-        for i in range(len(self)):
-            atm = self[i]
+        i = -1
+        for atm in self:
+            if atm.U == None:
+                continue
+
+            i += 1
 
             ## set x, y, z as the vector components from the TLS origin
-            r = atm.position - self.origin
-            x = r[0]
-            y = r[1]
-            z = r[2]
+            x, y, z = atm.position - self.origin
 
             ## indecies of the components of U
             u11 =   i * 6
@@ -316,6 +209,98 @@ class TLSGroup(AtomList):
                          [ C[10,0], C[11,0], C[12,0] ],
                          [ C[15,0], C[16,0], C[17,0] ] ])
 
+    def iter_atm_Ucalc(self):
+        """Iterates all the atoms in the TLS object, returning the 2-tuple
+        (atm, U) where U is the calcuated U value from the current values
+        of the TLS object's T,L,S, tensors and origin.
+        """
+        T = self.T
+        L = self.L
+        S = self.S
+        O = self.origin
+        
+        for atm in self:
+            x, y, z = atm.position - O
+
+            xx = x*x
+            yy = y*y
+            zz = z*z
+
+            xy = x*y
+            yz = y*z
+            xz = x*z
+
+            u00 = (         T[0,0]
+                    + 2.0 * S[1,0] * z
+                    +       L[1,1] * zz 
+                    - 2.0 * S[2,0] * y 
+                    - 2.0 * L[2,1] * yz
+                    +       L[2,2] * yy )
+            u10 = (         T[1,0]
+                    -       S[0,0] * z
+                    - 2.0 * S[0,1] * y
+                    +       S[1,1] * z
+                    -       L[1,0] * zz
+                    +       S[2,0] * x
+                    -       S[2,1] * y
+                    +       L[2,0] * yz
+                    +       L[2,1] * xz
+                    -       L[2,2] * xy )
+            u11 = (         T[1,1]
+                    +       L[0,0] * zz
+                    + 2.0 * S[2,1] * x
+                    - 2.0 * L[2,0] * xz
+                    +       L[2,2] * xx )
+            u20 = (         T[2,0]
+                    +       S[0,0] * y
+                    -       S[1,0] * x
+                    +       S[1,2] * z
+                    +       L[1,0] * yz
+                    -       L[1,1] * xz
+                    -       S[2,2] * y
+                    -       L[2,0] * yy
+                    +       L[2,1] * xy )
+            u21 = (         T[2,1]
+                    +       S[0,1] * y
+                    -       S[0,2] * z
+                    -       L[0,0] * yz
+                    -       S[1,1] * x
+                    +       L[1,0] * xz
+                    +       S[2,2] * x 
+                    +       L[2,0] * xy
+                    -       L[2,1] * xx )
+            u22 = (         T[2,2]
+                    + 2.0 * S[0,2] * y
+                    +       L[0,0] * yy
+                    - 2.0 * S[1,2] * x
+                    - 2.0 * L[1,0] * xy
+                    +       L[1,1] * xx )
+
+            U = array ([[u00, u10, u20],
+                        [u10, u11, u21],
+                        [u20, u21, u22]])
+
+            yield (atm, U)
+
+    def calc_R(self):
+        """Calculate the R factor of U vs. Ucalc.
+        """
+        Rn = 0.0
+        Rd = 0.0
+
+        for (atm, Ucalc) in self.iter_atm_Ucalc():
+
+            if atm.U == None:
+                continue
+
+            for i in range(3):
+                for j in range(3):
+
+                    Rn += abs(atm.U[i,j] - Ucalc[i,j])
+                    Rd += abs(atm.U[i,j])
+
+        return Rn / Rd
+
     def write(self, out = sys.stdout):
         """Write a nicely formatted tensor description.
         """
@@ -370,7 +355,7 @@ if __name__ == "__main__":
     print eigenvalues(tls.T)
     print "eigenvalues(L)"
     print eigenvalues(tls.L)
-    
+
     print "==============================================="
 
     print 
@@ -382,7 +367,6 @@ if __name__ == "__main__":
 
     fil = open(sys.argv[1], "r")
     tls_list = LoadTLSGroups(fil)
-
     
     for tls in tls_list:
         print "----- TLS Group #%d ---" % (tls_list.index(tls))

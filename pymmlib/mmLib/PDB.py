@@ -1430,11 +1430,32 @@ class PDBFile(list):
         assert isinstance(rec, PDBRecord)
         list.insert(self, i, rec)
 
-    def load_file(self, fil):
+    def load_file(self, fil, update_cb = None):
         """Loads a PDB file from File object fil.
         """
         fil = OpenFile(fil, "r")
+    
+        ## get file size for update callbacks
+        line_number    = 0
+        percent_done   = 0
+        fil_read_bytes = 0
+        
+        fil.seek(0, 2)
+        fil_size_bytes = fil.tell()
+        fil.seek(0, 0)
+
         for ln in fil.readlines():
+
+            line_number    += 1
+            fil_read_bytes += len(ln)
+
+            ## call update callback
+            if update_cb != None:
+                pdone = (fil_read_bytes * 100)/fil_size_bytes
+                if pdone != percent_done:
+                    percent_done = pdone
+                    update_cb(percent_done)
+
             ## find the record data element for the given line
             ln = ln.rstrip()
             rname = ln[:6].ljust(6)
