@@ -26,20 +26,19 @@ def atom_test(atom, stats):
     """
     stats["atom_count"] += 1
     stats["testing"]     = atom
+
+    len(atom)
     
-    
-    model = atom.fragment.chain.structure.default_model
     alt_loc = atom.fragment.chain.structure.default_alt_loc
 
     visited_atm_list = []
-    for atm in atom.iter_alt():
+    for atm in atom.iter_alt_loc():
         assert isinstance(atm, Atom)
         assert atm in atom
-
         assert atm not in visited_atm_list
         visited_atm_list.append(atm)
 
-        assert atm[atom.model, atom.alt_loc] == atom
+        assert atm[atom.alt_loc] == atom
 
         assert atm.get_fragment() == atom.get_fragment()
         assert atm.get_chain() == atom.get_chain()
@@ -49,7 +48,6 @@ def atom_test(atom, stats):
         assert atm.fragment_id == atom.fragment_id
         assert atm.chain_id == atom.chain_id
 
-        
     partner_names = []
     for bond in atom.iter_bonds():
         assert isinstance(bond, Bond)
@@ -76,33 +74,25 @@ def fragment_test(frag, stats):
     stats["fragment_count"] += 1
     stats["testing"] = frag
 
+    len(frag)
 
-    model = frag.chain.structure.default_model
     alt_loc = frag.chain.structure.default_alt_loc
 
     visited_atm_list = []
     for atm in frag.iter_atoms():
         assert isinstance(atm, Atom)
+        assert atm in frag
+        assert atm.name in frag
+        
         assert atm not in visited_atm_list
         visited_atm_list.append(atm)
-        assert atm in frag
 
-        try:
-            assert frag[atm.name] == atm
-        except AssertionError:
-            print "[ERROR::fragment_test] atm=%s frag[atm.name]=%s" % (
-                atm, frag[atm.name])
-        try:
-            assert frag.get_atom(atm.name) == atm
-        except AssertionError:
-            print "[ERROR::fragment_test] atm=%s frag.get_atom(atm.name)=%s" %(
-                atm, frag[atm.name])
-
+        assert frag[atm.name] == atm
+        assert frag.get_atom(atm.name) == atm
         assert atm.get_fragment() == frag
         assert atm.get_chain() == frag.get_chain()
         assert atm.get_structure() == frag.get_structure()
         assert atm.alt_loc == alt_loc or atm.alt_loc == ""
-        assert atm.model == model
 
     ## test iter_bonds
     num_bonds = 0
@@ -143,6 +133,8 @@ def chain_test(chain, stats):
     stats["chain_count"] += 1
     stats["testing"]      = chain
 
+    len(chain)
+
     for frag in chain.iter_fragments():
         assert isinstance(frag, Fragment)
         assert frag in chain
@@ -179,35 +171,58 @@ def struct_test(struct, stats):
     """Tests the mmLib.Structure.Structure object.
     """
     stats["testing"] = struct
+
+    len(struct)
+
+    old_model = struct.model
+    for model in struct.iter_models():
+        struct.set_model(model)
+
+        assert model in struct
+
+        for chain in struct.iter_chains():
+            assert isinstance(chain, Chain)
+            assert chain in struct
+            assert chain.chain_id in struct
+            assert struct[chain.chain_id] == chain
+            assert struct[struct.index(chain)] == chain
+            assert struct.get_chain(chain.chain_id) == chain
+            assert chain.get_structure() == struct 
+
+        for frag in struct.iter_fragments():
+            assert isinstance(frag, Fragment)
+            assert frag.get_structure() == struct
+
+        for res in struct.iter_amino_acids():
+            assert isinstance(res, AminoAcidResidue)
+            assert res.get_structure() == struct
+
+        for res in struct.iter_nucleic_acids():
+            assert isinstance(res, NucleicAcidResidue)
+            assert res.get_structure() == struct
+
+        for atm in struct.iter_atoms():
+            assert isinstance(atm, Atom)
+            assert atm.get_structure() == struct
+
+        for atm in struct.iter_all_atoms():
+            assert isinstance(atm, Atom)
+            assert atm.get_structure() == struct
+
+        for bond in struct.iter_bonds():
+            assert isinstance(bond, Bond)
+
+        old_alt_loc  = struct.default_alt_loc
+        alt_loc_list = struct.alt_loc_list()
+        for alt_loc in alt_loc_list:
+            struct.set_alt_loc(alt_loc)
+            for atm in struct.iter_atoms():
+                assert atm.alt_loc == "" or atm.alt_loc == alt_loc
+        struct.set_alt_loc(old_alt_loc)
+
+
+    struct.set_model(old_model)
     
-    for chain in struct.iter_chains():
-        assert isinstance(chain, Chain)
-        assert chain in struct
-        assert chain.chain_id in struct
-        assert struct[chain.chain_id] == chain
-        assert struct[struct.index(chain)] == chain
-        assert struct.get_chain(chain.chain_id) == chain
-        assert chain.get_structure() == struct 
-
-    for frag in struct.iter_fragments():
-        assert isinstance(frag, Fragment)
-        assert frag.get_structure() == struct
-
-    for res in struct.iter_amino_acids():
-        assert isinstance(res, AminoAcidResidue)
-        assert res.get_structure() == struct
-
-    for res in struct.iter_nucleic_acids():
-        assert isinstance(res, NucleicAcidResidue)
-        assert res.get_structure() == struct
-
-    for atm in struct.iter_atoms():
-        assert isinstance(atm, Atom)
-        assert atm.get_structure() == struct
-
-    for bond in struct.iter_bonds():
-        assert isinstance(bond, Bond)
-
     stats["testing"] = None
 
 
@@ -223,9 +238,10 @@ def run_structure_tests(struct, stats):
     for frag in struct.iter_fragments():
         fragment_test(frag, stats)
 
-    for frag in struct.iter_fragments():
-        for atm in frag.iter_all_atoms():
-            atom_test(atm, stats)
+    for model in struct.iter_models():
+        for frag in struct.iter_fragments():
+            for atm in frag.iter_all_atoms():
+                atom_test(atm, stats)
 
 
 

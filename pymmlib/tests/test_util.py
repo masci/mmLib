@@ -3,9 +3,12 @@ import os
 import sys
 import re
 from mmLib.mmTypes import *
-
 """Misc. testing utility code code common to the test programs.
 """
+
+pdb_regex = ("pdb\w+\.gz","\w+\.pdb","\w+\.pdb\.gz","pdb\S+\.Z","pdb\S+\.gz")
+cif_regex = ("\w+\.cif", "\w+\.cif\.Z", "\w+\.cif\.gz")
+all_regex = pdb_regex + cif_regex
 
 
 def my_walk(path):
@@ -18,7 +21,7 @@ def my_walk(path):
             for y in my_walk(os.path.join(path, x)):
                 yield y
 
-def walk(path, start_path, *regex_args):
+def walk(path, start_path = None, regex_args = ()):
     """Iterate over all files rooted at path containing the substring
     in the filename, including extentions.
     """
@@ -43,23 +46,15 @@ def walk(path, start_path, *regex_args):
 
         if do_yield:
             yield pathx
-
+            
 def walk_pdb(path, start_path = None):
-    return walk(path, start_path, "pdb\w+\.Z", "pdb\w+\.gz", "w+\.pdb",
-                "w+\.pdb\.gz")
+    return walk(path, start_path=start_path, regex_args=pdb_regex)
 
 def walk_cif(path, start_path = None):
-    return walk(path, start_path, "\w+\.cif", "\w+\.cif\.Z", "\w+\.cif\.gz")
+    return walk(path, start_path=start_path, regex_args=cif_regex)
 
 def walk_pdb_cif(path, start_path = None):
-    return walk(path, start_path,
-                "pdb\w+\.gz",
-                "w+\.pdb",
-                "w+\.pdb\.gz",
-                "pdb\S+\.Z",
-                "pdb\S+\.gz",
-                "\w+\.cif",
-                "\w+\.cif\.gz")
+    return walk(path, start_path=start_path, regex_args=all_regex)
 
 def pdb_stats(path):
     re_model = re.compile("^MODEL\s+(\d+).*")

@@ -1031,6 +1031,11 @@ class mmCIFFileBuilder(object):
         it's really not clear to me how the names are chosen by the PDB.
         """
 
+        def iter_all_chains():
+            for model in self.struct.iter_models():
+                for chain in model.iter_chains():
+                    yield chain
+
         ## maps fragment -> entity_id
         entity = self.get_table("entity")
 
@@ -1039,9 +1044,8 @@ class mmCIFFileBuilder(object):
         ## first detect polymer chains
         ## map of entity::mmCIFRow -> sequence list
         es_list = []
-        
-        for chain in self.struct.iter_chains():
 
+        for chain in iter_all_chains():
             ## if the chain is a bio-polymer, it is one entity; come up
             ## with a name from its sequence and add it to the
             ## entity map
@@ -1081,7 +1085,7 @@ class mmCIFFileBuilder(object):
         ## II. entity.type == "non-polymer" or "water"
         er_map = {}
 
-        for chain in self.struct.iter_chains():
+        for chain in iter_all_chains():
             for frag in chain.iter_non_standard_residues():
 
                 ## already assigned a entity_id for this fragment_id
@@ -1146,26 +1150,24 @@ class mmCIFFileBuilder(object):
         """Adds the _atom_site table.
         """
         atom_site = self.get_table("atom_site")        
-
-        orig_model = self.struct.default_model
-
+        orig_model = self.struct.model
         atom_id = 0
 
-        for model_num in self.struct.model_list():
-            self.struct.default_model = model_num
+        for model in self.struct.iter_models():
+            self.struct.model = model
 
             for frag in self.struct.iter_fragments():
-                for atm in frag.iter_all_alt_loc_atoms():
-
+                for atm in frag.iter_all_atoms():
                     asrow = mmCIFRow()
                     atom_site.append(asrow)
 
                     atom_id += 1
                     asrow["id"] = atom_id
-
+                    asrow["pdbx_PDB_model_num"] = model.model_id
+                    
                     self.set_atom_site_row(asrow, atm)
 
-        self.struct.default_model = orig_model
+        self.struct.model = orig_model
 
     def set_atom_site_row(self, asrow, atm):
         if atm.get_fragment().is_standard_residue():

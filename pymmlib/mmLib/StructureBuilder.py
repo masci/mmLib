@@ -77,7 +77,7 @@ class StructureBuilder(object):
         """
         ## create atom object
         atm = Atom(name        = atm_map.get("name", ""),
-                   model       = atm_map.get("model_num", 1),
+                   model       = str(atm_map.get("model_num", "1")),
                    alt_loc     = atm_map.get("alt_loc", ""),
                    res_name    = atm_map.get("res_name", ""),
                    fragment_id = atm_map.get("fragment_id", ""),
@@ -125,63 +125,19 @@ class StructureBuilder(object):
         if atm.chain_id    == "" or \
            atm.fragment_id == "" or \
            atm.name        == "":
-            #print "NS1:",atm
             self.name_service_list.append(atm)
             return atm
 
         try:
-            self.place_atom(atm)
+            self.struct.add_atom(atm)
+        except FragmentOverwrite:
+            print "FragmentOverwrite: ",atm
+            self.name_service_list.append(atm)
         except AtomOverwrite:
-            #print "NS2:",atm
+            print "AtomOverwrite: ",atm
             self.name_service_list.append(atm)
 
         return atm
-
-    def place_atom(self, atm):
-        """Places the atom into the structure, adding the new Chain and
-        Fragment if necessary.
-        """
-        assert isinstance(atm, Atom)
-        
-        ## pack atom into its fragment, create necessary parents
-        ## add chain
-        if self.cache_chain          == None or \
-           self.cache_chain.chain_id != atm.chain_id:
-
-            try:
-                self.cache_chain = self.struct[atm.chain_id]
-            except KeyError:
-                self.cache_chain = Chain(atm.chain_id)
-                self.struct.add_chain(self.cache_chain, delay_sort = True)
-
-        ## add fragment
-        if self.cache_frag             == None or \
-           self.cache_frag.fragment_id != atm.fragment_id or \
-           self.cache_frag.chain_id    != atm.chain_id:
-
-            try:
-                self.cache_frag = self.cache_chain[atm.fragment_id]
-            except KeyError:
-                if self.struct.library.is_amino_acid(atm.res_name):
-                    self.cache_frag = AminoAcidResidue(
-                        res_name = atm.res_name,
-                        fragment_id = atm.fragment_id,
-                        chain_id = atm.chain_id)
-                elif self.struct.library.is_nucleic_acid(atm.res_name):
-                    self.cache_frag = NucleicAcidResidue(
-                        res_name = atm.res_name,
-                        fragment_id = atm.fragment_id,
-                        chain_id = atm.chain_id)
-                else:
-                    self.cache_frag = Fragment(
-                        res_name = atm.res_name,
-                        fragment_id = atm.fragment_id,
-                        chain_id = atm.chain_id)
-                    
-                self.cache_chain.add_fragment(
-                    self.cache_frag, delay_sort = True)
-
-        self.cache_frag.add_atom(atm)
 
     def name_service(self):
         """Runs the name service on all atoms needing to be named.
@@ -331,7 +287,7 @@ class StructureBuilder(object):
                     for atm in frag:
                         atm.chain_id    = new_chain_id
                         atm.fragment_id = str(fragment_id_num)
-                        self.place_atom(atm)
+                        self.struct.add_atom(atm)
 
             ## logging
             warning("NS: Added ChainID: %s with %3d Residues of Type: %s" % (
@@ -347,8 +303,6 @@ class StructureBuilder(object):
 
         ## sort structural objects into their correct order
         self.struct.sort()
-        for chain in self.struct.iter_chains():
-            chain.sort()
 
     def read_metadata(self):
         """This method needs to be reimplemented in a fuctional subclass.
@@ -405,6 +359,9 @@ class StructureBuilder(object):
         The symmetry operations themselves are a 3x4 array of floating point
         values composed of the 3x3 rotation matrix and the 3x1 translation.
         """
+
+        ### XXX: fix this to build bonds in all models!!!
+        
         for ((atm1, atm2), bd_map) in bond_map.items():
 
             ## check for files which, for some reason, define have a bond
@@ -443,8 +400,7 @@ class StructureBuilder(object):
 
         ## build bonds within structure
         if not "no_bonds" in self.build_properties:
-            for frag in self.struct.iter_fragments():
-                frag.create_bonds()
+            self.struct.add_bonds_from_library()
 
 
 class PDBStructureBuilder(StructureBuilder):
@@ -582,8 +538,8 @@ class PDBStructureBuilder(StructureBuilder):
                 return name, mon.atom_dict[name]
             except KeyError:
                 if mon.is_amino_acid() and name == "OXT":
-                    return "O", "O"
-                print "Invalid Atom Name: %s in Residue: %s" % (name, res_name)
+                    return name, "O"
+                #print "Invalid Atom Name: %s in Residue: %s" % (name, res_name)
 
         ## ok, that didn't work...
 
@@ -1232,10 +1188,10 @@ class mmCIFStructureBuilder(StructureBuilder):
             setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
 
             setmapf(atom_site, "B_iso_or_equiv_esd",
-                         atm_map,   "sig_temp_factor")
+                    atm_map,   "sig_temp_factor")
 
             setmapi(atom_site, "pdbx_PDB_model_num",
-                         atm_map,   "model_num")
+                    atm_map,   "model_num")
 
             if aniso_table != None:
                 try:

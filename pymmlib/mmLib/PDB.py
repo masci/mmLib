@@ -1670,33 +1670,27 @@ class PDBFileBuilder(object):
     def add_coordinate_section(self):
         """ MODEL,ATOM,SIGATM,ANISOU,SIGUIJ,TER,HETATM,ENDMDL 
         """
-        orig_model = self.struct.default_model
+        if len(self.struct.model_list) > 1:
+            ## case 1: multiple models
+            orig_model = self.struct.model
+            
+            for model in self.struct.iter_models():
+                self.struct.model = model
 
-        model_list = self.struct.model_list()
-
-        if len(model_list) > 1:
-            for model_num in self.struct.model_list():
-                self.struct.default_model = model_num
-
-                model = MODEL()
-                self.pdb_file.append(model)
-                model["serial"] = model_num
+                model_rec = MODEL()
+                self.pdb_file.append(model_rec)
+                model_rec["serial"] = model.model_id
 
                 self.add_atom_records()
 
                 endmdl = ENDMDL()
                 self.pdb_file.append(endmdl)
 
+            self.struct.model = orig_model
+
         else:
-            try:
-                self.struct.default_model = model_list[0]
-            except IndexError:
-                self.struct.default_model = 1
-                
+            ## case 2: single model
             self.add_atom_records()
-
-        self.struct.default_model = orig_model
-
 
     def add_connectivity_section(self):
         """CONECT
@@ -1720,7 +1714,7 @@ class PDBFileBuilder(object):
             res = None
             
             for res in chain.iter_standard_residues():
-                for atm in res.iter_all_alt_loc_atoms():
+                for atm in res.iter_all_atoms():
                     self.add_ATOM("ATOM", atm)
 
             ## chain termination record
@@ -1737,7 +1731,7 @@ class PDBFileBuilder(object):
         ## hetatm records for non-standard groups
         for chain in self.struct.iter_chains():
             for frag in chain.iter_non_standard_residues():
-                for atm in frag.iter_all_alt_loc_atoms():
+                for atm in frag.iter_all_atoms():
                     self.add_ATOM("HETATM", atm)
 
     def add_ATOM(self, rec_type, atm):
