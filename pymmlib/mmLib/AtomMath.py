@@ -49,7 +49,11 @@ def calculateTorsionAngle(a1, a2, a3, a4):
     return angle
 
 
-## testing
+
+##
+## <testing>
+##
+
 if __name__ == "__main__":
     from Structure import Atom
     from Scientific.Geometry import Vector, Tensor
@@ -68,3 +72,6 @@ if __name__ == "__main__":
 
     print calculateTorsionAngle(a1, a2, a3, a4) * 180 / math.pi
     
+##
+## </testing>
+##

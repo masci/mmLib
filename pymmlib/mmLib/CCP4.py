@@ -4,8 +4,10 @@
 ## included as part of this package.
 
 import os
+import sys
+
 import mmCIF
-from Structure import *
+from   Structure import *
 
 
 CCP4Error = "CCP4 Error"
@@ -14,7 +16,9 @@ CCP4Error = "CCP4 Error"
 try:
     CCP4_ROOT = os.environ["CCP4"]
 except KeyError:
-    CCPR_ROOT = ""
+    print "Set your CCP4 environment variable."
+    sys.exit(1)
+
 
 
 class CCP4MonomerFile:
@@ -22,8 +26,10 @@ class CCP4MonomerFile:
     that needs to be ignored.  Here we construct a minimal file-like
     object to strip out the HTML so it can be passed to the mmCIF parser
     and parsed like a normal mmCIF file."""
+
     def __init__(self, path, mode):
         self.fil = open(path, mode)
+
 
     def readline(self):
         while 1:
@@ -42,10 +48,13 @@ class CCP4MonomerFile:
                 return ln
 
 
+
 class CCP4MonomerLibrary:
+
     def __init__(self, ccp4_root = CCP4_ROOT):
         self.ccp4_root = ccp4_root
         self.cif_file_cache = {}
+
     
     def loadMonomerDescription(self, mon_name):
         """Locates and reads the mmCIF monomer description found in the CCP4
@@ -57,9 +66,10 @@ class CCP4MonomerLibrary:
         if not os.path.isfile(path):
             raise CCP4Error, "monomer path=%s not found" % (path)
 
-        cif_file = mmCIF.mmCIFFile(CCP4MonomerFile(path, "r"), "l")
-        cif_file.load()
+        cif_file = mmCIF.mmCIFFile()
+        cif_file.loadFile(CCP4MonomerFile(path, "r"))
         return cif_file
+
 
     def getMonomerDescription(self, mon_name):
         try:
@@ -69,6 +79,7 @@ class CCP4MonomerLibrary:
         cf = self.loadMonomerDescription(mon_name)
         self.cif_file_cache[mon_name] = cf
         return cf
+
 
     def buildMonomer(self, mon_name):
         cif_file = self.getMonomerDescription(mon_name)
@@ -95,11 +106,13 @@ class CCP4MonomerLibrary:
 
         return aa_res
 
+
     def getBondAngle(self, mon_name, label1, label2, label3):
         """Returns the bond angle and estimated standard deviation from the
         CCP4 monomer library."""
         cif_file = self.getMonomerDescription(mon_name)
         cif_data = cif_file.getData("comp_%s" % (mon_name))
+
         
     def getBondDistance(self, mon_name, label1, label2):
         """Returns the bond distance and estimated standard deviation from the
@@ -119,6 +132,7 @@ class CCP4MonomerLibrary:
             return (chem_comp_bond.value_dist, chem_comp_bond.value_dist_esd)
 
         return None
+
 
     def setResidueInfo(self, res):
         """Sets all bond distance information possible for the residue
@@ -143,7 +157,11 @@ class CCP4MonomerLibrary:
                              chem_comp_bond.value_dist_esd)
 
 
-## testing
+
+##
+## <testing>
+##
+
 if __name__ == "__main__":
     from AminoAcids import *
     
@@ -153,3 +171,7 @@ if __name__ == "__main__":
             print name, mlib.bondDistance(name, "CA", "CB")
         except CCP4Error:
             pass
+
+##
+## </testing>
+##

@@ -36,11 +36,13 @@ def SortChainIDList(list):
 
 
 class mmCIFToStructureLoader:
-    
+    """Constructs a mmLib.Structure data structure from a mmCIF file.  It
+    uses the mmLib.mmCIF parser for parsing the mmCIF file."""
+
     def load(self, fil):
         self.structure = Structure()
-        cif_file = mmCIF.mmCIFFile(fil, "l")
-        cif_file.load()
+        cif_file = mmCIF.mmCIFFile()
+        cif_file.loadFile(fil)
 
         for cif_data in cif_file.getDataList():
             ## skip mmCIF files without atom_site tables
@@ -344,11 +346,13 @@ class mmCIFToStructureLoader:
 
 
 class PDBToStructureLoader:
+    """Constructs a mmLib.Structure data structure from a PDB file.  It
+    uses the mmLib.PDB parser for parsing the PDB file."""
 
     def load(self, fil):
         self.structure = Structure()
-        self.pdb_file = PDB.PDBFile(fil, "l")
-        self.pdb_file.load()
+        self.pdb_file = PDB.PDBFile()
+        self.pdb_file.loadFile(fil)
 
         ## presort and create a some useful maps
         ##
@@ -673,7 +677,7 @@ class StructureTommCIFSaver:
 
 class StructureToPDBSaver:
     def save(self, fil, structure):
-        self.pdb_file = PDB.PDBFile(fil, "s")
+        self.pdb_file = PDB.PDBFile()
         self.structure = structure
 
         ## waters shall always be in chain S
@@ -701,7 +705,7 @@ class StructureToPDBSaver:
             elif mol.getType() == "water":
                 self.molecule_water(mol)
                 
-        self.pdb_file.save()
+        self.pdb_file.saveFile(fil)
     
 
     def molecule_polymer(self, mol):

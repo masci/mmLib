@@ -18,6 +18,7 @@ from   AminoAcids           import AminoAcidNames, AminoAcidMap
 from   NucleicAcids         import NucleicAcidNames, NucleicAcidMap
 
 
+
 ## exceptions
 MissingAtom  = "MissingAtom"
 MissingChain = "MissingChain"
@@ -27,6 +28,7 @@ MissingChain = "MissingChain"
 class AtomContainer(Composite):
     """Any type of structure container sould be subclassed from AtomContainer.
     This includes atoms."""
+
     def __init__(self):
         Composite.__init__(self)
 
@@ -34,45 +36,54 @@ class AtomContainer(Composite):
     def __str__(self):
         return "AtomContainer"
 
+
     def structureIterator(self):
         """Iterates all Structure classes rooted at self."""
         for x in self:
             if isinstance(x, Structure): yield x
+
 
     def conformationIterator(self):
         """Iterates all Conformation classes rooted at self."""
         for x in self:
             if isinstance(x, Conformation): yield x
 
+
     def moleculeIterator(self):
         """Iterates all Molecule classes rooted at self."""
         for x in self:
             if isinstance(x, Molecule): yield x
+
 
     def chainIterator(self):
         """Iterates all Chain classes rooted at self."""
         for x in self:
             if isinstance(x, Chain): yield x
 
+
     def polypeptideChainIterator(self):
         """Iterates all PolyeptideChain classes rooted at self."""
         for x in self:
             if isinstance(x, PolypeptideChain): yield x
+
                 
     def residueIterator(self):
         """Iterates all Residue classes rooted at self."""
         for x in self:
             if isinstance(x, Residue): yield x
+
                 
     def aminoAcidResidueIterator(self):
         """Iterates all AminoAcideResidue classes rooted at self."""
         for x in self:
             if isinstance(x, AminoAcidResidue): yield x
 
+
     def nucleicAcidResidueIterator(self):
         """Iterates all NucleicAcideResidue classes rooted at self."""
         for x in self:
             if isinstance(x, NucleicAcidResidue): yield x
+
 
     def atomIterator(self, conf_id = None):
         """Iterates all Atom classes rooted at self."""
@@ -88,6 +99,7 @@ class AtomContainer(Composite):
         else:
             for x in self:
                 if isinstance(x, Atom): yield x
+
         
     def bondIterator(self, conf_id = None):
         """Special case of atomIterator which iterates all bonds in
@@ -100,6 +112,7 @@ class AtomContainer(Composite):
                 visited_bonds.append(bond)
                 yield bond
 
+
     def getStructure(self):
         """Returns self's closest parent of class System."""
         for parent in self.getParentList():
@@ -107,12 +120,14 @@ class AtomContainer(Composite):
                 return parent
         return None
 
+
     def getConformation(self):
         """Returns self's closest parent of class System."""
         for parent in self.getParentList():
             if isinstance(parent, Conformation):
                 return parent
         return None
+
    
     def getMolecule(self):
         """Returns self's closest parent of class Molecule."""
@@ -121,6 +136,7 @@ class AtomContainer(Composite):
                 return parent
         return None
 
+
     def getChain(self):
         """Returns self's closest parent of class Chain."""
         for parent in self.getParentList():
@@ -128,12 +144,14 @@ class AtomContainer(Composite):
                 return parent
         return None
 
+
     def getPolypeptideChain(self):
         """Returns self's closest parent of class PolypeptideChain."""
         for parent in self.getParentList():
             if isinstance(parent, PolypeptideChain):
                 return parent
         return None
+
     
     def getResidue(self):
         """Returns self's closest parent of class Residue."""
@@ -142,6 +160,7 @@ class AtomContainer(Composite):
                 return parent
         return None
     
+
     def getAminoAcidResidue(self):
         """Returns self's closest parent of class Residue."""
         for parent in self.getParentList():
@@ -149,12 +168,14 @@ class AtomContainer(Composite):
                 return parent
         return None
 
+
     def getNucleicAcidResidue(self):
         """Returns self's closest parent of class NucleicAcidResidue."""
         for parent in self.getParentList():
             if isinstance(parent, NucleicAcidResidue):
                 return parent
         return None
+
 
     def getConformations(self):
         """Iterates the tree starting at self and returns a sorted unique
@@ -178,19 +199,25 @@ class Conformation(AtomContainer):
 
         self.conformation_id = ""
 
+
     def __str__(self):
         return "Conformation::%s" % (self.conformation_id)
 
+
     def setID(self, cid):
+        """Sets the ID charactor of the conformation."""
         self.conformation_id = str(cid)
 
+
     def getID(self):
+        """Returns the ID charactor of the conformation."""
         return self.conformation_id
 
 
 
 class Structure(AtomContainer):
     """Container for a Structure of molecules."""
+
     def __init__(self):
         AtomContainer.__init__(self)
 
@@ -203,51 +230,65 @@ class Structure(AtomContainer):
     def __str__(self):
         return "Structure::%s" % (str(self.name))
 
+
     def setTitle(self, title):
         """Set the title of the structure."""
         self.title = str(title)
 
+
     def getTitle(self):
         """Return the title of the structure."""
         return self.title
+
 
     def setID(self, id):
         """Set the ID of the structure, comes from PDB::HEADER.id_code or
         mmCIF::_entity.id."""
         self.id = str(id)
 
+
     def getID(self):
         """Get the ID of the structure, comes from PDB::HEADER.id_code or
         mmCIF::_entity.id."""
         return self.id
 
+
     def setKeywords(self, key_words):
         self.key_words = str(key_words)
+
 
     def getKeywords(self):
         return self.key_words
 
+
     def setOriginalDepositionDate(self, date):
         self.orig_deposition_date = str(date)
+
 
     def getOriginalDepositionDate(self):
         return self.orig_deposition_date
 
+
     def setAuthorList(self, list):
         self.author_list = list
 
+
     def getAuthorList(self):
         return self.author_list
+
 
     def setDescription(self, desc):
         """Description from PDB::COMPND or mmCIF::entity.pdbx_description."""
         self.description = str(desc)
 
+
     def getDescription(self):
         return self.description
 
+
     def setExperimentalMethod(self, experimental_method):
         self.experimental_method = str(experimental_method)
+
     
     def getExperimentalMethod(self):
         return self.experimental_method
@@ -256,6 +297,7 @@ class Structure(AtomContainer):
 
 class Molecule(AtomContainer):
     """Container for a molecule."""
+
     def __init__(self):
         AtomContainer.__init__(self)
 
@@ -275,27 +317,34 @@ class Molecule(AtomContainer):
         
         return tstr
 
+
     def setName(self, name):
         self.name = str(name)
 
+
     def getName(self):
         return self.name
+
 
     def setType(self, mtype):
         """Sets the type of molecule."""
         self.molecule_type = str(mtype)
 
+
     def getType(self):
         """Returns the molecule type."""
         return self.molecule_type
+
 
     def setPolymerType(self, ptype):
         """Sets the polymer type of the molecule."""
         self.polymer_type = str(ptype)
 
+
     def getPolymerType(self):
         """Returns the polymer type of the molecule."""
         return self.polymer_type
+
 
     def isProtein(self):
         """Returns true if the molecule is a protein, otherwise
@@ -324,8 +373,10 @@ class Molecule(AtomContainer):
 
 class Solvent(AtomContainer):
     """Container for solvent molecules."""
+
     def __init__(self):
         AtomContainer.__init__(self)
+
 
     def __str__(self):
         return "Solvent"
@@ -337,6 +388,7 @@ class Solvent(AtomContainer):
 
 class Chain(AtomContainer):
     """Conatiner for residues of the same type."""
+
     def __init__(self):
         AtomContainer.__init__(self)
 
@@ -346,14 +398,17 @@ class Chain(AtomContainer):
     def __str__(self):
         return "Chain::%s" % (self.chain_id)
 
+
     def setID(self, id):
         """Set the chain ID.  This should be a 1-char string.  It is
         converted to upper case set as lower case."""
         self.chain_id = str(id).upper()
 
+
     def getID(self):
         """Returns the chain ID."""
         return self.chain_id
+
 
     def getResidueBySequenceNumber(self, seq_num):
         """Returns the residue of the given sequence ID."""
@@ -365,8 +420,11 @@ class Chain(AtomContainer):
 
 
 class NucleicAcidChain(Chain):
+    """Subclass of Chain specificly for containing nucleic acid residues."""
+
     def __init__(self):
         Chain.__init__(self)
+
 
     def __str__(self):
         return "NucleicAcidChain::%s" % (self.chain_id)
@@ -374,11 +432,15 @@ class NucleicAcidChain(Chain):
 
 
 class PolypeptideChain(Chain):
+    """Subclass of Chain specificly for containing amino acid residues."""
+
     def __init__(self):
         Chain.__init__(self)
 
+
     def __str__(self):
         return "PolypeptideChain::%s" % (self.chain_id)
+
 
     def constructPeptideBonds(self):
         """Constructs all inter-residue bonds in the Polypeptide chain."""
@@ -415,6 +477,7 @@ class PolypeptideChain(Chain):
 
 class Residue(AtomContainer):
     """Abstract class representing a monomer residue."""
+
     def __init__(self):
         AtomContainer.__init__(self)
 
@@ -427,29 +490,36 @@ class Residue(AtomContainer):
     def __str__(self):
         return "Residue::%s::%s" % (str(self.name), str(self.sequence_id))
 
+
     def getName(self):
         """Returns the name of the Residue."""
         return self.name
+
 
     def setName(self, name):
         """Sets the name of the Residue."""
         self.name = str(name).upper()
 
+
     def setSequenceNumber(self, num):
         self.sequence_num = int(num)
 
+
     def getSequenceNumber(self):
         return self.sequence_num
+
 
     def getSequenceID(self):
         """Returns the sequence ID of the Residue.  This is the (resSeq, iCdoe)
         tuple."""
         return self.sequence_id
 
+
     def setSequenceID(self, seq_id):
         """Sets the sequence ID of  the Residue.  This is the resSeq+iCode
         string."""
         self.sequence_id = str(seq_id)
+
 
     def getAtomByLabel(self, label, conf_id = None):
         """Searches for and returns the atom in the residue with the
@@ -460,6 +530,7 @@ class Residue(AtomContainer):
                 return atom
         raise MissingAtom, label
 
+
     def getAtom(self, label, conf_id = None):
         """Searches for and returns the atom in the residue with the
         argument label.  Returns None if the atom is not found."""
@@ -467,6 +538,7 @@ class Residue(AtomContainer):
             return self.getAtomByLabel(label, conf_id)
         except MissingAtom:
             return None
+
 
     def getPrevResidue(self):
         """Returns the previous Residue in the chain."""
@@ -481,6 +553,7 @@ class Residue(AtomContainer):
             prev_res = res
 
         return None
+
 
     def getNextResidue(self):
         """Returns the next Residue in the chain."""
@@ -500,6 +573,7 @@ class Residue(AtomContainer):
 
 class NucleicAcidResidue(Residue):
     """Container and methods for nucleic acid residues."""
+
     def __str__(self):
         return "NucleicAcidResidue::%s::%s" % (
             str(self.name), str(self.sequence_id))
@@ -508,6 +582,7 @@ class NucleicAcidResidue(Residue):
 
 class AminoAcidResidue(Residue):
     """Container and methods for amino acid residues."""
+
     def __init__(self):
         Residue.__init__(self)
         self.aa = None
@@ -516,6 +591,7 @@ class AminoAcidResidue(Residue):
     def __str__(self):
         return "AminoAcidResidue::%s::%s" % (
             str(self.name), str(self.sequence_id))
+
 
     def setName(self, name):
         """Set the name of the amino acid residue.  The name is checked
@@ -528,12 +604,14 @@ class AminoAcidResidue(Residue):
             print "unknown amino acid type=%s" % (self.name)
             self.aa = AminoAcidMap["UNK"]
 
+
     def isNTerminal(self):
         """Returns true if the residue is the N-Terminal, otherwise
         returns false."""
         if self.sequence_num == 1:
             return 1
         return 0
+
     
     def isCTerminal(self):
         """Returns true if the residue is the C-Terminal, otherwise
@@ -541,6 +619,7 @@ class AminoAcidResidue(Residue):
         if not self.getNextResidue():
             return 1
         return 0
+
 
     def constructBonds(self):
         """Constructs all bonds defined in the AminoAcid.py dictionary
@@ -555,6 +634,7 @@ class AminoAcidResidue(Residue):
                 atm2 = self.getAtom(label2, conf_id)
                 if atm1 and atm2:
                     atm1.createBond(atm2)
+
 
     def calcMainchainBondLength(self, conf_id = None):
         """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
@@ -587,6 +667,7 @@ class AminoAcidResidue(Residue):
 
         return (N_CA_distance, CA_C_distance, C_O_distance,
                 CA_CB_distance, C_nN_distance)
+
 
     def calcMainchainBondAngle(self, conf_id = None):
         """Calculates main chain bond angles (N-CA-C, N-CA-CB, CB-CA-C,
@@ -628,6 +709,7 @@ class AminoAcidResidue(Residue):
 
         return (N_CA_C_angle, N_CA_CB_angle, CB_CA_C_angle,
                 CA_C_O_angle, CA_C_nN_angle, C_nN_nCA_angle) 
+
         
     def calcTorsionPsi(self, conf_id = None):
         """Calculates the Psi torsion angle of the amino acid.  Raises a
@@ -643,6 +725,7 @@ class AminoAcidResidue(Residue):
         naN = next_res.getAtomByLabel('N', conf_id)
         return calculateTorsionAngle(aN, aCA, aC, naN)
 
+
     def calcTorsionPhi(self, conf_id = None):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
         NTerminal exception if called on a N-terminal residue which does
@@ -656,6 +739,7 @@ class AminoAcidResidue(Residue):
         aCA = self.getAtomByLabel('CA', conf_id)
         aC = self.getAtomByLabel('C', conf_id)
         return calculateTorsionAngle(paC, aN, aCA, aC)
+
 
     def calcTorsionOmega(self, conf_id = None):
         """Calculates the Omega torsion angle of the amino acid. Raises a
@@ -671,10 +755,12 @@ class AminoAcidResidue(Residue):
         naCA = next_res.getAtomByLabel('CA', conf_id)
         return calculateTorsionAngle(aCA, aC, naN, naCA)
 
+
     def isProline(self):
         """Returns true if the amino acid is Proline, otherwise false.
         This is for convience."""
         return self.name == "PRO"
+
     
     def isCis(self, conf_id = None):
         """Returns true if this is a CIS amino acid, otherwise returns false.
@@ -683,6 +769,7 @@ class AminoAcidResidue(Residue):
         if abs(omega) > math.pi / 2.0:
             return 1
         return 0
+
 
     def calcPuckerTorsion(self, conf_id = None):
         """Calculates the Pucker torsion of a ring system.  Returns None
@@ -696,6 +783,7 @@ class AminoAcidResidue(Residue):
         a4 = self.getAtomByLabel(self.aa.pucker_definition[3], conf_id)
         return calculateTorsionAngle(a1, a2, a3, a4)
 
+
     def calcTorsionChi1(self, conf_id = None):
         if not self.aa.chi1_definition:
             return None
@@ -705,6 +793,7 @@ class AminoAcidResidue(Residue):
         a3 = self.getAtomByLabel(self.aa.chi1_definition[2], conf_id)
         a4 = self.getAtomByLabel(self.aa.chi1_definition[3], conf_id)
         return calculateTorsionAngle(a1, a2, a3, a4)
+
 
     def calcTorsionChi2(self, conf_id = None):
         if not self.aa.chi2_definition:
@@ -716,6 +805,7 @@ class AminoAcidResidue(Residue):
         a4 = self.getAtomByLabel(self.aa.chi2_definition[3], conf_id)
         return calculateTorsionAngle(a1, a2, a3, a4)
 
+
     def calcTorsionChi3(self, conf_id = None):
         if not self.aa.chi1_definition:
             return None
@@ -726,6 +816,7 @@ class AminoAcidResidue(Residue):
         a4 = self.getAtomByLabel(self.aa.chi3_definition[3], conf_id)
         return calculateTorsionAngle(a1, a2, a3, a4)
 
+
     def calcTorsionChi4(self, conf_id = None):
         if not self.aa.chi1_definition:
             return None
@@ -735,6 +826,7 @@ class AminoAcidResidue(Residue):
         a3 = self.getAtomByLabel(self.aa.chi4_definition[2], conf_id)
         a4 = self.getAtomByLabel(self.aa.chi4_definition[3], conf_id)
         return calculateTorsionAngle(a1, a2, a3, a4)
+
 
     def calcTorsionChi(self, conf_id = None):
         """Calculates CHI side-chain torsion angles according to the
@@ -765,6 +857,7 @@ class AminoAcidResidue(Residue):
         return (chi1, chi2, chi3, chi4)
 
 
+
 class Atom(AtomContainer):
     """Individual atom and properties."""
 
@@ -788,69 +881,90 @@ class Atom(AtomContainer):
     def __str__(self):
         return "Atom::%s" % (str(self.atom_label))
 
+
     def setElement(self, element):
         try:
             self.el = ElementMap[element]
         except KeyError:
             raise SystemExit, "Unknown element %s" % (element)
         self.element = self.el.symbol
+
         
     def getElement(self):
         return self.element
+
     
     def setCharge(self, charge):
         self.charge = float(charge)
 
+
     def getCharge(self):
         return self.charge
+
 
     def setOccupancy(self, occupancy):
         self.occupancy = float(occupancy)
 
+
     def getOccupancy(self):
         return self.occupancy
+
 
     def setTemperatureFactor(self, tf):
         self.temp_factor = float(tf)
 
+
     def getTemperatureFactor(self):
         return self.temp_factor
+
 
     def setU(self, U):
         self.U = U
 
+
     def getU(self):
         return self.U
+
 
     def setPosition(self, position):
         self.position = position
 
+
     def getPosition(self):
         return self.position
+
 
     def setRadius(self, radius):
         self.radius = float(radius)
 
+
     def setAtomLabel(self, atom_label):
         self.atom_label = str(atom_label)
+
 
     def getAtomLabel(self):
         return str(self.atom_label).upper()
 
+
     def setVelocity(self, velocity):
         self.velocity = velocity
+
 
     def setForce(self, force):
         self.force = force
 
+
     def getForce(self):
         return self.force
+
 
     def countBonds(self):
         return len(self.bond_list)
 
+
     def getBondList(self):
         return self.bond_list
+
 
     def getBond(self, atom):
         """Returns the bond connection self to the argument atom."""
@@ -858,6 +972,7 @@ class Atom(AtomContainer):
             if bond.isBondOf(atom):
                 return bond
         return None
+
 
     def createBond(self, atom):
         """Create a new bond between self and the argument atom."""
@@ -873,6 +988,7 @@ class Atom(AtomContainer):
         self.bond_list.append(bond)
         atom.bond_list.append(bond)
         return bond
+
                               
     def destroyBond(self, atom):
         """Destroy bond to atom."""
@@ -882,19 +998,23 @@ class Atom(AtomContainer):
             atom.bond_list.remove(bond)
             del bond
 
+
     def destroyBonds(self):
         """Destory all bonds."""
         for bond in self.bond_list:
             self.bond_list.remove(bond)
             del bond
 
+
     def hasBond(self, bond):
         """Returns true if the atom is involved in the bond."""
         return bond in self.bond_list
 
+
     def isBound(self):
         """Returns true if the atom is bound to any other atom."""
         return len(self.bond_list) > 0
+
 
     def calcAnisotropy(self):
         """Calculates the ansitropy of that atom."""
@@ -915,6 +1035,7 @@ class Atom(AtomContainer):
 
 class Bond:
     """Represents a bond between two atoms."""
+
     def __init__(self):
         self.first_atom   = None
         self.second_atom  = None
@@ -937,30 +1058,38 @@ class Bond:
             conn = "-(%s, %s)-" % (d, d_esd)
         
         return a1 + conn + a2
+
     
     def setFirstAtom(self, atom):
         self.first_atom = atom
 
+
     def getFirstAtom(self):
         return self.first_atom
+
 
     def setSecondAtom(self, atom):
         self.second_atom = atom
 
+
     def getSecondAtom(self):
         return self.second_atom
+
 
     def getAtoms(self):
         """Return a tuple of the atoms in the bond."""
         return (self.first_atom, self.second_atom)
+
 
     def setType(self, btype):
         """Sets the type of the bond.  This must be one of the text
         strings in Bond.TYPES."""
         self.bond_type = btype  
 
+
     def getType(self):
         return self.bond_type
+
 
     def getPartner(self, atom):
         """Return the partner (bound) atom in the bond."""
@@ -970,17 +1099,21 @@ class Bond:
             return self.first_atom
         raise StructureError, 'Argument atom not in bond'
 
+
     def isBondOf(self, atom):
         """Return false if the atom is not a member of the bond."""
         return atom == self.first_atom or atom == self.second_atom
+
 
     def setDistance(self, dist, dist_esd):
         """Set a distance for the bond."""
         self.distance = float(dist)
         self.distance_esd = float(dist_esd)
 
+
     def getDistance(self):
         return (self.distance, self.distance_esd)
+
 
     def calcLength(self):
         """Calculate the bond length bond length."""

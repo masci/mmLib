@@ -9,10 +9,44 @@ import fpformat
 
 PDBError = "PDB Error"
 
+
+
+## these are the fields in a ATOM/HETATM/ANISOU/etc... record that uniquely
+## identify a record; often passed into compareRecord when searching for
+## additional PDBRecord classes describing a ATOM
+AtomIDFields = ["name", "altLoc", "resName", "seqRes", "iCode", "chainID"]
+
+
+## these are the fields uniquely identifing a specic residue
+ResidueIDFields = ["resName", "seqRes", "iCode", "chainID"]
+
+
+
 class PDBRecord:
     """Base class for all PDB file records."""
+
     def __str__(self):
         return self.write()
+
+
+    def compareRecord(self, rec, field_list):
+        """Compares record rec to self for the fields listed in field_list."""
+        for field in field_list:
+            try:
+                val1 = getattr(self, field)
+            except AttributeError:
+                val1 = ""
+
+            try:
+                val2 = getattr(rec, field)
+            except AttributeError:
+                val2 = ""
+
+            if val1 != val2:
+                return 0
+
+        return 1
+
 
     def write(self):
         rec = self._name
@@ -64,6 +98,7 @@ class PDBRecord:
 
         return rec
     
+
     def read(self, rec):
         for (field, start, end, ftype, just) in self._field_list:
             ## adjust record reading indexes if the line doesn't contain
@@ -985,21 +1020,15 @@ PDBRecordOrder = [
 class PDBFile:
     """Class for managing a PDB file.  Load, save, edit, and create PDB
     files with this class."""
-    def __init__(self, path_or_fil, mode):
-        self.path = path_or_fil
-        self.mode = mode
+
+    def __init__(self):
         self.pdbrecord_list = []
 
-    def load(self):
-        ## make sure the file was open for reading
-        if self.mode != "l":
-            raise PDBError, "File not opened for loading"
 
+    def loadFile(self, fil):
         ## self.path can be a string, or a file object
-        if type(self.path) == types.StringType:
-            fil = open(self.path, "r")
-        else:
-            fil = self.path
+        if type(fil) == types.StringType:
+            fil = open(fil, "r")
 
         for ln in fil.readlines():
             
@@ -1022,22 +1051,21 @@ class PDBFile:
             self.pdbrecord_list.append(pdb_record)
             pdb_record.read(ln)
 
-    def save(self):
-        ## make sure the file was open for reading
-        if self.mode != "s":
-            raise PDBError, "File not opened for saving"
 
+    def saveFile(self, fil):
         ## self.path can be a string, or a file object
-        if type(self.path) == types.StringType:
-            fil = open(self.path, "w")
-        else:
-            fil = self.path
+        if type(fil) == types.StringType:
+            fil = open(fil, "w")
 
+        ## this re-orders the PDB records with some basic grouping
+        ## rules in the PDB v2.2 specification, it doesn't
+        ## get it completely correct yet...
         self.doctorUp()
 
         for pdb_record in self.pdbrecord_list:
             fil.write(str(pdb_record) + "\n")
         fil.close()
+
 
     def doctorUp(self):
         ## first sort the records
@@ -1073,12 +1101,10 @@ class PDBFile:
                 ## passed in rec_list
                 def get_rec(atom_rec, rec_list):
                     for rec in rec_list:
-                        if atom_rec.name    == rec.name and \
-                           atom_rec.resName == rec.resName and \
-                           atom_rec.chainID == rec.chainID and \
-                           atom_rec.iCode   == rec.iCode:
-                            rec_list.remove(rec)
-                            return rec
+                        if not atom_rec.compareRecord(rec, AtomIDFields):
+                            continue
+                        rec_list.remove(rec)
+                        return rec
                     return None
 
                 for atom_rec in record_map[name]:
@@ -1113,8 +1139,10 @@ class PDBFile:
 
         self.pdbrecord_list = pdbrecord_list
 
+
     def getRecordList(self):
         return self.pdbrecord_list
+
 
     def selectRecordList(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the records in the
@@ -1148,6 +1176,7 @@ class PDBFile:
 
         return rec_list
 
+
     def getChainList(self):
         """Returns a list of all the chain ids in the PDB file."""
         chain_list = []
@@ -1162,9 +1191,24 @@ class PDBFile:
         return chain_list
 
 
-## testing...
+
+##
+## <testing>
+##
+    
 if __name__ == "__main__":
     import sys
-    pdbfil = PDBFile(sys.argv[1], "l")
-    pdbfil.read()
-    print "Chain List: " + str(pdbfil.chainList())
+
+    try:
+        path = sys.argv[1]
+    except IndexError:
+        print "usage: PDB.py <PDB file path>"
+        sys.exit(1)
+
+    pdbfil = PDBFile()
+    pdbfil.loadFile(path)
+    pdbfil.saveFile(sys.stdout)
+
+##
+## </testing>
+##

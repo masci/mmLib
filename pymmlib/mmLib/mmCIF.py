@@ -4,68 +4,37 @@
 ## included as part of this package.
 
 import string
-import re
 import types
 
-from Scientific.IO.TextFile import TextFile
 
-mmCIFError = 'mmCIFError'
-CIF_Dictionnary = None
+##
+## DATA STRUCTURES FOR HOLDING CIF INFORMATION
+##
+## mmCIF files are parsed into:
+##         mmCIFFile -> [mmCIFData] -> [mmCIFTable] -> [mmCIFRow]
+##
+## mmCIF dictionaries are parsed into:
+##         mmCIFDictionary -> [mmCIFData] -> [mmCIFTable] -> [mmCIFRow]
+##
 
-
-## maximum line width
-MAX_LINE = 80
-
-
-
-class mmCIFData:
-    """Contains all information found under a data_ block in a mmCIF file.
-    mmCIF files are represented differently here than their file format
-    would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
-    the files are represented here with their sections as "Tables" and
-    their subsections as "Columns".  The data is stored in "Rows"."""
-
-    def __init__(self, name):
-        self._name = name
-        self._table_list = []
+mmCIFError = "mmCIFError"
 
 
-    def getName(self):
-        """Returns the name given to the data section in the mmCIF file."""
-        return self._name
 
+class mmCIFRow:
+    """Contains one row of data.  In a mmCIF file, this is one complete
+    set of data found under a section.  The data can be accessed by using
+    the column names as class attributes."""
 
-    def addTable(self, table):
-        """Adds a mmCIFTable class."""
-        self._table_list.append(table)
-        setattr(self, table._name, table)
-
-
-    def getTable(self, name):
-        """Looks up and returns a stored mmCIFTable class by it's name.  This
-        name is the section key in the mmCIF file."""
-        try:
-            return getattr(self, name)
-        except AttributeError:
-            return None
-
-
-    def getTableList(self):
-        """Returns a list of the mmCIFTable classes."""
-        return self._table_list
-
-
-    def debug(self):
-        print "mmCIFData.debug()"
-        print "mmCIFData.name=%s" % (self._name)
-        for table in self._table_list:
-            table.debug()
+    def __str__(self):
+        return str(dir(self))
 
 
 
 class mmCIFTable:
     """Contains columns and rows of data for a mmCIF section.  Rows of data
     are stored as mmCIFRow classes."""
+
     def __init__(self, name, cname_list = None):
         self._name = name
         self._cname_list = cname_list or []
@@ -130,7 +99,7 @@ class mmCIFTable:
         For example:
           selectRowList(('atom_id','CA'),('entity_id', '1'))
         returns a list of rows with atom_id==1 and entity_id==1."""
-        ## clever optimization trickies
+        ## clever optimization tricks
         (attr, val) = nvlist[0]
         
         row_list = []
@@ -159,18 +128,150 @@ class mmCIFTable:
 
 
 
-class mmCIFRow:
-    """Contains one row of data.  In a mmCIF file, this is one complete
-    set of data found under a section.  The data can be accessed by using
-    the column names as class attributes."""
-    def __str__(self):
-        return str(dir(self))
+class mmCIFData:
+    """Contains all information found under a data_ block in a mmCIF file.
+    mmCIF files are represented differently here than their file format
+    would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
+    the files are represented here with their sections as "Tables" and
+    their subsections as "Columns".  The data is stored in "Rows"."""
+
+    def __init__(self, name):
+        self._name = name
+        self._table_list = []
+
+
+    def getName(self):
+        """Returns the name given to the data section in the mmCIF file."""
+        return self._name
+
+
+    def addTable(self, table):
+        """Adds a mmCIFTable class."""
+        self._table_list.append(table)
+        setattr(self, table._name, table)
+
+
+    def getTable(self, name):
+        """Looks up and returns a stored mmCIFTable class by it's name.  This
+        name is the section key in the mmCIF file."""
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            return None
+
+
+    def getTableList(self):
+        """Returns a list of the mmCIFTable classes."""
+        return self._table_list
+
+
+    def debug(self):
+        print "mmCIFData.debug()"
+        print "mmCIFData.name=%s" % (self._name)
+        for table in self._table_list:
+            table.debug()
+
+
+
+class mmCIFFile:
+    """Class representing a mmCIF files.  The constructor of this class
+    takes two arguments.  The first is the string path for the file, or
+    alternativly a file object.  The second is a text string representing
+    the mode: "l" for load, and "s" for save."""
+
+    def __init__(self):
+        self._data_list = []
+
+
+    def loadFile(self, fil):
+        if type(fil) == types.StringType:
+            fil = open(fil, "r")
+
+        for cif_data in mmCIFFileParser().parseFile(fil):
+            self.addData(cif_data)
+
+
+    def saveFile(self, fil):
+        if type(fil) == types.StringType:
+            fil = open(fil, "r")
+
+        mmCIFFileWriter().writeFile(fil, self._data_list)
+
+
+    def getPath(self):
+        return self._path
+
+
+    def addData(self, data):
+        self._data_list.append(data)
+        setattr(self, data._name, data)
+
+
+    def getDataList(self):
+        return self._data_list
+
+
+    def getData(self, dname):
+        if type(dname) == types.StringType:
+            try:
+                return getattr(self, dname)
+            except AttributeError:
+                return None
+
+        elif type(dname) == types.IntType:
+            try:
+                return self._data_list[dname]
+            except IndexError:
+                return None
+
+        return None
+
+
+    def debug(self):
+        print "mmCIFFile.debug()"
+        print "mmCIFFile._path=%s" % (self._path)
+        print "len(mmCIFFile._data_list)=%d" % (len(self._data_list))
+
+        for data in self._data_list:
+            data.debug()
+        
+
+
+class mmCIFDictionary(mmCIFFile):
+    """Class representing a mmCIF dictionary.  The constructor of this class
+    takes two arguments.  The first is the string path for the file, or
+    alternativly a file object."""
+
+    def __init__(self, path_or_fil):
+        self._path = path_or_fil
+        self._data_list = []
+
+
+    def load(self):
+        if type(self._path) == types.StringType:
+            fil = open(self._path, "r")
+        else:
+            fil = self._path
+
+        for cif_data in mmCIFDictionaryParser().parseFile(fil):
+            self.addData(cif_data)
+
+
+
+##
+## FILE PARSERS/WRITERS
+##
+
+## charactors considered quotes
+QUOTES = ["'", '"']
+
+## maximum line width
+MAX_LINE = 80
 
 
 
 class mmCIFElementFile:
-    _quotes = ["'", '"']
-
+    """Tokenizes a mmCIF file for the state parser."""
 
     def __init__(self, file):
         self.file = file
@@ -200,7 +301,7 @@ class mmCIFElementFile:
             if state == "whitespace":
                 if line[i] not in string.whitespace:
                     j = i
-                    if line[i] in self._quotes:
+                    if line[i] in QUOTES:
                         state = "quote"
                     else:
                         state = "element"
@@ -213,7 +314,7 @@ class mmCIFElementFile:
                 continue
 
             elif state == "quote":
-                if line[i] in self._quotes and not self.escaped(line, i):
+                if line[i] in QUOTES and not self.escaped(line, i):
                     state = "whitespace"
                     list.append((line[j+1:i],"string")) ## strip quotes
                 continue
@@ -277,7 +378,11 @@ class mmCIFElementFile:
 
 
 class mmCIFFileParser:
-    error = "mmCIFFileParser error"
+    """Stateful parser which uses the mmCIFElementFile tokenizer to read
+    a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
+    data hierarchy."""
+
+    error = "mmCIF Syntax Error"
 
 
     def syntax_error(self, err):
@@ -330,7 +435,7 @@ class mmCIFFileParser:
 
                 
     def read_single(self, data, s):
-        (tname, cname) = string.split(s[1:], '.')
+        (tname, cname) = s[1:].split(".")
 
         table = data.getTable(tname)
         if not table:
@@ -372,7 +477,7 @@ class mmCIFFileParser:
                 self.cife.replaceElement((s,t))
                 break
 
-            (tname, cname) = string.split(s[1:], '.')
+            (tname, cname) = s[1:].split(".")
 
             if table_name != tname:
                 if table_name:
@@ -416,17 +521,114 @@ class mmCIFFileParser:
 
 
 
+class mmCIFDictionaryParser(mmCIFFileParser):
+    """Subclassed from mmCIFFileParser and extended to support the additional
+    syntax encountered in the dictionary files.  I wrote this quite a while
+    ago, and now that I look at it again, I suspect it's not complete."""
+
+    def parseFile(self, fil):
+        self.done = 0
+        self.cife = mmCIFElementFile(fil)
+        try:
+            (s,t) = self.cife.getNextElement()
+        except EOFError:
+            return None
+
+        if s[:5] != 'data_':
+            self.syntax_error('unexpected element=%s' % (s))
+            
+        return self.read_save_list(dict)
+
+
+    def read_save_list(self, dict):
+        save_list = []
+        
+        while not self.done:
+            try:
+                (s,t) = self.cife.getNextElement()
+            except EOFError:
+                self.done = 1
+                break
+
+            if s[0] == '_':
+                self.read_single(data, s)
+
+            elif s[:5] == 'save_':
+                save = self.read_save(mmCIFData(), s)
+                save_list.append(save)
+                
+            elif s[:5] == 'loop_':
+                self.read_loop(s)
+
+            elif s[:5] == 'data_':
+                self.syntax_error('two data_ subsections in dictionary')
+
+            else:
+                self.syntax_error('bad element=%s' % (s))
+
+        return save_list
+
+
+    def read_save(self, data, s):
+        if s[:6] == 'save__':
+            name = s[6:]
+        else:
+            name = s[5:]
+
+        if not name:
+            self.syntax_error('expected opening save_ block')
+
+        self.read_data(data)
+        try:
+            (s,t) = self.cife.getNextElement()
+        except EOFError:
+            self.done = 1
+        else:
+            if s != 'save_':
+                self.sytax_error('expected closing save_ block')
+        
+        return data
+
+
+    def read_data(self, data):
+        while not self.done:
+            try:
+                (s,t) = self.cife.getNextElement()
+            except EOFError:
+                self.done = 1
+                break
+
+            if s[0] == '_':
+                self.read_single(data, s)
+                
+            elif s[:5] == 'loop_':
+                self.read_loop(data, s)
+
+            elif s[:5] == 'data_':
+                self.syntax_error('two data_ subsections in dictionary')
+                break
+
+            elif s[:5] == 'save_':
+                self.cife.replaceElement((s,t))
+                break
+            
+            else:
+                self.syntax_error('bad element=%s' % (s))
+
+
+
 class mmCIFFileWriter:
-    def writeFile(self, fil, cif_file):
+    """Writes out a mmCIF file using the data in the mmCIFData list."""  
+
+    def writeFile(self, fil, cif_data_list):
         self.fil = fil
-        self.cif_file = cif_file
 
         ## constant controlls the spacing between columns
         self.SPACING = 2
 
         ## iterate through the data sections and write them
         ## out to the file
-        for cif_data in self.cif_file.getDataList():
+        for cif_data in cif_data_list:
             self.cif_data = cif_data
             self.write_cif_data()
 
@@ -568,223 +770,25 @@ class mmCIFFileWriter:
             if wlen < MAX_LINE-1:
                 self.writeln()
 
+
                 
+##
+## <testing>
+##
 
-class mmCIFDictionaryParser(mmCIFFileParser):
-    error = "mmCIFDictionaryParser error"
-
-    def parseFile(self, fil):
-        self.done = 0
-        self.cife = mmCIFElementFile(fil)
-        try:
-            (s,t) = self.cife.getNextElement()
-        except EOFError:
-            return None
-
-        if s[:5] == 'data_':
-            dict = mmCIFDictionary(s[5:])
-            self.read_dict(dict)
-        else:
-            self.syntax_error('unexpected element=%s' % (s))
-
-        return dict
-
-
-    def read_dict(self, dict):
-        while not self.done:
-            try:
-                (s,t) = self.cife.getNextElement()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s[0] == '_':
-                self.read_single(dict, s)
-
-            elif s[:5] == 'save_':
-                dict.addData(self.read_save(dict, s))
-                
-            elif s[:5] == 'loop_':
-                self.read_loop(dict, s)
-
-            elif s[:5] == 'data_':
-                self.syntax_error('two data_ subsections in dictionary')
-
-            else:
-                self.syntax_error('bad element=%s' % (s))
-
-
-    def read_save(self, dict, s):
-        if s[:6] == 'save__':
-            name = s[6:]
-        else:
-            name = s[5:]
-
-        if not name:
-            self.syntax_error('expected opening save_ block')
-
-        data = mmCIFData(name)
-        self.read_data(data)
-        try:
-            (s,t) = self.cife.getNextElement()
-        except EOFError:
-            self.done = 1
-        else:
-            if s != 'save_':
-                self.sytax_error('expected closing save_ block')
-        
-        return data
-
-
-    def read_data(self, data):
-        while not self.done:
-            try:
-                (s,t) = self.cife.getNextElement()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s[0] == '_':
-                self.read_single(data, s)
-                
-            elif s[:5] == 'loop_':
-                self.read_loop(data, s)
-
-            elif s[:5] == 'data_':
-                self.syntax_error('two data_ subsections in dictionary')
-                break
-
-            elif s[:5] == 'save_':
-                self.cife.replaceElement((s,t))
-                break
-            
-            else:
-                self.syntax_error('bad element=%s' % (s))
-
-
-
-class mmCIFDictionary(mmCIFData):
-    def __init__(self, name):
-        mmCIFData.__init__(self, name)
-        self._data_list = []
-
-
-    def addData(self, data):
-        self._data_list.append(data)
-
-
-    def getData(self, name):
-        for data in self._data_list:
-            if data._name == name:
-                return data
-        return None
-
-
-    def dataList(self):
-        return self._data_list[:]
-
-
-    def debug(self):
-        print "mmCIFDictionary.debug()"
-        for data in self.dataList():
-           data.debug()
-
-
-
-class mmCIFFile:
-    """Class representing a mmCIF files.  The constructor of this class
-    takes two arguments.  The first is the string path for the file, or
-    alternativly a file object.  The second is a text string representing
-    the mode: "l" for load, and "s" for save."""
-
-    def __init__(self, path_or_fil, mode):
-        self._path = path_or_fil
-        self._mode = mode
-        self._data_list = []
-
-
-    def load(self):
-        if self._mode != "l":
-            raise mmCIFError, "mmCIFFile.load() called not loadable" 
-
-        if type(self._path) == types.StringType:
-            fil = TextFile(self._path, "r")
-        else:
-            fil = self._path
-
-        for cif_data in mmCIFFileParser().parseFile(fil):
-            self.addData(cif_data)
-
-
-    def save(self):
-        if self._mode != "s":
-            raise mmCIFError, "mmCIFFile.save() called not saveable"
-        raise mmCIFError,"mmCIFFile.save() unimplimented"
-
-
-    def getPath(self):
-        return self._path
-
-
-    def addData(self, data):
-        self._data_list.append(data)
-        setattr(self, data._name, data)
-
-
-    def getDataList(self):
-        return self._data_list
-
-
-    def getData(self, dname):
-        if type(dname) == types.StringType:
-            try:
-                return getattr(self, dname)
-            except AttributeError:
-                return None
-
-        elif type(dname) == types.IntType:
-            try:
-                return self._data_list[dname]
-            except IndexError:
-                return None
-
-        return None
-
-
-    def debug(self):
-        print "mmCIFFile.debug()"
-        print "mmCIFFile._path=%s" % (self._path)
-        print "len(mmCIFFile._data_list)=%d" % (len(self._data_list))
-
-        for data in self._data_list:
-            data.debug()
-        
-
-
-def LoadCIFDictionary(path):
-    global CIF_Dictionnary
-    fil = open(path, "r")
-    CIF_Dictionnary = mmCIFDictionaryParser().parseFile(fil)
-
-
-    
-def LoadCIFFile(path):
-    cif_file = mmCIFFile(path, "l")
-    cif_file.load()
-    return cif_file
-
-
-
-## testing
 if __name__ == '__main__':
     import sys
 
     try:
         path = sys.argv[1]
     except IndexError:
-        print "usage mmCIF.py <mmCIF file path>"
+        print "usage: mmCIF.py <mmCIF file path>"
         sys.exit(1)
 
-    cif = LoadCIFFile(path)
-    mmCIFFileWriter().writeFile(sys.stdout, cif)
-    #cif.debug()
+    cif = mmCIFFile()
+    cif.loadFile(path)
+    cif.saveFile(sys.stdout)
+
+##
+## </testing>
+##
