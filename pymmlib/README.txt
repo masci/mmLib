@@ -32,6 +32,48 @@ To hijack CCP4's monomer library:
   * CCP4             >= 4.2.1
 
 INSTALL::
+  PLEASE NOTE:
+    Many Linux distributions split the Python distribution into
+    separate packages.  Most Linux distributions use the Redhat
+    Package Manager (.rpm) format, and have a python-*.rpm 
+    and python-dev-*.rpm/python-devel-*.rpm packages for the 
+    complete distribution.  However, I've noticed some 
+    Linux distributions are missing importent Python libraries
+    even when both of these packages are installed, causing the
+    mmLib installer to fail.  
+
+    For this reason, you may have to compile and install Python from 
+    source.  This may sound difficult, but in my experience it 
+    is usually easier than finding the python-devel-*.rpm for
+    your distribution.  I reccomend compiling and installing Python-2.3.3
+    from http://www.python.org.  
+
+    Here are some simple instructions if you want to do this:
+
+    # (get Python-2.3.3.tgz from http://www.python.org, save to your home dir)
+    # tar xzf Python-2.3.3.tgz
+    # cd Python-2.3.3
+    # ./configure --prefix=/usr/local/python-2.3.3
+    # make
+    # su (root passwd)
+    # make install
+    # exit
+    # export PATH=/usr/local/python-2.3.3/bin:$PATH
+    
+    # (get Numeric Python from http://numpy.sourceforge.net/)
+    # tar xzf Numeric-23.1.tar.gz
+    # cd Numeric-23.1
+    # python setup.py build
+    # su (root passwd)
+    # python setup.py install
+    
+    # tar xzf pymmlib-0.7.tar.gz
+    # cd pymmlib-0.7
+    # su (root passwd)
+    # python setup.py install
+    
+    Now you have a working installation of Python-2.3.3, Numeric, and mmLib.
+
 Python includes its own system for installing new modules called distutils.
 To use the distutils, one needs to write a setup.py file which acts much
 like a Makefile for Python.  The installer does not check for any of the
