@@ -1108,33 +1108,89 @@ class TLSStructureAnalysis(object):
     def __init__(self, struct):
         self.struct = struct
 
-    def iter_segments(self, chain, seg_len):
-        """This iteratar yields a series of AtomList objects.  The first
-        AtomList is all the atoms in the chain's first seg_len residues.
-        The AtomLists yielded after the first one are formed by moving the
-        starting residue up by one, and including all the atoms in the next
-        seg_len residues.  The iteration terminates when there are are
-        less than seg_len residues left in the chain from the iterators
-        current position.
+    def tls_fit_stats(self, tls, stats):
+        """Performs a least squares fit and adds statistics to the stats
+        dictionary
         """
-        res_segment = []
+        stats["tls"] = tls
         
-        for res in chain.iter_amino_acids():
-            res_segment.append(res)
+        ## set the origin of the TLS group to the centroid, and also
+        ## save it under calc_origin because origin will be overwritten
+        ## using the COR after the least squares fit
+        stats["calc_origin"] = tls.origin
 
-            if len(res_segment)<seg_len:
-                continue
+        ## calculate tensors and print
+        tls.calc_TLS_least_squares_fit()
 
-            if len(res_segment)>seg_len:
-                res_segment = res_segment[1:]
+        ## shift the TLSGroup tensors and origin to the Center of
+        ## Reaction
+        stats["calc"] = tls.shift_COR()
 
-            atom_list = AtomList()
-            for resx in res_segment:
-                for atm in resx.iter_atoms():
-                    atom_list.append(atm)
+        stats["R"]                              = tls.calc_R()
+        stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
+        stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
+        stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
+        stats["num_atoms"]                      = len(tls)
 
-            yield res_segment[:], atom_list
+        return stats
 
+    def check_positive_eigen(self, stats):
+        """Checks a TLS group for positive tensor eigen values.  
+        """
+        tls  = stats["tls"]
+        calc = stats["calc"]
+
+        if min(eigenvalues(tls.L))<=0.0:
+            return False
+        if min(eigenvalues(tls.T))<=0.0:
+            return False
+        if  min(eigenvalues(calc["rT'"]))<=0.0:
+            return False
+        return True
+
+    def iter_segments(self, chain, seg_len):
+        """This iteratar yields a series of Segment objects of width
+        seg_len.  The start at the beginning Fragment of the Chain,
+        and the start point walks the chain one Fragment at a time
+        until there are not enough Fragments left to cut Segments of
+        seg_width.
+        """
+        chain_len = len(chain)
+
+        for i in range(chain_len):
+            start = i
+            end   = i + seg_len
+
+            if end>chain_len:
+                break
+
+            yield chain[start:end]
+
+    def atom_filter(self, atm, **args):
+        use_side_chains         = args.get("use_side_chains", True)
+        filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
+        include_hydrogens       = args.get("include_hydrogens", False)
+        include_frac_occupancy  = args.get("include_frac_occupancy", False)
+        include_single_bond     = args.get("include_single_bond", True)
+        
+        ## omit atoms which are not at full occupancy
+        if not include_frac_occupancy and atm.occupancy<1.0:
+            return False
+
+        ## omit hydrogens
+        if not include_hydrogens and atm.element=="H":
+            return False
+
+        ## omit side chain atoms
+        if not use_side_chains and atm.name not in ("C", "N", "CA", "O"):
+            return False
+
+        ## omit atoms with a single bond 
+        if not include_single_bond and len(atm.bond_list)<=1:
+            return False
+                        
+        return True
+        
     def fit_TLS_segments(self, **args):
         """Run the algorithm to fit TLS parameters to segments of the
         structure.  This method has many options, which are outlined in
@@ -1156,37 +1212,28 @@ class TLSStructureAnalysis(object):
         stats_list = []
 
         for chain in self.struct.iter_chains():
-            for res_segment, seg_atom_list in self.iter_segments(
-                chain, residue_width):
+
+            ## don't bother with non-biopolymers
+            if not chain.has_standard_residues():
+                continue
+            
+            for segment in self.iter_segments(chain, residue_width):
 
                 stats             = {}
                 stats["tls"]      = TLSGroup()
-                stats["residues"] = res_segment
-                stats["name"]     = "%s-%s" % (res_segment[0].fragment_id,
-                                               res_segment[-1].fragment_id)
+                stats["residues"] = segment
+                stats["segment"]  = segment
+                stats["name"]     = "%s-%s" % (segment[0].fragment_id,
+                                               segment[-1].fragment_id)
 
                 tls      = stats["tls"]
                 tls.name = stats["name"]
 
                 ## add atoms into the TLSGroup
                 ## filter the atoms going into the TLS group                
-                for atm in seg_atom_list:
-                    ## omit atoms which are not at full occupancy
-                    if atm.occupancy<1.0:
-                        continue
-                    ## omit hydrogens
-                    if include_hydrogens==False and atm.element=="H":
-                        continue
-                    ## omit side chain atoms
-                    if use_side_chains==False:
-                        if atm.name not in ("C", "N", "CA", "O"):
-                            continue
-                    ## omit atoms with a single bond 
-                    if include_single_bond==False:
-                        if len(atm.bond_list)<=1:
-                            continue
-                        
-                    tls.append(atm)
+                for atm in segment.iter_atoms():
+                    if self.atom_filter(atm, **args):
+                        tls.append(atm)
 
                 ## skip if there are not enough atoms for the TLS parameters
                 ## the least squares fit of the TLS parameters requires at
@@ -1202,158 +1249,144 @@ class TLSStructureAnalysis(object):
                 else:
                     tls.origin = tls.calc_centroid()
 
-                stats["calc_origin"] = tls.origin
-
-                ## calculate tensors and print
-                tls.calc_TLS_least_squares_fit()
-
-                ## shift the TLSGroup tensors and origin to the Center of
-                ## Reaction
-                calc = tls.shift_COR()
+                ## do the fit, and fill out statistics in the stats
+                ## dictionary
+                self.tls_fit_stats(tls, stats)
 
                 ## negitive eigen values mean the TLS group cannot be
                 ## physically intrepreted
                 if filter_neg_eigen_values==True:
-                    if min(eigenvalues(tls.L))<=0.0:
+                    if not self.check_positive_eigen(stats):
                         continue
-                    elif min(eigenvalues(tls.T))<=0.0:
-                        continue
-                    elif  min(eigenvalues(calc["rT'"]))<=0.0:
-                        continue
-
+                    
                 ## this TLS group passes all our tests -- add it to the
                 ## stats list
                 stats_list.append(stats)
 
-                stats["R"]                              = tls.calc_R()
-                stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
-                stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
-                stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
-                stats["num_atoms"]                      = len(tls)
-
         return stats_list
 
 
-    def iter_chain_split(self, chain, num_splits, min_width):
-        residues    = len(chain)
-        split_point = min_width
+    def fit_TLS_segments_and_cluster(self, **args):
+        """Runs fit_TLS_segments, then merges TLS group runs along the Chain
+        into a single TLS group.  The TLS segment width must be as least
+        2 residues so there is overlap.
+        """
 
-        while split_point<(residues - min_width):
-            seg1 = chain[:split_point]
-            seg2 = chain[split_point+1:]
+        def merge_segments_tls(run_list):
+            assert len(run_list)>0
+            
+            chain = run_list[0]["segment"].get_chain()
 
-            if num_splits>1:
+            res1 = run_list[0]["segment"][0]
+            res2 = run_list[-1]["segment"][-1]
 
-                for slist in self.iter_chain_split(
-                    seg2, num_splits-1, min_width):
+            print "  merge segment[%s:%s]" % (
+                res1.fragment_id, res2.fragment_id)
+            
+            segment = chain[res1.fragment_id:res2.fragment_id]
+            assert len(segment)>0
 
-                    slist.insert(0, seg1)
-                    yield slist
+            stats = {}
+            stats["tls"]      = TLSGroup()
+            stats["residues"] = segment
+            stats["segment"]  = segment
+            stats["name"]     = "%s-%s" % (
+                segment[0].fragment_id, segment[-1].fragment_id)
+            
+            tls      = stats["tls"]
+            tls.name = stats["name"]
 
-            else:
-                yield [seg1, seg2]
-                
-
-    def split_TLS(self, **args):
-        num_splits        = 5
-        min_residue_width = 3
-        
-    def fit_common_TLS(self, **args):
-        residue_width = args["residue_width"]
-        
-        ## calculate the centroid for all the TLS groiup fits
-        al = AtomList()
-        for atm in self.struct.iter_atoms():
-            al.append(atm)
-        origin = al.calc_centroid()
-
-        ## list of all TLS groups
-        stats_list = []
-        for chain in self.struct.iter_chains():
-            for res_segment, seg_atom_list in self.iter_segments(
-                chain, residue_width):
-
-                stats             = {}
-                stats["tls"]      = TLSGroup()
-                stats["residues"] = res_segment
-                stats["name"]     = "%s-%s" % (res_segment[0].fragment_id,
-                                               res_segment[-1].fragment_id)
-
-                tls        = stats["tls"]
-                tls.name   = stats["name"]
-                tls.origin = origin.copy()
-                
-                for atm in seg_atom_list:
-                    if atm.occupancy<1.0:
-                        continue
+            for atm in segment.iter_atoms():
+                if self.atom_filter(atm, **args):
                     tls.append(atm)
 
-                ## calculate tensors and print
-                tls.calc_TLS_least_squares_fit()
+            tls.origin = tls.calc_centroid()
+            stats["calc_origin"] = tls.origin
 
-                ## negitive eigen values mean the TLS group cannot be
-                ## physically intrepreted
-                if min(eigenvalues(tls.L))<=0.0:
-                    continue
-                elif min(eigenvalues(tls.T))<=0.0:
-                    continue
+            self.tls_fit_stats(tls, stats)
 
-                ## this TLS group passes all our tests -- add it to the
-                ## stats list
-                stats_list.append(stats)
+            if not self.check_positive_eigen(stats):
+                print "  eek! negitive"
+                return None
 
-        ## find the common part of the TLS groups
-        tls_common = TLSGroup()
-        tls_common.origin = origin.copy()
+            return stats
 
-        tls0         = stats_list[0]["tls"]
-        tls_common.T = tls0.T.copy()
-        tls_common.L = tls0.L.copy()
-        tls_common.S = tls0.S.copy()
 
-        for stats in stats_list[1:]:
-            tls_s = stats["tls"]
-            
-            for C, S in ( (tls_common.T, tls_s.T),
-                          (tls_common.L, tls_s.L),
-                          (tls_common.S, tls_s.S) ):
+        def overlap(prev_stats, stats):
+            prev_segment = prev_stats1["segment"]
+            segment      = stats["segment"]
+
+            if segment.chain_id!=prev_segment.chain_id:
+                return False
+
+            prev_res1 = prev_segment[1]
+            res0      = segment[0]
+
+            return prev_res1==res0
+
+
+        ## stats_list1 is from fit_TLS_segments
+        stats_list1 = self.fit_TLS_segments(**args)
+
+        ## stats_list2 is what we are going to return
+        stats_list2 = []
+
+        ## the current good "run" of TLS groups fit by fit_TLS_segments
+        run_list  = []
+
+        for stats1 in stats_list1:
+            print "search: ",stats1["name"]
+
+            if len(run_list)>0:
+                print "  run: ",
+                for xxx in run_list:
+                    print xxx["name"]," ",
+                print
+
+            ## nothing in the run so far, this TLS group is the first
+            if len(run_list)==0:
+                run_list.append(stats1)
+                continue
+
+            ## compare previous res1 with current res0 to see if
+            ## the TLS groups are continuous
+            ## there is a break in the start/end residues of the previous
+            ## and current TLS groups 
+            prev_stats1 = run_list[-1]
+            if not overlap(prev_stats1, stats1):
+                print "  no overlap"
                 
-                for i in (0,1,2):
-                    for j in (0,1,2):
+                stats2 = merge_segments_tls(run_list)
+                stats_list2.append(stats2)
 
-                        C[i,j] = min(C[i,j], S[i,j]) 
+                run_list = [stats1]
+                continue
+                
+            ## the stats1 TLS group may belong in the current run, but
+            ## a TLS group must be fit to the proposed inclusion to make
+            ## sure it doesn't end up with negitive eigen values
 
-        print tls_common.T
-        print tls_common.L
-        print tls_common.S
-
-        ## subtract TLS_common and shift all TLS groups to the COR
-        for stats in stats_list:
-            tls   = stats["tls"]
-
-            tls.T = tls.T - tls_common.T
-            tls.L = tls.L - tls_common.L
-            tls.S = tls.S - tls_common.S
-
-            calcs = tls.shift_COR()
+            check_run = run_list[:]
+            check_run.append(stats1)
             
-            stats["R"]                              = tls.calc_R()
-            stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
-            stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
-            stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
-            stats["num_atoms"]                      = len(tls)
-        
-        return stats_list
+            stats2 = merge_segments_tls(check_run)
+            if stats2==None:
+                stats2 = merge_segments_tls(run_list)
+                stats_list2.append(stats2)
+                
+                run_list = [stats1]
+                continue
 
-    def iter_splits(self, length, min_seg, segments):
-        """
-        """
-        pass
+            ## alright, add stats1 to the run
+            run_list.append(stats1)
 
-    def brute_fit(self, **args):
-        """
-        """
-        num_tls_segments = args.get("num_tls_segments", 2)
+        ## flush out whatever is left over in the run_list
+        if len(run_list)>0:
+            stats2 = merge_segments_tls(run_list)
+            stats_list2.append(stats2)
+
+        return stats_list2
+
 
 
 ## <testing>

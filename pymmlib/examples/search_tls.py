@@ -75,10 +75,17 @@ def main(**args):
     struct = LoadStructure(fil = args["path"])
     tls_analysis = TLSStructureAnalysis(struct)
 
-    stats_list = tls_analysis.fit_TLS_segments(
-        residue_width       = args["seg_len"],
-        use_side_chains     = not args["mainchain_only"],
-        include_single_bond = not args["omit_single_bonded"])
+    if args["cluster"]==True:
+        stats_list = tls_analysis.fit_TLS_segments_and_cluster(
+            residue_width       = args["seg_len"],
+            use_side_chains     = not args["mainchain_only"],
+            include_single_bond = not args["omit_single_bonded"])
+
+    else:
+        stats_list = tls_analysis.fit_TLS_segments(
+            residue_width       = args["seg_len"],
+            use_side_chains     = not args["mainchain_only"],
+            include_single_bond = not args["omit_single_bonded"])
 
     for stats in stats_list:
         tls = stats["tls"]
@@ -125,6 +132,7 @@ def usage():
     print "    -n  Omit TLS groups with negitive L/T Eigenvalues"
     print "    -c <chain_id>"
     print "        Only search the given chain."
+    print "    -x  Use a basic clustering algorithm to combine TLS groups"
     print
 
 
@@ -132,7 +140,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "l:msnc:d")
+        (opts, args) = getopt.getopt(sys.argv[1:], "l:msnc:dx")
     except getopt.GetoptError:
         usage()
         sys.exit(1)
@@ -144,6 +152,7 @@ if __name__ == "__main__":
     omit_neg_eigen     = False
     chain              = None
     use_dP2_min        = False
+    cluster            = False
 
     ## read program options
     for (opt, item) in opts:
@@ -169,6 +178,9 @@ if __name__ == "__main__":
         if opt=="-d":
             use_dP2_min = True
 
+        if opt=="-x":
+            cluster = True
+
     ## make sure a file name was entered
     if len(args)!=1:
         usage()
@@ -180,4 +192,5 @@ if __name__ == "__main__":
          omit_single_bonded = omit_single_bonded,
          omit_neg_eigen     = omit_neg_eigen,
          chain              = chain,
-         use_dP2_min        = use_dP2_min)
+         use_dP2_min        = use_dP2_min,
+         cluster            = cluster)

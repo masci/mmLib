@@ -110,11 +110,11 @@ class DictListTreeView(gtk.TreeView):
         self.model.clear()
 
         for dictX in self.dict_list:
-            iter = self.model.append(None)
+            miter = self.model.append(None)
 
             for i in range(len(self.column_list)):
                 column_desc = self.column_list[i]
-                self.model.set(iter, i, dictX.get(column_desc, ""))
+                self.model.set(miter, i, dictX.get(column_desc, ""))
 
 
 ###############################################################################
@@ -362,86 +362,6 @@ class ColorSelection(gtk.Combo):
     def get_color(self):
         self.activate(self.entry, None)
         return self.color
-
-
-class GLAtomColorSelection(gtk.Combo):
-
-    color_dict = {
-        "white":   (1.0, 1.0, 1.0),
-        "red":     (1.0, 0.0, 0.0),
-        "green":   (0.0, 1.0, 0.0),
-        "blue":    (0.0, 0.0, 1.0) }
-        
-    def __init__(self):
-        gtk.Combo.__init__(self)
-        self.color = None
-        self.atm_color = None
-        self.entry.connect("activate", self.activate, None)
-
-    def activate(self, entry, junk):
-        txt = self.entry.get_text()
-
-        ## color format: r, g, b
-        try:
-            r, g, b = txt.split(",")
-            color = (float(r), float(g), float(b))
-        except ValueError:
-            pass
-        else:
-            self.set_color_val(color)
-            return
-
-        ## color format: Random
-        if txt=="random":
-            color = (random.random(),
-                     random.random(),
-                     random.random())
-            self.set_color_val(color)
-            return
-
-        ## color fomat: match color name
-        try:
-            color = self.color_dict[txt.lower()]
-        except KeyError:
-            pass
-        else:
-            self.set_color_val(color)
-            return
-
-        ## keyword color settings
-        self.set_color_val(txt)
-
-    def match_color_name(self, color):
-        if type(color)==StringType:
-            return color
-        elif type(color)==TupleType:
-            for color_name, color_val in self.color_dict.items():
-                if color==color_val:
-                    return color_name
-
-            return "%3.2f,%3.2f,%3.2f" % (color[0], color[1], color[2])
-
-        return "WTF??"
-    
-    def set_color_val(self, color):
-        self.color     = color
-        self.atm_color = GLAtomColor(color)
-
-        ## go through the GLAtomColor enumeration list and add the
-        ## color selection options
-        self.set_popdown_strings(
-            ["random"] + self.color_dict.keys() +\
-            self.atm_color.settings.keys())
-        
-        name = self.match_color_name(color)
-        self.entry.set_text(name)
-
-    def set_gl_atom_color(self, gl_atom_color):
-        self.set_color_val(gl_atom_color.setting)
-
-    def get_gl_atom_color(self):
-        self.activate(self.entry, None)
-        return self.atm_color
 
 
 class EnumeratedStringEntry(gtk.Combo):
@@ -927,9 +847,9 @@ class GLPropertyTreeControl(gtk.TreeView):
         ## first get a refernence to the current selection
         ## so it can be restored after the reset if it hasn't
         ## been removed
-        model, iter = self.get_selection().get_selected()
-        if iter!=None:
-            selected_glo = self.path_glo_dict[model.get_path(iter)]
+        model, miter = self.get_selection().get_selected()
+        if miter!=None:
+            selected_glo = self.path_glo_dict[model.get_path(miter)]
         else:
             selected_glo = None
 
@@ -943,16 +863,16 @@ class GLPropertyTreeControl(gtk.TreeView):
         self.path_glo_dict = {}
         self.model.clear()
         
-        def redraw_recurse(glo, parent_iter):
-            iter = self.model.append(parent_iter)
-            path = self.model.get_path(iter)
+        def redraw_recurse(glo, parent_miter):
+            miter = self.model.append(parent_miter)
+            path = self.model.get_path(miter)
 
             self.path_glo_dict[path] = glo
             
-            self.model.set(iter, 0, glo.glo_name())
+            self.model.set(miter, 0, glo.glo_name())
 
             for child in glo.glo_iter_children():
-                redraw_recurse(child, iter)
+                redraw_recurse(child, miter)
     
         redraw_recurse(self.gl_object_root, None)
 
@@ -1241,9 +1161,9 @@ class TLSDialog(gtk.Dialog):
         path = int(path)
 
         # get toggled iter
-        iter = self.model.get_iter((path,))
+        miter = self.model.get_iter((path,))
 
-        show_vis = self.model.get_value(iter, 0)
+        show_vis = self.model.get_value(miter, 0)
         tls_group = self.tls_group_list[path]
     
         # do something with the value
@@ -1258,14 +1178,14 @@ class TLSDialog(gtk.Dialog):
         path      = int(path)
         tls_group = self.tls_group_list[path]
 
-        iter      = self.model.get_iter((path,))
-        animate   = self.model.get_value(iter, 1)
+        miter      = self.model.get_iter((path,))
+        animate   = self.model.get_value(miter, 1)
 
         if animate==gtk.FALSE:
-            self.model.set(iter, 1, gtk.TRUE)
+            self.model.set(miter, 1, gtk.TRUE)
             self.animation_list.append(tls_group)
         elif animate==gtk.TRUE:
-            self.model.set(iter, 1, gtk.FALSE)
+            self.model.set(miter, 1, gtk.FALSE)
             self.animation_list.remove(tls_group)
 
     def add_tls_group(self, tls_group):
@@ -1312,12 +1232,12 @@ class TLSDialog(gtk.Dialog):
         """
         i = 0
         for tls in self.tls_group_list:
-            iter = self.model.get_iter((i,))
+            miter = self.model.get_iter((i,))
 
             if tls.gl_tls.properties["visible"]==True:
-                self.model.set(iter, 0, gtk.TRUE)
+                self.model.set(miter, 0, gtk.TRUE)
             else:
-                self.model.set(iter, 0, gtk.FALSE)
+                self.model.set(miter, 0, gtk.FALSE)
 
             i += 1
 
@@ -1392,29 +1312,29 @@ class TLSDialog(gtk.Dialog):
         self.model.clear()
 
         for tls in self.tls_group_list:
-            iter = self.model.append(None)
+            miter = self.model.append(None)
 
             if tls.gl_tls.properties["visible"]==True:
-                self.model.set(iter, 0, gtk.TRUE)
+                self.model.set(miter, 0, gtk.TRUE)
             else:
-                self.model.set(iter, 0, gtk.FALSE)
+                self.model.set(miter, 0, gtk.FALSE)
 
             if tls in self.animation_list:
-                self.model.set(iter, 1, gtk.TRUE)
+                self.model.set(miter, 1, gtk.TRUE)
             else:
-                self.model.set(iter, 1, gtk.FALSE)
+                self.model.set(miter, 1, gtk.FALSE)
 
 
             if hasattr(tls, "tls_info"):
-                self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
+                self.model.set(miter, 2, self.markup_tls_name(tls.tls_info))
             elif hasattr(tls, "name"):
-                self.model.set(iter, 2, tls.name)
+                self.model.set(miter, 2, tls.name)
             else:
-                self.model.set(iter, 2, "name here")
+                self.model.set(miter, 2, "name here")
 
-            self.model.set(iter, 3, self.markup_tensor(tls.T))
-            self.model.set(iter, 4, self.markup_tensor(tls.L*rad2deg2))
-            self.model.set(iter, 5, self.markup_tensor(tls.S*rad2deg))
+            self.model.set(miter, 3, self.markup_tensor(tls.T))
+            self.model.set(miter, 4, self.markup_tensor(tls.L*rad2deg2))
+            self.model.set(miter, 5, self.markup_tensor(tls.S*rad2deg))
         
     def timeout_cb(self):
         """Timer which drives the TLS animation.
@@ -1563,7 +1483,7 @@ class TLSSearchDialog(gtk.Dialog):
         
         tls_analysis = TLSStructureAnalysis(self.sc.struct)
         
-        stats_list   = tls_analysis.fit_TLS_segments(
+        stats_list = tls_analysis.fit_TLS_segments_and_cluster(
             residue_width          = residue_width,
             use_side_chains        = use_side_chains,
             include_frac_occupancy = include_frac_occupancy,
@@ -1641,20 +1561,20 @@ class StructureTreeControl(gtk.TreeView):
             self.display_struct(struct)
 
     def display_struct(self, struct):
-        iter1 = self.model.append(None)
-        self.model.set(iter1, 1, str(struct))
+        miter1 = self.model.append(None)
+        self.model.set(miter1, 1, str(struct))
 
         for chain in struct.iter_chains():
-            iter2 = self.model.append(iter1)
-            self.model.set(iter2, 1, str(chain))
+            miter2 = self.model.append(miter1)
+            self.model.set(miter2, 1, str(chain))
 
             for frag in chain.iter_fragments():
-                iter3 = self.model.append(iter2)
-                self.model.set(iter3, 1, str(frag))
+                miter3 = self.model.append(miter2)
+                self.model.set(miter3, 1, str(frag))
 
                 for atm in frag.iter_all_atoms():
-                    iter4 = self.model.append(iter3)
-                    self.model.set(iter4, 1, str(atm))
+                    miter4 = self.model.append(miter3)
+                    self.model.set(miter4, 1, str(atm))
                     
     def append_struct(self, struct):
         self.struct_list.append(struct)
@@ -1715,8 +1635,8 @@ class StructDetailsDialog(gtk.Dialog):
         self.destroy()
     
     def add_line(self, key, value):
-        iter = self.store.append()
-        self.store.set(iter, 0, key, 1, str(value))
+        miter = self.store.append()
+        self.store.set(miter, 0, key, 1, str(value))
 
     def set_struct_obj(self, struct_obj):
         self.store.clear()
@@ -2369,13 +2289,12 @@ class ViewerApp(object):
 
 
 ### <MAIN>
-
-try:
-    first_path = sys.argv[1]
-except IndexError:
-    first_path = None
+if __name__=="__main__":
+    try:
+        first_path = sys.argv[1]
+    except IndexError:
+        first_path = None
     
-VIEWER_APP = ViewerApp(first_path)
-VIEWER_APP.main()
-
+    VIEWER_APP = ViewerApp(first_path)
+    VIEWER_APP.main()
 ### </MAIN>

@@ -2313,20 +2313,19 @@ class CIFEditorApplication(list):
 
 
 ## <MAIN>
+if __name__=="__main__":
+    global APP
+    APP = CIFEditorApplication()
+    APP.initalize()
 
-global APP
-APP = CIFEditorApplication()
-APP.initalize()
+    ## open windows for each path in the path_list
+    if len(sys.argv[1:]):
+        for path in sys.argv[1:]:
+            APP.new_editor_context(path)
+    else:
+        APP.new_editor_context()
 
-## open windows for each path in the path_list
-if len(sys.argv[1:]):
-    for path in sys.argv[1:]:
-        APP.new_editor_context(path)
-else:
-    APP.new_editor_context()
-
-gtk.main()
-sys.exit(0)
-
+    gtk.main()
+    sys.exit(0)
 ## </MAIN>
 

@@ -945,13 +945,13 @@ class Segment(object):
         is returned includes those Fragments.  If the slice values are
         integers, then normal list slicing rules apply.
         """
-        if type(fragment_idx) == IntType:
+        if type(fragment_idx)==IntType:
             return self.fragment_list[fragment_idx]
 
-        elif type(fragment_idx) == StringType:
+        elif type(fragment_idx)==StringType:
             return self.fragment_dict[fragment_idx]
 
-        elif type(fragment_idx) == SliceType:
+        elif type(fragment_idx)==SliceType:
             
             ## determine if the slice is on list indexes or on fragment_id
             ## strings
@@ -961,7 +961,8 @@ class Segment(object):
             ## check for index (list) slicing
             if (start==None and stop==None) or \
                (start==None and type(stop)==IntType) or \
-               (stop==None  and type(start)==IntType):
+               (stop==None  and type(start)==IntType) or \
+               (type(start)==IntType and type(stop)==IntType):
                 return self.__index_slice__(start, stop)
             
             ## check for fragment_id slicing
