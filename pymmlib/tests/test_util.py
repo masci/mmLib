@@ -1,3 +1,4 @@
+from __future__ import generators
 import os
 import sys
 import re

@@ -315,13 +315,9 @@ def main(walk_path, start_path):
         time2 = time.time()
         print "Tests Time (sec)-----:",int(time2-time1)
 
-
-    
 def usage():
-    print "usage: struct_test.py <PDB/mmCIF file or directory of files>"
+    print "usage: mmlib_test.py <PDB/mmCIF file or directory of files>"
     sys.exit(1)
-
-
 
 if __name__ == "__main__":
     try:
@@ -333,8 +329,6 @@ if __name__ == "__main__":
         start_path = sys.argv[2]
     except IndexError:
         start_path = None
-
-    print "asdf",start_path
-
+    
     main(path, start_path)
 
