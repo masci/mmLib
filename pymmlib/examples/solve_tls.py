@@ -20,27 +20,35 @@ def usage():
 
 def main(path):
     print """
-    Calculating TLS parameters for a single rigid body group composed of
-    all the amino acids
+    Calculating 1 TLS group per chain by least squares.
     """
     
     struct = LoadStructure(fil = path)
     tls_group = TLSGroup()
 
-    for res in struct.iter_amino_acids():
-        for atm in res.iter_atoms():
-            tls_group.append(atm)
+    for chain in struct.iter_chains():
+        print chain
+        
+        tls_group = TLSGroup()
 
-    print "Atoms: ",len(tls_group)
+        for aa in chain.iter_amino_acids():
+            for atm in aa.iter_atoms():
+                tls_group.append(atm)
 
-    tls_group.origin = tls_group.calc_centroid()
+        print "    TLS GROUP ATOMS: ",len(tls_group)
 
-    print "Centroid of Atoms:"
-    print tls_group.origin
-    print
+        if len(tls_group)<20:
+            print "    NOT ENOUGH ATOMS IN CHAIN"
+            continue
+            
 
-    tls_group.calc_tls_tensors()
-    tls_group.write()
+        tls_group.origin = tls_group.calc_centroid()
+
+        print "    CENTROID: ", tls_group.origin
+        print
+
+        tls_group.calc_TLS_least_squares_fit()
+        tls_group.write()
 
 
 if __name__ == "__main__":

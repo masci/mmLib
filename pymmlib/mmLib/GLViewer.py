@@ -276,7 +276,7 @@ class GLObject(object):
     def glo_count_descendants(self):
         """Counts all decendant GLObjects.
         """
-        n = self.getDegree()
+        n = self.glo_get_degree()
         for child in self.__globject_children:
             n += child.glo_count_descendants()
         return n
@@ -321,12 +321,12 @@ class GLObject(object):
     def glo_get_parent_list(self):
         """Returns a list of the parent GLObjects back to the root.
         """
-        list = []
+        parent_list = []
         composite = self
         while composite.__parent:
             composite = composite.__parent
-            list.append(composite)
-        return list
+            parent_list.append(composite)
+        return parent_list
 
     def glo_get_lowest_common_ancestor(self, gl_object):
         """Returns the lowest common ancesotry of self and argument
@@ -334,7 +334,7 @@ class GLObject(object):
         """
         assert isinstance(gl_object, GLObject)
 
-        pl1 = self.getParentList()
+        pl1 = self.glo_get_parent_list()
         pl2 = gl_object.getParentList()
         pl1.reverse()
         pl2.reverse()
@@ -716,24 +716,24 @@ class OpenGLRenderMethods(object):
         """Draw the anisotropic axies of the atom at the given probability.
         """
         C = GAUSS3C[prob]        
-        eval, evec = eigenvectors(U)
+        eval_U, evec_U = eigenvectors(U)
 
         try:
-            v0_peak = C * math.sqrt(eval[0])
+            v0_peak = C * math.sqrt(eval_U[0])
         except ValueError:
             v0_peak = 0.0
         try:
-            v1_peak = C * math.sqrt(eval[1])
+            v1_peak = C * math.sqrt(eval_U[1])
         except ValueError:
             v1_peak = 0.0
         try:
-            v2_peak = C * math.sqrt(eval[2])
+            v2_peak = C * math.sqrt(eval_U[2])
         except ValueError:
             v2_peak = 0.0
         
-        v0 = evec[0] * v0_peak
-        v1 = evec[1] * v1_peak
-        v2 = evec[2] * v2_peak
+        v0 = evec_U[0] * v0_peak
+        v1 = evec_U[1] * v1_peak
+        v2 = evec_U[2] * v2_peak
 
         glDisable(GL_LIGHTING)
         glColor3f(*color)
@@ -1826,7 +1826,7 @@ class GLAtomList(GLDrawList):
             struct.add_atom(copy.deepcopy(atm, memo))
 
         for model in struct.iter_models():
-            yield chain
+            yield model
 
     def glal_iter_atoms_filtered(self):
         """Iterate all atoms and yield the tuble (atom, visible_flag).
@@ -3502,11 +3502,6 @@ class GLChain(GLAtomList):
     def __init__(self, **args):
         GLAtomList.__init__(self, **args)
         self.chain = args["chain"]
-
-        for frag in self.chain.iter_fragments():
-            gl_frag = GLFragment(fragment=frag)
-            self.glo_add_child(gl_frag)
-
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):

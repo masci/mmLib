@@ -1101,8 +1101,9 @@ class TLSGroup(AtomList):
         out.write(string.join(listx, "\n"))
 
 
+
 class TLSStructureAnalysis(object):
-    """
+    """Algorithm object for rigid body searches on Structure objects.
     """
     def __init__(self, struct):
         self.struct = struct
@@ -1234,7 +1235,6 @@ class TLSStructureAnalysis(object):
 
 
     def iter_chain_split(self, chain, num_splits, min_width):
-
         residues    = len(chain)
         split_point = min_width
 
@@ -1255,23 +1255,10 @@ class TLSStructureAnalysis(object):
                 
 
     def split_TLS(self, **args):
-
         num_splits        = 5
         min_residue_width = 3
-
-
         
-        
-
-        
-
     def fit_common_TLS(self, **args):
-        """Run the algorithm to fit TLS parameters to segments of the
-        structure.  This method has many options, which are outlined in
-        the source code for the method.  This returns a list of dictionaries
-        containing statistics on each of the fit TLS groups, the residues
-        involved, and the TLS object itself.
-        """
         residue_width = args["residue_width"]
         
         ## calculate the centroid for all the TLS groiup fits
@@ -1367,14 +1354,6 @@ class TLSStructureAnalysis(object):
         """
         """
         num_tls_segments = args.get("num_tls_segments", 2)
-
-    def join_tls_segments(self, stats_list):
-        """
-        Stage 1: fit with small segment length.
-        Stage 2: examine segments, combine segment runs
-        Stage 3: determine the longest segment run
-        """
-        pass
 
 
 ## <testing>

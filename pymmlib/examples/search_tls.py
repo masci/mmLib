@@ -9,8 +9,8 @@ from __future__ import generators
 import sys
 import math
 
-from mmLib.Structure import *
-from mmLib.FileLoader import *
+from mmLib.Structure      import *
+from mmLib.FileLoader     import *
 from mmLib.Extensions.TLS import *
 
 
