@@ -367,6 +367,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
              isinstance(node, Structure)  or \
              isinstance(node, Chain)      or \
              isinstance(node, Fragment):
+            print "asdfasdf",len(node)
             return len(node)
         else:
             return 0

@@ -13,45 +13,46 @@ import gtk
 from mmLib.mmCIF import *
 
 
+class RowTreeModel(gtk.ListStore):
+    def __init__(self, ctable):
+        self.init
+
+
 class TableTreeModel(gtk.GenericTreeModel):
     def __init__(self, cif_file):
+        gtk.GenericTreeModel.__init__(self)
         self.cif_file = cif_file
-	gtk.GenericTreeModel.__init__(self)
 
     def get_iter_root(self):
         return self.cif_file
 
     def on_get_flags(self):
-	'''returns the GtkTreeModelFlags for this particular type of model
-        '''
+	"""returns the GtkTreeModelFlags for this particular type of model"""
 	return 0
 
     def on_get_n_columns(self):
-	'''returns the number of columns in the model
-        '''
+	"""returns the number of columns in the model"""
 	return 1
 
     def on_get_column_type(self, index):
-	'''returns the type of a column in the model
-        '''
+	"""returns the type of a column in the model"""
 	return gobject.TYPE_STRING
 
     def on_get_path(self, node):
-	'''returns the tree path (a tuple of indices at the various
-	levels) for a particular node.
-        '''
+	"""returns the tree path (a tuple of indices at the various
+	levels) for a particular node."""
         if isinstance(node, mmCIFData):
             return (self.cif_file.index(node), )
 
         elif isinstance(node, mmCIFTable):
             for cif_data in self.cif_file:
-                if cif_data.get(node.name) == node:
-                    return (self.cif_file.index(cif_data),
-                            cif_data.index(node))
+                if node == cif_data.get(node.name):
+                    di = self.cif_file.index(cif_data)
+                    ti = cif_data.index(node)
+                    return (di, ti)
 
     def on_get_iter(self, path):
-        '''returns the node corresponding to the given path.
-        '''
+        """returns the node corresponding to the given path."""
         if len(path) == 1:
             return self.cif_file[path[0]]
 
@@ -59,63 +60,64 @@ class TableTreeModel(gtk.GenericTreeModel):
             return self.cif_file[path[0]][path[1]]
         
     def on_get_value(self, node, column):
-	'''returns the value stored in a particular column for the node
-        '''
+	"""returns the value stored in a particular column for the node"""
 	return node.name
 
     def on_iter_next(self, node):
-	'''returns the next node at this level of the tree
-        '''
-        if isinstance(node, mmCIFData):
+	"""returns the next node at this level of the tree"""
+        if isinstance(node, mmCIFFile):
+            return None
+
+        elif isinstance(node, mmCIFData):
+            i = self.cif_file.index(node)
             try:
-                return self.cif_file[self.cif_file.index(node)+1]
+                return self.cif_file[i+1]
             except IndexError:
                 return None
 
         elif isinstance(node, mmCIFTable):
             (di, ti) = self.on_get_path(node)
             try:
-                self.cif_file[di][ti+1]
+                return self.cif_file[di][ti+1]
             except IndexError:
                 return None
 
     def on_iter_children(self, node):
-	'''returns the first child of this node
-        '''
-        if node == self.cif_file:
-            try:
-                return self.cif_file[0]
-            except IndexError:
-                return None
-
-        elif isinstance(node, mmCIFData):
+	"""returns the first child of this node"""
+        if isinstance(node, mmCIFFile) or isinstance(node, mmCIFData):
             try:
                 return node[0]
             except IndexError:
                 return None
-
         else:
             return None
 
     def on_iter_has_child(self, node):
-	'''returns true if this node has children
-        '''
-        return len(node) != 0
+	"""returns true if this node has children"""
+        if isinstance(node, mmCIFFile) or isinstance(node, mmCIFData):
+            rval = len(node) > 0
+        else:
+            rval = False
+        return rval
 
     def on_iter_n_children(self, node):
-	'''returns the number of children of this node
-        '''
-        return len(node)
+	"""returns the number of children of this node"""
+        if isinstance(node, mmCIFFile) or isinstance(node, mmCIFData):
+            rval = len(node)
+        else:
+            rval = 0
+        return rval
 
     def on_iter_nth_child(self, node, n):
-	'''returns the nth child of this node
-        '''
-        return node[n]
+	"""returns the nth child of this node"""
+        if isinstance(node, mmCIFFile) or isinstance(node, mmCIFData):
+            return node[n]
+        else:
+            return None
 
     def on_iter_parent(self, node):
-	'''returns the parent of this node
-        '''
-        if node == self.cif_file:
+	"""returns the parent of this node"""
+        if isinstance(node, mmCIFFile):
             return None
 
         elif isinstance(node, mmCIFData):
@@ -123,7 +125,7 @@ class TableTreeModel(gtk.GenericTreeModel):
 
         elif isinstance(node, mmCIFTable):
             (di, ti) = self.on_get_path(node)
-            return
+            return self.cif_file[di]
 
 
 class CIFPanel(gtk.HPaned):
@@ -138,27 +140,39 @@ class CIFPanel(gtk.HPaned):
 
         self.tv1 = gtk.TreeView()
         self.sw1.add(self.tv1)
-        self.tv1.connect("row_activated", self.row_activated)
+        self.tv1.connect("row_activated", self.tview_row_activated)
+        self.tv1.set_model(gtk.GenericTreeModel())
+
         cell = gtk.CellRendererText()
         column = gtk.TreeViewColumn("Tables", cell, text=0)
         self.tv1.append_column(column)
 
         ## RIGHT HALF
-        self.tv2 = None
+        self.sw2 = gtk.ScrolledWindow()
+        self.sw2.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.add2(self.sw2)
+        
+        self.tv2 = gtk.TreeView()
+        self.sw2.add(self.tv2)
+        self.tv2.connect("row_activated", self.rview_row_activated)
 
     def set_cif_file(self, cif_file):
         self.cif_file = cif_file
-        
         model = TableTreeModel(self.cif_file)
         self.tv1.set_model(model)
-        self.struct_panel.set_structure(self.struct)
 
-    def row_activated(self, tree_view, path, column):
+    def tview_row_activated(self, tree_view, path, column):
         ## find selected node
         model = tree_view.get_model()
         node = model.on_get_iter(path)
-        self.tv2.set_structure(self.struct, node)
+        
+        if isinstance(node, mmCIFTable):
+            model = RowTreeModel(ctable)
+            self.tv2.set_cif_table(ctable)
 
+    def rview_row_activated(self, tree_view, path, column):
+        pass
+    
 
 class MainWindow:
     def __init__(self, quit_notify_cb):
@@ -166,7 +180,7 @@ class MainWindow:
 
         ## Create the toplevel window
         self.window = gtk.Window()
-        self.setTitle("")
+        self.set_title("")
         self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.quit_notify_cb, self)
 
@@ -197,7 +211,7 @@ class MainWindow:
                      0,                         0)
 
 
-        ##
+        ## CIF display pandel widget
         self.cif_panel = CIFPanel()
         table.attach(self.cif_panel,
                      # X direction           Y direction
@@ -215,9 +229,8 @@ class MainWindow:
 
         self.window.show_all()
 
-
     def open_cb(self, widget):
-        file_selector = gtk.FileSelection("Select file to view");
+        file_selector = gtk.FileSelection("Select mmCIF file (.cif)");
 
         ok_button = file_selector.ok_button
         ok_button.connect("clicked", self.open_ok_cb, file_selector)
@@ -227,37 +240,35 @@ class MainWindow:
         
         file_selector.show()
 
-
     def open_ok_cb(self, ok_button, file_selector):
         path = file_selector.get_filename()
         file_selector.destroy()
-        self.load_file(path)
+        APP.new_window(path)
         
-
     def open_cancel_cb(self, cancel_button, file_selector):
         file_selector.destroy()
 
-
-    def setTitle(self, title):
+    def set_title(self, title):
         title = "mmCIF Editor: " + title
         title = title[:50]
         self.window.set_title(title)
 
-
-    def setStatusBar(self, text):
+    def set_status_bar(self, text):
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
 
-
     def load_file(self, path):
-        self.setTitle(path)
-        self.setStatusBar("Loading %s, please wait..." % (path))
+        self.set_title(path)
+        self.set_status_bar("Loading %s, please wait..." % (path))
         while gtk.events_pending():
             gtk.main_iteration(gtk.TRUE)
 
-        ## LOAD FILE HERE!
+        self.cif_file = mmCIFFile()
+        self.cif_file.load_file(open(path, "r"))
 
-        self.setStatusBar("")
+        self.cif_panel.set_cif_file(self.cif_file)
+
+        self.set_status_bar("")
         return gtk.FALSE
 
 
@@ -267,13 +278,17 @@ class CIFEditorApplication(list):
     def __init__(self, path_list):
         if path_list:
             for path in path_list:
-                mw = MainWindow(self.quit_notify_cb)
-                self.append(mw)
-                mw.load_file(path)
+                self.new_window(path)
         else:
-            mw = MainWindow(self.quit_notify_cb)
-            self.append(mw)
-            
+            self.new_window()
+
+    def new_window(self, path = None):
+        mw = MainWindow(self.quit_notify_cb)
+        self.append(mw)
+        if path:
+            mw.load_file(path)
+        return mw
+    
     def quit_notify_cb(self, window, mw):
         """Callback whever a MainWindow is closed.
         """
