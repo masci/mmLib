@@ -205,7 +205,7 @@ class PDBStructureBuilder(StructureBuilder):
         setmapf(rec, "z", self.atm_map, "z")
         setmapf(rec, "occupancy", self.atm_map, "occupancy")
         setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
-        setmaps(rec, "charge", self.atm_map, "charge")
+        #setmaps(rec, "charge", self.atm_map, "charge")
 
     def guess_element_from_name(self, name0, res_name):
         """Try everything I can possibly think of to extract the element
