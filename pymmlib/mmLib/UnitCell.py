@@ -224,69 +224,47 @@ class UnitCell(object):
         """Yields 3-tuple integer translations over a 3x3x3 cube used by
         other methods for searching nearby unit cells.
         """
-        for i in (-1.0, 0.0, 1.0):
-            for j in (-1.0, 0.0, 1.0):
-                for k in (-1.0, 0.0, 1.0):
+        cube = (-2.0, -1.0, 0.0, 1.0, 2.0)
+        
+        for i in cube:
+            for j in cube:
+                for k in cube:
                     yield i, j, k
 
     def iter_struct_orth_symops(self, struct):
-        """Given a structure, iterates over all orthogonal space symmetry
-        operations which fill out crystal unit cell 1,1,1 using the atoms
-        in the given Structure.
         """
-        atom_list = list(struct.iter_all_atoms())
-        fill_cell = (1,1,1)
+        """
+        ## compute the centroid of the structure
+        n = 0
+        cent = zeros(3, Float)
+        for atm in struct.iter_all_atoms():
+            n += 1
+            cent = cent + atm.position
+        centroid = cent / n
+
+        ccell = self.calc_cell(self.calc_orth_to_frac(centroid))
+        centroid_cell = array(ccell, Float)
+
+        ## compute the distance from the centroid to the
+        ## farthest point from it in the structure
+        max_dist = 0.0
+        for atm in struct.iter_all_atoms():
+            dist = length(atm.position - centroid)
+            max_dist = max(max_dist, dist)
+        max_dist2 = 2.0 * max_dist
 
         for symop in self.space_group.iter_symops():
-            
-            print "NEW SYMOP"
-            print symop
-
             for i, j, k in self.cell_search_iter():
-                cell_tra = array([i, j, k])
 
-                #print "## shifting translation = %s" % (str(cell_tra))
+                 cell_t  = array([i, j, k], Float)
+                 symop_t = SymOp(symop.R, symop.t+cell_t)
 
-                symop_t = SymOp(symop.R, symop.t + cell_tra)
-
-                in_target = False
-
-                for atm in atom_list:
-                    xyz       = self.calc_orth_to_frac(atm.position)
-                    xyz_symm  = symop_t(xyz)
-                    calc_cell = self.calc_cell(xyz_symm)
-
-                    orth_symop = self.calc_orth_symop(symop_t)
-
-                    assert allclose(
-                        self.calc_frac_to_orth(xyz_symm),
-                        orth_symop(atm.position))
-
-                    if calc_cell==fill_cell:
-                        in_target = True
-
-                        ## <debug>
-##                         print "## fill_cell=%s calc_cell=%s" % (
-##                             str(fill_cell), str(calc_cell))
-                        
-##                         orth_symop = self.calc_orth_symop(symop_t)
-
-##                         print "## Orthogonal SymOp"
-##                         print orth_symop
-
-##                         symm_atm_pos = orth_symop(atm.position)
-                        
-##                         print "## pos=%s xyz=%s:%s sym=%s" % (
-##                             str(atm.position),
-##                             str(xyz),
-##                             str(self.calc_frac_to_orth(xyz)),
-##                             str(symm_atm_pos))
-                        ## </debug>
-
-                        #break
-
-                if in_target==True:
-                    yield self.calc_orth_symop(symop_t)
+                 xyz       = self.calc_orth_to_frac(centroid)
+                 xyz_symm  = symop_t(xyz)
+                 centroid2 = self.calc_frac_to_orth(xyz_symm)
+                 
+                 if length(centroid - centroid2)<max_dist2:
+                     yield self.calc_orth_symop(symop_t)
 
 
 def strRT(R, T):

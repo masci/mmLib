@@ -77,7 +77,7 @@ refmac_pdb_regex_dict = {
     "s31_s32_s33": re.compile(
     "\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
     }
-
+    
 
 class TLSInfo(object):
     """Contains information on one TLS group
@@ -132,11 +132,15 @@ class TLSInfo(object):
                 c1, f1.rjust(5), c2, f2.rjust(5), sel))
 
         if self.origin != None:
-            listx.append("ORIGIN %s" % ft8(self.origin))
+            listx.append("ORIGIN %8.4f %8.4f %8.4f" % (
+                self.origin[0], self.origin[1], self.origin[2]))
+
         if self.T != None:
             listx.append("T   %s" % ft8(self.T))
+
         if self.L != None:
             listx.append("L   %s" % ft8(self.L))
+
         if self.S != None:
             listx.append("S   %s" % ft8(self.S))
 
@@ -154,11 +158,18 @@ class TLSInfo(object):
         else:
             tls.name = self.name
 
-        tls.set_origin(*self.origin)
-        tls.set_T(*self.T)
-        tls.set_L(*self.L)
-        tls.set_S(*self.S)
+        if self.origin!=None:
+            tls.set_origin(*self.origin)
 
+        if self.T!=None:
+            tls.set_T(*self.T)
+
+        if self.L!=None:
+            tls.set_L(*self.L)
+
+        if self.S!=None:
+            tls.set_S(*self.S)
+        
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
 
             chain1 = struct.get_chain(chain_id1)
@@ -246,8 +257,8 @@ class TLSInfoList(list):
                 tls_info.range_list.append((c1, f1, c2, f2, sel))
 
             elif re_key == "T":
-                ## REFMAC ORDER: t11 t22 t33 t23 t13 t12
-                (t11, t22, t33, t23, t13, t12) = mx.groups()
+                ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
+                (t11, t22, t33, t12, t13, t23) = mx.groups()
                 tls_info.T = (float(t11),
                               float(t22),
                               float(t33),
@@ -256,8 +267,8 @@ class TLSInfoList(list):
                               float(t23))
 
             elif re_key == "L":
-                ## REFMAC ORDER: t11 t22 t33 t23 t13 t12
-                (l11, l22, l33, l23, l13, l12) = mx.groups()
+                ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
+                (l11, l22, l33, l12, l13, l23) = mx.groups()
                 tls_info.L = (float(l11),
                               float(l22),
                               float(l33),
@@ -266,8 +277,9 @@ class TLSInfoList(list):
                               float(l23))
 
             elif re_key == "S":
-                ## REFMAC ORDER: s2211 s1133 s23 s31 s12 s32 s13 s21
-                (s2211, s1133, s23, s31, s12, s32, s13, s21) = mx.groups()
+                ## REFMAC ORDER:
+                ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
+                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
                 tls_info.S = (float(s2211),
                               float(s1133),
                               float(s12),
@@ -1415,8 +1427,8 @@ class TLSStructureAnalysis(object):
         """        
         ## arguments
         origin                  = args.get("origin_of_calc")
-        num_splits              = args.get("segments", 5) - 1
-        residue_width           = args.get("min_res_width", 6)
+        num_splits              = args.get("num_groups", 2) - 1
+        residue_width           = args.get("min_residue_width", 6)
         use_side_chains         = args.get("use_side_chains", True)
         filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
         include_hydrogens       = args.get("include_hydrogens", False)
@@ -1469,8 +1481,13 @@ class TLSStructureAnalysis(object):
             if not chain.has_standard_residues():
                 continue
 
+            ## cut off any non-amino acid residues
+            for aa in chain.iter_amino_acids():
+                pass
+            aa_seg = chain[:aa.fragment_id]
+
             for segment_set in self.iter_chain_split(
-                chain, num_splits, residue_width):
+                aa_seg, num_splits, residue_width):
 
                 print "SPLIT: ",
 

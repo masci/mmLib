@@ -1515,6 +1515,14 @@ class GLAtomList(GLDrawList):
               "default":   False,
               "action":    "recompile_labels" })
 
+        self.glo_add_property(
+            { "name":       "auto_label_distance",
+              "desc":       "Label Auto-Show Distance",
+              "catagory":   "Labels",
+              "type":       "float",
+              "default":    10.0,
+              "action":     "redraw" })
+
         ## lines
         self.glo_add_property(
             { "name":       "lines",
@@ -1928,6 +1936,8 @@ class GLAtomList(GLDrawList):
     def draw_labels(self):
         """Draws atom lables.
         """
+        auto_label_dist = self.properties["auto_label_distance"]
+
         viewer = self.gldl_get_glviewer()
         R = viewer.properties["R"]
         t = viewer.properties["t"]
@@ -1949,9 +1959,8 @@ class GLAtomList(GLDrawList):
 
         for atm, pos in self.glal_iter_visible_atoms():
             relative_pos = matrixmultiply(R, pos + cv) + tp
-            if length(relative_pos)>10.0:
+            if length(relative_pos)>auto_label_dist:
                 continue
-
 
             if atm.alt_loc=="":
                 text = "%s %s %s %s" % (
