@@ -1886,22 +1886,40 @@ class HelpWindow(gtk.Window):
 
         iter = buffer.get_start_iter()
 
-        buffer.insert_with_tags_by_name(iter, title_text + "\n", "title")
+        buffer.insert_with_tags_by_name(
+            iter, title_text + "\n", "title")
+
         if((mandatory != None) & (mandatory != "no")):
-            buffer.insert_with_tags_by_name(iter, "***Item is mandatory***\n", "wrap")
-        buffer.insert_with_tags_by_name(iter, "\n\n" + text + "\n\n\n", "wrap")        
+            buffer.insert_with_tags_by_name(
+                iter, "***Item is mandatory***\n", "wrap")
+        buffer.insert_with_tags_by_name(
+            iter, "\n\n" + text + "\n\n\n", "wrap")        
+
         if(data_type != None):
-            buffer.insert_with_tags_by_name(iter, "DATA TYPE:     " + data_type + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, "DATA TYPE:     " + data_type + "\n", "wrap")
+
         if(type_conditions != None):
-            buffer.insert_with_tags_by_name(iter, "DATA TYPE CONDINTIONS:     " + type_conditions + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, "DATA TYPE CONDINTIONS:     " + \
+                type_conditions + "\n", "wrap")
+
         if(data_units != None):
-            buffer.insert_with_tags_by_name(iter, "DATA UNITS:     " + data_units + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, "DATA UNITS:     " + data_units + "\n", "wrap")
+
         if(default_value != None):            
-            buffer.insert_with_tags_by_name(iter, "DEFAULT VALUE:     " + default_value + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, "DEFAULT VALUE:     " + default_value + "\n", "wrap")
+
         if(range != "RANGE (max, min):     "):
-            buffer.insert_with_tags_by_name(iter, range + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, range + "\n", "wrap")
+
         if(dependent != ""):
-            buffer.insert_with_tags_by_name(iter, "DEPENDENT(S):     " + dependent + "\n", "wrap")
+            buffer.insert_with_tags_by_name(
+                iter, "DEPENDENT(S):     " + dependent + "\n", "wrap")
+
         if(detail != "EXAMPLE(S):\n"):
              buffer.insert_with_tags_by_name(iter, detail, "wrap")
         
@@ -1928,11 +1946,7 @@ class mmCIFDictionaryManager(list):
 
         cif_dict = mmCIFDictionary()
         cif_dict.path = path
-
-        try:
-            mmCIFDictionaryParser().parse_file(fil, cif_dict)
-        except:
-            return None
+        cif_dict.load_file(path)
 
         self.append(cif_dict)
         return cif_dict
@@ -1959,11 +1973,11 @@ class mmCIFDictionaryManager(list):
     def lookup_cif_save(self, tag):
         """Returns the first save block found in the list of dictionaries
         """
-        for cif_dict in self:
-            for cif_data in cif_dict:
-                for cif_save in cif_data.save_list:
-                    if cif_save.name == tag:
-                        return cif_save
+        for cif_save in self:
+            try:
+                return cif_save[tag]
+            except KeyError:
+                pass
         return None
 
 

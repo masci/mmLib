@@ -33,6 +33,8 @@ class mmCIFRow(dict):
     set of data found under a section.  The data can be accessed by using
     the column names as class attributes.
     """
+    __slots__ = ["table"]
+    
     def __eq__(self, other):
         return id(self) == id(other)
 
@@ -54,6 +56,8 @@ class mmCIFTable(list):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
     are stored as mmCIFRow classes.
     """
+    __slots__ = ["name", "columns", "data"]
+
     def __init__(self, name, columns = None):
         list.__init__(self)
         self.name = name
@@ -186,6 +190,8 @@ class mmCIFData(list):
     the files are represented here with their sections as "Tables" and
     their subsections as "Columns".  The data is stored in "Rows".
     """
+    __slots__ = ["name", "file"]
+    
     def __init__(self, name):
         list.__init__(self)
         self.name = name
@@ -409,7 +415,6 @@ class mmCIFFileParser(object):
  
     def parse(self, token_iter, cif_file):
         cif_table_cache = {}
-        cif_data_save   = None
         cif_data        = None
         cif_table       = None
         cif_row         = None
@@ -439,7 +444,14 @@ class mmCIFFileParser(object):
                     cif_table = cif_table_cache[tblx]
                 except KeyError:
                     cif_table = cif_table_cache[tblx] = mmCIFTable(tblx)
-                    cif_data.append(cif_table)
+
+                    try:
+                        cif_data.append(cif_table)
+                    except AttributeError:
+                        self.syntax_error(
+                            "section not contained in data_ block")
+                        return
+
                     cif_row = mmCIFRow()
                     cif_table.append(cif_row)
                 else:
@@ -483,7 +495,14 @@ class mmCIFFileParser(object):
                     return
 
                 cif_table = mmCIFTable(tblx)
-                cif_data.append(cif_table)
+
+                try:
+                    cif_data.append(cif_table)
+                except AttributeError:
+                    self.syntax_error(
+                        "_loop section not contained in data_ block")
+                    return
+
                 cif_table.columns.append(colx)
 
                 while 1:
@@ -525,24 +544,19 @@ class mmCIFFileParser(object):
                 continue
 
             elif state == "RD_DATA":
-                cif_data_save = mmCIFData(tokx[5:])
-                cif_file.append(cif_data_save)
-
-                cif_data  = cif_data_save
+                cif_data = mmCIFData(tokx[5:])
+                cif_file.append(cif_data)
+                cif_table_cache = {}
                 cif_table = None
 
                 tblx,colx,strx,tokx = token_iter.next()
 
             elif state == "RD_SAVE":
                 cif_data = mmCIFSave(tokx[5:])
-
-                if not hasattr(cif_data_save, "save_list"):
-                    cif_data_save.save_list = []
-                cif_data_save.save_list.append(cif_data)
-
+                cif_file.append(cif_data)
                 cif_table_cache = {}
                 cif_table = None
-                
+
                 tblx,colx,strx,tokx = token_iter.next()
                 
 
