@@ -18,6 +18,7 @@ from GeometryDict   import *
 PROP_OPACITY_RANGE    = "0.0-1.0,0.1"
 PROP_LINE_RANGE       = "1.0-10.0,1.0"
 PROP_PROBABILTY_RANGE = "1-99,1"
+PROP_FRAC_RANGE       = "0-100,1"
 
 
 class GLPropertyDict(dict):
@@ -2352,7 +2353,7 @@ class GLViewer(GLObject):
               "catagory":  "Background",
               "type":      "enum_string",
               "default":   "Black",
-              "enum_list": ["Black", "White", "Off-White", "Dark Green"],
+              "enum_list": COLOR_NAMES_CAPITALIZED[:],
               "action":    "redraw" })
 
         ## View
@@ -2519,48 +2520,6 @@ class GLViewer(GLObject):
         draw_list.glo_remove()
         self.glv_redraw()
 
-    def calc_inertia_tensor(self, atom_iter, origin):
-        """Calculate a moment-of-intertia like tensor.
-        """
-        I = zeros((3,3), Float)
-        for atm in atom_iter:
-            x = atm.position - origin
-
-            I[0,0] += x[1]**2 + x[2]**2
-            I[1,1] += x[0]**2 + x[2]**2
-            I[2,2] += x[0]**2 + x[1]**2
-
-            I[0,1] += - x[0]*x[1]
-            I[1,0] += - x[0]*x[1]
-
-            I[0,2] += - x[0]*x[2]
-            I[2,0] += - x[0]*x[2]
-
-            I[1,2] += - x[1]*x[2]
-            I[2,1] += - x[1]*x[2]
-
-        eval, evec = eigenvectors(I)
-
-	if eval[0]>=eval[1] and eval[0]>=eval[2]:
-            if eval[1]>=eval[2]:
-                R = array((evec[2], evec[1], evec[0]), Float)
-            else:
-                R = array((evec[1], evec[2], evec[0]), Float)
-
-        elif eval[1]>=eval[0] and eval[1]>=eval[2]:
-            if eval[0]>=eval[2]:
-                R = array((evec[2], evec[0], evec[1]), Float)
-            else:
-                R = array((evec[0], evec[2], evec[1]), Float)
-
-        elif eval[2]>=eval[0] and eval[2]>=eval[1]:
-            if eval[0]>=eval[1]:
-                R = array((evec[1], evec[0], evec[2]), Float)
-            else:
-                R = array((evec[0], evec[1], evec[2]), Float)
-
-        return R
-
     def calc_orientation(self, struct):
         """Orient the structure based on a moment-of-intertia like tensor
         centered at the centroid of the structure.
@@ -2573,13 +2532,7 @@ class GLViewer(GLObject):
                     yield atm
 
         centroid = calc_atom_centroid(aa_atom_iter(struct))
-        R = self.calc_inertia_tensor(aa_atom_iter(struct), centroid)
-
-        if allclose(determinant(R), -1.0):
-            I = identity(3, Float)
-            I[0,0] = -1.0
-            R = matrixmultiply(I, R)
-        assert allclose(determinant(R), 1.0)
+        R = calc_inertia_tensor(aa_atom_iter(struct), centroid)
 
         ori = {}
 
@@ -2820,25 +2773,34 @@ class GLViewer(GLObject):
 
         self.properties.update(R=Rnew)
 
+    def glv_background_color_rgbf(self):
+        """Return the R,G,B triplit of the background color.
+        """
+        colorx = self.properties["bg_color"].lower()
+        if COLOR_RGBF.has_key(colorx):
+            return COLOR_RGBF[colorx]
+        
+        try:
+            r, g, b = colorx.split(",")
+        except ValueError:
+            pass
+        else:
+            try:
+                return (float(r), float(g), float(b))
+            except ValueError:
+                pass
+
+        return (0.0, 0.0, 0.0)
+
     def glv_render(self):
         """Render scene using all drivers.
         """
         for driver in self.glv_driver_list:
             self.glv_render_one(driver)
-        
+
     def glv_render_one(self, driver):
         """Render the scent once with the argument driver.
         """
-        ## select background color
-        if self.properties["bg_color"]=="Black":
-            bg_color_rgbf = (0.0, 0.0, 0.0)
-        elif self.properties["bg_color"]=="White":
-           bg_color_rgbf = (1.0, 1.0, 1.0)
-        elif self.properties["bg_color"]=="Dark Green":
-            bg_color_rgbf = (0.0, 0.15, 0.0)
-        elif self.properties["bg_color"]=="Off-White":
-            bg_color_rgbf = (0.9, 0.85, 0.65)
-
         ## setup the scene for rendering
         driver.glr_render_begin(
             width              = self.properties["width"],
@@ -2846,7 +2808,7 @@ class GLViewer(GLObject):
             zoom               = self.properties["zoom"],
             near               = self.properties["near"],
             far                = self.properties["far"],
-            bg_color_rgbf      = bg_color_rgbf,
+            bg_color_rgbf      = self.glv_background_color_rgbf(),
             ambient_light      = self.properties["GL_AMBIENT"],
             diffuse_light      = self.properties["GL_DIFFUSE"],
             specular_light     = self.properties["GL_SPECULAR"],

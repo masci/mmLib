@@ -33,7 +33,14 @@ WARNING!!! This application is incomplete!
 Terminal Commands:
     [ESC]                press escape to show/hide terminal
     load <path>          load a PDB or mmCIF structure file
+    bg_color [color]     show/set the background color
+    exit/quit            exits the viewer
 
+mmLib Virtual Filesystem:
+    ls                   list contents of current virtual file system
+                         directory
+    cd [directory]       change to the given virtual file system directory
+    
 Mouse Navigation:
     Right Mouse Button   "trackball" style rotation of structure
     Middle Mouse Button  x,y translation of structure
@@ -54,11 +61,11 @@ CHAR_HEIGHT = CHAR_ASCENT + CHAR_DECENT
 ## console output
 ##
 def error(text):
-    sys.stderr.write("[GV ERROR] %s\n" % (text))
+    sys.stderr.write("[VIEWER:ERROR] %s\n" % (text))
     sys.stderr.flush()
     
 def info(text):
-    sys.stderr.write("[GV INFO]  %s\n" % (text))
+    sys.stderr.write("[VIEWER:INFO]  %s\n" % (text))
     sys.stderr.flush()
 
 
@@ -68,7 +75,7 @@ def info(text):
 class Terminal(object):
     """Terminal window for controlling mmLib.Viewer options.
     """
-    def __init__(self):
+    def __init__(self, cobj):
         self.visible = True
         self.width   = 0
         self.height  = 0
@@ -81,8 +88,14 @@ class Terminal(object):
         self.wind_border = 5.0
         self.term_border = 1.0
 
-        self.prompt = "> "
+        self.cobj = cobj
+        self.prompt = ""
+        self.construct_prompt()
+        
         self.lines = []
+
+    def construct_prompt(self):
+        self.prompt = "%s# " % (self.cobj.pwd)
 
     def keypress(self, key):
         ascii = ord(key)
@@ -90,7 +103,9 @@ class Terminal(object):
 
         ## enter
         if ascii==13:
-            self.lines.insert(0, self.prompt)
+            ln = self.lines[0][len(self.prompt):]
+            output = self.cobj.command(ln)
+            self.write(output)
         ## backspace
         elif ascii==8 or ascii==127:
             ln = self.lines[0]
@@ -103,8 +118,9 @@ class Terminal(object):
     def write(self, text):
         """Writes text to the terminal.
         """
-        for ln in text.split("\n"):
-            self.lines.insert(0, ln)
+        if len(text)>0:
+            for ln in text.split("\n"):
+                self.lines.insert(0, ln)
         self.lines.insert(0, self.prompt)
 
     def opengl_render(self):
@@ -287,12 +303,77 @@ class GLUT_Viewer(GLViewer):
         self.beginx          = 0
         self.beginy          = 0
 
+        ## current virutal directory
+        self.pwd = "/"
+
         ## terminal
-        self.term = Terminal()
+        self.term = Terminal(self)
         self.term.write(WELCOME)
 
         GLViewer.__init__(self)
         #self.properties.update(bg_color="White")
+
+    def command(self, cmd):
+        cmd = cmd.strip()
+        
+        if cmd.startswith("load"):
+            return self.command_load_struct(cmd)
+
+        elif cmd.startswith("ls"):
+            return self.command_ls(cmd)
+
+        elif cmd.startswith("bg_color"):
+            return self.command_bg_color(cmd)
+
+        if len(cmd.strip())==0:
+            return ""
+        
+        return "unknown command: %s" % (cmd)
+
+    def command_bg_color(self, cmd):
+        cmd = cmd[8:].strip()
+
+        if len(cmd)==0:
+            return self.properties["bg_color"]
+
+        self.properties.update(bg_color=cmd)
+        return "background color: %s" % (self.properties["bg_color"])
+
+    def command_load_struct(self, cmd):
+        path = cmd[5:].strip()
+        struct = self.load_struct(path)
+        if struct==None:
+            return "file not found: %s" % (path)
+
+        return "loaded %s:%s" % (path, struct.structure_id)
+
+    def command_ls(self, cmd):
+        if self.pwd=="/":
+            x = ""
+            for glstruct in self.glo_iter_children():
+                x += "%s\n" % (glstruct.struct.structure_id)
+            return x
+
+    def command_cd(self, cmd):
+        path = cmd[3:].strip()
+        for dir in path.split("/"):
+            self.command_cd_one(dir)        
+        self.term.construct_prompt()
+
+    def command_cd_one(self, dir):
+        dir = dir.strip()
+
+        if len(dir)==0:
+            return (True, "")
+
+        if self.pwd=="/":
+            if dir=="..":
+                return (False, "invalid path")
+
+            for glstruct in self.glo_iter_children():
+                if glstruct.struct.structure_id==dir:
+
+                    return (True, dir)
         
     def load_struct(self, path):
         """Loads the requested structure.
@@ -305,7 +386,7 @@ class GLUT_Viewer(GLViewer):
                 build_properties = ("library_bonds","distance_bonds"))
         except IOError:
             error("file not found: %s" % (path))
-            return
+            return None
 
         struct_desc = {}
         struct_desc["struct"] = struct
@@ -314,8 +395,10 @@ class GLUT_Viewer(GLViewer):
         glstruct = self.glv_add_struct(struct)
         for glchain in glstruct.glo_iter_children():
             glchain.properties.update(
-                ball_stick = True,
-                ellipse    = True)
+                lines      = False,
+                ball_stick = True)
+
+        return struct
 
     def glv_render(self):
         """
@@ -356,8 +439,6 @@ class GLUT_Viewer(GLViewer):
         glutMotionFunc(self.glut_motion)
         glutKeyboardFunc(self.glut_keyboard)
 
-        self.glut_init_done = True
-
     def glut_main(self):
         """Run the GLUT main event loop.
         """
@@ -371,6 +452,10 @@ class GLUT_Viewer(GLViewer):
     def glut_reshape(self, width, height):
         """Reshape the viewering window.
         """
+        ## GLUT initalization isn't really done until the
+        ## window has been shaped
+        self.glut_init_done = True
+        
         self.width  = width
         self.height = height
 

@@ -12,14 +12,14 @@ import copy
 from OpenGL.GL      import *
 from OpenGL.GLU     import *
 from OpenGL.GLUT    import *
+
 from Gaussian       import *
 from Structure      import *
-
 
 try:
     import glaccel
 except ImportError:
-    sys.stderr.write("ERROR: cannot load glaccel\n")
+    warning("cannot load OpenGL acceloration module glaccel")
     GLACCEL_EXISTS = False
 else:
     GLACCEL_EXISTS = True
@@ -29,6 +29,18 @@ class OpenGLDriver(object):
     """OpenGL render driver for Viewer.py
     """
     def __init__(self):
+        object.__init__(self)
+
+        ## some objects have a accelorated C version built in
+        ## src/glaccel.c; if they exist, then use them
+        ## this should really be done by a factory function...
+        if GLACCEL_EXISTS==True:
+            self.glr_axis     = self.glaccel_glr_axis
+            self.glr_tube     = self.glaccel_glr_tube
+            self.glr_sphere   = self.glaccel_glr_sphere
+            self.glr_Uellipse = self.glaccel_glr_Uellipse
+            self.glr_Urms     = self.glaccel_glr_Urms
+        
         self.gl_draw_list_id            = {}
         self.gl_draw_list_expiration_id = {}
         self.gl_light_model_two_side    = False
@@ -427,6 +439,26 @@ class OpenGLDriver(object):
         
         end = position + axis
 
+        l = length(axis)
+        R = rmatrixz(axis)
+
+        glPushMatrix()
+        self.glr_mult_matrix_Rt(R, position)
+
+        glEnable(GL_LIGHTING)
+
+        quad = gluNewQuadric()
+        gluCylindar(quad, radius, radius, l, 10, 1)
+
+        glDisable(GL_LIGHTING)
+        glPopMatrix()
+        
+    def glaccel_glr_axis(self, position, axis, radius):
+        """glaccel optimized version of glr_axis.
+        """
+        if allclose(length(axis), 0.0):
+            return
+        end = position + axis
         glaccel.rod(
             position[0], position[1], position[2],
             end[0], end[1], end[2],
@@ -435,29 +467,30 @@ class OpenGLDriver(object):
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
         """
-        try:
-            glaccel.tube(
-                pos1[0], pos1[1], pos1[2],
-                pos2[0], pos2[1], pos2[2],
-                radius)
+        glDisable(GL_LIGHTING)
+        glLineWidth(1.0)
+        glBegin(GL_LINES)
+        glVertex3f(*pos1)
+        glVertex3f(*pos2)
+        glEnd()
 
-        except NameError:
-            glDisable(GL_LIGHTING)
-            glLineWidth(1.0)
-            glBegin(GL_LINES)
-            glVertex3f(*pos1)
-            glVertex3f(*pos2)
-            glEnd()
-
+    def glaccel_glr_tube(self, pos1, pos2, radius):
+        glaccel.tube(
+            pos1[0], pos1[1], pos1[2],
+            pos2[0], pos2[1], pos2[2],
+            radius)
+            
     def glr_sphere(self, position, radius, quality):
-        """Draw a atom as a CPK sphere.
+        """Draws a solid sphere.
         """
-        try:
-            glaccel.sphere(position[0], position[1], position[2],
-                           radius, quality)
+        glEnable(GL_LIGHTING)
+        glPushMatrix();
+        glTranslatef(*position)
+        glutSolidSphere(radius, quality, quality)
+        glPopMatrix()
 
-        except NameError:
-            pass
+    def glaccel_glr_sphere(self, position, radius, quality):
+        glaccel.sphere(position[0], position[1], position[2], radius, quality)
 
     def glr_cross(self, position, color, line_width):
         """Draws atom with a cross of lines.
@@ -535,6 +568,13 @@ class OpenGLDriver(object):
         given the gaussian variance-covariance matrix U at the given position.
         C=1.8724 = 68%
         """
+        pass
+        
+    def glaccel_glr_Uellipse(self, position, U, prob):
+        """Renders the ellipsoid enclosing the given fractional probability
+        given the gaussian variance-covariance matrix U at the given position.
+        C=1.8724 = 68%
+        """
         glaccel.Uellipse(
             position[0], position[1], position[2],
             U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
@@ -545,8 +585,14 @@ class OpenGLDriver(object):
         the gaussian variance-covariance matrix U at the given position.  This
         is a peanut-shaped surface. (Note: reference the peanut paper!)
         """
+        pass
+        
+    def glaccel_glr_Urms(self, position, U):
+        """Renders the root mean square (one standard deviation) surface of
+        the gaussian variance-covariance matrix U at the given position.  This
+        is a peanut-shaped surface. (Note: reference the peanut paper!)
+        """
         glaccel.Upeanut(
             position[0], position[1], position[2],
             U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
             3)
-        

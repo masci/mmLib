@@ -7,6 +7,10 @@
 import math
 from mmTypes import *
 
+
+##
+## Linear Algebra
+##
 def length(u):
     """Calculates the length of u.
     """
@@ -25,6 +29,10 @@ def cross(u, v):
                    u[2]*v[0] - u[0]*v[2],
                    u[0]*v[1] - u[1]*v[0] ], Float)
 
+
+##
+## Rotation/Displacement
+##
 def rmatrix(alpha, beta, gamma):
     """Return a rotation matrix based on the Euler angles alpha,
     beta, and gamma in radians.
@@ -62,6 +70,46 @@ def rmatrixu(u, theta):
     assert allclose(determinant(R), 1.0)
     return R
 
+
+def dmatrix(alpha, beta, gamma):
+    """Returns the displacment matrix based on rotation about Euler
+    angles alpha, beta, and gamma.
+    """
+    return rmatrix(alpha, beta, gamma) - identity(3, Float)
+
+def dmatrixu(u, theta):
+    """Return a displacement matrix caused by a right hand rotation of theta
+    radians around vector u.
+    """
+    return rmatrixu(u, theta) - identity(3, Float)
+
+def rmatrixz(u):
+    """Return a rotation matrix which transforms the coordinate system
+    such that the vector u is aligned along the z axis.
+    """
+    u, v, w = normalize(u)
+
+    d = math.sqrt(u*u + v*v)
+
+    if d!=0.0:
+        Rxz = array([ [  u/d, v/d,  0.0 ],
+                      [ -v/d, u/d,  0.0 ],
+                      [  0.0, 0.0,  1.0 ] ], Float)
+    else:
+        Rxz = identity(3, Float)
+
+
+    Rxz2z = array([ [   w, 0.0,    -d],
+                    [ 0.0, 1.0,   0.0],
+                    [   d, 0.0,     w] ], Float)
+
+    R = matrixmultiply(Rxz2z, Rxz)
+    assert allclose(determinant(R), 1.0)
+    return R
+
+##
+## Quaternions
+##
 def rquaternionu(u, theta):
     """Returns a quaternion representing the right handed rotation of theta
     radians about vector u.Quaternions are typed as Numeric Python arrays of
@@ -180,42 +228,10 @@ def quaternionrmatrix(R):
     assert allclose(math.sqrt(dot(q,q)), 1.0)    
     return q
 
-def dmatrix(alpha, beta, gamma):
-    """Returns the displacment matrix based on rotation about Euler
-    angles alpha, beta, and gamma.
-    """
-    return rmatrix(alpha, beta, gamma) - identity(3, Float)
 
-def dmatrixu(u, theta):
-    """Return a displacement matrix caused by a right hand rotation of theta
-    radians around vector u.
-    """
-    return rmatrixu(u, theta) - identity(3, Float)
-
-def rmatrixz(u):
-    """Return a rotation matrix which transforms the coordinate system
-    such that the vector u is aligned along the z axis.
-    """
-    u, v, w = normalize(u)
-
-    d = math.sqrt(u*u + v*v)
-
-    if d!=0.0:
-        Rxz = array([ [  u/d, v/d,  0.0 ],
-                      [ -v/d, u/d,  0.0 ],
-                      [  0.0, 0.0,  1.0 ] ], Float)
-    else:
-        Rxz = identity(3, Float)
-
-
-    Rxz2z = array([ [   w, 0.0,    -d],
-                    [ 0.0, 1.0,   0.0],
-                    [   d, 0.0,     w] ], Float)
-
-    R = matrixmultiply(Rxz2z, Rxz)
-    assert allclose(determinant(R), 1.0)
-    return R
-	 
+##
+## Bond Angles
+##
 def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.
     """
@@ -263,12 +279,19 @@ def calc_torsion_angle(a1, a2, a3, a4):
 
     angle = arccos(scalar_product)
 
-#    if direction < 0.0:
+#    if direction<0.0:
 #        angle = -angle
 
     return angle
 
+
+##
+## Atomic ADPs
+##
 def calc_CCuij(U, V):
+    """Calculate the cooralation coefficent for anisotropic ADP tensors U
+    and V.
+    """
     invU = inverse(U)
     invV = inverse(V)
     
@@ -279,6 +302,8 @@ def calc_CCuij(U, V):
              math.sqrt((1.0/8.0) * determinant(invU + invV)) )
 
 def calc_Suij(U, V):
+    """Calculate the similarity of anisotropic ADP tensors U and V.
+    """
     eqU = trace(U) / 3.0
     eqV = trace(V) / 3.0
 
@@ -289,6 +314,9 @@ def calc_Suij(U, V):
              (calc_CCuij(U, isoU) * calc_CCuij(V, isoV)) )
 
 def calc_DP2uij(U, V):
+    """Calculate the square of the volumetric difference in the probability
+    density function of anisotropic ADP tensors U and V.
+    """
     invU = inverse(U)
     invV = inverse(V)
 
@@ -305,9 +333,17 @@ def calc_DP2uij(U, V):
     return dP2
 
 def calc_anisotropy(U):
+    """Calculates the anisotropy of a atomic ADP tensor U.  Anisotropy is
+    defined as the smallest eigenvalue of U divided by the largest eigenvalue
+    of U.
+    """
     evals = eigenvalues(U)
     return min(evals) / max(evals)
 
+
+##
+## Calculations on groups of atoms
+##
 def calc_atom_centroid(atom_iter):
     """Calculates the centroid of all contained Atom instances and
     returns a Vector to the centroid.
@@ -333,6 +369,60 @@ def calc_atom_mean_temp_factor(atom_iter):
             num_tf += 1
 
     return adv_tf / num_tf
+
+
+def calc_inertia_tensor(atom_iter, origin):
+    """Calculate a moment-of-intertia tensor at the given origin assuming all
+    atoms have the same mass.
+    """
+    I = zeros((3,3), Float)
+    for atm in atom_iter:
+        x = atm.position - origin
+
+        I[0,0] += x[1]**2 + x[2]**2
+        I[1,1] += x[0]**2 + x[2]**2
+        I[2,2] += x[0]**2 + x[1]**2
+
+        I[0,1] += - x[0]*x[1]
+        I[1,0] += - x[0]*x[1]
+
+        I[0,2] += - x[0]*x[2]
+        I[2,0] += - x[0]*x[2]
+
+        I[1,2] += - x[1]*x[2]
+        I[2,1] += - x[1]*x[2]
+
+    eval, evec = eigenvectors(I)
+
+    ## order the tensor such that the largest
+    ## principal compent is along the z-axis, and
+    ## the second largest is along the y-axis
+    if eval[0]>=eval[1] and eval[0]>=eval[2]:
+        if eval[1]>=eval[2]:
+            R = array((evec[2], evec[1], evec[0]), Float)
+        else:
+            R = array((evec[1], evec[2], evec[0]), Float)
+
+    elif eval[1]>=eval[0] and eval[1]>=eval[2]:
+        if eval[0]>=eval[2]:
+            R = array((evec[2], evec[0], evec[1]), Float)
+        else:
+            R = array((evec[0], evec[2], evec[1]), Float)
+
+    elif eval[2]>=eval[0] and eval[2]>=eval[1]:
+        if eval[0]>=eval[1]:
+            R = array((evec[1], evec[0], evec[2]), Float)
+        else:
+            R = array((evec[0], evec[1], evec[2]), Float)
+
+    ## make sure the tensor is right-handed
+    if allclose(determinant(R), -1.0):
+        I = identity(3, Float)
+        I[0,0] = -1.0
+        R = matrixmultiply(I, R)
+
+    assert allclose(determinant(R), 1.0)
+    return R
 
 
 ### <TESTING>

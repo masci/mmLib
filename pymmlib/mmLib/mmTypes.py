@@ -213,7 +213,7 @@ def setmapfd(smap, skey, dmap, dkey, default=None):
 def fatal(x):
     """Fatal errors.
     """
-    sys.stderr.write("[mmLib FATAL] %s\n" % (x))
+    sys.stderr.write("[MMLIB:FATAL] %s\n" % (x))
     sys.exit(-1)
     
 
@@ -223,7 +223,7 @@ def warning(x):
     or a empty string for no action.  It writes to the file
     mmlib_warning.txt by default.  
     """
-    x = "[mmLib WARNING] %s\n" % (x)
+    x = "[MMLIB:WARNING] %s\n" % (x)
     path = os.environ.get("MMLIB_WARNING", "stderr")
 
     try:
@@ -248,7 +248,7 @@ def debug(x):
     if _DEBUG==False:
         return
     
-    x    = "[mmLib DEBUG] %s\n" % (x)
+    x    = "[MMLIB:DEBUG] %s\n" % (x)
     path = os.environ.get("MMLIB_DEBUG", "stderr")
 
     try:
