@@ -15,81 +15,6 @@ from Structure        import *
 from StructureBuilder import *
 
 
-mmCIFStandardColumnsMap = {
-    "entry": ["id"],
-
-    "entity": ["id",
-               "type",
-               "ndb_description"],
-
-    "cell": ["entry_id",
-             "length_a",
-             "length_b",
-             "length_c",
-             "angle_alpha",
-             "angle_beta",
-             "angle_gamma",
-             "PDB_Z"],
-
-    "symmetry": ["entry_id",
-                 "space_group_name_H-M",
-                 "cell_setting",
-                 "Int_Tables_number"],
-
-    "entity_poly": ["entity_id",
-                    "ndb_chain_id",
-                    "ndb_seq_one_letter_code"],
-
-    "audit_author": ["name"],
-
-    "atom_site": ["group_PDB",
-                  "id",
-                  "type_symbol",
-                  "label_entity_id",
-                  "label_asym_id",
-                  "label_seq_id",
-                  "label_comp_id",
-                  "label_alt_id",
-                  "label_atom_id",
-                  "Cartn_x",
-                  "Cartn_y",
-                  "Cartn_z", 
-                  "occupancy",
-                  "B_iso_or_equiv",
-                  "Cartn_x_esd",
-                  "Cartn_y_esd",
-                  "Cartn_z_esd",
-                  "occupancy_esd",
-                  "B_iso_or_equiv_esd",
-                  "auth_asym_id",
-                  "auth_seq_id",
-                  "auth_comp_id",
-                  "auth_alt_id",
-                  "auth_atom_id",
-                  "pdbx_PDB_model_num"],
-
-    "atom_site_anisotrop": ["id",
-                            "type_symbol",
-                            "label_entity_id",
-                            "U[1][1]",
-                            "U[1][2]",
-                            "U[1][3]",
-                            "U[2][2]",
-                            "U[2][3]",
-                            "U[3][3]",
-                            "U[1][1]_esd",
-                            "U[1][2]_esd",
-                            "U[1][3]_esd",
-                            "U[2][2]_esd",
-                            "U[2][3]_esd",
-                            "U[3][3]_esd",
-                            "pdbx_auth_seq_id",
-                            "pdbx_auth_comp_id",
-                            "pdbx_auth_asym_id",
-                            "pdbx_auth_atom_id"]
-    }
-
-
 def setmaps_cif(smap, skey, dmap, dkey):
     """For string converisons, treat [?.] as blank.
     """
@@ -482,6 +407,43 @@ class mmCIFStructureBuilder(StructureBuilder):
                          "helix_class": row["conf_type_id"]}
 
 
+CIF_BUILD_TABLES = {
+    "entry": ["id"],
+
+    "entity": [
+        "id", "type", "ndb_description"],
+
+    "cell": [
+        "entry_id", "length_a", "length_b", "length_c",
+        "angle_alpha", "angle_beta", "angle_gamma", "PDB_Z"],
+
+    "symmetry": [
+        "entry_id", "space_group_name_H-M", "cell_setting",
+        "Int_Tables_number"],
+
+    "entity_poly": [
+        "entity_id", "ndb_chain_id", "ndb_seq_one_letter_code"],
+
+    "audit_author": ["name"],
+
+    "atom_site": [
+        "group_PDB", "id", "type_symbol", "label_entity_id", "label_asym_id",
+        "label_seq_id", "label_comp_id", "label_alt_id", "label_atom_id",
+        "Cartn_x", "Cartn_y", "Cartn_z", "occupancy", "B_iso_or_equiv",
+        "Cartn_x_esd", "Cartn_y_esd", "Cartn_z_esd", "occupancy_esd",
+        "B_iso_or_equiv_esd", "auth_asym_id", "auth_seq_id", "auth_comp_id",
+        "auth_alt_id", "auth_atom_id", "pdbx_PDB_model_num"],
+
+    "atom_site_anisotrop": [
+        "id", "type_symbol", "label_entity_id", "U[1][1]", "U[1][2]",
+        "U[1][3]", "U[2][2]", "U[2][3]", "U[3][3]", "U[1][1]_esd",
+        "U[1][2]_esd", "U[1][3]_esd", "U[2][2]_esd", "U[2][3]_esd",
+        "U[3][3]_esd", "pdbx_auth_seq_id", "pdbx_auth_comp_id",
+        "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
+    }
+
+
+
 class mmCIFFileBuilder(object):
     """Builds a mmCIF file from a Structure object.
     """
@@ -517,7 +479,7 @@ class mmCIFFileBuilder(object):
         except KeyError:
             pass
 
-        columns = copy.deepcopy(mmCIFStandardColumnsMap[name])
+        columns = copy.deepcopy(CIF_BUILD_TABLES[name])
         
         table = mmCIFTable(name, columns)
         self.cif_data.append(table)
@@ -561,12 +523,14 @@ class mmCIFFileBuilder(object):
             ## if the chain is a bio-polymer, it is one entity; come up
             ## with a name from its sequence and add it to the
             ## entity map
-            if (chain.count_standard_residues()/len(chain))<=0.5:
+            if chain.count_standard_residues()<3:
                 continue
-
+            
             ## calculate sequence and compare the sequence to chains
             ## already added so we can re-use the entity ID
             sequence = chain.sequence_one_letter_code()
+            warning("sequence: %s" % (sequence))
+            
             entity_desc = self.get_entity_desc_from_sequence(sequence)
 
             ## ADD POLYMER TO CURRENT ENTITY
@@ -668,7 +632,7 @@ class mmCIFFileBuilder(object):
             
             row["entity_id"] = entity_desc["id"]
             row["ndb_chain_id"] = string.join(entity_desc["chain_ids"], ",")
-            row["ndb_seq_one_letter_code"] =  entity_desc["sequence"]
+            row["ndb_seq_one_letter_code"] = entity_desc["sequence"]
         
     def add__cell(self):
         """Adds the _cell table.
@@ -732,7 +696,6 @@ class mmCIFFileBuilder(object):
         """
         if entity_desc["polymer"]==True:
             asrow["group_PDB"]     = "ATOM"
-            asrow["label_seq_id"]  = label_seq_id
             asrow["label_asym_id"] = atm.chain_id
 
         else:

@@ -104,12 +104,14 @@ class mmCIFTable(list):
     """
     __slots__ = ["name", "columns", "data"]
 
-    def __init__(self, name, columns = None):
+    def __init__(self, name, columns=None):
         assert name!=None
-        
         list.__init__(self)
         self.name = name
-        self.columns = columns or []
+        if columns==None:
+            self.columns = []
+        else:
+            self.columns = columns 
 
     def __deepcopy__(self, memo):
         table = mmCIFTable(self.name, self.columns[:])
@@ -266,8 +268,7 @@ class mmCIFData(list):
     __slots__ = ["name", "file"]
     
     def __init__(self, name):
-        assert name!=None
-        
+        assert name!=None        
         list.__init__(self)
         self.name = name
 
@@ -368,10 +369,11 @@ class mmCIFData(list):
         except IndexError:
             return None
 
-    def new_table(self, name):
+    def new_table(self, name, columns=None):
+        """Creates and returns a mmCIFTable object with the given name.
+        The object is added to this object before it is returned.
         """
-        """
-        cif_table = mmCIFTable(name)
+        cif_table = mmCIFTable(name, columns)
         self.append(cif_table)
         return cif_table
 
@@ -484,12 +486,23 @@ class mmCIFFile(list):
         mmCIFFileWriter().write_file(fil, self)
 
     def get_data(self, name):
+        """Returns the mmCIFData object with the given name.  Returns None
+        if no such object exists.
+        """
         try:
             return self[name]
         except KeyError:
             return None
         except IndexError:
             return None
+
+    def new_data(self, name):
+        """Creates a new mmCIFData object with the given name, adds it
+        to this mmCIFFile, and returns it.
+        """
+        cif_data = mmCIFData(name)
+        self.append(cif_data)
+        return cif_data
 
     def debug(self):
         print "mmCIFFile"

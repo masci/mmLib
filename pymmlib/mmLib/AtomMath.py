@@ -37,10 +37,13 @@ def rmatrix(alpha, beta, gamma):
     sinB = math.sin(beta)
     sinG = math.sin(gamma)
     
-    return array(
+    R = array(
         [[cosB*cosG, cosG*sinA*sinB-cosA*sinG, cosA*cosG*sinB+sinA*sinG],
          [cosB*sinG, cosA*cosG+sinA*sinB*sinG, cosA*sinB*sinG-cosG*sinA ],
          [-sinB,     cosB*sinA,                cosA*cosB ]], Float)
+
+    assert allclose(determinant(R), 1.0)
+    return R
 
 def rmatrixu(u, theta):
     """Return a rotation matrix caused by a right hand rotation of theta
@@ -54,112 +57,128 @@ def rmatrixu(u, theta):
     cosT = math.cos(theta)
     sinT = math.sin(theta)
 
-    return identity(3, Float)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
+    R = identity(3, Float)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
+    
+    assert allclose(determinant(R), 1.0)
+    return R
 
 def rquaternionu(u, theta):
     """Returns a quaternion representing the right handed rotation of theta
     radians about vector u.Quaternions are typed as Numeric Python arrays of
     length 4.
     """
-    u    = normalize(u)
-    q    = array((u[0], u[1], u[2], 0.0), Float) * math.sin(theta/2.0)
-    q[3] = math.cos(theta/2.0)
+    u = normalize(u)
+
+    half_sin_theta = math.sin(theta / 2.0)
+
+    x = u[0] * half_sin_theta
+    y = u[1] * half_sin_theta
+    z = u[2] * half_sin_theta
+    w = math.cos(theta / 2.0)
+
+    ## create quaternion
+    q = array((x, y, z, w), Float)
+    assert allclose(math.sqrt(dot(q,q)), 1.0)
+
     return q
-
-def addquaternion_sucks(q1, q2):
-    """Adds quaterions q1 and q2. Quaternions are typed as Numeric
-    Python arrays of length 4.
-    """
-    x1, y1, z1, w1 = q1
-    x2, y2, z2, w2 = q2
-
-    qr = array((w1*x2 + x1*w2 + y1*z2 - z1*y2,
-                w1*y2 + y1*w2 + z1*x2 - x1*z2,
-                w1*z2 + z1*w2 + x1*y2 - y1*x2,
-                w1*w2 - x1*x2 - y1*y2 - z1*z2), Float)
-
-    return qr
 
 def addquaternion(q1, q2):
     """Adds quaterions q1 and q2. Quaternions are typed as Numeric
     Python arrays of length 4.
     """
-    q13 = q1[:3]
-    q23 = q2[:3]
+    assert allclose(math.sqrt(dot(q1,q1)), 1.0)
+    assert allclose(math.sqrt(dot(q2,q2)), 1.0)
     
-    t1  = q13 * q2[3]
-    t2  = q23 * q1[3]
-    t3  = cross(q23, q13)
+    x1, y1, z1, w1 = q1
+    x2, y2, z2, w2 = q2
 
-    tf = t1 + t2 + t3
-    tf.resize(4)
-
-    tf[3] = q1[3] * q2[3] - dot(q13, q23)
-
+    x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+    y = w1*y2 + y1*w2 + z1*x2 - x1*z2
+    z = w1*z2 + z1*w2 + x1*y2 - y1*x2
+    w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+    q = array((x, y, z, w), Float)
+    
     ## normalize quaternion
-    tf /= math.sqrt(dot(tf, tf))
-
-    return tf
+    q = q / math.sqrt(dot(q,q))
+    assert allclose(math.sqrt(dot(q,q)), 1.0)
+    
+    return q
 
 def rmatrixquaternion(q):
     """Create a rotation matrix from q quaternion rotation.
     Quaternions are typed as Numeric Python arrays of length 4.
     """
-    q0, q1, q2, q3 = q
+    assert allclose(math.sqrt(dot(q,q)), 1.0)
+    
+    x, y, z, w = q
 
-    r = zeros((3,3), Float)
+    xx = x*x
+    xy = x*y
+    xz = x*z
+    xw = x*w
+    yy = y*y
+    yz = y*z
+    yw = y*w
+    zz = z*z
+    zw = z*w
 
-    r[0,0] = 1.0 - (2.0 * (q1*q1 + q2*q2))
-    r[0,1] = 2.0 * (q0*q1 - q2*q3)
-    r[0,2] = 2.0 * (q2*q0 + q1*q3)
+    r00 = 1.0 - 2.0 * (yy + zz)
+    r01 =       2.0 * (xy - zw)
+    r02 =       2.0 * (xz + yw)
 
-    r[1,0] = 2.0 * (q0*q1 + q2*q3)
-    r[1,1] = 1.0 - (2.0 * (q2*q2 + q0*q0))
-    r[1,2] = 2.0 * (q1*q2 - q0*q3)
+    r10 =       2.0 * (xy + zw)
+    r11 = 1.0 - 2.0 * (xx + zz) 
+    r12 =       2.0 * (yz - xw)
 
-    r[2,0] = 2.0 * (q2*q0 - q1*q3)
-    r[2,1] = 2.0 * (q1*q2 + q0*q3)
-    r[2,2] = 1.0 - (2.0 * (q1*q1 + q0*q0))
+    r20 =       2.0 * (xz - yw)
+    r21 =       2.0 * (yz + xw)
+    r22 = 1.0 - 2.0 * (xx + yy)
 
-    return r
+    R = array([[r00, r01, r02],
+               [r10, r11, r12],
+               [r20, r21, r22]], Float)
+    
+    assert allclose(determinant(R), 1.0)
+    return R
 
 def quaternionrmatrix(R):
     """Return a quaternion calculated from the argument rotation matrix R.
     """
+    assert allclose(determinant(R), 1.0)
+
     t = trace(R) + 1.0
-    
-    if t>1e-6:
-        s  = math.sqrt(t) * 2.0
-        x = (R[2,1] - R[1,2]) / s
-        y = (R[0,2] - R[2,0]) / s
-        z = (R[1,0] - R[0,1]) / s
-        w = 0.25 * s;
 
-    else:
-        warning("quaternionrmatrix")
+    if t>1e-5:
+        w = math.sqrt(1.0 + trace(R)) / 2.0
+        w4 = 4.0 * w
+
+        x = (R[2,1] - R[1,2]) / w4
+        y = (R[0,2] - R[2,0]) / w4
+        z = (R[1,0] - R[0,1]) / w4
         
-        if R[0,0]>R[1,1] and R[0,0]>R[2,2]:
-            s  = math.sqrt(1.0 + R[0,0] - R[1,1] - R[2,2]) * 2.0
-            x = 0.25 * s
-            y = (R[0,1] + R[1,0]) / s
-            z = (R[2,0] + R[0,2]) / s
-            w = (R[1,2] - R[1,2]) / s
-
-        elif R[1,1]>R[2,2]:
-            s  = math.sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0
-            x = (R[0,1] + R[1,0]) / s
-            y = 0.25 * s
-            z = (R[1,2] + R[2,1]) / s
-            w = (R[0,2] - R[2,0]) / s
-
+    else:
+        if R[0,0]>R[1,1] and R[0,0]>R[2,2]: 
+            S = math.sqrt(1.0 + R[0,0] - R[1,1] - R[2,2]) * 2.0
+            x = 0.25 * S
+            y = (R[0,1] + R[1,0] ) / S 
+            z = (R[0,2] + R[2,0] ) / S 
+            w = (R[1,2] - R[2,1] ) / S
+        elif R[1,1]>R[2,2]: 
+            S = sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0; 
+            x = (R[0,1] + R[1,0]) / S; 
+            y = 0.25 * S;
+            z = (R[1,2] + R[2,1]) / S; 
+            w = (R[0,2] - R[2,0]) / S;
         else:
-            s  = math.sqrt(1.0 + R[2,2] - R[0,0] - R[1,1]) * 2.0
-            x = (R[0,2] + R[2,0]) / s
-            y = (R[1,2] + R[2,1]) / s
-            z = 0.25 * s
-            w = (R[1,0] - R[0,1]) / s
+            S = sqrt(1.0 + R[2,2] - R[0,0] - R[1,1]) * 2; 
+            x = (R[0,2] + R[2,0]) / S; 
+            y = (R[1,2] + R[2,1]) / S; 
+            z = 0.25 * S;
+            w = (R[0,1] - R[1,0] ) / S;
 
-    return array((x, y, z, w), Float)
+    q = array((x, y, z, w), Float)
+    assert allclose(math.sqrt(dot(q,q)), 1.0)    
+    return q
 
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
@@ -193,7 +212,9 @@ def rmatrixz(u):
                     [ 0.0, 1.0,   0.0],
                     [   d, 0.0,     w] ], Float)
 
-    return matrixmultiply(Rxz2z, Rxz)
+    R = matrixmultiply(Rxz2z, Rxz)
+    assert allclose(determinant(R), 1.0)
+    return R
 	 
 def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.

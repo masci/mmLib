@@ -62,10 +62,10 @@ if __name__ == '__main__':
     if pdb == "-": pdb = sys.stdout
 
     struct = LoadStructure(
-                 fil = cif, 
-                 format = "CIF", 
-                 build_properties = ("no_bonds",))
-
+        fil = cif, 
+        format = "CIF", 
+        build_properties = ("calc_sequence",))
+    
     SaveStructure(
         fil = pdb, 
         structure = struct, 

@@ -62,9 +62,7 @@ if __name__ == '__main__':
     if outfil == "-": outfil = sys.stdout
 
     struct = LoadStructure(
-                 fil = infil, 
-                 format = "PDB")
-               #  build_properties = ("calc_sequence", "build_bonds"))
+        fil=infil, format="PDB",build_properties=("calc_sequence",))
 
     SaveStructure(
         fil = outfil, 

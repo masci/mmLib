@@ -2512,6 +2512,12 @@ class GLViewer(GLObject):
 
         centroid = calc_atom_centroid(aa_atom_iter(struct))
         R = self.calc_inertia_tensor(aa_atom_iter(struct), centroid)
+        if allclose(determinant(R), -1.0):
+            R[0,0] = -R[0,0]
+            R[0,1] = -R[0,1]
+            R[0,2] = -R[0,2]
+
+        assert allclose(determinant(R), 1.0)
 
         ori = {}
 
@@ -2582,9 +2588,10 @@ class GLViewer(GLObject):
         self.glv_add_draw_list(gl_struct)
 
         ori = self.calc_orientation(struct)
-        
+
         self.properties.update(
-            R         = ori["R"],
+#            R         = ori["R"],
+            R         = identity(3, Float),
             cor       = ori["centroid"],
             zoom      = ori["hzoom"],
             near      = ori["near"],
@@ -2738,17 +2745,19 @@ class GLViewer(GLObject):
             theta = 2.0 * math.asin(t)
 
         ## convert rotation axis a and rotation theta to a quaternion
-        R = self.properties["R"]
-        a = matrixmultiply(transpose(R), a)
-        q = rquaternionu(a, theta)
+        Rcur = self.properties["R"]
+
+        ## calculate a in the original coordinate frame
+        a = matrixmultiply(transpose(Rcur), a)
+        qup = rquaternionu(a, theta)
 
         ## convert the current rotation matrix to a quaternion so the
         ## new rotation quaternion can be added to it
-        rq = quaternionrmatrix(R)
-        rq = addquaternion(q, rq)
-        R  = rmatrixquaternion(rq)
+        qcur = quaternionrmatrix(Rcur)
+        qnew = addquaternion(qcur, qup)
+        Rnew = rmatrixquaternion(qnew)
 
-        self.properties.update(R=R)
+        self.properties.update(R=Rnew)
 
     def glv_render(self):
         """Render scene using all drivers.
