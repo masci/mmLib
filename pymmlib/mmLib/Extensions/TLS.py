@@ -3531,7 +3531,7 @@ class GLTLSChain(GLDrawList):
         self.glo_add_property(
             { "name":        "color_method",
               "desc":        "TLS Group Coloring Scheme",
-              "catagory":    "Color",
+              "catagory":    "Macros",
               "type":        "enum_string",
               "default":     "Color by Group",
               "enum_list":   ["Color By Group", "Color By Goodness of Fit"],
@@ -3539,15 +3539,15 @@ class GLTLSChain(GLDrawList):
         self.glo_add_property(
             { "name":       "show_frac",
               "desc":       "Show Fraction of Top Fitting Groups",
-              "catagory":   "Color",
+              "catagory":   "Macros",
               "type":       "integer",
-              "range":      PROP_PROBABILTY_RANGE,
-              "default":    50,
+              "range":      "0-100,1",
+              "default":    100,
               "action":     "recolor" })
         self.glo_add_property(
             { "name":        "style1",
               "desc":        "Cool Visualization Style #1",
-              "catagory":    "Color",
+              "catagory":    "Macros",
               "type":        "boolean",
               "default":     False,
               "action":      "style1" })
