@@ -780,7 +780,7 @@ pdb_read(PyObject *self, PyObject *args)
     /* set the record name */
     PyDict_SetItemString(
       py_rec_dict, 
-      "record", 
+      "RECORD", 
       PyString_FromString(pdb_record_defs[irec].name));
     
     for (ifie = 0;
@@ -873,7 +873,7 @@ static PyMethodDef PDBModuleMethods[] = {
 };
 
 
-PyMODINIT_FUNC
+DL_EXPORT(void)
 initpdbmodule(void)
 {
   PyObject *m;

@@ -7,47 +7,72 @@ from mmLib.mmTypes import *
 """Misc. testing utility code code common to the test programs.
 """
 
+
+def my_walk(path):
+    """All Python's path walk functions suck.
+    """
+    if os.path.isfile(path):
+        yield path
+    elif os.path.isdir(path):
+        for x in os.listdir(path):
+            for y in my_walk(os.path.join(path, x)):
+                yield y
+
 def walk(path, start_path, *regex_args):
     """Iterate over all files rooted at path containing the substring
     in the filename, including extentions.
     """
-    if os.path.isfile(path):
-        yield path
-        return
-
     re_list = [re.compile(x) for x in regex_args]
 
-    for (dirpath, dirnames, filenames) in os.walk(path):
-        for filename in filenames:
-            do_yield = False
+    for pathx in my_walk(path):
+        (dir, filename) = os.path.split(pathx)
 
-            for rex in re_list:
-                match = rex.match(filename)
-                if match:
-                    do_yield = True
-                    break
+        do_yield = False
 
-            yield_path = os.path.join(dirpath, filename)
+        if start_path != None:
+            if start_path == pathx:
+                start_path = None
+            else:
+                continue
 
-            if start_path != None:
-                if start_path == yield_path:
-                    start_path = None
-                else:
-                    do_yield = False
+        for rex in re_list:
+            match = rex.match(filename)
+            if match:
+                do_yield = True
+                break
+
+        if do_yield:
+
+            if pathx.endswith(".Z"):
+                x = "gunzip %s" % (pathx)
+                print "CMD: ",x
+                os.system(x)
                 
-            if do_yield:
-                yield yield_path
+                pathx = pathx[:-2]
+                x = "gzip %s" % (pathx)
+                print "CMD: ",x
+                os.system(x)
+
+                pathx = pathx + ".gz"
+
+            yield pathx
 
 def walk_pdb(path, start_path = None):
-    return walk(path, start_path, "pdb\w+\.gz", "w+\.pdb", "w+\.pdb\.gz")
+    return walk(path, start_path, "pdb\w+\.Z", "pdb\w+\.gz", "w+\.pdb",
+                "w+\.pdb\.gz")
 
 def walk_cif(path, start_path = None):
-    return walk(path, start_path, "\w+\.cif", "\w+\.cif\.gz")
+    return walk(path, start_path, "\w+\.cif", "\w+\.cif\.Z", "\w+\.cif\.gz")
 
 def walk_pdb_cif(path, start_path = None):
     return walk(path, start_path,
-                "pdb\w+\.gz", "w+\.pdb", "w+\.pdb\.gz",
-                "\w+\.cif", "\w+\.cif\.gz")
+                "pdb\w+\.gz",
+                "w+\.pdb",
+                "w+\.pdb\.gz",
+                "pdb\S+\.Z",
+                "pdb\S+\.gz",
+                "\w+\.cif",
+                "\w+\.cif\.gz")
 
 def pdb_stats(path):
     re_model = re.compile("^MODEL\s+(\d+).*")
