@@ -310,7 +310,7 @@ class StructureBuilder(object):
                 for frag_list in model_dict.values():
                     try:
                         frag = frag_list[i]
-                    except KeyError:
+                    except IndexError:
                         continue
 
                     ## assign new chain_id and fragment_id, than place the
