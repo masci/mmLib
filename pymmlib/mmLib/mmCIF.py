@@ -9,13 +9,10 @@ data structures can also be constructed and written back out as mmCIF.
 A CIF dictionary parser is also included as a specialized version of the
 mmCIF parser."""
 
-
-
+from   __future__           import generators
 import string
 import types
-
-from FileIO import OpenFile
-
+from   FileIO               import OpenFile
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -30,15 +27,12 @@ from FileIO import OpenFile
 mmCIFError = "mmCIFError"
 
 
-
 class mmCIFRow:
     """Contains one row of data.  In a mmCIF file, this is one complete
     set of data found under a section.  The data can be accessed by using
     the column names as class attributes."""
-
     def __str__(self):
         return str(dir(self))
-
 
 
 class mmCIFTable:
@@ -50,33 +44,30 @@ class mmCIFTable:
         self._cname_list = cname_list or []
         self._row_list = []
 
+    def __iter__(self):
+        return iter(self._row_list)
 
     def getName(self):
         """Returns the name of the table.  In this case, the mmCIF section
         this class represents."""
         return self._name
 
-
     def addColumn(self, cname):
         """Adds a column to the table.  In this case, a column is a
         mmCIF subsection."""
         self._cname_list.append(cname)
-
         
     def columnIndex(self, cname):
         """Returns the column index of from the column name."""
         return self._cname_list.index(cname)
 
-
     def getColumnList(self):
         """Returns a list of all column names, in order."""
         return self._cname_list
 
-
     def addRow(self, row):
         """Adds a mmCIFRow to the table."""
         self._row_list.append(row)
-
 
     def getOneRow(self):
         """Some tables are defined to have only one row.  Return it or
@@ -86,11 +77,9 @@ class mmCIFTable:
                 self._name, len(self._row_list))
         return self._row_list[0]
 
-
     def getRowList(self):
         """Returns a list of all mmCIFRow classes contained in the table."""
         return self._row_list
-
 
     def selectRowList(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
@@ -117,7 +106,6 @@ class mmCIFTable:
 
         return row_list
 
-
     def debug(self):
         print "mmCIFTable.debug()"
         print "mmCIFTable.name=%s" % (self._name)
@@ -127,29 +115,27 @@ class mmCIFTable:
             print "---"
 
 
-
 class mmCIFData:
     """Contains all information found under a data_ block in a mmCIF file.
     mmCIF files are represented differently here than their file format
     would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
     the files are represented here with their sections as "Tables" and
     their subsections as "Columns".  The data is stored in "Rows"."""
-
     def __init__(self, name):
         self._name = name
         self._table_list = []
 
+    def __iter__(self):
+        return iter(self._table_list)
 
     def getName(self):
         """Returns the name given to the data section in the mmCIF file."""
         return self._name
 
-
     def addTable(self, table):
         """Adds a mmCIFTable class."""
         self._table_list.append(table)
         setattr(self, table._name, table)
-
 
     def getTable(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
@@ -159,11 +145,9 @@ class mmCIFData:
         except AttributeError:
             return None
 
-
     def getTableList(self):
         """Returns a list of the mmCIFTable classes."""
         return self._table_list
-
 
     def debug(self):
         print "mmCIFData.debug()"
@@ -172,40 +156,35 @@ class mmCIFData:
             table.debug()
 
 
-
 class mmCIFFile:
     """Class representing a mmCIF files.  The constructor of this class
     takes two arguments.  The first is the string path for the file, or
     alternativly a file object.  The second is a text string representing
     the mode: "l" for load, and "s" for save."""
-
     def __init__(self):
         self._data_list = []
 
+    def __iter__(self):
+        return iter(self._data_list)
 
     def loadFile(self, fil):
         fil = OpenFile(fil, "r")
         for cif_data in mmCIFFileParser().parseFile(fil):
             self.addData(cif_data)
 
-
     def saveFile(self, fil):
         fil = OpenFile(fil, "w")
         mmCIFFileWriter().writeFile(fil, self._data_list)
 
-
     def getPath(self):
         return self._path
-
 
     def addData(self, data):
         self._data_list.append(data)
         setattr(self, data._name, data)
 
-
     def getDataList(self):
         return self._data_list
-
 
     def getData(self, dname):
         if type(dname) == types.StringType:
@@ -221,7 +200,6 @@ class mmCIFFile:
                 return None
 
         return None
-
 
     def debug(self):
         print "mmCIFFile.debug()"

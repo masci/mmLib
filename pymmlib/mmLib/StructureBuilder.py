@@ -260,7 +260,6 @@ class StructureBuilder:
         ## BUILD BONDS BETWEEN RESIDUES IN POLYMERS
         for poly in self.structure.iterPolymers():
             for res1 in poly.iterResidues():
-
                 res2 = res1.getOffsetResidue(1)
                 if not res2: continue
 
@@ -271,7 +270,7 @@ class StructureBuilder:
                 except KeyError:
                     continue
 
-                for (name1, name2) in mon.getPolymerBondList(res1, res2):
+                for (name1, name2) in mon1.getPolymerBondList(res1, res2):
                     try:
                         atm1 = res1[name1]
                         atm2 = res2[name2]
