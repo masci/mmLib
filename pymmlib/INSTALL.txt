@@ -5,7 +5,29 @@ SUPPORTED OPERATING SYSTEMS::
 
 It should be possible to get mmLib running on any decent UNIX system, and
 this installation guide should be usefully for any UNIX installation, but it
-is really written with a Linux installation in mind.
+is really written with a Linux installation in mind.  I have recently started
+testing on Windows systems too, and everything seems to run fine with the
+exception of the applications using the GTK+ GUI.
+
+
+MONOMER LIBRARY::
+
+mmLib uses a monomer library generated from the RCSB's public component dictionary available on the web at:
+
+http://pdb.rutgers.edu/public-component-erf.cif
+
+The official releases of mmLib contain a pre-built monomer library,
+but the CVS version does not.  However, I've modified mmLib's setup.py
+installation script to have a special mode which downloads the RCSB library
+from the web, and rebuilds the mmLib monomer library from it.  You
+can run using the command:
+
+# python setup.py buildlib
+
+The library is large, and may take a while to download.  I have also found
+that the RCSB changes the format of the data in this library from time to time,
+and these changes have broken mmLib in the past.  So, it may be best to 
+copy the one of the pre-built libraries from a official mmLib release.
 
 
 DEPENDENCY CHECKING::
@@ -58,7 +80,9 @@ you didn't install from your Linux installation disks.  Here's the list:
   URL: http://www.pfdubois.com/numpy/
   Most distributions have this as a package.  However, it is almost as easy
   to compile and install it from source after the python-devel package is
-  installed.  Instructions are given below.
+  installed.  Instructions are given below.  The Numarray (Numeric replacement)
+  package is also supported as a alternative to Numeric, but it is very, very
+  slow compared to Numeric Python and is not recommended.
 
 * OpenGL/GLUT (optional for mmLib Viewer)
   URL: Your install disks.

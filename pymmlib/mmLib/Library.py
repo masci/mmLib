@@ -166,7 +166,11 @@ class Monomer(MonomerInterface):
 
         self.res_name     = chem_comp.get("res_name", self.res_name)
         self.full_name    = chem_comp.get("name", self.full_name)
+
+        ## component type
         self.type         = chem_comp.get("type", self.type)
+        self.type         = self.type.upper()
+
         self.pdbx_type    = chem_comp.get("pdbx_type", self.pdbx_type)
         self.formula      = chem_comp.get("formula", self.formula)
         self.rcsb_class_1 = chem_comp.get("rcsb_class_1", self.rcsb_class_1)
@@ -243,7 +247,7 @@ class Monomer(MonomerInterface):
         """Returns True if the Monomer is a water molecule,
         otherwise returns False.
         """
-        return self.res_name == "HOH"
+        return self.res_name=="HOH" or self.res_name=="WAT"
 
     def get_polymer_bond_list(self, mon1, mon2):
         """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
