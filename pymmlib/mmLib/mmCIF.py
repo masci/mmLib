@@ -126,54 +126,58 @@ class mmCIFTable(list):
         self.columns.sort()
 
     def get_row(self, *args):
-        """Returns the first row found matching the argument list.
+        """Preforms a SQL-like 'AND' select aginst all the rows in the table,
+        and returns the first matching row found.  The arguments are a
+        variable list of tuples of the form:
+          (<column-name>, <column-value>)
+        For example:
+          ger_row(('atom_id','CA'),('entity_id', '1'))
+        returns the first matching row with atom_id==1 and entity_id==1.
         """
+        def cmp(r):
+            try:
+                for (k, v) in args:
+                    if r[k] != v:
+                        return False
+            except KeyError:
+                return False
+            return True
+
         for row in self:
-            match = True
-            for (key, val) in args:
-                if row.get(key) != val:
-                    match = False
-                    break
-            if match:
+            if cmp(row):
                 return row
         return None
 
     def iter_rows(self, *args):
-        """Iterate over all rows matching the argument list.
+        """This is the same as get_row, but it iterates over all matching
+        rows in the table.
         """
+        def cmp(r):
+            try:
+                for (k, v) in args:
+                    if r[k] != v:
+                        return False
+            except KeyError:
+                return False
+            return True
+
         for row in self:
-            match = True
-            for (key, val) in args:
-                if row.get(key) != val:
-                    match = False
-                    break
-            if match:
+            if cmp(row):
                 yield row
 
-    def select_row_list(self, *nvlist):
-        """Preforms a SQL-like 'AND' select aginst all the rows in the table.
-        The arguments are a variable list of tuples of the form:
-          (<column-name>, <column-value>)
-        For example:
-          select_row_list(('atom_id','CA'),('entity_id', '1'))
-        returns a list of rows with atom_id==1 and entity_id==1.
+    def row_index_dict(self, key):
+        """Return a dictionary mapping the value of the row's value in
+        column 'key' to the row itself.  If there are multiple rows with
+        the same key value, they will be overwritten with the last found
+        row.
         """
-        ## clever optimization tricks
-        (attr, val) = nvlist[0]
-        
-        row_list = []
+        dictx = {}
         for row in self:
-            if row[attr] != val: continue
-            
-            add = 1
-            for (attr, val) in nvlist:
-                if row[attr] != val:
-                    add = 0
-                    break
-
-            if add: row_list.append(row)
-
-        return row_list
+            try:
+                dictx[row[key]] = row
+            except KeyError:
+                pass
+        return dictx
 
     def debug(self):
         print "mmCIFTable::%s" % (self.name)

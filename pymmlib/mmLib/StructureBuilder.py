@@ -125,15 +125,17 @@ class StructureBuilder(object):
         ## being passed to the naming service
 
         ## absence of requred fields
-        if atm.chain_id == "" or \
+        if atm.chain_id    == "" or \
            atm.fragment_id == "" or \
-           atm.name == "":
+           atm.name        == "":
+            #print "NS1:",atm
             self.name_service_list.append(atm)
             return atm
 
         try:
             self.place_atom(atm)
         except AtomOverwrite:
+            #print "NS2:",atm
             self.name_service_list.append(atm)
 
         return atm
@@ -146,7 +148,7 @@ class StructureBuilder(object):
         
         ## pack atom into its fragment, create necessary parents
         ## add chain
-        if self.cache_chain == None or \
+        if self.cache_chain          == None or \
            self.cache_chain.chain_id != atm.chain_id:
 
             try:
@@ -156,9 +158,9 @@ class StructureBuilder(object):
                 self.struct.add_chain(self.cache_chain, delay_sort = True)
 
         ## add fragment
-        if self.cache_frag == None or \
+        if self.cache_frag             == None or \
            self.cache_frag.fragment_id != atm.fragment_id or \
-           self.cache_frag.chain_id != atm.chain_id:
+           self.cache_frag.chain_id    != atm.chain_id:
 
             try:
                 self.cache_frag = self.cache_chain[atm.fragment_id]
@@ -1156,9 +1158,20 @@ class mmCIFStructureBuilder(StructureBuilder):
             warning("read_atoms: atom_site table not found")
             return
 
-        aniso_table = self.cif_data.get("atom_site_anisotrop")
+        try:
+            aniso_table = self.cif_data["atom_site_anisotrop"]
+        except KeyError:
+            aniso_table = None
+        else:
+            aniso_dict  = aniso_table.row_index_dict("id")
         
         for atom_site in atom_site_table:
+            try:
+                atom_site_id = atom_site["id"]
+            except KeyError:
+                warning("unable to find id for atom_site row")
+                continue
+
             atm_map = {}
 
             self.setmaps(atom_site, self.atom_id, atm_map, "name")
@@ -1185,8 +1198,11 @@ class mmCIFStructureBuilder(StructureBuilder):
                          atm_map,   "model_num")
 
             if aniso_table != None:
-                aniso = aniso_table.get_row(("id", atom_site["id"]))
-                if aniso:
+                try:
+                    aniso = aniso_dict[atom_site_id]
+                except KeyError:
+                    warning("unable to find aniso row for atom")
+                else:
                     setmapf(aniso, "U[1][1]", atm_map, "U[1][1]")
                     setmapf(aniso, "U[2][2]", atm_map, "U[2][2]")
                     setmapf(aniso, "U[3][3]", atm_map, "U[3][3]")
@@ -1202,10 +1218,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                     setmapf(aniso, "U[2][3]_esd", atm_map, "sig_U[2][3]")
 
             atm = self.load_atom(atm_map)
-            try:
-                self.atom_site_id_map[atom_site["id"]] = atm
-            except KeyError:
-                pass
+            self.atom_site_id_map[atom_site_id] = atm
 
     def read_metadata(self):
         ## copy selected mmCIF tables to the structure's mmCIF database
