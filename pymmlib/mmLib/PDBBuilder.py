@@ -181,14 +181,13 @@ class PDBStructureBuilder(StructureBuilder):
         try:
             name = rec["name"]
         except KeyError:
+            atm_map["name"] = ""
             atm_map["element"] = ""
         else:
-            res_name = rec.get("resName", "")
-
-            gname, gelement = self.guess_element_from_name(name, res_name)
+            atm_map["name"] = name.strip()
             
-            if gname!=None:
-                atm_map["name"] = gname
+            res_name = rec.get("resName", "")
+            gelement = library_guess_element_from_name(name, res_name)
             if gelement!=None:
                 atm_map["element"] = gelement
 
@@ -228,91 +227,6 @@ class PDBStructureBuilder(StructureBuilder):
             atm_map["occupancy"] = rec["occupancy"]
         if rec.has_key("tempFactor"):
             atm_map["temp_factor"] = rec["tempFactor"]
-
-    def guess_element_from_name(self, name0, res_name):
-        """Try everything I can possibly think of to extract the element
-        symbol from the atom name.  If availible, use the monmer dictionary
-        to help narrow down the search.
-        """
-        ## strip any space from the name, and return now if there
-        ## is nothing left to work with
-        name = name0.strip()
-        if name=="":
-            self.pdb_error("ATOM", "record with blank name field")
-            return name, None
-        
-        ## try the easy way out -- look up the atom in the monomer dictionary
-        mdesc = library_get_monomer_desc(res_name)
-        if mdesc!=None:
-            if mdesc.atom_dict.has_key(name):
-                symbol = mdesc.atom_dict[name]
-                if symbol!=None:
-                    return name, symbol
-
-            if mdesc.is_amino_acid() and name=="OXT":
-                return name, "O"
-
-            if mdesc.is_amino_acid():
-                warning("Invalid Atom Name: %s in Residue: %s" % (
-                    name, res_name))
-
-        ## ok, that didn't work...
-
-        ## set the space_flag to true if the name starts with a space
-        ## which can indicate the name of the atom is only 1 charactor
-        ## long
-        if name0.startswith(" "):
-            space_flag = True
-        else:
-            space_flag = False
-
-        ## remove all non-alpha chars from the name
-        alpha_name = ""
-        for c in name:
-            if c.isalpha()==True:
-                alpha_name += c
-
-        ## look up two possible element symbols in the library:
-        ## e1 is the possible one-charactor symbol
-        ## e2 is the possible two-charactor symbol
-        if len(alpha_name)==0:
-            return None, None
-
-        e1 = library_get_element_desc(alpha_name[0])
-
-        if len(alpha_name)>1:
-            e2 = library_get_element_desc(alpha_name[:2])
-        else:
-            e2 = None
-
-        ## e1 or e2 must return somthing for us to proceed, otherwise,
-        ## there's just no possible element symbol contained in the atom
-        ## name
-        if e1==None and e2==None:
-            return name , None
-
-        elif e1!=None and e2==None:
-            return name, e1.symbol
-
-        elif e1==None and e2!=None:
-            return name, e2.symbol
-
-        ## if we get here, then e1 and e2 are both valid elements
-
-        ## no monomer library help narrow down the choices, choose e1
-        if mdesc==None:
-            return name, e1.symbol
-        
-        e1x = e1.symbol in mdesc.atom_dict.values()
-        e2x = e2.symbol in mdesc.atom_dict.values()
-
-        if e1x == True and e2x == False:
-            return name, e1.symbol
-        elif e1x == False and e2x == True:
-            return name, e2.symbol
-
-        ## we're out of choices, choose e1
-        return name, e1.symbol
 
     def process_HETATM(self, rec):
         self.process_ATOM(rec)
