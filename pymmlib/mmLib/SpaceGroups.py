@@ -8270,6 +8270,8 @@ def GetSpaceGroup(name):
     for sg in SpaceGroupList:
         if sg.check_group_name(name):
             return sg
+
+    print "SG NOT FOUND: '%s'"%(name)
     return None
 
 

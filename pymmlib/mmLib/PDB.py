@@ -11,8 +11,8 @@ from __future__ import generators
 import string
 import types
 import fpformat
-from mmTypes import *
-from UnitCell import UnitCell
+
+from Structure import *
 
 PDBError = "PDB Error"
 
@@ -30,44 +30,59 @@ class PDBRecord(dict):
         ln = self._name
         
         for (field, start, end, ftype, just, get_func) in self._field_list:
-            assert len(ln) <= (start - 1)
-            
+
             ## add spaces to the end if necessary
+            assert len(ln) <= (start - 1)
             ln = ln.ljust(start - 1)
-                
+
+            ## used later
+            field_char_len = end - start + 1
+            
+
             ## access the namespace of this class to write the field
             ## if a class has a special function defined for retrieveing
             ## this record, it should use it
             if get_func:
                 ln += get_func(self)
                 continue
-            else:
-                s = self.get(field)
-                if s == None:
-                    s = ""
+
+            ## get the data
+            s = self.get(field, "")
+
+            ## if the data is blank, then just add the spaces and continue
+            if s == None or s == "":
+                ln += " " * field_char_len
+                continue
 
             ## convert integer and float types
-            if   ftype == "string":
+            if ftype.startswith("string"):
                 pass
-            elif ftype == "integer":
+
+            elif ftype.startswith("integer"):
                 s = str(s)
+
             elif ftype.startswith("float"):
                 try:
                     s = fpformat.fix(s, int(ftype[6]))
                 except ValueError:
                     raise PDBError, "field=%s %s not float" % (field, s)
-            else:
-                raise PDBError, "INVALID TYPE: %s" % (ftype)
+
+            ## assert type
+            try:
+                assert type(s) == StringType
+            except AssertionError:
+                print "### s",str(type(s)), str(s), ftype, field
+                print ln
+                raise
 
             ## check for maximum length
-            flen = end - start + 1
-            if len(s) > flen:
-                s = s[:flen]
-
-            if just == "ljust":
-                ln += s.ljust(flen)
+            if len(s) > field_char_len:
+                ln += s[:field_char_len]
             else:
-                ln += s.rjust(flen)
+                if just.startswith("ljust"):
+                    ln += s.ljust(field_char_len)
+                else:
+                    ln += s.rjust(field_char_len)
 
         return ln
 
@@ -75,36 +90,39 @@ class PDBRecord(dict):
         """Read the PDB record line and convert the fields to the appropriate
         dictionary values for this class.
         """
-
         for (field, start, end, ftype, just, get_func) in self._field_list:
             s = line[start-1:end]
-            if not s or not s.strip():
+
+            ## ignore blank fields
+            if s.isspace():
                 continue
 
-            elif ftype == "string":
-                if just == "ljust":
-                    s = s.rstrip()
-                elif just == "rjust":
+            elif ftype.startswith("string"):
+                
+                if just.endswith("lstrip"):
                     s = s.lstrip()
+                elif just.endswith("rstrip"):
+                    s = s.rstrip()
+                else:
+                    s = s.strip()
 
-            elif ftype == "integer":
+            elif ftype.startswith("integer"):
                 try:
                     s = int(s)
                 except ValueError:
-                    debug("PDB parser: int(%s) failed on record" % (s))
-                    debug(str(line))
+                    warning("PDB parser: int(%s) failed on record" % (s))
+                    warning(str(line))
                     continue
 
             elif ftype.startswith("float"):
                 try:
                     s = float(s)
                 except ValueError:
-                    debug("PDB parser: float(%s) failed on record" % (s))
-                    debug(str(line))
+                    warning("PDB parser: float(%s) failed on record" % (s))
+                    warning(str(line))
                     continue
 
             self[field] = s
-
 
     def reccat(self, rec_list, field):
         """Return the concatenation of field in all the records in rec_list.
@@ -993,7 +1011,7 @@ class ATOM(PDBRecord):
     _name = "ATOM  "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
-        ("name", 13, 16, "string", "ljust", ATOM_get_name),
+        ("name", 13, 16, "string", "ljust.rstrip", ATOM_get_name),
         ("altLoc", 17, 17, "string", "rjust", None),
         ("resName", 18, 20, "string", "rjust", None),
         ("chainID", 22, 22, "string", "rjust", None),
@@ -1404,13 +1422,24 @@ class PDBFileBuilder:
         self.struct = struct
         self.pdb_file = pdb_file
 
-        self.atom_serial_num = 1
+        self.atom_count = 0
+        self.atom_serial_num = 0
         self.atom_serial_map = {}
 
-        self.add_header_records()
-        self.add_title_records()
-        self.add_coord_transform_records()
-        self.add_atom_records()
+        self.add_title_section()
+        self.add_primary_structure_section()
+        self.add_heterogen_section()
+        self.add_secondary_structure_section()
+        self.add_connectivity_annotation_section()
+        self.add_miscellaneous_fatures_section()
+        self.add_crystallographic_oordinate_transformation_section()
+        self.add_coordinate_section()
+        self.add_connectivity_section()
+        self.bookkeeping_section()
+
+    def next_serial_number(self):
+        self.atom_serial_num += 1
+        return self.atom_serial_num
 
     def new_atom_serial(self, atm):
         """Gets the next available atom serial number for the given atom
@@ -1418,12 +1447,13 @@ class PDBFileBuilder:
         when creating PDB records which require serial number identification
         of the atoms.
         """
+        assert isinstance(atm, Atom)
+        
         try:
             return self.atom_serial_map[atm]
         except KeyError:
             pass
-        atom_serial_num = self.atom_serial_num
-        self.atom_serial_num += 1
+        atom_serial_num = self.next_serial_number()
         self.atom_serial_map[atm] = atom_serial_num
         return atom_serial_num
 
@@ -1433,7 +1463,9 @@ class PDBFileBuilder:
         except KeyError:
             pass
 
-    def add_header_records(self):
+    def add_title_section(self):
+        """ HEADER, TITLE, EXPDTA, AUTHOR
+        """
         header = HEADER()
         self.pdb_file.append(header)
         self.set_from_cifdb(header, "idCode",
@@ -1443,14 +1475,38 @@ class PDBFileBuilder:
         self.set_from_cifdb(header, "classification",
                             "struct_keywords", "pdbx_keywords")
         
-    def add_title_records(self):
         title = TITLE()
         self.pdb_file.append(title)
-        self.set_from_cifdb(title, "title",
-                            "struct", "title")
+        self.set_from_cifdb(title, "title", "struct", "title")
 
-    def add_coord_transform_records(self):
-        ## add the CRYST1 and unit-cell related records
+    def add_primary_structure_section(self):
+        """DBREF,SEQADV,SEQRES,MODRES
+        """
+        pass
+    
+    def add_heterogen_section(self):
+        """HET,HETNAM,HETSYN,FORMUL
+        """
+        pass
+
+    def add_secondary_structure_section(self):
+        """HELIX,SHEET,TURN
+        """
+        pass
+
+    def add_connectivity_annotation_section(self):
+        """SSBOND,LINK,SLTBRG,CISPEP
+        """
+        pass
+
+    def add_miscellaneous_fatures_section(self):
+        """SITE
+        """
+        pass
+
+    def add_crystallographic_oordinate_transformation_section(self):
+        """CRYST1,ORIGXn,SCALEn,MTRIXn,TVECT
+        """
         cryst1 = CRYST1()
         self.pdb_file.append(cryst1)
 
@@ -1459,25 +1515,69 @@ class PDBFileBuilder:
         cryst1["a"] = self.struct.unit_cell.a
         cryst1["b"] = self.struct.unit_cell.b
         cryst1["c"] = self.struct.unit_cell.c
-        cryst1["alpha"] = self.struct.unit_cell.alpha
-        cryst1["beta"] = self.struct.unit_cell.beta
-        cryst1["gamma"] = self.struct.unit_cell.gamma
+        cryst1["alpha"] = self.struct.unit_cell.calc_alpha_deg()
+        cryst1["beta"] = self.struct.unit_cell.calc_beta_deg()
+        cryst1["gamma"] = self.struct.unit_cell.calc_gamma_deg()
+        cryst1["sgroup"] = self.struct.unit_cell.space_group.pdb_name
+
+    def add_coordinate_section(self):
+        """ MODEL,ATOM,SIGATM,ANISOU,SIGUIJ,TER,HETATM,ENDMDL 
+        """
+        orig_model = self.struct.default_model
+
+        model_list = self.struct.model_list()
+
+        if len(model_list) > 1:
+            for model_num in self.struct.model_list():
+                self.struct.default_model = model_num
+
+                model = MODEL()
+                self.pdb_file.append(model)
+                model["serial"] = model_num
+
+                self.add_atom_records()
+
+                endmdl = ENDMDL()
+                self.pdb_file.append(endmdl)
+
+        else:
+            self.struct.default_model = model_list[0]
+            self.add_atom_records()
+
+        self.struct.default_model = orig_model
+
+
+    def add_connectivity_section(self):
+        """CONECT
+        """
+        pass
+    
+    def bookkeeping_section(self):
+        """MASTER,END
+        """
+        ## END
+        end = END()
+        self.pdb_file.append(end)
+
 
     def add_atom_records(self):
+        """With a default model set, output all the ATOM and associated
+        records for the model.
+        """
         ## atom records for standard groups
         for chain in self.struct.iter_chains():
             res = None
+            
             for res in chain.iter_standard_residues():
-                for atm in res.iter_atoms():
-                    for alt_atm in atm.iter_alt_loc():
-                        self.add_one_atom_records("ATOM", alt_atm)
+                for atm in res.iter_all_alt_loc_atoms():
+                    self.add_ATOM("ATOM", atm)
 
             ## chain termination record
             if res:
                 ter_rec = TER()
                 self.pdb_file.append(ter_rec)
                 fid = FragmentID(res.fragment_id)
-                ter_rec["serial"]  = self.new_atom_serial(res)
+                ter_rec["serial"]  = self.next_serial_number()
                 ter_rec["resName"] = res.res_name
                 ter_rec["chainID"] = res.chain_id
                 ter_rec["resSeq"]  = fid.res_seq
@@ -1486,11 +1586,14 @@ class PDBFileBuilder:
         ## hetatm records for non-standard groups
         for chain in self.struct.iter_chains():
             for frag in chain.iter_non_standard_residues():
-                for atm in frag.iter_atoms():
-                    for alt_atm in atm.iter_alt_loc():
-                        self.add_one_atom_records("HETATM", alt_atm)
+                for atm in frag.iter_all_alt_loc_atoms():
+                    self.add_ATOM("HETATM", atm)
 
-    def add_one_atom_records(self, rec_type, atm):
+    def add_ATOM(self, rec_type, atm):
+        """Adds ATOM/SIGATM/ANISOU/SIGUIJ/TER/HETATM 
+        """
+        self.atom_count += 1
+
         if rec_type == "ATOM":
             atom_rec = ATOM()
         elif rec_type == "HETATM":

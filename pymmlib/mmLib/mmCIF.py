@@ -10,6 +10,7 @@ mmCIF parser.
 """
 from __future__ import generators
 import string
+import re
 import types
 from mmTypes import *
 
@@ -25,7 +26,7 @@ from mmTypes import *
 ##
 
 mmCIFError = "mmCIFError"
-
+MAX_LINE = 80
 
 class mmCIFRow(dict):
     """Contains one row of data.  In a mmCIF file, this is one complete
@@ -176,7 +177,7 @@ class mmCIFTable(list):
         print "mmCIFTable::%s" % (self.name)
         for row in self:
             for col in self.columns:
-                print "%s=%s" % (col, row[col])[:80]
+                print "%s=%s" % (col, row.get(col))[:80]
             print "---"
 
 
@@ -377,133 +378,12 @@ class mmCIFDictionary(mmCIFFile):
     takes two arguments.  The first is the string path for the file, or
     alternativly a file object.
     """
-    def load_file(self, fil):
-        """Load the mmCIF dictionary into self.
-        """
-        mmCIFDictionaryParser().parse_file(OpenFile(fil, "r"), self)
+    pass
 
 
 ##
 ## FILE PARSERS/WRITERS
 ##
-
-## charactors considered quotes
-QUOTES = ["'", '"']
-
-## maximum line width
-MAX_LINE = 80
-
-
-class mmCIFElementFile:
-    """Tokenizes a mmCIF file for the state parser.
-    """
-    def __init__(self, file):
-        self.file = file
-        self.line_number = 0
-        self.elements = []
-
-    def escaped(self, line, i):
-        """Given a line and a charactor index, determine if the charactor
-        at index i is escaped.
-        """
-        j = i - 1
-        while 1:
-            try:
-                if line[j] != "\\": break
-            except IndexError:
-                break
-            j -= 1
-        return not ((i - j) % 2)
-
-    def split(self, line):
-        tok_list = []
-        j = 0
-        state = "whitespace"
-
-        for i in range(len(line)):
-            if state == "whitespace":
-                if line[i] not in string.whitespace:
-                    j = i
-                    if line[i] in QUOTES:
-                        state = "quote"
-                    else:
-                        state = "element"
-                continue
-
-            elif state == "element":
-                if line[i] in string.whitespace:
-                    state = "whitespace"
-                    tok = line[j:i]
-                    if tok == ".":
-                        tok = ""
-                    tok_list.append((tok, "token"))
-                continue
-
-            elif state == "quote":
-                if line[i] in QUOTES:
-                    try:
-                        if line[i+1] not in string.whitespace: continue
-                    except IndexError:
-                        pass
-                    
-                    state = "whitespace"
-                    tok_list.append((line[j+1:i],"string")) ## strip quotes
-                continue
-
-        if  state == "element":
-            tok = line[j:]
-            if tok == ".":
-                tok = ""
-            tok_list.append((tok,"token"))
-
-        elif state == "quote":
-            tok_list.append((line[j+1:-1],"string")) ## strip out the quotes
-            
-        return tok_list
- 
-    def read_elements(self):
-        state = "read data"
-        temp = ""
-        
-        while 1:
-            line = self.file.readline()
-            self.line_number += 1
-            if not line:
-                raise EOFError, "mmCIFElementFile"
-
-            if state == "read data":
-                if line.startswith("#"):
-                    continue
-                if line.startswith(";"):
-                    state = "read ;string"
-                    temp = line[1:]
-                    continue
-                elements = self.split(line)
-                if elements:
-                    self.elements += elements
-                    break
-                continue
-
-            if state == "read ;string":
-                if line.startswith(";"):
-                    state = "read data"
-                    self.elements.append((temp.rstrip(), "string"))
-                    break
-                temp += line
-                continue
-        
-    def get_next_element(self):
-        if not self.elements:
-            self.read_elements()
-        return self.elements.pop(0)
-
-    def peek_next_element(self):
-        if not self.elements:
-            self.read_elements()
-        return self.elements[0]
-
-    def replace_element(self, element):
-        self.elements.insert(0, element)
 
 
 class mmCIFFileParser:
@@ -512,204 +392,211 @@ class mmCIFFileParser:
     data hierarchy.
     """
     error = "mmCIF Syntax Error"
-    def syntax_error(self, err):
-        err = "[line %d] %s" % (self.cife.line_number, err)
-        raise self.error, err
 
     def parse_file(self, fil, cif_file):
-        self.done = 0
-        self.cife = mmCIFElementFile(fil)
+        self.line_number = 0
 
-        while not self.done:
-            try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s.startswith("data_"):
-                data = mmCIFData(s[5:])
-                cif_file.append(data)
-                self.read_data(data)
-            else:
-                self.syntax_error('unexpected element="%s"' % (s))
-
-    def read_data(self, data):
-        while not self.done:
-            try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s.startswith("_"):
-                self.read_single(data, s)
-                
-            elif s.startswith("loop_"):
-                self.read_loop(data, s)
-
-            elif s.startswith("data_"):
-                self.cife.replace_element((s,t))
-                break
-
-            else:
-                self.syntax_error('bad element=%s' % (s))
-
-    def read_single(self, data, s):
-        (tname, cname) = s[1:].split(".")
-
-        table = data.get_table(tname)
-        if not table:
-            table = mmCIFTable(tname)
-            data.append(table)
-            table.append(mmCIFRow())
-        else:
-            if cname in table.columns:
-                self.syntax_error('redefined single column %s.%s' % (
-                    tname, cname))
-    
-        table.columns.append(cname)
-        row = table[0]
+        token_iter = self.gen_token_iter(fil)
 
         try:
-            (s,t) = self.cife.get_next_element()
-        except EOFError:
-            self.syntax_error('premature end of file')
+            self.parse(token_iter, cif_file)
+        except StopIteration:
+            pass
+        else:
+            print "CIF ERROR!!!"
 
-        if s.startswith("_") and t == "token":
-            self.syntax_error('expected data got section=%s' % (s))
+    def syntax_error(self, err):
+        err = "[line %d] %s" % (self.line_number, err)
+        raise self.error, err
+ 
+    def parse(self, token_iter, cif_file):
+        cif_table_cache = {}
+        cif_data_save   = None
+        cif_data        = None
+        cif_table       = None
+        cif_row         = None
+        state           = ""
 
-        row[cname] = s
-
-    def read_loop(self, data, s):
-        table_name = None
-        cname_list = []
-
-        ## read in table column names
+        tblx,colx,strx,tokx = token_iter.next()
+        
         while 1:
-            try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.syntax_error('premature end of file')
+            if tblx != None:
+                state = "RD_SINGLE"
+            elif tokx != None:
+                if tokx == "loop_":
+                    state = "RD_LOOP"
+                elif tokx.startswith("data_"):
+                    state = "RD_DATA"
+                elif tokx.startswith("save_"):
+                    state = "RD_SAVE"
+                else:
+                    self.syntax_error("bad token #1: "+str(tokx))
+            else:
+                self.syntax_error("bad token #2")
+                return            
+ 
 
-            ## no more column names, this is data
-            if t == "string" or not s.startswith("_"):
-                self.cife.replace_element((s,t))
-                break
-
-            (tname, cname) = s[1:].split(".")
-
-            if table_name != tname:
-                if table_name:
-                    self.syntax_error('section in loop do not match')
-                table_name = tname
-
-            cname_list.append(cname)
-
-        table = mmCIFTable(table_name, cname_list)
-        data.append(table)
-
-        ## read in table column data
-        while 1:
-            row = mmCIFRow()
-            table.append(row)
-            
-            for cname in table.columns:
+            if state == "RD_SINGLE":
                 try:
-                    (s,t) = self.cife.get_next_element()
-                except EOFError:
-                    self.syntax_error('loop values incomplete')
+                    cif_table = cif_table_cache[tblx]
+                except KeyError:
+                    cif_table = cif_table_cache[tblx] = mmCIFTable(tblx)
+                    cif_data.append(cif_table)
+                    cif_row = mmCIFRow()
+                    cif_table.append(cif_row)
+                else:
+                    try:
+                        cif_row = cif_table[0] 
+                    except IndexError:
+                        self.syntax_error("bad token #3")
+                        return
 
-                ## freak out
-                if s.startswith("_") and t == "token":
-                    self.syntax_error('expected data got section=%s' % (s))
+                ## check for duplicate entries
+                if colx in cif_table.columns:
+                    self.syntax_error("redefined subsection (column)")
+                    return
+                else:
+                    cif_table.columns.append(colx)
 
-                row[cname] = s
+                x,x,strx,tokx = token_iter.next()
 
-            try:
-                (s,t) = self.cife.peek_next_element()
-            except EOFError:
-                self.done = 1
-                break
+                if tokx != None:
+                    if tokx == ".":
+                        cif_row[colx] = ""
+                    else:
+                        cif_row[colx] = tokx
+                elif strx != None:
+                    cif_row[colx] = strx
+                else:
+                    self.syntax_error("bad token #4")
 
-            ## if the next element is a mmCIF control token, then break
-            if t == "token":
-                if s.startswith("_") or s.startswith("data_") or \
-                   s.startswith("loop_") or s.startswith("save_"):
-                   break
+                tblx,colx,strx,tokx = token_iter.next()
+                continue
 
+            elif state == "RD_LOOP":
+                tblx,colx,strx,tokx = token_iter.next()
 
-class mmCIFDictionaryParser(mmCIFFileParser):
-    """Subclassed from mmCIFFileParser and extended to support the additional
-    syntax encountered in the dictionary files.  I wrote this quite a while
-    ago, and now that I look at it again, I suspect it's not complete.
-    """
-    def parse_file(self, fil, cif_file):
-        self.done = 0
-        self.cife = mmCIFElementFile(fil)
-
-        while not self.done:
-            try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s.startswith("data_"):
-                data = mmCIFData(s[5:])
-                data.save_list = []
-            else:
-                self.syntax_error('unexpected element="%s"' % (s))
-
-            cif_file.append(data)
-            self.read_data(data) 
-
-    def read_data(self, data):
-        while not self.done:
-            try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.done = 1
-                break
-
-            if s.startswith("_"):
-                self.read_single(data, s)
+                if tblx == None or colx == None:
+                    self.syntax_error("bad token #5")
+                    return
                 
-            elif s.startswith("loop_"):
-                self.read_loop(data, s)
+                if cif_table_cache.has_key(tblx):
+                    self.syntax_error("_loop section duplication")
+                    return
 
-            elif s.startswith("data_"):
-                self.syntax_error("two data_ subsections in dictionary")
-                break
+                cif_table = mmCIFTable(tblx)
+                cif_data.append(cif_table)
+                cif_table.columns.append(colx)
 
-            elif s.startswith("save_"):
-                save = mmCIFSave(s[5:])
-                data.save_list.append(save)
-                self.read_save(save)
+                while 1:
+                    tblx,colx,strx,tokx = token_iter.next()
+                    if tblx == None:
+                        break
+                    if tblx != cif_table.name:
+                        self.syntax_error("changed section names in _loop")
+                        return
+                    cif_table.columns.append(colx)
+                    
+                while 1:
+                    cif_row = mmCIFRow()
+                    cif_table.append(cif_row)
+
+                    for col in cif_table.columns:
+                        if tokx != None:
+                            if tokx == ".":
+                                cif_row[col] = ""
+                            else:
+                                cif_row[col] = tokx
+                        elif strx != None:
+                            cif_row[col] = strx
+
+                        tblx,colx,strx,tokx = token_iter.next()
+
+                    ## the loop ends when one of these conditions is met
+                    if tblx != None:
+                        break
+                    if tokx == None:
+                        continue
+                    if tokx == "loop_":
+                        break
+                    if tokx.startswith("data_"):
+                        break
+                    if tokx.startswith("save_"):
+                        break
+
+                continue
+
+            elif state == "RD_DATA":
+                cif_data_save = mmCIFData(tokx[5:])
+                cif_file.append(cif_data_save)
+
+                cif_data  = cif_data_save
+                cif_table = None
+
+                tblx,colx,strx,tokx = token_iter.next()
+
+            elif state == "RD_SAVE":
+                cif_data = mmCIFSave(tokx[5:])
+
+                if not hasattr(cif_data_save, "save_list"):
+                    cif_data_save.save_list = []
+                cif_data_save.save_list.append(cif_data)
+
+                cif_table_cache = {}
+                cif_table = None
                 
-            else:
-                self.syntax_error('bad element=%s' % (s))
+                tblx,colx,strx,tokx = token_iter.next()
+                
 
-    def read_save(self, save):
-        while not self.done:
+    def gen_token_iter(self, fil):
+        re_tok = re.compile(
+            r"(?:"
+
+             "(?:_(.+?)[.](\S+))"         "|"  # _section.subsection
+
+             "(?:['](.*?)(?:[']\s|[']$))" "|"  # quoted strings
+
+             "(\S+)"                           # unquoted tokens
+
+             ")")
+
+        file_iter = iter(fil)
+
+        while 1:
             try:
-                (s,t) = self.cife.get_next_element()
-            except EOFError:
-                self.done = 1
+                ln = file_iter.next()
+            except StopIteration:
                 break
-
-            if s.startswith("_"):
-                self.read_single(save, s)
-                
-            elif s.startswith("loop_"):
-                self.read_loop(save, s)
-
-            elif s.startswith("save_"):
-                break
-
             else:
-                self.syntax_error('bad element=%s' % (s))
+                self.line_number += 1
 
+            ## skip comments
+            if ln.startswith("#"):
+                continue
+
+            ## semi-colen multi-line strings
+            if ln.startswith(";"):
+                x = ln[1:]
+                while 1:
+                    try:
+                        ln = file_iter.next()
+                    except StopIteration:
+                        break
+                    else:
+                        self.line_number += 1
+                    
+                    if ln.startswith(";"):
+                        break
+                    x += ln
+
+                x = x.rstrip()
+                yield (None, None, x, None)
+                continue
+
+            ## split line into tokens
+            tok_iter = re_tok.finditer(ln)
+            for tokm in tok_iter:
+                yield tokm.groups()
 
 
 class mmCIFFileWriter:
@@ -727,172 +614,287 @@ class mmCIFFileWriter:
             self.cif_data = cif_data
             self.write_cif_data()
 
-    def write(self, line):
-        self.fil.write(line)
+    def write(self, x):
+        self.fil.write(x)
 
-    def writeln(self, line = ""):
-        self.fil.write(line + "\n")
+    def writeln(self, x = ""):
+        self.fil.write(x+"\n")
 
-    def fix_value(self, val):
-        ## make sure the value is a string
-        val = str(val)
+    def write_mstring(self, mstring):
+        lw = MAX_LINE - 2
 
-        ## blank values are not allowd -- replace them with
-        ## question marks
-        if not len(val): return "?"
+        self.write(";")
 
-        ## quote strings with spaces
-        if val.find(" ") != -1: return "'%s'" % (val)
+        for x in mstring.split("\n"):
+            if x == "":
+                self.writeln()
+                continue
+            
+            while len(x) > 0:
+                x1 = x[:lw]
+                x  = x[lw:]
+                self.writeln(x1)
 
-        ## don't do anything to the value if we make it here
-        return val
+        self.writeln(";")
 
-    def fix_big_string(self, val):
-        ## large strings -- break them up into newlined chunks < size
-        if len(val) > MAX_LINE-1:
-            tmp = []
-            for x in val.split("\n"):
-                while len(x) > MAX_LINE-1:
-                    tmp.append(x[:MAX_LINE-1])
-                    x = x[MAX_LINE-1:]
-                tmp.append(x)
-            return string.join(tmp, "\n")
+    def fix(self, x):
+        if type(x) != StringType:
+            return str(x)
+        if x == "":
+            return "."
+        return x
 
-        return val
+    def data_type(self, x):
+        """Analyze x and return its type: token, qstring, mstring
+        """
+        if type(x) != StringType:
+            x = str(x)
+            return x, "token"
+
+        if x == "":
+            x = "."
+            return x, "token"
+
+        if x.find("\n") != -1:
+            return x, "mstring"
+        
+        if x.find(" ") != -1 or x.find("\t") != -1:
+            if len(x) > MAX_LINE-2:
+                return x, "mstring"
+            if x.find("' ") != -1:
+                return x, "mstring"
+            return x, "qstring"
+
+        if len(x) < MAX_LINE:
+            return x, "token"
+        else:
+            return x, "mstring"
 
     def write_cif_data(self):
         self.writeln("data_%s" % self.cif_data.name)
-        self.writeln("")
+        self.writeln()
         
         for cif_table in self.cif_data:
-            if   len(cif_table) == 0: continue
-            elif len(cif_table) == 1: self.write_one_row_table(cif_table)
-            else:                     self.write_multi_row_table(cif_table)
+            ## ignore tables without data rows
+            if len(cif_table) == 0:
+                continue
+
+            ## special handling for tables with one row of data
+            elif len(cif_table) == 1:
+                self.write_one_row_table(cif_table)
+
+            ## _loop tables
+            elif len(cif_table) > 1 and len(cif_table.columns) > 0:
+                self.write_multi_row_table(cif_table)
+
+            else:
+                print "wtf?",cif_table
+                sys.exit(1)
+
             self.writeln("#")
 
     def write_one_row_table(self, cif_table):
         row = cif_table[0]
 
+        ## determine max key length for formatting output
         kmax  = 0
+        table_len = len(cif_table.name) + 2
         for col in cif_table.columns:
-            key = "_%s.%s" % (cif_table.name, col)
-            kmax = max(kmax, len(key))
+            klen = table_len + len(col)
+            assert klen < MAX_LINE
+            kmax = max(kmax, klen)
 
         ## we need a space after the tag
         kmax += self.SPACING
+        vmax  = MAX_LINE - kmax - 1
 
+        ## write out the keys and values
         for col in cif_table.columns:
             key = "_%s.%s" % (cif_table.name, col)
             self.write(key.ljust(kmax))
 
             try:
-                val = row[col]
+                x0 = row[col]
             except KeyError:
-                val = "?"
-
-            fval = self.fix_value(val)
-            
-            if   len(fval) > MAX_LINE-1:
-                fval = self.fix_big_string(val)
-                self.writeln()
-                self.writeln(";" + fval)
-                self.writeln(";")
-
-            elif len(fval) > MAX_LINE-kmax-1: 
-                self.writeln()
-                self.writeln(fval)
-
+                x = "?"
+                dtype = "token"
             else:
-                self.writeln(fval)
+                x, dtype = self.data_type(x0)
+
+            if dtype == "token":
+                if len(x) > vmax:
+                    self.writeln()
+                self.writeln(x)
+
+            elif dtype == "qstring":
+                if len(x) > vmax:
+                    self.writeln()
+                self.writeln("'%s'" % (x))
+
+            elif dtype == "mstring":
+                self.writeln()
+                self.write_mstring(x)
 
     def write_multi_row_table(self, cif_table):
+        ## write the key description for the _loop
         self.writeln("loop_")
         for col in cif_table.columns:
-            self.writeln("_%s.%s" % (cif_table.name, col))
+            key = "_%s.%s" % (cif_table.name, col)
+            assert len(key) < MAX_LINE
+            self.writeln(key)
 
-        ## initalize a vmax list, the list of the maximum width
-        ## of that column in all the rows
-        vmax = [0 for x in cif_table.columns]
-
-        ## optimization
-        col_tuple = [(cif_table.columns[i], i) \
-                     for i in range(len(cif_table.columns))]
+        col_len_map   = {}
+        col_dtype_map = {}
 
         for row in cif_table:
-            for (col, i) in col_tuple:
+            for col in cif_table.columns:
+                ## get data and data type
                 try:
-                    val = row[col]
+                    x0 = row[col]
                 except KeyError:
-                    val = "?"
-                val = self.fix_value(val)
-                vmax[i] = max(vmax[i], len(val))
-                
-        ## now we know the maximum width of each field, so we can start
-        ## writing out rows
-        for row in cif_table:
-            wlen = MAX_LINE-1
-            
-            for (col, i) in col_tuple:
-                try:
-                    val = row[col]
-                except KeyError:
-                    val = "?"
-
-                ## we don't have enough space left on this line
-                if vmax[i]+self.SPACING > wlen and wlen < MAX_LINE-1:
-                    self.writeln()
-                    wlen = MAX_LINE-1
-
-                ## write out the value
-                if vmax[i] > MAX_LINE-1:
-                    fval = self.fix_big_string(val)
-                    self.writeln(";" + fval)
-                    self.writeln(";")
-
+                    lenx  = 1
+                    dtype = "token"
                 else:
-                    if wlen < MAX_LINE-1:
-                        self.write("".ljust(self.SPACING))
-                        wlen -= self.SPACING
+                    x, dtype = self.data_type(x0)
 
-                    fval = self.fix_value(val)
-                    self.write(fval.ljust(vmax[i]))
-                    wlen -= vmax[i]
+                    ## determine write length of data
+                    if dtype == "token":
+                        lenx = len(x)
+                    elif dtype == "qstring":
+                        lenx = len(x) + 2
+                    else:
+                        lenx = 0
 
-            if wlen < MAX_LINE-1:
-                self.writeln()
+                try:
+                    col_dtype = col_dtype_map[col]
+                except KeyError:
+                    col_dtype_map[col] = dtype
+                    col_len_map[col] = lenx
+                    continue
+
+                ## modify column data type if necessary
+                if col_dtype != dtype:
+                    if col_dtype == "mstring":
+                        continue
+                    elif (col_dtype == "qstring" or col_dtype == "token") and \
+                         dtype == "mstring":
+                        col_dtype_map[col] = "mstring"
+                        continue
+                    elif col_dtype == "token" and dtype == "qstring":
+                        col_dtype_map[col] = "qstring"
+
+                ## update the column charactor width if necessary
+                if col_len_map[col] < lenx:
+                    col_len_map[col] = lenx
+
+        ## form a write list of the column names with values of None to
+        ## indicate a newline
+        wlist = []
+        llen = 0
+        for col in cif_table.columns:
+            dtype = col_dtype_map[col]
+
+            if dtype == "mstring":
+                llen = 0
+                wlist.append((None, None, None))
+                wlist.append((col, dtype, None))
+                continue
+
+            lenx  = col_len_map[col]
+            if llen == 0:
+                llen = lenx
+            else:
+                llen += self.SPACING + lenx
+
+            if llen > MAX_LINE-1:
+                wlist.append((None, None, None))
+                llen = lenx
+
+            wlist.append((col, dtype, lenx))
+            
+        ## write out the data
+        space = False
+        for row in cif_table:
+            for (col, dtype, lenx) in wlist:
+
+                if col == None:
+                    space = False
+                    self.writeln()
+                    continue
+
+                elif space == True:
+                    space = False
+                    self.write("  ")
+
+
+                if dtype == "token":
+                    try:
+                        x = self.fix(row[col])
+                    except KeyError:
+                        x = "?"
+
+                    x = x.ljust(lenx)
+                    self.write(x)
+                    space = True
+                    
+                elif dtype == "qstring":
+                    try:
+                        x = "'%s'" % (row[col])
+                    except KeyError:
+                        x = "?".ljust(lenx)
+
+                    x = x.ljust(lenx)
+                    self.write(x)
+                    space = True
+
+                elif dtype == "mstring":
+                    try:
+                        self.write_mstring(row[col])
+                    except KeyError:
+                        self.writeln("?")
+                    space = False
+
+            space = False
+            self.writeln()
+
+
+mmCIFStandardColumnsMap = {
+    "entry":        ["id"],
+
+    "entity":       ["id", "type", "details"],
+
+    "audit_author": ["name"],
+
+    "cell":         ["entry_id", "length_a", "length_b", "length_c",
+                     "angle_alpha", "angle_beta", "angle_gamma", "PDB_Z"],
+
+    "symmetry":     ["entry_id", "space_group_name_H-M", "cell_setting",
+                     "Int_Tables_number"],
+
+    "atom_site":    ["group_PDB", "id", "type_symbol", "label_entity_id",
+                     "Cartn_x", "Cartn_y", "Cartn_z", 
+                     "occupancy", "B_iso_or_equiv", "Cartn_x_esd",
+                     "Cartn_y_esd", "Cartn_z_esd", "occupancy_esd",
+                     "B_iso_or_equiv_esd",
+                     "auth_asym_id",
+                     "auth_seq_id",
+                     "auth_comp_id",
+                     "auth_alt_id",
+                     "auth_atom_id"],
+
+    "atom_site_anisotrop": [
+                     "id", "type_symbol", "label_entity_id",
+                     "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
+                     "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd",
+                     "U[1][3]_esd", "U[2][2]_esd", "U[2][3]_esd",
+                     "U[3][3]_esd", "pdbx_auth_seq_id",
+                     "pdbx_auth_comp_id", "pdbx_auth_asym_id",
+                     "pdbx_auth_atom_id"]}
 
 
 class mmCIFFileBuilder:
     """Builds a mmCIF file from a Structure object.
     """
-    entry_columns = ["id"]
-
-    audit_author_columns = ["name"]
-    
-    entity_columns = ["id", "type", "details"]
-
-    cell_columns = [
-        "entry_id", "length_a", "length_b", "length_c", "angle_alpha",
-        "angle_beta", "angle_gamma", "PDB_Z"]
-
-    symmetry_columns = [
-        "entry_id", "space_group_name_H-M", "cell_setting",
-        "Int_Tables_number"]
-    
-    atom_site_columns = [
-        "group_PDB", "id", "type_symbol", "label_entity_id",
-        "Cartn_x", "Cartn_y", "Cartn_z", 
-        "occupancy", "B_iso_or_equiv", "Cartn_x_esd", "Cartn_y_esd",
-        "Cartn_z_esd", "occupancy_esd", "B_iso_or_equiv_esd", "auth_seq_id",
-        "auth_comp_id", "auth_asym_id", "auth_atom_id"]
-
-    atom_site_anisotrop_columns = [
-        "id", "type_symbol", "label_entity_id",
-        "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
-        "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd", "U[1][3]_esd",
-        "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd", "pdbx_auth_seq_id",
-        "pdbx_auth_comp_id", "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
-
     cifdb_omit_list = [
         "entity", "cell", "symmetry", "atom_site", "atom_site_anisotrop"]
 
@@ -908,27 +910,55 @@ class mmCIFFileBuilder:
         ## can be copied directly from the structure's cif database
         for table in self.struct.cifdb:
             if table.name not in self.cifdb_omit_list:
-                self.cif_data.append(copy.deepcopy(table))
+                new_table = copy.deepcopy(table)
+                new_table.autoset_columns()
+                self.cif_data.append(new_table)
 
         ## these tables need to be formed from the atom structure
-        self.add_entity()
-        self.add_cell()
-        self.add_symmetry()
-        self.add_atom_site()
+        self.add__entry()
+        self.add__entity()
+        self.add__cell()
+        self.add__symmetry()
+        self.add__atom_site()
 
     def get_table(self, name, columns = None):
         try:
             return self.cif_data[name]
         except KeyError:
             pass
+
+        if columns == None:
+            columns = mmCIFStandardColumnsMap[name]
         
         table = mmCIFTable(name, columns[:])
         self.cif_data.append(table)
         return table
 
-    def add_entity(self):
+    def add__entry(self):
+        """Add the _entry table.  If there is not entry ID, it defaults
+        to XXX.
+        """
+        try:
+            entry = self.cif_data["entry"]
+        except KeyError:
+            entry = self.get_table("entry")
+
+        try:
+            row0 = entry[0]
+        except IndexError:
+            row0 = mmCIFRow()
+            entry.append(row0)
+
+        if not row0.has_key("id"):
+            row0["id"] = "XXX"
+
+    def add__entity(self):
+        """Adds the entity table.  The entity names are faked here, since
+        it's really not clear to me how the names are chosen by the PDB.
+        """
+
         ## maps fragment -> entity_id
-        entity = self.get_table("entity", self.entity_columns)
+        entity = self.get_table("entity")
 
         ## I. entity.type == "polymer"
         
@@ -958,8 +988,10 @@ class mmCIFFileBuilder:
             if entity_id == None:
                 row = mmCIFRow()
                 entity.append(row)
+
                 row["id"] = entity.index(row) + 1
                 row["type"] = "polymer"
+
                 if self.struct.library.is_amino_acid(sequence[0]):
                     row["details"] = "%d residue polypeptide"%(len(sequence))
                 elif self.struct.library.is_nucleic_acid(sequence[0]):
@@ -987,7 +1019,9 @@ class mmCIFFileBuilder:
                 else:
                     row = mmCIFRow()
                     entity.append(row)
+
                     entity_id = row["id"] = entity.index(row) + 1
+
                     if frag.is_water():
                         row["type"] = "water"
                         row["details"] = ""
@@ -998,13 +1032,15 @@ class mmCIFFileBuilder:
                     er_map[frag.res_name] = entity_id
                     self.entity_id_map[frag] = entity_id
 
-    def add_cell(self):
+    def add__cell(self):
+        """Adds the _cell table.
+        """
         if self.struct.unit_cell:
             unit_cell = self.struct.unit_cell
         else:
             return
         
-        cell = self.get_table("cell", self.cell_columns)
+        cell = self.get_table("cell")
         row = mmCIFRow()
         cell.append(row)
 
@@ -1016,13 +1052,15 @@ class mmCIFFileBuilder:
         row["angle_beta"] = unit_cell.calc_beta_deg()
         row["angle_gamma"] = unit_cell.calc_gamma_deg()
 
-    def add_symmetry(self):
+    def add__symmetry(self):
+        """Adds the _symmetry table.
+        """
         if self.struct.unit_cell and self.struct.unit_cell.space_group:
             space_group = self.struct.unit_cell.space_group
         else:
             return
 
-        cell = self.get_table("symmetry", self.symmetry_columns)
+        cell = self.get_table("symmetry")
         row = mmCIFRow()
         cell.append(row)
 
@@ -1030,24 +1068,40 @@ class mmCIFFileBuilder:
         row["space_group_name_H-M"] = space_group.pdb_name
         row["Int_Tables_number"] = space_group.number
 
-    def add_atom_site(self):
-        atom_site = self.get_table("atom_site", self.atom_site_columns)        
+    def add__atom_site(self):
+        """Adds the _atom_site table.
+        """
+        atom_site = self.get_table("atom_site")        
 
-        for atm1 in self.struct.iter_atoms():
-            for atm2 in atm1.alt_list:
-                asrow = mmCIFRow()
-                atom_site.append(asrow)
-                self.add_atom_site_row(asrow, atm2)
+        orig_model = self.struct.default_model
 
-    def add_atom_site_row(self, asrow, atm):
+        atom_id = 0
+
+        for model_num in self.struct.model_list():
+            self.struct.default_model = model_num
+
+            for frag in self.struct.iter_fragments():
+                for atm in frag.iter_all_alt_loc_atoms():
+
+                    asrow = mmCIFRow()
+                    atom_site.append(asrow)
+
+                    atom_id += 1
+                    asrow["id"] = atom_id
+
+                    self.set_atom_site_row(asrow, atm)
+
+        self.struct.default_model = orig_model
+
+    def set_atom_site_row(self, asrow, atm):
         if atm.get_fragment().is_standard_residue():
             asrow["group_PDB"] = "ATOM"
         else:
             asrow["group_PDB"] = "HETATM"
 
-        asrow["id"] = asrow.table.index(asrow) + 1
         asrow["label_entity_id"] = self.entity_id_map[atm.get_fragment()]
         asrow["auth_atom_id"] = atm.name
+        asrow["auth_alt_id"] = atm.alt_loc or "."
         asrow["auth_comp_id"] = atm.res_name
         asrow["auth_seq_id"] = atm.fragment_id
         asrow["auth_asym_id"] = atm.chain_id
@@ -1066,11 +1120,10 @@ class mmCIFFileBuilder:
             asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
 
         if atm.U:
-            aniso = self.get_table("atom_site_anisotrop",
-                                   self.atom_site_anisotrop_columns)
-
+            aniso = self.get_table("atom_site_anisotrop")
             anrow = mmCIFRow()
             aniso.append(anrow)
+
             anrow["id"] = asrow["id"]
             anrow["type_symbol"] = asrow["type_symbol"]
             anrow["label_entity_id"] = asrow["label_entity_id"]
@@ -1078,6 +1131,7 @@ class mmCIFFileBuilder:
             anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
             anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
             anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
+            anrow["pdbx_auth_alt_id"] = asrow["auth_alt_id"]
             anrow["U[1][1]"] = atm.U[0,0]
             anrow["U[2][2]"] = atm.U[1,1]
             anrow["U[3][3]"] = atm.U[2,2]
@@ -1105,7 +1159,7 @@ if __name__ == '__main__':
         print "usage: mmCIF.py <mmCIF file path>"
         sys.exit(1)
 
-    cif = mmCIFFile()
+    cif = mmCIFDictionary()
     cif.load_file(path)
     cif.save_file(sys.stdout)
 ### </testing>

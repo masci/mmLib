@@ -72,12 +72,25 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
-def debug(x):
-    """If the enviornemt variable "MMLIB_DEBUG" is set, then print debug
-    messages.
+class dictlist(dict):
+    def __init__(self):
+        self.list = []
+
+
+def warning(x):
+    """Writes warnings out to the file given in the environment variable
+    MMLIB_WARNING, or mmlib_warning.txt by default.
     """
-    if os.environ.has_key("MMLIB_DEBUG"):
-        print "DBG: ",x
+    path = os.environ.get("MMLIB_WARNING", "mmlib_warning.txt")
+    open(path, "a").write(x+"\n")
+
+
+def debug(x):
+    """Writes debugging output to the file given in the environment variable
+    MMLIB_DEBUG, or mmlib_debug.txt by default.
+    """
+    path = os.environ.get("MMLIB_DEBUG", "mmlib_debug.txt")
+    open(path, "a").write(x+"\n")
 
 
 ### <TESTING>

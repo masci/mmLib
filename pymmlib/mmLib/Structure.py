@@ -13,6 +13,9 @@ from Library import Library
 from UnitCell import UnitCell
 from mmCIFDB import *
 
+ChainOverwrite = "ChainOverwrite"
+FragmentOverwrite = "FragmentOverwrite"
+AtomOverwrite = "AtomOverwrite"
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
@@ -108,7 +111,7 @@ class Structure(object):
 
         chain.structure = self
         self.chain_list.append(chain)
-        if not delay_sort:
+        if delay_sort == False:
             self.chain_list.sort()
         return True
 
@@ -151,13 +154,13 @@ class Structure(object):
             for aa in chain.iter_nucleic_acids():
                 yield aa
 
-    def iter_atoms(self):
+    def iter_atoms(self, **args):
         """Iterates over all Atom objects.  The iteration is preformed in
         order according to the Chain and Fragment ordering rules the Atom
         object is a part of.
         """
         for chain in self.iter_chains():
-            for atm in chain.iter_atoms():
+            for atm in chain.iter_atoms(**args):
                 yield atm
 
     def iter_bonds(self):
@@ -168,9 +171,36 @@ class Structure(object):
         visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
-                if bond not in visited:
-                    yield bond
-                    visited[bond] = True
+                if visited.has_key(bond):
+                    continue
+                yield bond
+                visited[bond] = True
+
+    def model_list(self):
+        """Return the unique list NMR-style model IDs found in the structure.
+        """
+        model_list = []
+
+        for frag in self.iter_fragments():
+            for atm in frag.iter_all_atoms():
+                if atm.model not in model_list:
+                    model_list.append(atm.model)
+
+        return model_list
+
+    def alt_loc_list(self):
+        """Return the unique list of Atom alternate location IDs found in
+        the Structure.
+        """
+        alt_loc_list = [""]
+        
+        for frag in self.iter_fragments():
+            for atm in frag.iter_all_atoms():
+                if atm.alt_loc not in alt_loc_list:
+                    alt_loc_list.append(atm.alt_loc)
+
+        alt_loc_list.remove("")
+        return alt_loc_list
 
     def iter_alpha_helicies(self):
         """Iterates over all alpha helicies in the Structure.
@@ -344,6 +374,8 @@ class Chain(object):
         assert isinstance(frag, Fragment)
         assert frag.chain_id == self.chain_id
 
+        #print "add_fragment", frag
+
         for frg in self:
             if frg.fragment_id == frag.fragment_id:
                 print "[ERROR] add_fragment overwrite",frg,frag
@@ -351,7 +383,7 @@ class Chain(object):
 
         frag.chain = self
         self.fragment_list.append(frag)
-        if not delay_sort:
+        if delay_sort == False:
             self.fragment_list.sort()
         return True
 
@@ -417,11 +449,11 @@ class Chain(object):
             if not frag.is_standard_residue():
                 yield frag
 
-    def iter_atoms(self):
+    def iter_atoms(self, **args):
         """Iterates over all Atom objects within the Chain.
         """
         for frag in self.iter_fragments():
-            for atm in frag.iter_atoms():
+            for atm in frag.iter_atoms(**args):
                 yield atm
                 
     def iter_bonds(self):
@@ -431,9 +463,10 @@ class Chain(object):
         visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
-                if bond not in visited:
-                    yield bond
-                    visited[bond] = True
+                if visited.has_key(bond):
+                    continue
+                yield bond
+                visited[bond] = True
 
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain object, updating the chain_id
@@ -477,7 +510,7 @@ class Chain(object):
             sequence_list.append(frag.res_name)
 
         return sequence_list
-            
+
 
 class Fragment(object):
     """Fragment objects are a basic unit for organizing small groups of
@@ -498,12 +531,13 @@ class Fragment(object):
         assert type(res_name) == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id) == StringType
-        
-        self.res_name    = res_name
+
+        self.res_name = res_name
         self.fragment_id = fragment_id
-        self.chain_id    = chain_id
+        self.chain_id = chain_id
 
         self.atom_list = []
+        self.atom_dict = {}
 
     def __str__(self):
         return "%s(%s,%s,%s)" % (self.__class__.__name__,
@@ -528,14 +562,8 @@ class Fragment(object):
         return FragmentID(self.fragment_id) >= FragmentID(other.fragment_id)
 
     def __len__(self):
-        """Returns the number of atoms contained in the fragment in the
-        default model and default alt_loc.
-        """
-        i = 0
-        for atm in self:
-            i += 1
-        return i
-
+        return len(self.atom_list)
+    
     def __getitem__(self, x):
         """Lookup a atom contained in a fragment by its name, or by its index
         within the fragment's private atom_list.  If the atom is not found,
@@ -543,117 +571,71 @@ class Fragment(object):
         type.  If the argument was a integer, then a IndexError is raised.
         If the argument was a string, then a KeyError is raised.
         """
+        if type(x) == StringType:
+            atm = self.atom_dict[x].get_default()
+            if atm == None:
+                raise KeyError, x
+            return atm
+
         if type(x) == IntType:
             return self.atom_list[x]
 
-        elif type(x) == StringType:
-            for atm in self.atom_list:
-                if atm.name == x:
-                    ret_atm = atm.get_default()
-                    if ret_atm:
-                        return ret_atm
-                    raise KeyError, x
-            raise KeyError, x
-
-        raise TypeError, str(x)
-
-    def __delitem__(self, x):
-        """Removes a atom from the fragment.  The argument can be the name
-        of the atom, or the private integer index of the atom within the
-        fragment's private atom_list.
-        """
-        self.atom_list.remove(self[x])
+        raise TypeError, x
 
     def __iter__(self):
         """Iterates the atoms within the fragment.  If the fragment contains
         atoms in alternate conformations, only the atoms with the structure's
         default_alt_loc are iterated.
         """
-        ## this is a difficult function to write and perserve what is left
-        ## of iteration performance (not much now that I'm tring to handle
-        ## all cases of illegal altLoc combinations)
-        ## assume atom_list is properly sorted -- this should be true
-        model = self.chain.structure.default_model
-        alt_loc = self.chain.structure.default_alt_loc
+        for atmx in self.atom_list:
+            if atmx.is_default():
+                yield atmx
 
-        yield_me_if_no_match = None
-
-        for atm in self.atom_list:
-            if atm.model != model:
-                continue
-            if yield_me_if_no_match:
-                if yield_me_if_no_match.name == atm.name:
-                    if atm.alt_loc == alt_loc:
-                        yield_me_if_no_match = None
-                        yield atm
-                else:
-                    yield yield_me_if_no_match
-                    yield_me_if_no_match = None
-                    if atm.alt_loc == alt_loc:
-                        yield atm
-                    elif not atm.alt_loc:
-                        yield_me_if_no_match = atm
-            else:
-                if atm.alt_loc == alt_loc:
-                    yield atm
-                elif not atm.alt_loc:
-                    yield_me_if_no_match = atm
-
-        if yield_me_if_no_match:
-            yield yield_me_if_no_match
-
-    def __contains__(self, x):
-        """Returns True if the atom is contained in the fragment.  The argument
-        can be a atom instance of a the name of the atom.
+    def __contains__(self, atom):
+        """Return True if the Atom object is contained in the fragment.
         """
-        if isinstance(x, Atom):
-            return x in self.atom_list
-        return self[x] in self.atom_list
+        return atom in self.atom_list
 
     def index(self, atom):
-        """Returns the index of the atom within the fragment's private
-        atom_list.
+        """Returns the sequential index of the atom.
         """
-        assert isinstance(atom, Atom)
         return self.atom_list.index(atom)
-
-    def remove(self, atom):
-        """Removes the atom from the fragment, and deletes the atom's
-        reference to the framgnet.
-        """
-        assert isinstance(atom, Atom)
-        del atom.fragment
-        atom.alt_loc_list.remove(atom)
-        self.atom_list.remove(atom)
 
     def add_atom(self, atom):
         """Adds a atom to the fragment, and sets the atom's atom.fragment
         attribute to the fragment.
         """
         assert isinstance(atom, Atom)
-        assert atom.chain_id    == self.chain_id
+        assert atom.chain_id == self.chain_id
         assert atom.fragment_id == self.fragment_id
-        assert atom not in self.atom_list
 
-        for atm in self.atom_list:
-            if atm.name == atom.name and \
-               atm.model == atom.model and \
-               atm.alt_loc == atom.alt_loc:
-                debug("[ERROR] add_atom overwrite " + str(atm) + str(atom))
-                return False
+        if atom.res_name != self.res_name:
+            raise AtomOverwrite, atom
 
+        try:
+            atmx = self.atom_dict[atom.name]
+        except KeyError:
+            self.atom_dict[atom.name] = atom
+        else:
+            atmx.add_alt(atom)
+
+        self.atom_list.append(atom)
         atom.fragment = self
 
-        ## if this atom is a alternate conformation of a atom already in
-        ## the fragment, add it to that atom's private __alt_loc_list
-        for atm in self.atom_list:
-            if atm.name == atom.name:
-                atm.add_alt_loc(atom)
-                break
+    def remove_atom(self, atom):
+        """Removes the atom from the fragment.
+        """
+        assert isinstance(atom, Atom)
 
-        ## now add the atom to the fragment
-        self.atom_list.append(atom)
-        return True
+        for atm in self.atom_list:
+            if atmx == atom:
+                self.atom_list.remove(atom)
+                atom.remove_alt(atom)
+                if not atom.alt_dict:
+                    del self.atom_dict[atom.name]
+                return
+                    
+        raise ValueError, "Fragment.remove_atom(atm) atm not in Fragment"
 
     def get_atom(self, name):
         """Returns the matching Atom object contained in the Fragment.
@@ -664,11 +646,25 @@ class Fragment(object):
         except KeyError:
             return None
     
-    def iter_atoms(self):
-        """Iterates over all Atom objects contained in the Fragment.
-        There is no defined order for the iteration.
+    def iter_atoms(self, **args):
+        """Iterates over all Atom objects contained in the Fragment matching
+        the current model and default alt_loc.
         """
         return iter(self)
+
+    def iter_all_atoms(self):
+        """Iterates of all Atoms in the Fragment including alternate
+        locations and alternate models.
+        """
+        return iter(self.atom_list)
+
+    def iter_all_alt_loc_atoms(self):
+        """Iterates all alternate locations of a atom within the current
+        model.
+        """
+        for atm1 in self.atom_dict.values():
+            for atm2 in atm1.iter_alt_loc():
+                yield atm2
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -677,7 +673,7 @@ class Fragment(object):
         visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
-                if bond not in visited:
+                if not visited.has_key(bond):
                     yield bond
                     visited[bond] = True
 
@@ -712,13 +708,16 @@ class Fragment(object):
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        try:             self.chain[fragment_id]
-        except KeyError: pass
-        else:            raise ValueError, fragment_id
+        try:
+            self.chain[fragment_id]
+        except KeyError:
+            pass
+        else:
+            raise ValueError, fragment_id
 
         ## set the new fragment_id in all the additional groups
 
-        ## set the new chain_id for the chain object (self)
+        ## set the new chain_id for the chain object (se
         self.fragment_id = fragment_id
 
         ## set the chain_id in all the fragment and atom children
@@ -733,7 +732,7 @@ class Fragment(object):
         from the monomer library.
         """
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon:
+        if mon == None:
             return
 
         for (name1, name2) in mon.bond_list:
@@ -800,13 +799,13 @@ class Residue(Fragment):
         Fragment.create_bonds(self)
 
         next_res = self.get_offset_residue(1)
-        if not next_res:
+        if next_res == None:
             return
 
         library = self.chain.structure.library
         mon1 = library.get_monomer(self.res_name)
         mon2 = library.get_monomer(next_res.res_name)
-        if not (mon1 and mon2):
+        if mon1 == None or mon2 == None:
             return
 
         for (name1, name2) in mon1.get_polymer_bond_list(self, next_res):
@@ -880,7 +879,7 @@ class AminoAcidResidue(Residue):
         not have a Psi torsion angle.
         """
         next_res = self.get_offset_residue(1)
-        if not next_res:
+        if next_res == None:
             return None
 
         aN  = self.get_atom('N')
@@ -895,7 +894,7 @@ class AminoAcidResidue(Residue):
         not have a Phi torsion angle.
         """
         prev_res = self.get_offset_residue(-1)
-        if not prev_res:
+        if prev_res == None:
             return None
 
         paC = prev_res.get_atom('C')
@@ -910,7 +909,7 @@ class AminoAcidResidue(Residue):
         not have a Omega torsion angle.
         """
         next_res = self.get_offset_residue(1)
-        if not next_res:
+        if next_res == None:
             return None
 
         aCA  = self.get_atom('CA')
@@ -953,7 +952,7 @@ class AminoAcidResidue(Residue):
 
     def calc_torsion_chi1(self):
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon.chi1_definition:
+        if mon.chi1_definition == None:
             return None
         
         a1 = self.get_atom(mon.chi1_definition[0])
@@ -964,7 +963,7 @@ class AminoAcidResidue(Residue):
 
     def calc_torsion_chi2(self):
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon.chi2_definition:
+        if mon.chi2_definition == None:
             return None
         
         a1 = self.get_atom(mon.chi2_definition[0])
@@ -975,7 +974,7 @@ class AminoAcidResidue(Residue):
 
     def calc_torsion_chi3(self):
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon.chi3_definition:
+        if mon.chi3_definition == None:
             return None
         
         a1 = self.get_atom(mon.chi3_definition[0])
@@ -986,7 +985,7 @@ class AminoAcidResidue(Residue):
 
     def calc_torsion_chi4(self):
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon.chi4_definition:
+        if mon.chi4_definition == None:
             return None
         
         a1 = self.get_atom(mon.chi4_definition[0])
@@ -1069,83 +1068,71 @@ class Atom(object):
         self.U = None
         self.sig_U = None
         self.charge = None
+        
+        ## Note: self.alt_dict is shared amoung 
+        self.alt_dict = {self.alt_key(): self}
 
-        self.alt_list = [self]
         self.bond_list = []
 
     def __str__(self):
         return 'Atom(n=%s,mdl=%d,alt=%s,rn=%s,fid=%s,cid=%s)' % (
             self.name, self.model, self.alt_loc, self.res_name,
             self.fragment_id, self.chain_id)
+
+    def alt_key(self):
+        """Returns the 2-tuple: (model, alt_loc) used as the has for this atom
+        in the Atom.alt_dict.  Mostly for internal use.
+        """
+        return (self.model, self.alt_loc)
     
-    def __lt__(self, other):
-        assert isinstance(other, Atom)
-        if self.model == other.model:
-            return self.alt_loc < other.alt_loc
-        else:
-            return self.model < other.model
-
-    def __le__(self, other):
-        assert isinstance(other, Atom)
-        if self.model == other.model:
-            return self.alt_loc <= other.alt_loc
-        else:
-            return self.model <= other.model
-        
-    def __gt__(self, other):
-        assert isinstance(other, Atom)
-        if self.model == other.model:
-            return self.alt_loc > other.alt_loc
-        else:
-            return self.model > other.model
-
-    def __ge__(self, other):
-        assert isinstance(other, Atom)
-        if self.model == other.model:
-            return self.alt_loc >= other.alt_loc
-        else:
-            return self.model >= other.model
-
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
         """
-        return len(self.alt_list)
+        return len(self.alt_dict)
 
     def __getitem__(self, x):
         """This is a alternative to calling get_alt_loc, but a KeyError
         exception is raised if the alt_loc Atom is not found.  Posiible
         arguments are:
         """
-        default_model = self.fragment.chain.structure.default_model
-        default_alt_loc = self.fragment.chain.structure.default_alt_loc
-        
+        ## return default alt_loc atom in model x
         if type(x) == IntType:
-            default_atm = None
-            for atm in self.alt_list:
-                if atm.model != x:
-                    continue
-                if atm.alt_loc == default_alt_loc:
-                    return atm
-                elif not atm.alt_loc:
-                    default_atm = atm
-            if default_atm:
-                return default_atm
+            atm = None
+
+            try:
+                atm = self.alt_dict[(x, "")]
+            except KeyError:
+                def_al = self.fragment.chain.structure.default_alt_loc
+                try:
+                    atm = self.alt_dict[(x, def_al)]
+                except KeyError:
+                    pass
+
+            if atm:
+                return atm
             raise KeyError, x
 
-        elif type(x) == StringType:
-            for atm in self.alt_list:
-                if atm.model == default_model and atm.alt_loc == x:
-                    return atm
+        ## return default model, atom alt_loc x
+        if type(x) == StringType:
+            atm = None
+            def_ml = self.fragment.chain.structure.default_model
+
+            try:
+                atm = self.alt_dict[(def_ml, x)]
+            except KeyError:
+                pass
+
+            if atm:
+                return atm
             raise KeyError, x
 
-        elif type(x) == TupleType and \
-             len(x) == 2 and \
-             type(x[0]) == StringType and \
-             type(x[1]) == IntType:
-            for atm in self.alt_list:
-                if atm.alt_loc == x[0] and atm.model == x[1]:
-                    return atm
-            raise KeyError, x
+        ## return atom[alt_loc, model], no default
+        if type(x) == TupleType:
+            (x_ml, x_al) = x
+            try:
+                return self.alt_dict[(x_ml, x_al)]
+            except KeyError:
+                raise KeyError, x
 
         raise TypeError, x
 
@@ -1153,78 +1140,96 @@ class Atom(object):
         """Deletes the alternate conformation of the atom matching the
         argument.  The argument is the same as the argument for __getitem__.
         """
-        self.remove(self[x])
+        atm = self[x]
+        del atm.alt_dict[atm.alt_key()]
 
     def __iter__(self):
         """Iterate all alternate locations of this atom within the default
         model.
         """
-        default_model = self.fragment.chain.structure.default_model
-        for atm in self.alt_list:
-            if atm.model == default_model:
-                yield atm
+        alt_keys = self.alt_dict.keys()
+        alt_keys.sort()
+        for alt_key in alt_keys:
+            yield self.alt_dict[alt_key]
 
-    def __contains__(self, x):
+    def __contains__(self, atom):
         """Returns True if the argument matches a alternate conformation of
         the atom.  The argument can be a alt_loc label, or a Atom object.
         """
-        if isinstance(x, Atom):
-            return x in self.alt_list
-        return self[x] in self.alt_list
+        for atmx in self.alt_dict.values():
+            if atmx == atom:
+                return True
+        return False
 
-    def remove(self, atom):
-        """Remove the atom from the list of alternate conformations of this
-        atom.
-        """
-        atom.alt_list.remove(atm)
-        atom.alt_list = []
-        atom.fragment.remove(atom)
-        del atom.fragment
-
-    def add_alt_loc(self, atom):
-        """Add atom as a alternate conformation of the current atom.
+    def add_alt(self, atom):
+        """Add this atom as a alternate confirmation (model, alt_loc) to the
+        set of logicly identical atoms.
         """
         assert isinstance(atom, Atom)
-        assert atom.name == self.name
-        assert atom.fragment_id == self.fragment_id
-        assert atom.chain_id == self.chain_id
-        assert atom not in self.alt_list
+        
+        alt_key = atom.alt_key()
 
-        for atm in self.alt_list:
-            if atm.model == atom.model and \
-               atm.alt_loc == atom.alt_loc:
-                print "[ERROR] add_alt_loc overwrite",atm,atom
-                return False
+        ## don't allow atoms with the same model/alt_loc keys
+        if self.alt_dict.has_key(alt_key):
+            raise AtomOverwrite, (atom.model, atom.alt_loc, atom.name)
 
-        self.alt_list.append(atom)
-        atom.alt_list = self.alt_list
-        self.alt_list.sort()
-        return True
+        atom.alt_dict = self.alt_dict
+        self.alt_dict[alt_key] = atom
+
+    def remove_alt(self, atom):
+        """Removes argument atom from the shared Atom.alt_dict
+        """
+        for atmx in self.alt_dict.values():
+            if atmx == atom:
+                del self.alt_dict[atom.alt_key()]
+                return
+            
+        raise ValueError, "Atom.remove_alt(atm): atm not in Atom"
 
     def get_default(self):
         """Returns the atom matching the Structure's default_model
         and defualt_alt_loc.  Returns None if there is no default atom
         witht he current default settings.
         """
-        default_model = self.fragment.chain.structure.default_model
-        default_alt_loc = self.fragment.chain.structure.default_alt_loc
-        default_atm = None
-        for atm in self.alt_list:
-            if atm.model != default_model:
-                continue
-            if atm.alt_loc == default_alt_loc:
-                return atm
-            elif not atm.alt_loc:
-                default_atm = atm
-        if default_atm:
-            return default_atm
+        def_ml = self.fragment.chain.structure.default_model
+        try:
+            return self.alt_dict[(def_ml, "")]
+        except KeyError:
+            def_al = self.fragment.chain.structure.default_alt_loc
+            try:
+                return self.alt_dict[(def_ml, def_al)]
+            except KeyError:
+                pass
+
+        print "[ERROR] get_default"
+        for atm in self:
+            print "    ",atm
+
         return None
+
+    def is_default(self):
+        """Returns True if this atom is currently the default alternate,
+        otherwise returns False.
+        """
+        return self == self.get_default()
+
+    def get_alt(self, model, alt_loc):
+        """Retrieve the alt atom with the given alt_loc and model.
+        """
+        try:
+            return self[model, alt_loc]
+        except KeyError:
+            return None
+
+    def iter_alt(self):
+        """Iterate all models and alternate locations of this atom.
+        """
+        return iter(self)
 
     def get_alt_loc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument.
         """
         assert type(alt_loc) == StringType
-
         try:
             return self[alt_loc]
         except KeyError:
@@ -1232,9 +1237,12 @@ class Atom(object):
 
     def iter_alt_loc(self):
         """Iterate over all alt_loc versions of this atom in the
-        alphabetical order of the alt_loc labels.
+        alphabetical order of the alt_loc labels, within the current model.
         """
-        return iter(self)
+        def_ml = self.fragment.chain.structure.default_model
+        for atmx in self:
+            if atmx.model == def_ml:
+                yield atmx
 
     def get_model(self, model):
         """Returns the atom in the argument model number.  Uses the Structure
@@ -1250,10 +1258,10 @@ class Atom(object):
         """Iterates over all models of this atom matching the structure
         wide default_alt_loc.
         """
-        default_alt_loc = self.fragment.chain.structure.default_alt_loc
-        for atm in self.alt_list:
-            if not atm.alt_loc or atm.alt_loc == default_alt_loc:
-                yield atm
+        def_al = self.fragment.chain.structure.default_alt_loc
+        for atmx in self:
+            if atmx.alt_loc == "" or atmx.alt_loc == def_al:
+                yield atmx
 
     def create_bond(self,
                     atom,
@@ -1293,13 +1301,14 @@ class Atom(object):
         """
         assert isinstance(atom, Atom)
 
-        for atm1 in self.alt_list:
-            for atm2 in atom.alt_list:
+        for (alt_key1, atm1) in self.alt_dict.items():
+            for (alt_key2, atm2) in atom.alt_dict.items():
                 if atm1.model != atm2.model:
                     continue
 
-                if not atm1.alt_loc or not atm2.alt_loc or \
+                if atm1.alt_loc == "" or atm2.alt_loc == "" or \
                    atm1.alt_loc == atm2.alt_loc:
+
                     atm1.create_bond(atm2,
                                      bond_type=bond_type,
                                      atm1_symop=atm1_symop,
@@ -1366,7 +1375,9 @@ class Atom(object):
         symmetric tensor defined by U.
         """
         ## no Anisotropic values, we have a spherical atom
-        if not self.U: return 1.0
+        if self.U == None:
+            return 1.0
+
         evals = eigenvalues(self.U)
         ansotropy = min(evals) / max(evals)
         return ansotropy
@@ -1376,19 +1387,19 @@ class Atom(object):
         farthest up to the cutoff distance max_distance if given.  Yields
         the 2-tuple (dist, atm).
         """
-        list = []
+        listx = []
 
         if max_distance:
             for atm in self.get_structure().iter_atoms():
                 d = calculateDistance(self, atm)
                 if d <= max_distance:
-                    list.append((calculateDistance(self, atm), atm))
+                    listx.append((calculateDistance(self, atm), atm))
         else:
             for atm in self.get_structure().iter_atoms():
-                list.append((calculateDistance(self, atm), atm))
+                listx.append((calculateDistance(self, atm), atm))
 
-        list.sort()
-        return iter(list)
+        listx.sort()
+        return iter(listx)
 
 
 class Bond(object):

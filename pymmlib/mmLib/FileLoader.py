@@ -12,10 +12,8 @@ from mmCIF import mmCIFFile, mmCIFFileBuilder
 from PDB import PDBFile, PDBFileBuilder
 
 
-def decode_format(path, format):
+def decode_format(path):
     """Returns the 3-letter MIME code for the file format."""
-    if format: return format
-
     ## check/remove compressed file extention
     if path and type(path) == StringType:
         (base, ext) = os.path.splitext(path)
@@ -25,22 +23,35 @@ def decode_format(path, format):
         (base, ext) = os.path.splitext(path)
         ext = ext.lower()
 
-        if ext == ".cif": return "CIF"
+        if ext == ".cif":
+            return "CIF"
 
     return "PDB"
 
 
-def LoadStructure(fil,
-                  library = None,
-                  format = "",
-                  build_properties = (),
-                  struct = None):
-
+def LoadStructure(**args):
     """Loads a mmCIF file(.cif) or PDB file(.pdb) into a 
-    Structure class and returns it.  The first argument is either a
-    path string or a file object opened for reading.
+    Structure class and returns it.  The function takes 5 named arguments,
+    one is required:
+
+    fil = <file object or path; required>
+    format = <PDB|CIF; defaults to PDB>
+    library = <mmLib.Library class; defaults to mmLib.Library>
+    struct = <mmLib.Structure object to build on; defaults to createing new>
+    build_properties = <tuple of strings for the StructureBuilder>
     """
-    format = decode_format(fil, format)
+    try:
+        fil = args["fil"]
+    except KeyError:
+        raise TypeError,"LoadStructure(fil=) argument required"
+
+    format = args.get("format") or decode_format(fil)
+
+    library = args.get("library")
+
+    struct = args.get("struct") or args.get("structure")
+
+    build_properties = args.get("build_properties", ())
 
     if format == "PDB":
         return PDBStructureBuilder(
@@ -59,20 +70,37 @@ def LoadStructure(fil,
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))
 
 
-def SaveStructure(fil, structure, format = ""):
+def SaveStructure(**args):
     """Saves a Structure object into a supported file type.
+
+    fil = <file object or path; required>
+    struct = <mmLib.Structure object to save; required>
+    format = <PDB|CIF; defaults to PDB>
     """
-    format = decode_format(fil, format)
+    try:
+        fil = args["fil"]
+    except KeyError:
+        raise TypeError,"LoadStructure(fil=) argument required"
+
+    try:
+        struct = args["struct"]
+    except KeyError:
+        try:
+            struct = args["structure"]
+        except KeyError:
+            raise TypeError,"LoadStructure(struct=) argument required"
+
+    format = args.get("format") or decode_format(fil)
 
     if format == "PDB":
         pdb_file = PDBFile()
-        PDBFileBuilder(structure, pdb_file)
+        PDBFileBuilder(struct, pdb_file)
         pdb_file.save_file(fil)
         return
 
     elif format == "CIF":
         cif_file = mmCIFFile()
-        mmCIFFileBuilder(structure, cif_file)
+        mmCIFFileBuilder(struct, cif_file)
         cif_file.save_file(fil)
         return
 
