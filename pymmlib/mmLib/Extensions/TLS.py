@@ -1923,6 +1923,8 @@ class TLSStructureAnalysis(object):
         include_hydrogens       = args.get("include_hydrogens", False)
         include_frac_occupancy  = args.get("include_frac_occupancy", False)
         include_single_bond     = args.get("include_single_bond", True)
+        calc_pivot_model        = args.get("calc_pivot_model", False)
+
         
         for chain in self.struct.iter_chains():
 
@@ -1965,6 +1967,7 @@ class TLSStructureAnalysis(object):
                         "frag_id1":     frag_id1,
                         "frag_id2":     frag_id2,
                         "frag_id_cntr": frag_id_cntr,
+                        "num_atoms":    len(tls_group),
                         "error":        "Not Enough Atoms"}
                     yield tls_info
                     continue
@@ -1979,8 +1982,9 @@ class TLSStructureAnalysis(object):
                 tls_info["lsq_residual"] = lsq_residual
 
                 ## calculate using CA-pivot TLS model for side chains
-                #rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
-                #tls_info["ca_pivot"] = rdict
+                if calc_pivot_model==True:
+                    rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
+                    tls_info["ca_pivot"] = rdict
 
                 ## check if the TLS model is valid
                 if not tls_info["valid_model"]:

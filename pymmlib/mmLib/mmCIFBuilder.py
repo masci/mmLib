@@ -523,7 +523,6 @@ class mmCIFFileBuilder(object):
             ## calculate sequence and compare the sequence to chains
             ## already added so we can re-use the entity ID
             sequence = chain.sequence_one_letter_code()
-            warning("sequence: %s" % (sequence))
             
             entity_desc = self.get_entity_desc_from_sequence(sequence)
 
@@ -639,7 +638,7 @@ class mmCIFFileBuilder(object):
         cell = self.get_table("cell")
         row = cell.new_row()
 
-        row["entry_id"]    = self.cif_data["entry"]["id"]
+        row["entry_id"]    = self.entry_id
         row["length_a"]    = unit_cell.a
         row["length_b"]    = unit_cell.b
         row["length_c"]    = unit_cell.c
@@ -658,7 +657,7 @@ class mmCIFFileBuilder(object):
         symmetry = self.get_table("symmetry")
         row = symmetry.new_row()
 
-        row["entry_id"]             = self.cif_data["entry"]["id"]
+        row["entry_id"]             = self.entry_id
         row["space_group_name_H-M"] = space_group.pdb_name
         row["Int_Tables_number"]    = space_group.number
 

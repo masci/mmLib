@@ -2280,7 +2280,7 @@ class GLStructure(GLDrawList):
               "action":    ["recompile", "recalc_positions"] })
         
     def glo_name(self):
-        return "%s" % (self.struct.cifdb.get_entry_id())
+        return self.struct.structure_id
 
     def gls_add_chain(self, chain):
         """Adds a Chain object to the GLStructure.

@@ -194,13 +194,34 @@ def chain_test(chain, stats):
         assert frag.get_chain()==chain
         assert frag.get_model()==chain.get_model()
         assert frag.get_structure()==chain.get_structure()
+    
+    chain.has_amino_acids()
+    chain.count_amino_acids()
+    for frag in chain.iter_amino_acids():
+        assert isinstance(frag, AminoAcidResidue)
 
-    for res in chain.iter_amino_acids():
-        assert isinstance(res, AminoAcidResidue)
+    chain.has_nucleic_acids()
+    chain.count_nucleic_acids()
+    for frag in chain.iter_nucleic_acids():
+        assert isinstance(frag, NucleicAcidResidue)
 
-    for res in chain.iter_nucleic_acids():
-        assert isinstance(res, NucleicAcidResidue)
+    chain.has_standard_residues()
+    chain.count_standard_residues()
+    for frag in chain.iter_standard_residues():
+        assert isinstance(frag, AminoAcidResidue) or \
+               isinstance(frag, NucleicAcidResidue)
 
+    chain.has_non_standard_residues()
+    chain.count_non_standard_residues()
+    for frag in chain.iter_non_standard_residues():
+        assert not isinstance(frag, AminoAcidResidue) and \
+               not isinstance(frag, NucleicAcidResidue)
+
+    chain.has_waters()
+    chain.count_waters()
+    for frag in chain.iter_waters():
+        assert frag.is_water()
+        
     for atm in chain.iter_atoms():
         assert isinstance(atm, Atom)
         assert atm.get_chain()==chain
@@ -244,10 +265,35 @@ def model_test(model, stats):
         assert atm.get_model()==model
         assert atm.get_structure()==model.get_structure()
 
+    model.has_amino_acids()
+    model.count_amino_acids()
+    for frag in model.iter_amino_acids():
+        assert isinstance(frag, AminoAcidResidue)
+
+    model.has_nucleic_acids()
+    model.count_nucleic_acids()
+    for frag in model.iter_nucleic_acids():
+        assert isinstance(frag, NucleicAcidResidue)
+
+    model.has_standard_residues()
+    model.count_standard_residues()
+    for frag in model.iter_standard_residues():
+        assert isinstance(frag, AminoAcidResidue) or \
+               isinstance(frag, NucleicAcidResidue)
+
+    model.has_non_standard_residues()
+    model.count_non_standard_residues()
+    for frag in model.iter_non_standard_residues():
+        assert not isinstance(frag, AminoAcidResidue) and \
+               not isinstance(frag, NucleicAcidResidue)
+
+    model.has_waters()
+    model.count_waters()
+    for frag in model.iter_waters():
+        assert frag.is_water()
+
     model.count_chains()
     model.count_fragments()
-    model.count_amino_acids()
-    model.count_nucleic_acids()
     model.count_atoms()
     model.count_all_atoms()
     model.count_bonds()
@@ -335,11 +381,32 @@ def struct_test(struct, stats):
     for frag in struct.iter_all_fragments():
         assert isinstance(frag, Fragment)        
 
-    for frag in struct.iter_all_amino_acids():
+    struct.has_amino_acids()
+    struct.count_amino_acids()
+    for frag in struct.iter_amino_acids():
         assert isinstance(frag, AminoAcidResidue)
 
-    for frag in struct.iter_all_nucleic_acids():
+    struct.has_nucleic_acids()
+    struct.count_nucleic_acids()
+    for frag in struct.iter_nucleic_acids():
         assert isinstance(frag, NucleicAcidResidue)
+
+    struct.has_standard_residues()
+    struct.count_standard_residues()
+    for frag in struct.iter_standard_residues():
+        assert isinstance(frag, AminoAcidResidue) or \
+               isinstance(frag, NucleicAcidResidue)
+
+    struct.has_non_standard_residues()
+    struct.count_non_standard_residues()
+    for frag in struct.iter_non_standard_residues():
+        assert not isinstance(frag, AminoAcidResidue) and \
+               not isinstance(frag, NucleicAcidResidue)
+
+    struct.has_waters()
+    struct.count_waters()
+    for frag in struct.iter_waters():
+        assert frag.is_water()
 
     old_model = struct.get_default_model()
     
