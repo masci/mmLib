@@ -3,11 +3,11 @@ http://pymmlib.sourceforget.net/
 --------------------------------------------
 
 Requirements:
-  * Python              2.2 
-  * Numerical Python    22.0
-  * Scientific Python   2.4.1 
+  * Python              2.2   (the iterators use yield)
+  * Numerical Python    22.0  (seems to work fine on 20.0)
+  * Scientific Python   2.4.1 (only used for the Vector class)
 
-Additional requirements for GUI App/Viewer:
+Additional requirements for GUI App/Viewer mmView.py:
   * PyOpenGL            2.0.0.44
   * gtk                 2.0/2.2
   * PyGtk               1.99.16
