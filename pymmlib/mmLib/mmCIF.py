@@ -551,8 +551,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 
             if s.startswith("data_"):
                 data = mmCIFData(s[5:])
-            elif s.startswith("save_"):
-                data = mmCIFSave(s[5:])
+                data.save_list = []
             else:
                 self.syntax_error('unexpected element="%s"' % (s))
 
@@ -569,15 +568,39 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 
             if s.startswith("_"):
                 self.read_single(data, s)
+                
             elif s.startswith("loop_"):
                 self.read_loop(data, s)
+
             elif s.startswith("data_"):
                 self.syntax_error("two data_ subsections in dictionary")
                 break
+
             elif s.startswith("save_"):
-                ## this should be the closing save_, so sanity check
-                assert s[5:] == ""
+                save = mmCIFSave(s[5:])
+                data.save_list.append(save)
+                self.read_save(save)
+                
+            else:
+                self.syntax_error('bad element=%s' % (s))
+
+    def read_save(self, save):
+        while not self.done:
+            try:
+                (s,t) = self.cife.get_next_element()
+            except EOFError:
+                self.done = 1
                 break
+
+            if s.startswith("_"):
+                self.read_single(save, s)
+                
+            elif s.startswith("loop_"):
+                self.read_loop(save, s)
+
+            elif s.startswith("save_"):
+                break
+
             else:
                 self.syntax_error('bad element=%s' % (s))
 

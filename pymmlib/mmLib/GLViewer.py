@@ -205,9 +205,11 @@ class GLAtomDrawList(GLDrawList, AtomList):
 
         el = atm.get_structure().library.get_element(atm.element)
         if el:
-            glutSolidSphere(el.van_der_waals_radius, quality, quality)
+            radius = el.van_der_waals_radius
         else:
-            glutSolidSphere(2.0, quality, quality)
+            radius = 2.0
+
+        glutSolidSphere(radius, quality, quality)
 
         ## U axes
         if atm.U:
