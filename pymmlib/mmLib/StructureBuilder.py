@@ -723,6 +723,9 @@ class PDBStructureBuilder(StructureBuilder):
                 row["details"] = details
             exptl.append(row)
 
+    def process_SEQRES(self, rec):
+        pass
+
     def process_CRYST1(self, rec):
         ucell_map = {}
 
@@ -1068,8 +1071,39 @@ class mmCIFStructureBuilder(StructureBuilder):
         return True
 
     def read_start(self, fil, update_cb = None):
-        ## optionally use the "auth" mmCIF labels 
-        if not "label" in self.build_properties:
+        ## parse the mmCIF file
+        self.cif_file = mmCIF.mmCIFFile()
+        self.cif_file.load_file(fil, update_cb)
+
+        ## for a mmCIF file for a structure, assume the first data item
+        ## contains the structure
+        self.cif_data = self.cif_file[0]
+        self.set_atom_site_data_columns()
+
+        ## maintain a map of atom_site.id -> atm
+        self.atom_site_id_map = {}
+
+    def set_atom_site_data_columns(self):
+        """Choose to use atom_site.auth_ labels, or atom_site.label_
+        """
+        try:
+            atom_site_table = self.cif_data["atom_site"]
+        except KeyError:
+            return
+
+        atom_site_auth = "auth_atom_id" in atom_site_table.columns and \
+                         "auth_alt_id"  in atom_site_table.columns and \
+                         "auth_comp_id" in atom_site_table.columns and \
+                         "auth_seq_id"  in atom_site_table.columns and \
+                         "auth_asym_id" in atom_site_table.columns
+        
+        atom_site_label= "label_atom_id" in atom_site_table.columns and \
+                         "label_alt_id"  in atom_site_table.columns and \
+                         "label_comp_id" in atom_site_table.columns and \
+                         "label_seq_id"  in atom_site_table.columns and \
+                         "label_asym_id" in atom_site_table.columns
+        
+        if atom_site_auth == True:
             self.atom_id = "auth_atom_id"
             self.alt_id = "auth_alt_id"
             self.comp_id = "auth_comp_id"
@@ -1083,7 +1117,8 @@ class mmCIFStructureBuilder(StructureBuilder):
             self.ptnr2_comp_id = "ptnr2_auth_comp_id"
             self.ptnr2_asym_id = "ptnr2_auth_asym_id"
             self.ptnr2_seq_id = "ptnr2_auth_seq_id"
-        else:
+
+        elif atom_site_label == True:
             self.atom_id = "label_atom_id"
             self.alt_id = "label_alt_id"
             self.comp_id = "label_comp_id"
@@ -1097,17 +1132,6 @@ class mmCIFStructureBuilder(StructureBuilder):
             self.ptnr2_comp_id = "ptnr2_label_comp_id"
             self.ptnr2_asym_id = "ptnr2_label_asym_id"
             self.ptnr2_seq_id = "ptnr2_label_seq_id"
-
-        ## parse the mmCIF file
-        self.cif_file = mmCIF.mmCIFFile()
-        self.cif_file.load_file(fil, update_cb)
-
-        ## for a mmCIF file for a structure, assume the first data item
-        ## contains the structure
-        self.cif_data = self.cif_file[0]
-
-        ## maintain a map of atom_site.id -> atm
-        self.atom_site_id_map = {}
 
     def read_atoms(self):
         try:
@@ -1133,26 +1157,26 @@ class mmCIFStructureBuilder(StructureBuilder):
             atm_map = {}
 
             self.setmaps(atom_site, self.atom_id, atm_map, "name")
-            self.setmaps(atom_site, self.alt_id, atm_map, "alt_loc")
+            self.setmaps(atom_site, self.alt_id,  atm_map, "alt_loc")
             self.setmaps(atom_site, self.comp_id, atm_map, "res_name")
-            self.setmaps(atom_site, self.seq_id, atm_map, "fragment_id")
+            self.setmaps(atom_site, self.seq_id,  atm_map, "fragment_id")
             self.setmaps(atom_site, self.asym_id, atm_map, "chain_id")
 
             self.setmaps(atom_site, "type_symbol", atm_map, "element")
-            setmapf(atom_site, "Cartn_x", atm_map, "x")
-            setmapf(atom_site, "Cartn_y", atm_map, "y")
-            setmapf(atom_site, "Cartn_z", atm_map, "z")
+            setmapf(atom_site, "cartn_x", atm_map, "x")
+            setmapf(atom_site, "cartn_y", atm_map, "y")
+            setmapf(atom_site, "cartn_z", atm_map, "z")
             setmapf(atom_site, "occupancy", atm_map, "occupancy")
-            setmapf(atom_site, "B_iso_or_equiv", atm_map, "temp_factor")
-            setmapf(atom_site, "Cartn_x_esd", atm_map, "sig_x")
-            setmapf(atom_site, "Cartn_y_esd", atm_map, "sig_y")
-            setmapf(atom_site, "Cartn_z_esd", atm_map, "sig_z")
+            setmapf(atom_site, "b_iso_or_equiv", atm_map, "temp_factor")
+            setmapf(atom_site, "cartn_x_esd", atm_map, "sig_x")
+            setmapf(atom_site, "cartn_y_esd", atm_map, "sig_y")
+            setmapf(atom_site, "cartn_z_esd", atm_map, "sig_z")
             setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
 
-            setmapf(atom_site, "B_iso_or_equiv_esd",
+            setmapf(atom_site, "b_iso_or_equiv_esd",
                     atm_map,   "sig_temp_factor")
 
-            setmapi(atom_site, "pdbx_PDB_model_num",
+            setmapi(atom_site, "pdbx_pdb_model_num",
                     atm_map,   "model_id")
 
             if aniso_table != None:
@@ -1161,19 +1185,19 @@ class mmCIFStructureBuilder(StructureBuilder):
                 except KeyError:
                     warning("unable to find aniso row for atom")
                 else:
-                    setmapf(aniso, "U[1][1]", atm_map, "u11")
-                    setmapf(aniso, "U[2][2]", atm_map, "u22")
-                    setmapf(aniso, "U[3][3]", atm_map, "u33")
-                    setmapf(aniso, "U[1][2]", atm_map, "u12")
-                    setmapf(aniso, "U[1][3]", atm_map, "u13")
-                    setmapf(aniso, "U[2][3]", atm_map, "u23")
+                    setmapf(aniso, "u[1][1]", atm_map, "u11")
+                    setmapf(aniso, "u[2][2]", atm_map, "u22")
+                    setmapf(aniso, "u[3][3]", atm_map, "u33")
+                    setmapf(aniso, "u[1][2]", atm_map, "u12")
+                    setmapf(aniso, "u[1][3]", atm_map, "u13")
+                    setmapf(aniso, "u[2][3]", atm_map, "u23")
 
-                    setmapf(aniso, "U[1][1]_esd", atm_map, "sig_u12")
-                    setmapf(aniso, "U[2][2]_esd", atm_map, "sig_u22")
-                    setmapf(aniso, "U[3][3]_esd", atm_map, "sig_u33")
-                    setmapf(aniso, "U[1][2]_esd", atm_map, "sig_u12")
-                    setmapf(aniso, "U[1][3]_esd", atm_map, "sig_u13")
-                    setmapf(aniso, "U[2][3]_esd", atm_map, "sig_u23")
+                    setmapf(aniso, "u[1][1]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "u[2][2]_esd", atm_map, "sig_u22")
+                    setmapf(aniso, "u[3][3]_esd", atm_map, "sig_u33")
+                    setmapf(aniso, "u[1][2]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "u[1][3]_esd", atm_map, "sig_u13")
+                    setmapf(aniso, "u[2][3]_esd", atm_map, "sig_u23")
 
             atm = self.load_atom(atm_map)
             self.atom_site_id_map[atom_site_id] = atm
@@ -1217,7 +1241,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                 setmapf(cell, "angle_alpha", ucell_map, "alpha")
                 setmapf(cell, "angle_beta", ucell_map, "beta")
                 setmapf(cell, "angle_gamma", ucell_map, "gamma")
-                setmapi(cell, "Z_PDB", ucell_map, "z")
+                setmapi(cell, "z_pdb", ucell_map, "z")
 
         try:
             symmetry_table = self.cif_data["symmetry"]

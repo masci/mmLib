@@ -639,13 +639,13 @@ class TLSGroup(AtomList):
             yz = y*z
             xz = x*z
 
-            u00 = (         T[0,0]
+            u11 = (         T[0,0]
                     + 2.0 * S[1,0] * z
                     +       L[1,1] * zz 
                     - 2.0 * S[2,0] * y 
                     - 2.0 * L[2,1] * yz
                     +       L[2,2] * yy )
-            u10 = (         T[1,0]
+            u12 = (         T[1,0]
                     -       S[0,0] * z
                     - 2.0 * S[0,1] * y
                     +       S[1,1] * z
@@ -655,12 +655,12 @@ class TLSGroup(AtomList):
                     +       L[2,0] * yz
                     +       L[2,1] * xz
                     -       L[2,2] * xy )
-            u11 = (         T[1,1]
+            u22 = (         T[1,1]
                     +       L[0,0] * zz
                     + 2.0 * S[2,1] * x
                     - 2.0 * L[2,0] * xz
                     +       L[2,2] * xx )
-            u20 = (         T[2,0]
+            u13 = (         T[2,0]
                     +       S[0,0] * y
                     -       S[1,0] * x
                     +       S[1,2] * z
@@ -669,7 +669,7 @@ class TLSGroup(AtomList):
                     -       S[2,2] * y
                     -       L[2,0] * yy
                     +       L[2,1] * xy )
-            u21 = (         T[2,1]
+            u23 = (         T[2,1]
                     +       S[0,1] * y
                     -       S[0,2] * z
                     -       L[0,0] * yz
@@ -678,18 +678,102 @@ class TLSGroup(AtomList):
                     +       S[2,2] * x 
                     +       L[2,0] * xy
                     -       L[2,1] * xx )
-            u22 = (         T[2,2]
+            u33 = (         T[2,2]
                     + 2.0 * S[0,2] * y
                     +       L[0,0] * yy
                     - 2.0 * S[1,2] * x
                     - 2.0 * L[1,0] * xy
                     +       L[1,1] * xx )
 
-            U = array ([[u00, u10, u20],
-                        [u10, u11, u21],
-                        [u20, u21, u22]])
+            U = array ([[u11, u12, u13],
+                        [u12, u22, u23],
+                        [u13, u23, u33]])
 
             yield (atm, U)
+
+    def iter_atm_UtUlUs(self):
+        """Iterates all the atoms in the TLS object, returning the 2-tuple
+        (atm, U) where U is the calcuated U value from the current values
+        of the TLS object's T,L,S, tensors and origin.
+        """
+        T = self.T
+        L = self.L
+        S = self.S
+        O = self.origin
+
+        Ut = T.copy()
+        
+        for atm in self:
+            x, y, z = atm.position - O
+
+            xx = x*x
+            yy = y*y
+            zz = z*z
+
+            xy = x*y
+            yz = y*z
+            xz = x*z
+
+            ul11 = (+       L[1,1] * zz 
+                    - 2.0 * L[2,1] * yz
+                    +       L[2,2] * yy )
+
+            us11 = (+ 2.0 * S[1,0] * z
+                    - 2.0 * S[2,0] * y )
+
+            ul12 = (-       L[1,0] * zz
+                    +       L[2,0] * yz
+                    +       L[2,1] * xz
+                    -       L[2,2] * xy )
+            
+            us12 = ( -       S[0,0] * z
+                     - 2.0 * S[0,1] * y
+                     +       S[1,1] * z
+                     +       S[2,0] * x
+                     -       S[2,1] * y )
+            
+            ul22 = (+       L[0,0] * zz
+                    - 2.0 * L[2,0] * xz
+                    +       L[2,2] * xx )
+
+            us22 = (+ 2.0 * S[2,1] * x )
+
+            ul13 = (+       L[1,0] * yz
+                    -       L[1,1] * xz
+                    -       L[2,0] * yy
+                    +       L[2,1] * xy )
+
+            us13 = (+       S[0,0] * y
+                    -       S[1,0] * x
+                    +       S[1,2] * z
+                    -       S[2,2] * y)
+
+            ul23 = (-       L[0,0] * yz
+                    +       L[1,0] * xz
+                    +       L[2,0] * xy
+                    -       L[2,1] * xx )
+
+            us23 = (+       S[0,1] * y
+                    -       S[0,2] * z
+                    -       S[1,1] * x
+                    +       S[2,2] * x )
+
+            ul33 = (+       L[0,0] * yy
+                    - 2.0 * L[1,0] * xy
+                    +       L[1,1] * xx )
+
+            us33 = (+ 2.0 * S[0,2] * y
+                    - 2.0 * S[1,2] * x )
+
+            Ul = array ([[ul11, ul12, ul13],
+                         [ul12, ul22, ul23],
+                         [ul13, ul23, ul33]])
+
+            Us = array ([[us11, us12, us13],
+                         [us12, us22, us23],
+                         [us13, us23, us33]])
+
+            yield (atm, Ut, Ul, Us)
 
     def calc_R(self):
         """Calculate the R factor of U vs. Utls.
@@ -721,6 +805,22 @@ class TLSGroup(AtomList):
                 num += 1
 
         return adv_Suij/num
+        
+    def calc_adv_DP2uij(self):
+        """Calculates the adverage Suij of U vs. Utls.
+        """
+        num      = 0
+        adv_DP2uij = 0.0
+
+        for (atm, Utls) in self.iter_atm_Ucalc():
+            try:
+                adv_DP2uij += atm.calc_DP2uij(Utls)
+            except ValueError:
+                pass
+            else:
+                num += 1
+
+        return adv_DP2uij/num
         
     def calc_COR(self):
         """Calculate new tensors based on the center for reaction.

@@ -48,6 +48,7 @@ class AtomOverwrite(StructureError):
     def __str__(self):
         return self.text
 
+
 class Structure(object):
     """The Structure object is the parent container object for the entire
     macromolecular data structure.  It contains a list of the Chain objects
@@ -65,7 +66,7 @@ class Structure(object):
     """
     def __init__(self, **args):
         self.library         = args.get("library")   or Library()
-        self.cifdb           = args.get("cifdb")     or mmCIFDB("XXX")
+        self.cifdb           = args.get("cifdb")     or mmCIFDB("XXXX")
         self.unit_cell       = args.get("unit_cell") or UnitCell()
 
         self.default_alt_loc = "A"
@@ -844,6 +845,25 @@ class Chain(object):
             sequence_list.append(frag.res_name)
 
         return sequence_list
+
+    def calc_sequence1(self):
+        """Calculates the 1-letter sequence of the Chain.
+        """
+        sequence1 = ""
+        lib = self.get_structure().library
+        
+        for frag in self.iter_fragments():
+            mon = lib.get_monomer(frag.res_name)
+
+            if mon == None or not mon.is_standard_residue():
+                break
+
+            if mon.one_letter_code == "":
+                sequence1 += "(%s)" % (frag.res_name)
+            else:
+                sequence1 += mon.one_letter_code
+
+        return sequence1
 
 
 class Fragment(object):
@@ -1979,6 +1999,16 @@ class Atom(object):
         else:
             V = atom_U
         return calc_Suij(U, V)
+        
+    def calc_DP2uij(self, atom_U):
+        """
+        """
+        U = self.get_U()
+        if isinstance(atom_U, Atom):
+            V = atom_U.get_U()
+        else:
+            V = atom_U
+        return calc_DP2uij(U, V)
         
     def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the

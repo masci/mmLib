@@ -77,6 +77,24 @@ def calc_Suij(U, V):
     return ( calc_CCuij(U, (eqU/eqV)*V) /
              (calc_CCuij(U, isoU) * calc_CCuij(V, isoV)) )
 
+def calc_DP2uij(U, V):
+    invU = inverse(U)
+    invV = inverse(V)
+
+    det_invU = determinant(invU)
+    det_invV = determinant(invV)
+
+    pi3 = math.pi * math.pi * math.pi
+
+    Pu2 = math.sqrt( det_invU / (64.0 * pi3) )
+    Pv2 = math.sqrt( det_invV / (64.0 * pi3) )
+
+    Puv = math.sqrt( (det_invU * det_invV) /
+                     (8.0 * pi3 * determinant(invU + invV)) )
+
+    return Pu2 + Pv2 - (2.0 * Puv)
+
+
 ### <TESTING>
 if __name__ == "__main__":
     from Structure import *

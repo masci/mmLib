@@ -57,38 +57,50 @@ class StructureFactors(object):
             elif z >= 1.0:
                 z -= 1.0
 
-            yield xyz
+            yield x, y, z
 
-    def calc(self, h_range, k_range, l_range):
+    def calc_Fcalc(self, h_range, k_range, l_range):
+        """Returns a 3 dimentional hkl array of structure factors calculated
+        from the negitive to positive hkl values of the given ranges.
         """
-        """
+        two_pi_i = 2.0 * cmath.pi * 1.0j
+
         hkl = zeros((2*h_range + 1, 2*k_range + 1, 2*l_range + 1), Complex)
 
         for atm in self.struct.iter_atoms():
             for x, y, z in self.iter_equiv_pos_frac(atm.position):
                 for h, k, l in self.iter_hkl(h_range, k_range, l_range):
 
-                    F = cmath.exp(2.0 * cmath.pi * 1.0j * (x*h + y*k + z*l))
+                    F = cmath.exp(two_pi_i * (x*h + y*k + z*l))
                     hkl[h,k,l] += F
 
         return hkl
 
+    def calc_R(self):
+        """
+        """
+        pass
 
+
+
+
+
+## <testing>
 if __name__ == "__main__":
     from FileLoader import LoadStructure
 
     struct = LoadStructure(fil = sys.argv[1])
-    for atm in struct:
-        print atm
+    for chain in struct.iter_chains():
+        print chain
+
+    print "Calculating Structure Factors..."
     
     sf  = StructureFactors(struct)
-    hkl = sf.calc(5, 5, 5)
+    hkl = sf.calc_Fcalc(10, 10, 0)
 
-    for h, k, l in sf.iter_hkl(3, 3, 0):
-        print "%4d  %4d  %4d  %40s  %40s" % (
+    for h, k, l in sf.iter_hkl(10, 10, 0):
+        print "%4d  %4d  %4d  %40s  %25s" % (
             h, k, l,
             hkl[h,k,l],
             hkl[h,k,l] * hkl[h,k,l].conjugate())
-
-
-        
+## </testing>

@@ -8,8 +8,10 @@ The mmCIF and PDB file formats are currently supported.
 import os
 from mmTypes import *
 from  StructureBuilder import PDBStructureBuilder, mmCIFStructureBuilder
-from mmCIF import mmCIFFile, mmCIFFileBuilder
-from PDB import PDBFile, PDBFileBuilder
+from mmCIF import mmCIFFile
+from mmCIFBuilder import mmCIFFileBuilder
+from PDB import PDBFile
+from PDBBuilder import PDBFileBuilder
 
 
 def decode_format(path):

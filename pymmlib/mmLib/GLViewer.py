@@ -244,7 +244,7 @@ class GLTLSGroup(GLDrawList):
 
         ## L axes
         glColor3f(1.0, 0.0, 0.0)
-        self.draw_tensor(self.calcs["L'"], 3.0 * rad2deg2)
+        self.draw_tensor(self.calcs["L'"], 0.05 * rad2deg2)
 
         ## S axes
         glColor3f(0.0, 0.0, 1.0)
@@ -285,20 +285,22 @@ class GLTLSGroup(GLDrawList):
     def inc_time(self):
         """val cycles every 2pi
         """
-        return
+        #return
         
         if self.gl_name == None:
             return
         
         self.tm += math.pi / 50.0
 
-        try:
-            Lx = self.evalL[0] * rad2deg2 * math.sin(self.tm) 
-            Ly = self.evalL[1] * rad2deg2 * math.sin(self.tm)
-            Lz = self.evalL[2] * rad2deg2 * math.sin(self.tm)
-        except ValueError, err:
-            print "inc_time: ",err
-            return
+        Lx_peak = 1.414 * math.sqrt(self.evalL[0]*rad2deg2)
+        Ly_peak = 1.414 * math.sqrt(self.evalL[1]*rad2deg2)
+        Lz_peak = 1.414 * math.sqrt(self.evalL[2]*rad2deg2)
+
+        sin_tm = math.sin(self.tm)
+
+        Lx = Lx_peak * sin_tm 
+        Ly = Ly_peak * sin_tm
+        Lz = Lz_peak * sin_tm
 
 ##         Spc = self.calcs["S'^"] * rad2deg
 
@@ -309,7 +311,9 @@ class GLTLSGroup(GLDrawList):
 
 ##         dS = matrixmultiply(transpose(self.axes), dSp)
 
-##         self.origin = Vector(self.calcs["COR"] + dS)
+        dS = zeros(3)
+
+        self.origin = Vector(self.calcs["COR"] + dS)
 
         self.rotx = Lx
         self.roty = Ly
@@ -455,7 +459,7 @@ class GLAtomList(GLDrawList, AtomList):
         glEnable(GL_LIGHTING)
 
     def draw_U_axes(self, atm, symop = None):
-        """Draw principal thermal axes for atom.
+        """Draw the anisotropic axies of the atom with root mean square
         """
         if atm.U == None:
             return
@@ -465,11 +469,15 @@ class GLAtomList(GLDrawList, AtomList):
         else:
             U = getattr(atm, self.args["U"])
 
-        evec, eval = eigenvectors(U)
+        eval, evec = eigenvectors(U)
 
-        v0 = Vector(evec[0] * eval[0])
-        v1 = Vector(evec[1] * eval[1])
-        v2 = Vector(evec[2] * eval[2])
+        v0_peak = 1.414 * math.sqrt(eval[0])
+        v1_peak = 1.414 * math.sqrt(eval[1])
+        v2_peak = 1.414 * math.sqrt(eval[2])
+        
+        v0 = Vector(evec[0] * v0_peak)
+        v1 = Vector(evec[1] * v1_peak)
+        v2 = Vector(evec[2] * v2_peak)
 
         if self.atom_origin:
             position = atm.position - self.atom_origin
