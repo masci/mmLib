@@ -2,6 +2,9 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+"""Classes for representing biological macromolecules."""
+
 from   __future__           import generators
 import fpformat
 import weakref

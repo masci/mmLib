@@ -3,6 +3,9 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""Subclass of mmLib.Library providing a supplemental monomer library by
+dynamically reading CCP4's monomer library."""
+
 import os
 import sys
 import copy

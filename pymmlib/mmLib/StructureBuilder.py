@@ -2,6 +2,10 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+"""Classes for building a mmLib.Structure representation of biological
+macromolecules."""
+
 import PDB
 import mmCIF
 
@@ -10,6 +14,10 @@ from Structure    import *
 
 
 class StructureBuilder:
+    """Builder class for the mmLib.Structure object hierarchy.
+    StructureBuilder must be subclassed with a working parseFormat()
+    method to implement a working builder."""
+    
     def __init__(self,
                  fil,
                  library          = None,

@@ -3,6 +3,8 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""Open file class used by mmLib."""
+
 import os
 import types
 import gzip

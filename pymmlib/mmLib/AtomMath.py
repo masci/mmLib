@@ -3,12 +3,10 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-"""This module provides suroutines for various calculations involving atoms.
-These routines expect Structure.Atom classes as arguments."""
+"""Mathmatical operations performed on mmLib.Strcuture.Atom objects."""
 
 import math
 from   mmTypes import *
-
 
 def calculateDistance(a1, a2):
     """Returns the distance between two argument atoms."""
@@ -19,7 +17,6 @@ def calculateDistance(a1, a2):
     return distance
 
 
-
 def calculateAngle(a1, a2, a3):
     """Return the angle between the three argument atoms."""
     if not (a1 and a2 and a3): return None
@@ -27,7 +24,6 @@ def calculateAngle(a1, a2, a3):
     a21 = a1.position - a2.position
     a23 = a3.position - a2.position
     return a21.angle(a23)
-
 
 
 def calculateTorsionAngle(a1, a2, a3, a4):
@@ -61,11 +57,9 @@ def calculateTorsionAngle(a1, a2, a3, a4):
     return angle
 
 
-
 ##
 ## <testing>
 ##
-
 if __name__ == "__main__":
     from Structure import *
 
@@ -82,7 +76,6 @@ if __name__ == "__main__":
     a4.setPosition(Vector(0.0,1.0,-1.0))
 
     print calculateTorsionAngle(a1, a2, a3, a4) * 180 / math.pi
-    
 ##
 ## </testing>
 ##

@@ -3,6 +3,9 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""Implementation of simple algorithms preformed on mmLib.Structure objects."""
+
+
 from   mmTypes              import *
 from   AtomMath             import *
 

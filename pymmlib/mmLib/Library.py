@@ -3,6 +3,9 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""Monomer and element library data classes.  The Library classes are used
+for the identification and construction of biopolymers and ligands."""
+
 
 class Monomer:
     """Base class for all monomer library entries."""

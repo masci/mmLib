@@ -20,7 +20,6 @@ from OpenGL.GLUT import *
 
 from mmLib.Structure     import *
 from mmLib.FileLoader    import LoadStructure, SaveStructure
-from mmLib.CCP4Library   import CCP4Library
 
 try:
     # try double-buffered
@@ -597,7 +596,6 @@ class StructureGUI:
     def loadStructure(self, path):
         self.structure = LoadStructure(
             fil              = path,
-            library          = CCP4Library("/home/jpaint/ccp4/ccp4-4.2.2"),
             build_properties = ("polymers","bonds"))
 
         model = StructureTreeModel(self.structure)

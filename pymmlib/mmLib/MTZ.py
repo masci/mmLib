@@ -3,10 +3,10 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-"""The module provides a parser for MTZ reflection files.  It does not
-save MTZ files yet."""
-
-
+"""MTZ file parser.  It has a few flaws I'm going to fix soon.  It will not
+correctly convert files saved on machines with different endian formats or
+integer/float sizes.  It cannot save MTZ files.  If anyone needs these
+features, email jpaint@u.washington.edu and I'll finish them. ;)"""
 
 import types
 import struct

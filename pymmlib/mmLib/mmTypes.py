@@ -2,12 +2,12 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+"""Specialized types used by mmLib.  In some cases the types are
+custom, and the code for those is here.  Inother cases the types are
+imported from other Python packages."""
+
 from   __future__           import generators
-
-"""Provides data types used across mmLib.  In some cases the types are
-custom, and the code for those is here.  Inother cases the types are imported
-from other Python packages."""
-
 import string
 
 ## we need weak references

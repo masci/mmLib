@@ -3,9 +3,8 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-"""This module provides loading and saving of Structure classes from and to
-various supported file formats.  The mmCIF and PDB file formats are currently
-supported."""
+"""Load and save mmLib.Structure objects from/to mmLib supported formats.
+The mmCIF and PDB file formats are currently supported."""
 
 import os
 from   mmTypes          import *

@@ -3,9 +3,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-"""This module provides a very minimal library of the elements.  The
-element properties defined here should be properties which will never
-change, and more complex properties should be loaded by other libraries."""
+"""Library of atomic elements."""
 
 ElementNames = [
     'H', 'He', 'HE', 'Li', 'LI', 'Be', 'BE', 'B', 'C', 'N', 'O', 'F', 'Ne',

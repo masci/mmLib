@@ -2,13 +2,13 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-from   __future__           import generators
 
-"""This module provides a PDB v2.2 parser.  All records in the PDB v2.2
+"""Brookhaven PDB v2.2 file parsers.  All records in the PDB v2.2
 specification have coorasponding classes defined here.  PDB files are
 loaded into a list of these cassed, and also can be constrcted/modified
 and written back out as PDB files."""
 
+from   __future__           import generators
 import string
 import types
 import fpformat
