@@ -8,6 +8,7 @@ from mmLib.mmTypes import *
 
 pdb_regex = ("[\w+\.]+pdb",
              "[\w\.]+pdb\.gz",
+	     "pdb[\w]+",
              "pdb[\w\.]+Z",
              "pdb[\w\.]+gz")
 
