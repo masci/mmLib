@@ -24,7 +24,8 @@ class Element(object):
                  atomic_radius           = 0.0,
                  covalent_radius         = 0.0,
                  van_der_waals_radius    = 2.0,
-                 electronegativity       = 0.0):
+                 electronegativity       = 0.0,
+                 color                   = (1.0, 1.0, 1.0)):
 
         self.name                 = name
         self.symbol               = symbol
@@ -36,6 +37,7 @@ class Element(object):
         self.covalent_radius      = covalent_radius
         self.van_der_waals_radius = van_der_waals_radius
         self.electronegativity    = electronegativity
+        self.color                = color
 
     def __str__(self):
         return "Element=%s" % (self.name)
@@ -221,21 +223,24 @@ C  = Element(
     symbol               = "C",
     atomic_number        = 6,
     atomic_weight        = 12.010700,
-    van_der_waals_radius = 1.70)
+    van_der_waals_radius = 1.70,
+    color                = (1.0, 1.0, 0.0))
 
 N  = Element(
     name                 = "Nitrogen",
     symbol               = "N",
     atomic_number        = 7,
     atomic_weight        = 14.006700,
-    van_der_waals_radius = 1.55)
+    van_der_waals_radius = 1.55,
+    color                = (0.0, 0.0, 1.0))
 
 O  = Element(
     name                 = "Oxygen",
     symbol               = "O",
     atomic_number        = 8,
     atomic_weight        = 15.999400,
-    van_der_waals_radius = 1.52)
+    van_der_waals_radius = 1.52,
+    color                = (1.0, 0.0, 0.0))
 
 F  = Element(
     name                 = "Fluorine",
@@ -290,7 +295,8 @@ S  = Element(
     symbol               = "S",
     atomic_number        = 16,
     atomic_weight        = 32.065000,
-    van_der_waals_radius = 1.80)
+    van_der_waals_radius = 1.80,
+    color                = (0.0, 1.0, 0.0))
 
 Cl = Element(
     name                 = "Chlorine",

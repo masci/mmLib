@@ -253,11 +253,13 @@ class StructureBuilder:
         unit cell pararameters for the structure.
         """
         self.structure.unit_cell = UnitCell(
-            ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
-            ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
-
-        try: self.structure.space_group = SpaceGroup(ucell_map["space_group"])
-        except KeyError: pass
+            a = ucell_map["a"],
+            b = ucell_map["b"],
+            c = ucell_map["c"],
+            alpha = ucell_map["alpha"],
+            beta = ucell_map["beta"],
+            gamma = ucell_map["gamma"],
+            space_group = ucell_map["space_group"])
 
     def load_site(self, site_map):
         """Called by the implementation of load_metadata to load information

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -23,7 +22,6 @@ from mmLib.FileLoader    import LoadStructure, SaveStructure
 from mmLib.GLViewer      import *
 from mmLib.Extensions.PenultimateRotamers import FindBestRotamer
 
-
 try:
     # try double-buffered
     glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
@@ -33,19 +31,6 @@ except gtk.gdkgl.NoMatches:
     # try single-buffered
     glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
                                 gtk.gdkgl.MODE_DEPTH)
-
-
-class SelectionGLAtomDrawList(GLAtomDrawList):
-    def __init__(self):
-        GLAtomDrawList.__init__(self)
-        self.selected = []
-    
-    def select_atom_material(self, atm):
-        (r, g, b, brightness) = GLAtomDrawList.select_atom_material(self, atm)
-        if not atm in self.selected:
-            brightness = brightness * 0.2
-        return (r, g, b, brightness)
-        
 
 class GtkGLViewer(gtk.gtkgl.DrawingArea):
     def __init__(self):
@@ -63,7 +48,9 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         self.connect('expose_event',        self.expose_event)
         self.connect('destroy',             self.destroy)
 
-        self.glviewer = None
+        self.glviewer        = None
+        self.unit_cell_draw  = None
+        self.atom_draw       = None
 
     def destroy(self, glarea):
         return gtk.TRUE
@@ -86,7 +73,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
             self.glviewer.zpos = self.glviewer.zpos + \
                         (((event.y - self.beginy) / float(height)) * 50.0)
 
-            self.glviewer.zpos = max(self.glviewer.zpos, -250.0)
+            self.glviewer.zpos = max(self.glviewer.zpos, -450.0)
 
         elif (event.state & gtk.gdk.BUTTON3_MASK):
             self.glviewer.ypos = self.glviewer.ypos - \
@@ -130,29 +117,32 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         return gtk.TRUE
 
     def set_unit_cell(self, unit_cell):
-        self.glviewer.append(GLUnitCellDrawList(unit_cell))
+        """Adds the mmLib.UnitCell drawing object to the scene.
+        """
+        if self.unit_cell_draw:
+            self.glviewer.remove(self.unit_cell_draw)
+            self.unit_cell_draw.gl_delete_list()
+            
+        self.unit_cell_draw = GLUnitCellDrawList(unit_cell)
+        self.glviewer.append(self.unit_cell_draw)
         self.queue_draw()
 
     def set_structure(self, struct_obj, sel_struct_obj = None):
+        """
+        """
         ## remove all previous atom draw lists
-        for draw_list in self.glviewer:
-            if isinstance(draw_list, GLAtomDrawList):
-                self.glviewer.remove(draw_list)
-                draw_list.gl_delete_list()
+        if self.atom_draw:
+            self.glviewer.remove(self.atom_draw)
+            self.atom_draw.gl_delete_list()
 
         ## create and add new view group
-        draw_list = SelectionGLAtomDrawList()
-        self.glviewer.append(draw_list)
-
+        self.atom_draw = GLAtomDrawList()
+        #self.atom_draw.set_setting("main_chain", True)
+        #self.atom_draw.set_setting("draw_style", "cpk")
+        
+        self.glviewer.append(self.atom_draw)
         for atm in struct_obj.iter_atoms():
-            draw_list.append(atm)
-
-        if sel_struct_obj:
-            if isinstance(sel_struct_obj, Atom):
-                draw_list.selected=[sel_struct_obj]
-            else:
-                draw_list.selected=[atm for atm in sel_struct_obj.iter_atoms()]
-
+            self.atom_draw.append(atm)
         self.queue_draw()
 
 

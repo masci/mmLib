@@ -12,8 +12,6 @@ from AtomMath import *
 from Library import Library
 from ExpData import ExpData
 from UnitCell import UnitCell
-from SpaceGroup import SpaceGroup, SymmetryOperator
-
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
@@ -50,7 +48,6 @@ class Structure(object):
 
         self.exp_data        = ExpData()
         self.unit_cell       = UnitCell()
-        self.space_group     = SpaceGroup()
 
         self.default_alt_loc = "A"
         self.sites           = []
