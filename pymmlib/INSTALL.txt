@@ -1,0 +1,196 @@
+Python Macromolecular Library Installation Guide
+-------------------------------------------------------------------------------
+
+SUPPORTED OPERATING SYSTEMS::
+
+It should be possible to get mmLib running on any decent UNIX system, and
+this installation guide should be usefull for any UNIX installation, but it
+is really written with a Linux installation in mind.
+
+
+DEPENDANCY CHECKING::
+
+Once you have downloaded mmLib, you need to check to see if all the
+dependancies it requires are installed.  The easiest way to do this is to
+use the dependancy checking mode of the mmLib setup.py program.  Once mmLib
+has been downloaded, issue the following commands:
+
+# tar xzf pymmlib-0.8.tar.gz
+# cd pymmlib-0.8
+# python setup.py checkdeps
+
+PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM
+ 
+===============================================================================
+Running Depancy Checks
+-------------------------------------------------------------------------------
+OK:    Python 2.3.4 Found.
+OK:    Python Distutils found.
+OK:    Numeric Python found.
+OK:    PyOpenGL.GL found.
+OK:    PyOpenGL.GLU found.
+OK:    PyOpenGL.GLUT found.
+OK:    PyGTK found.
+OK:    PyGtkGLExt found.
+===============================================================================
+
+If you're really lucky (you won't be), you'll get that output and you can 
+move to the "EASY INSTALLATION" section.  Otherwise, gather and install the
+dependancies which are not found.  If you don't want to use the mmLib 
+Molecular Viewer, you won't need any of the OpenGL or PyGTK/PyGtkGLExt 
+modules, and you can proceed to the "EASY INSTALLATION" section.
+
+Some of the dependancies you'll need are likely to exist as optional packages
+you didn't install from your Linux installation disks.  Here's the list:
+
+* Python >= 2.2.1, but 2.3.x works much better.  
+  URL: http://www.python.org/
+  If you compile from source, you get python + python-devel.  If you 
+  installed from packages, you will need to install the python-devel packages.
+  Instructions for compiling Python from source are given below.  I've found
+  some problems with the proper distutils not being shipped with Mandrake 9.x
+  Python distributions, even whent the python-devel package is installed.
+  This is a really annoying problem, since it's just a couple of small files
+  they left out.  I might include them in mmLib if it is too much of a 
+  issue.
+
+* Numeric Python
+  URL: http://www.pfdubois.com/numpy/
+  Most distributions have this as a package.  However, it is almost as easy
+  to compile and install it from source after the python-devel package is
+  installed.  Instructuions are given below.
+
+* OpenGL/GLUT (optional for mmLib Viewer)
+  URL: Your install disks.
+  The OpenGL libraries should come with your Linux ditribution, but it's
+  possible they are not installed by default, or the deveopment packages are
+  not installed by default.  Make sure they are.  There is one additional
+  library, GLUT, which is usually not installed by default.  You need 
+  the glut and glut-devel package, which is sometimes named FreeGLUT.
+  If its not on the install disks, then it can be downloaded and compiled
+  from: http://freeglut.sourceforge.net/
+
+* Gtk+-2.2 or Gtk+-2.4
+  URL: Your install disks, http://www.gtk.org/
+  Gtk is the GUI toolkit used by the applications in mmLib.  You will need
+  gtk+-2.x and the development packages installed.  Gtk versions 2.x are
+  very compatible, and chances are the one that comes with your Linux 
+  distro will work once the development packages are installed.
+
+* PyOpenGL
+  URL: http://pyopengl.sourceforge.net/
+  This is the python bindings to OpenGL.  They may come as packages with 
+  the Linux distro called python-opengl or somthing like that.  Once the
+  OpenGL/GLUT libraries are installed, PyOpenGL is really trivial to install
+  from source, the proceedure is identical to the Numeric Python installation
+  detailed below.
+
+* GtkGlExt
+  URL: http://gtkglext.sourceforge.net/
+  You are not likely to find this library as part of your Linux distribution,
+  and you'll have to download it and install it from source.  Once
+  you have gtkglext-1.0.6.tar.gz and pygtkglext-1.0.1, install it with these
+  commands:
+
+  # tar xzf gtkglext-1.0.6.tar.gz
+  # cd gtkglext-1.0.6
+  # ./configure --prefix=/usr
+  # make
+  # su
+    <enter root password>
+  # make install
+  # ldconfig
+  # exit
+
+  That installs the library, now for the Python bindings:
+
+  # tar xzf pygtkglext-1.0.1.tar.gz
+  # cd pygtkglext-1.0.1
+  # python setup.py build
+  # su
+    <enter root password>
+  # python setup.py install
+  # exit
+
+* PyGTK 2.x
+  URL: http://www.pygtk.org/
+  Any newer Linux distribution comes with the PyGTK bindings.  If they are
+  not installed you'll have to find the packages on the install disks.
+
+
+EASY INSTALLATION::
+
+If you already have the prerequisite software installed, here is the simple
+installation instructions for UNIX/LINUX.  If you don't have the prerequisite
+software, or you don't know what you have, read on.  If you want to read more
+about what is going on here, read the next section.
+
+# tar xzf pymmlib-0.8.tar.gz
+# cd pymmlib-0.8
+# su (root passwd)
+# python setup.py build
+# python setup.py install
+
+
+LINUX AND PYTHON::
+
+Many Linux distributions split the Python distribution into
+separate packages.  Most Linux distributions use the Redhat
+Package Manager (.rpm) format, and have a python-*.rpm 
+and python-dev-*.rpm/python-devel-*.rpm packages for the 
+complete distribution.  However, I've noticed some 
+Linux distributions are missing importent Python libraries
+even when both of these packages are installed, causing the
+mmLib installer to fail.
+
+For this reason, you may have to compile and install Python from 
+source.  This may sound difficult, but in my experience it 
+is usually easier than finding the python-devel-*.rpm for
+your distribution.  I reccomend compiling and installing Python-2.3.3
+from http://www.python.org.  
+
+
+INSTALLING PYTHON FROM SOURCE::
+
+# (get Python-2.3.3.tgz from http://www.python.org, save to your home dir)
+# tar xzf Python-2.3.3.tgz
+# cd Python-2.3.3
+# ./configure --prefix=/usr/local/python-2.3.3
+# make
+# su (root passwd)
+# make install
+# exit
+# export PATH=/usr/local/python-2.3.3/bin:$PATH
+    
+# (get Numeric Python from http://numpy.sourceforge.net/)
+# tar xzf Numeric-23.1.tar.gz
+# cd Numeric-23.1
+# python setup.py build
+# su (root passwd)
+# python setup.py install
+    
+Now you have a working installation of Python-2.3.3, Numeric, and mmLib.
+
+Python includes its own system for installing new modules called distutils.
+To use the distutils, one needs to write a setup.py file which acts much
+like a Makefile for Python.  The installer does not check for any of the
+other required Python modules.  It will install, but the programs will not
+run.  There are links to all the required software on the mmLib website.
+
+If you want to install mmLib into your Python distribution's standard
+library, run the following command as root:
+
+# python setup.py install
+
+If you want to use mmLib without installing it as root, you can set the
+PYTHONPATH environment variable.  For example, to unpack mmLib and run the
+example programs and applications:
+
+# tar xzf pymmlib-0.8.tar.gz
+# export PYTHONPATH=/home/jpaint/pymmlib-0.7
+# cd pymmlib-0.7/tests
+# python mmlib_test.py /home/jpaint/myfile.[pdb|cif]
+
+
+Jay Painter <jpaint@u.washington.edu>
+Aug. 4, 2004

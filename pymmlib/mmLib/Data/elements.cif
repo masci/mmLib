@@ -5,6 +5,7 @@ _element.name                  Hydrogen
 _element.number                1
 _element.atomic_weight         1.007940
 _element.van_der_walls_radius  1.200000
+_element.covalent_radius       0.320
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -171,6 +172,7 @@ _element.name                  Carbon
 _element.number                6
 _element.atomic_weight         12.010700
 _element.van_der_walls_radius  1.700000
+_element.covalent_radius       0.720
 _element.color_rgb             '#AAAAAA'
 #
 _scattering_factors.wavelength  CuKa
@@ -200,6 +202,7 @@ _element.name                  Nitrogen
 _element.number                7
 _element.atomic_weight         14.006700
 _element.van_der_walls_radius  1.550000
+_element.covalent_radius       0.680
 _element.color_rgb             '#0000FF'
 #
 _scattering_factors.wavelength  CuKa
@@ -229,6 +232,7 @@ _element.name                  Oxygen
 _element.number                8
 _element.atomic_weight         15.999400
 _element.van_der_walls_radius  1.520000
+_element.covalent_radius       0.680
 _element.color_rgb             '#FF0000'
 #
 loop_
@@ -474,6 +478,7 @@ _element.name                  Phosphorus
 _element.number                15
 _element.atomic_weight         30.973761
 _element.van_der_walls_radius  1.800000
+_element.covalent_radius       1.036
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -503,6 +508,7 @@ _element.name                  Sulfur
 _element.number                16
 _element.atomic_weight         32.065000
 _element.van_der_walls_radius  1.800000
+_element.covalent_radius       1.020
 _element.color_rgb             '#00FF00'
 #
 _scattering_factors.wavelength  CuKa
@@ -633,6 +639,7 @@ _element.name                  Calcium
 _element.number                20
 _element.atomic_weight         40.078000
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       0.992
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -877,6 +884,7 @@ _element.name                  Iron
 _element.number                26
 _element.atomic_weight         55.845000
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.420
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1037,6 +1045,7 @@ _element.name                  Zinc
 _element.number                30
 _element.atomic_weight         65.409000
 _element.van_der_walls_radius  1.390000
+_element.covalent_radius       1.448
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1685,6 +1694,7 @@ _element.name                  Cadmium
 _element.number                48
 _element.atomic_weight         112.411000
 _element.van_der_walls_radius  1.580000
+_element.covalent_radius       1.688
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1866,6 +1876,7 @@ _element.name                  Iodine
 _element.number                53
 _element.atomic_weight         126.904470
 _element.van_der_walls_radius  1.980000
+_element.covalent_radius       1.400
 _element.color_rgb             '#FFFFFF'
 #
 loop_

@@ -14,150 +14,85 @@ from mmLib.FileLoader import *
 from mmLib.Extensions.TLS import *
 
 
-def iter_segments(chain, seg_len):
-    """
-    """
-    segment = []
-    for res in chain.iter_amino_acids():
-        segment.append(res)
-
-        if len(segment)<seg_len:
-            continue
-        
-        if len(segment)>seg_len:
-            segment = segment[1:]
-
-        atom_list = AtomList()
-        for rx in segment:
-            for atm in rx.iter_atoms():
-                atom_list.append(atm)
-
-        yield atom_list
-
-
 def main(**args):
     print "## PATH: %s" % (args["path"])
     print "## SEGMENT LENGTH: %d" % (args["seg_len"])
     print "## MAINCHAIN ONLY: %s" % (str(args["mainchain_only"]))
     print "## OMIT SINGLE BONDED ATOMS: %s" % (str(args["omit_single_bonded"]))
-    print "## res range::group num::num atoms::Badv::Aadv::R::dP2::Suij"
+    print "## RES   NUM   Atoms    <B>     <A>   R      <DP2>   s<DP2>  <DP2N>  "\
+          "s<DP2N> <S>    s<S>   t(T)    t(L)"
 
     struct = LoadStructure(fil = args["path"])
 
-    ## list of all TLS groups
-    tls_list = []
+    tls_analysis = TLSStructureAnalysis(struct)
 
-    for chain in struct.iter_chains():
+    stats_list = tls_analysis.fit_TLS_segments(
+        residue_width       = args["seg_len"],
+        use_side_chains     = not args["mainchain_only"],
+        include_single_bond = not args["omit_single_bonded"])
+
+    
+    for stats in stats_list:
+
+        tls = stats["tls"]
 
         ## if a chain is specified, then skip all other chains
-        if args.get("chain")!=None and args.get("chain")!=chain.chain_id:
-            continue
+##         if args.get("chain")!=None and args.get("chain")!=chain.chain_id:
+##             continue
 
-        for seg_atom_list in iter_segments(chain, args["seg_len"]):
+        ## calculate adverage temp factor and anisotropy
+        Umean = 0.0
+        Amean = 0.0
+        for atm in stats["tls"]:
+            Umean += trace(atm.get_U())/3.0
+            Amean += atm.calc_anisotropy()
 
-            atm0 = seg_atom_list[0]
-            atmX = seg_atom_list[-1]
-            name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
+        Umean = Umean / float(len(tls))
+        Bmean = Umean * 8.0 * math.pi**2
+        Amean = Amean / float(len(tls))
 
-            ## new tls group for segment
-            tls = TLSGroup()
+        ## print out results
+        print str(stats["name"]).ljust(8),
 
-            ## filter atoms being added to the group
-            ## add all atoms to the TLS group which are at full occupancy
-            for atm in seg_atom_list:
-                if atm.element=="H":
-                    continue
+        print str(stats_list.index(stats)).ljust(5),
 
-                if atm.occupancy<1.0:
-                    continue
+        x = "%d" % (len(tls))
+        print x.ljust(8),
 
-                if args["mainchain_only"]==True and\
-                   atm.name not in ("N", "CA", "C", "O"):
-                    continue
+        x = "%.3f" % (Bmean)
+        print x.ljust(7),
 
-                if args["omit_single_bonded"]==True and\
-                   len(atm.bond_list)<=1:
-                    continue
-                
-                tls.append(atm)
-            ##
+        x = "%4.2f" % (Amean)
+        print x.ljust(5),
 
-            if len(tls)==0:
-                print "## empty group"
-                continue
+        x = "%.3f" % (stats["R"])
+        print x.ljust(6),
 
-            tls_list.append(tls)
-            tls.origin = tls.calc_centroid()
+        x = "%.4f" % (stats["mean_DP2"])
+        print x.ljust(7),
 
-            ## calculate tensors and print
-            if args.get("use_dP2_fit")==True:
-                tls.calc_TLS_least_squares_fit()
-            else:
-                tls.calc_TLS_dP2_fit()
+        x = "%.4f" % (stats["sigma_DP2"])
+        print x.ljust(7),
 
-            if args["omit_neg_eigen"]==True:
-                if min(eigenvalues(tls.T))<=0.0:
-                    print "## Negitive T Eigenvalue"
-                    continue
-                if min(eigenvalues(tls.L))<=0.0:
-                    print "## Negitive L Eigenvalue"
-                    continue
-            
-            calcs = tls.shift_COR()
-            Rfact = tls.calc_R()
-            dP2   = tls.calc_adv_DP2uij()
-            Suij  = tls.calc_adv_Suij()
+        x = "%.4f" % (stats["mean_DP2N"])
+        print x.ljust(7),
 
-            ## calculate adverage temp factor and anisotropy
-            Uadv = 0.0
-            Aadv = 0.0
-            for atm in tls:
-                Uadv += trace(atm.get_U())/3.0
-                Aadv += atm.calc_anisotropy()
+        x = "%.4f" % (stats["sigma_DP2N"])
+        print x.ljust(7),
+        
+        x = "%5.3f" % (stats["mean_S"])
+        print x.ljust(6),
 
-            Uadv = Uadv / float(len(tls))
-            Badv = Uadv * 8.0 * math.pi**2
-            Aadv = Aadv / float(len(tls))
+        x = "%5.3f" % (stats["sigma_S"])
+        print x.ljust(6),
 
-            ## print out results
-            print str(name).ljust(8),
+        x = "%6.4f" % (trace(tls.T))
+        print x.ljust(7),
 
-            print str(tls_list.index(tls)).ljust(5),
+        x = "%6.4f" % (trace(tls.L)*rad2deg2)
+        print x.ljust(10),
 
-            x = "%d" % (len(tls))
-            print x.ljust(8),
-
-            x = "%.3f" % (Badv)
-            print x.ljust(10),
-
-            x = "%4.2f" % (Aadv)
-            print x.ljust(10),
-            
-            x = "%.3f" % (Rfact)
-            print x.ljust(8),
-
-            x = "%.4f" % (dP2)
-            print x.ljust(10),
-
-            x = "%5.3f" % (Suij)
-            print x.ljust(10),
-            
-            x = "%6.4f" % (trace(tls.T))
-            print x.ljust(10),
-
-            x = "%6.4f" % (trace(tls.L)*rad2deg2)
-            print x.ljust(10),
-
-
-            eval = eigenvalues(tls.L)
-
-            x = "%6.4f" % ((math.sqrt(eval[0]) +
-                            math.sqrt(eval[1]) +
-                            math.sqrt(eval[2]))*rad2deg)
-
-            print x.ljust(10),
-            
-            print
+        print
             
 
 def usage():

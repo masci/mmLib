@@ -98,7 +98,8 @@ class TLSInfo(object):
         """
         listx = []
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
-            listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
+            listx.append("%s%s-%s%s %s" % (
+                chain_id1, frag_id1, chain_id2, frag_id2, sel))
         return string.join(listx,';')
         
     def refmac_description(self):
@@ -244,12 +245,18 @@ class TLSInfoList(list):
                 tls_info.range_list.append((c1, f1, c2, f2, sel))
 
             elif re_key == "T":
-                (t11, t22, t33, t12, t13, t23) = mx.groups()
-                tls_info.T = (float(t11), float(t22), float(t33),
-                              float(t12), float(t13), float(t23))
+                ## REFMAC ORDER: t11 t22 t33 t23 t13 t12
+                (t11, t22, t33, t23, t13, t12) = mx.groups()
+                tls_info.T = (float(t11),
+                              float(t22),
+                              float(t33),
+                              float(t12),
+                              float(t13),
+                              float(t23))
 
             elif re_key == "L":
-                (l11, l22, l33, l12, l13, l23) = mx.groups()
+                ## REFMAC ORDER: t11 t22 t33 t23 t13 t12
+                (l11, l22, l33, l23, l13, l12) = mx.groups()
                 tls_info.L = (float(l11),
                               float(l22),
                               float(l33),
@@ -258,7 +265,8 @@ class TLSInfoList(list):
                               float(l23))
 
             elif re_key == "S":
-                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
+                ## REFMAC ORDER: s2211 s1133 s23 s31 s12 s32 s13 s21
+                (s2211, s1133, s23, s31, s12, s32, s13, s21) = mx.groups()
                 tls_info.S = (float(s2211),
                               float(s1133),
                               float(s12),
@@ -427,109 +435,6 @@ class TLSInfoList(list):
             tls_info.S = (
                 S[0], s1133, S[2], S[3], S[4], S[5],
                 float(s31), float(s32))
-
-
-class DP2TLSMin(object):
-    def __init__(self, position, U):
-        self.U = U
-        self.position = position
-
-        ## use label indexing to avoid confusion!
-        T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-        S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
-
-        x, y, z = position
-
-        ## C Matrix
-        xx = x*x
-        yy = y*y
-        zz = z*z
-
-        xy = x*y
-        xz = x*z
-        yz = y*z
-        
-        u11,u22,u33,u12,u13,u23 = 0,1,2,3,4,5
-
-        self.A           =  zeros((6,21), Float)
-
-        self.A[u11, T11] = 1.0
-        self.A[u11, L22] = zz
-        self.A[u11, L33] = yy
-        self.A[u11, L23] = -2.0*yz
-        self.A[u11, S31] = -2.0*y
-        self.A[u11, S21] = 2.0*z
-        
-        self.A[u22, T22] = 1.0
-        self.A[u22, L11] = zz
-        self.A[u22, L33] = xx
-        self.A[u22, L13] = -2.0*xz
-        self.A[u22, S12] = -2.0*z
-        self.A[u22, S32] = 2.0*x
-
-        self.A[u33, T33] = 1.0
-        self.A[u33, L11] = yy
-        self.A[u33, L22] = xx
-        self.A[u33, L12] = -2.0*xy
-        self.A[u33, S23] = -2.0*x
-        self.A[u33, S13] = 2.0*y
-
-        self.A[u12, T12] = 1.0
-        self.A[u12, L33] = -xy
-        self.A[u12, L23] = xz
-        self.A[u12, L13] = yz
-        self.A[u12, L12] = -zz
-        self.A[u12, S11] = -z
-        self.A[u12, S22] = z
-        self.A[u12, S31] = x
-        self.A[u12, S32] = -y
-
-        self.A[u13, T13] = 1.0
-        self.A[u13, L22] = -xz
-        self.A[u13, L23] = xy
-        self.A[u13, L13] = -yy
-        self.A[u13, L12] = yz
-        self.A[u13, S11] = y
-        self.A[u13, S33] = -y
-        self.A[u13, S23] = z
-        self.A[u13, S21] = -x
-
-        self.A[u23, T23] = 1.0
-        self.A[u23, L11] = -yz
-        self.A[u23, L23] = -xx
-        self.A[u23, L13] = xy
-        self.A[u23, L12] = xz
-        self.A[u23, S22] = -x
-        self.A[u23, S33] = x
-        self.A[u23, S12] = y
-        self.A[u23, S13] = -z
-        
-    def __call__(self, TLS):
-        U6 = matrixmultiply(self.A, TLS)
-
-        Utls = array([ [U6[0], U6[3], U6[4]],
-                       [U6[3], U6[1], U6[5]],
-                       [U6[4], U6[5], U6[2]] ], Float)
-
-##         r = (self.U[0,0]-Utls[0,0])**2 + \
-##             (self.U[1,1]-Utls[1,1])**2 + \
-##             (self.U[2,2]-Utls[2,2])**2 + \
-##             (self.U[0,1]-Utls[0,1])**2 + \
-##             (self.U[0,2]-Utls[0,2])**2 + \
-##             (self.U[1,2]-Utls[1,2])**2
-
-        try:
-            dp2 = calc_DP2uij(self.U, Utls)
-        except (LinAlgError, ValueError):
-##             print "## self.U"
-##             print self.U
-##             print "## Utls"
-##             print Utls
-            print "bad, very bad"
-            return 1.0
-        
-        return dp2
 
 
 class TLSGroup(AtomList):
@@ -773,66 +678,6 @@ class TLSGroup(AtomList):
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
                          [ C[S31], C[S32], C[S33] ] ], Float)
-        
-    def calc_TLS_dP2_fit(self):
-        """
-        """
-        ## start out with a approxamation...
-        self.calc_TLS_least_squares_fit()
-
-        ## now for the dP2 minimization
-        from mmLib.Solvers import NewtonsMethod
-
-        ## use label indexing to avoid confusion!
-        T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-        S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
-
-        C = zeros(21, Float)
-
-        C[T11] = self.T[0,0]
-        C[T22] = self.T[1,1]
-        C[T33] = self.T[2,2]
-        C[T12] = self.T[0,1]
-        C[T13] = self.T[0,2]
-        C[T23] = self.T[1,2]
-
-        C[L11] = self.L[0,0]
-        C[L22] = self.L[1,1]
-        C[L33] = self.L[2,2]
-        C[L12] = self.L[0,1]
-        C[L13] = self.L[0,2]
-        C[L23] = self.L[1,2]
-
-        C[S11] = self.S[0,0]
-        C[S22] = self.S[1,1]
-        C[S33] = self.S[2,2]
-        C[S12] = self.S[0,1]
-        C[S13] = self.S[0,2]
-        C[S23] = self.S[1,2]
-        C[S21] = self.S[1,0]
-        C[S31] = self.S[2,0]
-        C[S32] = self.S[2,1]
-        
-        min_func_list = []
-        for atm in self:
-            min_func_list.append(DP2TLSMin(atm.position - self.origin, atm.U))
-
-        nmethod = NewtonsMethod(min_func_list)
-        
-        C = nmethod.solve(C)
-
-        self.T = array([ [ C[T11], C[T12], C[T13] ],
-                         [ C[T12], C[T22], C[T23] ],
-                         [ C[T13], C[T23], C[T33] ] ], Float)
-        
-        self.L = array([ [ C[L11], C[L12], C[L13] ],
-                         [ C[L12], C[L22], C[L23] ],
-                         [ C[L13], C[L23], C[L33] ] ], Float)
-        
-        self.S = array([ [ C[S11], C[S12], C[S13] ],
-                         [ C[S21], C[S22], C[S23] ],
-                         [ C[S31], C[S32], C[S33] ] ], Float)
 
     def calc_Utls(self, T, L, S, vec):
         """Returns the calculated value for the anisotropic U tensor for
@@ -881,10 +726,10 @@ class TLSGroup(AtomList):
         (atm, U) where U is the calcuated U value from the current values
         of the TLS object's T,L,S, tensors and origin.
         """
-        T      = self.T
-        L      = self.L
-        S      = self.S
-        origin = self.origin
+        T      = T or self.T
+        L      = L or self.L
+        S      = S or self.S
+        origin = o or self.origin
         
         for atm in self:
             Utls = self.calc_Utls(T, L, S, atm.position - origin)
@@ -915,77 +760,132 @@ class TLSGroup(AtomList):
             
         return Rn / Rd
 
-    def calc_adv_Suij(self):
-        """Calculates the adverage Suij of U vs. Utls.
+    def calc_mean_S(self):
+        """Calculates the mean Suij of U vs. Utls.
         """
         num      = 0
-        adv_Suij = 0.0
+        mean_S   = 0.0
+        MSD      = 0.0
 
-        for (atm, Utls) in self.iter_atm_Utls():
+        
+        S_dict = {}
+        for atm, Utls in self.iter_atm_Utls():
+            Uatm = atm.get_U()
+            
             try:
-                adv_Suij += atm.calc_Suij(Utls)
+                atm_S = calc_Suij(Uatm, Utls)
             except ValueError:
-                pass
+                print "bad Suij"
             else:
+                S_dict[atm] = atm_S
+                mean_S += atm_S
                 num += 1
 
-        return adv_Suij/num
-        
-    def calc_adv_DP2uij(self):
-        """Calculates the adverage dP2 of U vs. Utls.
-        """
-        num        = 0
-        adv_DP2uij = 0.0
+        mean_S = mean_S / float(num)
 
-        for (atm, Utls) in self.iter_atm_Utls():
+        for S in S_dict.values():
+            MSD += (mean_S - S)**2
+
+        MSD = MSD / float(num)
+
+        return mean_S, math.sqrt(MSD)
+        
+    def calc_mean_DP2(self):
+        """Calculates the mean dP2 of U vs. Utls.
+        """
+        num      = 0
+        mean_DP2 = 0.0
+        MSD      = 0.0
+        
+        DP2_dict = {}
+        for atm, Utls in self.iter_atm_Utls():
             Uatm = atm.get_U()
 
             try:
-                adv_DP2uij += calc_DP2uij(Uatm, Utls)
+                atm_DP2 = calc_DP2uij(Uatm, Utls)
             except ValueError:
                 print "bad DP2uij"
-                pass
             else:
+                DP2_dict[atm] = atm_DP2 
+                mean_DP2 += atm_DP2
                 num += 1
 
-        return adv_DP2uij / float(num)
+        mean_DP2 = mean_DP2 / float(num)
+
+        for DP2 in DP2_dict.values():
+            MSD += (mean_DP2 - DP2)**2
         
-    def calc_adv_normalized_DP2uij(self):
-        """Calculates the adverage DP2uij of the normalized U vs Utls.
+        MSD = MSD / float(num)
+
+        return mean_DP2, math.sqrt(MSD)
+        
+    def calc_mean_DP2N(self):
+        """Calculates the mean DP2uij of the normalized U vs Utls.
         """
+        B   = 10.0
         U2B = 8.0*math.pi*math.pi
         B2U = 1.0/U2B
         
-        num        = 0
-        adv_DP2uij = 0.0
+        num       = 0
+        mean_DP2N = 0.0
+        MSD       = 0.0
 
-        for (atm, Utls) in self.iter_atm_Utls():
-            eval,evec = eigenvectors(Utls)
-            eveci = inverse(evec)
+        DP2N_dict = {}
+        
+        for atm, Utls in self.iter_atm_Utls():
+
+            ## normalize the trace of Utls
+            eval, evec = eigenvectors(Utls)
+            eveci      = inverse(evec)
             
             U2 = matrixmultiply(evec,matrixmultiply(Utls, transpose(evec)))
-            U2 = 0.1 * (U2 / trace(U2))
-            Utls = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+            
+            U2    = U2 * U2B
+            scale = B / trace(U2)
+            U2    = scale * U2
 
-            U = atm.get_U().copy()
-            eval,evec = eigenvectors(U)
-            eveci = inverse(evec)
+            assert allclose(trace(U2), B)
+
+            U2    = U2 * B2U
+
+            UNtls = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+
+            ## normalize the trace of atm.U
+            U          = atm.get_U().copy()
+            eval, evec = eigenvectors(U)
+            eveci      = inverse(evec)
             
             U2 = matrixmultiply(evec,matrixmultiply(U, transpose(evec)))
-            U2 = 0.1 * (U2 / trace(U2))
-            U = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
 
-            assert allclose(trace(U), trace(Utls))
+            U2    = U2 * U2B
+            scale = B / trace(U2)
+            U2    = scale * U2
+
+            assert allclose(trace(U2), B)
+            
+            U2    = U2 * B2U
+
+            UN = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+
+            assert allclose(trace(UN), trace(UNtls))
             
             try:
-                adv_DP2uij += calc_DP2uij(U, Utls)
+                atm_DP2N = calc_DP2uij(UN, UNtls)
             except ValueError:
-                print "bad DP2uij"
                 pass
             else:
-                num += 1
+                num       += 1
+                mean_DP2N += atm_DP2N
+                DP2N_dict[atm] = atm_DP2N
 
-        return adv_DP2uij/num
+        mean_DP2N = mean_DP2N / float(num)
+
+        for DP2N in DP2N_dict.values():
+            MSD += (mean_DP2N - DP2N)**2
+        
+        MSD = MSD / float(num)
+
+        return mean_DP2N, math.sqrt(MSD)
 
     def shift_COR(self):
         """Shift the TLS group to the center of reaction.
@@ -1124,7 +1024,6 @@ class TLSGroup(AtomList):
         ### Verify that the the math we've just done is correct by
         ### comparing the original TLS calculated U tensors with the
         ### U tensors calculated from the COR
-        
         T_cor = calcs["T'"].copy()
         L_cor = calcs["L'"].copy()
         S_cor = calcs["S'"].copy()
@@ -1275,61 +1174,85 @@ class TLSStructureAnalysis(object):
                 res_segment = res_segment[1:]
 
             atom_list = AtomList()
-            for rx in res_segment:
-                for atm in rx.iter_atoms():
+            for resx in res_segment:
+                for atm in resx.iter_atoms():
                     atom_list.append(atm)
 
             yield res_segment[:], atom_list
 
-    def fit_TLS_segments(self,
-                         residue_width           = 6,
-                         use_side_chains         = True,
-                         filter_neg_eigen_values = True):
+    def fit_TLS_segments(self, **args):
+        """Run the algorithm to fit TLS parameters to segments of the
+        structure.  This method has many options, which are outlined in
+        the source code for the method.  This returns a list of dictionaries
+        containing statistics on each of the fit TLS groups, the residues
+        involved, and the TLS object itself.
         """
-        """
-
+        
+        ## arguments
+        residue_width           = args.get("residue_width", 6)
+        use_side_chains         = args.get("use_side_chains", True)
+        filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
+        include_hydrogens       = args.get("include_hydrogens", False)
+        include_frac_occupancy  = args.get("include_frac_occupancy", False)
+        include_single_bond     = args.get("include_single_bond", True)
+        
         ## list of all TLS groups
         stats_list = []
 
         for chain in self.struct.iter_chains():
-            for res_segment, seg_atom_list in self.iter_segments(chain,
-                                                                 residue_width):
+            for res_segment, seg_atom_list in self.iter_segments(
+                chain, residue_width):
 
-                stats         = {}
-                stats["name"] = "%s-%s" % (res_segment[0].fragment_id,
-                                           res_segment[-1].fragment_id)
+                stats             = {}
+                stats["tls"]      = TLSGroup()
+                stats["residues"] = res_segment
+                stats["name"]     = "%s-%s" % (res_segment[0].fragment_id,
+                                               res_segment[-1].fragment_id)
 
-                ## new tls group for segment
-                tls      = stats["tls"] = TLSGroup()
+                tls      = stats["tls"]
                 tls.name = stats["name"]
 
+                ## add atoms into the TLSGroup
                 ## filter the atoms going into the TLS group                
                 for atm in seg_atom_list:
-                    ## don't include atoms which are not at full occupancy
+                    ## omit atoms which are not at full occupancy
                     if atm.occupancy<1.0:
                         continue
-                    ## don't add hydrogens
-                    if atm.element=="H":
+                    ## omit hydrogens
+                    if include_hydrogens==False and atm.element=="H":
                         continue
+                    ## omit side chain atoms
                     if use_side_chains==False:
-                        if atm.name not in ["C", "N", "CA", "O"]:
+                        if atm.name not in ("C", "N", "CA", "O"):
                             continue
+                    ## omit atoms with a single bond 
+                    if include_single_bond==False:
+                        if len(atm.bond_list)<=1:
+                            continue
+                        
                     tls.append(atm)
 
-                ## skip if there are not enough atoms in the TLS group after
-                ## filtering
-                if len(tls)==0:
+                ## skip if there are not enough atoms for the TLS parameters
+                ## the least squares fit of the TLS parameters requires at
+                ## least 21 paramters (6 per atom)
+                if len(tls)<4:
                     continue
 
                 ## set the origin of the TLS group to the centroid, and also
                 ## save it under calc_origin because origin will be overwritten
                 ## using the COR after the least squares fit
-                tls.origin = stats["calc_origin"] = tls.calc_centroid()
+                tls.origin           = tls.calc_centroid()
+                stats["calc_origin"] = tls.origin
 
                 ## calculate tensors and print
                 tls.calc_TLS_least_squares_fit()
+
+                ## shift the TLSGroup tensors and origin to the Center of
+                ## Reaction
                 calc = tls.shift_COR()
 
+                ## negitive eigen values mean the TLS group cannot be
+                ## physically intrepreted
                 if filter_neg_eigen_values==True:
                     if min(eigenvalues(tls.L))<=0.0:
                         continue
@@ -1342,12 +1265,20 @@ class TLSStructureAnalysis(object):
                 ## stats list
                 stats_list.append(stats)
 
-                stats["R"]                  = tls.calc_R()
-                stats["adv_DP2"]            = tls.calc_adv_DP2uij()
-                stats["adv_normalized_DP2"] = tls.calc_adv_normalized_DP2uij()
-                stats["Suij"]               = tls.calc_adv_Suij()
+                stats["R"]                              = tls.calc_R()
+                stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
+                stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
+                stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
+                stats["num_atoms"]                      = len(tls)
 
-        return stats_list    
+        return stats_list
+
+    def join_tls_segments(self, stats_list):
+        """
+        """
+        pass
+
+
 
 
 ## <testing>

@@ -14,9 +14,16 @@
 import os
 import sys
 
-from distutils.core import setup, Extension
-from distutils.command.install_data import install_data
 
+## try to import the distutils package
+try:
+    from distutils.core import setup, Extension
+    from distutils.command.install_data import install_data
+except ImportError:
+    DISTUTILS_FOUND = False
+else:
+    DISTUTILS_FOUND = True
+    
 
 class package_install_data(install_data):
     def run(self):
@@ -24,6 +31,69 @@ class package_install_data(install_data):
         install_cmd = self.get_finalized_command('install')
         self.install_dir = getattr(install_cmd, 'install_lib')
         return install_data.run(self)
+
+
+def assemble_paths_list():
+    """Returns a list of paths to search for libraries and headers.
+    """
+    PATHS = [
+        "/usr",
+        "/usr/X11",
+        "/usr/X11R6"
+        "/usr/local",
+        "/opt" ]
+
+    try:
+        ld_so_conf = open("/etc/ld.so.conf", "r").readlines()
+    except IOError:
+        return PATHS
+
+    for path in ld_so_conf:
+        path = path.strip()
+        (dir, first) = os.path.split(path)
+
+        if dir not in PATHS:
+            PATHS.append(dir)
+
+    return PATHS
+
+
+def find_lib_paths(library, include):
+    """Find the location of the library.
+    """
+    import glob
+
+    PATHS = assemble_paths_list()
+
+    shared_lib = "lib%s.so" % (library)
+    static_lib = "lib%s.a" % (library)
+
+    found_lib_path = None
+    found_inc_path = None
+    found_library  = None
+        
+    for path in PATHS:
+        lib_path = os.path.join(path, "lib")
+        inc_path = os.path.join(path, "include")
+
+        lib_glob    = os.path.join(lib_path, shared_lib)
+        shared_libs = glob.glob(lib_glob)
+
+        if len(shared_libs)==0:
+            continue
+
+        found_lib_path = lib_path
+        found_library  = shared_libs[0]
+        
+        inc_check = os.path.join(inc_path, include)
+        if not os.path.isfile(inc_check):
+            continue
+
+        found_inc_path = inc_path
+        break
+        
+    return found_lib_path, found_inc_path, found_library
+
 
 def library_data():
     """Install mmLib/Data/Monomer library.
@@ -50,30 +120,130 @@ def library_data():
             
     return inst_list
 
+
+def pdbmodule_extension():
+    """Add the PDB Accelerator module.
+    """
+    print "PDB Accelorator Module (pdbmodule)"
+    ext = Extension(
+        "mmLib.pdbmodule", 
+        ["src/pdbmodule.c"],
+        include_dirs = [],
+        library_dirs = [],
+        libraries    = [])
+    
+    return ext
+
+
+def glaccel_extension():
+    """Add the OpenGL Accelorator module.
+    """
+    print "OpenGL Accelorator Module (glaccel)"
+    
+    glaccel_libs = [
+        {"library":    "m",
+         "header":     "math.h",
+         "desc":       "Math Library"},
+
+        {"library":    "X11",
+         "header":     "X11/X.h",
+         "desc":       "X11 Client Library"},
+
+        {"library":    "Xext",
+         "header":     "X11/extensions/Xext.h",
+         "desc":       "X11 Extensions Library"},
+
+        {"library":    "Xi",
+         "header":     "X11/extensions/XIE.h",
+         "desc":       "X11 Extended Input Library"},
+
+        {"library":    "Xmu",
+         "header":     "X11/Xmu/Xmu.h",
+         "desc":       "X11 Misc Library"},
+        
+        {"library":    "GL",
+         "header":     "GL/gl.h",
+         "desc":       "OpenGL Library"},
+
+        {"library":    "GLU",
+         "header":     "GL/glu.h",
+         "desc":       "OpenGL Library"},
+        
+        {"library":    "glut",
+         "header":     "GL/glut.h",
+         "desc":       "OpenGL Utility Library (or FreeGLUT)"}
+        ]
+
+    include_dirs = []
+    library_dirs = []
+    libraries    = []
+
+    for lib_dict in glaccel_libs:
+
+        lib  = lib_dict["library"]
+        inc  = lib_dict["header"]
+        desc = lib_dict["desc"]
+
+        lib_path, inc_path, library_path = find_lib_paths(lib, inc)
+
+        print "  Searching For: %s" % (desc)
+
+        if lib_path==None and inc_path==None:
+            print "    ERROR: Library Not Found: %s" % (lib)
+            return None
+        elif lib_path!=None and inc_path==None:
+            print "    ERROR: Header Files Not Found for Library: %s" % (lib)
+            return None
+
+        print "    Found Library: %s" % (library_path)
+
+        if inc_path not in include_dirs:
+            include_dirs.append(inc_path)
+
+        if lib_path not in library_dirs:
+            library_dirs.append(lib_path)
+
+        libraries.append(lib)
+
+    ext = Extension(
+        "mmLib.glaccel", 
+        ["src/glaccel.c"],
+        include_dirs = include_dirs,
+        library_dirs = library_dirs,
+        libraries    = libraries)
+
+    return ext
+
+
 def extension_list():
     """Assemble the list of C extensions which need to be compiled.
     """
-    elist = [
-        ## PDB File Accelerator
-        Extension(
-            "pdbmodule", 
-            ["src/pdbmodule.c"],
-            include_dirs = [],
-            library_dirs = [],
-            libraries    = []),
+    print "="*79
+    print "Checking Libraries and Headers for C Compiled Modules"
+    print "-"*79
 
-        ## OpenGL Accelerator
-        Extension(
-            "glaccel", 
-            ["src/glaccel.c"],
-            include_dirs = ["/usr/X11/include",
-                            "/usr/X11R6/include"],
-            library_dirs = ["/usr/X11/lib",
-                            "/usr/X11R6/lib"],
-            libraries    = ["m", "X11", "Xi", "Xext", "Xmu", "GL", "GLU",
-                            "glut"]),
-    ]
-    return elist
+    ext_list = []
+
+    pdbmodule = pdbmodule_extension()
+    if pdbmodule!=None:
+        print "  SUCCESS:  Module will be built."
+        ext_list.append(pdbmodule)
+    else:
+        print "  FAILURE: Module will NOT be built."
+
+    print "-"*79
+
+    glaccel = glaccel_extension()
+    if glaccel!=None:
+        print "  SUCCESS: Module will be built."
+        ext_list.append(glaccel)
+    else:
+        print "  FAILURE: Module will NOT be built."
+
+    print "="*79
+    
+    return ext_list
+
 
 def run_setup():
     """Invoke the Python Distutils setup function.
@@ -82,7 +252,7 @@ def run_setup():
         cmdclass = {'install_data': package_install_data},
         
         name         = "pymmlib",
-        version      = "0.7",
+        version      = "0.8",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
@@ -90,6 +260,7 @@ def run_setup():
         ext_modules  = extension_list(),
         data_files   = library_data()
         )
+
 
 def make_doc():
     """This is a special function to generate the documentation with
@@ -102,8 +273,112 @@ def make_doc():
         'mmLib mmLib/Extensions') 
 
 
+def check_deps():
+    """
+    Checks for all required dependancies.
+    XXX: This is only checking for the Python modules.
+    """
+
+    print "="*79
+    print "Running Depancy Checks"
+    print "-"*79
+
+    ## check Python version
+    (major, minor, mminor, junk1, junk2) = sys.version_info
+    ver_string = "%d.%d.%d" % (major, minor, mminor)
+
+    too_old = False
+    if major<2:
+        too_old = True
+    elif major==2:
+        if minor<2:
+            too_old = True
+        elif minor==2:
+            if mminor<1:
+                too_old = True
+            
+    if too_old==True:
+        print "ERROR: Python %s too old version >= 2.2.1 required." % (
+            ver_string)
+    else:
+        print "OK:    Python %s Found." % (ver_string)
+
+    ## check Python distutils
+    if DISTUTILS_FOUND==False:
+        print "ERROR: Python Distutils not found.  You may need to install"
+        print "       the python-devel package for your Linux distribution."
+    else:
+        print "OK:    Python Distutils found."
+
+    ## check Python Numeric
+    try:
+        import Numeric
+    except ImportError:
+        print "ERROR: Numeric Python not found."
+    else:
+        print "OK:    Numeric Python found."
+
+    ## check PyOpenGL
+    try:
+        import OpenGL.GL
+    except ImportError:
+        print "ERROR: OpenGL.GL not found."
+    else:
+        print "OK:    OpenGL.GL found."
+
+    try:
+        import OpenGL.GLU
+    except ImportError:
+        print "ERROR: OpenGL.GLU not found."
+    else:
+        print "OK:    OpenGL.GLU found."
+
+    try:
+        import OpenGL.GLUT
+    except ImportError:
+        print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
+        print "       rebuilt after installing GLUT or FreeGLUT."
+    else:
+        print "OK:    OpenGL.GLUT found."
+
+    ## check PyGTK >= 2.0
+    try:
+        import pygtk
+        pygtk.require("2.0")
+    except (ImportError, AssertionError):
+        print "ERROR: PyGTK not found.  PyGTK 2.0 required."
+    else:
+        print "OK:    PyGTK found."
+
+    ## check of PyGTKGLExt
+    try:
+        import gtk.gtkgl
+    except ImportError:
+        print "ERROR: PyGtkGLExt not found."
+    else:
+        print "OK:    PyGtkGLExt found."
+
+    print "="*79
+
+
+
 if __name__ == "__main__":
+    print
+    print "PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM"
+    print
+
     if sys.argv[1] == "doc":
         make_doc()
+
+    elif sys.argv[1] == "checkdeps":
+        check_deps()
+
     else:
-        run_setup()
+        if DISTUTILS_FOUND==True:
+            run_setup()
+        else:
+            print """\
+            ERROR: Python Distuils Not Found.  You may have to install
+            the python-devel package on some Linux distructions.  See
+            INSTALL.txt for details.
+            """

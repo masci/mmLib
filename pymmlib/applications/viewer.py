@@ -24,24 +24,9 @@ from mmLib.FileLoader     import LoadStructure, SaveStructure
 from mmLib.GLViewer       import *
 from mmLib.Extensions.TLS import *
 
-try:
-    ## try double-bufferedq
-    glconfig = gtk.gdkgl.Config(
-        mode = gtk.gdkgl.MODE_RGB|
-        gtk.gdkgl.MODE_DOUBLE|
-        gtk.gdkgl.MODE_DEPTH)
-
-except gtk.gdkgl.NoMatches:
-    ## try single-buffered
-    glconfig = gtk.gdkgl.Config(
-        mode = gtk.gdkgl.MODE_RGB|
-        gtk.gdkgl.MODE_DEPTH)
-
-
-
 
 ###############################################################################
-### TLS Search Algorithm
+### Debuggin
 ###
 
 def print_U(tensor):
@@ -53,235 +38,84 @@ def print_U(tensor):
         tensor[2,0], tensor[2,1], tensor[2,2])
 
 
-def iter_segments(chain, seg_len):
-    """
-    """
-    segment = []
-    for res in chain.iter_amino_acids():
-        segment.append(res)
-
-        if len(segment)<seg_len:
-            continue
-        
-        if len(segment)>seg_len:
-            segment = segment[1:]
-
-        atom_list = AtomList()
-        for rx in segment:
-            for atm in rx.iter_atoms():
-                atom_list.append(atm)
-
-        yield atom_list
-
-
-def fit_TLS_segments(struct, seg_width = 6):
-    print """\
-    ## Calculating TLS parameters for a single rigid body group composed of
-    ## all the amino acids
-    """
-    print "## <group num> <num atoms> <Badv> <R> <dP2>"
-
-    ## list of all TLS groups
-    tls_list    = []
-    segments    = []
-    cur_segment = []
-
-    for chain in struct.iter_chains():
-
-        for seg_atom_list in iter_segments(chain, seg_width):
-
-            atm0 = seg_atom_list[0]
-            atmX = seg_atom_list[-1]
-            name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
-
-            ## new tls group for segment
-            tls = TLSGroup()
-            tls.name = name
-
-            ## add all atoms to the TLS group which are at full occupancy
-            for atm in seg_atom_list:
-                if atm.occupancy<1.0:
-                    continue
-                if atm.element=="H":
-                    continue
-
-                tls.append(atm)
-                continue
-
-                if atm.name in ["C", "N", "CA", "O"]:
-                    tls.append(atm)
-
-                else:
-                    for batm in atm.iter_bonded_atoms():
-                        if atm.name=="CA":
-                            tls.append(atm)
-                            break
-                    
-
-
-            if len(tls)==0:
-                continue
-
-            ## set the origin of the TLS group to the centroid, and also
-            ## save it under calc_origin because origin will be overwritten
-            ## using the COR after the least squares fit
-            tls.origin      = tls.calc_centroid()
-            tls.calc_origin = tls.origin
-
-            ## calculate tensors and print
-            tls.calc_TLS_least_squares_fit()
-            calc = tls.calc_COR()
-
-            if min(eigenvalues(tls.L))<=0.0:
-                   print "%s: removed negitive L eigenvalue" % (tls.name)     
-                   continue
-            elif min(eigenvalues(tls.T))<=0.0:
-                   print "%s: removed negitive T eigenvalue" % (tls.name)
-                   continue
-            elif  min(eigenvalues(calc["rT'"]))<=0.0:
-                print "%s: removed negitive rT' eigenvalue" % (tls.name)
-                continue
-
-            tls_list.append(tls)
-
-            ### <verify> the independance of the original origin of calculation
-            tls_check = TLSGroup(tls)
-            tls_check.origin = tls.origin.copy() + \
-                               array([random.random()*10.0,
-                                      random.random()*10.0,
-                                      random.random()*10.0])
-
-            tls_check.calc_TLS_least_squares_fit()
-            calc_check = tls_check.calc_COR()
-
-            assert len(tls)==len(tls_check)
-
-            for i in range(len(tls)):
-                atmi  = tls[i]
-                atmci = tls_check[i]
-
-                assert atmi==atmci
-                assert allclose(atmi.position,atmci.position)
-                assert allclose(atmi.get_U(),atmci.get_U())
-
-                U = tls.calc_Utls(tls.T,
-                                  tls.L,
-                                  tls.S,
-                                  atmi.position - tls.origin)
-
-                Ucheck = tls_check.calc_Utls(tls_check.T,
-                                             tls_check.L,
-                                             tls_check.S,
-                                             atmci.position - tls_check.origin)
-                
-                try:
-                    assert allclose(U, Ucheck, 1.0e-4)
-                except AssertionError:
-                    print atm
-                    print_U(U)
-                    print_U(Ucheck)
-                    raise
-
-            try:
-                assert allclose(calc["COR"], calc_check["COR"], 1.0e-4)
-            except AssertionError:
-                print "COR:       ", calc["COR"]
-                print "COR_CHECK: ", calc_check["COR"]
-                raise
-            
-            assert allclose(calc["T'"],  calc_check["T'"],  1.0e-4)
-            assert allclose(calc["L'"],  calc_check["L'"],  1.0e-4)
-            assert allclose(calc["S'"],  calc_check["S'"],  1.0e-4)
-            ### </verify>
-
-
-            ## calculate matching statistics
-            calcs = tls.shift_COR()
-            
-            Rfact   = tls.calc_R()
-            dP2     = tls.calc_adv_DP2uij()
-            dP2n    = tls.calc_adv_normalized_DP2uij()
-            Suij    = tls.calc_adv_Suij()
-            tls.fit = dP2
-
-            ## calculate the average Biso value of the TLS group
-            Uadv = 0.0
-            for atm in tls:
-                Uadv += trace(atm.get_U())/3.0
-            Uadv = Uadv / float(len(tls))
-
-            ## print out statistics
-            print str(name).ljust(8),
-
-            print str(tls_list.index(tls)).ljust(5),
-
-            x = "%d" % (len(tls))
-            print x.ljust(8),
-
-            x = "%.3f" % (Uadv * 8*math.pi**2)
-            print x.ljust(10),
-
-            x = "%.3f" % (Rfact)
-            print x.ljust(8),
-
-            x = "%.4f" % (dP2)
-            print x.ljust(10),
-
-            x = "%.4f" % (dP2n)
-            print x.ljust(10),
-
-            x = "%.4f" % (Suij)
-            print x.ljust(10),
-            
-            x = "%.2f" % (max(eigenvalues(tls.L))*rad2deg2)
-            print x.ljust(7),
-
-            if (max(eigenvalues(tls.L))*rad2deg2)<0.0:
-                tls_list.remove(tls)
-                print "removed small libration",
-            elif dP2>0.3:
-                tls_list.remove(tls)
-                print "removed bad match",
-                cur_segment = []
-            else:
-                if len(cur_segment)==0:
-                    segments.append(cur_segment)
-                cur_segment.append(tls)
-
-            print
-
-    ## now just grab the best segment from the group
-    ret_list = []
-
-    for seg in segments:
-        for i in range(len(seg)):
-            tls = tls_list[i]
-
-            try:
-                prev = tls_list[i-1]
-            except IndexError:
-                prev = None
-
-            try:
-                next = tls_list[i+1]
-            except IndexError:
-                next = None
-
-            if prev==None:
-                if next.fit>tls.fit:
-                    ret_list.append(tls)
-            elif next==None:
-                if prev.fit>tls.fit:
-                    ret_list.append(tls)
-
-            elif prev.fit>tls.fit and next.fit>tls.fit:
-                ret_list.append(tls)
-
-
-    return tls_list
-
 ###############################################################################
+### Utility Widgets
+###
+
+class DictListTreeView(gtk.TreeView):
+    """If you ever thought a multi-column listbox should be as easy as
+    creating a list of Python dictionaries, this class is for you!
+    """
+    def __init__(self,
+                 column_list    = ["Empty"],
+                 dict_list      = [],
+                 selection_mode = gtk.SELECTION_BROWSE):
+
+        ## DistList state
+        self.column_list = column_list
+        self.dict_list   = []
+
+        ## gtk.TreeView Init
+        gtk.TreeView.__init__(self)
+        
+        self.get_selection().set_mode(selection_mode)
+
+        self.connect("row-activated", self.row_activated_cb)
+        self.connect("button-release-event", self.button_release_event_cb)
+
+        model_data_types = []
+        for i in range(len(self.column_list)):
+            model_data_types.append(gobject.TYPE_STRING)
+
+        self.model = gtk.TreeStore(*model_data_types)
+        self.set_model(self.model)
+
+        ## add cell renderers
+        for i in range(len(self.column_list)):
+            column_desc = self.column_list[i]
+            cell        = gtk.CellRendererText()
+            column      = gtk.TreeViewColumn(column_desc, cell)
+
+            column.add_attribute(cell, "text", i)
+            self.append_column(column)
+
+        ## populate list if needed
+        if len(dict_list)>0:
+            self.set_dict_list(dict_list)
+
+    def row_activated_cb(self, tree_view, path, column):
+        """Retrieve selected node, then call the correct set method for the
+        type.
+        """
+        pass
     
+    def button_release_event_cb(self, tree_view, bevent):
+        """
+        """
+        x = int(bevent.x)
+        y = int(bevent.y)
+
+        try:
+            (path, col, x, y) = self.get_path_at_pos(x, y)
+        except TypeError:
+            return gtk.FALSE
+
+        self.row_activated_cb(tree_view, path, col)
+        return gtk.FALSE
+
+    def set_dict_list(self, dict_list):
+        """
+        """
+        self.dict_list = dict_list
+        self.model.clear()
+
+        for dictX in self.dict_list:
+            iter = self.model.append(None)
+
+            for i in range(len(self.column_list)):
+                column_desc = self.column_list[i]
+                self.model.set(iter, i, dictX[column_desc])
+
 
 ###############################################################################
 ### GTK OpenGL Viewer Widget Using GtkGlExt/PyGtkGLExt
@@ -294,18 +128,29 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def __init__(self):
         gtk.gtkgl.DrawingArea.__init__(self)
         GLViewer.__init__(self)
+
+        try:
+            glconfig = gtk.gdkgl.Config(
+                mode = gtk.gdkgl.MODE_RGB|
+                gtk.gdkgl.MODE_DOUBLE|
+                gtk.gdkgl.MODE_DEPTH)
+            
+        except gtk.gdkgl.NoMatches:
+            glconfig = gtk.gdkgl.Config(
+                mode = gtk.gdkgl.MODE_RGB|
+                gtk.gdkgl.MODE_DEPTH)
+
         gtk.gtkgl.widget_set_gl_capability(self, glconfig)
         
         self.set_size_request(300, 300)
 
-        self.connect('button_press_event',  self.button_press_event)
-        self.connect('motion_notify_event', self.motion_notify_event)
-        self.connect('realize',             self.realize)
-        self.connect('map',                 self.map)
-        self.connect('unmap',               self.unmap)
-        self.connect('configure_event',     self.configure_event)
-        self.connect('expose_event',        self.expose_event)
-        self.connect('destroy',             self.destroy)
+        self.connect('button_press_event',  self.gtk_glv_button_press_event)
+        self.connect('motion_notify_event', self.gtk_glv_motion_notify_event)
+        self.connect('realize',             self.gtk_glv_realize)
+        self.connect('map',                 self.gtk_glv_map)
+        self.connect('configure_event',     self.gtk_glv_configure_event)
+        self.connect('expose_event',        self.gtk_glv_expose_event)
+        self.connect('destroy',             self.gtk_glv_destroy)
 
     def gl_begin(self):
         """Sets up the OpenGL drawing context for drawing.  If
@@ -334,43 +179,53 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         
         gl_drawable.gl_end()
 
-    def map(self, glarea):
+    def gtk_glv_map(self, glarea):
+        """
+        """
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK   |
                         gtk.gdk.BUTTON_RELEASE_MASK |
                         gtk.gdk.BUTTON_MOTION_MASK  |
                         gtk.gdk.POINTER_MOTION_MASK)
         return gtk.TRUE
 
-    def unmap(self, glarea):
-        return gtk.TRUE
-
-    def realize(self, glarea):
+    def gtk_glv_realize(self, glarea):
+        """
+        """
         if self.gl_begin()==True:
             self.glv_init()
             self.gl_end()
-        return gtk.TRUE
+            return gtk.TRUE
+        else:
+            return gtk.FALSE
 
-    def configure_event(self, glarea, event):
-        x, y, width, height = glarea.get_allocation()
+    def gtk_glv_configure_event(self, glarea, event):
+        """
+        """
+        x, y, width, height = self.get_allocation()
 
         if self.gl_begin()==True:
             self.glv_resize(width, height)
             self.gl_end()
+            self.queue_draw()
+            return gtk.TRUE
+        else:
+            return gtk.FALSE
 
-        self.queue_draw()
-        return gtk.TRUE
-
-    def expose_event(self, glarea, event):
+    def gtk_glv_expose_event(self, glarea, event):
+        """
+        """
         if self.gl_begin()==True:
             self.glv_render()
             self.gl_end()
-        return gtk.TRUE
+            return gtk.TRUE
+        else:
+            return gtk.FALSE
 
-    def button_press_event(self, glarea, event):
+    def gtk_glv_button_press_event(self, glarea, event):
         self.beginx = event.x
         self.beginy = event.y
 
-    def motion_notify_event(self, glarea, event):
+    def gtk_glv_motion_notify_event(self, glarea, event):
         width     = glarea.allocation.width
         height    = glarea.allocation.height
 
@@ -402,107 +257,12 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
 
         self.queue_draw()
 
-    def destroy(self, glarea):
+    def gtk_glv_destroy(self, glarea):
         ## XXX: delete all opengl draw lists
         return gtk.TRUE
 
     def glv_redraw(self):
         self.queue_draw()
-
-
-class StructDetailsDialog(gtk.Dialog):
-    def __init__(self, context):
-        self.context = context
-        
-        gtk.Dialog.__init__(self,
-                            "Selection Information",
-                            self.context.window,
-                            gtk.DIALOG_DESTROY_WITH_PARENT)
-
-        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
-        self.set_default_size(400, 400)
-        
-        self.connect("destroy", self.response_cb)
-        self.connect("response", self.response_cb)
-
-        ## make the print box
-        sw = gtk.ScrolledWindow()
-        self.vbox.add(sw)
-        sw.set_border_width(5)
-        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
-        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-
-
-        self.store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
-     
-        treeview = gtk.TreeView(self.store)
-        sw.add(treeview)
-        treeview.set_rules_hint(gtk.TRUE)
-        treeview.set_search_column(0)
-
-        column = gtk.TreeViewColumn(
-            "mmLib.Structure Method",
-            gtk.CellRendererText(),
-            text=0)
-        treeview.append_column(column)
-    
-        column = gtk.TreeViewColumn(
-            "Return Value",
-            gtk.CellRendererText(),
-            text=1)
-        treeview.append_column(column)
-
-        self.show_all()
-
-    def response_cb(self, *args):
-        self.destroy()
-    
-    def add_line(self, key, value):
-        iter = self.store.append()
-        self.store.set(iter, 0, key, 1, str(value))
-
-    def set_struct_obj(self, struct_obj):
-        self.store.clear()
-
-        if isinstance(struct_obj, Residue):
-            self.add_line("Residue.res_name", struct_obj.res_name)
-            self.add_line("Residue.get_offset_residue(-1)",
-                          struct_obj.get_offset_residue(-1))
-            self.add_line("Residue.get_offset_residue(1)",
-                          struct_obj.get_offset_residue(1))
-
-        if isinstance(struct_obj, Fragment):
-            bonds = ""
-            for bond in struct_obj.iter_bonds():
-                bonds += str(bond)
-            self.add_line("Fragment.iter_bonds()", bonds)
-
-        if isinstance(struct_obj, AminoAcidResidue):
-            self.add_line("AminoAcidResidue.calc_mainchain_bond_length()",
-                          struct_obj.calc_mainchain_bond_length())
-            self.add_line("AminoAcidResidue.calc_mainchain_bond_angle()",
-                          struct_obj.calc_mainchain_bond_angle())
-            self.add_line("AminoAcidResidue.calc_torsion_psi()",
-                          struct_obj.calc_torsion_psi())
-            self.add_line("AminoAcidResidue.calc_torsion_phi()",
-                          struct_obj.calc_torsion_phi())
-            self.add_line("AminoAcidResidue.calc_torsion_omega()",
-                          struct_obj.calc_torsion_omega())
-            self.add_line("AminoAcidResidue.calc_torsion_chi()",
-                          struct_obj.calc_torsion_chi())
-
-        if isinstance(struct_obj, Atom):
-            self.add_line("Atom.element", struct_obj.element)
-            self.add_line("Atom.name", struct_obj.name)
-            self.add_line("Atom.occupancy", struct_obj.occupancy)
-            self.add_line("Atom.temp_factor", struct_obj.temp_factor)
-            self.add_line("Atom.U", struct_obj.U)
-            self.add_line("Atom.position", struct_obj.position)
-            self.add_line("len(Atom.bond_list)", len(struct_obj.bond_list))
-            self.add_line("Atom.calc_anisotropy()",
-                          struct_obj.calc_anisotropy())
-
-
 
 
 ###############################################################################
@@ -874,7 +634,8 @@ class GLPropertyEditor(gtk.Notebook):
         return widget
 
     def properties_update_cb(self, updates={}, actions=[]):
-        """Read the property values and update the widgets to display the values.
+        """Read the property values and update the widgets to display the
+        values.
         """
         for name in updates:
             try:
@@ -892,7 +653,8 @@ class GLPropertyEditor(gtk.Notebook):
 
             elif prop_desc["type"]=="integer":
                 if prop_desc.get("read_only", False)==True:
-                    text = "<small>%d</small>" % (self.gl_object.properties[name])
+                    text = "<small>%d</small>" % (
+                        self.gl_object.properties[name])
                     widget.set_markup(text)
                 else:
                     if prop_desc.get("range")!=None:
@@ -1139,7 +901,7 @@ class GLPropertyEditDialog(gtk.Dialog):
     
 
 class GLPropertyBrowserDialog(gtk.Dialog):
-    """
+    """Dialog for manipulating the properties of a GLViewer.
     """
     def __init__(self, parent_window, glo_root):
         gl_object_root = glo_root
@@ -1214,7 +976,6 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 ###############################################################################
 ### TLS Analysis Dialog 
 ###
-
 
 class TLSDialog(gtk.Dialog):
     """Dialog for the visualization and analysis of TLS model parameters
@@ -1530,81 +1291,8 @@ class TLSDialog(gtk.Dialog):
         return gtk.TRUE
 
 
-class DictListTreeView(gtk.TreeView):
-    def __init__(self,
-                 column_list    = ["Empty"],
-                 dict_list      = [],
-                 selection_mode = gtk.SELECTION_BROWSE):
-
-        ## DistList state
-        self.column_list = column_list
-        self.dict_list   = []
-
-        ## gtk.TreeView Init
-        gtk.TreeView.__init__(self)
-        
-        self.get_selection().set_mode(selection_mode)
-
-        self.connect("row-activated", self.row_activated_cb)
-        self.connect("button-release-event", self.button_release_event_cb)
-
-
-        model_data_types = []
-        for i in range(len(self.column_list)):
-            model_data_types.append(gobject.TYPE_STRING)
-
-        self.model = gtk.TreeStore(*model_data_types)
-        self.set_model(self.model)
-
-        ## add cell renderers
-        for i in range(len(self.column_list)):
-            column_desc = self.column_list[i]
-            cell        = gtk.CellRendererText()
-            column      = gtk.TreeViewColumn(column_desc, cell)
-
-            column.add_attribute(cell, "text", i)
-            self.append_column(column)
-
-        ## populate list if needed
-        if len(dict_list)>0:
-            self.set_dict_list(dict_list)
-
-    def row_activated_cb(self, tree_view, path, column):
-        """Retrieve selected node, then call the correct set method for the
-        type.
-        """
-        pass
-    
-    def button_release_event_cb(self, tree_view, bevent):
-        """
-        """
-        x = int(bevent.x)
-        y = int(bevent.y)
-
-        try:
-            (path, col, x, y) = self.get_path_at_pos(x, y)
-        except TypeError:
-            return gtk.FALSE
-
-        self.row_activated_cb(tree_view, path, col)
-        return gtk.FALSE
-
-    def set_dict_list(self, dict_list):
-        """
-        """
-        self.dict_list = dict_list
-        self.model.clear()
-
-        for dictX in self.dict_list:
-            iter = self.model.append(None)
-
-            for i in range(len(self.column_list)):
-                column_desc = self.column_list[i]
-                self.model.set(iter, i, dictX[column_desc])
-
-    
 class TLSSearchDialog(gtk.Dialog):
-    """
+    """Dialog interface for the TLS Group Fitting algorithm.
     """    
     def __init__(self, **args):
         self.main_window    = args["main_window"]
@@ -1644,7 +1332,7 @@ class TLSSearchDialog(gtk.Dialog):
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
      
         self.treeview = DictListTreeView(
-            column_list=["Residue Range", "R", "DP2"])
+            column_list=["Residue Range", "Atoms", "R", "<DP2>"])
         sw.add(self.treeview)
        
         self.show_all()
@@ -1652,7 +1340,8 @@ class TLSSearchDialog(gtk.Dialog):
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
         """
-        if response_code==gtk.RESPONSE_CLOSE or response_code==gtk.RESPONSE_CANCEL:
+        if response_code==gtk.RESPONSE_CLOSE or \
+           response_code==gtk.RESPONSE_CANCEL:
             pass
         elif response_code==gtk.RESPONSE_OK:
             pass
@@ -1677,17 +1366,17 @@ class TLSSearchDialog(gtk.Dialog):
         self.tls_stats_list = []
         for stats in stats_list:
 
-            if stats["adv_DP2"]>max_DP2:
+            if stats["mean_DP2"]>max_DP2:
                 continue
 
             stats["Residue Range"] = stats["name"]
             stats["R"]             = "%.3f" % (stats["R"])
-            stats["DP2"]           = "%.4f" % (stats["adv_DP2"])
+            stats["<DP2>"]         = "%.4f" % (stats["mean_DP2"])
+            stats["Atoms"]         = str(stats["num_atoms"])
 
             self.tls_stats_list.append(stats)
 
         self.treeview.set_dict_list(self.tls_stats_list)
-
 
 
 ###############################################################################
@@ -1698,7 +1387,6 @@ class TLSSearchDialog(gtk.Dialog):
 class StructureTreeControl(gtk.TreeView):
     """
     """
-
     def __init__(self, context):
         self.context = context
         self.struct_list = []
@@ -1771,125 +1459,135 @@ class StructureTreeControl(gtk.TreeView):
         self.redraw()
 
 
+class StructDetailsDialog(gtk.Dialog):
+    """This was a old dialog used for debugging.
+    """
+    def __init__(self, context):
+        self.context = context
+        
+        gtk.Dialog.__init__(self,
+                            "Selection Information",
+                            self.context.window,
+                            gtk.DIALOG_DESTROY_WITH_PARENT)
+
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.set_default_size(400, 400)
+        
+        self.connect("destroy", self.response_cb)
+        self.connect("response", self.response_cb)
+
+        ## make the print box
+        sw = gtk.ScrolledWindow()
+        self.vbox.add(sw)
+        sw.set_border_width(5)
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+
+
+        self.store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+     
+        treeview = gtk.TreeView(self.store)
+        sw.add(treeview)
+        treeview.set_rules_hint(gtk.TRUE)
+        treeview.set_search_column(0)
+
+        column = gtk.TreeViewColumn(
+            "mmLib.Structure Method",
+            gtk.CellRendererText(),
+            text=0)
+        treeview.append_column(column)
+    
+        column = gtk.TreeViewColumn(
+            "Return Value",
+            gtk.CellRendererText(),
+            text=1)
+        treeview.append_column(column)
+
+        self.show_all()
+
+    def response_cb(self, *args):
+        self.destroy()
+    
+    def add_line(self, key, value):
+        iter = self.store.append()
+        self.store.set(iter, 0, key, 1, str(value))
+
+    def set_struct_obj(self, struct_obj):
+        self.store.clear()
+
+        if isinstance(struct_obj, Residue):
+            self.add_line("Residue.res_name", struct_obj.res_name)
+            self.add_line("Residue.get_offset_residue(-1)",
+                          struct_obj.get_offset_residue(-1))
+            self.add_line("Residue.get_offset_residue(1)",
+                          struct_obj.get_offset_residue(1))
+
+        if isinstance(struct_obj, Fragment):
+            bonds = ""
+            for bond in struct_obj.iter_bonds():
+                bonds += str(bond)
+            self.add_line("Fragment.iter_bonds()", bonds)
+
+        if isinstance(struct_obj, AminoAcidResidue):
+            self.add_line("AminoAcidResidue.calc_mainchain_bond_length()",
+                          struct_obj.calc_mainchain_bond_length())
+            self.add_line("AminoAcidResidue.calc_mainchain_bond_angle()",
+                          struct_obj.calc_mainchain_bond_angle())
+            self.add_line("AminoAcidResidue.calc_torsion_psi()",
+                          struct_obj.calc_torsion_psi())
+            self.add_line("AminoAcidResidue.calc_torsion_phi()",
+                          struct_obj.calc_torsion_phi())
+            self.add_line("AminoAcidResidue.calc_torsion_omega()",
+                          struct_obj.calc_torsion_omega())
+            self.add_line("AminoAcidResidue.calc_torsion_chi()",
+                          struct_obj.calc_torsion_chi())
+
+        if isinstance(struct_obj, Atom):
+            self.add_line("Atom.element", struct_obj.element)
+            self.add_line("Atom.name", struct_obj.name)
+            self.add_line("Atom.occupancy", struct_obj.occupancy)
+            self.add_line("Atom.temp_factor", struct_obj.temp_factor)
+            self.add_line("Atom.U", struct_obj.U)
+            self.add_line("Atom.position", struct_obj.position)
+            self.add_line("len(Atom.bond_list)", len(struct_obj.bond_list))
+            self.add_line("Atom.calc_anisotropy()",
+                          struct_obj.calc_anisotropy())
+
 
 ###############################################################################
 ### Application Window and Multi-Document tabs
 ### 
 ###
 
-
-
-class StructureGUI(object):
-    """This will become a notebook page when I get around to implementing
-    a multi-tab interface.
-    """
-
-    def __init__(self, context):
-        self.context = context        
-    
-        ## MAIN WIDGET
-        self.hpaned = gtk.HPaned()
-        self.hpaned.set_border_width(2)
-
-        ## LEFT HALF: StructureTreeControl
-        self.sw1 = gtk.ScrolledWindow()
-        self.hpaned.add1(self.sw1)
-        self.sw1.set_border_width(3)
-        self.sw1.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        
-        self.struct_ctrl = StructureTreeControl(self.context)
-        self.sw1.add(self.struct_ctrl)
-
-        ## RIGHT HALF: GtkGLViewer
-        self.gtkglviewer = GtkGLViewer()
-        self.hpaned.add2(self.gtkglviewer)
-
-    def get_widget(self):
-        return self.hpaned
-
-
-class ViewCommands(list):
-    def __init__(self):
-        view_cmds = [
-            { "menu path":       "/View/Carteasion Axes",
-              "glstruct property": "axes_visible",
-              "action":          100 },
-
-            { "menu path":         "/View/Unit Cell",
-              "glstruct property": "unit_cell_visible",
-              "action":            101 },
-
-            { "menu path":       "/View/Protein Main Chain",
-              "glstruct property": "aa_main_chain_visible",
-              "action":          102 },
-
-            { "menu path":       "/View/Protein Side Chain",
-              "glstruct property": "aa_side_chain_visible",
-              "action":          103 },
-
-            { "menu path":       "/View/DNA Main Chain",
-              "glstruct property": "dna_main_chain_visible",
-              "action":          104 },
-
-            { "menu path":       "/View/DNA Side Chain",
-              "glstruct property": "dna_side_chain_visible",
-              "action":          105 },
-
-            { "menu path":       "/View/HET Group",
-              "glstruct property": "hetatm_visible",
-              "action":          106 },
-
-            { "menu path":       "/View/Water",
-              "glstruct property": "water_visible",
-              "action":          107},
-            
-            { "menu path":       "/View/Thermal Axes",
-              "glstruct property": "U",
-              "action":          108},
-            ]
-
-        list.__init__(self, view_cmds)
-
-    def get_action(self, action):
-        """Return the cmd dictionary by action number.
-        """
-        for cmd in self:
-            if cmd["action"]==action:
-                return cmd
-        return None
-
-
-class ColorCommands(list):
-    def __init__(self):
-        list.__init__(self, [
-            { "menu path":  "/Colors/Color by Atom Type",
-              "action":     100 },
-            { "menu path":  "/Colors/Color by Chain",
-              "action":     101 } ])
-
-    def get_action(self, action):
-        """Return the cmd dictionary by action number.
-        """
-        for cmd in self:
-            if cmd["action"]==action:
-                return cmd
-        return None
-
-
 class StructureContext(object):
-    def __init__(self, struct, gl_struct):
+    """
+    """
+    def __init__(self, struct = None, gl_struct = None):
+        self.struct_id = ""
         self.struct    = struct
         self.gl_struct = gl_struct
 
+    def suggest_struct_id(self):
+        """
+        """
+        entry_id = self.struct.cifdb.get_entry_id()
+        if entry_id!=None and entry_id!="":
+            return entry_id
+        if hasattr(self.struct, "path"):
+            path = getattr(self.struct, "path")
+            dir, basename = os.path.split(path)
+            return basename
+        return "XXXX"
+
 
 class MainWindow(object):
+    """
+    """
     def __init__(self, quit_notify_cb):
         self.struct_context_list = []
-        self.sel_struct_context  = None
-        self.sel_struct_obj      = None
+        self.selected_sc         = None
+
         self.gl_prop_browser     = None
-        self.view_cmds           = ViewCommands()
-        self.color_cmds          = ColorCommands()
         self.quit_notify_cb      = quit_notify_cb
 
         ## dialog lists
@@ -1898,7 +1596,7 @@ class MainWindow(object):
 
         ## Create the toplevel window
         self.window = gtk.Window()
-        self.set_title("")
+        self.window.set_title("mmLib Viewer")
         self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.file_quit, self)
 
@@ -1906,46 +1604,26 @@ class MainWindow(object):
         self.window.add(table)
 
         ## file menu bar
-        file_menu_items = [
+        menu_items = [
             ('/_File',            None,          None,                 0,'<Branch>'),
             ('/File/_New Window', None,          self.file_new_window, 0,'<StockItem>',gtk.STOCK_NEW),
-            ('/File/_Open',       None,          self.file_open,       0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/_New Tab',    None,          self.file_new_tab,    0,'<StockItem>',gtk.STOCK_NEW),
             ('/File/sep1',        None,          None,                 0,'<Separator>'),
-            ('/File/_Quit',      '<control>Q',   self.file_quit,       0,'<StockItem>',gtk.STOCK_QUIT) ]
-
-        edit_menu_items = [
-            ('/_Edit',            None,          None,                  0,'<Branch>'),
-            ('/Edit/_Properties', None,          self.edit_properties,  0, None) ]
-
-        view_menu_items = [
-            ('/_View', None, None, 0, '<Branch>') ]
-        
-        for view_cmd in self.view_cmds:
-            view_menu_items.append(
-                (view_cmd["menu path"], None, self.view_menu, view_cmd["action"], '<CheckItem>') )
-
-        color_menu_items = [
-            ('/_Colors', None, None, 0, '<Branch>') ]
-        
-        for color_cmd in self.color_cmds:
-            color_menu_items.append(
-                (color_cmd["menu path"], None, self.color_menu, color_cmd["action"]) )
+            ('/File/_Open',       None,          self.file_open,       0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/_Open In New Tab', None,     self.file_open_in_new_tab,0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/sep2',        None,          None,                 0,'<Separator>'),
+            ('/File/_Quit',      '<control>Q',   self.file_quit,       0,'<StockItem>',gtk.STOCK_QUIT),
             
-        tools_menu_items = [
-            ('/_Tools', None, None, 0, '<Branch>'),
-            ('/Tools/Selected Item Details...', None, self.tools_details,      0, None),
-            ('/Tools/TLS Analysis...',          None, self.tools_tls_analysis, 0, None) ]
+            ('/_Dialogs',            None,          None,                  0,'<Branch>'),
+            ('/Dialogs/_Properties', None,          self.dialogs_properties,  0, None),
 
-        help_menu_items = [
+            ('/_Tools', None, None, 0, '<Branch>'),
+            ('/Tools/TLS Analysis...',          None, self.tools_tls_analysis, 0, None),
+
+            ('/_Structures', None, None, 0, '<Branch>'),
+
             ('/_Help',       None, None, 0, '<Branch>'),
             ('/Help/_About', None, None, 0, None) ]
-
-        menu_items = file_menu_items +\
-                     edit_menu_items +\
-                     view_menu_items +\
-                     color_menu_items +\
-                     tools_menu_items +\
-                     help_menu_items
 
         self.accel_group = gtk.AccelGroup()
         self.window.add_accel_group(self.accel_group)
@@ -1975,13 +1653,15 @@ class MainWindow(object):
         self.select_label.set_editable(gtk.FALSE)
         self.hbox1.pack_start(self.select_label, gtk.TRUE, gtk.TRUE, 0)
 
-        ## Create document        
-        self.struct_gui = StructureGUI(self)
-        table.attach(self.struct_gui.get_widget(),
+        ## Notebook
+        self.notebook = gtk.Notebook()
+        table.attach(self.notebook,
                      # X direction           Y direction
                      0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  gtk.EXPAND | gtk.FILL,
                      0,                      0)
+        self.notebook.connect("switch-page", self.notebook_switch_page)
+
 
         ## Create statusbar 
         self.hbox = gtk.HBox()
@@ -2005,34 +1685,62 @@ class MainWindow(object):
 
         self.window.show_all()
 
+    def notebook_switch_page(self, notebook, page, page_num):
+        """This is necessary to work around some GtkGLExt bugs.
+        """
+        print "switch page",page_num
+        #gl_viewer = self.notebook.get_nth_page(page_num)
+        #gl_viewer.map()
+
     def file_new_window(self, *args):
         """File->New Window
         """
-        pass
-        
+        VIEWER_APP.new_window()
+
+    def file_new_tab(self, *args):
+        """File->New Tab
+        """
+        self.add_viewer_page()
+    
     def file_open(self, *args):
         """File->Open
         """
         if hasattr(self, "file_selector"):
             self.file_selector.present()
             return
+
+        ## create file selector
         self.file_selector = gtk.FileSelection("Select file to view");
-        ok_button = self.file_selector.ok_button
-        ok_button.connect("clicked", self.open_ok_cb, None)
+
+        ok_button     = self.file_selector.ok_button
         cancel_button = self.file_selector.cancel_button
+
+        ok_button.connect("clicked", self.open_ok_cb, None)
         cancel_button.connect("clicked", self.open_cancel_cb, None)        
+
         self.file_selector.present()
 
+    def file_open_in_new_tab(self, *args):
+        """File->Open In New Tab
+        """
+        pass
+    
     def destroy_file_selector(self):
+        """
+        """
         self.file_selector.destroy()
         del self.file_selector
 
     def open_ok_cb(self, *args):
+        """
+        """
         path = self.file_selector.get_filename()
         self.destroy_file_selector()
         self.load_file(path)
 
     def open_cancel_cb(self, *args):
+        """
+        """
         self.destroy_file_selector()
 
     def file_quit(self, *args):
@@ -2040,13 +1748,13 @@ class MainWindow(object):
         """
         self.quit_notify_cb(self.window, self)
 
-    def edit_properties(self, *args):
+    def dialogs_properties(self, *args):
         """Edit->Properties (GLPropertyBrowserDialog)
         """
         if self.gl_prop_browser==None:
             self.gl_prop_browser = GLPropertyBrowserDialog(
                 self.window,
-                self.struct_gui.gtkglviewer)
+                self.get_current_viewer())
 
             self.gl_prop_browser.connect(
                 "destroy",
@@ -2073,84 +1781,32 @@ class MainWindow(object):
         if self.gl_prop_browser!=None:
             self.gl_prop_browser.rebuild_gl_object_tree()
 
-    def tools_details(self, *args):
-        """Tools->Selected Item Details
-        """
-        if self.sel_struct_obj == None:
-            self.error_dialog("No Structure Selected.")
-            return
-        details = StructDetailsDialog(self)
-        details.set_struct_obj(self.sel_struct_obj)
-        details.present()
-
     def tools_tls_analysis(self, *args):
         """Tools->TLS Analysis
         """
-
-        if self.sel_struct_context==None:
+        selected_sc = self.get_selected_sc()
+        if selected_sc==None:
             return
+        
         tls = TLSDialog(
             main_window    = self,
-            struct_context = self.sel_struct_context)
+            struct_context = selected_sc)
         tls.present()
 
-    def view_menu(self, callback_action, widget):
-        """View->[All Items]
-        """
-        if self.sel_struct_context==None:
-            return
-        view_cmd  = self.view_cmds.get_action(callback_action)
-        property  = view_cmd["glstruct property"]
-        menu_item = self.item_factory.get_item(view_cmd["menu path"])
-        if menu_item.get_active() == gtk.TRUE:
-            visible = True
-        else:
-            visible = False
-        self.sel_struct_context.gl_struct.properties.update(**{property: visible})            
-
-    def color_menu(self, callback_action, widget):
-        """Color->[All Items]
-        """
-        if self.sel_struct_context==None:
-            return
-        color_cmd = self.color_cmds.get_action(callback_action)
-
-        if callback_action==100:
-            self.sel_struct_context.gl_struct.properties.update(color=None)
-
-        elif callback_action==101: 
-            gl_struct = self.sel_struct_context.gl_struct
-
-            color_list = [(1.,0.,0.),(0.,1.,0.),(0.,0.,1.),(1.,1.,0.),(0.,1.,1.),(1.,0.,1.),(1.,1.,1.)]
-            colori = 0
-
-            chain_dict = {}
-            for gl_object in gl_struct.glo_iter_children():
-                if isinstance(gl_object, GLChain):
-                    chain_dict[gl_object.chain.chain_id] = gl_object
-
-            chain_ids = chain_dict.keys()
-            chain_ids.sort()
-            
-            for chain_id in chain_ids:
-                gl_chain = chain_dict[chain_id]
-                
-                try:
-                    color = color_list[colori]
-                except IndexError:
-                    color = color_list[-1]
-                else:
-                    colori += 1
-                
-                gl_chain.properties.update(color=color)
-
-    def set_title(self, title):
-        self.window.set_title("Viewer: %s" % (title[:50]))
-
     def set_statusbar(self, text):
+        """Sets the text in the status bar of the window.
+        """
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
 
+    def update_cb(self, percent):
+        """Callback for file loading code to inform the GUI of how
+        of the file has been read
+        """
+        self.progress.set_fraction(percent/100.0)
+        while gtk.events_pending():
+            gtk.main_iteration(gtk.TRUE)
+            
     def error_dialog(self, text):
         """Display modeal error dialog box containing the error text.
         """
@@ -2164,40 +1820,101 @@ class MainWindow(object):
         dialog.run()
         dialog.destroy()
 
+    def add_viewer_page(self, text="New Tab"):
+        """Adds a page to the tabbed-viewer notebook and places a
+        GtkGLViewer widget inside of it.
+        """
+        event_box = gtk.EventBox()
+        gl_viewer = GtkGLViewer()
+        event_box.add(gl_viewer)
+        event_box.show_all()
+        
+        page_num  = self.notebook.append_page(event_box, gtk.Label(text))
+        
+        return page_num, gl_viewer
 
-    def load_file(self, path):
+    def get_current_viewer(self):
+        """Returns the current GtkGLViewer, or None if there
+        are not viewers in the window.
+        """
+        page_num = self.notebook.get_current_page()
+        if page_num==-1:
+            return None
+
+        event_box = self.notebook.get_nth_page(page_num)
+        gl_viewer = event_box.get_child()
+        return gl_viewer
+
+    def add_struct(self, struct, new_tab=False, new_window=False):
+        """Adds the Structure to the window
+        """
+        ## create a StructureContext used by the viewer for
+        ## this Structure/GLStructure pair
+        sc = StructureContext()
+        self.struct_context_list.append(sc)
+
+        sc.struct    = struct
+        sc.struct_id = sc.suggest_struct_id()
+        
+        ## get the current notebook tab's GtkGLViewer or create
+        ## a new notebook table with a new GtkGLViewer
+        if new_tab==True:
+            page_num, gl_viewer = self.add_viewer_page(sc.struct_id)
+        else:
+            gl_viewer = self.get_current_viewer()
+
+            if gl_viewer==None:
+                page_num, gl_viewer = self.add_viewer_page(sc.struct_id)
+            else:
+                label = self.notebook.get_tab_label(gl_viewer.get_parent())
+                text = label.get_text()
+                if text=="New Tab":
+                    label.set_text(sc.struct_id)
+
+        ## add the structure to the GLViewer
+        sc.gl_struct = gl_viewer.glv_add_struct(sc.struct)
+        
+    def load_file(self, path, new_tab=False, new_window=False):
         """Loads the structure file specified in the path.
         """
-        self.set_title(path)
         self.set_statusbar("Loading: %s" % (path))
 
-        struct = LoadStructure(
-            fil              = path,
-            update_cb        = self.update_cb,
-            build_properties = ("sequence","bonds"))
+        try:
+            struct = LoadStructure(
+                fil              = path,
+                update_cb        = self.update_cb,
+                build_properties = ("sequence","bonds"))
+
+        except IOError:
+            self.set_statusbar("")
+            self.progress.set_fraction(0.0)
+            self.error_dialog("File Not Found: %s" % (path))
+            return
 
         struct.path = path
-        
-        gl_struct = self.struct_gui.gtkglviewer.glv_add_struct(struct)
 
-        struct_context = StructureContext(struct, gl_struct)
-        self.struct_context_list.append(struct_context)
-        self.struct_gui.struct_ctrl.append_struct(struct_context.struct)
-        if self.sel_struct_context==None:
-            self.set_selected_struct_obj(struct)
+        sc = self.add_struct(struct, new_tab, new_window)
+        self.set_selected_sc(sc)
 
+        ## blank the status bar
         self.set_statusbar("")
         self.progress.set_fraction(0.0)
-        return gtk.FALSE
-    
-    def update_cb(self, percent):
-        """Callback for file loading code to inform the GUI of how
-        of the file has been read
-        """
-        self.progress.set_fraction(percent/100.0)
-        while gtk.events_pending():
-            gtk.main_iteration(gtk.TRUE)
 
+        return gtk.FALSE
+
+
+    def set_selected_sc(self, sc):
+        """Set the selected StructureContext.
+        """
+        pass
+
+    def get_selected_sc(self):
+        """Returns the currently selected StructureContext
+        """
+        return self.selected_sc
+
+
+    
     def set_selected_struct_obj(self, struct_obj):
         """Set the currently selected structure item.
         """
@@ -2244,27 +1961,45 @@ class MainWindow(object):
         return None
 
 
-def main(path = None):
-    main_window_list = []
+class ViewerApp(object):
+    """Viewer application manages the windows.  One
+    one of these objects is created and used globally.
+    """
+    def __init__(self, first_path=None):
+        self.window_list = []
+        self.new_window(first_path)
 
-    def quit_notify_cb(window, mw):
-        main_window_list.remove(mw)
-        if len(main_window_list) < 1:
+    def main(self):
+        """Runs the GTK mainloop until all windows are closed.
+        """
+        gtk.main()
+        
+    def new_window(self, path=None):
+        """Creates a new window, and loads the structure at
+        the given file path if it is given.
+        """
+        mw = MainWindow(self.window_quit_notify)
+        self.window_list.append(mw)
+
+        if path!=None:
+            gobject.timeout_add(25, mw.load_file, path)
+
+    def window_quit_notify(self, window, mw):
+        """Callback when a window exits.
+        """
+        self.window_list.remove(mw)
+        if len(self.window_list)==0:
             gtk.main_quit()
 
-    mw = MainWindow(quit_notify_cb)
-    main_window_list.append(mw)
 
-    if path:
-        gobject.timeout_add(25, mw.load_file, path)
+### <MAIN>
 
-    gtk.main()
+try:
+    first_path = sys.argv[1]
+except IndexError:
+    first_path = None
+    
+VIEWER_APP = ViewerApp(first_path)
+VIEWER_APP.main()
 
-
-if __name__ == "__main__":
-    import sys
-
-    try:
-        main(sys.argv[1])
-    except IndexError:
-        main()
+### </MAIN>

@@ -3056,8 +3056,8 @@ class GLTLSGroup(GLDrawList):
                        1.0)
 
     def draw_Utls_ellipse(self, atm, Utls):
-        """Render the anisotropic thremal ellipseoids/RMS surface from
-        TLS calculated U values.
+        """Render the anisotropic thremal ellipseoids at the given probability
+        contour calculated from the TLS model.
         """
         r, g, b = self.properties["Utls_color"]
         a       = self.properties["ellipse_opacity"]
@@ -3081,8 +3081,8 @@ class GLTLSGroup(GLDrawList):
                 self.properties["adp_prob"])
 
     def draw_Utls_rms(self, atm, Utls):
-        """Render the anisotropic thremal ellipseoids/RMS surface from
-        TLS calculated U values.
+        """Render the anisotropic thremal peanuts calculated from the TLS
+        model.
         """
         r, g, b = self.properties["Utls_color"]
         a       = self.properties["rms_opacity"]
@@ -3107,41 +3107,53 @@ class GLTLSGroup(GLDrawList):
             self.properties["T_line_width"])
 
         ## L: units (DEG^2)
-        for Lx_eigen_val, Lx_eigen_vec, Lx_rho in [
-            ("L1_eigen_val", "L1_eigen_vec", "L1_rho"),
-            ("L2_eigen_val", "L2_eigen_vec", "L2_rho"),
-            ("L3_eigen_val", "L3_eigen_vec", "L3_rho")]:
+        for Lx_eigen_val, Lx_eigen_vec, Lx_rho, Lx_pitch in [
+            ("L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
+            ("L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
+            ("L3_eigen_val", "L3_eigen_vec", "L3_rho", "L3_pitch")]:
 
-            Lx_eigen_val = self.properties[Lx_eigen_val]
 
-            if Lx_eigen_val<=0.0:
+            L_eigen_vec = self.properties[Lx_eigen_vec]
+            L_eigen_val = self.properties[Lx_eigen_val]
+            L_rho       = self.properties[Lx_rho]
+            L_pitch     = self.properties[Lx_pitch]
+            
+            if L_eigen_val<=0.0:
                 continue
 
-            v  = self.properties[Lx_eigen_vec].copy() *\
-                 GAUSS3C[self.properties["adp_prob"]] *\
-                 math.sqrt(Lx_eigen_val)
-
-            rho = self.properties[Lx_rho]
+            C = GAUSS3C[self.properties["adp_prob"]]
+            
+            L_rot = C * math.sqrt(L_eigen_val)
+            L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
             glColor3f(*self.properties["L_color"])
 
+            ## draw lines from COR to the axis
             glDisable(GL_LIGHTING)
             glBegin(GL_LINES)
             glVertex3f(0.0, 0.0, 0.0)
-            glVertex3f(*rho)
+            glVertex3f(*L_rho)
             glEnd()
 
+            ## draw axis
             r, g, b = self.properties["L_color"]
+            self.glr_set_material_rgb(r, g, b, 1.0)
+            self.glr_axis(L_rho - (0.5 * L_v), L_v,
+                          self.properties["L_axis_radius"])
 
-            ## for negitive librations, make the L axis really dark
-            if Lx_eigen_val<0.0:
-                self.glr_set_material_rgb(r*0.25, g*0.25, b*0.25, 1.0)
-            else:
-                self.glr_set_material_rgb(r, g, b, 1.0)
+            ## draw disks with translational displacement
+            L_screw_dis = L_eigen_vec * L_rot * L_pitch
+
+            self.glr_axis(
+                L_rho + (0.5 * L_screw_dis),
+                L_screw_dis,
+                1.5 * self.properties["L_axis_radius"])
             
-            self.glr_axis(rho-v, 2*v, self.properties["L_axis_radius"])
-
+            self.glr_axis(
+                L_rho - (0.5 * L_screw_dis),
+                -L_screw_dis,
+                1.5 * self.properties["L_axis_radius"])
 
 class GLAtom(GLObject):
     def __init__(self, **args):
@@ -3549,13 +3561,11 @@ class GLViewer(GLObject):
         a useful optimization.
         """
         ## OpenGL Features
-        #glEnable(GL_AUTO_NORMAL)
-        #glEnable(GL_NORMALIZE)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
         
         ## Enables Smooth Color Shading
-	glShadeModel(GL_SMOOTH)
+	#glShadeModel(GL_SMOOTH)
         
         ## inital orientation
         R = self.properties["R"]
