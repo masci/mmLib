@@ -673,6 +673,34 @@ class Chain(object):
             return self.fragment_list[fragment_idx]
         elif type(fragment_idx) == StringType:
             return self.fragment_dict[fragment_idx]
+        elif type(fragment_idx) == SliceType:
+            chain = Chain(model_id=self.model_id, chain_id=self.chain_id)
+            try:
+                chain.model = self.model
+            except AttributeError:
+                pass
+            try:
+                chain.structure = self.structure
+            except AttrubuteError:
+                pass
+
+            start_fragment_id = FragmentID(fragment_idx.start)
+            stop_fragment_id  = FragmentID(fragment_idx.stop)
+
+            add = False
+            for fragment in self:
+                fragment_id = FragmentID(fragment.fragment_id)
+
+                if fragment_id > stop_fragment_id:
+                    break
+                if fragment_id >= start_fragment_id:
+                    chain.add_fragment(
+                        fragment,
+                        delay_sort=True,
+                        link_chain=False)
+
+            chain.sort()
+            return chain            
         raise TypeError, fragment_idx
 
     def __delitem__(self, fragment_idx):
@@ -711,7 +739,7 @@ class Chain(object):
         """
         self.fragment_list.sort()
         
-    def add_fragment(self, fragment, delay_sort = False):
+    def add_fragment(self, fragment, delay_sort = False, link_chain = True):
         """Adds a Fragment instance to the chain.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         chain.
@@ -724,7 +752,9 @@ class Chain(object):
 
         self.fragment_list.append(fragment)
         self.fragment_dict[fragment.fragment_id] = fragment
-        fragment.chain = self
+
+        if link_chain==True:
+            fragment.chain = self
         
         if delay_sort == False:
             self.fragment_list.sort()

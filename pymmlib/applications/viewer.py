@@ -17,6 +17,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
+from mmLib.PDB            import PDBFile
 from mmLib.Structure      import *
 from mmLib.FileLoader     import LoadStructure, SaveStructure
 from mmLib.GLViewer       import *
@@ -33,6 +34,22 @@ except gtk.gdkgl.NoMatches:
                                 gtk.gdkgl.MODE_DEPTH)
 
 
+
+def markup_vector3(vector):
+    return "<small>%7.4f %7.4f %7.4f</small>" % (vector[0], vector[1], vector[2])
+
+def markup_matrix3(tensor):
+    """Uses pango markup to make the presentation of the tenosr
+    look nice.
+    """
+    return "<small>%7.4f %7.4f %7.4f\n"\
+                  "%7.4f %7.4f %7.4f\n"\
+                  "%7.4f %7.4f %7.4f</small>" % (
+               tensor[0,0], tensor[0,1], tensor[0,2],
+               tensor[1,0], tensor[1,1], tensor[1,2],
+               tensor[2,0], tensor[2,1], tensor[2,2])
+
+    
 class GtkGLViewer(gtk.gtkgl.DrawingArea):
     def __init__(self):
         gtk.gtkgl.DrawingArea.__init__(self)
@@ -224,24 +241,156 @@ class StructDetailsDialog(gtk.Dialog):
                           struct_obj.calc_anisotropy())
 
 
+
+class GLPropertyEditor(gtk.Frame):
+    """Gtk Widget which generates a customized editing widget for a
+    GLObject widget supporting GLProperties.
+    """
+    def __init__(self, gl_object):
+        self.gl_object = gl_object
+
+        gtk.Frame.__init__(self)
+        
+        self.prop_widget_dict = {}
+        num_props = len(self.gl_object.properties.prop_list)
+
+        ## table
+        table = gtk.Table(2, num_props, gtk.FALSE)
+        self.add(table)
+        table.set_border_width(5)
+        table.set_row_spacings(5)
+        table.set_col_spacings(10)
+        table_row = 0
+
+        ## boolean types first since the toggle widgets don't look good mixed
+        ## with the entry widgets
+        for prop in self.gl_object.properties.prop_list:
+            ## only handling boolean right now
+            if prop["type"]!="boolean":
+                continue
+
+            edit_widget = self.new_property_edit_widget(prop)
+            self.prop_widget_dict[prop["name"]] = edit_widget 
+
+            align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
+            align.add(edit_widget)
+
+            table.attach(align, 0, 2, table_row, table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+            table_row += 1
+
+        ## create and layout the editing widgets
+        for prop in self.gl_object.properties.prop_list:
+            ## boolean types were already handled
+            if prop["type"]=="boolean":
+                continue
+
+            label_widget = self.new_property_label_widget(prop)
+            table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+
+            edit_widget = self.new_property_edit_widget(prop)
+            self.prop_widget_dict[prop["name"]] = edit_widget 
+
+            table.attach(edit_widget, 1, 2, table_row, table_row+1, 0, 0, 0, 0)
+            table_row += 1
+
+        self.update_widgets()
+
+    def new_property_label_widget(self, prop):
+        """Returns the label widget for property editing.
+        """
+        label = gtk.Label(prop.get("desc", prop["name"]))
+        label.set_alignment(0, 1)
+        return label
+
+    def new_property_edit_widget(self, prop):
+        """Returns the editing widget for a property.
+        """
+        if prop["type"]=="boolean":
+            widget = gtk.CheckButton(prop.get("desc", prop["name"]))
+        elif prop["type"]=="float":
+            widget = gtk.Entry()
+        elif prop["type"]=="array(3)":
+            widget = gtk.Label()
+            widget.set_markup(markup_vector3(self.gl_object.properties[prop["name"]]))
+        elif prop["type"]=="array(3,3)":
+            widget = gtk.Label()
+            widget.set_markup(markup_matrix3(self.gl_object.properties[prop["name"]]))
+        else:
+            text = str(self.gl_object.properties[prop["name"]])
+            widget = gtk.Label(text)
+
+        return widget
+
+    def update_widgets(self):
+        """Read the edited values and apply them.
+        """
+        for prop in self.gl_object.properties.prop_list:
+            name   = prop["name"]
+            widget = self.prop_widget_dict[name]
+
+            if prop["type"]=="boolean":
+                if self.gl_object.properties[name]==True:
+                    widget.set_active(gtk.TRUE)
+                else:
+                    widget.set_active(gtk.FALSE)
+
+            elif prop["type"]=="float":
+                text = str(self.gl_object.properties[name])
+                widget.set_text(text)
+
+
+class GLPropertyEditDialog(gtk.Dialog):
+    def __init__(self, parent_window, gl_object):
+
+        gtk.Dialog.__init__(
+            self,
+            "Edit GLProperties",
+            parent_window,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
+
+        self.set_default_size(10, 10)
+        
+        self.set_resizable(gtk.FALSE)
+        self.connect("response", self.response_cb)
+
+        self.gl_prop_editor = GLPropertyEditor(gl_object)
+        self.vbox.pack_start(self.gl_prop_editor, gtk.FALSE, gtk.FALSE, 0)
+
+        self.add_button(gtk.STOCK_APPLY, 100)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+
+        self.show_all()
+
+    def response_cb(self, dialog, response_code):
+        if response_code==gtk.RESPONSE_CLOSE:
+            self.destroy()
+        if response_code==100:
+            self.gl_prop_editor.update()
+    
+
 class TLSDialog(gtk.Dialog):
     """Dialog for TLS analysis of a structure.
     """    
     def __init__(self, **args):
         self.main_window    = args["main_window"]
         self.struct_context = args["struct_context"]
+        self.sel_tls_group  = None
+        self.tls_group_list = []
 
         gtk.Dialog.__init__(
             self,
             "TLS Analysis: %s" % (str(self.struct_context.struct)),
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
-        
+
+        self.add_button("Open TLSIN", 100)
+        self.add_button("Graphics Properties", 101)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+
         self.set_default_size(400, 400)
         
         self.connect("destroy", self.destroy_cb)
-        self.connect("response", self.destroy_cb)
+        self.connect("response", self.response_cb)
 
         ## make the print box
         sw = gtk.ScrolledWindow()
@@ -250,64 +399,144 @@ class TLSDialog(gtk.Dialog):
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
-        self.store = gtk.ListStore(gobject.TYPE_STRING,
-                                   gobject.TYPE_STRING,
-                                   gobject.TYPE_STRING,
-                                   gobject.TYPE_STRING,
-                                   gobject.TYPE_STRING,
-                                   gobject.TYPE_STRING)
+        self.store = gtk.ListStore(
+            gobject.TYPE_BOOLEAN,
+            gobject.TYPE_STRING,
+            gobject.TYPE_STRING,
+            gobject.TYPE_STRING,
+            gobject.TYPE_STRING)
      
         treeview = gtk.TreeView(self.store)
         sw.add(treeview)
+        treeview.connect("row-activated", self.row_activated_cb)
         treeview.set_rules_hint(gtk.TRUE)
         treeview.set_search_column(0)
 
-        column = gtk.TreeViewColumn(
-            "TLS Group",
-            gtk.CellRendererText(),
-            text=0)
+        toggle_rend = gtk.CellRendererToggle()
+        toggle_rend.connect("toggled", self.view_toggled)
+        column = gtk.TreeViewColumn("Show", toggle_rend, active=0)
         treeview.append_column(column)
 
-        column = gtk.TreeViewColumn(
-            "T (A^2)",
-            gtk.CellRendererText(),
-            text=1)
+        column = gtk.TreeViewColumn("TLS Group", gtk.CellRendererText(), markup=1)
+        treeview.append_column(column)
+
+        column = gtk.TreeViewColumn("T (A^2)", gtk.CellRendererText(), markup=2)
         treeview.append_column(column)
     
-        column = gtk.TreeViewColumn(
-            "L (deg^2)",
-            gtk.CellRendererText(),
-            text=2)
+        column = gtk.TreeViewColumn("L (deg^2)", gtk.CellRendererText(), markup=3)
         treeview.append_column(column)
 
-        column = gtk.TreeViewColumn(
-            "S (A*deg)",
-            gtk.CellRendererText(),
-            text=3)
-        treeview.append_column(column)
-
-        column = gtk.TreeViewColumn(
-            "Mean Translation (A^2)",
-            gtk.CellRendererText(),
-            text=4)
-        treeview.append_column(column)
-
-        column = gtk.TreeViewColumn(
-            "Mean Libration (deg^2)",
-            gtk.CellRendererText(),
-            text=5)
+        column = gtk.TreeViewColumn("S (A*deg)", gtk.CellRendererText(), markup=4)
         treeview.append_column(column)
 
         self.show_all()
 
-    def destroy_cb(self, *args):
-        self.destroy()
+        self.load_PDB(self.struct_context.struct.path)
 
-    def load_tlsin(self):
-        """Load a TLS description from a REMAC/CCP4 TLSIN file.
-        """
-        pass
+    def response_cb(self, dialog, response_code):
+        if response_code==gtk.RESPONSE_CLOSE:
+            self.destroy()
+        if response_code==101 and self.sel_tls_group!=None:
+            prop_dialog = GLPropertyEditDialog(self, self.sel_tls_group.gl_tls)
+            prop_dialog.present()
+
+    def destroy_cb(self, *args):
+        self.clear_tls_groups()
+
+    def get_tls_group(self, path):
+        return self.tls_group_list[int(path)]
+
+    def row_activated_cb(self, tree_view, path, column):
+        self.sel_tls_group = self.get_tls_group(path[0])
+
+    def view_toggled(self, cell, path):
+        # get toggled iter
+        iter = self.store.get_iter((int(path),))
+        show_vis = self.store.get_value(iter, 0)
+        tls_group = self.get_tls_group(path)
     
+        # do something with the value
+        if show_vis==gtk.TRUE:
+            show_vis = gtk.FALSE
+            tls_group.gl_tls.update(visible=False)
+        else:
+            show_vis = gtk.TRUE
+            tls_group.gl_tls.update(visible=True)
+
+        self.main_window.struct_gui.gtkglviewer.queue_draw()
+
+        # set new value
+        self.store.set(iter, 0, show_vis)
+
+    def clear_tls_groups(self):
+        """Remove the current TLS groups, including destroying
+        the tls.gl_tls OpenGL renderer
+        """
+        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
+
+        for tls_group in self.tls_group_list:
+            gl_viewer.remove(tls_group.gl_tls)
+            del tls_group.gl_tls
+        
+        self.tls_group_list = []
+
+    def add_tls_group(self, tls_group):
+        """Adds the TLS group and creates tls.gl_tls OpenGL
+        renderer.
+        """
+        self.tls_group_list.append(tls_group)
+        
+        tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
+        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
+        gl_viewer.append(tls_group.gl_tls)
+
+        self.redraw_treeview()
+        
+    def load_PDB(self, path):
+        """Load TLS descriptions from PDB REMARK records.
+        """
+        self.clear_tls_groups()
+        
+        tls_file = TLSInfoList()
+        pdb_file = PDBFile()
+        pdb_file.load_file(path)
+        pdb_file.record_processor(tls_file)
+
+        for tls_info in tls_file:
+            tls_group = tls_info.make_tls_group(self.struct_context.struct)
+            tls_group.tls_info = tls_info
+            self.add_tls_group(tls_group)
+            
+    def load_TLSIN(self, path):
+        """Load TLS descriptions from a REMAC/CCP4 TLSIN file.
+        """
+        self.clear_tls_groups()
+
+        tls_file = TLSInfoList()
+        tls_file.load_refmac_tlsout_file(open(path, "r"))
+    
+        for tls_info in tls_file:
+            tls_group = tls_info.make_tls_group(self.struct_context.struct)
+            tls_group.tls_info = tls_info
+            self.add_tls_group(tls_group)
+
+    def markup_tls_name(self, tls_info):
+        listx = []
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_info.range_list:
+            listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
+        return "<small>"+string.join(listx, "\n")+"</small>"
+
+    def markup_tensor(self, tensor):
+        """Uses pango markup to make the presentation of the tenosr
+        look nice.
+        """
+        return "<small>%7.4f %7.4f %7.4f\n"\
+                      "%7.4f %7.4f %7.4f\n"\
+                      "%7.4f %7.4f %7.4f</small>" % (
+                   tensor[0,0], tensor[0,1], tensor[0,2],
+                   tensor[1,0], tensor[1,1], tensor[1,2],
+                   tensor[2,0], tensor[2,1], tensor[2,2])
+           
     def redraw_treeview(self):
         """Clear and redisplay the TLS group treeview list.
         """
@@ -316,26 +545,26 @@ class TLSDialog(gtk.Dialog):
         for tls in self.tls_group_list:
             iter = self.store.append()
 
-            calcs = tls.calc_COR()
-
-            trT = trace(tls.T)/3.0
-            trL = trace(tls.L * rad2deg2)/3.0
-            cor = calcs["COR"]
-            R   = tls.calc_R()
-            DP2 = tls.calc_adv_DP2uij()
+            if tls.gl_tls.properties["visible"]==True:
+                show_vis = gtk.TRUE
+            else:
+                show_vis = gtk.FALSE
 
             self.store.set(iter,
-                           0, tls.name,
-                           1, "%.3f/%.3f" % (R, DP2),
-                           2, "%.3f, %.3f, %.3f" % (cor[0], cor[1], cor[2]),
-                           3, "%.3f" % (trT),
-                           4, "%.3f" % (trL))
+                           0, show_vis,
+                           1, self.markup_tls_name(tls.tls_info),
+                           2, self.markup_tensor(tls.T),
+                           3, self.markup_tensor(tls.L*rad2deg2),
+                           4, self.markup_tensor(tls.S*rad2deg))
 
     def show_tls_group_animation(self, tls):
         """Show the TLS
         """
+        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
+
         tls.gl_tls = GLTLSGroup(tls_group = tls)
-        self.context.struct_gui.gtkglviewer.glviewer.append(tls.gl_tls)
+        glviewer.append(tls.gl_tls)
+
         gobject.timeout_add(25, self.timeout_cb, tls)
                 
     def timeout_cb(self, tls):
@@ -750,7 +979,7 @@ class MainWindow(object):
             update_cb        = self.update_cb,
             build_properties = ("sequence","bonds"))
 
-        struct.path = struct
+        struct.path = path
         
         gl_struct = self.struct_gui.gtkglviewer.append_struct(struct)
 

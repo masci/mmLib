@@ -90,26 +90,38 @@ class GLDrawList(object):
         self.properties = GLProperties()
         self.properties.add(
             { "name" :      "visible",
+              "desc":       "Visible",
+              "type":       "boolean",
               "default":    True,
               "action":     "redraw" })
         self.properties.add(
             { "name" :      "origin",
+              "desc":       "Origin",
+              "type":       "array(3)",
               "default":    zeros(3, Float),
               "action":     "redraw" })
         self.properties.add(
             { "name" :      "axes",
+              "desc":       "Rotation Axes",
+              "type":       "array(3,3)",
               "default":    identity(3),
               "action":     "redraw" })
         self.properties.add(
             { "name" :      "rot_x",
+              "desc":       "Degrees Rotation About X Axis",
+              "type":       "float",
               "default":    0.0,
               "action":     "redraw" })
         self.properties.add(
             { "name" :      "rot_y",
+              "desc":       "Degrees Rotation About Y Axis",
+              "type":       "float",
               "default":    0.0,
               "action":     "redraw" })
         self.properties.add(
             { "name" :      "rot_z",
+              "desc":       "Degrees Rotation About Z Axis",
+              "type":       "float",
               "default":    0.0,
               "action":     "redraw" })
 
@@ -201,22 +213,27 @@ class GLAxes(GLDrawList):
 
         self.properties.add(
             { "name":       "line_length",
+              "type":       "float",
               "default":    200.0,
               "action":     "recompile" })
         self.properties.add(
             { "name":       "line_width",
+              "type":       "float",
               "default":    10.0,
               "action":     "recompile" })
         self.properties.add(
             { "name":       "color_x",
+              "type":       "color",
               "default":    (1.0, 0.0, 0.0),
               "action":     "recompile" })
         self.properties.add(
             { "name":       "color_y",
+              "type":       "color",
               "default":    (0.0, 1.0, 0.0),
               "action":     "recompile" })
         self.properties.add(
             { "name":       "color_z",
+              "type":       "color",
               "default":    (0.0, 0.0, 1.0),
               "action":     "recompile" })
 
@@ -254,10 +271,12 @@ class GLUnitCell(GLDrawList):
 
         self.properties.add(
             { "name":       "line_width",
+              "type":       "float",
               "default":    2.0,
               "action":     "recompile" })
         self.properties.add(
             { "name":       "color",
+              "type":       "color",
               "default":    (1.0, 1.0, 1.0),
               "action":     "recompile" })
 
@@ -571,33 +590,47 @@ class GLTLSGroup(GLDrawList):
         GLDrawList.__init__(self)
 
         self.properties.add(
-            { "name":       "time",
-              "default":    0.0,
-              "action":     "redraw" })
+            { "name":        "time",
+              "desc":        "Simulation Time", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
         self.properties.add(
             { "name":       "line_width",
+              "desc":       "Line Width of Tensors",
+              "type":       "float",
               "default":    2.0,
               "action":     "recompile" })
         self.properties.add(
-            { "name":       "TLS_visible",
-              "default":    True,
-              "action":     "recompile" })
+            { "name":        "TLS_visible",
+              "desc":        "Show TLS Tensors",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "recompile" })
         self.properties.add(
-            { "name":       "T_color",
-              "default":    (0.0, 1.0, 0.0),
-              "action":     "recompile" })
+            { "name":        "T_color",
+              "desc":        "T Tensor Color",
+              "type":        "color",
+              "default":     (0.0, 1.0, 0.0),
+              "action":      "recompile" })
         self.properties.add(
             { "name":       "L_color",
+              "desc":       "L Tensor Color",
+              "type":       "color",
               "default":    (1.0, 0.0, 0.0),
               "action":     "recompile" })
         self.properties.add(
             { "name":       "S_color",
+              "desc":       "S Tensor Color",
+              "type":       "color",
               "default":    (0.0, 0.0, 1.0),
               "action":     "recompile" })
         self.properties.add(
-            { "name":       "CA_line_visible",
-              "default":    False,
-              "action":     "recompile" })
+            { "name":        "CA_line_visible",
+              "desc":        "Show Lines to C-Alpha Atoms",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
 
         ## TLS calculations 
         self.tls_group = args["tls_group"] 
