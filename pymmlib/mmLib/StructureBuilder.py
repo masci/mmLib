@@ -21,7 +21,7 @@ class StructureBuilder:
                  fil = None,
                  struct = None,
                  library = None,
-                 build_properties = ("bonds")):
+                 build_properties = ()):
 
         ## contstruct the Structure graph we are building
         self.struct = struct or Structure(library = library)
@@ -389,7 +389,7 @@ class StructureBuilder:
                 chain.calc_sequence()
 
         ## build bonds within structure
-        if "bonds" in self.build_properties:
+        if not "no_bonds" in self.build_properties:
             for frag in self.struct.iter_fragments():
                 frag.create_bonds()
 
@@ -1275,7 +1275,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         bond_map = {}
 
         for row in self.cif_data.get("struct_conn", []):
-
+            
             asym_id1 = row.get(self.ptnr1_asym_id)
             seq_id1 = row.get(self.ptnr1_seq_id)
             comp_id1 = row.get(self.ptnr1_comp_id)

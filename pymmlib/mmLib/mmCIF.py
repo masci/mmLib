@@ -621,21 +621,25 @@ class mmCIFFileWriter:
         self.fil.write(x+"\n")
 
     def write_mstring(self, mstring):
-        lw = MAX_LINE - 2
+        self.write(self.form_string(mstring))
 
-        self.write(";")
+    def form_mstring(self, mstring):
+        strx = ";"
+
+        lw = MAX_LINE - 2
 
         for x in mstring.split("\n"):
             if x == "":
-                self.writeln()
+                strx += "\n"
                 continue
             
             while len(x) > 0:
                 x1 = x[:lw]
                 x  = x[lw:]
-                self.writeln(x1)
+                strx += x1 + "\n"
 
-        self.writeln(";")
+        strx += ";\n"
+        return strx
 
     def fix(self, x):
         if type(x) != StringType:
@@ -709,9 +713,11 @@ class mmCIFFileWriter:
         vmax  = MAX_LINE - kmax - 1
 
         ## write out the keys and values
+        strx = ""
+        
         for col in cif_table.columns:
-            key = "_%s.%s" % (cif_table.name, col)
-            self.write(key.ljust(kmax))
+            strx = "_%s.%s" % (cif_table.name, col)
+            strx = strx.ljust(kmax)
 
             try:
                 x0 = row[col]
@@ -723,16 +729,19 @@ class mmCIFFileWriter:
 
             if dtype == "token":
                 if len(x) > vmax:
-                    self.writeln()
-                self.writeln(x)
+                    strx += "\n"
+                strx += x + "\n"
+                self.write(strx)
 
             elif dtype == "qstring":
                 if len(x) > vmax:
-                    self.writeln()
-                self.writeln("'%s'" % (x))
+                    strx += "\n"
+                strx += "'%s'\n" % (x)
+                self.write(strx)
 
             elif dtype == "mstring":
-                self.writeln()
+                strx += "\n"
+                self.write(strx)
                 self.write_mstring(x)
 
     def write_multi_row_table(self, cif_table):
@@ -813,18 +822,23 @@ class mmCIFFileWriter:
             wlist.append((col, dtype, lenx))
             
         ## write out the data
-        space = False
+        spacing = " " * self.SPACING
+        
+        add_space = False
+
+        strx = ""
+
         for row in cif_table:
             for (col, dtype, lenx) in wlist:
 
                 if col == None:
-                    space = False
-                    self.writeln()
+                    add_space = False
+                    strx += "\n"
                     continue
 
-                elif space == True:
-                    space = False
-                    self.write("  ")
+                elif add_space == True:
+                    add_space = False
+                    strx += spacing
 
 
                 if dtype == "token":
@@ -834,8 +848,9 @@ class mmCIFFileWriter:
                         x = "?"
 
                     x = x.ljust(lenx)
-                    self.write(x)
-                    space = True
+                    strx += x
+                    add_space = True
+
                     
                 elif dtype == "qstring":
                     try:
@@ -844,18 +859,29 @@ class mmCIFFileWriter:
                         x = "?".ljust(lenx)
 
                     x = x.ljust(lenx)
-                    self.write(x)
-                    space = True
+                    strx += x
+                    add_space = True
+
 
                 elif dtype == "mstring":
                     try:
-                        self.write_mstring(row[col])
+                        strx += self.form_mstring(row[col])
                     except KeyError:
-                        self.writeln("?")
-                    space = False
+                        strx += "?\n"
+                    add_space = False
 
-            space = False
-            self.writeln()
+
+            add_space = False
+            strx += "\n"
+
+            ## write out strx if it gets big to avoid using a lot of
+            ## memory
+            if len(strx) > 80:
+                self.write(strx)
+                strx = ""
+
+        ## write out the _loop section
+        self.write(strx)
 
 
 mmCIFStandardColumnsMap = {
@@ -951,6 +977,8 @@ class mmCIFFileBuilder:
 
         if not row0.has_key("id"):
             row0["id"] = "XXX"
+
+        self.cif_data.name = row0["id"]
 
     def add__entity(self):
         """Adds the entity table.  The entity names are faked here, since
