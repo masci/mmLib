@@ -6,6 +6,8 @@
 import string
 import types
 
+from FileIO import OpenFile
+
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -185,7 +187,7 @@ class mmCIFFile:
 
     def loadFile(self, fil):
         if type(fil) == types.StringType:
-            fil = open(fil, "r")
+            fil = OpenFile(fil, "r")
 
         for cif_data in mmCIFFileParser().parseFile(fil):
             self.addData(cif_data)
@@ -193,7 +195,7 @@ class mmCIFFile:
 
     def saveFile(self, fil):
         if type(fil) == types.StringType:
-            fil = open(fil, "r")
+            fil = OpenFile(fil, "r")
 
         mmCIFFileWriter().writeFile(fil, self._data_list)
 
@@ -249,7 +251,7 @@ class mmCIFDictionary(mmCIFFile):
 
     def load(self):
         if type(self._path) == types.StringType:
-            fil = open(self._path, "r")
+            fil = OpenFile(self._path, "r")
         else:
             fil = self._path
 

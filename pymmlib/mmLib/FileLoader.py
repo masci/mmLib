@@ -234,7 +234,7 @@ class mmCIFToStructureLoader:
         if resName in AminoAcidNames:
             return "amino acid residue"
 
-        elfi resName in NucleicAcidNames:
+        elif resName in NucleicAcidNames:
             return "nucleic acid residue"
 
         elif resName == "HOH":
@@ -740,7 +740,10 @@ class StructureToPDBSaver:
 
     def molecule_non_polymer(self, mol):
         ## get a chain ID for the molecule
-        chainID = self.available_chain_ids[0]
+        chainID = ""
+        if len(self.available_chain_ids):
+            chainID = self.available_chain_ids[0]
+            
         self.available_chain_ids = self.available_chain_ids[1:]
 
         for atm in mol.atomIterator():

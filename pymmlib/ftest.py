@@ -19,8 +19,13 @@ if __name__ == '__main__':
 
     mmCIFDirectory = "/home/jpaint/mmCIF"
 
+
+    go = 0
     for path in os.listdir(mmCIFDirectory):
-        path = os.path.join(mmCIFDirectory, path)
+        if path == "1a49.cif.gz": go = 1
+	if not go: continue
+	    
+	path = os.path.join(mmCIFDirectory, path)
 
 
         print "[SCANNING] ",path
