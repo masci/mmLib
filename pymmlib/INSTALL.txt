@@ -1,4 +1,4 @@
-﻿Python Macromolecular Library Installation Guide
+Python Macromolecular Library Installation Guide
 -------------------------------------------------------------------------------
 
 SUPPORTED OPERATING SYSTEMS::
@@ -15,8 +15,8 @@ dependencies it requires are installed.  The easiest way to do this is to
 use the dependency checking mode of the mmLib setup.py program.  Once mmLib
 has been downloaded, issue the following commands:
 
-# tar xzf pymmlib-0.8.tar.gz
-# cd pymmlib-0.8
+# tar xzf pymmlib-0.9.tar.gz
+# cd pymmlib-0.9
 # python setup.py checkdeps
 
 PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM
@@ -125,8 +125,8 @@ installation instructions for UNIX/LINUX.  If you don't have the prerequisite
 software, or you don't know what you have, read on.  If you want to read more
 about what is going on here, read the next section.
 
-# tar xzf pymmlib-0.8.tar.gz
-# cd pymmlib-0.8
+# tar xzf pymmlib-0.9.tar.gz
+# cd pymmlib-0.9
 # su (root passwd)
 # python setup.py build
 # python setup.py install
@@ -186,9 +186,9 @@ If you want to use mmLib without installing it as root, you can set the
 PYTHONPATH environment variable.  For example, to unpack mmLib and run the
 example programs and applications:
 
-# tar xzf pymmlib-0.8.tar.gz
-# export PYTHONPATH=/home/jpaint/pymmlib-0.7
-# cd pymmlib-0.7/tests
+# tar xzf pymmlib-0.9.tar.gz
+# export PYTHONPATH=/home/jpaint/pymmlib-0.9
+# cd pymmlib-0.9/tests
 # python mmlib_test.py /home/jpaint/myfile.[pdb|cif]
 
 
