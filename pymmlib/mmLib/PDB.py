@@ -28,7 +28,7 @@ class PDBRecord(dict):
         
         for (field, start, end, ftype, just, get_func) in self._field_list:
             assert len(ln) <= (start - 1)
-
+            
             ## add spaces to the end if necessary
             ln = ln.ljust(start - 1)
                 
@@ -99,6 +99,53 @@ class PDBRecord(dict):
             self[field] = s
 
 
+    def reccat(self, rec_list, field):
+        """Return the concatenation of field in all the records in rec_list.
+        """
+        if type(rec_list) != ListType:
+            rec_list = [rec_list]
+
+        retval = ""
+        for rec in rec_list:
+            x = rec.get(field)
+            if x != None:
+                retval += x
+        return retval
+
+    def reccat_list(self, rec_list, field, sep):
+        """Call reccat, then split the result by the seperator.
+        """
+        listx = self.reccat(rec_list, field).split(sep)
+        return [x.strip() for x in listx]
+
+    def reccat_tuplelist(self, rec_list, field, sep1, sep2):
+        """Call reccat_list with sep1 as the list seperator, then split
+        the items into tuples by sep2.
+        """
+        listx = []
+        for x in self.reccat_list(rec_list, field, sep1):
+            i = x.find(sep2)
+            if i == -1:
+                continue
+            key = x[:i].strip()
+            val = x[i+1:].strip()
+            listx.append((key, val))
+        return listx  
+
+    def reccat_dictlist(self, rec_list, field, master_key):
+        listx = []
+        dictx = {}
+        for (key, val) in self.reccat_tuplelist(rec_list, field, ";", ":"):
+            if key == master_key:
+                if dictx:
+                    listx.append(dictx)
+                    dictx = {}
+            dictx[key] = val
+        if dictx:
+            listx.append(dictx)
+        return listx
+
+    
 ###############################################################################
 ## BEGIN PDB RECORD DEFINITIONS
 
@@ -136,6 +183,41 @@ class OBSLTE(PDBRecord):
         ("rIdCode7", 62, 65, "string", "rjust", None),
         ("rIdCode8", 67, 70, "string", "rjust", None)]
 
+    def process(self, recs):
+        """Processes continued record list to a list of dictionary objects.
+        Each dictionary contains the data from one OBSLTE idCode.
+        """
+        obslte_list = []
+
+        for rec in recs:
+            idCode = rec.get("idCode", "")
+            obs = None
+
+            ## find any matching idCode 
+            for obsx in obslte_list:
+                if obsx.get("idCode") == idCode:
+                    obs = obsx
+                    break
+
+            ## if no entry exists, create new dict for idCode
+            if obs == None:
+                obs = {"idCode" : idCode}
+                self.obslte.append(obs)
+
+                repDate = rec.get("repDate")
+                if repDate:
+                    obs["repDate"] = repDate
+
+                obs["idCodes"] = []
+
+            ## get the idCodes
+            for i in range(1,9):
+                idCode = rec.get("rIdCode%d" % (i))
+                if idCode:
+                    obs["idCodes"].append(idCode)
+
+        return obslte_list
+    
 class TITLE(PDBRecord):
     """The TITLE record contains a title for the experiment or analysis that is
     represented in the entry. It should identify an entry in the PDB in the
@@ -146,6 +228,9 @@ class TITLE(PDBRecord):
         ("continuation", 9, 10, "string", "rjust", None),
         ("title", 11, 70, "string", "ljust", None)]
 
+    def process(self, recs):
+        return self.reccat(recs, "title")
+
 class CAVEAT(PDBRecord):
     """CAVEAT warns of severe errors in an entry. Use caution when using an
     entry containing this record.
@@ -155,6 +240,36 @@ class CAVEAT(PDBRecord):
         ("continuation", 9, 10, "string", "rjust", None),
         ("idCode", 12, 15, "string", "rjust", None),
         ("comment", 20, 70, "string", "ljust", None)]
+
+    def process(self, recs):
+        """Returns a list of dictionaries with keys idCode and comment.
+        """
+        cavet_list = []
+        for rec in recs:
+            idCode = rec.get("idCode")
+            if idCode == None:
+                continue
+
+            ## search for cavet entry with same idCode
+            cav = None
+            for cavx in cavet_list:
+                if cavx.get("idCode") == idCode:
+                    cav = cavx
+                    break
+
+            ## create new cavet dict if necessary
+            if cav == None:
+                cav = {"idCode" : idCode}
+                cavet_list.append(cav)
+
+            ## add comment
+            comment = rec.get("comment")
+            if comment != None:
+                if cav.has_key("comment"):
+                    cav["comment"] += comment
+                else:
+                    cav["comment"] = comment
+        return cavet_list
 
 class COMPND(PDBRecord):
     """The COMPND record describes the macromolecular contents of an entry.
@@ -171,6 +286,9 @@ class COMPND(PDBRecord):
         ("continuation", 9, 10, "string", "rjust", None),
         ("compound", 11, 70, "string", "ljust", None)]
 
+    def process(self, recs):
+        return self.reccat_dictlist(recs, "compound", "MOL_ID")
+
 class SOURCE(PDBRecord):
     """The SOURCE record specifies the biological and/or chemical source of
     each biological molecule in the entry. Sources are described by both the
@@ -182,6 +300,9 @@ class SOURCE(PDBRecord):
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
         ("srcName", 11, 70, "string", "ljust", None)]
+
+    def process(self, recs):
+        return self.reccat_dictlist(recs, "srcName", "MOL_ID")
 
 class KEYWDS(PDBRecord):
     """The KEYWDS record contains a set of terms relevant to the entry. Terms
@@ -195,6 +316,9 @@ class KEYWDS(PDBRecord):
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
         ("keywds", 11, 70, "string", "ljust", None)]
+
+    def process(self, recs):
+        return self.reccat_list(recs, "keywds", ",")
 
 class EXPDTA(PDBRecord):
     """The EXPDTA record presents information about the experiment.  The EXPDTA
@@ -213,6 +337,35 @@ class EXPDTA(PDBRecord):
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
         ("technique", 11, 70, "string", "ljust", None)]
+    _technique_list = [
+        "ELECTRON DIFFRACTION",
+        "FIBER DIFFRACTION",
+        "FLUORESCENCE TRANSFER",
+        "NEUTRON DIFFRACTION",
+        "NMR",
+        "THEORETICAL MODEL",
+        "X-RAY DIFFRACTION"]
+
+    def process(self, recs):
+        """Returns a list of 2-tuples: (technique, comment) where technique
+        is one of the accepted tequniques.
+        """
+        expdta_list = []
+
+        for item in self.reccat_list(recs, "technique", ";"):
+            tech = None
+            cmnt = None
+
+            for techx in self._technique_list:
+                if item.startswith(techx):
+                    tech = techx
+                    cmnt = item[len(techx):].strip() or None
+                    break
+
+            if tech != None:
+                expdta.append((tech, cmnt))
+
+        return expdta_list
 
 class AUTHOR(PDBRecord):
     """The AUTHOR record contains the names of the people responsible for the
@@ -222,6 +375,9 @@ class AUTHOR(PDBRecord):
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
         ("authorList", 11, 70, "string", "ljust", None)]
+
+    def process(self, recs):
+        return self.reccat_list(recs, "authorList", ",")
 
 class REVDAT(PDBRecord):
     """REVDAT records contain a history of the modifications made to an entry
@@ -806,7 +962,8 @@ class ANISOU(PDBRecord):
 class HETATM(ATOM):
     """The HETATM records present the atomic coordinate records for atoms
     within "non-standard" groups. These records are used for water
-    molecules and atoms presented in HET groups."""
+    molecules and atoms presented in HET groups.
+    """
     _name = "HETATM"
 
 class SIGATM(PDBRecord):
@@ -1052,9 +1209,6 @@ class PDBFile(list):
     list object, and contains a list of PDBRecord objects.
     Load, save, edit, and create PDB files with this class.
     """
-    def __init__(self):
-        list.__init__(self)
-
     def __setattr__(self, i, rec):
         assert isinstance(rec, PDBRecord)
         list.__setattr__(self, i, rec)
@@ -1073,7 +1227,7 @@ class PDBFile(list):
         fil = OpenFile(fil, "r")
         for ln in fil.readlines():
             ## find the record data element for the given line
-            ln    = ln.rstrip()
+            ln = ln.rstrip()
             rname = ln[:6].ljust(6)
             
             try:
@@ -1094,6 +1248,63 @@ class PDBFile(list):
         for pdb_record in self:
             fil.write(str(pdb_record) + "\n")
         fil.flush()
+
+    def record_processor(self, processor, filter_func = None):
+        """Iterates the PDB records in self, and searches for handling
+        methods in the processor object for reading the objects.  There
+        are several choices for methods names for the processor objects.
+        """
+        def call_processor(recs):
+            if type(recs) == ListType:
+                rec = recs[0]
+            else:
+                rec = recs
+
+            ## check filter function, if given, to determine if the record
+            ## should be processed
+            if filter_func and not filter_func(rec):
+                return
+
+            ## form method names to search for
+            name = rec._name.strip()
+            process = "process_%s" % (name)
+            preprocess = "preprocess_%s" % (name)
+
+            ## call process handler for records
+            if hasattr(processor, process):
+                getattr(processor, process)(recs)
+
+            ## call preprocessor and processor for records
+            if hasattr(rec, "process") and hasattr(processor, preprocess):
+                getattr(processor, preprocess)(getattr(rec, "process")(recs))
+
+        cont_list = []
+        for i in range(len(self)):
+            rec = self[i]
+            try:
+                nrec = self[i+1]
+            except IndexError:
+                nrec = None
+
+            if nrec and rec._name == nrec._name:
+                if nrec.has_key("continuation"):
+                    cont_list.append(rec)
+                else:
+                    call_processor(rec)
+            else:
+                if cont_list:
+                    if rec._name == cont_list[0]._name:
+                        cont_list.append(rec)
+                        call_processor(cont_list)
+                    else:
+                        call_processor(cont_list)
+                        call_processor(rec)
+                    cont_list = []
+                else:
+                    call_processor(rec)
+                
+        if cont_list:
+            call_processor(cont_list)
 
     def select_record_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the records in the

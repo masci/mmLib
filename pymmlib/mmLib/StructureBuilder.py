@@ -220,11 +220,12 @@ class StructureBuilder:
         ## returns the next available chain_id in self.struct
         ## XXX: it's possible to run out of chain IDs!
         def next_chain_id():
-            for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
+            for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
                 try:
                     self.struct[chain_id]
                 except KeyError:
                     return chain_id
+            print "NO MORE CHAIN NAMES"
                 
         chain = []
         chain_list = [chain]
@@ -377,6 +378,7 @@ class StructureBuilder:
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
+        print self.struct.cifdb
         pass
     
     def read_end(self):
@@ -493,120 +495,99 @@ class PDBStructureBuilder(StructureBuilder):
         self.pdb_file = PDB.PDBFile()
         self.pdb_file.load_file(fil)
 
+    def load_atom(self, atm_map):
+        """Override load_atom to maintain a serial_num->atm map.
+        """
+        if self.model_num != None:
+            atm_map["model_num"] = self.model_num
+        atm = StructureBuilder.load_atom(self, atm_map)
+        try:
+            serial = atm_map["serial"]
+        except KeyError:
+            pass
+        else:
+            self.atom_serial_map[serial] = atm
+
     def read_atoms(self):
         ## map PDB atom serial numbers to the structure atom classes
         self.atom_serial_map = {}
+        ## current atom map
+        self.atm_map = {}
+        ## current model number
+        self.model_num = None
 
-        ## state vars
-        atm_map = {}
-        model_num = None
+        def filter_func(rec):
+            if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.ANISOU) or \
+               isinstance(rec, PDB.SIGUIJ) or \
+               isinstance(rec, PDB.TER) or \
+               isinstance(rec, PDB.MODEL) or \
+               isinstance(rec, PDB.ENDMDL):
+                return True
+            return False
 
-        ## small function to load the atom and add it to the serial map
-        def load_atom(atm_map):
-            atm = self.load_atom(atm_map)
-            try:
-                self.atom_serial_map[atm_map["serial"]] = atm
-            except KeyError:
-                pass
-
-        ## loop over all records
-        for rec in self.pdb_file:
-
-            if isinstance(rec, PDB.ATOM):
-                if atm_map:
-                    load_atom(atm_map)
-
-                atm_map = {}
-                self.process_ATOM(atm_map, rec)
-                if model_num != None:
-                    atm_map["model_num"] = model_num
-
-            elif isinstance(rec, PDB.SIGATM):
-                self.process_SIGATM(atm_map, rec)
-
-            elif isinstance(rec, PDB.ANISOU):
-                self.process_ANISOU(atm_map, rec)
-
-            elif isinstance(rec, PDB.SIGUIJ):
-                self.process_SIGUIJ(atm_map, rec)
-
-            elif isinstance(rec, PDB.MODEL):
-                model_num = rec.get("serial")
-
-            elif isinstance(rec, PDB.ENDMDL):
-                model_num = None
+        ## process the coordinate records
+        self.pdb_file.record_processor(self, filter_func)
 
         ## load last atom read
-        if atm_map:
-            load_atom(atm_map)
-
+        if self.atm_map:
+            self.load_atom(self.atm_map)
+        del self.atm_map
+        
     def read_metadata(self):
-        ucell_map = {}
-        bond_map = {}
+        ## store extracted bond information
+        self.bond_map = {}
 
-        ## gather metadata
-        for rec in self.pdb_file:
-            if isinstance(rec, PDB.SITE):
-                self.process_SITE(rec)
+        def filter_func(rec):
+            if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.ANISOU) or \
+               isinstance(rec, PDB.SIGUIJ) or \
+               isinstance(rec, PDB.TER) or \
+               isinstance(rec, PDB.MODEL) or \
+               isinstance(rec, PDB.ENDMDL):
+                return False
+            return True
 
-            elif isinstance(rec, PDB.HELIX):
-                self.process_HELIX(rec)
+        ## process the non-coordinate records
+        self.pdb_file.record_processor(self, filter_func)
+        
+        ## load chemical bond informaton
+        self.load_bonds(self.bond_map)
+        del self.bond_map
 
-            elif isinstance(rec, PDB.CRYST1):
-                self.process_CRYST1(ucell_map, rec)
-
-            elif isinstance(rec, PDB.HEADER):
-                self.process_HEADER(rec)
-
-            elif isinstance(rec, PDB.TITLE):
-                self.process_TITLE(rec)
-
-            elif isinstance(rec, PDB.COMPND):
-                self.process_COMPND(rec)
-
-            elif isinstance(rec, PDB.AUTHOR):
-                self.process_AUTHOR(rec)
-
-            elif isinstance(rec, PDB.SSBOND):
-                self.process_SSBOND(bond_map, rec)
-                
-            elif isinstance(rec, PDB.LINK):
-                self.process_LINK(bond_map, rec)
-                
-            elif isinstance(rec, PDB.CONECT):
-                self.process_CONECT(bond_map, rec)
-
-        self.load_bonds(bond_map)
-        self.load_unit_cell(ucell_map)
-
-    def process_ATOM(self, atm_map, rec):
-        self.setmapi(rec, "serial", atm_map, "serial")
-        self.setmaps(rec, "name", atm_map, "name")
-        self.setmaps(rec, "element", atm_map, "element")
-        self.setmaps(rec, "altLoc", atm_map, "alt_loc")
-        self.setmaps(rec, "resName", atm_map, "res_name")
-        self.setmaps(rec, "chainID", atm_map, "chain_id")
+    def process_ATOM(self, rec):
+        ## load current atom since this record indicates a new atom
+        if self.atm_map:
+            self.load_atom(self.atm_map)
+            self.atm_map = {}
+        
+        self.setmapi(rec, "serial", self.atm_map, "serial")
+        self.setmaps(rec, "name", self.atm_map, "name")
+        self.setmaps(rec, "element", self.atm_map, "element")
+        self.setmaps(rec, "altLoc", self.atm_map, "alt_loc")
+        self.setmaps(rec, "resName", self.atm_map, "res_name")
+        self.setmaps(rec, "chainID", self.atm_map, "chain_id")
 
         fragment_id = self.get_fragment_id(rec)
         if fragment_id != None:
-            atm_map["fragment_id"] = fragment_id
+            self.atm_map["fragment_id"] = fragment_id
             
-        self.setmapf(rec, "x", atm_map, "x")
-        self.setmapf(rec, "y", atm_map, "y")
-        self.setmapf(rec, "z", atm_map, "z")
-        self.setmapf(rec, "occupancy", atm_map, "occupancy")
-        self.setmapf(rec, "tempFactor", atm_map, "temp_factor")
-        self.setmapf(rec, "charge", atm_map, "charge")
+        self.setmapf(rec, "x", self.atm_map, "x")
+        self.setmapf(rec, "y", self.atm_map, "y")
+        self.setmapf(rec, "z", self.atm_map, "z")
+        self.setmapf(rec, "occupancy", self.atm_map, "occupancy")
+        self.setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
+        self.setmapf(rec, "charge", self.atm_map, "charge")
 
         ## attempt to guess the element type from the name of atoms if
         ## the element field is not defined in the ATOM record
         try:
-            name = atm_map["name"]
+            name = self.atm_map["name"]
         except KeyError:
             return
 
         if name[0] == " ":
-            atm_map["name"] = name[1:]
+            self.atm_map["name"] = name[1:]
             for c in name:
                 if c in string.letters:
                     element = c
@@ -618,35 +599,42 @@ class PDBStructureBuilder(StructureBuilder):
         ## if a element field exists, check to see if it matches
         ## the derived element name
         try:
-            if atm_map["element"][0] != element[0]:
-                atm_map["element"] = element
+            if self.atm_map["element"][0] != element[0]:
+                self.atm_map["element"] = element
         except KeyError:
-            atm_map["element"] = element
+            self.atm_map["element"] = element
 
-    def process_SIGATM(self, atm_map, rec):
-        self.setmapf(rec, "sigX", atm_map, "sig_x")
-        self.setmapf(rec, "sigY", atm_map, "sig_y")
-        self.setmapf(rec, "sigZ", atm_map, "sig_z")
-        self.setmapf(rec, "sigOccupancy", atm_map, "sig_occupancy")
-        self.setmapf(rec, "sigTempFactor", atm_map, "sig_temp_factor")
+    def process_SIGATM(self, rec):
+        self.setmapf(rec, "sigX", self.atm_map, "sig_x")
+        self.setmapf(rec, "sigY", self.atm_map, "sig_y")
+        self.setmapf(rec, "sigZ", self.atm_map, "sig_z")
+        self.setmapf(rec, "sigOccupancy", self.atm_map, "sig_occupancy")
+        self.setmapf(rec, "sigTempFactor", self.atm_map, "sig_temp_factor")
 
-    def process_ANISOU(self, atm_map, rec):
-        atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
-        atm_map["U[2][2]"] = rec.get("u[1][1]", 0.0) / 10000.0
-        atm_map["U[3][3]"] = rec.get("u[2][2]", 0.0) / 10000.0
-        atm_map["U[1][2]"] = rec.get("u[0][1]", 0.0) / 10000.0
-        atm_map["U[1][3]"] = rec.get("u[0][2]", 0.0) / 10000.0
-        atm_map["U[2][3]"] = rec.get("u[1][2]", 0.0) / 10000.0
+    def process_ANISOU(self, rec):
+        self.atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
+        self.atm_map["U[2][2]"] = rec.get("u[1][1]", 0.0) / 10000.0
+        self.atm_map["U[3][3]"] = rec.get("u[2][2]", 0.0) / 10000.0
+        self.atm_map["U[1][2]"] = rec.get("u[0][1]", 0.0) / 10000.0
+        self.atm_map["U[1][3]"] = rec.get("u[0][2]", 0.0) / 10000.0
+        self.atm_map["U[2][3]"] = rec.get("u[1][2]", 0.0) / 10000.0
 
-    def process_SIGUIJ(self, atm_map, rec):
-        atm_map["sig_U[1][1]"] = rec.get("sig[1][1]", 0.0) / 10000.0
-        atm_map["sig_U[2][2]"] = rec.get("sig[2][2]", 0.0) / 10000.0
-        atm_map["sig_U[3][3]"] = rec.get("sig[3][3]", 0.0) / 10000.0
-        atm_map["sig_U[1][2]"] = rec.get("sig[1][2]", 0.0) / 10000.0
-        atm_map["sig_U[1][3]"] = rec.get("sig[1][3]", 0.0) / 10000.0
-        atm_map["sig_U[2][3]"] = rec.get("sig[2][3]", 0.0) / 10000.0
+    def process_SIGUIJ(self, rec):
+        self.atm_map["sig_U[1][1]"] = rec.get("sig[1][1]", 0.0) / 10000.0
+        self.atm_map["sig_U[2][2]"] = rec.get("sig[2][2]", 0.0) / 10000.0
+        self.atm_map["sig_U[3][3]"] = rec.get("sig[3][3]", 0.0) / 10000.0
+        self.atm_map["sig_U[1][2]"] = rec.get("sig[1][2]", 0.0) / 10000.0
+        self.atm_map["sig_U[1][3]"] = rec.get("sig[1][3]", 0.0) / 10000.0
+        self.atm_map["sig_U[2][3]"] = rec.get("sig[2][3]", 0.0) / 10000.0
 
-    def process_CRYST1(self, ucell_map, rec):
+    def process_MODEL(self, rec):
+        self.model_num = rec.get("serial")
+
+    def process_ENDMDL(self, rec):
+        self.model_num = None
+
+    def process_CRYST1(self, rec):
+        ucell_map = {}
         ucell_map["a"] = rec["a"]
         ucell_map["b"] = rec["b"]
         ucell_map["c"] = rec["c"]
@@ -655,6 +643,7 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["gamma"] = rec["gamma"]
         ucell_map["space_group"] = rec["sgroup"]
         ucell_map["z"] = rec.get("z", "")
+        self.load_unit_cell(ucell_map)
 
     def process_HELIX(self, rec):
         struct_conf = self.struct.cifdb.confirm_table("struct_conf")
@@ -705,7 +694,7 @@ class PDBStructureBuilder(StructureBuilder):
                 row["auth_seq_id"] = seq_id
             self.setmaps(rec, icode_key, row, "pdbx_auth_ins_code")
 
-    def process_SSBOND(self, bond_map, rec):
+    def process_SSBOND(self, rec):
         try:
             chain_id1 = rec["chainID1"]
             frag_id1 = self.get_fragment_id(rec,"seqNum1","iCode1")
@@ -727,17 +716,17 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             bnd = (atm2, atm1)
 
-        if not bond_map.has_key(bnd):
-            bond_map[bnd] = {}
+        if not self.bond_map.has_key(bnd):
+            self.bond_map[bnd] = {}
 
-        bond_map[bnd]["bond_type"] = "disulf"
+        self.bond_map[bnd]["bond_type"] = "disulf"
 
         if rec.has_key("sym1"):
-            bond_map[bnd]["symop1"] = rec["sym1"]
+            self.bond_map[bnd]["symop1"] = rec["sym1"]
         if rec.has_key("sym2"):
-            bond_map[bnd]["symop2"] = rec["sym2"]
+            self.bond_map[bnd]["symop2"] = rec["sym2"]
 
-    def process_LINK(self, bond_map, rec):
+    def process_LINK(self, rec):
         try:
             chain_id1 = rec["chainID1"]
             frag_id1 = self.get_fragment_id(rec,"resSeq1","iCode1")
@@ -765,22 +754,22 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             bnd = (atm2, atm1)
 
-        if not bond_map.has_key(bnd):
-            bond_map[bnd] = {}
+        if not self.bond_map.has_key(bnd):
+            self.bond_map[bnd] = {}
 
-        bond_map[bnd]["bond_type"] = "covale"
+        self.bond_map[bnd]["bond_type"] = "covale"
 
         if alt_loc1:
-            bond_map[bnd]["alt_loc1"] = alt_loc1
+            self.bond_map[bnd]["alt_loc1"] = alt_loc1
         if alt_loc2:
-            bond_map[bnd]["alt_loc2"] = alt_loc2
+            self.bond_map[bnd]["alt_loc2"] = alt_loc2
 
         if rec.has_key("sym1"):
-            bond_map[bnd]["symop1"] = rec["sym1"]
+            self.bond_map[bnd]["symop1"] = rec["sym1"]
         if rec.has_key("sym2"):
-            bond_map[bnd]["symop2"] = rec["sym2"]
+            self.bond_map[bnd]["symop2"] = rec["sym2"]
 
-    def process_HYDBND(self, bond_map, rec):
+    def process_HYDBND(self, rec):
         try:
             name = rec["name1"]
             alt_loc = rec.get("altLoc1", "")
@@ -811,17 +800,17 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             bnd = (atm2, atm1)
 
-        if not bond_map.has_key(bnd):
-            bond_map[bnd] = {}
+        if not self.bond_map.has_key(bnd):
+            self.bond_map[bnd] = {}
 
-        bond_map[bnd]["bond_type"] = "hydrog"
+        self.bond_map[bnd]["bond_type"] = "hydrog"
 
         if rec.has_key("sym1"):
-            bond_map[bnd]["symop1"] = rec["sym1"]
+            self.bond_map[bnd]["symop1"] = rec["sym1"]
         if rec.has_key("sym2"):
-            bond_map[bnd]["symop2"] = rec["sym2"]
+            self.bond_map[bnd]["symop2"] = rec["sym2"]
 
-    def process_S(self, bond_map, rec):
+    def process_S(self, rec):
         try:
             chain_id1 = rec["chainID1"]
             frag_id1 = self.get_fragment_id(rec,"resSeq1","iCode1")
@@ -849,22 +838,22 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             bnd = (atm2, atm1)
 
-        if not bond_map.has_key(bnd):
-            bond_map[bnd] = {}
+        if not self.bond_map.has_key(bnd):
+            self.bond_map[bnd] = {}
 
-        bond_map[bnd]["bond_type"] = "saltbr"
+        self.bond_map[bnd]["bond_type"] = "saltbr"
 
         if alt_loc1:
-            bond_map[bnd]["alt_loc1"] = alt_loc1
+            self.bond_map[bnd]["alt_loc1"] = alt_loc1
         if alt_loc2:
-            bond_map[bnd]["alt_loc2"] = alt_loc2
+            self.bond_map[bnd]["alt_loc2"] = alt_loc2
 
         if rec.has_key("sym1"):
-            bond_map[bnd]["symop1"] = rec["sym1"]
+            self.bond_map[bnd]["symop1"] = rec["sym1"]
         if rec.has_key("sym2"):
-            bond_map[bnd]["symop2"] = rec["sym2"]
+            self.bond_map[bnd]["symop2"] = rec["sym2"]
         
-    def process_CONECT(self, bond_map, rec):
+    def process_CONECT(self, rec):
         try:
             atm1 = self.atom_serial_map[rec["serial"]]
         except KeyError:
@@ -883,11 +872,11 @@ class PDBStructureBuilder(StructureBuilder):
                 else:
                     bnd = (atm2, atm1)
 
-                if not bond_map.has_key(bnd):
-                    bond_map[bnd] = {}
+                if not self.bond_map.has_key(bnd):
+                    self.bond_map[bnd] = {}
 
-                if not bond_map[bnd].has_key("bond_type"):
-                    bond_map[bnd]["bond_type"] = bond_type
+                if not self.bond_map[bnd].has_key("bond_type"):
+                    self.bond_map[bnd]["bond_type"] = bond_type
 
         helper_func(
             ["serialBond1","serialBond2",
@@ -906,23 +895,18 @@ class PDBStructureBuilder(StructureBuilder):
         self.struct.cifdb.set_single(
             "entry", "id", rec.get("idCode"))
 
-    def process_TITLE(self, rec):
-        try:
-            title = self.struct.cifdb["struct"]["title"] + rec.get("title")
-        except KeyError:
-            title = rec.get("title")
+    def preprocess_TITLE(self, title):
         self.struct.cifdb.set_single("struct", "title", title)
 
-    def process_COMPND(self, rec):
-        ## multi-record
-        return
+    def preprocess_COMPND(self, compnd_list):
+        pass
 
-    def process_AUTHOR(self, rec):
+    def preprocess_AUTHOR(self, author_list):
         audit_author = self.struct.cifdb.confirm_table("audit_author")
-        for author in rec.get("authorList", "").split(","):
+        for author in author_list:
             row = mmCIFRow()
             audit_author.append(row)
-            row["name"] = author.strip()
+            row["name"] = author
 
     def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
         fragment_id = None
