@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -203,7 +204,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         ## atom spheres
         for atm in atom_container.atomIterator():
             pos = atm.getPosition() - centroid
-            size = atm.el.atomic_number / 10.0
+            size = atm.el.atomic_number / 20.0
             self.sphere_list.append( ((pos[0], pos[1], pos[2]), size) )
 
         for bond in atom_container.bondIterator():
