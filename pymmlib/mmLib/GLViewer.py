@@ -881,7 +881,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":      "symmetry",
               "type":      "boolean",
-              "default":   True,
+              "default":   False,
               "action":    "recompile" })
 
     def gl_call_list(self):
@@ -974,8 +974,6 @@ class GLAtomList(GLDrawList):
         """
         if self.properties["atom_origin"]!=None:
             pos = pos - self.properties["atom_origin"]
-        #if self.symop!=None:
-        #    pos = self.symop(pos)
         return pos
                 
     def get_color(self, atm):
@@ -1065,7 +1063,6 @@ class GLAtomList(GLDrawList):
         ## if there are no bonds, draw a small cross-point 
         else:
             self.draw_cross(atm)
-            self.draw_cpk(atm)
 
     def draw_cross(self, atm):
         """Draws atom with a cross of lines.
@@ -1134,7 +1131,6 @@ class GLAtomList(GLDrawList):
         v2 = eigen_vectors[2] * v2_peak
 
         position = self.calc_position(atm.position)
-
 
         glDisable(GL_LIGHTING)
         glColor3f(*self.properties["U_color"])
@@ -1265,8 +1261,7 @@ class GLTLSGroup(GLDrawListContainer):
         self.tls_group.L = self.calcs["L'"].copy()
         self.tls_group.S = self.calcs["S'"].copy()
 
-        (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.L)
-        self.evalL = eigen_values
+        L_eigen_val, L_eigen_vec = eigenvectors(self.tls_group.L)
 
         ## add child GLAtomList
         self.gl_atom_list = GLTLSAtomList(
@@ -1282,6 +1277,8 @@ class GLTLSGroup(GLDrawListContainer):
 
         self.glo_link_child_property(
             "L_eigen_vec", "gl_atom_list", "L_eigen_vec")
+        self.glo_link_child_property(
+            "L_eigen_val", "gl_atom_list", "L_eigen_val")
         self.glo_link_child_property(
             "L1", "gl_atom_list", "L1")
         self.glo_link_child_property(
@@ -1305,7 +1302,8 @@ class GLTLSGroup(GLDrawListContainer):
         self.glo_add_update_callback(self.tls_update_cb)
         self.glo_init_properties(
             origin      = self.tls_group.origin,
-            L_eigen_vec = eigen_vectors,
+            L_eigen_vec = L_eigen_vec,
+            L_eigen_val = L_eigen_val,
             **args)
 
     def glo_install_properties(self):
@@ -1316,6 +1314,12 @@ class GLTLSGroup(GLDrawListContainer):
               "desc":        "L Eigen Vectors", 
               "type":        "array(3,3)",
               "default":     identity(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L_eigen_val",
+              "desc":        "L Eigen Values", 
+              "type":        "array(3)",
+              "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1",
@@ -1423,7 +1427,7 @@ class GLTLSGroup(GLDrawListContainer):
             { "name":        "symmetry",
               "desc":        "Show Symmetry Related Molecules",
               "type":        "boolean",
-              "default":     True,
+              "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "U_color",
@@ -1584,27 +1588,20 @@ class GLTLSGroup(GLDrawListContainer):
     def update_time(self):
         """Changes the time of the TLS group simulating harmonic motion.
         """
-        L1_peak = 1.414 * math.sqrt(abs(self.evalL[0]*rad2deg2))
-        L2_peak = 1.414 * math.sqrt(abs(self.evalL[1]*rad2deg2))
-        L3_peak = 1.414 * math.sqrt(abs(self.evalL[2]*rad2deg2))
-
         sin_tm = math.sin(3.0 * self.properties["time"] * 2 * math.pi)
 
+        ## L Tensor
+        L_eigen_val = self.properties["L_eigen_val"]
+        L_eigen_vec = self.properties["L_eigen_vec"]
+        
+        L1_peak = 1.414 * math.sqrt(abs(L_eigen_val[0] * rad2deg2))
+        L2_peak = 1.414 * math.sqrt(abs(L_eigen_val[1] * rad2deg2))
+        L3_peak = 1.414 * math.sqrt(abs(L_eigen_val[2] * rad2deg2))
+        
         L1 = L1_peak * sin_tm 
         L2 = L2_peak * sin_tm
         L3 = L3_peak * sin_tm
 
-##         Spc = self.calcs["S'^"] * rad2deg
-
-##         dSp = array(
-##             [ (Lx * Spc[0,0]) + (Ly * Spc[1,0]) + (Lz * Spc[2,0]),
-##               (Lx * Spc[0,1]) + (Ly * Spc[1,1]) + (Lz * Spc[2,1]),
-##               (Lx * Spc[0,2]) + (Ly * Spc[1,2]) + (Lz * Spc[2,2]) ])
-
-##         dS = matrixmultiply(transpose(self.axes), dSp)
-
-        dS = zeros(3)
-        origin = array(self.tls_group.origin + dS)
         self.glo_update_properties(L1=L1, L2=L2, L3=L3)
 
 
@@ -1762,7 +1759,7 @@ class GLChain(GLDrawListContainer):
         self.glo_add_property(
             { "name":      "U",
               "desc":      "Show U Axes",
-              "type":      "matrix(3,3)",
+              "type":      "boolean",
               "default":   False,
               "action":    "redraw" })
 
@@ -1807,7 +1804,10 @@ class GLStructure(GLDrawListContainer):
             self.glo_link_child_property(
                 "water_visible", str(chain), "water_visible")
             self.glo_link_child_property(
+                "U", str(chain), "U")
+            self.glo_link_child_property(
                 "color", str(chain), "color")
+
 
         ## init properties
         self.glo_init_properties(**args)
@@ -1997,10 +1997,8 @@ class GLViewer(GLObject):
         glEnable(GL_NORMALIZE)
         glEnable(GL_DEPTH_TEST)	
 
-
 	glDepthFunc(GL_LESS)
 	glEnable(GL_DEPTH_TEST)
-
 
         ## FOG
         #glEnable(GL_FOG)

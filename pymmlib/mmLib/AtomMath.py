@@ -12,6 +12,11 @@ def length(u):
     """
     return sqrt(dot(u, u))
 
+def normalize(u):
+    """Returns the normalized vector along u.
+    """
+    return u.copy()/length(u)
+
 def cross(u, v):
     """Cross product of u and v:
     Cross[u,v] = {-u3 v2 + u2 v3, u3 v1 - u1 v3, -u2 v1 + u1 v2}
@@ -19,6 +24,29 @@ def cross(u, v):
     return array([ u[1]*v[2] - u[2]*v[1],
                    u[2]*v[0] - u[0]*v[2],
                    u[0]*v[1] - u[1]*v[0] ])
+
+def rmatrix(alpha, beta, gamma):
+    """Return a rotation matrix based on the Euler angles alpha,
+    beta, and gamma in radians.
+    """
+    cosA = math.cos(alpha)
+    cosB = math.cos(beta)
+    cosG = math.cos(gamma)
+
+    sinA = math.sin(alpha)
+    sinB = math.sin(beta)
+    sinG = math.sin(gamma)
+    
+    return array(
+        [[cosB*cosG, cosG*sinA*sinB-cosA*sinG, cosA*cosG*sinB+sinA*sinG],
+         [cosB*sinG, cosA*cosG+sinA*sinB*sinG, cosA*sinB*sinG-cosG*sinA ],
+         [-sinB,     cosB*sinA,                cosA*cosB ]])
+
+def dmatrix(alpha, beta, gamma):
+    """Returns the displacment matrix based on rotation about Euler
+    angles alpha, beta, and gamma.
+    """
+    return rmatrix(alpha, beta, gamma) - identity(3)
 
 def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.

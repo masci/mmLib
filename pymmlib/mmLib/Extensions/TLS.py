@@ -618,6 +618,72 @@ class TLSGroup(AtomList):
                          [ C[10], C[11], C[12] ],
                          [ C[15], C[16], C[17] ] ])
 
+    def calc_Utls(self, T, L, S, r):
+        """Returns the calculated value for the anisotropic U tensor for
+        the given position.
+        """ 
+        x, y, z = r - self.origin
+
+        xx = x*x
+        yy = y*y
+        zz = z*z
+
+        xy = x*y
+        yz = y*z
+        xz = x*z
+
+        u11 = (         T[0,0]
+                + 2.0 * S[1,0] * z
+                +       L[1,1] * zz 
+                - 2.0 * S[2,0] * y 
+                - 2.0 * L[2,1] * yz
+                +       L[2,2] * yy )
+        u12 = (         T[1,0]
+                -       S[0,0] * z
+                - 2.0 * S[0,1] * y
+                +       S[1,1] * z
+                -       L[1,0] * zz
+                +       S[2,0] * x
+                -       S[2,1] * y
+                +       L[2,0] * yz
+                +       L[2,1] * xz
+                -       L[2,2] * xy )
+        u22 = (         T[1,1]
+                +       L[0,0] * zz
+                + 2.0 * S[2,1] * x
+                - 2.0 * L[2,0] * xz
+                +       L[2,2] * xx )
+        u13 = (         T[2,0]
+                +       S[0,0] * y
+                -       S[1,0] * x
+                +       S[1,2] * z
+                +       L[1,0] * yz
+                -       L[1,1] * xz
+                -       S[2,2] * y
+                -       L[2,0] * yy
+                +       L[2,1] * xy )
+        u23 = (         T[2,1]
+                +       S[0,1] * y
+                -       S[0,2] * z
+                -       L[0,0] * yz
+                -       S[1,1] * x
+                +       L[1,0] * xz
+                +       S[2,2] * x 
+                +       L[2,0] * xy
+                -       L[2,1] * xx )
+        u33 = (         T[2,2]
+                + 2.0 * S[0,2] * y
+                +       L[0,0] * yy
+                - 2.0 * S[1,2] * x
+                - 2.0 * L[1,0] * xy
+                +       L[1,1] * xx )
+
+        U = array ([[u11, u12, u13],
+                    [u12, u22, u23],
+                    [u13, u23, u33]])
+
+        return U
+
     def iter_atm_Ucalc(self):
         """Iterates all the atoms in the TLS object, returning the 2-tuple
         (atm, U) where U is the calcuated U value from the current values

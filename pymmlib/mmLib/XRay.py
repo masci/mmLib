@@ -2,7 +2,7 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Classes for representing biological macromolecules.
+"""Please ignore this for now -- this code doesn't do anything useful yet.
 """
 from __future__ import generators
 import cmath
@@ -14,7 +14,10 @@ from Structure import *
 
 
 class StructureFactors(object):
-
+    """Class for calculating crystallographic structure factors given
+    a Structure model.  Please ignore this for now -- this code doesn't
+    do anything useful yet.
+    """
     def __init__(self, struct):
         self.struct = struct
 
@@ -80,9 +83,6 @@ class StructureFactors(object):
         """
         """
         pass
-
-
-
 
 
 ## <testing>
