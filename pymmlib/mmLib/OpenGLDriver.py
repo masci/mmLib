@@ -155,9 +155,9 @@ class OpenGLDriver(object):
         
         ## light 1
         glDisable(GL_LIGHT1)
-        glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT1, GL_SPECULAR, specular)
-        glLightfv(GL_LIGHT1, GL_POSITION, (0.0, 0.0, 100.0, 0.0))
+        #glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuse)
+        #glLightfv(GL_LIGHT1, GL_SPECULAR, specular)
+        #glLightfv(GL_LIGHT1, GL_POSITION, (0.0, 0.0, 100.0, 0.0))
 
         ## ANTI-ALIASING
         if gl_line_smooth:

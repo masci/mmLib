@@ -24,18 +24,148 @@ from mmLib.Extensions.TLS import *
 ##
 ## constants
 ##
-GL_DOUBLE_BUFFER = False
+GL_DOUBLE_BUFFER = True
+
+CHAR_ASCENT = 119.05
+CHAR_DECENT = 33.3
+CHAR_HEIGHT = CHAR_ASCENT + CHAR_DECENT
+
 
 
 class Terminal(object):
     """Terminal window for controlling mmLib.Viewer options.
     """
-    def __init__(self, glut_viewer):
-        self.x      = 0
-        self.y      = 0
-        self.width  = 0
-        self.height = 0
+    def __init__(self):
+        self.visible = True
+        self.width   = 0
+        self.height  = 0
+        self.zplane  = 500.0
 
+        self.char_width = 80
+        
+        self.wind_border = 5.0
+        self.term_border = 1.0
+
+        self.lines = ["# "]
+
+    def keypress(self, key):
+        if key=='\r':
+            self.lines.insert(0, "# ")
+        else:
+            self.lines[0] += key
+
+    def opengl_render(self):
+        ## setup perspective matrix
+	glMatrixMode(GL_PROJECTION)
+ 	glLoadIdentity()
+
+        zplane = self.zplane
+        near   = self.zplane + 1.0
+        far    = self.zplane - 1.0
+
+        ratio = float(self.height) / float(self.width)
+        glwidth = 80.0
+        glheight = ratio * glwidth
+
+        glOrtho(0.0, glwidth, 0.0, glheight, -near, -far)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+        ## lighting
+        ambient_light = 0.5
+        diffuse_light = 1.0
+        specular_light = 1.0
+
+        ambient  = (ambient_light, ambient_light, ambient_light, 1.0)
+        diffuse  = (diffuse_light, diffuse_light, diffuse_light, 1.0)
+        specular = (specular_light, specular_light, specular_light, 1.0)
+
+        ## use model abient light
+        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient)
+
+        ## OpenGL Features
+        glEnable(GL_NORMALIZE)
+        glShadeModel(GL_SMOOTH)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+        glEnable(GL_LIGHTING)
+
+        ## alpha blending func
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        ## light 0
+        glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
+        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
+        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, -1.0, 0.0))
+
+        ## draw background
+        self.opengl_set_material_rgba(0.0, 1.0, 0.0, 0.5)
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+
+        #glNormal3f(0.0, 0.0, 1.0)
+        
+        glBegin(GL_QUADS)
+
+        #glNormal3f(-0.5, -0.5, 1.0)
+        glVertex3f(self.wind_border, self.wind_border, zplane)
+
+        #glNormal3f(0.5, -0.5, 1.0)
+        glVertex3f(glwidth-self.wind_border, self.wind_border, zplane)
+
+        #glNormal3f(0.5, 0.5, 1.0)
+        glVertex3f(glwidth-self.wind_border, glheight-self.wind_border, zplane)
+
+        #glNormal3f(-0.5, 0.5, 1.0)
+        glVertex3f(self.wind_border, glheight-self.wind_border, zplane)
+
+        glEnd()
+
+        ## draw text lines
+        glDisable(GL_LIGHTING)
+        glLineWidth(1.0)
+
+        ## compute a charactor scale which makes the height 1.0
+        char1_scale = 1.0 / CHAR_HEIGHT
+
+        i = 0
+        for ln in self.lines:
+            ypos = self.wind_border + self.term_border + 1.0*i
+            if ypos>(glheight - self.wind_border - self.term_border):
+                break
+
+            glPushMatrix()
+            glTranslatef(
+                self.wind_border + self.term_border,
+                self.wind_border + self.term_border + 1.0*i,
+                zplane + 0.1)
+
+            ## scale the chara
+            glScalef(char1_scale, char1_scale, char1_scale)
+            
+            for c in ln:
+                glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, ord(c))
+
+            glPopMatrix()
+
+            i += 1
+
+    def opengl_set_material_rgba(self, r, g, b, a):
+        """Creates a stock rendering material colored according to the given
+        RGB values.
+        """
+        glColor3f(r, g, b)
+
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, (r, g, b, a))
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
+
+        if a<1.0:
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 128.0)
+        else:
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
 
 class GLUT_Viewer(GLViewer):
     """The main OpenGL Viewer using GLUT.
@@ -54,6 +184,9 @@ class GLUT_Viewer(GLViewer):
         self.navigation_mode = None
         self.beginx          = 0
         self.beginy          = 0
+
+        ## terminal
+        self.term = Terminal()
 
         GLViewer.__init__(self)
         
@@ -86,7 +219,10 @@ class GLUT_Viewer(GLViewer):
 
     def glv_render(self):
         self.glv_render_one(self.opengl_driver)
-        
+
+        if self.term.visible:
+            self.term.opengl_render()
+            
         if GL_DOUBLE_BUFFER:
             glutSwapBuffers()
         else:
@@ -114,7 +250,6 @@ class GLUT_Viewer(GLViewer):
         glutMouseFunc(self.glut_mouse)
         glutMotionFunc(self.glut_motion)
         glutKeyboardFunc(self.glut_keyboard)
-        #glutSpecialFunc(self.glut_special) 
 
         self.glut_init_done = True
 
@@ -133,6 +268,9 @@ class GLUT_Viewer(GLViewer):
         """
         self.width  = width
         self.height = height
+
+        self.term.width  = width
+        self.term.height = height
 
         self.glv_resize(self.width, self.height)
 
@@ -185,18 +323,23 @@ class GLUT_Viewer(GLViewer):
     def glut_keyboard(self, key, x, y):
         """Keyboard press events.
         """
-        key = key.lower()
+        ## toggle terminal/command mode
+        if ord(key)==27:
+            self.term.visible = not self.term.visible
+            glutPostRedisplay()
+
+        ## terminal mode -- route keystrokes to the terminal
+        elif self.term.visible:
+            self.term.keypress(key)
+            glutPostRedisplay()
+
+        ## command mode
+        else:
+            key = key.lower()
         
-        ## quit
-        if key=="q":
-            sys.exit(0)
-
-        ## toggle fullscreen mode:
-        elif key=="o":
-            pass
-
-    def glut_special(self, key, x, y):
-        pass
+            ## quit
+            if key=="q":
+                sys.exit(0)
     
 
 def main():
