@@ -20,19 +20,7 @@
 <table width="75%">
  <tr><th><img src="intro.png"></th></tr>
  <tr><td>
-   <b>Figure 1</b>: TLSView visualization of protein
-   backbone atoms using thermal ellipsoids contoured
-   at the 50% isoprobability level.  Atoms from
-   several independent TLS groups are shown in different
-   colors.  This visualization uses two ellipsoids per
-   atom.  One opaque ellipsoid is derived from the reduced
-   translation tensor 
-   <var>T<sup>r</sup></var>, the minimum translational 
-   component of the TLS predicted anisotropic ADP for the
-   atom.  The larger transparent ellipsoid is derived
-   from the full TLS predicted ADP for the atom, 
-   <var>U<sup>TLS</sup></var>, which includes the additional
-   displacement from three TLS screw motions.
+   <b>Figure 1</b>: TLSView visualization of protein backbone atoms using thermal ellipsoids contoured at the 50% isoprobability level.  Atoms from several independent TLS groups are shown in different colors.  This visualization uses two ellipsoids per atom.  One opaque ellipsoid is derived from the reduced translation tensor <var>T<sup>r</sup></var>, the minimum translational component of the TLS predicted anisotropic ADP for the atom.  The larger transparent ellipsoid is derived from the full TLS predicted ADP for the atom, <var>U<sup>TLS</sup></var>, which includes the additional displacement from three TLS screw motions.
  </td></tr>
 </table>
 </center>
@@ -257,10 +245,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
   <td>3x1 vector/point</td>
   <td><acronym title="Angstroms">A</acronym></td>
   <td>
-   The arbitrary origin of calculations, meaning the origin
-   of the <var>T<sub>ij</sub></var>, <var>L<sub>ij</sub></var>,
-   and <var>S<sub>ij</sub></var> tensors.  The positions of the
-   atoms of a TLS group are calculated relative to this origin.
+   The arbitrary origin of calculations, meaning the origin of the <var>T</var>, <var>L</var>, and <var>S</var> tensors.  The positions of the atoms of a TLS group are calculated relative to this origin.
   </td>
  </tr>
 
@@ -291,12 +276,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
   <td>3x3 symmetric tensor</td>
   <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
   <td>
-   The translation tensor of the TLS model.
-   This tensor describes the anisotropic translational
-   component of the rigid body displacement
-   the same way the anisotropic atomic displacement
-   parameters in <var>U<sub>ij</sub></var> describes 
-   the translation displacement for a single atom.
+   The translation tensor of the TLS model.  This tensor describes the anisotropic translational component of the rigid body displacement the same way the anisotropic atomic displacement parameters in <var>U</var> describes the translation displacement for a single atom.
   </td>
  </tr>
 
@@ -309,9 +289,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
    <acronym title="Degrees">DEG</acronym><sup class=exponent>2</sup>
   </td>
   <td>
-   The libration tensor of the TLS model.
-   This describes the rotational component of
-   the rigid body displacement.
+   The libration tensor of the TLS model.  This describes the rotational component of the rigid body displacement.
   </td>
  </tr>
 
@@ -341,7 +319,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
   <td>3x1 vector/point</td>
   <td><acronym title="Angstroms">A</acronym></td>
   <td>
-   The center of reaction is a special origin which can be calculated using the <var>T<sub>ij</sub></var> <var>L<sub>ij</sub></var>, <var>S<sub>ij</sub></var>, and <var>oc<sub>i</sub></var> parameters of a existing TLS model.  The center of reaction is independent of the TLS model's origin of calculations, and once it has been calculated, the TLS tensors can be transformed to use the center of reaction as the origin of calculations for a new TLS model which predicts the same anisotropic ADPs as the TLS model it was derived from.
+   The center of reaction is a special origin which can be calculated using the <var>T</var> <var>L</var>, <var>S</var>, and <var>oc</var> parameters of a existing TLS model.  The center of reaction is independent of the TLS model's origin of calculations, and once it has been calculated, the TLS tensors can be transformed to use the center of reaction as the origin of calculations for a new TLS model which predicts the same anisotropic ADPs as the TLS model it was derived from.
   </td>
  </tr>
 
@@ -374,9 +352,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
    <acronym title="Degrees">DEG</acronym><sup class=exponent>2</sup>
   </td>
   <td>
-   The libration tensor after the shift to the center of reaction.
-   Shifting to a new origin has no effect on the components of
-   the libration tensor.
+   The libration tensor after the shift to the center of reaction.  Shifting to a new origin has no effect on the components of the libration tensor.
   </td>
  </tr>
 
@@ -389,10 +365,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
    (<acronym title="Angstroms">A</acronym>*<acronym title="Degrees">DEG</acronym>)
   </td>
   <td>
-   The skew tensor after the shift to the center of reaction.  The
-   center of reaction is the only possible origin which can make the
-   skew tensor symmetric, and is therefore a unique origin for a given
-   TLS model.
+   The skew tensor after the shift to the center of reaction.  The center of reaction is the only possible origin which can make the skew tensor symmetric, and is therefore a unique origin for a given TLS model.
   </td>
  </tr>
 
@@ -402,12 +375,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
   <td>3x1 vector</td>
   <td><acronym title="Angstroms">A</acronym></td>
   <td>
-   Three vectors <var>l={1,2,3}</var> corresponding 
-   to the three eigenvectors of <var>L<sup>cor</sup></var>.  
-   The eigenvectors
-   displaced from the <var>cor</var> by <var>rho</var>
-   are the position and orientation of the TLS 
-   canonical screw axes.
+   Three vectors <var>l={1,2,3}</var> corresponding to the three eigenvectors of <var>L<sup>cor</sup></var>.  The eigenvectors displaced from the <var>cor</var> by <var>rho</var> are the position and orientation of the TLS canonical screw axes.
   </td>
  </tr>
 
@@ -420,9 +388,7 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
    (<acronym title="Angstroms">A</acronym>/<acronym title="Degrees">DEG</acronym>)
   </td>
   <td>
-   Three screw pitches <var>l={1,2,3}</var> corresponding 
-   to the screw axes parallel to the three eigenvectors 
-   of <var>L<sup>cor</sup></var>.
+   Three screw pitches <var>l={1,2,3}</var> corresponding to the screw axes parallel to the three eigenvectors of <var>L<sup>cor</sup></var>.
   </td>
  </tr>
 </table>
@@ -444,8 +410,13 @@ tensors can be used to calculate three perpendicular non-intersecting screw disp
  </td></tr>
 </table>
 </center>
+
 <p>
-One option for visualizing a TLS model is to use the TLS calculated anisotropic ADPs to draw thermal ellipsoids or thermal axes.  Programs such as Raster3D and Ortep already do this.  The CCP4 project also has a program called TLSANL which will produce Molscript output to draw the non-intersecting screw axes as solid rods with a length proportional to the MSD rotational magnitude.  TLSView implements both of these visualizations with additional detail, and introduces two new visualizations for the screw displacements: a surface tracing the trajectory of the TLS group atoms, and oscillating computer animation of any of the supported visualizations.  These visualizations are shown in <b>Figure 3</b>.  The rotation of each screw displacement is calculated from the MSD and the trivariate Gaussian critical value table.  For the screw displacement surface visualization, the surface is drawn up to a displacement magnitude containing a percentage of the total distribution.  TLSView has one centeral control for selecting the isosurface probability magnitude so that all ellipsoids, surfaces, and animations will be drawn in proper proportions.
+The default TLS visualization used by TLSView places a <var>T<sup>r</sup></var> 50% isoprobability thermal ellipsoid at the TLS group center of reaction, and draws the three screw axes as rods.  Each TLS group gets its own unique color, and a backbone trace is drawn over the TLS group residues in that color.  The screw axes are drawn with a length proportional to their isoprobability magnitude.  The translational displacement along each screw axis is visualized at the center of each screw axis rod where the rod is thicker for a length equal to the translational displacement along the axis for the selected isoprobability displacement.  This may be obscured if the rod intersects the <var>T<sup>r</sup></var> ellipsoid.  If this is the case, the ellipsoid can be hidden through the TLSView interface.  
+</p>
+
+<p>
+One option for visualizing a TLS model is to use the TLS calculated anisotropic ADPs to draw thermal ellipsoids or thermal axes.    TLSView introduces two new visualizations for the screw displacements: a surface tracing the trajectory of the TLS group atoms, and oscillating computer animation of any of the supported visualizations.  These visualizations are shown in <b>Figure 3</b>.  The rotation of each screw displacement is calculated from the MSD and the trivariate Gaussian critical value table.  For the screw displacement surface visualization, the surface is drawn up to a displacement magnitude containing a percentage of the total distribution.  TLSView has one centeral control for selecting the isosurface probability magnitude so that all ellipsoids, surfaces, and animations will be drawn in proper proportions.
 </p>
 
 <p>

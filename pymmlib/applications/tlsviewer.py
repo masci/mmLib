@@ -431,7 +431,9 @@ class GLTLSGroup(GLDrawList):
             "symmetry", "gl_atom_list", "symmetry")
 
         self.glo_link_child_property(
-            "main_chain_visible", "gl_atom_list", "main_chain_visible")        
+            "main_chain_visible", "gl_atom_list", "main_chain_visible")
+        self.glo_link_child_property(
+            "oatm_visible", "gl_atom_list", "oatm_visible")
         self.glo_link_child_property(
             "side_chain_visible", "gl_atom_list", "side_chain_visible") 
         self.glo_link_child_property(
@@ -753,6 +755,13 @@ class GLTLSGroup(GLDrawList):
               "default":   True,
               "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
+            { "name":      "oatm_visible",
+              "desc":      "Show Main Chain Carbonyl Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
             { "name":      "side_chain_visible",
               "desc":      "Show Side Chain Atoms",
               "catagory":  "Show/Hide",
@@ -847,14 +856,14 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile_surface" })
         self.glo_add_property(
             { "name":        "L2_visible",
-              "desc":        "Show Screw L1 Displacement Surface", 
+              "desc":        "Show Screw L2 Displacement Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile_surface" })
         self.glo_add_property(
             { "name":        "L3_visible",
-              "desc":        "Show Screw L1 Displacement Surface",
+              "desc":        "Show Screw L3 Displacement Surface",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -891,6 +900,13 @@ class GLTLSGroup(GLDrawList):
               "type":       "float",
               "default":    1.0,
               "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":       "L_axis_scale",
+              "desc":       "Scale Screw Axis Length",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    5.00,
+              "action":     "recompile_tensors" })        
         self.glo_add_property(
             { "name":       "L_axis_radius",
               "desc":       "Screw Axes Radius",
@@ -1101,6 +1117,8 @@ class GLTLSGroup(GLDrawList):
                           self.properties["adp_prob"])
 
         ## L: units (DEG^2)
+        L_scale = self.properties["L_axis_scale"]
+        
         for Lx_eigen_val, Lx_eigen_vec, Lx_rho, Lx_pitch in [
             ("L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
             ("L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
@@ -1116,7 +1134,7 @@ class GLTLSGroup(GLDrawList):
 
             C = GAUSS3C[self.properties["adp_prob"]]
             
-            L_rot = C * math.sqrt(L_eigen_val)
+            L_rot = C * (L_scale * math.sqrt(L_eigen_val))
             L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
@@ -1328,6 +1346,13 @@ class GLTLSChain(GLDrawList):
               "default":   True,
               "action":    "" })
         self.glo_add_property(
+            { "name":      "oatm_visible",
+              "desc":      "Show Main Chain Carbonyl Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
             { "name":      "side_chain_visible",
               "desc":      "Show Side Chain Atoms",
               "catagory":  "Show/Hide",
@@ -1499,7 +1524,9 @@ class GLTLSChain(GLDrawList):
             "symmetry", child_id, "symmetry")        
 
         self.glo_link_child_property(
-            "main_chain_visible", child_id, "main_chain_visible")        
+            "main_chain_visible", child_id, "main_chain_visible")
+        self.glo_link_child_property(
+            "oatm_visible", child_id, "oatm_visible")
         self.glo_link_child_property(
             "side_chain_visible", child_id, "side_chain_visible") 
         self.glo_link_child_property(
@@ -2643,6 +2670,11 @@ class TLSDialog(gtk.Dialog):
             atm0 = tls_group[0]
         except IndexError:
             return
+
+        ## if the TLS group is NULL, then perform a LSQ fit of it
+        if tls_group.is_null():
+           # tls_group.origin = tls_group.calc_centroid()
+            tls_group.calc_TLS_least_squares_fit()
 
         ## set the tls group color starting from color 2, unique
         ## for each chain
