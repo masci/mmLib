@@ -331,9 +331,10 @@ class Structure(object):
         frag.add_atom(atom)
 
     def remove_atom(self, atom):
+        """Removes a Atom.
+        """
         assert isinstance(atom, Atom)
         raise FinishMe()
-
 
     def get_structure(self):
         """Returns self.
@@ -348,6 +349,11 @@ class Structure(object):
         except KeyError:
             return None
 
+    def get_default_model(self):
+        """Returns the default Model object.
+        """
+        return self.default_model
+    
     def set_model(self, model_id):
         """Sets the default Model for the Structure to model_id.  Returns
         False if a Model with the proper model_id does
@@ -358,6 +364,11 @@ class Structure(object):
         except KeyError:
             return False
         return False
+
+    def get_default_alt_loc(self):
+        """Returns the default alt_loc string.
+        """
+        return self.default_alt_loc
 
     def set_alt_loc(self, alt_loc):
         """Sets the default alt_loc for the Stucture.
@@ -391,7 +402,7 @@ class Structure(object):
         return n
 
     def iter_fragments(self):
-        """Iterates over all Fragment objects in the current Model/Chain.
+        """Iterates over all Fragment objects in the default Model.
         The iteration is performed in order according the the parent
         Chain's chain_id, and the Fragment's positioin within the chain.
         """
@@ -400,7 +411,7 @@ class Structure(object):
                 yield frag
 
     def count_fragments(self):
-        """Counts all Fragment objects in the current Model/Chain.
+        """Counts all Fragment objects in the default Model.
         """
         n = 0
         for chain in self.iter_fragments():
@@ -415,6 +426,14 @@ class Structure(object):
             for aa in chain.iter_amino_acids():
                 yield aa
 
+    def count_amino_acids(self):
+        """Counts all AminoAcidResidue objects in the default Model.
+        """
+        n = 0
+        for aa in self.iter_amino_acids():
+            n += 1
+        return n
+    
     def iter_nucleic_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclas NucleicAcidResidue.
@@ -423,8 +442,16 @@ class Structure(object):
             for aa in chain.iter_nucleic_acids():
                 yield aa
 
+    def count_nucleic_acids(self):
+        """Counts all NucleicAcidResidue objects in the default Model.
+        """
+        n = 0
+        for aa in self.iter_nucleic_acids():
+            n += 1
+        return n
+
     def iter_atoms(self):
-        """Iterates over all Atom objects in the current Model, using the
+        """Iterates over all Atom objects in the default Model, using the
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
@@ -432,6 +459,15 @@ class Structure(object):
             for atm in chain.iter_atoms():
                 yield atm
 
+    def count_atoms(self):
+        """Counts all Atom objects in the default Model using the
+        default alt_loc.
+        """
+        n = 0
+        for atm in self.iter_atoms():
+            n += 1
+        return n
+                
     def iter_all_atoms(self):
         """Iterates over all Atom objects in the Structure.  The iteration
         is performed according to common PDB ordering rules, over all Models
@@ -441,6 +477,14 @@ class Structure(object):
             for frag in model.iter_fragments():
                 for atm in frag.iter_all_atoms():
                     yield atm
+
+    def count_all_atoms(self):
+        """Counts all atoms in the default Model using the default alt_loc.
+        """
+        n = 0
+        for atm in self.iter_all_atoms():
+            n += 1
+        return n
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -455,13 +499,22 @@ class Structure(object):
                 yield bond
                 visited[bond] = True
 
+    def count_bonds(self):
+        """Counts all Bond objects using the default Model and default
+        alt_loc.
+        """
+        n = 0
+        for atm in self.iter_bonds():
+            n += 1
+        return n
+
     def alt_loc_list(self):
         """Return the unique list of Atom alternate location IDs found in
         the Structure.
         """
         al_list = []
         for atm in self.iter_all_atoms():
-            if atm.alt_loc != "" and atm.alt_loc not in al_list:
+            if atm.alt_loc!="" and atm.alt_loc not in al_list:
                 al_list.append(atm.alt_loc)
         return al_list
 
@@ -752,6 +805,11 @@ class Model(object):
         """
         return iter(self)
 
+    def count_chains(self):
+        """Counts all Chain objects.
+        """
+        return len(self.chain_list)
+
     def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according the the parent Chain's chain_id, and the
@@ -761,6 +819,14 @@ class Model(object):
             for frag in chain.iter_fragments():
                 yield frag
 
+    def count_fragments(self):
+        """Counts all Fragment objects.
+        """
+        n = 0
+        for frag in self.iter_fragments():
+            n += 1
+        return n
+
     def iter_amino_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
@@ -769,6 +835,14 @@ class Model(object):
             for aa in chain.iter_amino_acids():
                 yield aa
 
+    def count_amino_acids(self):
+        """Counts all AminoAcidResidue objects.
+        """
+        n = 0
+        for frag in self.iter_amino_acids():
+            n += 1
+        return n
+
     def iter_nucleic_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclas NucleicAcidResidue.
@@ -776,6 +850,14 @@ class Model(object):
         for chain in self.iter_chains():
             for aa in chain.iter_nucleic_acids():
                 yield aa
+
+    def count_nucleic_acids(self):
+        """Counts all NucleicAcidResidue objects.
+        """
+        n = 0
+        for frag in self.iter_nucleic_acids():
+            n += 1
+        return n
 
     def iter_atoms(self):
         """Iterates over all Atom objects.  The iteration is preformed in
@@ -786,12 +868,28 @@ class Model(object):
             for atm in chain.iter_atoms():
                 yield atm
 
+    def count_atoms(self):
+        """Counts all Atom objects in the Structure's default alt_loc.
+        """
+        n = 0
+        for atm in self.iter_atoms():
+            n += 1
+        return n
+
     def iter_all_atoms(self):
         """
         """
         for chain in self.iter_chains():
             for atm in chain.iter_all_atoms():
                 yield atm
+
+    def count_all_atoms(self):
+        """Counts all Atom objects.
+        """
+        n = 0
+        for atm in self.iter_all_atoms():
+            n += 1
+        return n
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -805,6 +903,14 @@ class Model(object):
                     continue
                 yield bond
                 visited[bond] = True
+
+    def count_bonds(self):
+        """Counts all Bond objects.
+        """
+        n = 0
+        for bond in self.iter_bonds():
+            n += 1
+        return n
 
 
 class Sequence(list):

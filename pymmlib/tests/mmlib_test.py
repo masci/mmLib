@@ -238,6 +238,14 @@ def model_test(model, stats):
         assert atm.get_model()==model
         assert atm.get_structure()==model.get_structure()
 
+    model.count_chains()
+    model.count_fragments()
+    model.count_amino_acids()
+    model.count_nucleic_acids()
+    model.count_atoms()
+    model.count_all_atoms()
+    model.count_bonds()
+
     ## test AlphaHelix
     for helix in model.iter_alpha_helicies():
         assert isinstance(helix, AlphaHelix)
@@ -313,9 +321,10 @@ def struct_test(struct, stats):
     ## make sure the default alt_loc was used when constructing the
     ## structure
     for atm in struct.iter_atoms():
-        assert atm.alt_loc == "" or atm.alt_loc == struct.default_alt_loc
+        assert atm.alt_loc=="" or atm.alt_loc==struct.default_alt_loc
 
-    old_model = struct.model
+    old_model = struct.get_default_model()
+    
     for model in struct.iter_models():
         struct.set_model(model)
         assert model in struct
@@ -358,6 +367,15 @@ def struct_test(struct, stats):
             for atm in struct.iter_atoms():
                 assert atm.alt_loc == "" or atm.alt_loc == alt_loc
         struct.set_alt_loc(old_alt_loc)
+
+        struct.count_models()
+        struct.count_chains()
+        struct.count_fragments()
+        struct.count_amino_acids()
+        struct.count_nucleic_acids()
+        struct.count_atoms()
+        struct.count_all_atoms()
+        struct.count_bonds()
 
     struct.set_model(old_model)
     

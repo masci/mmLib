@@ -1169,10 +1169,10 @@ class PDBFileBuilder(object):
         """
         if len(self.struct.model_list) > 1:
             ## case 1: multiple models
-            orig_model = self.struct.model
+            orig_model = self.struct.default_model
             
             for model in self.struct.iter_models():
-                self.struct.model = model
+                self.struct.default_model = model
 
                 model_rec = MODEL()
                 self.pdb_file.append(model_rec)
@@ -1183,7 +1183,7 @@ class PDBFileBuilder(object):
                 endmdl = ENDMDL()
                 self.pdb_file.append(endmdl)
 
-            self.struct.model = orig_model
+            self.struct.default_model = orig_model
 
         else:
             ## case 2: single model
