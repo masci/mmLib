@@ -762,13 +762,21 @@ pdb_read(PyObject *self, PyObject *args)
       in_buff[ibuf] = '\0';
       ibuf--;
     }
-    if (ibuf < 0)
+    if (ibuf < 0) {
       continue;
+    }
+
+    if (ibuf < 5) {
+      n = ibuf + 1;
+    } else {
+      n = 6;
+    }
     
     /* find the index in  */
     for (irec = 0; pdb_record_defs[irec].name != NULL; irec++) {      
-      if (strncmp(pdb_record_defs[irec].name, in_buff, 6) == 0)
+      if (strncmp(pdb_record_defs[irec].name, in_buff, n) == 0) {
 	break;
+      }
     }
     if (pdb_record_defs[irec].name == NULL) {
       continue;
@@ -793,15 +801,17 @@ pdb_read(PyObject *self, PyObject *args)
       n = pdb_record_defs[irec].fields[ifie].iend   - i;
       
       /* stop reading at the end of the buffer */
-      if (i > ibuf) 
+      if (i > ibuf) {
 	break;
-      
+      }      
+
       /* reduce the length of the field if the field definition
        * extends beyond the end of the in_buff
        */
-      if (i+n-1 > ibuf)
+      if (i+n-1 > ibuf) {
 	n = ibuf - i + 1;
- 
+      }
+
       switch (pdb_record_defs[irec].fields[ifie].type) {
 
       case PDB_FIELD_TYPE_STRING:

@@ -23,33 +23,49 @@ def read_pdb(path):
     records = pdbmodule.read(path)
     sec     = time.time() - sec
 
-    if records != None:
-        print "%s: %d records in %.2f seconds" % (
-            path, len(records), sec)
-    else:
-        print "%s: NO RECORDS" % (path)
+
+    ## collect some statistics from the PDB records
+    stats = {}
+    stats["time"] = sec
 
     for rec in records:
-        if rec["RECORD"] == "REMARK":
+        rec_type = rec["RECORD"]
+        
+        if rec_type == "REMARK":
             try:
                 text = rec["text"]
             except KeyError:
-                pass
-            else:
-                if text.find("RESOLUTION RANGE HIGH") == 1:
-                    print text
+                continue
+
+            if text.find("RESOLUTION RANGE HIGH") == 1:
+                try:
+                    stats["res"] = float(text[33:])
+                except ValueError:
+                    pass
+
+        elif rec_type == "ATOM  " or rec_type == "HETATM":
+            try:
+                stats["atoms"] += 1
+            except KeyError:
+                stats["atoms"] = 1
+
+        elif rec_type == "ANISOU":
+            try:
+                stats["anisou"] += 1
+            except KeyError:
+                stats["anisou"] = 1
+
+    return stats
 
 
 if __name__ == "__main__":
-
     try:
         path = sys.argv[1]
     except IndexError:
         sys.exit(1)
 
     i = 0
-
     for pathx in my_walk(path):
         i += 1
-        print str(i)+": ",
-        read_pdb(pathx)
+        stats = read_pdb(pathx)
+        print "%d:%s:%s" % (i, pathx, stats)
