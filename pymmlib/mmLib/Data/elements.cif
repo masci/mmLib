@@ -5,7 +5,7 @@ _element.name                  Hydrogen
 _element.number                1
 _element.atomic_weight         1.007940
 _element.van_der_walls_radius  1.200000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -41,7 +41,7 @@ _element.name                  Helium
 _element.number                2
 _element.atomic_weight         4.002602
 _element.van_der_walls_radius  1.400000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -70,7 +70,7 @@ _element.name                  Lithium
 _element.number                3
 _element.atomic_weight         6.941000
 _element.van_der_walls_radius  1.820000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -106,7 +106,7 @@ _element.name                  Beryllium
 _element.number                4
 _element.atomic_weight         9.012182
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -142,7 +142,7 @@ _element.name                  Boron
 _element.number                5
 _element.atomic_weight         10.811000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -171,7 +171,7 @@ _element.name                  Carbon
 _element.number                6
 _element.atomic_weight         12.010700
 _element.van_der_walls_radius  1.700000
-_element.color_rgb             #FFFF00
+_element.color_rgb             '#FFFF00'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -200,7 +200,7 @@ _element.name                  Nitrogen
 _element.number                7
 _element.atomic_weight         14.006700
 _element.van_der_walls_radius  1.550000
-_element.color_rgb             #0000FF
+_element.color_rgb             '#0000FF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -229,7 +229,7 @@ _element.name                  Oxygen
 _element.number                8
 _element.atomic_weight         15.999400
 _element.van_der_walls_radius  1.520000
-_element.color_rgb             #FF0000
+_element.color_rgb             '#FF0000'
 #
 loop_
 _scattering_factors.wavelength
@@ -265,7 +265,7 @@ _element.name                  Fluorine
 _element.number                9
 _element.atomic_weight         18.998403
 _element.van_der_walls_radius  1.470000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -301,7 +301,7 @@ _element.name                  Neon
 _element.number                10
 _element.atomic_weight         20.179700
 _element.van_der_walls_radius  1.540000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -330,7 +330,7 @@ _element.name                  Sodium
 _element.number                11
 _element.atomic_weight         22.989770
 _element.van_der_walls_radius  2.270000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -366,7 +366,7 @@ _element.name                  Magnesium
 _element.number                12
 _element.atomic_weight         24.305000
 _element.van_der_walls_radius  1.730000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -402,7 +402,7 @@ _element.name                  Aluminium
 _element.number                13
 _element.atomic_weight         26.981538
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -438,7 +438,7 @@ _element.name                  Silicon
 _element.number                14
 _element.atomic_weight         28.085500
 _element.van_der_walls_radius  2.100000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -474,7 +474,7 @@ _element.name                  Phosphorus
 _element.number                15
 _element.atomic_weight         30.973761
 _element.van_der_walls_radius  1.800000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -503,7 +503,7 @@ _element.name                  Sulfur
 _element.number                16
 _element.atomic_weight         32.065000
 _element.van_der_walls_radius  1.800000
-_element.color_rgb             #00FF00
+_element.color_rgb             '#00FF00'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -532,7 +532,7 @@ _element.name                  Chlorine
 _element.number                17
 _element.atomic_weight         35.453000
 _element.van_der_walls_radius  1.750000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -568,7 +568,7 @@ _element.name                  Argon
 _element.number                18
 _element.atomic_weight         39.948000
 _element.van_der_walls_radius  1.880000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -597,7 +597,7 @@ _element.name                  Potassium
 _element.number                19
 _element.atomic_weight         39.098300
 _element.van_der_walls_radius  2.750000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -633,7 +633,7 @@ _element.name                  Calcium
 _element.number                20
 _element.atomic_weight         40.078000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -669,7 +669,7 @@ _element.name                  Scandium
 _element.number                21
 _element.atomic_weight         44.955910
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -705,7 +705,7 @@ _element.name                  Titanium
 _element.number                22
 _element.atomic_weight         47.867000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -749,7 +749,7 @@ _element.name                  Vanadium
 _element.number                23
 _element.atomic_weight         50.941500
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -793,7 +793,7 @@ _element.name                  Chromium
 _element.number                24
 _element.atomic_weight         51.996100
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -833,7 +833,7 @@ _element.name                  Manganese
 _element.number                25
 _element.atomic_weight         54.938049
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -877,7 +877,7 @@ _element.name                  Iron
 _element.number                26
 _element.atomic_weight         55.845000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -917,7 +917,7 @@ _element.name                  Cobalt
 _element.number                27
 _element.atomic_weight         58.933200
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -957,7 +957,7 @@ _element.name                  Nickel
 _element.number                28
 _element.atomic_weight         58.693400
 _element.van_der_walls_radius  1.630000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -997,7 +997,7 @@ _element.name                  Copper
 _element.number                29
 _element.atomic_weight         63.546000
 _element.van_der_walls_radius  1.400000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1037,7 +1037,7 @@ _element.name                  Zinc
 _element.number                30
 _element.atomic_weight         65.409000
 _element.van_der_walls_radius  1.390000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1073,7 +1073,7 @@ _element.name                  Gallium
 _element.number                31
 _element.atomic_weight         69.723000
 _element.van_der_walls_radius  1.870000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1109,7 +1109,7 @@ _element.name                  Germanium
 _element.number                32
 _element.atomic_weight         72.640000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1145,7 +1145,7 @@ _element.name                  Arsenic
 _element.number                33
 _element.atomic_weight         74.921600
 _element.van_der_walls_radius  1.850000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1174,7 +1174,7 @@ _element.name                  Selenium
 _element.number                34
 _element.atomic_weight         78.960000
 _element.van_der_walls_radius  1.900000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1203,7 +1203,7 @@ _element.name                  Bromine
 _element.number                35
 _element.atomic_weight         79.904000
 _element.van_der_walls_radius  1.850000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1239,7 +1239,7 @@ _element.name                  Krypton
 _element.number                36
 _element.atomic_weight         83.798000
 _element.van_der_walls_radius  2.020000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1268,7 +1268,7 @@ _element.name                  Rubidium
 _element.number                37
 _element.atomic_weight         85.467800
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1304,7 +1304,7 @@ _element.name                  Strontium
 _element.number                38
 _element.atomic_weight         87.620000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1340,7 +1340,7 @@ _element.name                  Yttrium
 _element.number                39
 _element.atomic_weight         88.905850
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1376,7 +1376,7 @@ _element.name                  Zirconium
 _element.number                40
 _element.atomic_weight         91.224000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1412,7 +1412,7 @@ _element.name                  Niobium
 _element.number                41
 _element.atomic_weight         92.906380
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1452,7 +1452,7 @@ _element.name                  Molybdenum
 _element.number                42
 _element.atomic_weight         95.940000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1496,7 +1496,7 @@ _element.name                  Technetium
 _element.number                43
 _element.atomic_weight         98.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1525,7 +1525,7 @@ _element.name                  Ruthenium
 _element.number                44
 _element.atomic_weight         101.070000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1565,7 +1565,7 @@ _element.name                  Rhodium
 _element.number                45
 _element.atomic_weight         102.905500
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1605,7 +1605,7 @@ _element.name                  Palladium
 _element.number                46
 _element.atomic_weight         106.420000
 _element.van_der_walls_radius  1.630000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1645,7 +1645,7 @@ _element.name                  Silver
 _element.number                47
 _element.atomic_weight         107.868200
 _element.van_der_walls_radius  1.720000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1685,7 +1685,7 @@ _element.name                  Cadmium
 _element.number                48
 _element.atomic_weight         112.411000
 _element.van_der_walls_radius  1.580000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1721,7 +1721,7 @@ _element.name                  Indium
 _element.number                49
 _element.atomic_weight         114.818000
 _element.van_der_walls_radius  1.930000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1757,7 +1757,7 @@ _element.name                  Tin
 _element.number                50
 _element.atomic_weight         118.710000
 _element.van_der_walls_radius  2.170000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1797,7 +1797,7 @@ _element.name                  Antimony
 _element.number                51
 _element.atomic_weight         121.760000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1837,7 +1837,7 @@ _element.name                  Tellurium
 _element.number                52
 _element.atomic_weight         127.600000
 _element.van_der_walls_radius  2.060000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1866,7 +1866,7 @@ _element.name                  Iodine
 _element.number                53
 _element.atomic_weight         126.904470
 _element.van_der_walls_radius  1.980000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1902,7 +1902,7 @@ _element.name                  Xenon
 _element.number                54
 _element.atomic_weight         131.293000
 _element.van_der_walls_radius  2.160000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -1931,7 +1931,7 @@ _element.name                  Caesium
 _element.number                55
 _element.atomic_weight         132.905450
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -1967,7 +1967,7 @@ _element.name                  Barium
 _element.number                56
 _element.atomic_weight         137.327000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2003,7 +2003,7 @@ _element.name                  Lanthanum
 _element.number                57
 _element.atomic_weight         138.905500
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2039,7 +2039,7 @@ _element.name                  Cerium
 _element.number                58
 _element.atomic_weight         140.116000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2079,7 +2079,7 @@ _element.name                  Praseodymium
 _element.number                59
 _element.atomic_weight         140.907650
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2119,7 +2119,7 @@ _element.name                  Neodymium
 _element.number                60
 _element.atomic_weight         144.240000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2155,7 +2155,7 @@ _element.name                  Promethium
 _element.number                61
 _element.atomic_weight         145.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2191,7 +2191,7 @@ _element.name                  Samarium
 _element.number                62
 _element.atomic_weight         150.360000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2227,7 +2227,7 @@ _element.name                  Europium
 _element.number                63
 _element.atomic_weight         151.964000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2267,7 +2267,7 @@ _element.name                  Gadolinium
 _element.number                64
 _element.atomic_weight         157.250000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2303,7 +2303,7 @@ _element.name                  Terbium
 _element.number                65
 _element.atomic_weight         158.925340
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2339,7 +2339,7 @@ _element.name                  Dysprosium
 _element.number                66
 _element.atomic_weight         162.500000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2375,7 +2375,7 @@ _element.name                  Holmium
 _element.number                67
 _element.atomic_weight         164.930320
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2411,7 +2411,7 @@ _element.name                  Erbium
 _element.number                68
 _element.atomic_weight         167.259000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2447,7 +2447,7 @@ _element.name                  Thulium
 _element.number                69
 _element.atomic_weight         168.934210
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2483,7 +2483,7 @@ _element.name                  Ytterbium
 _element.number                70
 _element.atomic_weight         173.040000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2523,7 +2523,7 @@ _element.name                  Lutetium
 _element.number                71
 _element.atomic_weight         174.967000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2559,7 +2559,7 @@ _element.name                  Hafnium
 _element.number                72
 _element.atomic_weight         178.490000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2595,7 +2595,7 @@ _element.name                  Tantalum
 _element.number                73
 _element.atomic_weight         180.947900
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2631,7 +2631,7 @@ _element.name                  Tungsten
 _element.number                74
 _element.atomic_weight         183.840000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2667,7 +2667,7 @@ _element.name                  Rhenium
 _element.number                75
 _element.atomic_weight         186.207000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -2696,7 +2696,7 @@ _element.name                  Osmium
 _element.number                76
 _element.atomic_weight         190.230000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2732,7 +2732,7 @@ _element.name                  Iridium
 _element.number                77
 _element.atomic_weight         192.217000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2772,7 +2772,7 @@ _element.name                  Platinum
 _element.number                78
 _element.atomic_weight         195.078000
 _element.van_der_walls_radius  1.720000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2812,7 +2812,7 @@ _element.name                  Gold
 _element.number                79
 _element.atomic_weight         196.966550
 _element.van_der_walls_radius  1.660000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2852,7 +2852,7 @@ _element.name                  Mercury
 _element.number                80
 _element.atomic_weight         200.590000
 _element.van_der_walls_radius  1.550000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2892,7 +2892,7 @@ _element.name                  Thallium
 _element.number                81
 _element.atomic_weight         204.383300
 _element.van_der_walls_radius  1.960000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2932,7 +2932,7 @@ _element.name                  Lead
 _element.number                82
 _element.atomic_weight         207.200000
 _element.van_der_walls_radius  2.020000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -2972,7 +2972,7 @@ _element.name                  Bismuth
 _element.number                83
 _element.atomic_weight         208.980380
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -3012,7 +3012,7 @@ _element.name                  Polonium
 _element.number                84
 _element.atomic_weight         209.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -3041,7 +3041,7 @@ _element.name                  Astatine
 _element.number                85
 _element.atomic_weight         210.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -3070,7 +3070,7 @@ _element.name                  Radon
 _element.number                86
 _element.atomic_weight         222.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -3099,7 +3099,7 @@ _element.name                  Francium
 _element.number                87
 _element.atomic_weight         223.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -3128,7 +3128,7 @@ _element.name                  Radium
 _element.number                88
 _element.atomic_weight         226.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -3164,7 +3164,7 @@ _element.name                  Actinium
 _element.number                89
 _element.atomic_weight         227.000000
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -3200,7 +3200,7 @@ _element.name                  Thorium
 _element.number                90
 _element.atomic_weight         232.038100
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength
@@ -3236,7 +3236,7 @@ _element.name                  Protactinium
 _element.number                91
 _element.atomic_weight         231.035880
 _element.van_der_walls_radius  2.000000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
 _scattering_factors.charge      0
@@ -3265,7 +3265,7 @@ _element.name                  Uranium
 _element.number                92
 _element.atomic_weight         238.028910
 _element.van_der_walls_radius  1.860000
-_element.color_rgb             #FFFFFF
+_element.color_rgb             '#FFFFFF'
 #
 loop_
 _scattering_factors.wavelength

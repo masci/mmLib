@@ -739,10 +739,6 @@ class Chain(object):
         """Sort the Fragments in the chain into proper order.
         """
         self.fragment_list.sort()
-        print
-        print self
-        for frag in self.fragment_list:
-            print frag, FragmentID(frag.fragment_id)
         
     def add_fragment(self, fragment, delay_sort = False, link_chain = True):
         """Adds a Fragment instance to the chain.  If delay_sort is True,
@@ -2092,9 +2088,6 @@ class Bond(object):
         self.atom1_symop       = atom1_symop
         self.atom2_symop       = atom2_symop
         self.standard_res_bond = standard_res_bond
-
-        if self.calc_length() > 5.0:
-            print "Bond Error: %s = %d" % (self, self.calc_length())
 
     def __str__(self):
         return "Bond(%s %s)" % (self.atom1, self.atom2)

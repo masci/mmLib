@@ -6,9 +6,8 @@
 """
 from __future__ import generators
 import string
-import types
-import fpformat
 from PDB import *
+from Structure import *
 
 
 class PDBFileBuilder(object):

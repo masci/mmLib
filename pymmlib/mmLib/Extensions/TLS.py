@@ -953,6 +953,11 @@ class TLSGroup(AtomList):
         calcs["L2_rho"] = matrixmultiply(evec_L, cL2rho)
         calcs["L3_rho"] = matrixmultiply(evec_L, cL3rho)
 
+        ## calculate screw pitches
+        calcs["L1_pitch"] = cL[0,0]/cSp[0,0]
+        calcs["L2_pitch"] = cL[1,1]/cSp[1,1]
+        calcs["L3_pitch"] = cL[2,2]/cSp[2,2]
+
         return calcs
 
     def check_positive_eigenvalues(self):

@@ -9,10 +9,18 @@ A CIF dictionary parser is also included as a specialized version of the
 mmCIF parser.
 """
 from __future__ import generators
-import string
+
 import re
-import types
-from mmTypes import *
+import copy
+import string
+from   types import *
+
+try:
+    from mmTypes import OpenFile
+except ImportError:
+    OpenFile = open
+
+
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -491,10 +499,9 @@ class mmCIFFileParser(object):
     data hierarchy.
     """
     def parse_file(self, fil, cif_file, update_cb = None):
-        self.update_cb = update_cb
+        self.update_cb   = update_cb
         self.line_number = 0
-
-        token_iter = self.gen_token_iter(fil)
+        token_iter       = self.gen_token_iter(fil)
 
         try:
             self.parse(token_iter, cif_file)
@@ -505,33 +512,81 @@ class mmCIFFileParser(object):
 
     def syntax_error(self, err):
         raise mmCIFSyntaxError(self.line_number, err)
- 
+
+    def split_token(self, tokx):
+        """Returns the mmCIF token split into a 2-tuple:
+        (reserved word, name) where directive is one of the mmCIF
+        reserved words: data_, loop_, global_, save_, stop_
+        """
+        i = tokx.find("_")
+        if i==-1:
+            return None, None
+
+        rword = tokx[:i].lower()
+        if rword not in ("data", "loop", "global", "save", "stop"):
+            return None, None
+
+        name  = tokx[i+1:]
+        return rword, name
+        
     def parse(self, token_iter, cif_file):
+        """Stateful parser for mmCIF files.
+
+        XXX: _loop, _data, _save tags are handled in a case-sensitive
+             manor.  These tokens are case-insensitive.
+        """
+
         cif_table_cache = {}
         cif_data        = None
         cif_table       = None
         cif_row         = None
         state           = ""
 
-        tblx,colx,strx,tokx = token_iter.next()
+        ## ignore anything in the input file until a reserved word is
+        ## found
+        while 1:
+            tblx,colx,strx,tokx = token_iter.next()
+            if tokx==None:
+                continue
+            rword, name = self.split_token(tokx)
+            if rword!=None:
+                break
         
         while 1:
+            ##
+            ## PROCESS STATE CHANGES
+            ##
             if tblx != None:
                 state = "RD_SINGLE"
+
             elif tokx != None:
-                if tokx == "loop_":
+                rword, name = self.split_token(tokx)
+
+                if rword=="loop":
                     state = "RD_LOOP"
-                elif tokx.startswith("data_"):
+
+                elif rword=="data":
                     state = "RD_DATA"
-                elif tokx.startswith("save_"):
+
+                elif rword=="save":
                     state = "RD_SAVE"
+
+                elif rword=="stop":
+                    return
+
+                elif rword=="global":
+                    self.syntax_error("unable to handle global_ syntax")
+
                 else:
                     self.syntax_error("bad token #1: "+str(tokx))
+
             else:
                 self.syntax_error("bad token #2")
                 return            
  
-
+            ##
+            ## PROCESS DATA IN RD_SINGLE STATE
+            ##
             if state == "RD_SINGLE":
                 try:
                     cif_table = cif_table_cache[tblx]
@@ -561,22 +616,46 @@ class mmCIFFileParser(object):
                 else:
                     cif_table.columns.append(colx)
 
-                x,x,strx,tokx = token_iter.next()
+                ## get the next token from the file, it should be the data
+                ## keyed by the previous token
+                tx,cx,strx,tokx = token_iter.next()
+                if tx!=None or (strx==None and tokx==None):
+                    self.syntax_error("missing data for _%s.%s" % (tblx,colx))
 
                 if tokx != None:
+                    ## check token for reserved words
+                    rword, name = self.split_token(tokx)
+                    if rword!=None:
+                        if rword=="stop":
+                            return
+                        self.syntax_error(
+                            "unexpected reserved word: %s" % (rword))
+
                     if tokx == ".":
                         cif_row[colx] = ""
                     else:
                         cif_row[colx] = tokx
+
                 elif strx != None:
                     cif_row[colx] = strx
+
                 else:
                     self.syntax_error("bad token #4")
 
                 tblx,colx,strx,tokx = token_iter.next()
                 continue
 
+
+            ##
+            ## PROCESS DATA IN RD_LOOP STATE
+            ##
+            ## This is entered upon the beginning of a loop, and
+            ## the loop is read completely before exiting.
+            ###
             elif state == "RD_LOOP":
+
+                ## the first section.subsection (tblx.colx) is read
+                ## to create the section(table) name for the entire loop
                 tblx,colx,strx,tokx = token_iter.next()
 
                 if tblx == None or colx == None:
@@ -598,15 +677,32 @@ class mmCIFFileParser(object):
 
                 cif_table.columns.append(colx)
 
+                ## read the remaining subsection definitions for the loop
                 while 1:
                     tblx,colx,strx,tokx = token_iter.next()
+                    
                     if tblx == None:
                         break
+
                     if tblx != cif_table.name:
                         self.syntax_error("changed section names in _loop")
                         return
+
                     cif_table.columns.append(colx)
+
+
+                ## before starting to read data, check tokx for any control
+                ## tokens
+                if tokx!=None:
+                    rword, name = self.split_token(tokx)
+                    if rword!=None:
+                        if rword=="stop":
+                            return
+                        else:
+                            self.syntax_error(
+                                "unexpected reserved word: %s" % (rword))
                     
+                ## now read all the data 
                 while 1:
                     cif_row = mmCIFRow()
                     cif_table.append(cif_row)
@@ -622,18 +718,17 @@ class mmCIFFileParser(object):
 
                         tblx,colx,strx,tokx = token_iter.next()
 
-                    ## the loop ends when one of these conditions is met
-                    if tblx != None:
-                        break
-                    if tokx == None:
-                        continue
-                    if tokx == "loop_":
-                        break
-                    if tokx.startswith("data_"):
-                        break
-                    if tokx.startswith("save_"):
+                    ## the loop ends when one of these conditions is met:
+                    ## condition #1: a new table is encountered
+                    if tblx!=None:
                         break
 
+                    ## condition #2: a reserved word is encountered
+                    if tokx!=None:
+                        rword, name = self.split_token(tokx)
+                        if rword!=None:
+                            break
+                        
                 continue
 
             elif state == "RD_DATA":
@@ -660,6 +755,8 @@ class mmCIFFileParser(object):
              "(?:_(.+?)[.](\S+))"               "|"  # _section.subsection
 
              "(?:['\"](.*?)(?:['\"]\s|['\"]$))" "|"  # quoted strings
+
+             "(?:\s*#.*$)"                      "|"  # comments
 
              "(\S+)"                                 # unquoted tokens
 
@@ -697,6 +794,8 @@ class mmCIFFileParser(object):
 
             file_iter = FileIter(fil)
 
+
+        ## parse file, yielding tokens for self.parser()
         while 1:
             try:
                 ln = file_iter.next()
@@ -738,8 +837,10 @@ class mmCIFFileParser(object):
 
             ## split line into tokens
             tok_iter = re_tok.finditer(ln)
+
             for tokm in tok_iter:
-                yield tokm.groups()
+                if tokm.groups() != (None,None,None,None):
+                    yield tokm.groups()
 
 
 class mmCIFFileWriter(object):
@@ -804,7 +905,7 @@ class mmCIFFileWriter(object):
         if x.find("\n") != -1:
             return x, "mstring"
         
-        if x.count(" ")!=0 or x.count("\t")!=0:
+        if x.count(" ")!=0 or x.count("\t")!=0 or x.count("#")!=0:
             if len(x) > MAX_LINE-2:
                 return x, "mstring"
             if x.count("' ")!=0:

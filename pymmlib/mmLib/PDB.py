@@ -8,10 +8,15 @@ loaded into a list of these cassed, and also can be constrcted/modified
 and written back out as PDB files.
 """
 from __future__ import generators
+
 import string
-import types
 import fpformat
-from Structure import *
+from types import *
+ 
+try:
+    from mmTypes import OpenFile
+except ImportError:
+    OpenFile = open    
 
 
 class PDBError(Exception):

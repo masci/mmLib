@@ -32,7 +32,7 @@ class StructureBuilder(object):
         self.cache_chain = None
         self.cache_frag = None
 
-        ## if anything goes wrong, setting self.halt=1 will stop the madness        self.halt = 0
+        ## if anything goes wrong, setting self.halt=True will stop the madness
         self.halt = False
         
         ## build the structure by executing this fixed sequence of methods
@@ -59,7 +59,6 @@ class StructureBuilder(object):
         but may be used in the future.
         """
         self.name_service_list = []
-
 
     def read_atoms(self):
         """This method needs to be reimplemented in a fuctional subclass.
@@ -245,11 +244,6 @@ class StructureBuilder(object):
                 frag_list = model[chain_index]
 
                 for frag in frag_list:
-                    if type(frag)!=ListType:
-                        print "## frag not listtype: ",frag
-                        import time
-                        time.sleep(5)
-
                     for atm in frag:
                         atm.chain_id = chain_id
                         self.struct.add_atom(atm)
@@ -258,9 +252,9 @@ class StructureBuilder(object):
         del polymer_model_dict
         del model_list
 
+
         
         ## NAME SERVICE FOR NON-POLYMER ATOMS
-
         ## cr = (chain_id, res_name)
         ##
         ## cr_dict[cr_key] = model_dict

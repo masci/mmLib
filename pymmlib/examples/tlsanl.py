@@ -103,23 +103,29 @@ def print_TLSGroup(tls):
     print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*rad2deg)
     print
 
-
     print
     print "SHIFT OF LIBRATION AXES TO DIAGNOLIZE S WRT ORTHOGONAL AXES USING"
     print "FROM THE ORIGIN OF CALCULATION (A): "
-    print "L1 (A): " + astr(calcs["L1"] + calcs["COR"])
-    print "L2 (A): " + astr(calcs["L2"] + calcs["COR"])
-    print "L3 (A): " + astr(calcs["L3"] + calcs["COR"])
+    print "L1 (A): " + astr(calcs["L1_rho"] + calcs["COR"])
+    print "L2 (A): " + astr(calcs["L2_rho"] + calcs["COR"])
+    print "L3 (A): " + astr(calcs["L3_rho"] + calcs["COR"])
     print
 
     print
-    print "SHIFT OF LIBRATION AXES TO DIAGNOLIZE S WRT ORTHOGONAL AXES USING"
+    print "SHIFT OF LIBRATION AXES TO DIAGNOLIZE S WRT ORTHOGONAL AXES"
     print "FROM THE CENTER OF REACTION (A): "
-    print "L1 (A): " + astr(calcs["L1"])
-    print "L2 (A): " + astr(calcs["L2"])
-    print "L3 (A): " + astr(calcs["L3"])
+    print "L1 (A): " + astr(calcs["L1_rho"])
+    print "L2 (A): " + astr(calcs["L2_rho"])
+    print "L3 (A): " + astr(calcs["L3_rho"])
     print
 
+    print "SCREW PITCH OF THE 3 NON-INTERSECTING LIBRATION AXES"
+    print "L1 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
+        calcs["L1_pitch"]*rad2deg, 1.0/(calcs["L1_pitch"]*rad2deg))
+    print "L2 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
+        calcs["L2_pitch"]*rad2deg, 1.0/(calcs["L2_pitch"]*rad2deg))
+    print "L3 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
+        calcs["L3_pitch"]*rad2deg, 1.0/(calcs["L3_pitch"]*rad2deg))
 
 
 def main(pdb_path, tls_out_path, calc_tls):

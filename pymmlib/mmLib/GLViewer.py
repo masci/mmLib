@@ -1199,6 +1199,24 @@ class GLTLSAtomList(GLAtomList):
               "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
+            { "name":        "L1_pitch",
+              "desc":        "L1 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_pitch",
+              "desc":        "L2 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_pitch",
+              "desc":        "L3 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "L1",
               "desc":        "L1 Rotation", 
               "type":        "float",
@@ -1222,6 +1240,7 @@ class GLTLSAtomList(GLAtomList):
         if "trace" in updates:
             self.properties.update(lines=False)
 
+
     def gl_draw_rotation(self):
         L_axes = self.properties["L_eigen_vec"]
 
@@ -1233,24 +1252,32 @@ class GLTLSAtomList(GLAtomList):
         L2_rho = self.properties["L2_rho"]
         L3_rho = self.properties["L3_rho"]
 
-        glPushMatrix()
-        glTranslatef(*L1_rho)
-        glRotatef(L1_rot, *L_axes[0])
-        glTranslatef(*-L1_rho)
-        GLDrawList.gl_call_list(self)
-        glPopMatrix()
+        L1_pitch = self.properties["L1_pitch"]
+        L2_pitch = self.properties["L2_pitch"]
+        L3_pitch = self.properties["L3_pitch"]
 
-        glPushMatrix()
-        glTranslatef(*L2_rho)
-        glRotatef(L2_rot, *L_axes[1])
-        glTranslatef(*-L2_rho)
-        GLDrawList.gl_call_list(self)
-        glPopMatrix()
+        while L1_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[0], L1_rho, L1_pitch,  L1_rot)
+            self.gl_draw_rotation_3(L_axes[0], L1_rho, L1_pitch, -L1_rot)
+            L1_rot -= 0.20
 
+        while L2_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[1], L2_rho, L2_pitch,  L2_rot)
+            self.gl_draw_rotation_3(L_axes[1], L2_rho, L2_pitch, -L2_rot)
+            L2_rot -= 0.20
+
+        while L3_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[2], L3_rho, L3_pitch,  L3_rot)
+            self.gl_draw_rotation_3(L_axes[2], L3_rho, L3_pitch, -L3_rot)
+            L3_rot -= 0.20
+
+    def gl_draw_rotation_3(self, l, rho, pitch, rotation):
+        screw = l * rotation / (pitch * rad2deg)
+        
         glPushMatrix()
-        glTranslatef(*L3_rho)
-        glRotatef(L3_rot, *L_axes[2])
-        glTranslatef(*-L3_rho)
+        glTranslatef(* rho + screw)
+        glRotatef(rotation, *l)
+        glTranslatef(* -rho)
         GLDrawList.gl_call_list(self)
         glPopMatrix()
 
@@ -1333,6 +1360,12 @@ class GLTLSGroup(GLDrawListContainer):
         self.glo_link_child_property(
             "L3_rho", "gl_atom_list", "L3_rho")
         self.glo_link_child_property(
+            "L1_pitch", "gl_atom_list", "L1_pitch")
+        self.glo_link_child_property(
+            "L2_pitch", "gl_atom_list", "L2_pitch")
+        self.glo_link_child_property(
+            "L3_pitch", "gl_atom_list", "L3_pitch")
+        self.glo_link_child_property(
             "L1", "gl_atom_list", "L1")
         self.glo_link_child_property(
             "L2", "gl_atom_list", "L2")
@@ -1360,6 +1393,9 @@ class GLTLSGroup(GLDrawListContainer):
             L1_rho      = self.calcs["L1_rho"],
             L2_rho      = self.calcs["L2_rho"],
             L3_rho      = self.calcs["L3_rho"],
+            L1_pitch    = self.calcs["L1_pitch"],
+            L2_pitch    = self.calcs["L2_pitch"],
+            L3_pitch    = self.calcs["L3_pitch"],
             **args)
 
     def glo_install_properties(self):
@@ -1394,6 +1430,24 @@ class GLTLSGroup(GLDrawListContainer):
               "desc":        "L3 translation from COR", 
               "type":        "array(3)",
               "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_pitch",
+              "desc":        "L1 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_pitch",
+              "desc":        "L2 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_pitch",
+              "desc":        "L3 screw pitch (DEG/A)", 
+              "type":        "float",
+              "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1",
@@ -1465,7 +1519,7 @@ class GLTLSGroup(GLDrawListContainer):
             { "name":        "fan_visible",
               "desc":        "Show Fans to Backbone",
               "type":        "boolean",
-              "default":     True,
+              "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "fan_opacity",
@@ -1531,22 +1585,66 @@ class GLTLSGroup(GLDrawListContainer):
         L2_rho = self.properties["L2_rho"]
         L3_rho = self.properties["L3_rho"]
 
+        L1_pitch = self.properties["L1_pitch"]
+        L2_pitch = self.properties["L2_pitch"]
+        L3_pitch = self.properties["L3_pitch"]
+
+        while L1_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[0], L1_rho, L1_pitch,  L1_rot)
+            self.gl_draw_rotation_3(L_axes[0], L1_rho, L1_pitch, -L1_rot)
+            L1_rot -= 0.25
+
+        while L2_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[1], L2_rho, L2_pitch,  L2_rot)
+            self.gl_draw_rotation_3(L_axes[1], L2_rho, L2_pitch, -L2_rot)
+            L2_rot -= 0.25
+
+        while L3_rot>0.0:
+            self.gl_draw_rotation_3(L_axes[2], L3_rho, L3_pitch,  L3_rot)
+            self.gl_draw_rotation_3(L_axes[2], L3_rho, L3_pitch, -L3_rot)
+            L3_rot -= 0.25
+
+    def gl_draw_rotation_3(self, l, rho, pitch, rotation):
+        screw = l * rotation / (pitch * rad2deg)
+        
         glPushMatrix()
-        glTranslatef(*L1_rho)
+        glTranslatef(* rho + screw)
+        glRotatef(rotation, *l)
+        glTranslatef(* -rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
+    def gl_draw_rotation_old(self, L1_rot, L2_rot, L3_rot):
+        L_axes = self.properties["L_eigen_vec"]
+
+        L1_rot = self.properties["L1"]
+        L2_rot = self.properties["L2"]
+        L3_rot = self.properties["L3"]
+
+        L1_rho = self.properties["L1_rho"]
+        L2_rho = self.properties["L2_rho"]
+        L3_rho = self.properties["L3_rho"]
+
+        L1_screw = L_axes[0]*L1_rot/(self.properties["L1_pitch"]*rad2deg)
+        L2_screw = L_axes[1]*L2_rot/(self.properties["L2_pitch"]*rad2deg)
+        L3_screw = L_axes[2]*L3_rot/(self.properties["L3_pitch"]*rad2deg)
+
+        glPushMatrix()
+        glTranslatef(*L1_rho + L1_screw)
         glRotatef(L1_rot, *L_axes[0])
         glTranslatef(*-L1_rho)
         GLDrawList.gl_call_list(self)
         glPopMatrix()
 
         glPushMatrix()
-        glTranslatef(*L2_rho)
+        glTranslatef(*L2_rho + L2_screw)
         glRotatef(L2_rot, *L_axes[1])
         glTranslatef(*-L2_rho)
         GLDrawList.gl_call_list(self)
         glPopMatrix()
 
         glPushMatrix()
-        glTranslatef(*L3_rho)
+        glTranslatef(*L3_rho + L3_screw)
         glRotatef(L3_rot, *L_axes[2])
         glTranslatef(*-L3_rho)
         GLDrawList.gl_call_list(self)
@@ -1713,6 +1811,7 @@ class GLTLSGroup(GLDrawListContainer):
         """Changes the time of the TLS group simulating harmonic motion.
         """
         sin_tm = math.sin(3.0 * self.properties["time"] * 2 * math.pi)
+        sin_tm = abs(sin_tm * 0.7) + 0.3
 
         ## L Tensor
         L_eigen_val = self.properties["L_eigen_val"]
@@ -1722,9 +1821,9 @@ class GLTLSGroup(GLDrawListContainer):
         L2_peak = math.sqrt(abs(L_eigen_val[1] * rad2deg2))
         L3_peak = math.sqrt(abs(L_eigen_val[2] * rad2deg2))
         
-        L1 = L1_peak * sin_tm 
-        L2 = L2_peak * sin_tm
-        L3 = L3_peak * sin_tm
+        L1 = abs(L1_peak * sin_tm)
+        L2 = abs(L2_peak * sin_tm)
+        L3 = abs(L3_peak * sin_tm)
 
         self.glo_update_properties(L1=L1, L2=L2, L3=L3)
 
