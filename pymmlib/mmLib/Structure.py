@@ -83,15 +83,27 @@ class Structure(object):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
         """
-        return self.model[chain_idx]
+        try:
+            return self.model[chain_idx]
+        except TypeError:
+            raise KeyError, chain_idx
 
     def __delitem__(self, chain_idx):
-        self.chain_list.remove(self[chain_idx])
-
+        """Removes the Chain from the default Model by its chain_id or
+        index in the Model.
+        """
+        try:
+            self.model.remove(self[chain_idx])
+        except AttributeError:
+            raise KeyError, chain_idx
+            
     def __iter__(self):
         """Iterates the Chain objects in the Structure.
         """
-        return iter(self.model)
+        try:
+            return iter(self.model)
+        except TypeError:
+            return iter([])
 
     def __contains__(self, model_chain_idx):
         """Returns True if item is a Model in the Structure, or a
@@ -99,8 +111,12 @@ class Structure(object):
         """
         if isinstance(model_chain_idx, Model):
             return self.model_list.__contains__(model_chain_idx)
-        else:
-            return self.model.__contains__(model_chain_idx)
+        elif isinstance(model_chain_idx, Chain) or \
+             type(model_chain_idx) == StringType:
+            try:
+                return self.model.__contains__(model_chain_idx)
+            except AttributeError:
+                raise KeyError, model_chain_idx
         raise TypeError, model_chain_idx
 
     def index(self, model_chain):
@@ -111,20 +127,27 @@ class Structure(object):
         if isinstance(model_chain, Model):
             return self.model_list.index(model_chain)
         elif isinstance(model_chain, Chain):
-            return self.model.index(model_chain)
+            try:
+                return self.model.index(model_chain)
+            except AttributeError:
+                raise ValueError, model_chain
         raise TypeError, model_chain
 
-    def remove(self, item):
+    def remove(self, model_chain):
         """Removes a Model or a default Model's Chain from the Structure.
         """
-        if isinstance(item, Model):
-            self.model_list.remove(item)
-            del self.model_dict[item.model_id]
-            del item.structure
-            for chain in item.iter_chains():
+        if isinstance(model_chain, Model):
+            self.model_list.remove(model_chain)
+            del self.model_dict[model_chain.model_id]
+            del model_chain.structure
+            for chain in model_chain.iter_chains():
                 del chain.structure
-        elif isinstance(chain, Chain):
-            self.model.remove(chain)
+        elif isinstance(model_chain, Chain):
+            try:
+                self.model.remove(model_chain)
+            except AttributeError:
+                raise ValueError, model_chain
+        raise TypeError, model_chain
 
     def sort(self):
         """Sorts all Models and Chains in the Structure occording to standard
@@ -147,7 +170,7 @@ class Structure(object):
 
         if self.model == None:
             self.model = model
-            
+
         self.model_list.append(model)
         self.model_dict[model.model_id] = model
         model.structure = self
@@ -165,8 +188,6 @@ class Structure(object):
         except KeyError:
             model = Model(model_id = chain.model_id)
             self.add_model(model)
-            mode.add_chain(chain)
-        except:
             model.add_chain(chain)
 
         if delay_sort == False:
@@ -176,7 +197,7 @@ class Structure(object):
         """
         """
         assert isinstance(atom, Atom)
-        
+
         ## add new model if necesary
         try:
             model = self.model_dict[atom.model_id]
@@ -467,7 +488,7 @@ class Model(object):
         assert isinstance(chain, Chain)
 
         self.chain_list.remove(chain)
-        del self.model.chain_dict[chain.chain_id]
+        del self.chain_dict[chain.chain_id]
         del chain.model
         try:
             del chain.structure

@@ -6,10 +6,16 @@ from mmLib.mmTypes import *
 """Misc. testing utility code code common to the test programs.
 """
 
-pdb_regex = ("pdb\w+\.gz","[\w+\.]+pdb","\w+\.pdb\.gz","pdb\S+\.Z","pdb\S+\.gz")
-cif_regex = ("\w+\.cif", "\w+\.cif\.Z", "\w+\.cif\.gz")
-all_regex = pdb_regex + cif_regex
+pdb_regex = ("[\w+\.]+pdb",
+             "[\w\.]+pdb\.gz",
+             "pdb[\w\.]+Z",
+             "pdb[\w\.]+gz")
 
+cif_regex = ("[\w\.]+cif",
+             "[\w\.]+cif\.Z",
+             "[\w\.]+cif\.gz")
+
+all_regex = pdb_regex + cif_regex
 
 def my_walk(path):
     """All Python's path walk functions suck.
@@ -138,6 +144,10 @@ if __name__ == "__main__":
 
         (dir, filename) = os.path.split(pathx)
 
-        x = "cp %s %s" % (pathx, os.path.join("/home/jpaint/pdball", filename))
-        print "CMD: ",x
-        os.system(x)
+        
+        dest = os.path.join("/home/jpaint/pdball", filename)
+
+        if not os.path.isfile(dest):
+            x = "cp %s %s" % (pathx, dest)
+            print "CMD: ",x
+            os.system(x)

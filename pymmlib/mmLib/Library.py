@@ -144,7 +144,7 @@ class Element(ElementInterface):
 
         ## unable to find element description
         if self.elm == None:
-            print "Unable to find element: %s" % (self.symbol)
+            #print "Unable to find element: %s" % (self.symbol)
             return
 
         self.name   = self.elm.getAttribute("name")
