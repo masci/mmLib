@@ -6,6 +6,7 @@
 """
 from   __future__ import generators
 import fpformat
+import time
 from mmTypes import *
 from AtomMath import *
 from Library import Library
@@ -45,15 +46,17 @@ class Structure(object):
         else:
             self.library = Library()
 
-        self.exp_data        = ExpData()
-        self.unit_cell       = UnitCell()
+        self.exp_data = ExpData()
+        self.unit_cell = UnitCell()
 
+        self.default_model = 1
         self.default_alt_loc = "A"
-        self.sites           = []
-        self.alpha_helices   = []
-        self.beta_sheets     = []
-        self.turns           = []
-        self.__chain_list    = []
+
+        self.sites = []
+        self.alpha_helices = []
+        self.beta_sheets = []
+        self.turns = []
+        self.__chain_list = []
 
     def __str__(self):
         tstr =  "Structure::%s\n" % (self.exp_data.get("id", ""))
@@ -108,7 +111,7 @@ class Structure(object):
         return self.__chain_list.index(chain)
 
     def remove(self, chain):
-        """Removes the 
+        """Removes the chain from the structure.
         """
         assert isinstance(chain, Chain)
         del chain.structure
@@ -122,10 +125,18 @@ class Structure(object):
         structure attribute to self.
         """
         assert isinstance(chain, Chain)
+
+        for chn in self:
+            if chn.chain_id == chain.chain_id:
+                print "[ERROR] add_chain overwrite",chn,chain
+                time.sleep(1)
+                return False
+
         chain.structure = self
         self.__chain_list.append(chain)
         if not delay_sort:
             self.__chain_list.sort()
+        return True
 
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
@@ -193,6 +204,7 @@ class Chain(object):
     """Chain objects conatain a ordered list of Fragment objects.
     """
     def __init__(self, chain_id = ""):
+        assert type(chain_id) == StringType
         self.chain_id = chain_id
 
         ## the sequence list contains a list 3-letter residue names
@@ -309,11 +321,17 @@ class Chain(object):
         assert isinstance(frag, Fragment)
         assert frag.chain_id == self.chain_id
 
+        for frg in self:
+            if frg.fragment_id == frag.fragment_id:
+                print "[ERROR] add_fragment overwrite",frg,frag
+                time.sleep(1)
+                return False
+
         frag.chain = self
         self.__fragment_list.append(frag)
-
         if not delay_sort:
             self.__fragment_list.sort()
+        return True
 
     def get_structure(self):
         """Returns the parent structure.  Also available by self.structure.
@@ -454,6 +472,10 @@ class Fragment(object):
                  res_name    = "",
                  fragment_id = "",
                  chain_id    = ""):
+
+        assert type(res_name) == StringType
+        assert type(fragment_id) == StringType
+        assert type(chain_id) == StringType
         
         self.res_name    = res_name
         self.fragment_id = fragment_id
@@ -484,10 +506,13 @@ class Fragment(object):
         return FragmentID(self.fragment_id) >= FragmentID(other.fragment_id)
 
     def __len__(self):
-        """Returns the number of atoms contained in the fragment, including
-        all atoms in alternate conformations.
+        """Returns the number of atoms contained in the fragment in the
+        default model and default alt_loc.
         """
-        return len(self.__atom_list)
+        i = 0
+        for atm in self:
+            i += 1
+        return i
 
     def __getitem__(self, x):
         """Lookup a atom contained in a fragment by its name, or by its index
@@ -500,15 +525,12 @@ class Fragment(object):
             return self.__atom_list[x]
 
         elif type(x) == StringType:
-            alt_loc = self.chain.structure.default_alt_loc
-            
-            for atom in self.__atom_list:
-                if atom.name == x:
-                    if atom.alt_loc == alt_loc:
-                        return atom
-                    elif atom.alt_loc == None or atom.alt_loc == "":
-                        return atom
-                    
+            for atm in self.__atom_list:
+                if atm.name == x:
+                    ret_atm = atm.get_default()
+                    if ret_atm:
+                        return ret_atm
+                    raise KeyError, x
             raise KeyError, x
 
         raise TypeError, x
@@ -525,12 +547,38 @@ class Fragment(object):
         atoms in alternate conformations, only the atoms with the structure's
         default_alt_loc are iterated.
         """
+        ## this is a difficult function to write and perserve what is left
+        ## of iteration performance (not much now that I'm tring to handle
+        ## all cases of illegal altLoc combinations)
+        ## assume __atom_list is properly sorted -- this should be true
+        model = self.chain.structure.default_model
         alt_loc = self.chain.structure.default_alt_loc
-        for atom in self.__atom_list:
-            if atom.alt_loc == alt_loc:
-                yield atom
-            elif atom.alt_loc == None or atom.alt_loc == "":
-                yield atom
+
+        yield_me_if_no_match = None
+
+        for atm in self.__atom_list:
+            if atm.model != model:
+                continue
+            if yield_me_if_no_match:
+                if yield_me_if_no_match.name == atm.name:
+                    if atm.alt_loc == alt_loc:
+                        yield_me_if_no_match = None
+                        yield atm
+                else:
+                    yield yield_me_if_no_match
+                    yield_me_if_no_match = None
+                    if atm.alt_loc == alt_loc:
+                        yield atm
+                    elif not atm.alt_loc:
+                        yield_me_if_no_match = atm
+            else:
+                if atm.alt_loc == alt_loc:
+                    yield atm
+                elif not atm.alt_loc:
+                    yield_me_if_no_match = atm
+
+        if yield_me_if_no_match:
+            yield yield_me_if_no_match
 
     def __contains__(self, x):
         """Returns True if the atom is contained in the fragment.  The argument
@@ -538,9 +586,7 @@ class Fragment(object):
         """
         if isinstance(x, Atom):
             return x in self.__atom_list
-        elif type(x) == StringType:
-            return self[x] in self.__atom_list
-        raise TypeError, x
+        return self[x] in self.__atom_list
 
     def index(self, atom):
         """Returns the index of the atom within the fragment's private
@@ -567,13 +613,26 @@ class Fragment(object):
         assert atom.fragment_id == self.fragment_id
         assert atom not in self.__atom_list
 
+        for atm in self.__atom_list:
+            if atm.name == atom.name and \
+               atm.model == atom.model and \
+               atm.alt_loc == atom.alt_loc:
+                print "[ERROR] add_atom overwrite",atm,atom
+                time.sleep(1)
+                return False
+
         atom.fragment = self
-        for a in self.__atom_list:
-            if atom.name == a.name:
-                a.add_alt_loc(atom)
+
+        ## if this atom is a alternate conformation of a atom already in
+        ## the fragment, add it to that atom's private __alt_loc_list
+        for atm in self.__atom_list:
+            if atm.name == atom.name:
+                atm.add_alt_loc(atom)
                 break
 
+        ## now add the atom to the fragment
         self.__atom_list.append(atom)
+        return True
 
     def get_atom(self, name):
         """Returns the matching Atom object contained in the Fragment.
@@ -653,7 +712,7 @@ class Fragment(object):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.
         """
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon:
             return
 
@@ -664,7 +723,7 @@ class Fragment(object):
             except KeyError:
                 continue
             else:
-                atm1.create_bond(atm2, bond_alt_loc = True)
+                atm1.create_bonds(atm2, standard_res_bond = True)
 
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
@@ -678,7 +737,7 @@ class Fragment(object):
         """Returns True if the Fragment is a water molecule, returns False
         otherwise.
         """
-        if self.get_structure().library.is_water(self.res_name):
+        if self.chain.structure.library.is_water(self.res_name):
             return True
         return False
 
@@ -737,7 +796,7 @@ class Residue(Fragment):
             except KeyError:
                 continue
             else:
-                atm1.create_bond(atm2, bond_alt_loc = True)
+                atm1.create_bonds(atm2, standard_res_bond = True)
 
 
 class AminoAcidResidue(Residue):
@@ -961,12 +1020,21 @@ class Atom(object):
     """
     def __init__(self,
                  name        = "",
+                 model       = 0,
                  alt_loc     = "",
                  res_name    = "",
                  fragment_id = "",
                  chain_id    = ""):
 
+        assert type(name) == StringType
+        assert type(model) == IntType
+        assert type(alt_loc) == StringType
+        assert type(res_name) == StringType
+        assert type(fragment_id) == StringType
+        assert type(chain_id) == StringType
+
         self.name = name
+        self.model = model
         self.alt_loc = alt_loc
         self.res_name = res_name
         self.fragment_id = fragment_id
@@ -986,55 +1054,100 @@ class Atom(object):
         self.bond_list = []
 
     def __str__(self):
-        return "Atom(%s,%s,%s,%s,%s)" % (self.name,
-                                         self.alt_loc,
-                                         self.res_name,
-                                         self.fragment_id,
-                                         self.chain_id)
-
+        return 'Atom(n=%s,mdl=%d,alt=%s,rn=%s,fid=%s,cid=%s)' % (
+            self.name, self.model, self.alt_loc, self.res_name,
+            self.fragment_id, self.chain_id)
+    
     def __lt__(self, other):
         assert isinstance(other, Atom)
-        return self.alt_loc < other.alt_loc
+        if self.model == other.model:
+            return self.alt_loc < other.alt_loc
+        else:
+            return self.model < other.model
 
     def __le__(self, other):
         assert isinstance(other, Atom)
-        return self.alt_loc <= other.alt_loc
+        if self.model == other.model:
+            return self.alt_loc <= other.alt_loc
+        else:
+            return self.model <= other.model
         
     def __gt__(self, other):
         assert isinstance(other, Atom)
-        return self.alt_loc > other.alt_loc
+        if self.model == other.model:
+            return self.alt_loc > other.alt_loc
+        else:
+            return self.model > other.model
 
     def __ge__(self, other):
         assert isinstance(other, Atom)
-        return self.alt_loc >= other.alt_loc
+        if self.model == other.model:
+            return self.alt_loc >= other.alt_loc
+        else:
+            return self.model >= other.model
 
     def __len__(self):
+        """Returns the number of alternate conformations of this atom.
+        """
         return len(self.__alt_loc_list)
 
     def __getitem__(self, x):
         """This is a alternative to calling get_alt_loc, but a KeyError
-        exception is raised if the alt_loc Atom is not found.
+        exception is raised if the alt_loc Atom is not found.  Posiible
+        arguments are:
         """
-        if type(x) == StringType:
-            for atom in self.__alt_loc_list:
-                if atom.alt_loc == x:
-                    return atom
+        default_model = self.fragment.chain.structure.default_model
+        default_alt_loc = self.fragment.chain.structure.default_alt_loc
+        
+        if type(x) == IntType:
+            default_atm = None
+            for atm in self.__alt_loc_list:
+                if atm.model != x:
+                    continue
+                if atm.alt_loc == default_alt_loc:
+                    return atm
+                elif not atm.alt_loc:
+                    default_atm = atm
+            if default_atm:
+                return default_atm
+            raise KeyError, x
+
+        elif type(x) == StringType:
+            for atm in self.__alt_loc_list:
+                if atm.model == default_model and atm.alt_loc == x:
+                    return atm
+            raise KeyError, x
+
+        elif type(x) == TupleType and \
+             len(x) == 2 and \
+             type(x[0]) == StringType and \
+             type(x[1]) == IntType:
+            for atm in self.__alt_loc_list:
+                if atm.alt_loc == x[0] and atm.model == x[1]:
+                    return atm
             raise KeyError, x
 
         raise TypeError, x
 
     def __delitem__(self, x):
+        """Deletes the alternate conformation of the atom matching the
+        argument.  The argument is the alt_loc label of the atom to be
+        deleted.
+        """
         self.__alt_loc_list.remove(self[x])
 
     def __iter__(self):
+        """Iterate all conformations of this atom.
+        """
         return iter(self.__alt_loc_list)
 
     def __contains__(self, x):
+        """Returns True if the argument matches a alternate conformation of
+        the atom.  The argument can be a alt_loc label, or a Atom object.
+        """
         if isinstance(x, Atom):
             return x in self.__alt_loc_list
-        elif type(x) == StringType:
-            return self[x] in self.__alt_loc_list
-        raise TypeError, x
+        return self[x] in self.__alt_loc_list
 
     def add_alt_loc(self, atom):
         """Add atom as a alternate conformation of the current atom.
@@ -1045,10 +1158,47 @@ class Atom(object):
         assert atom.chain_id == self.chain_id
         assert atom not in self.__alt_loc_list
 
+        for atm in self.__alt_loc_list:
+            if atm.model == atom.model and \
+               atm.alt_loc == atom.alt_loc:
+                print "[ERROR] add_alt_loc overwrite",atm,atom
+                time.sleep(1)
+                return False
+
         self.__alt_loc_list.append(atom)
         atom.__alt_loc_list = self.__alt_loc_list
         self.__alt_loc_list.sort()
+        return True
 
+    def get_default(self):
+        """Returns the atom matching the Structure's default_model
+        and defualt_alt_loc.  Returns None if there is no default atom
+        witht he current default settings.
+        """
+        default_model = self.fragment.chain.structure.default_model
+        default_alt_loc = self.fragment.chain.structure.default_alt_loc
+        default_atm = None
+        for atm in self.__alt_loc_list:
+            if atm.model != default_model:
+                continue
+            if atm.alt_loc == default_alt_loc:
+                return atm
+            elif not atm.alt_loc:
+                default_atm = atm
+        if default_atm:
+            return default_atm
+        return None
+
+    def get_model(self, model):
+        """Returns the atom in the argument model number.  Uses the Structure
+        default_alt_loc.  Return None if the atom is not found.
+        """
+        assert type(model) == IntType
+        try:
+            return self[model]
+        except KeyError:
+            return None
+        
     def get_alt_loc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument.
         """
@@ -1061,62 +1211,68 @@ class Atom(object):
 
     def iter_alt_loc(self):
         """Iterate over all alt_loc versions of this atom in the
-        alphabetical order of the alt_loc labels.  If there are no
-        alt_loc versions, do not iterate.
+        alphabetical order of the alt_loc labels.
         """
         return iter(self)
 
     def has_alt_loc(self):
-        """Returns True if there are no alternative locations for this atom.
+        """Returns True if alternate models or conformations of this
+        atom exist.
         """
         if len(self.__alt_loc_list) > 1:
             return True
         return False
 
-    def create_bond(self, atom, bond_alt_loc = False):
-        """Creates a bond between two Atom objects.  If bond_alt_loc
-        is True, then the bond is also formed between the alternate
-        locations of the same atom.
+    def create_bond(self,
+                    atom,
+                    bond_type = None,
+                    atm1_symop = None,
+                    atm2_symop = None,
+                    standard_res_bond = False):
+        """Creates a bond between this atom and the argumentatom.  The
+        arugment bond_type is a string, atm1_symop and atm2_symop are
+        symmetry operations to be applied to self and the argument atom
+        before distance calculations, and standard_res_bond is a flag
+        used to indicate this bond is a standard bond.
+        """
+        assert isinstance(atom, Atom)
+        assert self.model == atom.model
+        assert ((self.alt_loc == atom.alt_loc) or
+                (self.alt_loc == "" and atom.alt_loc != "") or
+                (self.alt_loc != "" and atom.alt_loc == ""))
+            
+        bond = Bond(self, atom,
+                    bond_type = bond_type,
+                    atm1_symop = atm1_symop,
+                    atm2_symop = atm2_symop,
+                    standard_res_bond = standard_res_bond)
+
+        self.bond_list.append(bond)
+        atom.bond_list.append(bond)
+
+    def create_bonds(self,
+                     atom,
+                     bond_type = None,
+                     atm1_symop = None,
+                     atm2_symop = None,
+                     standard_res_bond = False):
+        """Like create_bonds, but it bonds all alternate locations and models
+        of this atom.
         """
         assert isinstance(atom, Atom)
 
-        def make_bond(a1, a2):
-            assert ((a1.alt_loc == a2.alt_loc) or
-                    (a1.alt_loc == "" and a2.alt_loc != "") or
-                    (a1.alt_loc != "" and a2.alt_loc == ""))
-            
-            if a1.get_bond(a2):
-                return
+        for atm1 in self.__alt_loc_list:
+            for atm2 in atom.__alt_loc_list:
+                if atm1.model != atm2.model:
+                    continue
 
-            bond = Bond(a1, a2)
-            a1.bond_list.append(bond)
-            a2.bond_list.append(bond)
-
-        if bond_alt_loc:
-            ## this handles constructing the bonds for alternate
-            ## conformations correctly
-            alist1 = [a.alt_loc for a in self if a.alt_loc]
-            alist2 = [a.alt_loc for a in atom if a.alt_loc]
-            
-            if not (alist1 or alist2):
-                make_bond(self, atom)
-
-            elif alist1 and alist2:
-                for alt_loc in alist1:
-                    try: make_bond(self[alt_loc], atom[alt_loc])
-                    except KeyError: pass
-
-            elif alist1 and not alist2:
-                for alt_loc in alist1:
-                    try: make_bond(self[alt_loc], atom)
-                    except KeyError: pass
-            else:
-                for alt_loc in alist2:
-                    try: make_bond(self, atom[alt_loc])  
-                    except KeyError: pass
-
-        else:
-            make_bond(self, atom)
+                if not atm1.alt_loc or not atm2.alt_loc or \
+                   atm1.alt_loc == atm2.alt_loc:
+                    atm1.create_bond(atm2,
+                                     bond_type=bond_type,
+                                     atm1_symop=atm1_symop,
+                                     atm2_symop=atm2_symop,
+                                     standard_res_bond=standard_res_bond)
 
     def get_bond(self, atom):
         """Returns the Bond connecting self with the argument atom.
@@ -1206,13 +1362,22 @@ class Atom(object):
 class Bond(object):
     """Indicates two atoms are bonded together.
     """
-    def __init__(self, atom1, atom2):
+    def __init__(self, atom1, atom2,
+                 bond_type = None,
+                 atm1_symop = None,
+                 atm2_symop = None,
+                 standard_res_bond = False):
+
         assert isinstance(atom1, Atom)
         assert isinstance(atom2, Atom)
         assert atom1 != atom2
 
         self.atom1 = atom1
         self.atom2 = atom2
+        self.bond_type = bond_type
+        self.atm1_symop = atm1_symop
+        self.atm2_symop = atm2_symop
+        self.standard_res_bond = standard_res_bond
 
     def __str__(self):
         return "Bond(%s...%s)" % (self.atom1, self.atom2)
@@ -1223,7 +1388,8 @@ class Bond(object):
         return None
 
     def get_atom1(self):
-        """Returns atom #1 of the pair of bonded atoms.
+        """Returns atom #1 of the pair of bonded atoms.  This is also
+        accessable by bond.atom1.
         """
         return self.atom1
 

@@ -17,15 +17,27 @@ class StructureBuilder:
     StructureBuilder must be subclassed with a working parse_format()
     method to implement a working builder.
     """
-    def __init__(self, fil, library = None, build_properties = ()):
+    def __init__(self,
+                 fil = None,
+                 struct = None,
+                 library = None,
+                 build_properties = ()):
+
         ## contstruct the Structure graph we are building
-        self.structure = Structure(library = library)
+        if struct:
+            self.struct = struct
+        else:
+            self.struct = Structure(library = library)
         
         ## what items are going to be built into the Structure graph
         ## follow up with adding structural components which depend on
         ## other components
         self.build_properties = build_properties
 
+        ## caches used while building
+        self.cache_chain = None
+        self.cache_frag = None
+        
         ## if anything goes wrong, setting self.halt=1 will stop the madness
         self.halt = 0
 
@@ -38,7 +50,7 @@ class StructureBuilder:
         if not self.halt: self.read_metadata_finalize()
         if not self.halt: self.read_end()
         if not self.halt: self.read_end_finalize()
-        ## self.structure is now built and ready for use
+        ## self.struct is now built and ready for use
 
     def read_start(self, fil):
         """This methods needs to be reimplemented in a functional subclass.
@@ -68,45 +80,20 @@ class StructureBuilder:
         in the atm_map argument, and is not well documented at this
         point.  Look at this function and you'll figure it out.
         """
-        ## XXX -- I presently do not support more than one NMR
-        ##        style MODEL; this is first on the list for the
-        ##        next version
-        if atm_map.has_key("model_num") and atm_map["model_num"] > 1:
-            debug("NMR-style multi-models not supported yet")
-            return
-        ## /XXX
-
         ## required items
         name = atm_map.get("name", "")
+        model = atm_map.get("model_num", 1)
         fragment_id = atm_map.get("fragment_id", "")
         chain_id = atm_map.get("chain_id", "")
         res_name = atm_map.get("res_name", "")
         alt_loc = atm_map.get("alt_loc", "")
 
-        ## allocate the atom cache if it does not exist
-        if not hasattr(self, "atom_cache"):
-            self.atom_cache = {}
-
-        ## find a unique atm_id for the atom, modify the name of the
-        ## atom if necessary
-        atm_id = (name, alt_loc, fragment_id, chain_id)
-
-        if self.atom_cache.has_key(atm_id):
-            old_name = name
-            i = 2
-            while self.atom_cache.has_key(atm_id):
-                name = "%s%d" % (old_name, i)
-                atm_id = (name, alt_loc, fragment_id, chain_id)
-                i += 1
-
-        ## don't allow atoms with blank altLoc if one has a altLoc
-        if alt_loc and self.atom_cache.has_key((name,"",fragment_id,chain_id)):
-            debug("altloc labeling error "+name+fragment_id+chain_id)
-            return
-
-        atm = self.atom_cache[atm_id] = \
-              Atom(name = name, alt_loc = alt_loc, res_name = res_name,
-                   fragment_id = fragment_id, chain_id = chain_id)
+        atm = Atom(name = name,
+                   model = model,
+                   alt_loc = alt_loc,
+                   res_name = res_name,
+                   fragment_id = fragment_id,
+                   chain_id = chain_id)
 
         ## extract element symbol from atom name if it isn't given
         try:
@@ -149,59 +136,75 @@ class StructureBuilder:
         except KeyError:
             pass
 
+        ## pack atom into its fragment, create necessary parents
+
+        ## add chain
+        if not self.cache_chain or self.cache_chain.chain_id != atm.chain_id:
+            try:
+                self.cache_chain = self.struct[atm.chain_id]
+            except KeyError:
+                self.cache_chain = Chain(atm.chain_id)
+                self.struct.add_chain(self.cache_chain, delay_sort = True)
+
+        ## add fragment
+        if not self.cache_frag or \
+               self.cache_frag.fragment_id != atm.fragment_id or \
+               self.cache_frag.chain_id != atm.chain_id:
+            try:
+                self.cache_frag = self.cache_chain[atm.fragment_id]
+            except KeyError:
+                if self.struct.library.is_amino_acid(atm.res_name):
+                    self.cache_frag = AminoAcidResidue(
+                        res_name = atm.res_name,
+                        fragment_id = atm.fragment_id,
+                        chain_id = atm.chain_id)
+                elif self.struct.library.is_nucleic_acid(atm.res_name):
+                    self.cache_frag = NucleicAcidResidue(
+                        res_name = atm.res_name,
+                        fragment_id = atm.fragment_id,
+                        chain_id = atm.chain_id)
+                else:
+                    self.cache_frag = Fragment(
+                        res_name = atm.res_name,
+                        fragment_id = atm.fragment_id,
+                        chain_id = atm.chain_id)
+                    
+                self.cache_chain.add_fragment(
+                    self.cache_frag, delay_sort = True)
+
+        ## sanity check
+        assert atm.chain_id == self.cache_chain.chain_id
+        assert atm.fragment_id == self.cache_frag.fragment_id
+
+        try:
+            assert atm.res_name == self.cache_frag.res_name
+        except AssertionError:
+            print "ERROR[load_atom] cache_frag",self.cache_frag
+            print "ERROR[load_atom] atm",atm
+            return
+
+        ## add atom
+        self.cache_frag.add_atom(atm)
+        return atm
+
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to
         build the structure.
         """
-        def fragment_factory(atm):
-            if self.structure.library.is_amino_acid(atm.res_name):
-                frag_class = AminoAcidResidue
-                
-            elif self.structure.library.is_nucleic_acid(atm.res_name):
-                frag_class = NucleicAcidResidue
-
-            else:
-                frag_class = Fragment
-
-            return frag_class(res_name    = atm.res_name,
-                              fragment_id = atm.fragment_id,
-                              chain_id    = atm.chain_id)
-
-        for atm in self.atom_cache.values():
-            ## retrieve/create Chain
-            try:
-                chain = self.structure[atm.chain_id]
-            except KeyError:
-                chain = Chain(atm.chain_id)
-                self.structure.add_chain(chain, delay_sort = True)
-
-            ## retrieve/create Fragment
-            try:
-                frag = chain[atm.fragment_id]
-            except KeyError:
-                frag = fragment_factory(atm)
-                chain.add_fragment(frag, delay_sort = True)
-
-            frag.add_atom(atm)
-
         ## sort structural objects into their correct order
-        self.structure.sort()
-        for chain in self.structure.iter_chains():
+        self.struct.sort()
+        for chain in self.struct.iter_chains():
             chain.sort()
 
         ## iterate through all the atoms, and choose a default alt_loc
         alt_loc_list = []
-        for atm1 in self.structure.iter_atoms():
+        for atm1 in self.struct.iter_atoms():
             for atm2 in atm1:
                 if atm2.alt_loc and atm2.alt_loc not in alt_loc_list:
                     alt_loc_list.append(atm2.alt_loc)
         if alt_loc_list:
             alt_loc_list.sort()
-            self.structure.default_alt_loc = alt_loc_list[0]
-        
-        ## we're done with the atom cache, delete it
-        if hasattr(self, "atom_cache"):
-            del self.atom_cache
+            self.struct.default_alt_loc = alt_loc_list[0]
                     
     def read_metadata(self):
         """This method needs to be reimplemented in a fuctional subclass.
@@ -216,7 +219,7 @@ class StructureBuilder:
         """
         def set_ed(smap, skey, dkey):
             try:
-                self.structure.exp_data[dkey] = smap[skey]
+                self.struct.exp_data[dkey] = smap[skey]
             except KeyError:
                 pass
 
@@ -252,16 +255,30 @@ class StructureBuilder:
         """Called by the implementation of load_metadata to load the
         unit cell pararameters for the structure.
         """
-        self.structure.unit_cell = UnitCell(
-            a = ucell_map["a"],
-            b = ucell_map["b"],
-            c = ucell_map["c"],
-            alpha = ucell_map["alpha"],
-            beta = ucell_map["beta"],
-            gamma = ucell_map["gamma"],
-            space_group = ucell_map["space_group"])
+        for key in ["a", "b", "c", "alpha", "beta", "gamma"]:
+            if not ucell_map.has_key(key):
+                debug("ucell_map missing: %s" % (key))
+                return
 
-    def load_site(self, site_map):
+        if ucell_map.has_key("space_group"):
+            self.struct.unit_cell = UnitCell(
+                a = ucell_map["a"],
+                b = ucell_map["b"],
+                c = ucell_map["c"],
+                alpha = ucell_map["alpha"],
+                beta = ucell_map["beta"],
+                gamma = ucell_map["gamma"],
+                space_group = ucell_map["space_group"])
+        else:
+            self.struct.unit_cell = UnitCell(
+                a = ucell_map["a"],
+                b = ucell_map["b"],
+                c = ucell_map["c"],
+                alpha = ucell_map["alpha"],
+                beta = ucell_map["beta"],
+                gamma = ucell_map["gamma"])
+
+    def load_sites(self, site_map):
         """Called by the implementation of load_metadata to load information
         about one site in the structure.  Sites are groups of residues
         which are of special interest.  This usually means active sites
@@ -272,34 +289,57 @@ class StructureBuilder:
         """
         for (site_id, sentry_list) in site_map.items():
             site = Site(name = site_id)
-            self.structure.sites.append(site)
+            self.struct.sites.append(site)
 
             for sentry in sentry_list:
                 chain_id = sentry["chain_id"]
                 fragment_id = sentry["fragment_id"]
                 try:
-                    frag = self.structure[chain_id][fragment_id]
+                    frag = self.struct[chain_id][fragment_id]
                 except KeyError:
                     debug("load_site: chain_id=%s fragment_id=%s not found"%(
                         chain_id, fragment_id))
                 else:
                     site.append(frag)
 
-    def load_bond(self, bond_map):
+    def load_bonds(self, bond_map):
         """Call by the implementation of load_metadata to load bond
-        information on the structure.
+        information on the structure.  The keys of the bond map are a 2-tuple
+        of the bonded Atom instances, and the value is a dictionary
+        containing information on the type of bond, which may also
+        be a symmetry operator.
+
+        [bond_map]
+        keys: (atm1, atm2)
+        values: bond_data_map(s)
+
+        [bond_data_map]
+        bond_type -> text description of bond type: covalent, salt bridge,
+                     hydrogen, cispeptide
+                     
+        atm1_symop -> symmetry operation (if any) to be applied to atm1
+        atm2_symop -> same as above, for atom 2
+
+        The symmetry operations themselves are a 3x4 array of floating point
+        values composed of the 3x3 rotation matrix and the 3x1 translation.
         """
-        pass
+        for ((atm1, atm2), bd_map) in bond_map.items():
+            #print atm1,atm2,bd_map
+            atm1.create_bonds(atm2,
+                              bond_type = bd_map.get("bond_type"),
+                              atm1_symop = bd_map.get("atm1_symop"),
+                              atm2_symop = bd_map.get("atm2_symop"),
+                              standard_res_bond = False)
 
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
         ## calculate sequences for all chains
-        for chain in self.structure.iter_chains():
+        for chain in self.struct.iter_chains():
             chain.calc_sequence()
 
         ## build bonds within structure
-        for frag in self.structure.iter_fragments():
+        for frag in self.struct.iter_fragments():
             frag.create_bonds()
 
     def read_end(self):
@@ -407,16 +447,29 @@ class PDBStructureBuilder(StructureBuilder):
     def read_start(self, fil):
         self.pdb_file = PDB.PDBFile()
         self.pdb_file.load_file(fil)
-        self.structure.exp_data["pdb_file"] = self.pdb_file
+        self.struct.exp_data["pdb_file"] = self.pdb_file
 
     def read_atoms(self):
-        model_num = None
-        atm_map = {}        
+        ## map PDB atom serial numbers to the structure atom classes
+        self.atom_serial_map = {}
 
+        ## state vars
+        model_num = None
+
+        ## small function to load the atom and add it to the serial map
+        def load_atom(atm_map):
+            atm = self.load_atom(atm_map)
+            try:
+                self.atom_serial_map[atm_map["serial"]] = atm
+            except KeyError:
+                pass
+
+        ## loop over all records
+        atm_map = {}        
         for rec in self.pdb_file:
             if isinstance(rec, PDB.ATOM):
                 if atm_map:
-                    self.load_atom(atm_map)
+                    load_atom(atm_map)
                     atm_map = {}
                 try:
                     self.process_ATOM(atm_map, rec)
@@ -446,12 +499,13 @@ class PDBStructureBuilder(StructureBuilder):
 
         ## load last atom read
         if atm_map:
-            self.load_atom(atm_map)
+            load_atom(atm_map)
 
     def read_metadata(self):
         info_map = {}
         site_map = {}
         ucell_map = {}
+        bond_map = {}
 
         ## gather metadata
         for rec in self.pdb_file:
@@ -473,19 +527,33 @@ class PDBStructureBuilder(StructureBuilder):
             elif isinstance(rec, PDB.AUTHOR):
                 self.process_AUTHOR(info_map, rec)
 
+            elif isinstance(rec, PDB.SSBOND):
+                self.process_SSBOND(bond_map, rec)
+                
+            elif isinstance(rec, PDB.LINK):
+                self.process_LINK(bond_map, rec)
+                
+            elif isinstance(rec, PDB.CONECT):
+                self.process_CONECT(bond_map, rec)
+
         ## load info
         info_map["pdb_file"] = self.pdb_file
         self.load_info(info_map)
 
         ## load the SITE information if found
         if site_map:
-            self.load_site(site_map)
+            self.load_sites(site_map)
 
         ## load the unit cell parameters if found
         if ucell_map:
             self.load_unit_cell(ucell_map)
 
+        ## load bonds
+        if bond_map:
+            self.load_bonds(bond_map)
+
     def process_ATOM(self, atm_map, rec):
+        self.setmapi(rec, "serial", atm_map, "serial")
         self.setmaps(rec, "name", atm_map, "name")
         self.setmaps(rec, "element", atm_map, "element")
         self.setmaps(rec, "altLoc", atm_map, "alt_loc")
@@ -558,17 +626,117 @@ class PDBStructureBuilder(StructureBuilder):
                 site_map[sentry["id"]] = [sentry]
 
     def process_SSBOND(self, bond_map, rec):
-        bond_map["type"] = "disulfide"
-        bond_map["chain_id1"] = rec["chainID1"]
-        bond_map["fragment_id1"] = self.get_fragment_id(rec,"seqNum1","iCode1")
-        bond_map["chain_id2"] = rec["chainID2"]
-        bond_map["fragment_id2"] = self.get_fragment_id(rec,"seqNum2","iCode2")
+        try:
+            chain_id1 = rec["chainID1"]
+            frag_id1 = self.get_fragment_id(rec,"seqNum1","iCode1")
 
-        self.setmaps(rec, "sym1", bond_map, "symop1")
-        self.setmaps(rec, "sym2", bond_map, "symop2")
+            chain_id2 = rec["chainID2"]
+            frag_id2 = self.get_fragment_id(rec,"seqNum2","iCode2")
+        
+            frag1 = self.struct[chain_id1][frag_id1]
+            frag2 = self.struct[chain_id2][frag_id2]
+
+            atm1 = frag1["SG"]
+            atm2 = frag2["SG"]
+        except KeyError, x:
+            debug("pdb invalid SSBOND record: %s", str(x))
+            return
+
+        if id(atm1) < id(atm2):
+            bnd = (atm1, atm2)
+        else:
+            bnd = (atm2, atm1)
+
+        if not bond_map.has_key(bnd):
+            bond_map[bnd] = {}
+
+        bond_map[bnd]["bond_type"] = "disulfide"
+
+        if rec.has_key("sym1"):
+            bond_map[bnd]["symop1"] = rec["sym1"]
+        if rec.has_key("sym2"):
+            bond_map[bnd]["symop2"] = rec["sym2"]
 
     def process_LINK(self, bond_map, rec):
-        pass
+        try:
+            chain_id1 = rec["chainID1"]
+            frag_id1 = self.get_fragment_id(rec,"resSeq1","iCode1")
+            name1 = rec["name1"]
+            alt_loc1 = rec["altLoc1"]
+
+            chain_id2 = rec["chainID2"]
+            frag_id2 = self.get_fragment_id(rec,"resSeq2","iCode2")
+            name2 = rec["name2"]
+            alt_loc2 = rec["altLoc2"]
+
+            atm1 = self.struct[chain_id1][frag_id1][name1]
+            atm2 = self.struct[chain_id2][frag_id2][name2]
+
+            if alt_loc1:
+                atm1 = atm1[alt_loc1]
+            if alt_loc2:
+                atm2 = atm2[alt_loc2]
+        except KeyError, x:
+            debug("pdb invalid LINK record: %s", str(x))
+            return
+
+        if id(atm1) < id(atm2):
+            bnd = (atm1, atm2)
+        else:
+            bnd = (atm2, atm1)
+
+        if not bond_map.has_key(bnd):
+            bond_map[bnd] = {}
+
+        bond_map[bnd]["bond_type"] = "disulfide"
+        
+        if alt_loc1:
+            bond_map[bnd]["alt_loc1"] = alt_loc1
+        if alt_loc2:
+            bond_map[bnd]["alt_loc2"] = alt_loc2
+
+        if rec.has_key("sym1"):
+            bond_map[bnd]["symop1"] = rec["sym1"]
+        if rec.has_key("sym2"):
+            bond_map[bnd]["symop2"] = rec["sym2"]
+
+            
+    def process_CONECT(self, bond_map, rec):
+        try:
+            atm1 = self.atom_serial_map[rec["serial"]]
+        except KeyError:
+            debug("pdb CONNECT record atom serial number not found.")
+            return
+
+        def helper_func(field_list, bond_type):
+            for field in field_list:
+                try:
+                    atm2 = self.atom_serial_map[rec[field]]
+                except KeyError:
+                    continue
+
+                if id(atm1) < id(atm2):
+                    bnd = (atm1, atm2)
+                else:
+                    bnd = (atm2, atm1)
+
+                if not bond_map.has_key(bnd):
+                    bond_map[bnd] = {}
+
+                if not bond_map[bnd].has_key("bond_type"):
+                    bond_map[bnd]["bond_type"] = bond_type
+
+        helper_func(
+            ["serialBond1","serialBond2",
+             "serialBond3","serialBond4"],
+            "covalent")
+        helper_func(
+            ["serialHydBond1","serialHydBond2",
+             "serialHydBond3","serialHydBond4"],
+            "hydrogen bond")
+        helper_func(
+            ["serialSaltBond1","serialSaltBond2"],
+            "salt bridge")
 
     def process_HEADER(self, info_map, rec):
         self.setmaps(rec, "idCode", info_map, "id")
@@ -761,7 +929,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                 except KeyError:
                     site_map[sentry["id"]] = [sentry]
                     
-            self.load_site(site_map)
+            self.load_sites(site_map)
 
         ## UNIT CELL
         ucell_map = {}

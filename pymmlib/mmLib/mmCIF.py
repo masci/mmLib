@@ -48,6 +48,24 @@ class mmCIFTable(list):
     def __eq__(self, other):
         return id(self) == id(other)
     
+    def __getitem__(self, x):
+        """Retrieves mmCIFRow at index x from the table if the argument is
+        a integer.  If the argument is a string, then the data from the
+        first row is returned.
+        """
+        if type(x) == IntType:
+            return list.__getitem__(self, x)
+
+        elif type(x) == StringType:
+            try:
+                return self[0][x]
+            except IndexError:
+                raise KeyError
+            except KeyError:
+                raise KeyError
+
+        raise TypeError, x
+    
     def __setitem__(self, i, row):
         assert isinstance(row, mmCIFRow)
         row.table = self
@@ -764,6 +782,10 @@ class mmCIFFileBuilder:
     cell_columns = [
         "entry_id", "length_a", "length_b", "length_c", "angle_alpha",
         "angle_beta", "angle_gamma", "PDB_Z"]
+
+    symmetry_columns = [
+        "entry_id", "space_group_name_H-M", "cell_setting",
+        "Int_Tables_number"]
     
     atom_site_columns = [
         "group_PDB", "id", "type_symbol", "label_entity_id",
@@ -791,6 +813,7 @@ class mmCIFFileBuilder:
         self.add_audit_author()
         self.add_entity()
         self.add_cell()
+        self.add_symmetry()
         self.add_atom_site()
 
     def get_table(self, name, columns = None):
@@ -894,22 +917,37 @@ class mmCIFFileBuilder:
                     self.entity_id_map[frag] = entity_id
 
     def add_cell(self):
-        if not self.struct.unit_cell:
-            return
-        else:
+        if self.struct.unit_cell:
             unit_cell = self.struct.unit_cell
+        else:
+            return
         
         cell = self.get_table("cell", self.cell_columns)
         row = mmCIFRow()
         cell.append(row)
 
-        row["entry_id"] = self.cif_data["entry"][0]["id"]
+        row["entry_id"] = self.cif_data["entry"]["id"]
         row["length_a"] = unit_cell.a
         row["length_b"] = unit_cell.b
         row["length_c"] = unit_cell.c
-        row["angle_alpha"] = unit_cell.alpha
-        row["angle_beta"] = unit_cell.beta
-        row["angle_gamma"] = unit_cell.gamma
+        row["angle_alpha"] = unit_cell.calc_alpha_deg()
+        row["angle_beta"] = unit_cell.calc_beta_deg()
+        row["angle_gamma"] = unit_cell.calc_gamma_deg()
+
+    def add_symmetry(self):
+        if self.struct.unit_cell and self.struct.unit_cell.space_group:
+            space_group = self.struct.unit_cell.space_group
+        else:
+            return
+
+        cell = self.get_table("symmetry", self.symmetry_columns)
+        row = mmCIFRow()
+        cell.append(row)
+
+        row["entry_id"] = self.cif_data["entry"]["id"]
+        row["space_group_name_H-M"] = space_group.pdb_name
+        row["Int_Tables_number"] = space_group.number
+
 
     def add_atom_site(self):
         atom_site = self.get_table("atom_site", self.atom_site_columns)

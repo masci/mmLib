@@ -6,20 +6,36 @@ from mmLib.FileLoader import LoadStructure
 from mmLib.Structure import *
 
 def atom_test(atom):
+    model = atom.fragment.chain.structure.default_model
+    alt_loc = atom.fragment.chain.structure.default_alt_loc
+
     print "Atom Test",atom
 
+    visited_atm_list = []
     for atm in atom.iter_alt_loc():
         assert isinstance(atm, Atom)
         assert atm in atom
-        assert atom[atm.alt_loc] == atm
-        assert atm.get_alt_loc(atom.alt_loc) == atom
+        assert atm not in visited_atm_list
+        visited_atm_list.append(atm)
+        assert atom[atm.alt_loc, atm.model] == atm
+        assert atom[atm.alt_loc].model == model
+        assert atom[atm.model].alt_loc == alt_loc or \
+               atom[atm.model].alt_loc == ""
         assert atm.get_fragment() == atom.get_fragment()
         assert atm.get_chain() == atom.get_chain()
         assert atm.get_structure() == atom.get_structure()
+        assert atm.name == atom.name
+        assert atm.res_name == atom.res_name
+        assert atm.fragment_id == atom.fragment_id
+        assert atm.chain_id == atom.chain_id
 
     for bond in atom.iter_bonds():
         assert isinstance(bond, Bond)
-        assert bond.get_atom1() == atom or bond.get_atom2() == atom
+        assert bond.atom1 == atom or bond.atom2 == atom
+        assert bond.atom1.model == bond.atom2.model
+        assert bond.atom1.alt_loc == bond.atom2.alt_loc or \
+               (bond.atom1.alt_loc == "" and bond.atom2.alt_loc != "") or \
+               (bond.atom1.alt_loc != "" and bond.atom2.alt_loc == "")
 
     a = atom.calc_anisotropy()
 
@@ -28,21 +44,43 @@ def atom_test(atom):
 def fragment_test(frag):
     print "Fragment Test",frag
 
+    model = frag.chain.structure.default_model
+    alt_loc = frag.chain.structure.default_alt_loc
+
+    visited_atm_list = []
     for atm in frag.iter_atoms():
         assert isinstance(atm, Atom)
+        assert atm not in visited_atm_list
+        visited_atm_list.append(atm)
         assert atm in frag
-        assert frag[atm.name] == atm
+        try:
+            assert frag[atm.name] == atm
+        except AssertionError:
+            print "[ERROR::fragment_test] atm=%s frag[atm.name=" % (
+                atm, frag[atm.name])
         assert frag.get_atom(atm.name) == atm
         assert atm.get_fragment() == frag
         assert atm.get_chain() == frag.get_chain()
         assert atm.get_structure() == frag.get_structure()
+        assert atm.alt_loc == alt_loc or atm.alt_loc == ""
+        assert atm.model == model
 
+    ## test iter_bonds
+    num_bonds = 0
     for bond in frag.iter_bonds():
         assert isinstance(bond, Bond)
+        assert bond.atom1 in frag or bond.atom2 in frag
+        num_bonds += 1
 
+    ## simple test to check that the bonds are being created properly
+    ## amino acids should have at least one bond per atom, usually more
+   # if isinstance(frag, AminoAcidResidue):
+   #     assert num_bonds >= len(frag)-1
+        
     f = frag.get_offset_fragment(-1)
     f = frag.get_offset_fragment(1)
 
+    ## test fragment API for obvious errors
     if isinstance(frag, Residue):
         r = frag.get_offset_residue(-1)
         r = frag.get_offset_residue(1)

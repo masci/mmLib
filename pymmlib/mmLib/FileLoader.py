@@ -30,7 +30,12 @@ def decode_format(path, format):
     return "PDB"
 
 
-def LoadStructure(fil, library = None, format = "", build_properties = ()):
+def LoadStructure(fil,
+                  library = None,
+                  format = "",
+                  build_properties = (),
+                  struct = None):
+
     """Loads a mmCIF file(.cif) or PDB file(.pdb) into a 
     Structure class and returns it.  The first argument is either a
     path string or a file object opened for reading.
@@ -41,31 +46,33 @@ def LoadStructure(fil, library = None, format = "", build_properties = ()):
         return PDBStructureBuilder(
             fil              = fil,
             library          = library,
-            build_properties = build_properties).structure
+            build_properties = build_properties,
+            struct           = struct).struct
 
     elif format == "CIF":
         return mmCIFStructureBuilder(
             fil              = fil,
             library          = library,
-            build_properties = build_properties).structure
+            build_properties = build_properties,
+            struct           = struct).struct
 
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))
 
 
-def SaveStructure(fil, structure, format = ""):
+def SaveStructure(fil, struct, format = ""):
     """Saves a Structure object into a supported file type.
     """
     format = decode_format(fil, format)
 
     if format == "PDB":
         pdb_file = PDBFile()
-        PDBFileBuilder(structure, pdb_file)
+        PDBFileBuilder(struct, pdb_file)
         pdb_file.save_file(fil)
         return
 
     elif format == "CIF":
         cif_file = mmCIFFile()
-        mmCIFFileBuilder(structure, cif_file)
+        mmCIFFileBuilder(struct, cif_file)
         cif_file.save_file(fil)
         return
 

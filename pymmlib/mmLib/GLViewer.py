@@ -208,7 +208,14 @@ class GLAtomDrawList(GLDrawList, AtomList):
         
         glLineWidth(self.line_width)
         if atm.bond_list:
-            for atm2 in atm.iter_bonded_atoms():
+            for bond in atm.iter_bonds():
+                atm2 = bond.get_partner(atm)
+
+                if bond.bond_type != None:
+                    glLineWidth(10.0)
+                else:
+                    glLineWidth(self.line_width)
+
                 if self.atom_origin:
                     start = atm.position - self.atom_origin
                 else:

@@ -58,6 +58,21 @@ class UnitCell(object):
         return "UnitCell(a=%f, b=%f, c=%f, alpha=%f, beta=%f, gamma=%f)" % (
             self.a, self.b, self.c, alpha, beta, gamma)
 
+    def calc_alpha_deg(self):
+        """Returns the alpha angle in degrees.
+        """
+        return self.alpha * rad2deg
+    
+    def calc_beta_deg(self):
+        """Returns the beta angle in degrees.
+        """
+        return self.beta * rad2deg
+
+    def calc_gamma_deg(self):
+        """Returns the gamma angle in degrees.
+        """
+        return self.gamma * rad2deg
+
     def calc_v(self):
         """Calculates the volume of the rhombohedrial created by the
         unit vectors a1/|a1|, a2/|a2|, a3/|a3|.
