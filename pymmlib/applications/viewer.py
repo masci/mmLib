@@ -1562,11 +1562,14 @@ class TLSSearchDialog(gtk.Dialog):
             max_DP2 = 1.0
         
         tls_analysis = TLSStructureAnalysis(self.sc.struct)
-        stats_list   = tls_analysis.fit_TLS_segments(
-            residue_width          = residue_width,
-            use_side_chains        = use_side_chains,
-            include_frac_occupancy = include_frac_occupancy,
-            include_single_bond    = include_single_bond)
+##         stats_list   = tls_analysis.fit_TLS_segments(
+##             residue_width          = residue_width,
+##             use_side_chains        = use_side_chains,
+##             include_frac_occupancy = include_frac_occupancy,
+##             include_single_bond    = include_single_bond)
+
+        stats_list = tls_analysis.fit_common_TLS(
+            residue_width          = residue_width )
 
         self.tls_stats_list = []
         for stats in stats_list:

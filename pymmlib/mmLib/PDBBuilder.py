@@ -159,8 +159,96 @@ class PDBFileBuilder(object):
 
     def add_secondary_structure_section(self):
         """HELIX,SHEET,TURN
+        PDB files do not put separate secondary structure descriptions
+        within MODEL definitions, so you have to hope the models
+        do not differ in secondary structure.  mmLib allows separate
+        MODELs to have different secondary structure, but one MODEL must
+        be chosen for the PDF file, so the default Model of the Structure
+        is used.
         """
-        pass
+
+        ## HELIX
+        serial_num = 0
+        for alpha_helix in self.struct.iter_alpha_helicies():
+            serial_num += 1
+
+            helix = HELIX()
+            self.pdb_file.append(helix)
+
+            helix["serNum"]      = serial_num
+            helix["helixID"]     = alpha_helix.helix_id
+            helix["helixClass"]  = alpha_helix.helix_class
+
+            helix["initResName"] = alpha_helix.res_name1
+            helix["initChainID"] = alpha_helix.chain_id1
+            try:
+                helix["initSeqNum"], helix["initICode"] = fragment_id_split(
+                    alpha_helix.fragment_id1)
+            except ValueError:
+                pass
+
+            helix["endResName"]  = alpha_helix.res_name2
+            helix["endChainID"]  = alpha_helix.chain_id2
+            try:
+                helix["endSeqNum"], helix["endICode"] = fragment_id_split(
+                    alpha_helix.fragment_id2)
+            except ValueError:
+                pass
+
+            helix["comment"]     = alpha_helix.details
+            helix["initChainID"] = alpha_helix.chain_id1
+            helix["length"]      = alpha_helix.helix_length
+
+        ## SHEET
+        for beta_sheet in self.struct.iter_beta_sheets():
+            num_strands = len(beta_sheet.strand_list)
+
+            strand_num = 0
+            for strand in beta_sheet.iter_strands():
+                strand_num += 1
+
+                sheet = SHEET()
+                self.pdb_file.append(sheet)
+
+                sheet["strand"]     = strand_num
+                sheet["sheetID"]    = beta_sheet.sheet_id
+                sheet["numStrands"] = num_strands
+                
+                sheet["initResName"] = strand.res_name1
+                sheet["initChainID"] = strand.chain_id1
+                try:
+                    sheet["initSeqNum"], sheet["initICode"]=fragment_id_split(
+                        strand.fragment_id1)
+                except ValueError:
+                    pass
+                
+                sheet["endResName"] = strand.res_name2
+                sheet["endChainID"] = strand.chain_id2
+                try:
+                    sheet["endSeqNum"], sheet["endICode"] = fragment_id_split(
+                        strand.fragment_id2)
+                except ValueError:
+                    pass
+                
+                sheet["curAtom"]    = strand.reg_atom
+                sheet["curResName"] = strand.reg_res_name
+                sheet["curChainId"] = strand.reg_chain_id
+
+                try:
+                    sheet["curSeqNum"], sheet["curICode"] = fragment_id_split(
+                        strand.reg_fragment_id)
+                except ValueError:
+                    pass
+
+                sheet["prevAtom"]    = strand.reg_prev_atom
+                sheet["prevResName"] = strand.reg_prev_res_name
+                sheet["prevChainId"] = strand.reg_prev_chain_id
+                try:
+                    sheet["prevSeqNum"],sheet["prevICode"]=fragment_id_split(
+                        strand.reg_prev_fragment_id)
+                except ValueError:
+                    pass
+
 
     def add_connectivity_annotation_section(self):
         """SSBOND,LINK,SLTBRG,CISPEP
@@ -224,7 +312,6 @@ class PDBFileBuilder(object):
         ## END
         end = END()
         self.pdb_file.append(end)
-
 
     def add_atom_records(self):
         """With a default model set, output all the ATOM and associated

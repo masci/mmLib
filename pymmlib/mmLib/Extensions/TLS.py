@@ -1191,6 +1191,7 @@ class TLSStructureAnalysis(object):
         """
         
         ## arguments
+        origin                  = args.get("origin_of_calc")
         residue_width           = args.get("residue_width", 6)
         use_side_chains         = args.get("use_side_chains", True)
         filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
@@ -1243,7 +1244,11 @@ class TLSStructureAnalysis(object):
                 ## set the origin of the TLS group to the centroid, and also
                 ## save it under calc_origin because origin will be overwritten
                 ## using the COR after the least squares fit
-                tls.origin           = tls.calc_centroid()
+                if origin!=None:
+                    tls.origin = origin.copy()
+                else:
+                    tls.origin = tls.calc_centroid()
+
                 stats["calc_origin"] = tls.origin
 
                 ## calculate tensors and print
@@ -1275,6 +1280,131 @@ class TLSStructureAnalysis(object):
 
         return stats_list
 
+
+    def iter_chain_split(self, chain, num_splits, min_width):
+
+        residues    = len(chain)
+        split_point = min_width
+
+        while split_point<(residues - min_width):
+            seg1 = chain[:split_point]
+            seg2 = chain[split_point+1:]
+
+            if num_splits>1:
+
+                for slist in self.iter_chain_split(
+                    seg2, num_splits-1, min_width):
+
+                    slist.insert(0, seg1)
+                    yield slist
+
+            else:
+                yield [seg1, seg2]
+                
+
+    def split_TLS(self, **args):
+
+        num_splits        = 5
+        min_residue_width = 3
+
+
+        
+        
+
+        
+
+    def fit_common_TLS(self, **args):
+        """Run the algorithm to fit TLS parameters to segments of the
+        structure.  This method has many options, which are outlined in
+        the source code for the method.  This returns a list of dictionaries
+        containing statistics on each of the fit TLS groups, the residues
+        involved, and the TLS object itself.
+        """
+        residue_width = args["residue_width"]
+        
+        ## calculate the centroid for all the TLS groiup fits
+        al = AtomList()
+        for atm in self.struct.iter_atoms():
+            al.append(atm)
+        origin = al.calc_centroid()
+
+        ## list of all TLS groups
+        stats_list = []
+        for chain in self.struct.iter_chains():
+            for res_segment, seg_atom_list in self.iter_segments(
+                chain, residue_width):
+
+                stats             = {}
+                stats["tls"]      = TLSGroup()
+                stats["residues"] = res_segment
+                stats["name"]     = "%s-%s" % (res_segment[0].fragment_id,
+                                               res_segment[-1].fragment_id)
+
+                tls        = stats["tls"]
+                tls.name   = stats["name"]
+                tls.origin = origin.copy()
+                
+                for atm in seg_atom_list:
+                    if atm.occupancy<1.0:
+                        continue
+                    tls.append(atm)
+
+                ## calculate tensors and print
+                tls.calc_TLS_least_squares_fit()
+
+                ## negitive eigen values mean the TLS group cannot be
+                ## physically intrepreted
+                if min(eigenvalues(tls.L))<=0.0:
+                    continue
+                elif min(eigenvalues(tls.T))<=0.0:
+                    continue
+
+                ## this TLS group passes all our tests -- add it to the
+                ## stats list
+                stats_list.append(stats)
+
+        ## find the common part of the TLS groups
+        tls_common = TLSGroup()
+        tls_common.origin = origin.copy()
+
+        tls0         = stats_list[0]["tls"]
+        tls_common.T = tls0.T.copy()
+        tls_common.L = tls0.L.copy()
+        tls_common.S = tls0.S.copy()
+
+        for stats in stats_list[1:]:
+            tls_s = stats["tls"]
+            
+            for C, S in ( (tls_common.T, tls_s.T),
+                          (tls_common.L, tls_s.L),
+                          (tls_common.S, tls_s.S) ):
+                
+                for i in (0,1,2):
+                    for j in (0,1,2):
+
+                        C[i,j] = min(C[i,j], S[i,j]) 
+
+        print tls_common.T
+        print tls_common.L
+        print tls_common.S
+
+        ## subtract TLS_common and shift all TLS groups to the COR
+        for stats in stats_list:
+            tls   = stats["tls"]
+
+            tls.T = tls.T - tls_common.T
+            tls.L = tls.L - tls_common.L
+            tls.S = tls.S - tls_common.S
+
+            calcs = tls.shift_COR()
+            
+            stats["R"]                              = tls.calc_R()
+            stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
+            stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
+            stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
+            stats["num_atoms"]                      = len(tls)
+        
+        return stats_list
 
     def iter_splits(self, length, min_seg, segments):
         """

@@ -28,6 +28,7 @@ class ElementInterface(object):
         self.atomic_radius        = args.get("atomic_radius", 0.0)
         self.covalent_radius      = args.get("covalent_radius", 0.0)
         self.van_der_waals_radius = args.get("van_der_waals_radius", 0.0)
+        self.covalent_radius      = args.get("covalent_radius", 0.0)
         self.electronegativity    = args.get("electronegativity", 0.0)
         self.color                = args.get("color", (1.0, 1.0, 1.0))
 
@@ -141,6 +142,7 @@ class Element(ElementInterface):
         self.number = int(element["number"])
         self.atomic_weight = float(element["atomic_weight"])
         self.van_der_waals_radius = float(element["van_der_walls_radius"])
+        self.covalent_radius = float(element.get("covalent_radius", 0.0))
 
         rgb = element["color_rgb"]
         self.color = (int(rgb[1:3], 16) / 255.0,
@@ -286,7 +288,7 @@ class Library(LibraryInterface):
         element symbol.  The source of the element data is the elements.xml
         file.
         """
-        assert type(symbol) == StringType
+        assert type(symbol)==StringType
 
         try:
             return self.element_dict[symbol]

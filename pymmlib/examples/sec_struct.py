@@ -18,23 +18,13 @@ def usage():
 
     SYNOPSIS
        sec_struct.py <file>
+       sec_struct.py -v <file> (verbose output
 
     """
+    
 
-if __name__ == '__main__':
-    if "-h" in sys.argv or "--help" in sys.argv:
-        usage()
-        sys.exit(1)
-
-    try:
-        path = sys.argv[1]
-    except KeyError:
-        usage()
-        sys.exit(1)
-
-    if path == "-":
-        path = sys.stdin
-
+def main(path, verbose):
+    
     struct = LoadStructure(fil = path)
     print struct
 
@@ -42,11 +32,49 @@ if __name__ == '__main__':
     for ahelix in struct.iter_alpha_helicies():
         print "    ",ahelix
 
+        if verbose==True:
+            print "        ",ahelix.segment
+
     print "Beta Sheets:"
     for bsheet in struct.iter_beta_sheets():
+
         print "    ",bsheet
+
+        if verbose==True:
+            for strand in bsheet.iter_strands():
+                print "        ",strand
+                print "            ",strand.segment
 
     print "Sites:"
     for site in struct.iter_sites():
         print "    ",site
-        
+
+        if verbose==True:
+            for frag in site.iter_fragments():
+                print "        ",frag
+
+
+if __name__ == '__main__':
+   ## parse options
+    (opts, args) = getopt.getopt(sys.argv[1:], "h?v")
+
+    verbose = False
+
+    for (opt, item) in opts:
+        if opt=="-h" or opt=="-?":
+            usage()
+            sys.exit(1)
+
+        elif opt=="-v":
+            verbose = True
+
+    try:
+        path = args[0]
+    except KeyError:
+        usage()
+        sys.exit(1)
+
+    if path == "-":
+        path = sys.stdin
+
+    main(path, verbose)

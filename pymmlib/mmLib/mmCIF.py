@@ -156,6 +156,12 @@ class mmCIFTable(list):
         assert isinstance(row, mmCIFRow)
         self.remove(self[i])
 
+    def get(self, x, default=None):
+        try:
+            return self[x]
+        except KeyError:
+            return default
+
     def append(self, row):
         assert isinstance(row, mmCIFRow)
         row.table = self

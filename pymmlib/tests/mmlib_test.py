@@ -40,6 +40,21 @@ def bond_test(bond, atom, stats):
     assert bond.get_partner(bond.atom1) == bond.atom2
     assert bond.get_partner(bond.atom2) == bond.atom1
 
+    assert bond.get_atom1()==bond.atom1
+    assert bond.get_atom2()==bond.atom2
+
+    assert bond.get_fragment1()==bond.atom1.fragment
+    assert bond.get_fragment2()==bond.atom2.fragment
+
+    assert bond.get_chain1()==bond.atom1.fragment.chain
+    assert bond.get_chain2()==bond.atom2.fragment.chain
+
+    assert bond.get_model1()==bond.atom1.fragment.chain.model
+    assert bond.get_model2()==bond.atom2.fragment.chain.model
+
+    assert bond.get_structure1()==bond.atom1.fragment.chain.model.structure
+    assert bond.get_structure2()==bond.atom2.fragment.chain.model.structure
+
 
 def atom_test(atom, stats):
     """Tests the mmLib.Structure.Atom object.
@@ -51,6 +66,11 @@ def atom_test(atom, stats):
     
     alt_loc = atom.fragment.chain.structure.default_alt_loc
 
+    atom.get_fragment()
+    atom.get_chain()
+    atom.get_model()
+    atom.get_structure()
+    
     visited_atm_list = []
     for atm in atom.iter_alt_loc():
         assert isinstance(atm, Atom)
@@ -63,6 +83,7 @@ def atom_test(atom, stats):
         assert atm.get_fragment() == atom.get_fragment()
         assert atm.get_chain() == atom.get_chain()
         assert atm.get_structure() == atom.get_structure()
+
         assert atm.name == atom.name
         assert atm.res_name == atom.res_name
         assert atm.fragment_id == atom.fragment_id
@@ -70,9 +91,6 @@ def atom_test(atom, stats):
 
     atom.calc_anisotropy()
     atom.calc_anisotropy3()
-    #atom.calc_CCuij(atom)
-    #atom.calc_Suij(atom)
-
 
 
 def fragment_test(frag, stats):
@@ -84,8 +102,13 @@ def fragment_test(frag, stats):
 
     len(frag)
 
+    frag.get_chain()
+    frag.get_model()
+    frag.get_structure()
+
     alt_loc = frag.chain.structure.default_alt_loc
 
+    ## test iter_atoms
     visited_atm_list = []
     for atm in frag.iter_atoms():
         assert isinstance(atm, Atom)
@@ -97,10 +120,16 @@ def fragment_test(frag, stats):
 
         assert frag[atm.name] == atm
         assert frag.get_atom(atm.name) == atm
-        assert atm.get_fragment() == frag
-        assert atm.get_chain() == frag.get_chain()
-        assert atm.get_structure() == frag.get_structure()
-        assert atm.alt_loc == alt_loc or atm.alt_loc == ""
+        assert atm.get_fragment()==frag
+        assert atm.get_chain()==frag.get_chain()
+        assert atm.get_model()==frag.get_model()
+        assert atm.get_structure()==frag.get_structure()
+
+        assert atm.alt_loc==alt_loc or atm.alt_loc==""
+
+    ## test iter_all_atoms
+    for atm in frag.iter_all_atoms():
+        pass
 
     ## test iter_bonds
     num_bonds = 0
@@ -134,7 +163,6 @@ def fragment_test(frag, stats):
     stats["testing"] = None
 
 
-
 def chain_test(chain, stats):
     """Tests the mmLib.Structure.Chain object.
     """
@@ -143,6 +171,9 @@ def chain_test(chain, stats):
 
     len(chain)
 
+    chain.get_model()
+    chain.get_structure()
+
     for frag in chain.iter_fragments():
         assert isinstance(frag, Fragment)
         assert frag in chain
@@ -150,28 +181,118 @@ def chain_test(chain, stats):
         assert chain[frag.fragment_id] == frag
         assert chain[chain.index(frag)] == frag
         assert chain.get_fragment(frag.fragment_id) == frag
-        assert frag.get_chain() == chain
-        assert frag.get_structure() == chain.get_structure()
+
+        assert frag.get_chain()==chain
+        assert frag.get_model()==chain.get_model()
+        assert frag.get_structure()==chain.get_structure()
 
     for res in chain.iter_amino_acids():
         assert isinstance(res, AminoAcidResidue)
-        assert res.get_chain() == chain
-        assert res.get_structure() == chain.get_structure()
 
     for res in chain.iter_nucleic_acids():
         assert isinstance(res, NucleicAcidResidue)
-        assert res.get_chain() == chain
-        assert res.get_structure() == chain.get_structure()
 
     for atm in chain.iter_atoms():
         assert isinstance(atm, Atom)
-        assert atm.get_chain() == chain
-        assert atm.get_structure() == chain.get_structure()
+        assert atm.get_chain()==chain
+        assert atm.get_model()==chain.get_model()
+        assert atm.get_structure()==chain.get_structure()
+
+    for atm in chain.iter_all_atoms():
+        assert isinstance(atm, Atom)
+        assert atm.get_chain()==chain
+        assert atm.get_model()==chain.get_model()
+        assert atm.get_structure()==chain.get_structure()
 
     for bond in chain.iter_bonds():
         assert isinstance(bond, Bond)
 
     stats["testing"] = None
+
+
+def model_test(model, stats):
+    stats["testing"] = model
+
+    model.get_structure()
+
+    for chain in model.iter_chains():
+        assert isinstance(chain, Chain)
+        assert chain.get_model()==model
+        assert chain.get_structure()==model.get_structure()
+
+    for frag in model.iter_fragments():
+        assert isinstance(frag, Fragment)
+        assert frag.get_model()==model
+        assert frag.get_structure()==model.get_structure()
+
+    for atm in model.iter_atoms():
+        assert isinstance(atm, Atom)
+        assert atm.get_model()==model
+        assert atm.get_structure()==model.get_structure()
+
+    for atm in model.iter_all_atoms():
+        assert isinstance(atm, Atom)
+        assert atm.get_model()==model
+        assert atm.get_structure()==model.get_structure()
+
+    ## test AlphaHelix
+    for helix in model.iter_alpha_helicies():
+        assert isinstance(helix, AlphaHelix)
+        assert helix.get_model()==model
+        assert helix.get_structure()==model.get_structure()
+
+        for frag in helix.iter_fragments():
+            assert isinstance(frag, Fragment)
+
+        for atm in helix.iter_atoms():
+            assert isinstance(atm, Atom)
+
+        for atm in helix.iter_all_atoms():
+            assert isinstance(atm, Atom)
+
+    ## test BetaSheet
+    for sheet in model.iter_beta_sheets():
+        assert isinstance(sheet, BetaSheet)
+        assert sheet.get_model()==model
+        assert sheet.get_structure()==model.get_structure()
+
+        for frag in sheet.iter_fragments():
+            assert isinstance(frag, Fragment)
+
+        for atm in sheet.iter_atoms():
+            assert isinstance(atm, Atom)
+
+        for atm in sheet.iter_all_atoms():
+            assert isinstance(atm, Atom)
+
+        for strand in sheet.iter_strands():
+            assert isinstance(strand, Strand)
+            assert strand.get_model()==model
+            assert strand.get_structure()==model.get_structure()
+
+            for frag in strand.iter_fragments():
+                assert isinstance(frag, Fragment)
+
+            for atm in strand.iter_atoms():
+                assert isinstance(atm, Atom)
+
+            for atm in strand.iter_all_atoms():
+                assert isinstance(atm, Atom)
+
+    ## test Site
+    for site in model.iter_sites():
+        assert isinstance(site, Site)
+        assert site.get_model()==model
+        assert site.get_structure()==model.get_structure()
+
+        for frag in site.iter_fragments():
+            assert isinstance(frag, Fragment)
+
+        for atm in site.iter_atoms():
+            assert isinstance(atm, Atom)
+
+        for atm in site.iter_all_atoms():
+            assert isinstance(atm, Atom)
 
 
 
@@ -245,6 +366,9 @@ def run_structure_tests(struct, stats):
     """Run basic API tests on the mmLib.Structure object and print statistics.
     """
     struct_test(struct, stats)
+
+    for model in struct.iter_models():
+        model_test(model, stats)
 
     for chain in struct.iter_chains():
         chain_test(chain, stats)

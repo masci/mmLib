@@ -5,14 +5,13 @@
 """Classes for representing biological macromolecules.
 """
 from __future__ import generators
-import fpformat
-import time
-from mmTypes import *
-from GeometryDict import *
-from AtomMath import *
-from Library import Library
-from UnitCell import UnitCell
-from mmCIFDB import *
+
+from mmTypes        import *
+from GeometryDict   import *
+from AtomMath       import *
+from Library        import Library
+from UnitCell       import UnitCell
+from mmCIFDB        import *
 
 
 class StructureError(Exception):
@@ -49,7 +48,47 @@ class AtomOverwrite(StructureError):
     def __str__(self):
         return self.text
 
+def fragment_id_split(frag_id):
+    """Split a string fragment_id into a 2-tuple of:
+    (sequence_num, insertion_code)
+    """
+    try:
+        return (int(frag_id), None)
+    except ValueError:
+        return (int(frag_id[:-1]), frag_id[-1:])
 
+def fragment_id_eq(frag_id1, frag_id2):
+    """Performs a proper equivelancy of frament_id strings according
+    to their sequence number, then insertion code.
+    """
+    return frag_id1==frag_id2
+    
+def fragment_id_lt(frag_id1, frag_id2):
+    """Performs a proper less than comparison of frament_id strings
+    according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1)<fragment_id_split(frag_id2)
+    
+def fragment_id_le(frag_id1, frag_id2):
+    """Performs a proper less than or equal to comparison of frament_id
+    strings according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1)<=fragment_id_split(frag_id2)
+
+def fragment_id_gt(frag_id1, frag_id2):
+    """Performs a proper greator than comparison of frament_id strings
+    according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1)>fragment_id_split(frag_id2)
+    
+def fragment_id_ge(frag_id1, frag_id2):
+    """Performs a proper greator then or equal to comparison of
+    frament_id strings according to their sequence number, then
+    insertion code.
+    """
+    return fragment_id_split(frag_id1)>=fragment_id_split(frag_id2)
+
+    
 class Structure(object):
     """The Structure object is the parent container object for the entire
     macromolecular data structure.  It contains a list of the Chain objects
@@ -66,9 +105,13 @@ class Structure(object):
     when iterating or retreiving Atom objects in the structure.
     """
     def __init__(self, **args):
-        self.library         = args.get("library")   or Library()
-        self.cifdb           = args.get("cifdb")     or mmCIFDB("XXXX")
-        self.unit_cell       = args.get("unit_cell") or UnitCell()
+        self.library          = args.get("library")   or Library()
+        self.cifdb            = args.get("cifdb")     or mmCIFDB("XXXX")
+        self.unit_cell        = args.get("unit_cell") or UnitCell()
+
+        self.alpha_helix_list = []
+        self.beta_sheet_list  = []
+        self.site_list        = []
 
         self.default_alt_loc = "A"
         self.model           = None
@@ -367,76 +410,69 @@ class Structure(object):
                 al_list.append(atm.alt_loc)
         return al_list
 
-    def iter_alpha_helicies(self):
-        """Iterates over all alpha helicies in the Structure.
+    def add_alpha_helix(self, alpha_helix):
+        """Adds a AlphaHelix to the default Model object.
         """
-        try:
-            struct_conf = self.cifdb["struct_conf"]
-        except KeyError:
-            return
+        self.model.add_alpha_helix(alpha_helix)
 
-        for row in struct_conf.iter_rows(("conf_type_id", "HELX_P")):
-            try:
-                yield AlphaHelix(self, row["id"])
-            except KeyError:
-                continue
+    def iter_alpha_helicies(self):
+        """Iterates over all child AlphaHelix objects in the default
+        Model.
+        """
+        return self.model.iter_alpha_helicies()
 
+    def add_beta_sheet(self, beta_sheet):
+        """
+        """
+        self.model.add_beta_sheet(beta_sheet)
+        
     def iter_beta_sheets(self):
         """Iterate over all beta sheets in the Structure.
         """
-        try:
-            struct_sheet = self.cifdb["struct_sheet"]
-        except KeyError:
-            return
+        return self.model.iter_beta_sheets()
 
-        for row in struct_sheet:
-            try:
-                yield BetaSheet(self, row["id"])
-            except KeyError:
-                continue
-
-    def iter_turns(self):
-        pass
+    def add_site(self, site):
+        """
+        """
+        self.model.add_site(site)
 
     def iter_sites(self):
         """Iterate over all active/important sites defined in the Structure.
         """
-        try:
-            struct_site_gen = self.cifdb["struct_site_gen"]
-        except KeyError:
-            return
-
-        site_ids = []
-        for row in struct_site_gen:
-            try:
-                site_id = row["site_id"]
-            except KeyError:
-                continue
-
-            if site_id not in site_ids:
-                site_ids.insert(0, site_id)
-                yield Site(self, site_id)
+        return self.model.iter_sites()
 
     def add_bonds_from_distance(self):
-        """Builds a Structure's bonds by atomic distance distance.
+        """Builds a Structure's bonds by atomic distance distance using
+        the covalent radii in element.cif.  A bond is built if the the
+        distance between them is less than or equal to the sum of their
+        covalent radii + 0.54A.
         """
-        min_bond_dist = 0.4
-        max_bond_dist = 1.9
+        lib = self.library
         
         for model in self.iter_models():
-            gdict = GeometryDict(2.0)
+            xyzdict = XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
-                gdict.add(atm.position, atm)
+                xyzdict.add(atm.position, atm)
 
-            for (p1,atm1),(p2,atm2),dist in gdict.iter_contact_distance(
-                max_bond_dist):
-                
-                if dist<min_bond_dist:
-                    continue
+            for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(
+                2.5):
 
                 if (atm1.alt_loc=="" or atm2.alt_loc=="") or \
                    (atm1.alt_loc==atm2.alt_loc):
+
+                    ## calculate the expected bond distance by adding the
+                    ## covalent radii + 0.54A
+                    try:
+                        bond_dist = \
+                            lib.get_element(atm1.element).covalent_radius +\
+                            lib.get_element(atm2.element).covalent_radius +\
+                            0.54
+                    except AttributeError:
+                        continue
+
+                    if dist>bond_dist:
+                        continue
 
                     if atm1.get_bond(atm2)==None:
                         atm1.create_bond(atom=atm2, standard_res_bond=False)
@@ -456,12 +492,16 @@ class Structure(object):
 class Model(object):
     """Multiple models support.
     """
-    def __init__(self, model_id = 1):
-        assert type(model_id) == IntType
+    def __init__(self, model_id=1, **args):
+        assert type(model_id)==IntType
 
-        self.model_id   = model_id
-        self.chain_dict = {}
-        self.chain_list = []
+        self.model_id         = model_id
+        self.chain_dict       = {}
+        self.chain_list       = []
+
+        self.alpha_helix_list = []
+        self.beta_sheet_list  = []
+        self.site_list        = []
 
     def __str__(self):
         return "Model(model_id=%d)" % (self.model_id)
@@ -567,6 +607,46 @@ class Model(object):
 
         if delay_sort == False:
             self.chain_list.sort()
+
+    def add_alpha_helix(self, alpha_helix):
+        """Adds a AlphaHelix object to the Model.
+        """
+        assert isinstance(alpha_helix, AlphaHelix)
+        self.alpha_helix_list.append(alpha_helix)
+        alpha_helix.model = self
+
+    def iter_alpha_helicies(self):
+        """Iterates over all AlphaHelix objects in the Model.
+        """
+        return iter(self.alpha_helix_list)
+
+    def add_beta_sheet(self, beta_sheet):
+        """Adds a BetaSheet object to the Model.
+        """
+        assert isinstance(beta_sheet, BetaSheet)
+        self.beta_sheet_list.append(beta_sheet)
+        beta_sheet.model = self
+
+    def iter_beta_sheets(self):
+        """Iterate over all child BetaSheet objects in the Model.
+        """
+        return iter(self.beta_sheet_list)
+
+    def add_site(self, site):
+        """Adds a Site (of interest) object to the Model.
+        """
+        self.site_list.append(site)
+        site.model = self
+
+    def iter_sites(self):
+        """Iterate over all active/important sites defined in the Structure.
+        """
+        return iter(self.site_list)
+    
+    def get_structure(self):
+        """Returns the parent Structure.
+        """
+        return self.structure
         
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
@@ -636,296 +716,9 @@ class Model(object):
                 yield bond
                 visited[bond] = True
 
-    
-class Chain(object):
-    """Chain objects conatain a ordered list of Fragment objects.
-    """
-    def __init__(self, model_id = 1, chain_id = ""):
-        assert type(model_id) == IntType
-        assert type(chain_id) == StringType
-
-        self.model_id = model_id
-        self.chain_id = chain_id
-
-        ## the sequence list contains a list 3-letter residue names
-        self.sequence = None
-
-        ## fragments are contained in the list and also cached in
-        ## a dictionary for fast random-access lookup
-        self.fragment_list  = []
-        self.fragment_dict  = {}
-
-    def __str__(self):
-        try:
-            return "Chain(%d:%s, %s...%s)" % (
-                self.model_id, self.chain_id,
-                self.fragment_list[0],
-                self.fragment_list[-1])
-        except IndexError:
-             return "Chain(%d:%s)" % (self.model_id, self.chain_id)
-
-    def __deepcopy__(self, memo):
-        chain = Chain(model_id = self.model_id,
-                      chain_id = self.chain_id)
-        for fragment in self:
-            chain.add_fragment(copy.deepcopy(fragment, memo))
-        return chain
-    
-    def __lt__(self, other):
-        assert isinstance(other, Chain)
-        return self.chain_id < other.chain_id
-        
-    def __le__(self, other):
-        assert isinstance(other, Chain)
-        return self.chain_id <= other.chain_id
-        
-    def __gt__(self, other):
-        assert isinstance(other, Chain)
-        return self.chain_id > other.chain_id
-
-    def __ge__(self, other):
-        assert isinstance(other, Chain)
-        return self.chain_id >= other.chain_id
-
-    def __len__(self):
-        """Return the number of fragments in the Chain.
-        """
-        return len(self.fragment_list)
-
-    def __getitem__(self, fragment_idx):
-        """Retrieve a Fragment within the Chain.  This can take a integer
-        index of the Fragment's position within the chain, the fragment_id
-        string of the Fragment to retrieve, or a slice of the Chain to
-        return a new Chain object containing the sliced subset of Fragments.
-        """
-        if type(fragment_idx) == IntType:
-            return self.fragment_list[fragment_idx]
-        elif type(fragment_idx) == StringType:
-            return self.fragment_dict[fragment_idx]
-        elif type(fragment_idx) == SliceType:
-            chain = Chain(model_id=self.model_id, chain_id=self.chain_id)
-            try:
-                chain.model = self.model
-            except AttributeError:
-                pass
-            try:
-                chain.structure = self.structure
-            except AttrubuteError:
-                pass
-
-            start_fragment_id = FragmentID(fragment_idx.start)
-            stop_fragment_id  = FragmentID(fragment_idx.stop)
-
-            add = False
-            for fragment in self:
-                fragment_id = FragmentID(fragment.fragment_id)
-
-                if fragment_id > stop_fragment_id:
-                    break
-                if fragment_id >= start_fragment_id:
-                    chain.add_fragment(
-                        fragment,
-                        delay_sort=True,
-                        link_chain=False)
-
-            chain.sort()
-            return chain            
-        raise TypeError, fragment_idx
-
-    def __delitem__(self, fragment_idx):
-        """Delete Fraagment from the chain.  This can take a reference to the
-        Fragment object to delete, the fragment_id of the Fragment to delete,
-        or the integer index of the Fragment within the Chain.
-        """
-        self.remove(self[fragment_idx])
-
-    def __iter__(self):
-        """Iterate all Fragments contained in the Chain.
-        """
-        return iter(self.fragment_list)
-
-    def __contains__(self, fragment_idx):
-        if isinstance(fragment_idx, Fragment):
-            return self.fragment_list.__contains__(fragment_idx)
-        elif type(fragment_idx) == StringType:
-            return self.fragment_dict.__contains__(fragment_idx)
-        raise TypeError, fragment_idx
-
-    def index(self, fragment):
-        """Return the 0-based index of the framgent in the chain list.
-        """
-        return self.fragment_list.index(fragment)
-
-    def remove(self, fragment):
-        """Remove the Fragment from the chain.
-        """
-        self.fragment_list.remove(frag)
-        del self.fragment_dict[fragment.fragment_id]
-        del fragment.chain
-
-    def sort(self):
-        """Sort the Fragments in the chain into proper order.
-        """
-        self.fragment_list.sort()
-        
-    def add_fragment(self, fragment, delay_sort = False, link_chain = True):
-        """Adds a Fragment instance to the chain.  If delay_sort is True,
-        then the fragment is not inserted in the proper position within the
-        chain.
-        """
-        assert isinstance(fragment, Fragment)
-        assert fragment.chain_id == self.chain_id
-
-        if self.fragment_dict.has_key(fragment.fragment_id):
-            raise FragmentOverwrite()
-
-        self.fragment_list.append(fragment)
-        self.fragment_dict[fragment.fragment_id] = fragment
-
-        if link_chain==True:
-            fragment.chain = self
-        
-        if delay_sort == False:
-            self.fragment_list.sort()
-
-    def get_structure(self):
-        """Returns the parent structure.  Also available by self.structure.
-        """
-        return self.structure
-
-    def get_fragment(self, fragment_id):
-        """Returns the PDB fragment uniquely identified by its fragment_id.
-        """
-        try:
-            return self[fragment_id]
-        except KeyError:
-            return None
-
-    def iter_fragments(self):
-        """Iterates over all Fragment objects.  The iteration is performed
-        in order according to the Fragment's position within the Chain
-        object.
-        """
-        return iter(self)
-
-    def iter_amino_acids(self):
-        """Same as iter_fragments(), but only iterates over AminoAcidResidue
-        objects.
-        """
-        for frag in self.iter_fragments():
-            if isinstance(frag, AminoAcidResidue):
-                yield frag
-
-    def iter_nucleic_acids(self):
-        """Same as iter_fragments(), but only iterates over NucleicAcidResidue
-        objects.
-        """
-        for frag in self.iter_fragments():
-            if isinstance(frag, NucleicAcidResidue):
-                yield frag
-
-    def has_standard_residues(self):
-        """Returns True if the chain contains standard residues as defined
-        by the PDB.  Standard residues are amino and nucleic acid resiudes.
-        """
-        for frag in self.iter_fragments():
-            if frag.is_standard_residue():
-                return True
-        return False
-
-    def iter_standard_residues(self):
-        """Iterates over standard residues in the chain, as defined by the
-        PDB.  Standard residues are amino and nucleic acid residues.
-        """
-        for frag in self.iter_fragments():
-            if frag.is_standard_residue():
-                yield frag
-
-    def iter_non_standard_residues(self):
-        """Iterates over non-standard residues in the chain, as defined
-        by the PDB.  Non-standard residues are anything which is not a
-        amino or nucleic acid.
-        """
-        for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
-                yield frag
-
-    def iter_atoms(self):
-        """Iterates over all Atom objects within the Chain.
-        """
-        for frag in self.iter_fragments():
-            for atm in frag.iter_atoms():
-                yield atm
-    
-    def iter_all_atoms(self):
-        """
-        """
-        for frag in self.iter_fragments():
-            for atm in frag.iter_all_atoms():
-                yield atm
-                
-    def iter_bonds(self):
-        """Iterates over all Bond objects attached to Atom objects within the
-        Chain.
-        """
-        visited = {}
-        for atm in self.iter_atoms():
-            for bond in atm.iter_bonds():
-                if visited.has_key(bond):
-                    continue
-                yield bond
-                visited[bond] = True
-
-    def set_chain_id(self, chain_id):
-        """Sets a new ID for the Chain object, updating the chain_id
-        for all objects in the Structure hierarchy.
-        """
-        ## check for conflicting chain_id in the structure
-        try:             self.structure[chain_id]
-        except KeyError: pass
-        else:            raise ValueError, chain_id
-
-        ## set the new chain_id in all the additional groups
-
-        ## set the new chain_id for the chain object (self)
-        self.chain_id = chain_id
-
-        ## set the chain_id in all the fragment and atom children
-        for frag in self:
-            frag.chain_id = chain_id
-
-            for atm in frag:
-                atm.chain_id = chain_id
-
-        ## resort the parent structure
-        self.structure.sort()
-
-    def calc_sequence(self):
-        """Attempts to calculate the residue sequence contained in the
-        Chain object.  This is a simple algorithm: find the longest running
-        sequence of the same bio-residue, and that's the sequence.  Returns
-        a list of 3-letter residues codes of the calculated sequence.
-        """
-        structure = self.get_structure()
-        if structure != None:
-            sequence = Sequence(library = structure.library)
-        else:
-            sequence = Sequence()
-
-        residue_class = None
-        for frag in self.iter_standard_residues():
-            if residue_class:
-                if not isinstance(frag, residue_class):
-                    break
-            else:
-                residue_class = frag.__class__
-            sequence.append(frag.res_name)
-
-        return sequence
-
 
 class Sequence(list):
-    """A polymer sequence 
+    """A list containing a polymer sequence.
     """
     def __init__(self, **args):
         self.library  = args.get("library")       or Library()
@@ -955,6 +748,405 @@ class Sequence(list):
         return one_letter_code
 
 
+class Segment(object):
+    """Segment objects are a container for Fragment objects, but are
+    disaccociated with the Structure object hierarch.  Chain objects are
+    a subclass of Segment objects which are part of the Structure hierarchy.
+    """
+    def __init__(self,
+                 model_id = 1,
+                 chain_id = "",
+                 **args):
+
+        assert type(model_id) == IntType
+        assert type(chain_id) == StringType
+
+        self.model_id = model_id
+        self.chain_id = chain_id
+
+        ## fragments are contained in the list and also cached in
+        ## a dictionary for fast random-access lookup
+        self.fragment_list  = []
+        self.fragment_dict  = {}
+
+    def __str__(self):
+        try:
+            return "Segment(%d:%s, %s...%s)" % (
+                self.model_id, self.chain_id,
+                self.fragment_list[0],
+                self.fragment_list[-1])
+        except IndexError:
+             return "Segment(%d:%s)" % (self.model_id, self.chain_id)
+
+    def __deepcopy__(self, memo):
+        """Implements copy module protocol for deepcopy() operation.
+        """
+        segment = Segment(model_id = self.model_id,
+                          chain_id = self.chain_id)
+        for fragment in self:
+            segment.add_fragment(copy.deepcopy(fragment, memo))
+        return segment
+    
+    def __lt__(self, other):
+        """Less than operator based on the chain_id.
+        """
+        assert isinstance(other, Segment)
+        return self.chain_id<other.chain_id
+        
+    def __le__(self, other):
+        """Less than or equal operator based on chain_id.
+        """
+        assert isinstance(other, Segment)
+        return self.chain_id<=other.chain_id
+        
+    def __gt__(self, other):
+        """Greator than operator based on chain_id.
+        """
+        assert isinstance(other, Segment)
+        return self.chain_id>other.chain_id
+
+    def __ge__(self, other):
+        """Greator than or equal to operator based on chain_id.
+        """
+        assert isinstance(other, Segment)
+        return self.chain_id>=other.chain_id
+
+    def __len__(self):
+        """Return the number of Fragments in the Segment.
+        """
+        return len(self.fragment_list)
+
+    def __segment_slice__(self):
+        """Returns a Segment to be used in a slice.
+        """
+        segment = Segment(model_id=self.model_id, chain_id=self.chain_id)
+
+        try:
+            segment.model = self.model
+        except AttributeError:
+            pass
+        try:
+            segment.structure = self.structure
+        except AttrubuteError:
+            pass
+
+        return segment
+
+    def __index_slice__(self, start, stop):
+        """Used by __getitem__ to slice a Segment based on Indexes
+        """
+        segment = self.__segment_slice__()
+
+        for frag in self.fragment_list[start:stop]:
+            segment.add_fragment(fragment, delay_sort=True)
+        
+        return segment
+
+    def __frag_id_slice__(self, start_frag_id, stop_frag_id):
+        """Used by __getitem__ to slice a Segment between start and end
+        fragment ids.  Returns the sliced Segment.
+        """
+        segment = self.__segment_slice__()
+
+        ## if the start fragment_id is not given, then start adding
+        ## from the beginning of the Segment
+        if start_frag_id==None:
+            add = True
+        else:
+            add = False
+
+        for frag in self:
+            ## loop until the start_frag_id Fragment is found
+            if add==False:
+                if fragment_id_ge(frag.fragment_id, start_frag_id)==True:
+                    add = True
+                else:
+                    continue
+
+            ## stop when the stop_frag_id is found
+            if stop_frag_id!=None:
+                if fragment_id_gt(frag.fragment_id, stop_frag_id)==True:
+                    break
+
+            segment.add_fragment(frag, delay_sort=True)
+
+        return segment
+
+    def __getitem__(self, fragment_idx):
+        """Retrieve a Fragment within the Segment.  This can take a integer
+        index of the Fragment's position within the segment, the fragment_id
+        string of the Fragment to retrieve, or a slice of the Segment to
+        return a new Segment object containing the sliced subset of Fragments.
+        If the slice values are fragment_id strings, then the Segment which
+        is returned includes those Fragments.  If the slice values are
+        integers, then normal list slicing rules apply.
+        """
+        if type(fragment_idx) == IntType:
+            return self.fragment_list[fragment_idx]
+
+        elif type(fragment_idx) == StringType:
+            return self.fragment_dict[fragment_idx]
+
+        elif type(fragment_idx) == SliceType:
+            
+            ## determine if the slice is on list indexes or on fragment_id
+            ## strings
+            start = fragment_idx.start
+            stop  = fragment_idx.stop
+            
+            ## check for index (list) slicing
+            if (start==None and stop==None) or \
+               (start==None and type(stop)==IntType) or \
+               (stop==None  and type(start)==IntType):
+                return self.__index_slice__(start, stop)
+            
+            ## check for fragment_id slicing
+            if (start==None and type(stop)==StringType) or \
+               (stop==None  and type(start)==StringType) or \
+               (type(start)==StringType and type(stop)==StringType):
+                return self.__frag_id_slice__(start, stop)
+
+        raise TypeError, fragment_idx
+
+    def __delitem__(self, fragment_idx):
+        """Delete Fraagment from the segment.  This can take a reference to the
+        Fragment object to delete, the fragment_id of the Fragment to delete,
+        or the integer index of the Fragment within the Segment.
+        """
+        self.remove(self[fragment_idx])
+
+    def __iter__(self):
+        """Iterate all Fragments contained in the Segment.
+        """
+        return iter(self.fragment_list)
+
+    def __contains__(self, fragment_idx):
+        if isinstance(fragment_idx, Fragment):
+            return self.fragment_list.__contains__(fragment_idx)
+        elif type(fragment_idx) == StringType:
+            return self.fragment_dict.__contains__(fragment_idx)
+        raise TypeError, fragment_idx
+
+    def index(self, fragment):
+        """Return the 0-based index of the framgent in the segment list.
+        """
+        return self.fragment_list.index(fragment)
+
+    def remove(self, fragment):
+        """Remove the Fragment from the segment.
+        """
+        self.fragment_list.remove(frag)
+        del self.fragment_dict[fragment.fragment_id]
+        del fragment.chain
+
+    def sort(self):
+        """Sort the Fragments in the segment into proper order.
+        """
+        self.fragment_list.sort()
+        
+    def add_fragment(self, fragment, delay_sort=False):
+        """Adds a Fragment instance to the segment.  If delay_sort is True,
+        then the fragment is not inserted in the proper position within the
+        segment.
+        """
+        assert isinstance(fragment, Fragment)
+        assert fragment.chain_id==self.chain_id
+
+        if self.fragment_dict.has_key(fragment.fragment_id):
+            raise FragmentOverwrite()
+
+        self.fragment_list.append(fragment)
+        self.fragment_dict[fragment.fragment_id] = fragment
+
+        if delay_sort == False:
+            self.fragment_list.sort()
+
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.model
+            
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.structure
+
+    def get_fragment(self, fragment_id):
+        """Returns the PDB fragment uniquely identified by its fragment_id.
+        """
+        try:
+            return self[fragment_id]
+        except KeyError:
+            return None
+
+    def iter_fragments(self):
+        """Iterates over all Fragment objects.  The iteration is performed
+        in order according to the Fragment's position within the Segment
+        object.
+        """
+        return iter(self)
+
+    def iter_amino_acids(self):
+        """Same as iter_fragments(), but only iterates over AminoAcidResidue
+        objects.
+        """
+        for frag in self.iter_fragments():
+            if isinstance(frag, AminoAcidResidue):
+                yield frag
+
+    def iter_nucleic_acids(self):
+        """Same as iter_fragments(), but only iterates over NucleicAcidResidue
+        objects.
+        """
+        for frag in self.iter_fragments():
+            if isinstance(frag, NucleicAcidResidue):
+                yield frag
+
+    def has_standard_residues(self):
+        """Returns True if the segment contains standard residues as defined
+        by the PDB.  Standard residues are amino and nucleic acid resiudes.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_standard_residue():
+                return True
+        return False
+
+    def iter_standard_residues(self):
+        """Iterates over standard residues in the segment, as defined by the
+        PDB.  Standard residues are amino and nucleic acid residues.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_standard_residue():
+                yield frag
+
+    def iter_non_standard_residues(self):
+        """Iterates over non-standard residues in the segment, as defined
+        by the PDB.  Non-standard residues are anything which is not a
+        amino or nucleic acid.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                yield frag
+
+    def iter_atoms(self):
+        """Iterates over all Atom objects within the Segment using the
+        default conformation set in the parent Structure.
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_atoms():
+                yield atm
+    
+    def iter_all_atoms(self):
+        """Performs a in-order iteration of all atoms in the Segment,
+        including alternate conformations.
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_all_atoms():
+                yield atm
+                
+    def iter_bonds(self):
+        """Iterates over all Bond objects attached to Atom objects within the
+        Segment.
+        """
+        visited = {}
+        for atm in self.iter_atoms():
+            for bond in atm.iter_bonds():
+                if visited.has_key(bond):
+                    continue
+                yield bond
+                visited[bond] = True
+
+    def calc_sequence(self):
+        """Attempts to calculate the residue sequence contained in the
+        Segment object.  This is a simple algorithm: find the longest running
+        sequence of the same bio-residue, and that's the sequence.  Returns
+        a list of 3-letter residues codes of the calculated sequence.
+        """
+        structure = self.get_structure()
+        if structure != None:
+            sequence = Sequence(library = structure.library)
+        else:
+            sequence = Sequence()
+
+        residue_class = None
+        for frag in self.iter_standard_residues():
+            if residue_class:
+                if not isinstance(frag, residue_class):
+                    break
+            else:
+                residue_class = frag.__class__
+            sequence.append(frag.res_name)
+
+        return sequence
+
+    
+class Chain(Segment):
+    """Chain objects conatain a ordered list of Fragment objects.
+    """
+    def __init__(self,
+                 model_id = 1,
+                 chain_id = "",
+                 **args):
+
+        args["model_id"] = model_id
+        args["chain_id"] = chain_id
+
+        Segment.__init__(self, **args)
+
+        ## the sequence list contains a list 3-letter residue names
+        self.sequence = None
+
+    def __str__(self):
+        try:
+            return "Chain(%d:%s, %s...%s)" % (
+                self.model_id, self.chain_id,
+                self.fragment_list[0],
+                self.fragment_list[-1])
+        except IndexError:
+             return "Chain(%d:%s)" % (self.model_id, self.chain_id)
+
+    def __deepcopy__(self, memo):
+        """Implements the copy module deepcopy() protocol.
+        """
+        chain = Chain(model_id = self.model_id,
+                      chain_id = self.chain_id)
+        for fragment in self:
+            chain.add_fragment(copy.deepcopy(fragment, memo))
+        return chain
+        
+    def add_fragment(self, fragment, delay_sort=False):
+        """Adds a Fragment instance to the chain.  If delay_sort is True,
+        then the fragment is not inserted in the proper position within the
+        chain.
+        """
+        Segment.add_fragment(self, fragment, delay_sort)
+        fragment.chain = self
+        
+    def set_chain_id(self, chain_id):
+        """Sets a new ID for the Chain, updating the chain_id
+        for all objects in the Structure hierarchy.
+        """
+        ## check for conflicting chain_id in the structure
+        try:             self.structure[chain_id]
+        except KeyError: pass
+        else:            raise ValueError, chain_id
+
+        ## set the new chain_id in all the additional groups
+
+        ## set the new chain_id for the chain object (self)
+        self.chain_id = chain_id
+
+        ## set the chain_id in all the fragment and atom children
+        for frag in self:
+            frag.chain_id = chain_id
+
+            for atm in frag:
+                atm.chain_id = chain_id
+
+        ## resort the parent structure
+        self.structure.sort()
+
+
 class Fragment(object):
     """Fragment objects are a basic unit for organizing small groups of
     Atoms.  Amino acid residues are fragments, as well as nucleic
@@ -969,15 +1161,16 @@ class Fragment(object):
     def __init__(self,
                  res_name    = "",
                  fragment_id = "",
-                 chain_id    = ""):
+                 chain_id    = "",
+                 **args):
 
         assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id)    == StringType
 
-        self.res_name = res_name
-        self.fragment_id = fragment_id
-        self.chain_id = chain_id
+        self.res_name        = res_name
+        self.fragment_id     = fragment_id
+        self.chain_id        = chain_id
 
         self.default_alt_loc = "A"
 
@@ -1006,19 +1199,19 @@ class Fragment(object):
 
     def __lt__(self, other):
         assert isinstance(other, Fragment)
-        return FragmentID(self.fragment_id) < FragmentID(other.fragment_id)
+        return fragment_id_lt(self.fragment_id, other.fragment_id)
         
     def __le__(self, other):
         assert isinstance(other, Fragment)
-        return FragmentID(self.fragment_id) <= FragmentID(other.fragment_id)
+        return fragment_id_le(self.fragment_id, other.fragment_id)
 
     def __gt__(self, other):
         assert isinstance(other, Fragment)
-        return FragmentID(self.fragment_id) > FragmentID(other.fragment_id)
+        return fragment_id_gt(self.fragment_id, other.fragment_id)
 
     def __ge__(self, other):
         assert isinstance(other, Fragment)
-        return FragmentID(self.fragment_id) >= FragmentID(other.fragment_id)
+        return fragment_id_ge(self.fragment_id, other.fragment_id)
 
     def __len__(self):
         return len(self.atom_list)
@@ -1280,17 +1473,20 @@ class Fragment(object):
         except IndexError:
             return None
 
-    def get_structure(self):
-        """Returns the parent structure.  This is also available by the
-        attribute self.chain.structure.
+    def get_model(self):
+        """Returns the parent Chain object.
         """
-        return self.chain.structure
+        return self.chain.model
 
     def get_chain(self):
-        """Returns the parent chain, this is also available by the attribute
-        self.chain.
+        """Returns the parent Chain object.
         """
         return self.chain
+
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.chain.structure
 
     def set_fragment_id(self, fragment_id):
         """Sets a new ID for the Fragment object, updating the fragment_id
@@ -1363,12 +1559,14 @@ class Residue(Fragment):
     def __init__(self,
                  res_name    = "",
                  fragment_id = "",
-                 chain_id    = ""):
+                 chain_id    = "",
+                 **args):
 
         Fragment.__init__(self,
                           res_name    = res_name,
                           fragment_id = fragment_id,
-                          chain_id    = chain_id)
+                          chain_id    = chain_id,
+                          **args)
 
     def __str__(self):
         return "Res(%s,%s,%s)" % (self.res_name,
@@ -1624,7 +1822,8 @@ class NucleicAcidResidue(Residue):
 
 
 class Altloc(dict):
-    """
+    """Container holding the same atom, but for different conformations and
+    occupancies.
     """
     def __deepcopy__(self, memo):
         altloc = AltLoc()
@@ -1808,6 +2007,106 @@ class Atom(object):
                 bond_cpy.atom2 = atom_cpy
 
         return atom_cpy
+
+    def __lt__(self, other):
+        assert isinstance(other, Atom)
+
+        if self.chain_id<other.chain_id:
+            return True
+        if self.chain_id>other.chain_id:
+            return False
+
+        if fragment_id_lt(self.fragment_id, other.fragment_id):
+            return True
+        if fragment_id_gt(self.fragment_id, other.fragment_id):
+            return False
+
+        if self.name<other.name:
+            return True
+        if self.name>other.name:
+            return False
+
+        if self.alt_loc=="" and other.alt_loc!="":
+            return False
+        if self.alt_loc!="" and other.alt_loc=="":
+            return True
+
+        return self.name<other.name
+            
+    def __le__(self, other):
+        assert isinstance(other, Atom)
+
+        if self.chain_id<other.chain_id:
+            return True
+        if self.chain_id>other.chain_id:
+            return False
+
+        if fragment_id_lt(self.fragment_id, other.fragment_id):
+            return True
+        if fragment_id_gt(self.fragment_id, other.fragment_id):
+            return False
+
+        if self.name<other.name:
+            return True
+        if self.name>other.name:
+            return False
+
+        if self.alt_loc=="" and other.alt_loc!="":
+            return False
+        if self.alt_loc!="" and other.alt_loc=="":
+            return True
+
+        return self.name<=other.name
+
+    def __gt__(self, other):
+        assert isinstance(other, Atom)
+
+        if self.chain_id>other.chain_id:
+            return True
+        if self.chain_id<other.chain_id:
+            return False
+
+        if fragment_id_gt(self.fragment_id, other.fragment_id):
+            return True
+        if fragment_id_lt(self.fragment_id, other.fragment_id):
+            return False
+
+        if self.name>other.name:
+            return True
+        if self.name<other.name:
+            return False
+
+        if self.alt_loc=="" and other.alt_loc!="":
+            return True
+        if self.alt_loc!="" and other.alt_loc=="":
+            return False
+
+        return self.name>other.name
+
+    def __ge__(self, other):
+        assert isinstance(other, Atom)
+
+        if self.chain_id>other.chain_id:
+            return True
+        if self.chain_id<other.chain_id:
+            return False
+
+        if fragment_id_gt(self.fragment_id, other.fragment_id):
+            return True
+        if fragment_id_lt(self.fragment_id, other.fragment_id):
+            return False
+
+        if self.name>other.name:
+            return True
+        if self.name<other.name:
+            return False
+
+        if self.alt_loc=="" and other.alt_loc!="":
+            return True
+        if self.alt_loc!="" and other.alt_loc=="":
+            return False
+
+        return self.name>=other.name
 
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
@@ -2013,20 +2312,22 @@ class Atom(object):
             yield bond.get_partner(self)
 
     def get_fragment(self):
-        """Return the parent Fragment object.  This is also available by the
-        attribute self.fragment.
+        """Returns the parent Fragment object.
         """
         return self.fragment
 
     def get_chain(self):
-        """Return the parent Chain object.  This is also available by the
-        attribute self.fragment.chain.
+        """Returns the parent Chain object.
         """
         return self.fragment.chain
 
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.fragment.chain.model
+    
     def get_structure(self):
-        """Return the parent Structure object.  This is also abailable by the
-        attribute self.fragment.chain.structure
+        """Returns the parent Structure object.
         """
         return self.fragment.chain.structure
 
@@ -2049,13 +2350,13 @@ class Atom(object):
         """
         if self.temp_factor==None:
             return None
-        return identity(3, Float) * (self.temp_factor / (24.0 * math.pi**2))
+        return identity(3, Float) * (self.temp_factor / (8.0 * math.pi**2))
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns
         the isotropic U tensor calculated by self.calc_Uiso
         """
-        if self.U != None:
+        if self.U!=None:
             return self.U
         return self.calc_Uiso()
 
@@ -2064,7 +2365,7 @@ class Atom(object):
         as the ratio of the minimum/maximum eigenvalues of the 3x3
         symmetric tensor defined by U.
         """
-        ## no Anisotropic values, we have a spherical atom
+        ## no Anisotropic values, we have a spherical isotropic atom
         if self.U == None:
             return 1.0
 
@@ -2152,7 +2453,8 @@ class Bond(object):
         bond_type         = None,
         atom1_symop       = None,
         atom2_symop       = None,
-        standard_res_bond = False):
+        standard_res_bond = False,
+        **args):
         
         self.atom1             = atom1
         self.atom2             = atom2
@@ -2189,116 +2491,499 @@ class Bond(object):
         """
         return self.atom2
 
+    def get_fragment1(self):
+        """Returns the Fragment object of atom #1.
+        """
+        return self.atom1.fragment
+
+    def get_fragment2(self):
+        """Returns the Fragment object of atom #2.
+        """
+        return self.atom2.fragment
+
+    def get_chain1(self):
+        """Returns the Chain object of atom #1.
+        """
+        return self.atom1.fragment.chain
+
+    def get_chain2(self):
+        """Returns the Chain object of atom #2.
+        """
+        return self.atom2.fragment.chain
+
+    def get_model1(self):
+        """Returns the Model object of atom #1.
+        """
+        return self.atom1.fragment.chain.model
+
+    def get_model2(self):
+        """Returns the Structure object of atom #2.
+        """
+        return self.atom2.fragment.chain.model
+
+    def get_structure1(self):
+        """Returns the Structure object of atom #1.
+        """
+        return self.atom1.fragment.chain.model.structure
+
+    def get_structure2(self):
+        """Returns the Structure object of atom #2.
+        """
+        return self.atom2.fragment.chain.model.structure
+
     def calc_length(self):
         """Returns the length of the bond.
         """
         return length(self.atom1.position - self.atom2.position)
 
+
 class AlphaHelix(object):
-    def __init__(self, structure, helix_id):
-        self.structure = structure
-        self.helix_id = helix_id
+    """Class containing information on a protein alpha helix.
+    """
+    def __init__(self,
+                 helix_id     = "",
+                 helix_class  = "1",
+                 helix_length = 0,
+                 chain_id1    = "",
+                 frag_id1     = "",
+                 res_name1    = "",
+                 chain_id2    = "",
+                 frag_id2     = "",
+                 res_name2    = "",
+                 details      = "",
+                 **args):
+
+        assert type(helix_id)      == StringType
+        assert type(helix_class)   == StringType
+        assert type(helix_length)  == IntType
+        assert type(details)       == StringType
+        assert type(chain_id1)     == StringType
+        assert type(frag_id1)      == StringType
+        assert type(res_name1)     == StringType
+        assert type(chain_id2)     == StringType
+        assert type(frag_id2)      == StringType
+        assert type(res_name2)     == StringType
+        assert type(details)       == StringType
+
+        self.helix_id     = helix_id
+        self.helix_class  = helix_class
+        self.helix_length = helix_length
+        self.chain_id1    = chain_id1
+        self.fragment_id1 = frag_id1
+        self.res_name1    = res_name1
+        self.chain_id2    = chain_id2
+        self.fragment_id2 = frag_id2
+        self.res_name2    = res_name2
+        self.details      = details
+
+        self.segment      = None
 
     def __str__(self):
         try:
-            (start_frag, end_frag) = self.get_start_end_fragments()
-        except KeyError:
-            return "AlphaHelix(id=%s,start=*,end=*)" % (self.helix_id)
-        return "AlphaHelix(id=%s,start=%s,end=%s)" % (
-            self.helix_id, start_frag, end_frag)
+            frag1 = self.segment[0]
+            frag2 = self.segment[-1]
+        except IndexError:
+            return "AlphaHelix(%s %d)" % (self.helix_id, self.helix_class)
 
-    def get_start_end_fragments(self):
-        """Return the tuple of the fragment at the start of the
-        alpha helix, and the fragment at the end.  Raises KeyError
-        if either fragment cannot be found.
+        return "AlphaHelix(%s %s %s...%s)" % (
+            self.helix_id, self.helix_class, str(frag1), str(frag2))
+
+    def add_segment(self, segment):
+        """Adds the Segment object this AlphaHelix spans.  If the AlphaHelix
+        already has a Segment, then it is replaced.  The Segment objects added
+        to AlphaHelix objects must have the attribute segment.chain referencing
+        the source Chain object the Segment was sliced from.
         """
-        struct_conf = self.structure.cifdb["struct_conf"]
-        row = struct_conf.get_row(("id", self.helix_id))
-        
-        chain_id1 = row["beg_label_asym_id"]
-        frag_id1 = row["beg_label_seq_id"]
-        chain_id2 = row["end_label_asym_id"]
-        frag_id2 = row["end_label_seq_id"]
-        
-        frag1 = self.structure[chain_id1][frag_id1]
-        frag2 = self.structure[chain_id2][frag_id2]
+        assert segment==None or isinstance(segment, Segment)
+        self.segment = segment
 
-        return (frag1, frag2)
+        ## reset AlphaHelix description with the description derived
+        ## from the new Segment
+        frag1 = segment[0]
+        frag2 = segment[-1]
+        
+        self.chain_id1    = frag1.chain_id
+        self.fragment_id1 = frag1.fragment_id
+        self.res_name1    = frag1.res_name
+
+        self.chain_id2    = frag2.chain_id
+        self.fragment_id2 = frag2.fragment_id
+        self.res_name2    = frag2.res_name
+
+        self.helix_length = len(segment)
+
+    def generate_segment(self):
+        """Generates the child Segment object from the Chain object found in
+        the parent Structure object by the AlphaHelix chain_id/fragment_id
+        information.  Returns True if the Segment was created, or False if
+        it was not.  The Segment is not created when the fragment range
+        fragment_id1:fragment_id2 cannot be found in the parent Chain object.
+        """
+        assert self.chain_id1==self.chain_id2
+
+        ## get the Chain object from the parent Model
+        try:
+            chain = self.model[self.chain_id1]
+        except KeyError:
+            self.add_segment(None)
+            return False
+
+        ## cut the Segment from the Chain using the given fragment_id
+        ## range for the AlphaHelix
+        try:
+            segment = chain[self.fragment_id1:self.fragment_id2]
+            segment.chain = chain
+        except KeyError:
+            self.add_segment(None)
+            return False
+
+        self.add_segment(segment)
+        return True
+
+    def get_chain(self):
+        """Returns the parent Chain object.  If the AlphaHelix does not have
+        a Segment child the raised AttributeError.
+        """
+        return self.segment.chain
+
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.model
+
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.model.structure
+
+    def get_segment(self):
+        """Return the child Segment object this AlphaHelix spans in the
+        parent Model.
+        """
+        return self.segment
 
     def iter_fragments(self):
-        """Iterate the Fragment objects contained in the AlphaHelix.
+        """Iterates all Fragment objects in the AlphaHelix.
         """
-        try:
-            (start_frag, end_frag) = self.get_start_end_fragments()
-        except KeyError:
-            return
-        frag_iter = self.structure.iter_fragments()
-        for frag in frag_iter:
-            if frag == start_frag:
-                yield frag
-                break
-        for frag in frag_iter:
-            yield frag
-            if frag == end_frag:
-                break
+        return self.segment.iter_fragments()
 
     def iter_atoms(self):
-        """Iterate all Atoms in the AlphaHelix.
+        """Iterates all Atom objects in the AlphaHelix.
         """
-        for frag in self.iter_fragments():
-            for atm in frag.iter_atoms():
-                yield atm
+        return self.segment.iter_atoms()
+
+    def iter_all_atoms(self):
+        """Iterates all Atom objects in all AlphaHelix, plus any in
+        non-default alt_loc conformations. 
+        """
+        return self.segment.iter_all_atoms()
+
+
+class Strand(object):
+    """One strand of a BetaSheet.
+    """
+    def __init__(self,
+                 chain_id1         = "",
+                 frag_id1          = "",
+                 res_name1         = "",
+                 chain_id2         = "",
+                 frag_id2          = "",
+                 res_name2         = "",
+                 reg_chain_id      = "",
+                 reg_frag_id       = "",
+                 reg_res_name      = "",
+                 reg_atom          = "",
+                 reg_prev_chain_id = "",
+                 reg_prev_frag_id  = "",
+                 reg_prev_res_name = "",
+                 reg_prev_atom     = "",
+                 **args):
+
+        assert type(chain_id1)         == StringType
+        assert type(frag_id1)          == StringType
+        assert type(res_name1)         == StringType
+        assert type(chain_id2)         == StringType
+        assert type(frag_id2)          == StringType 
+        assert type(res_name2)         == StringType
+        assert type(reg_chain_id)      == StringType
+        assert type(reg_frag_id)       == StringType
+        assert type(reg_res_name)      == StringType
+        assert type(reg_atom)          == StringType
+        assert type(reg_prev_chain_id) == StringType
+        assert type(reg_prev_frag_id)  == StringType
+        assert type(reg_prev_res_name) == StringType
+        assert type(reg_prev_atom)     == StringType
+        
+        self.chain_id1             = chain_id1
+        self.fragment_id1          = frag_id1
+        self.res_name1             = res_name1
+        self.chain_id2             = chain_id2
+        self.fragment_id2          = frag_id2
+        self.res_name2             = res_name2
+        self.reg_chain_id          = reg_chain_id
+        self.reg_fragment_id       = reg_frag_id
+        self.reg_res_name          = reg_res_name
+        self.reg_atom              = reg_atom
+        self.reg_prev_chain_id     = reg_prev_chain_id
+        self.reg_prev_fragment_id  = reg_prev_frag_id
+        self.reg_prev_res_name     = reg_prev_res_name
+        self.reg_prev_atom         = reg_prev_atom
+        
+        self.segment               = None
+
+    def __str__(self):
+        return "Strand(%s:%s-%s:%s %s:%s:%s-%s:%s:%s)" % (
+            self.chain_id1, self.fragment_id1,
+            self.chain_id2, self.fragment_id2,
+            self.reg_chain_id, self.reg_fragment_id, self.reg_atom,
+            self.reg_prev_chain_id, self.reg_prev_fragment_id,
+            self.reg_prev_atom)
+
+    def add_segment(self, segment):
+        """Adds the Segment object this Strand spans.  If the Strand
+        already has a Segment, then it is replaced.  The Segment objects added
+        to Strand objects must have the attribute segment.chain referencing
+        the source Chain object the Segment was sliced from.
+        """
+        assert segment==None or isinstance(segment, Segment)
+        self.segment = segment
+
+        ## reset Strand description with the description derived
+        ## from the new Segment
+        frag1 = segment[0]
+        frag2 = segment[-1]
+        
+        self.chain_id1    = frag1.chain_id
+        self.fragment_id1 = frag1.fragment_id
+        self.res_name1    = frag1.res_name
+
+        self.chain_id2    = frag2.chain_id
+        self.fragment_id2 = frag2.fragment_id
+        self.res_name2    = frag2.res_name
+
+    def generate_segment(self):
+        """Generates the child Segment object from the Chain object found in
+        the parent Structure object by the BetaSheet chain_id/fragment_id
+        information.  Returns True if the Segment was created, or False if
+        it was not.  The Segment is not created when the fragment range
+        fragment_id1:fragment_id2 cannot be found in the parent Chain object.
+        """
+        assert self.chain_id1==self.chain_id2
+
+        ## get the Chain object from the parent Model
+        try:
+            chain = self.beta_sheet.model[self.chain_id1]
+        except KeyError:
+            self.add_segment(None)
+            return False
+
+        ## cut the Segment from the Chain using the given fragment_id
+        ## range for the BetaSheet
+        try:
+            segment = chain[self.fragment_id1:self.fragment_id2]
+            segment.chain = chain
+        except KeyError:
+            self.add_segment(None)
+            return False
+
+        self.add_segment(segment)
+        return True
+
+    def get_beta_sheet(self):
+        """Returns the parent BetaSheet object.
+        """
+        return self.beta_sheet
+
+    def get_chain(self):
+        """Returns the parent Chain object.  If the Strand does not have
+        a Segment child the raised AttributeError.
+        """
+        return self.segment.chain
+
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.beta_sheet.model
+
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.beta_sheet.model.structure
+
+    def get_segment(self):
+        """Return the child Segment object this AlphaHelix spans in the
+        parent Model.
+        """
+        return self.segment
+
+    def iter_fragments(self):
+        """Iterates all Fragment objects.
+        """
+        return self.segment.iter_fragments()
+
+    def iter_atoms(self):
+        """Iterates all Atom objects.
+        """
+        return self.segment.iter_atoms()
+
+    def iter_all_atoms(self):
+        """Iterates all Atom objects plus any in non-default alt_loc
+        conformations. 
+        """
+        return self.segment.iter_all_atoms()
 
 
 class BetaSheet(object):
-    """List of Fragments within a structure which are part of a beta
-    sheet.
+    """Class containing information on a protein beta sheet.  BetaSheet
+    objects contain a list of Segments spanning the beta sheet.
     """
-    def __init__(self, structure, sheet_id):
-        self.structure = structure
-        self.sheet_id = sheet_id
+    def __init__(self,
+                 sheet_id  = "",
+                 **args):
+
+        assert type(sheet_id) == StringType
+        
+        self.sheet_id    = sheet_id
+        self.strand_list = []
 
     def __str__(self):
-        return "BetaSheet(id=%s)" % (self.sheet_id)
+        return "BetaSheet(%s %d)" % (self.sheet_id, len(self.strand_list))
+
+    def add_strand(self, strand):
+        """Adds a Segment instance.
+        """
+        assert isinstance(strand, Strand)
+        assert strand not in self.strand_list
+        self.strand_list.append(strand)
+        strand.beta_sheet = self
+
+    def generate_segments(self):
+        """Calls Strand.generate_segment() on all child Strand objects.
+        """
+        for strand in self.strand_list:
+            strand.generate_segment()
+
+    def get_model(self):
+        """REturns the parent Model object.
+        """
+        return self.model
+
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.model.structure
+
+    def iter_strands(self):
+        """Iterates over all child Strands objects.
+        """
+        return iter(self.strand_list)
+
+    def iter_fragments(self):
+        """Iterates over all Fragment objects.
+        """
+        for strand in self.strand_list:
+            for frag in strand.iter_fragments():
+                yield frag
+
+    def iter_atoms(self):
+        """Iterates all Atom objects.
+        """
+        for strand in self.strand_list:
+            for atm in strand.iter_atoms():
+                yield atm
+
+    def iter_all_atoms(self):
+        """Iterates all Atom objects plus any in non-default alt_loc
+        conformations. 
+        """
+        for strand in self.strand_list:
+            for atm in strand.iter_all_atoms():
+                yield atm
 
 
 class Site(object):
     """List of Fragments within a structure involved in a SITE description.
     """
-    def __init__(self, structure, site_id):
-        self.structure = structure
-        self.site_id = site_id
+    def __init__(self,
+                 site_id            = "",
+                 fragment_list      = [],
+                 **args):
+
+        assert type(site_id)            == StringType
+        assert type(fragment_list)      == ListType
+
+        self.site_id            = site_id
+        self.fragment_dict_list = fragment_list
 
     def __str__(self):
         return "Site(id=%s)" % (self.site_id)
 
-    def iter_fragments(self):
-        struct_site_gen = self.structure.cifdb["struct_site_gen"]
-        for row in struct_site_gen.iter_rows(("site_id", self.site_id)):
+    def add_fragment(self, fragment_dict, fragment):
+        """Adds a Fragment object to the fragment_dict and updates the
+        values in fragment_dict to reflect the new Fragment object.  The
+        fragment_dict is added to the Site if it is not already in it.
+        """
+        if fragment!=None:
+            fragment_dict["fragment"]    = fragment
+            fragment_dict["chain_id"]    = fragment.chain_id
+            fragment_dict["fragment_id"] = fragment.fragment_id
+            fragment_dict["res_name"]    = fragment.res_name
+            
+            if fragment_dict not in self.fragment_dict_list:
+                self.fragment_dict_list.append(fragment_dict)
+
+        else:
+            if fragment_dict.has_key("fragment"):
+                del fragment_dict["fragment"]
+
+    def generate_fragments(self):
+        """Using the site fragment descriptions, finds the Fragment objects
+        in the parent Model.
+        """
+        for frag_dict in self.fragment_dict_list:
             try:
-                chain_id = row.mget("_asym_id", "label_asym_id")
-                frag_id = row.mget("auth_seq_id","label_seq_id")
-                yield self.structure[chain_id][frag_id]
+                chain = self.model[frag_dict["chain_id"]]
+                frag  = chain[frag_dict["fragment_id"]]
             except KeyError:
+                self.add_fragment(frag_dict, None)
                 continue
 
+            self.add_fragment(frag_dict, frag)
 
-class FragmentList(list):
-    """Provides the functionallity of a Python list class for containing
-    Fragment instances.
-    """
-    def __setitem__(self, i, fragment):
-        assert isinstance(fragment, Fragment)
-        list.__setitem__(self, i, fragment)
-    
-    def append(self, fragment):
-        assert isinstance(fragment, Fragment)
-        list.append(self, fragment)
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.model
 
-    def insert(self, i, fragment):
-        assert isinstance(fragment, Fragment)
-        list.insert(self, i, fragment)
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.model.structure
 
+    def iter_fragments(self):
+        """Iterates child Fragment objects.
+        """
+        for frag_dict in self.fragment_dict_list:
+            try:
+                yield frag_dict["fragment"]
+            except KeyError:
+                pass
+
+    def iter_atoms(self):
+        """Iterates all Atom objects.
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_atoms():
+                yield atm
+
+    def iter_all_atoms(self):
+        """Iterates all Atom objects plus any in non-default alt_loc
+        conformations. 
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_all_atoms():
+                yield atm
+                
 
 class AtomList(list):
     """Provides the functionallity of a Python list class for containing

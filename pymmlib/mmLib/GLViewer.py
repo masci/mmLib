@@ -14,6 +14,7 @@ from OpenGL.GLUT    import *
 from mmTypes        import *
 from Structure      import *
 from Extensions.TLS import *
+from GeometryDict   import *
 
 try:
     import glaccel
@@ -24,7 +25,6 @@ else:
 
 
 ## MISC Constents
-
 PROP_OPACITY_RANGE    = "0.0-1.0,0.1"
 PROP_LINE_RANGE       = "1.0-10.0,1.0"
 PROP_PROBABILTY_RANGE = "1-99,1"
@@ -557,19 +557,6 @@ class GLObject(object):
         """
         self.__globject_properties_callbacks.remove(func)
 
-
-    def glo_redraw(self):
-        """Triggers a redraw of the GLViewer
-        """
-        gl_viewer = self.glo_get_root()
-        if isinstance(gl_viewer, GLViewer):
-            gl_viewer.glv_redraw()
-
-    def glo_get_glviewer(self):
-        """Returns the root GLViewer object.
-        """
-        return self.glo_get_root()
-
     def glo_get_glstructure(self):
         """Returns the parent GLStructure object, or None if the GLObject
         is not a child of a GLStructure.
@@ -807,6 +794,20 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
 
         self.gldl_install_draw_methods()
 
+    def glo_remove_child(self, child):
+        """Override GLObject's remove to also delete the compiled OpenGL
+        draw lists.
+        """
+        self.gldl_delete_list()
+        GLObject.glo_remove_child(self, child)
+
+    def glo_remove(self):
+        """Override GLObject's remove to also delete the compiled OpenGL
+        draw lists.
+        """
+        self.gldl_delete_list()
+        GLObject.glo_remove(self)
+
     def glo_install_properties(self):
         self.glo_add_property(
             { "name" :      "visible",
@@ -858,6 +859,18 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
               "default":    0.0,
               "action":     "redraw" })
 
+    def gldl_redraw(self):
+        """Triggers a redraw of the GLViewer
+        """
+        gl_viewer = self.glo_get_root()
+        if isinstance(gl_viewer, GLViewer):
+            gl_viewer.glv_redraw()
+
+    def gldl_get_glviewer(self):
+        """Returns the root GLViewer object.
+        """
+        return self.glo_get_root()
+
     def gldl_install_draw_methods(self):
         """Override in children to install draw methods for a GLDrawList.
         """
@@ -866,10 +879,10 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
     def gldl_update_cb(self, updates, actions):
         if "recompile" in actions:
             self.gldl_delete_list()
-            self.glo_redraw()
+            self.gldl_redraw()
 
         elif "redraw" in actions:
-            self.glo_redraw()
+            self.gldl_redraw()
 
         for draw_method in self.__draw_method_list:
             if draw_method["recompile_action"] in actions:
@@ -985,7 +998,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         draw_method["func"]()
         glEndList()
 
-        self.glo_redraw()
+        self.gldl_redraw()
 
     def gldl_draw_method_gl_draw_list_delete(self, draw_method):
         """Deletes the compiled OpenGL draw list for the draw method.
@@ -994,7 +1007,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
             glDeleteLists(draw_method["gl_draw_list_id"], 1)
             draw_method["gl_draw_list_id"] = None
 
-        self.glo_redraw()
+        self.gldl_redraw()
 
     def gldl_render_draw_methods(self, transparent):
         """Render all draw methods.
@@ -1406,7 +1419,10 @@ class GLAtomList(GLDrawList):
     """
     def __init__(self, **args):
         ## setup atom coloring object
-        self.glal_atom_color = GLAtomColor()
+        self.glal_atom_color         = GLAtomColor()
+        self.glal_hidden_atoms_dict  = None
+        self.glal_visible_atoms_dict = None
+        self.glal_xyzdict            = None
         
         GLDrawList.__init__(self, **args)
 
@@ -1428,7 +1444,7 @@ class GLAtomList(GLDrawList):
               "type":       "array(3)",
               "hidden":     True,
               "default":    None,
-              "action":     "recompile" })
+              "action":     ["recompile", "recalc_positions"] })
 
         self.glo_add_property(
             { "name":      "color_setting",
@@ -1460,35 +1476,35 @@ class GLAtomList(GLDrawList):
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    "recompile" })
+              "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
             { "name":      "side_chain_visible",
               "desc":      "Show Side Chain Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    "recompile" })
+              "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
             { "name":      "hetatm_visible",
               "desc":      "Show Hetrogen Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    "recompile" })
+              "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
             { "name":      "water_visible",
               "desc":      "Show Waters",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
-              "action":    "recompile" })
+              "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
             { "name":      "hydrogen_visible",
               "desc":      "Show Hydrogens",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
-              "action":    "recompile" })
+              "action":    ["recompile", "recalc_positions"] })
 
         ## labels
         self.glo_add_property(
@@ -1708,14 +1724,28 @@ class GLAtomList(GLDrawList):
               "recompile_action":    "recompile_Urms" })
         
     def glal_update_properties(self, updates, actions):
-        """
-        """
+        ## rebuild visible/hidden dictionaries
+        if "recalc_positions" in actions:
+             self.glal_hidden_atoms_dict  = None
+             self.glal_visible_atoms_dict = None
+             self.glal_xyzdict           = None
+
         ## update color enumeration
         if "color" in updates:
             self.glal_atom_color.set_value(updates["color"])
+
+            if updates["color"].lower()=="random":
+                new_color_str = "%4.2f,%4.2f,%4.2f" % (
+                    self.glal_atom_color.value[0],
+                    self.glal_atom_color.value[1],
+                    self.glal_atom_color.value[2])
+
+                self.properties.update(color=new_color_str)
+                return
+                
             self.glo_update_properties(
-                color_setting = str(self.glal_atom_color.get_value_desc())) 
-        
+                color_setting = str(self.glal_atom_color.get_value_desc()))
+
     def gldl_iter_multidraw_self(self):
         """Specialized draw list invokation to recycle the draw list for
         symmetry related copies.  Cartesian versions of the symmetry rotation
@@ -1799,7 +1829,7 @@ class GLAtomList(GLDrawList):
             yield chain
 
     def glal_iter_atoms_filtered(self):
-        """Filter atoms to be drawn here.
+        """Iterate all atoms and yield the tuble (atom, visible_flag).
         """
         aa_bb_atoms = ("N", "CA", "C", "O")
         na_bb_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
@@ -1813,36 +1843,69 @@ class GLAtomList(GLDrawList):
         for atm in self.glal_iter_atoms():
             if hydrogen_visible==False:
                 if atm.element=="H":
+                    yield atm, False
                     continue
 
             frag = atm.get_fragment()
             
             if frag.is_amino_acid()==True:
                 if main_chain_visible==True and side_chain_visible==True:
-                    yield atm
+                    yield atm, True
                 elif main_chain_visible==True and side_chain_visible==False:
                     if atm.name in aa_bb_atoms:
-                        yield atm
+                        yield atm, True
                 elif main_chain_visible==False and side_chain_visible==True:
                     if atm.name not in aa_bb_atoms:
-                        yield atm
+                        yield atm, True
+                yield atm, False
 
             elif frag.is_nucleic_acid()==True:
                 if main_chain_visible==True and side_chain_visible==True:
-                    yield atm
+                    yield atm, True
                 elif main_chain_visible==True and side_chain_visible==False:
                     if atm.name in na_bb_atoms:
-                        yield atm
+                        yield atm, True
                 elif main_chain_visible==False and side_chain_visible==True:
                     if atm.name not in na_bb_atoms:
-                        yield atm
+                        yield atm, True
+                yield atm, False
 
             elif frag.is_water()==True:
                 if water_visible==True:
-                    yield atm
+                    yield atm, True
+                yield atm, False
 
             elif hetatm_visible==True:
-                yield atm
+                yield atm, True
+
+            else:
+                yield atm, False
+
+    def glal_rebuild_atom_dicts(self):
+        """When a atom selection setting or origin changes, the atom
+        dictionaries need to be rebuilt.
+        """
+        self.glal_hidden_atoms_dict  = {}
+        self.glal_visible_atoms_dict = {}
+        self.glal_xyzdict           = XYZDict(5.0)
+
+        for atm, visible in self.glal_iter_atoms_filtered():
+            pos = self.glal_calc_position(atm.position)
+
+            if visible==True:
+                self.glal_visible_atoms_dict[atm] = pos
+                self.glal_xyzdict.add(pos, atm)
+            else:
+                self.glal_hidden_atoms_dict[atm] = pos
+
+    def glal_iter_visible_atoms(self):
+        """Iterate over all visible atoms yielding the 2-tuple (atm, position).
+        """
+        if self.glal_visible_atoms_dict==None:
+            self.glal_rebuild_atom_dicts()
+
+        for atm, pos in self.glal_visible_atoms_dict.items():
+            yield atm, pos
                     
     def glal_calc_position(self, position):
         """Calculate a position vector with respect to the
@@ -1865,7 +1928,7 @@ class GLAtomList(GLDrawList):
     def draw_labels(self):
         """Draws atom lables.
         """
-        viewer = self.glo_get_glviewer()
+        viewer = self.gldl_get_glviewer()
         R = viewer.properties["R"]
         t = viewer.properties["t"]
 
@@ -1884,8 +1947,11 @@ class GLAtomList(GLDrawList):
         self.glr_translate(-t)
         self.glr_mult_matrix(Ri)
 
-        for atm in self.glal_iter_atoms_filtered():
-            pos = self.glal_calc_position(atm.position)
+        for atm, pos in self.glal_iter_visible_atoms():
+            relative_pos = matrixmultiply(R, pos + cv) + tp
+            if length(relative_pos)>10.0:
+                continue
+
 
             if atm.alt_loc=="":
                 text = "%s %s %s %s" % (
@@ -1894,11 +1960,6 @@ class GLAtomList(GLDrawList):
                 text = "%s(%s) %s %s %s" % (
                     atm.name, atm.alt_loc, atm.res_name, atm.fragment_id,
                     atm.chain_id)
-                
-            relative_pos = matrixmultiply(R, pos + cv) + tp
-
-            if length(relative_pos)>10.0:
-                continue
 
             glPushMatrix()
             glTranslatef(*relative_pos + array([0.0, 0.0, 0.5]))
@@ -1907,13 +1968,10 @@ class GLAtomList(GLDrawList):
 
         glPopMatrix()
 
-
     def draw_cpk(self):
         """Draw a atom as a CPK sphere.
         """
-        for atm in self.glal_iter_atoms_filtered():
-            pos = self.glal_calc_position(atm.position)
-
+        for atm, pos in self.glal_iter_visible_atoms():
             elem = atm.get_structure().library.get_element(atm.element)
             if elem:
                 radius = elem.van_der_waals_radius
@@ -1933,10 +1991,8 @@ class GLAtomList(GLDrawList):
     def draw_Uaxes(self):
         """Draw thermal axes at the given ADP probability level.
         """
-        for atm in self.glal_iter_atoms_filtered():
-            pos = self.glal_calc_position(atm.position)
-            U   = self.glal_calc_U(atm)
-
+        for atm, pos in self.glal_iter_visible_atoms():
+            U = self.glal_calc_U(atm)
             if U==None:
                 continue
 
@@ -1949,10 +2005,8 @@ class GLAtomList(GLDrawList):
     def draw_Uellipse(self):
         """Draw the ADP determined probability ellipseoid.
         """
-        for atm in self.glal_iter_atoms_filtered():
-            pos = self.glal_calc_position(atm.position)
-            U   = self.glal_calc_U(atm)
-
+        for atm, pos in self.glal_iter_visible_atoms():
+            U = self.glal_calc_U(atm)
             if U==None:
                 continue
 
@@ -1964,10 +2018,8 @@ class GLAtomList(GLDrawList):
     def draw_Urms(self):
         """Draw the ADP determined RMS displacement surface.
         """
-        for atm in self.glal_iter_atoms_filtered():
-            pos = self.glal_calc_position(atm.position)
-            U   = self.glal_calc_U(atm)
-            
+        for atm, pos in self.glal_iter_visible_atoms():
+            U = self.glal_calc_U(atm)
             if U==None:
                 continue
 
@@ -1981,9 +2033,7 @@ class GLAtomList(GLDrawList):
         glDisable(GL_LIGHTING)
         glLineWidth(self.properties["line_width"])
 
-        for atm1 in self.glal_iter_atoms_filtered():
-            pos1 = self.glal_calc_position(atm1.position)
-
+        for atm1, pos1 in self.glal_iter_visible_atoms():
             glColor3f(*self.glal_calc_color(atm1))
 
             if len(atm1.bond_list)>0:
@@ -1991,9 +2041,16 @@ class GLAtomList(GLDrawList):
                 ## bonded atoms
                 for bond in atm1.iter_bonds():
                     atm2 = bond.get_partner(atm1)
-                    pos2 = self.glal_calc_position(atm2.position)
+
+                    try:
+                        pos2 = self.glal_visible_atoms_dict[atm2]
+                    except KeyError:
+                        if self.glal_hidden_atoms_dict.has_key(atm2):
+                            continue
+                        else:
+                            pos2 = self.glal_calc_position(atm2.position)
                     
-                    end  = pos1 + ((pos2 - pos1) / 2)
+                    end = pos1 + ((pos2 - pos1) / 2)
 
                     glBegin(GL_LINES)
                     glVertex3f(*pos1)
@@ -2012,8 +2069,7 @@ class GLAtomList(GLDrawList):
         ball_radius  = self.properties["ball_radius"]
         stick_radius = self.properties["stick_radius"]
 
-        for atm1 in self.glal_iter_atoms_filtered():
-            pos1 = self.glal_calc_position(atm1.position)
+        for atm1, pos1 in self.glal_iter_visible_atoms():
             r, g, b = self.glal_calc_color(atm1)
             self.glr_set_material_rgb(r, g, b, 1.0)
 
@@ -2021,10 +2077,16 @@ class GLAtomList(GLDrawList):
             ## bonded atoms
             for bond in atm1.iter_bonds():
                 atm2 = bond.get_partner(atm1)
-                pos2 = self.glal_calc_position(atm2.position)
 
-                end  = pos1 + ((pos2 - pos1) / 2)
+                try:
+                    pos2 = self.glal_visible_atoms_dict[atm2]
+                except KeyError:
+                    if self.glal_hidden_atoms_dict.has_key(atm2):
+                        continue
+                    else:
+                        pos2 = self.glal_calc_position(atm2.position)
 
+                end = pos1 + ((pos2 - pos1) / 2)
                 self.glr_tube(pos1, end, stick_radius)
 
             ## draw ball
@@ -2141,7 +2203,7 @@ class GLAtomList(GLDrawList):
 
         for chain in self.glal_iter_chains():
 
-            last_pos = None
+            last_atm = None
 
             for frag in chain.iter_fragments():
 
@@ -2150,25 +2212,75 @@ class GLAtomList(GLDrawList):
                 elif frag.is_nucleic_acid()==True:
                     backbone_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
                 else:
-                    last_pos = None
+                    last_atm = None
                     continue
 
                 for name in backbone_atoms:
                     try:
                         atm = frag[name]
                     except KeyError:
-                        last_pos = None
-                    else:
-                        pos = self.glal_calc_position(atm.position)
-                        if last_pos==None:
-                            last_pos = pos
-                        else:
-                            self.glr_sphere(last_pos, trace_radius, 12)
-                            self.glr_tube(last_pos, pos, trace_radius)
-                            last_pos = pos
+                        last_atm = None
+                        continue
 
-            if last_pos!=None:
-                self.glr_sphere(last_pos, trace_radius, 10)
+                    if last_atm==None:
+                        last_atm = atm
+                        continue
+
+                    ## if there are alternate conformations, make sure to
+                    ## trace them all in the backbone trace
+                    
+                    if last_atm.alt_loc=="" and atm.alt_loc=="":
+                        lpos = self.glal_calc_position(
+                            last_atm.position)
+                        pos = self.glal_calc_position(
+                            atm.position)
+
+                        self.glr_sphere(lpos, trace_radius, 12)
+                        self.glr_tube(lpos, pos, trace_radius)
+
+                    elif last_atm.alt_loc=="" and atm.alt_loc!="":
+                        lpos = self.glal_calc_position(
+                            last_atm.position)
+
+                        for aa in atm.iter_alt_loc():
+                            pos = self.glal_calc_position(
+                                aa.position)
+
+                            self.glr_sphere(lpos, trace_radius, 12)
+                            self.glr_tube(lpos, pos, trace_radius)
+
+                    elif last_atm.alt_loc!="" and atm.alt_loc=="":
+                        pos = self.glal_calc_position(
+                            atm.position)
+
+                        for laa in last_atm.iter_alt_loc():
+                            lpos = self.glal_calc_position(
+                                laa.position)
+
+                            self.glr_sphere(lpos, trace_radius, 12)
+                            self.glr_tube(lpos, pos, trace_radius)
+
+                    elif last_atm.alt_loc!="" and atm.alt_loc!="":
+                        for aa in atm.iter_alt_loc():
+                            for laa in last_atm.iter_alt_loc():
+
+                                if aa.alt_loc!=laa.alt_loc:
+                                    continue
+
+                                lpos = self.glal_calc_position(
+                                    laa.position)
+                                pos = self.glal_calc_position(
+                                    aa.position)
+
+                                self.glr_sphere(lpos, trace_radius, 12)
+                                self.glr_tube(lpos, pos, trace_radius)
+
+                    last_atm = atm
+
+            if last_atm!=None:
+                for laa in last_atm.iter_alt_loc():
+                    lpos = self.glal_calc_position(laa.position)
+                    self.glr_sphere(lpos, trace_radius, 10)
 
     def draw_symmetry_debug(self):
         """Draws crosses where all the symmetry equivalent atoms should be.
@@ -3558,7 +3670,7 @@ class GLViewer(GLObject):
               "desc":      "Smooth Lines",
               "catagory":  "OpenGL Performance",
               "type":      "boolean",
-              "default":   True,
+              "default":   False,
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "GL_POINT_SMOOTH",
@@ -3624,11 +3736,6 @@ class GLViewer(GLObject):
         """Remove a GLDrawList.
         """
         assert isinstance(draw_list, GLDrawList)
-
-        ## delete the compiled GL draw lists
-        draw_list.gldl_delete_list()
-
-        ## remove and trigger redraw
         draw_list.glo_remove()
         self.glv_redraw()
 

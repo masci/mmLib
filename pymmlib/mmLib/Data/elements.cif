@@ -42,6 +42,7 @@ _element.name                  Helium
 _element.number                2
 _element.atomic_weight         4.002602
 _element.van_der_walls_radius  1.400000
+_element.covalent_radius       0.93
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -71,6 +72,7 @@ _element.name                  Lithium
 _element.number                3
 _element.atomic_weight         6.941000
 _element.van_der_walls_radius  1.820000
+_element.covalent_radius       1.23
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -107,6 +109,7 @@ _element.name                  Beryllium
 _element.number                4
 _element.atomic_weight         9.012182
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       0.9
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -143,6 +146,7 @@ _element.name                  Boron
 _element.number                5
 _element.atomic_weight         10.811000
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       0.82
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -172,7 +176,7 @@ _element.name                  Carbon
 _element.number                6
 _element.atomic_weight         12.010700
 _element.van_der_walls_radius  1.700000
-_element.covalent_radius       0.720
+_element.covalent_radius       0.770
 _element.color_rgb             '#AAAAAA'
 #
 _scattering_factors.wavelength  CuKa
@@ -202,7 +206,7 @@ _element.name                  Nitrogen
 _element.number                7
 _element.atomic_weight         14.006700
 _element.van_der_walls_radius  1.550000
-_element.covalent_radius       0.680
+_element.covalent_radius       0.75
 _element.color_rgb             '#0000FF'
 #
 _scattering_factors.wavelength  CuKa
@@ -232,7 +236,7 @@ _element.name                  Oxygen
 _element.number                8
 _element.atomic_weight         15.999400
 _element.van_der_walls_radius  1.520000
-_element.covalent_radius       0.680
+_element.covalent_radius       0.73
 _element.color_rgb             '#FF0000'
 #
 loop_
@@ -269,6 +273,7 @@ _element.name                  Fluorine
 _element.number                9
 _element.atomic_weight         18.998403
 _element.van_der_walls_radius  1.470000
+_element.covalent_radius       0.72
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -305,6 +310,7 @@ _element.name                  Neon
 _element.number                10
 _element.atomic_weight         20.179700
 _element.van_der_walls_radius  1.540000
+_element.covalent_radius       0.71
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -334,6 +340,7 @@ _element.name                  Sodium
 _element.number                11
 _element.atomic_weight         22.989770
 _element.van_der_walls_radius  2.270000
+_element.covalent_radius       1.54
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -370,6 +377,7 @@ _element.name                  Magnesium
 _element.number                12
 _element.atomic_weight         24.305000
 _element.van_der_walls_radius  1.730000
+_element.covalent_radius       1.36
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -406,6 +414,7 @@ _element.name                  Aluminium
 _element.number                13
 _element.atomic_weight         26.981538
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.18
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -442,6 +451,7 @@ _element.name                  Silicon
 _element.number                14
 _element.atomic_weight         28.085500
 _element.van_der_walls_radius  2.100000
+_element.covalent_radius       1.11
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -478,7 +488,7 @@ _element.name                  Phosphorus
 _element.number                15
 _element.atomic_weight         30.973761
 _element.van_der_walls_radius  1.800000
-_element.covalent_radius       1.036
+_element.covalent_radius       1.06
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -538,6 +548,7 @@ _element.name                  Chlorine
 _element.number                17
 _element.atomic_weight         35.453000
 _element.van_der_walls_radius  1.750000
+_element.covalent_radius       0.99
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -574,6 +585,7 @@ _element.name                  Argon
 _element.number                18
 _element.atomic_weight         39.948000
 _element.van_der_walls_radius  1.880000
+_element.covalent_radius       0.98
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -603,6 +615,7 @@ _element.name                  Potassium
 _element.number                19
 _element.atomic_weight         39.098300
 _element.van_der_walls_radius  2.750000
+_element.covalent_radius       2.03
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -639,7 +652,7 @@ _element.name                  Calcium
 _element.number                20
 _element.atomic_weight         40.078000
 _element.van_der_walls_radius  2.000000
-_element.covalent_radius       0.992
+_element.covalent_radius       1.74
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -676,6 +689,7 @@ _element.name                  Scandium
 _element.number                21
 _element.atomic_weight         44.955910
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.44
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -712,6 +726,7 @@ _element.name                  Titanium
 _element.number                22
 _element.atomic_weight         47.867000
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.32
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -756,6 +771,7 @@ _element.name                  Vanadium
 _element.number                23
 _element.atomic_weight         50.941500
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.22
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -800,6 +816,7 @@ _element.name                  Chromium
 _element.number                24
 _element.atomic_weight         51.996100
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.18
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -840,6 +857,7 @@ _element.name                  Manganese
 _element.number                25
 _element.atomic_weight         54.938049
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.17
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -884,7 +902,7 @@ _element.name                  Iron
 _element.number                26
 _element.atomic_weight         55.845000
 _element.van_der_walls_radius  2.000000
-_element.covalent_radius       1.420
+_element.covalent_radius       1.17
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -925,6 +943,7 @@ _element.name                  Cobalt
 _element.number                27
 _element.atomic_weight         58.933200
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.16
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -965,6 +984,7 @@ _element.name                  Nickel
 _element.number                28
 _element.atomic_weight         58.693400
 _element.van_der_walls_radius  1.630000
+_element.covalent_radius       1.16
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1005,6 +1025,7 @@ _element.name                  Copper
 _element.number                29
 _element.atomic_weight         63.546000
 _element.van_der_walls_radius  1.400000
+_element.covalent_radius       1.17
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1045,7 +1066,7 @@ _element.name                  Zinc
 _element.number                30
 _element.atomic_weight         65.409000
 _element.van_der_walls_radius  1.390000
-_element.covalent_radius       1.448
+_element.covalent_radius       1.25
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1082,6 +1103,7 @@ _element.name                  Gallium
 _element.number                31
 _element.atomic_weight         69.723000
 _element.van_der_walls_radius  1.870000
+_element.covalent_radius       1.26
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1118,6 +1140,7 @@ _element.name                  Germanium
 _element.number                32
 _element.atomic_weight         72.640000
 _element.van_der_walls_radius  2.000000
+_element.covalent_radius       1.22
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1154,6 +1177,7 @@ _element.name                  Arsenic
 _element.number                33
 _element.atomic_weight         74.921600
 _element.van_der_walls_radius  1.850000
+_element.covalent_radius       1.2
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -1183,6 +1207,7 @@ _element.name                  Selenium
 _element.number                34
 _element.atomic_weight         78.960000
 _element.van_der_walls_radius  1.900000
+_element.covalent_radius       1.16
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa
@@ -1212,6 +1237,7 @@ _element.name                  Bromine
 _element.number                35
 _element.atomic_weight         79.904000
 _element.van_der_walls_radius  1.850000
+_element.covalent_radius       1.14
 _element.color_rgb             '#FFFFFF'
 #
 loop_
@@ -1248,6 +1274,7 @@ _element.name                  Krypton
 _element.number                36
 _element.atomic_weight         83.798000
 _element.van_der_walls_radius  2.020000
+_element.covalent_radius       1.89
 _element.color_rgb             '#FFFFFF'
 #
 _scattering_factors.wavelength  CuKa

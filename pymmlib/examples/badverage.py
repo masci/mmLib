@@ -19,15 +19,33 @@ def main(path):
         fil = path,
         build_properties = ("no_bonds",))
 
-    atom_list = AtomList()
+    num_atoms = 0
+
+    mean_B  = 0.0
+    sigma_B = 0.0
+
+    min_B = 1000.0
+    max_B = 0.0
+
 
     for res in struct.iter_amino_acids():
         for atm in res.iter_atoms():
             if atm.element == "H":
                 continue
-            atom_list.append(atm)
 
-    print "ADV B: ",atom_list.calc_adv_temp_factor()
+            num_atoms += 1
+            mean_B    += atm.temp_factor
+
+            min_B = min(min_B, atm.temp_factor)
+            max_B = max(max_B, atm.temp_factor)
+
+    
+            
+    mean_B = mean_B / num_atoms
+
+    print "mean B: ",mean_B
+    print "max  B: ",max_B
+    print "min  B: ",min_B
 
 try:
     path = sys.argv[1]

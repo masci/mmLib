@@ -489,6 +489,104 @@ class StructureBuilder(object):
                 chain.sequence = Sequence(library = self.struct.library,
                                           sequence_list = sequence_list[:])
 
+    def load_alpha_helicies(self, helix_list):
+        """The argument helix_list is a list of Python dictionaries with
+        information to build build AlphaHelix objects into the Structure.
+
+        The dictionary has attributes:
+            helix_id:    The ID of the helix
+            chain_id:    The chain_id where the helix is located
+            frag_id1:    The start fragment_id of the helix
+            frag_id2:    The end fragment_id of the helix
+            helix_class: The PDB helix class number
+            detaisl:     Text commont about the helix
+        """
+        for helix in helix_list:
+            ## get required information or blow off the helix
+            try:
+                helix["helix_id"]
+                helix["chain_id1"]
+                helix["frag_id1"]
+                helix["chain_id2"]
+                helix["frag_id2"]
+            except KeyError:
+                continue
+
+            ## build a AlphaHelix for every Model in the Structure
+            for model in self.struct.iter_models():
+                alpha_helix = AlphaHelix(model_id=model.model_id, **helix)
+                model.add_alpha_helix(alpha_helix)
+                alpha_helix.generate_segment()
+
+    def load_beta_sheets(self, beta_sheet_list):
+        """The argument beta_sheet_list is a list of Python dictionaries with
+        information to build build BetaSheet objects into the Structure.
+
+        The dictionary has attributes:
+            sheet_id:    ID of the sheet
+            num_strands: total number of strands in the beta sheet
+            strand_list: list of dictionaries describing the strand with
+                         the following attributes:
+
+                chain_id1/frag_id1: chain_id and fragment_id of inital residue
+                                    in the strand
+                chain_id2/frag_id2: chain_id and fragment_id of end residue
+                                    in the strand
+                sense:              the sense of the strand with respect to the
+                                    previous strand, either the string
+                                    parallel or anti_parallel
+
+                reg_chain_id, reg_frag_id, reg_atom:
+                                    registration atom in current strand
+                reg_prev_chain_id, reg_prev_frag_id, reg_prev_atom:
+                                    registration atom in previous strand
+        """
+        for sheet in beta_sheet_list:
+            ## get required info
+            try:
+                sheet["sheet_id"]
+                sheet["strand_list"]
+            except KeyError:
+                continue
+
+            ## iterate over all Models and add the BetaSheet description to
+            ## each Model
+            for model in self.struct.iter_models():
+                beta_sheet = BetaSheet(model=model.model_id, **sheet)
+        
+                for strand in sheet["strand_list"]:
+                    ## required strand info
+                    try:
+                        strand["chain_id1"]
+                        strand["frag_id1"]
+                        strand["frag_id1"]
+                        strand["frag_id2"]
+                    except KeyError:
+                        continue
+
+                    beta_strand = Strand(**strand)
+                    beta_sheet.add_strand(beta_strand)
+
+                model.add_beta_sheet(beta_sheet)
+                beta_sheet.generate_segments()
+
+    def load_sites(self, site_list):
+        """The argument site_list is a list of Python dictionaries with
+        information to build build Site objects into the Structure.
+        """
+        for site in site_list:
+            ## check for required site info
+            try:
+                site["site_id"]
+                site["fragment_list"]
+            except KeyError:
+                continue
+
+            for model in self.struct.iter_models():
+                site = Site(**site)
+                model.add_site(site)
+                site.generate_fragments()
+        
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
@@ -522,7 +620,7 @@ class PDBStructureBuilder(StructureBuilder):
     def pdb_error(self, rec_name, text):
         warning("[ERROR PDB::%s] %s" % (rec_name, text))
 
-    def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
+    def get_fragment_id(self, rec, res_seq="resSeq", icode="iCode"):
         fragment_id = None
         if rec.has_key(res_seq):
             fragment_id = str(rec[res_seq])
@@ -580,6 +678,11 @@ class PDBStructureBuilder(StructureBuilder):
         ## store extracted bond information
         self.bond_map = {}
 
+        ## secondary structure annotation
+        self.helix_list = []
+        self.beta_sheet_list = []
+        self.site_list = []
+
         def filter_func(rec):
             if isinstance(rec, PDB.ATOM) or \
                isinstance(rec, PDB.SIGATM) or \
@@ -597,6 +700,16 @@ class PDBStructureBuilder(StructureBuilder):
         ## load chemical bond informaton
         self.load_bonds(self.bond_map)
         del self.bond_map
+
+        ## load secondary structure annotation
+        self.load_alpha_helicies(self.helix_list)
+        del self.helix_list
+
+        self.load_beta_sheets(self.beta_sheet_list)
+        del self.beta_sheet_list
+
+        self.load_sites(self.site_list)
+        del self.site_list
 
     def process_ATOM(self, rec):
         ## load current atom since this record indicates a new atom
@@ -897,53 +1010,148 @@ class PDBStructureBuilder(StructureBuilder):
         self.load_unit_cell(ucell_map)
 
     def process_HELIX(self, rec):
-        struct_conf = self.struct.cifdb.confirm_table("struct_conf")
-        row = mmCIFRow()
-        struct_conf.append(row)
+        ## the helixID field is mandatory
+        try:
+            helix_id = rec["helixID"]
+        except KeyError:
+            return
 
-        row["conf_type_id"] = "HELX_P"
-        setmapi(rec, "serNum", row, "id")
-        setmaps(rec, "helixID", row, "pdbx_PDB_helix_id")
-        setmaps(rec, "initResName", row, "beg_auth_comp_id")
-        setmaps(rec, "initChainID", row, "beg_auth_asym_id")
-        seq_id = self.get_fragment_id(rec, "initSeqNum", "initICode")
-        if seq_id:
-            row["beg_auth_seq_id"] = seq_id
-        setmaps(rec, "initICode", row, "pdbx_beg_PDB_ins_code")
-
-        setmaps(rec, "endResName", row, "end_auth_comp_id")
-        setmaps(rec, "endChainID", row, "end_auth_asym_id")
-        seq_id = self.get_fragment_id(rec, "endSeqNum", "endICode")
-        if seq_id:
-            row["end_auth_seq_id"] = seq_id
-        setmaps(rec, "endICode", row, "end_beg_PDB_ins_code")
-
-        setmaps(rec, "helixClass", row, "pdbx_PDB_helix_class")
-        setmaps(rec, "comment", row, "details")
-        setmaps(rec, "length", row, "pdbx_PDB_helix_length")
-
-    def process_SITE(self, rec):
-        struct_site_gen = self.struct.cifdb.confirm_table("struct_site_gen")
-
-        for i in range(1, 5):
-            chain_key = "chainID%d" % (i)
-            res_name = "resName%d" % (i)
-            frag_key = "seq%d" % (i)
-            icode_key = "icode%d" % (i)
-
-            if not (rec.has_key(chain_key) or rec.has_key(frag_key)):
+        ## get the dictionary describing this helix or
+        ## create it if it doesn't exist
+        helix = None
+        for helix_x in self.helix_list:
+            if helix_x["helix_id"]==helix_id:
+                helix = helix_x
                 break
 
-            row = mmCIFRow()
-            struct_site_gen.append(row)
+        ## new helix dictionary
+        if helix==None:
+            helix = {"helix_id": helix_id}
+            self.helix_list.append(helix)
 
-            setmaps(rec, "siteID", row, "site_id")
-            setmaps(rec, res_name, row, "auth_comp_id")
-            setmaps(rec, chain_key, row, "auth_asym_id")
-            seq_id = self.get_fragment_id(rec, frag_key, icode_key)
-            if seq_id:
-                row["auth_seq_id"] = seq_id
-            setmaps(rec, icode_key, row, "pdbx_auth_ins_code")
+        setmaps(rec, "initChainID", helix, "chain_id1")
+        setmaps(rec, "endChainID",  helix, "chain_id2")
+        
+        frag_id1 = self.get_fragment_id(rec, "initSeqNum", "initICode")
+        if frag_id1!=None:
+            helix["frag_id1"] = frag_id1
+
+        frag_id2 = self.get_fragment_id(rec, "endSeqNum", "endICode")
+        if frag_id2!=None:
+            helix["frag_id2"] = frag_id2
+
+        setmaps(rec, "helixClass", helix, "helix_class")
+        setmaps(rec, "comment", helix, "details")
+
+    def process_SHEET(self, rec):
+        ## the sheetID field is mandatory
+        try:
+            sheet_id = rec["sheetID"]
+        except KeyError:
+            return
+
+        ## get the dictionary describing this sheet or
+        ## create it if it doesn't exist
+        sheet = None
+        for sheet_x in self.beta_sheet_list:
+            if sheet_x["sheet_id"]==sheet_id:
+                sheet = sheet_x
+                break
+
+        ## new sheet dictionary
+        if sheet==None:
+            sheet = {"sheet_id": sheet_id}
+            self.beta_sheet_list.append(sheet)
+            setmapi(rec, "numStrands", sheet, "num_strands")
+
+        ## create the dictionary for this strand
+        strand = {}
+
+        setmaps(rec, "initChainID", strand, "chain_id1")
+        frag_id1 = self.get_fragment_id(rec, "initSeqNum", "initICode")
+        if frag_id1!=None:
+            strand["frag_id1"] = frag_id1
+
+        setmaps(rec, "endChainID", strand, "chain_id2")
+        frag_id2 = self.get_fragment_id(rec, "endSeqNum", "endICode")
+        if frag_id2!=None:
+            strand["frag_id2"] = frag_id2
+
+        ## sense
+        if rec.has_key("sense"):
+            if rec["sense"]==1:
+                strand["sense"] = "parallel"
+            elif rec["sense"]==-1:
+                strand["sense"] = "anti_parallel"
+
+        ## registration with previous strand
+        setmaps(rec, "curChainID", strand, "reg_chain_id")
+        reg_frag_id = self.get_fragment_id(rec, "curResSeq", "curICode")
+        if reg_frag_id!=None:
+            strand["reg_frag_id"] = reg_frag_id
+        setmaps(rec, "curAtom", strand, "reg_atom")
+
+        setmaps(rec, "prevChainID", strand, "reg_prev_chain_id")
+        reg_prev_frag_id = self.get_fragment_id(rec, "prevResSeq", "prevICode")
+        if reg_prev_frag_id!=None:
+            strand["reg_prev_frag_id"] = reg_prev_frag_id
+        setmaps(rec, "prevAtom", strand, "reg_prev_atom")
+
+        ## append to the strand list
+        try:
+            sheet["strand_list"].append(strand)
+        except KeyError:
+            sheet["strand_list"] = [strand]
+            
+    def process_SITE(self, rec):
+        ## the siteID field is mandatory
+        try:
+            site_id = rec["siteID"]
+        except KeyError:
+            return
+
+        ## get the dictionary describing this site or
+        ## create it if it doesn't exist
+        site = None
+        for site_x in self.site_list:
+            if site_x["site_id"]==site_id:
+                site = site_x
+                break
+
+        ## new site dictionary
+        if site==None:
+            site = {"site_id": site_id}
+            self.site_list.append(site)
+            setmapi(rec, "numRes", site, "num_residues")
+
+        ## add the residue descriptions
+        for i in range(1, 5):
+            chain_key = "chainID%d" % (i)
+            res_name  = "resName%d" % (i)
+            seq_key   = "seq%d" % (i)
+            icode_key = "icode%d" % (i)
+
+            ## check for manditory fields
+            try:
+                rec[chain_key]
+                rec[seq_key]
+            except KeyError:
+                break
+
+            ## get resiude information and create dictionary
+            residue = {}
+
+            setmaps(rec, chain_key, residue, "chain_id")
+            setmaps(rec, res_name,  residue, "res_name")
+            residue["fragment_id"] =  self.get_fragment_id(
+                rec, seq_key, icode_key)
+
+            ## add the fragment description to the site description
+            ## fragment list
+            try:
+                site["fragment_list"].append(residue)
+            except KeyError:
+                site["fragment_list"] = [residue]
 
     def bond_processor(self, **args):
         """Complicated method.  Required arguments are:

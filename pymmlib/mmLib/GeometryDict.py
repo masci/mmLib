@@ -2,14 +2,15 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Geometry hasing classes
+"""Geometry hasing/fast lookup classes.
 """
 
 from __future__ import generators
 import random
 import math
 
-class GeometryDict(object):
+
+class XYZDict(object):
     """Hash all objects according to their position, allowing spacial
     location of objects quickly.  This is a brain-dead simple implementation,
     but it gets the job done.
@@ -135,7 +136,7 @@ if __name__=="__main__":
 
     print "Structure Loaded"
 
-    gdict = GeometryDict(2.0)
+    gdict = XYZDict(2.0)
 
     cnt = 0
     for atm in struct.iter_atoms():
