@@ -135,18 +135,46 @@ def setmapf(smap, skey, dmap, dkey, default = None):
 
 def warning(x):
     """Writes warnings out to the file given in the environment variable
-    MMLIB_WARNING, or mmlib_warning.txt by default.
+    MMLIB_WARNING.  This can be set to a file path, "stdout", "stderr",
+    or a empty string for no action.  It writes to the file
+    mmlib_warning.txt by default.  
     """
+    str  = x + "\n"
     path = os.environ.get("MMLIB_WARNING", "mmlib_warning.txt")
-    open(path, "a").write(x+"\n")
+
+    try:
+        if path == "":
+            return
+        elif path == "stdout":
+            sys.stdout.write(x)
+        elif path == "stderr":
+            sys.stderr.write(x)
+        else:
+            open(path, "a").write(x)
+    except IOError:
+        pass
 
 
 def debug(x):
     """Writes debugging output to the file given in the environment variable
-    MMLIB_DEBUG, or mmlib_debug.txt by default.
+    MMLIB_DEBUG.  This can be set to a file path, "stdout", "stderr",
+    or a empty string for no action.  It writes to the file
+    mmlib_warning.txt by default.
     """
+    str  = x + "\n"
     path = os.environ.get("MMLIB_DEBUG", "mmlib_debug.txt")
-    open(path, "a").write(x+"\n")
+
+    try:
+        if path == "":
+            return
+        elif path == "stdout":
+            sys.stdout.write(x)
+        elif path == "stderr":
+            sys.stderr.write(x)
+        else:
+            open(path, "a").write(x)
+    except IOError:
+        pass
 
 
 ### <TESTING>

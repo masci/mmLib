@@ -95,7 +95,7 @@ class StructureBuilder(object):
         try: atm.temp_factor = atm_map["temp_factor"]
         except KeyError: pass
 
-        try: atm.charge  = atm_map["charge"]
+        try: atm.charge = atm_map["charge"]
         except KeyError: pass
 
         try:
@@ -846,19 +846,19 @@ class PDBStructureBuilder(StructureBuilder):
 
     def bond_processor(self, **args):
         """Complicated method.  Required arguments are:
-            rec = PDB record
-            atm1/2 = Atom object, if you want to override the lookup
-            chain_id_field1/2: PDB field name for the chain ID
-            res_seq1/2_field: PDB field for the residue sequence num
-            icode1/2_field: PDB field for the residue insertion code
-            name1/2_field: PDB field for the atom name
-            atl_loc1/2: PDB filed name for the atom alt_loc
-            symop1/2_field: PDB field name for the atom symmetry operation
-
-            chain_id1/2: override the chain ID
-            frag_id1/2: override the fragmetn ID
-            name1/2: override the atom name
-            alt_loc1/2: override the atom alt_loc
+        rec = PDB record
+        atm1/2 = Atom object, if you want to override the lookup
+        chain_id_field1/2: PDB field name for the chain ID
+        res_seq1/2_field: PDB field for the residue sequence num
+        icode1/2_field: PDB field for the residue insertion code
+        name1/2_field: PDB field for the atom name
+        atl_loc1/2: PDB filed name for the atom alt_loc
+        symop1/2_field: PDB field name for the atom symmetry operation
+        
+        chain_id1/2: override the chain ID
+        frag_id1/2: override the fragmetn ID
+        name1/2: override the atom name
+        alt_loc1/2: override the atom alt_loc
         """
         rec = args["rec"]
 
