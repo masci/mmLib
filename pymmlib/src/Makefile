@@ -1,6 +1,6 @@
 TARGET  =pdbmodule.so
 INCLUDES=
-CFLAGS 	=-g -O6 -march=pentium4 -I/opt/include/python2.3 -D_UNIX
+CFLAGS 	=-g -I/opt/include/python2.3 -D_UNIX
 LFLAGS 	=
 CC 	=gcc
 

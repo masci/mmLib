@@ -4,6 +4,7 @@
 ## included as part of this package.
 """Utility classes for loading, manipulating, and analyzing TLS parameters.
 """
+from __future__ import generators
 import re
 import sys
 import string

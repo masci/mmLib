@@ -4,6 +4,7 @@
 ## included as part of this package.
 """OpenGL rendering classes.
 """
+from __future__ import generators
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
