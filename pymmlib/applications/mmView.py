@@ -116,37 +116,27 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         self.glviewer.gl_draw_lists()
         return gtk.TRUE
 
-    def set_unit_cell(self, unit_cell):
-        """Adds the mmLib.UnitCell drawing object to the scene.
+    def append_struct(self, struct):
+        """Adds a structure to this viewer, and returns the GLStructure
+        object so it can be manipulated.
         """
-        if self.unit_cell_draw:
-            self.glviewer.remove(self.unit_cell_draw)
-            self.unit_cell_draw.gl_delete_list()
-            
-        self.unit_cell_draw = GLUnitCellDrawList(unit_cell)
-        self.glviewer.append(self.unit_cell_draw)
-        self.queue_draw()
-
-    def set_structure(self, struct_obj, sel_struct_obj = None):
-        """
-        """
-        ## remove all previous atom draw lists
-        if self.atom_draw:
-            self.glviewer.remove(self.atom_draw)
-            self.atom_draw.gl_delete_list()
-
-        ## create and add new view group
-        self.atom_draw = GLAtomDrawList()
-        #self.atom_draw.set_setting("main_chain", True)
-        #self.atom_draw.set_setting("draw_style", "cpk")
+        gl_struct = GLStructure(struct)
+        gl_struct.show_axes(True)
+        gl_struct.show_unit_cell(True)
+        gl_struct.show_atoms()
         
-        self.glviewer.append(self.atom_draw)
-        for atm in struct_obj.iter_atoms():
-            self.atom_draw.append(atm)
+        self.glviewer.append(gl_struct)
         self.queue_draw()
 
+        return gl_struct
 
-class StructurePanel(gtk.VPaned):
+    def remove_struct(self, struct):
+        """Removes structure from the viewer.
+        """
+        pass
+
+
+class StructureDataDialog(gtk.VPaned):
     def __init__(self):
         gtk.VPaned.__init__(self)
         self.set_border_width(3)
@@ -222,14 +212,14 @@ class StructurePanel(gtk.VPaned):
             self.add_line("Atom.calc_anisotropy()",
                           sel_struct_obj.calc_anisotropy())
 
-        self.glviewer.set_unit_cell(self.struct.unit_cell)
-        self.glviewer.set_structure(self.struct, sel_struct_obj)
+        self.glviewer.add_structure(self.struct)
 
 
-
-
-class StructureTreeModel2(gtk.TreeView):
-    def __init__(self):
+class StructureTreeControl(gtk.TreeView):
+    def __init__(self, context):
+        self.context     = context
+        self.struct_list = []
+        
         gtk.TreeView.__init__(self)
         self.get_selection().set_mode(gtk.SELECTION_BROWSE)
         
@@ -237,227 +227,93 @@ class StructureTreeModel2(gtk.TreeView):
         self.connect("button-release-event", self.button_release_event_cb)
 
         self.model = gtk.TreeStore(
-            gobject.TYPE_STRING)    # 0: data name
+            gobject.TYPE_BOOLEAN,   # 0: viewable
+            gobject.TYPE_STRING)    # 1: data name
         self.set_model(self.model)
 
         cell = gtk.CellRendererText()
         column = gtk.TreeViewColumn("Structure", cell)
-        column.add_attribute(cell, "text", 0)
+        column.add_attribute(cell, "text", 1)
         self.append_column(column)
 
-        self.structure_list = []
+    def row_activated_cb(self, tree_view, path, column):
+        """Retrieve selected node, then call the correct set method for the
+        type.
+        """
+        pass
 
-    def add_structure(self, struct):
+    
+    def button_release_event_cb(self, tree_view, bevent):
+        """
+        """
+        pass
+        
+    def redraw(self):
+        """Clear and refresh the view of the widget according to the
+        self.struct_list
+        """
+        self.model.clear()
+        for struct in self.struct_list:
+            self.display_struct(struct)
+
+    def display_struct(self, struct):
+        iter1 = self.model.append(None)
+        self.model.set(iter1, 1, str(struct))
+
+        for chain in struct.iter_chains():
+            iter2 = self.model.append(iter1)
+            self.model.set(iter2, 1, str(chain))
+
+            for frag in chain.iter_fragments():
+                iter3 = self.model.append(iter2)
+                self.model.set(iter3, 1, str(frag))
+
+                for atm in frag.iter_all_atoms():
+                    iter4 = self.model.append(iter3)
+                    self.model.set(iter4, 1, str(atm))
+                    
+    def append_struct(self, struct):
         self.struct_list.append(struct)
+        self.display_struct(struct)
 
+    def remove_struct(self, struct):
+        self.struct_list.remove(struct)
+        self.redraw()
 
-class StructureTreeModel(gtk.GenericTreeModel):
-    def __init__(self, structure):
-        self.structure_list = [structure]
-	gtk.GenericTreeModel.__init__(self)
-
-    def get_iter_root(self):
-        return self.structure_list
-
-    def on_get_flags(self):
-	'''returns the GtkTreeModelFlags for this particular type of model'''
-	return 0
-
-    def on_get_n_columns(self):
-	'''returns the number of columns in the model'''
-	return 1
-
-    def on_get_column_type(self, index):
-	'''returns the type of a column in the model'''
-	return gobject.TYPE_STRING
-
-    def on_get_path(self, node):
-	'''returns the tree path (a tuple of indices at the various
-	levels) for a particular node.
-        '''
-        if isinstance(node, Structure):
-            return ( self.structure_list.index(node), )
-
-        elif isinstance(node, Chain):
-            struct = node.structure
-            struct_path = self.structure_list.index(struct)
-            chain_path = struct.index(node)
-            return (struct_path, chain_path )
-
-        elif isinstance(node, Fragment):
-            struct = node.chain.structure
-            struct_path = self.structure_list.index(struct)
-            chain_path = struct.index(node.chain)
-            frag_path = node.chain.index(node)
-            return (structure_path, chain_path, frag_path)
-
-        elif isinstance(node, Atom):
-            struct = node.chain.structure
-            struct_path = self.structure_list.index(struct)
-            chain_path = struct.index(node.chain)
-            frag_path = node.chain.index(node)
-            atom_path = (node.name, node.model, node.alt_loc)
-            return (struct_path, chain_path, frag_path, atom_path)
-
-    def on_get_iter(self, path):
-        '''returns the node corresponding to the given path.'''
-        if path == None:
-            return
-        
-        struct = self.structure_list[path[0]]
-        if len(path) == 1:
-            return struct
-
-        chain = struct[path[1]]
-        if len(path) == 2:
-            return chain
-
-        frag = chain[path[2]]
-        if len(path) == 3:
-            return frag
-
-        try:
-            (name, model, alt_loc) = path[3]
-        except TypeError:
-            print "path[3] ",path[3]
-            raise
-
-        atm = frag[name][alt_loc, model]
-        if len(path) == 4:
-            return atm
-        
-    def on_get_value(self, node, column):
-	'''returns the value stored in a particular column for the node'''
-	return str(node)
-
-    def on_iter_next(self, node):
-	'''returns the next node at this level of the tree'''
-        if isinstance(node, Structure):
-            i = self.structure_list.index(node) + 1
-            try:
-                return self.structure_list[i]
-            except IndexError:
-                return None
-
-        elif isinstance(node, Chain):
-            try:
-                return node.structure[node.structure.index(node)+1]
-            except IndexError:
-                return None
-
-        elif isinstance(node, Fragment):
-            return node.get_offset_fragment(1)
-            
-        elif isinstance(node, Atom):
-            next_atm = False
-            
-            for atmx1 in node.fragment:
-                for atmx2 in atmx1:
-                    if next_atm == True:
-                        return atmx2
-                    if atmx2 == node:
-                        next_atm = True
-
-            return None
-
-    def on_iter_children(self, node):
-	'''returns the first child of this node'''
-        try:
-            return iter(node).next()
-        except StopIteration:
-            return None
-
-    def on_iter_has_child(self, node):
-	'''returns true if this node has children'''
-        if   node == self.structure_list  or \
-             isinstance(node, Structure)  or \
-             isinstance(node, Chain)      or \
-             isinstance(node, Fragment):
-            return len(node)
-        else:
-            return False
-
-    def on_iter_n_children(self, node):
-	'''returns the number of children of this node'''
-        if   node == self.structure_list  or \
-             isinstance(node, Structure)  or \
-             isinstance(node, Chain)      or \
-             isinstance(node, Fragment):
-            return len(node)
-        else:
-            return 0
-
-    def on_iter_nth_child(self, node, n):
-	'''returns the nth child of this node'''
-        if   node == self.structure_list  or \
-             isinstance(node, Structure)  or \
-             isinstance(node, Chain)      or \
-             isinstance(node, Fragment):
-            return node[n]
-        else:
-            return None
-
-    def on_iter_parent(self, node):
-	'''returns the parent of this node'''
-        if node == self.structure_list:
-            return None
-
-        elif isinstance(node, Structure):
-            return self.structure_list
-
-        elif isinstance(node, Chain):
-            return node.structure
-
-        elif isinstance(node, Fragment):
-            return node.chain
-
-        elif isinstance(node, Atom):
-            return node.fragment
 
 
 class StructureGUI:
     def __init__(self):
-        self.struct = None
+        self.struct_list = []
     
         ## MAIN WIDGET
         self.hpaned = gtk.HPaned()
         self.hpaned.set_border_width(2)
 
-        ## LEFT HALF
-        scrolled_window = gtk.ScrolledWindow()
-        scrolled_window.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        self.hpaned.add1(scrolled_window)
+        ## LEFT HALF: StructureTreeControl
+        self.sw1 = gtk.ScrolledWindow()
+        self.hpaned.add1(self.sw1)
+        self.sw1.set_border_width(3)
+        self.sw1.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        
+        self.struct_ctrl = StructureTreeControl(self)
+        self.sw1.add(self.struct_ctrl)
 
-        self.struct_tree_view = gtk.TreeView()
-        scrolled_window.add(self.struct_tree_view)
-        cell = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("Structure", cell, text=0)
-        self.struct_tree_view.append_column(column)
-    
-        self.struct_tree_view.connect("row_activated", self.row_activated)
-
-        ## RIGHT HALF
-        self.struct_panel = StructurePanel()
-        self.hpaned.add2(self.struct_panel)
+        ## RIGHT HALF: GtkGLViewer
+        self.gtkglviewer = GtkGLViewer()
+        self.hpaned.add2(self.gtkglviewer)
 
     def getWidget(self):
         return self.hpaned
 
-    def load_structure(self, path):
-        self.struct = LoadStructure(
+    def load_structure(self, path, update_cb):
+        struct = LoadStructure(
             fil              = path,
+            update_cb        = update_cb,
             build_properties = ("sequence","bonds"))
 
-        model = StructureTreeModel(self.struct)
-        self.struct_tree_view.set_model(model)
-        self.struct_panel.set_structure(self.struct)
-        
-
-    def row_activated(self, tree_view, path, column):
-        ## find selected node
-        model = tree_view.get_model()
-        node = model.on_get_iter(path)
-        self.struct_panel.set_structure(self.struct, node)
+        self.struct_ctrl.append_struct(struct)
+        self.gtkglviewer.append_struct(struct)
 
 
 class MainWindow:
@@ -507,15 +363,26 @@ class MainWindow:
 
 
         ## Create statusbar 
-        self.statusbar = gtk.Statusbar();
-        table.attach(self.statusbar,
+        self.hbox = gtk.HBox()
+        table.attach(self.hbox,
                      # X direction           Y direction
                      0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  0,
                      0,                      0)
 
-        self.window.show_all()
+        self.statusbar = gtk.Statusbar()
+        self.hbox.pack_start(self.statusbar, gtk.TRUE, gtk.TRUE, 0)
+        self.statusbar.set_has_resize_grip(gtk.FALSE)
 
+        self.frame = gtk.Frame()
+        self.hbox.pack_start(self.frame, gtk.FALSE, gtk.FALSE, 0)
+        self.frame.set_border_width(3)
+
+        self.progress = gtk.ProgressBar()
+        self.frame.add(self.progress)
+        self.progress.set_size_request(100, 0)
+
+        self.window.show_all()
 
     def open_cb(self, widget):
         file_selector = gtk.FileSelection("Select file to view");
@@ -528,44 +395,43 @@ class MainWindow:
         
         file_selector.show()
 
-
     def open_ok_cb(self, ok_button, file_selector):
         path = file_selector.get_filename()
         file_selector.destroy()
         self.load_file(path)
-        
 
     def open_cancel_cb(self, cancel_button, file_selector):
         file_selector.destroy()
-
 
     def setTitle(self, title):
         title = "mmView: " + title
         title = title[:50]
         self.window.set_title(title)
 
-
     def setStatusBar(self, text):
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
 
-
     def load_file(self, path):
+        """Loads the structure file specified in the path.
+        """
         self.setTitle(path)
-        self.setStatusBar("Loading %s, please wait..." % (path))
-
+        self.setStatusBar("Loading: %s" % (path))
+        self.structure_gui.load_structure(path, self.update_cb)
+        self.setStatusBar("")
+        self.progress.set_fraction(0.0)
+        
+        return gtk.FALSE
+    
+    def update_cb(self, percent):
+        """Callback for file loading code to inform the GUI of how
+        of the file has been read
+        """
+        self.progress.set_fraction(percent/100.0)
         while gtk.events_pending():
             gtk.main_iteration(gtk.TRUE)
 
-        self.structure_gui.load_structure(path)
 
-        self.setStatusBar("")
-        return gtk.FALSE
-    
-
-
-
-    
 def main(path = None):
     main_window_list = []
 

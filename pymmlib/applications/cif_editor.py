@@ -1010,13 +1010,24 @@ class mmCIFEditorMainWindow(gtk.Window):
                      0,                      0)
 
         ## Create statusbar 
-        self.statusbar = gtk.Statusbar();
-        table.attach(self.statusbar,
+        self.hbox = gtk.HBox()
+        table.attach(self.hbox,
                      # X direction           Y direction
                      0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  0,
                      0,                      0)
 
+        self.statusbar = gtk.Statusbar()
+        self.hbox.pack_start(self.statusbar, gtk.TRUE, gtk.TRUE, 0)
+        self.statusbar.set_has_resize_grip(gtk.FALSE)
+
+        self.pg_frame = gtk.Frame()
+        self.hbox.pack_start(self.pg_frame, gtk.FALSE, gtk.FALSE, 0)
+        self.pg_frame.set_border_width(3)
+
+        self.progress = gtk.ProgressBar()
+        self.pg_frame.add(self.progress)
+        self.progress.set_size_request(100, 0)
 
         ## the two editor controls: FileTreeControl, TableTreeControl
         self.file_ctrl = FileTreeControl(self.context)
@@ -1191,6 +1202,14 @@ class mmCIFEditorMainWindow(gtk.Window):
         """
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
+        while gtk.events_pending():
+            gtk.main_iteration(gtk.TRUE)
+    
+    def update_cb(self, percent):
+        """Callback for file loading code to inform the GUI of how
+        of the file has been read
+        """
+        self.progress.set_fraction(percent/100.0)
         while gtk.events_pending():
             gtk.main_iteration(gtk.TRUE)
 
@@ -1586,7 +1605,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
                 return
 
             try:
-                self.cif_file.load_file(fil)
+                self.cif_file.load_file(fil, self.mw.update_cb)
             except mmCIFError, e:
                 self.error("mmCIF parse error:\n%s" % (e))
                 return
@@ -1594,10 +1613,13 @@ class mmCIFEditorWindowContext(mmCIFEditor):
             self.open_into_context = False
             self.path = path
             self.clear_undo_stack()
+            
             self.mw.set_title("mmCIF Editor: %s" % (self.path))
-            self.mw.set_status_bar("Loading File...please wait.")
+            self.mw.set_status_bar("Loading File: %s" % (self.path))
             self.mw.file_ctrl.set_cif_file()
+            self.mw.progress.set_fraction(0.0)
             self.mw.set_status_bar("")
+
             self.update_enabled_menuitems()
         else:
             APP.new_editor_context(path)
