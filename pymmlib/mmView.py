@@ -33,7 +33,6 @@ except gtk.gdkgl.NoMatches:
                                 gtk.gdkgl.MODE_DEPTH)
 
 
-
 class GLViewer(gtk.gtkgl.DrawingArea):
     def __init__(self):
         gtk.gtkgl.DrawingArea.__init__(self)
@@ -104,12 +103,13 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         return gtk.TRUE
 
     def set_material(self, r, g, b, bright = 1.0):
+        
 	glMaterial(GL_FRONT, GL_AMBIENT,
                    [0.2*r*bright, 0.2*g*bright, 0.2*b*bright, 1.0])
 	glMaterial(GL_FRONT, GL_DIFFUSE,
                    [0.8*bright, 0.8*bright, 0.8*bright, 1.0])
 	glMaterial(GL_FRONT, GL_SPECULAR,
-                   [1.0*bright, 1.0*bright, 1.0, 1.0])
+                   [1.0*bright, 1.0*bright, 1.0*bright, 1.0])
         
 	glMaterial(GL_FRONT, GL_SHININESS, 50.0*bright)
 
@@ -156,10 +156,10 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	glLoadIdentity()
 	if width > height:
             w = float(width) / float(height)
-            glFrustum(-w, w, -1.0, 1.0, 3.0, 100.0)
+            glFrustum(-w, w, -1.0, 1.0, 3.0, 150.0)
 	else:
             h = float(height) / float(width)
-            glFrustum(-1.0, 1.0, -h, h, 3.0, 100.0)
+            glFrustum(-1.0, 1.0, -h, h, 3.0, 150.0)
 	
 	glMatrixMode(GL_MODELVIEW)
 	
@@ -198,26 +198,25 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	
 	return gtk.TRUE
 
-    def setAtomContainer(self, atom_container):
-        self.rot  = "x"
-        self.rotx = 0
-        self.roty = 0
-        
-        self.sphere_list = []
-        self.line_list   = []
-        
+    def setAtomContainer(self, atom_container, selected = None):
         ## compute the centroid
-        centroid = Vector(0.0, 0.0, 0.0)
-        n = 0
-        max_tf = 0.0
-        for atm in atom_container.iterAtoms():
-            n += 1
-            centroid += atm.position
-            max_tf = max(max_tf, atm.temp_factor)
-        centroid = centroid / n        
+        if not hasattr(self, "centroid"):
+            self.centroid = Vector(0.0, 0.0, 0.0)
+            n = 0
+            for atm in atom_container.iterAtoms():
+                n += 1
+                self.centroid += atm.position
+            self.centroid = self.centroid / n        
+
+        ## selected map
+        select_list = []
+
+        for atm in selected.iterAtoms():
+            if atm not in select_list:
+                select_list.append(atm)
 
         ## Temp Factor
-        max_tf = math.log10(max_tf)
+        max_tf = 25.0
 
         ## atom spheres
         visited_bonds = []
@@ -226,12 +225,19 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         if not self.draw_list: self.draw_list.append(1)
 
         for atm in atom_container.iterAtoms():
-            pos  = atm.position - centroid
+            pos  = atm.position - self.centroid
 
             tf = math.log10(atm.temp_factor) / max_tf
 
-            br   = 0.8
-            size = 1.0 * tf
+            ## hilight selections
+            try:
+                select_list.remove(atm)
+            except ValueError:
+                br = 0.2
+            else:
+                br = 1.0
+
+            size = 0.3
 
             glPushMatrix()
             glTranslatef(pos[0], pos[1], pos[2])
@@ -240,22 +246,26 @@ class GLViewer(gtk.gtkgl.DrawingArea):
             elif atm.element == "N": self.set_material(0.0, 0.0, 1.0, br)
             elif atm.element == "O": self.set_material(1.0, 0.0, 0.0, br)
             elif atm.element == "S": self.set_material(0.0, 1.0, 0.0, br)
-            else:                    self.set_material(1.0, 1.0, 1.0, 1.0)
+            else:                    self.set_material(1.0, 1.0, 1.0, br)
 
             glutSolidSphere(size, 12, 12)
             glPopMatrix()
 
             ## bonds
             glLineWidth(5.0)
-            self.set_material(1.0, 1.0, 1.0, 0.5)
 
             for bond in atm.iterBonds():
                 if bond in visited_bonds: continue
                 else:                     visited_bonds.insert(0, bond)
 
                 atm2 = bond.getPartner(atm)
-                v1   = atm.position - centroid
-                v2   = atm2.position - centroid
+                v1   = atm.position - self.centroid
+                v2   = atm2.position - self.centroid
+
+                if atm in select_list and atm2 in select_list:
+                    self.set_material(1.0, 1.0, 1.0, 1.0)
+                else:
+                    self.set_material(1.0, 1.0, 1.0, 0.5)
 
                 glBegin(GL_LINES)
                 glVertex3f(v1[0], v1[1], v1[2])
@@ -302,7 +312,7 @@ class AtomContainerPanel(gtk.VPaned):
         iter = self.store.append()
         self.store.set(iter, 0, key, 1, str(value))
 
-    def setAtomContainer(self, atom_container):
+    def setAtomContainer(self, atom_container, selected = None):
         self.atom_container = atom_container
         self.store.clear()
 
@@ -347,17 +357,17 @@ class AtomContainerPanel(gtk.VPaned):
             self.printBox("len(Atom.bond_list)", len(atm.bond_list))
             self.printBox("Atom.calcAnisotropy()", atm.calcAnisotropy())
 
-        self.glviewer.setAtomContainer(self.atom_container)
+        self.glviewer.setAtomContainer(self.atom_container, selected)
 
 
 
 class StructureTreeModel(gtk.GenericTreeModel):
     def __init__(self, structure):
-        self.structure = structure
+        self.structure_list = [structure]
 	gtk.GenericTreeModel.__init__(self)
 
     def get_iter_root(self):
-        return self.structure
+        return self.structure_list
 
     def on_get_flags(self):
 	'''returns the GtkTreeModelFlags for this particular type of model'''
@@ -374,40 +384,53 @@ class StructureTreeModel(gtk.GenericTreeModel):
     def on_get_path(self, node):
 	'''returns the tree path (a tuple of indices at the various
 	levels) for a particular node.'''
-        if isinstance(node, Chain):
-            chain_path = self.structure.chain_list.index(node)
-            return (chain_path, )
+
+        if isinstance(node, Structure):
+            return ( self.structure_list.index(node), )
+
+        elif isinstance(node, Chain):
+            struct_path = self.structure_list.index(node.getStructure())
+            chain_path = node.getStructure().chain_list.index(node)
+            return (struct_path, chain_path, )
 
         elif isinstance(node, Fragment):
-            chain      = self.structure[node.chain_id]
+            struct      = node.getStructure()
+            chain       = struct.getChain(node.chain_id)
 
-            chain_path = self.structure.chain_list.index(chain)
-            frag_path  = chain.frag_list.index(node)
+            struct_path = self.structure_list.index(struct)
+            chain_path  = struct.chain_list.index(chain)
+            frag_path   = chain.frag_list.index(node)
 
-            return (chain_path, frag_path)
+            return (structure_path, chain_path, frag_path)
 
         elif isinstance(node, Atom):
-            chain      = self.structure[node.chain_id]
-            frag       = chain[node.fragment_id]
+            struct     = node.getStructure()
+            chain      = struct.getChain(node.chain_id)
+            frag       = chain.getFragment(node.fragment_id)
 
-            chain_path = self.structure.chain_list.index(chain)
+            struct_path = self.structure_list.index(node.getStructure())
+            chain_path = struct.chain_list.index(chain)
             frag_path  = chain.fragment_list.index(frag)
             atom_path  = frag.atom_list.index(node)
             
-            return (chain_path, frag_path, atom_path)
+            return (struct_path, chain_path, frag_path, atom_path)
 
     def on_get_iter(self, path):
         '''returns the node corresponding to the given path.'''
-        chain = self.structure.chain_list[path[0]]
+        struct = self.structure_list[path[0]]
         if len(path) == 1:
+            return struct
+
+        chain = struct.chain_list[path[1]]
+        if len(path) == 2:
             return chain
 
-        frag = chain.fragment_list[path[1]]
-        if len(path) == 2:
+        frag = chain.fragment_list[path[2]]
+        if len(path) == 3:
             return frag
 
-        atm = frag.atom_list[path[2]]
-        if len(path) == 3:
+        atm = frag.atom_list[path[3]]
+        if len(path) == 4:
             return atm
         
     def on_get_value(self, node, column):
@@ -416,10 +439,18 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_next(self, node):
 	'''returns the next node at this level of the tree'''
-        if isinstance(node, Chain):
-            i = self.structure.chain_list.index(node)
+        if isinstance(node, Structure):
+            i = self.structure_list.index(node) + 1
             try:
-                return self.structure.chain_list[i+1]
+                return self.structure_list[i]
+            except IndexError:
+                return None
+
+        elif isinstance(node, Chain):
+            struct = node.getStructure()
+            i = struct.chain_list.index(node)
+            try:
+                return struct.chain_list[i+1]
             except IndexError:
                 return None
 
@@ -427,7 +458,8 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return node.getOffsetFragment(1)
             
         elif isinstance(node, Atom):
-            frag = self.structure[node.chain_id][node.fragment_id]
+            struct = node.getStructure()
+            frag   = struct[node.chain_id][node.fragment_id]
             i = frag.atom_list.index(node)
             try:
                 return frag.atom_list[i+1]
@@ -436,20 +468,28 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_children(self, node):
 	'''returns the first child of this node'''
-        if isinstance(node, Structure):
+        if node == self.structure_list:
             try:
-                return self.structure.chain_list[0]
+                return self.structure_list[0]
+            except IndexError:
+                return None
+
+        elif isinstance(node, Structure):
+            try:
+                return node.chain_list[0]
             except IndexError:
                 return None
         
         elif isinstance(node, Chain):
+            struct = node.getStructure()
             try:
-                return self.structure[node.chain_id].fragment_list[0]
+                return struct[node.chain_id].fragment_list[0]
             except IndexError:
                 pass
 
         elif isinstance(node, Fragment):
-            frag = self.structure[node.chain_id][node.fragment_id]
+            struct = node.getStructure()
+            frag = struct[node.chain_id][node.fragment_id]
             try:
                 return frag.atom_list[0]
             except IndexError:
@@ -457,7 +497,10 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_has_child(self, node):
 	'''returns true if this node has children'''
-        if isinstance(node, Structure):
+        if node == self.structure_list:
+            return not not node
+
+        elif isinstance(node, Structure):
             return not not node.chain_list
 
         elif isinstance(node, Chain):
@@ -471,7 +514,10 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_n_children(self, node):
 	'''returns the number of children of this node'''
-        if isinstance(node, Structure):
+        if node == self.structure_list:
+            return len(node)
+
+        elif isinstance(node, Structure):
             return len(node.chain_list)
 
         elif isinstance(node, Chain):
@@ -485,7 +531,10 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_nth_child(self, node, n):
 	'''returns the nth child of this node'''
-        if isinstance(node, Structure):
+        if node == self.structure_list:
+            return node[n]
+
+        elif isinstance(node, Structure):
             return self.chain_list[n]
 
         elif isinstance(node, Chain):
@@ -499,17 +548,20 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_iter_parent(self, node):
 	'''returns the parent of this node'''
-        if isinstance(node, Structure):
+        if node == self.structure_list:
             return None
 
+        elif isinstance(node, Structure):
+            return self.structure_list
+
         elif isinstance(node, Chain):
-            return self.structure
+            return node.getStructure()
 
         elif isinstance(node, Fragment):
-            return self.structure[node.chain_id]
+            return node.getStructure()[node.chain_id]
 
         elif isinstance(node, Atom):
-            return self.structure[node.chain_id][node.fragment_id]
+            return node.getStructure()[node.chain_id][node.fragment_id]
 
 
 
@@ -555,7 +607,7 @@ class StructureGUI:
         ## find selected node
         model = tree_view.get_model()
         node = model.on_get_iter(path)
-        self.ac_panel.setAtomContainer(node)
+        self.ac_panel.setAtomContainer(self.structure, node)
 
 
 class MainWindow:

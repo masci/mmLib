@@ -352,11 +352,11 @@ class PDBStructureBuilder(StructureBuilder):
 
     def __process_ATOM(self, atm_map, rec):
         name    = getattr(rec, "name")       or ""
-        element = getattr(rec, "element")
+        element = getattr(rec, "element")    or ""
 
         ## get the element symbol from the first letter in the
         ## atom name
-        if not element:
+        if not self.structure.library.element_map.has_key(element):
             for c in name:
                 if c in string.letters:
                     element = c
