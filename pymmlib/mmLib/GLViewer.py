@@ -3602,7 +3602,7 @@ class GLStructure(GLDrawList):
                 yield symop
 
 
-class GLViewer(GLObject):
+class GLViewer(GLObject, OpenGLRenderMethods):
     """This class renders a list of GLDrawList (or subclasses of) onto
     the given glcontext and gldrawable objects.  The glcontext and gldrawable
     must be created by the underling GUI toolkit, or perhaps the GLUT
@@ -3633,12 +3633,20 @@ class GLViewer(GLObject):
               "default":   identity(3, Float),
               "action":    "redraw" })
         self.glo_add_property(
+            { "name":      "cor",
+              "desc":      "Center of Rotation",
+              "catagory":  "View",
+              "read_only": True,
+              "type":      "array(3)",
+              "default":   zeros(3, Float),
+              "action":    "redraw" })
+        self.glo_add_property(
             { "name":      "t",
               "desc":      "View Window Translation Vector",
               "catagory":  "View",
               "read_only": True,
               "type":      "array(3)",
-              "default":   array([0.0, 0.0, -50]),
+              "default":   zeros(3, Float),
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "width",
@@ -3661,14 +3669,14 @@ class GLViewer(GLObject):
               "desc":      "Near Clipping Plane",
               "catagory":  "View",
               "type":      "float",
-              "default":   3.0,
+              "default":   -20.0,
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "far",
               "desc":      "Far Clipping Plane",
               "catagory":  "View",
               "type":      "float",
-              "default":   500.0,
+              "default":   1000.0,
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "b",
@@ -3677,7 +3685,15 @@ class GLViewer(GLObject):
               "type":      "float",
               "default":   0.5,
               "action":    "redraw" })
-        
+        self.glo_add_property(
+            { "name":      "zoom",
+              "desc":      "Zoom",
+              "catagory":  "View",
+              "type":      "float",
+              "default":   20.0,
+              "action":    "redraw" })
+
+                
         ## OpenGL Lighting
         self.glo_add_property(
             { "name":      "GL_AMBIENT",
@@ -3785,7 +3801,53 @@ class GLViewer(GLObject):
         visualize the Structure object.
         """
         assert isinstance(struct, Structure)
+
+        ## select the center of the new structure as the rotation center
+        n        = 0
+        centroid = zeros(3, Float)
+
+        max_x = 0.0
+        max_y = 0.0
+        max_z = 0.0
+
+        min_x = 0.0
+        min_y = 0.0
+        min_z = 0.0
+
+
+        for atm in struct.iter_atoms():
+            n        += 1
+            centroid += atm.position
+            
+            max_x = max(max_x, atm.position[0])
+            max_y = max(max_y, atm.position[1])
+            max_z = max(max_z, atm.position[2])
+
+            min_x = min(min_x, atm.position[0])
+            min_y = min(min_y, atm.position[1])
+            min_z = min(min_z, atm.position[2])
+
+        centroid = centroid / float(n)
+
+        m1   = max(max_x, max(max_y, max_z))
+        m2   = min(min_x, min(min_y, min_z))
+        zoom = m1 - m2
+
+        near = - zoom / 2.0
+        far  = zoom / 2.0
+
+        ## translate to centroid of structure
+        t = -centroid.copy()
         
+        self.properties.update(
+            t    = t,
+            cor  = centroid,
+            zoom = zoom,
+            near = near,
+            far  = far)
+        
+
+        ## add the structure
         gl_struct = GLStructure(struct=struct)
         self.glv_add_draw_list(gl_struct)
         return gl_struct
@@ -3809,15 +3871,55 @@ class GLViewer(GLObject):
         """
         self.properties.update(width=width, height=height)
 
-    def glv_translate(self, x, y, z):
-        """Translate the current view by vector (x,y,z).
+    def glv_clip(self, near, far):
         """
-        R     = self.properties["R"]
-        t     = self.properties["t"]
-        delta = array([x, y, z])
+        """
+        width  = self.properties["width"]
+        zoom   = self.properties["zoom"]
+
+        angstrom_per_pixel = zoom / float(width)
+
+        xA = angstrom_per_pixel * float(x)
+        yA = angstrom_per_pixel * float(y)
+
+        n = self.properties["near"] + near
+        f = self.properties["far"]  + far
+        self.properties.update(near=n, far=f)
+
+    def glv_zoom(self, z):
+        """Zoom in/out.
+        """
+        zoom = self.properties["zoom"]
+        zoom += float(z)*0.25
         
-        upt = matrixmultiply(transpose(R), delta) + t
+        if zoom<1.0:
+            zoom = 1.0
+        
+        self.properties.update(zoom=zoom)
+
+    def glv_straif(self, x, y):
+        """Move in XY plane.
+        """
+        ## figure out A/pixel, multipy straif by pixes to get the
+        ## the translation
+
+        width  = self.properties["width"]
+        zoom   = self.properties["zoom"]
+
+        angstrom_per_pixel = zoom / float(width)
+
+        xA = angstrom_per_pixel * float(x)
+        yA = angstrom_per_pixel * float(y)
+
+        t     = self.properties["t"]
+        delta = array([xA, yA, 0.0], Float)
+        upt   = delta + t
+        
         self.properties.update(t=upt)
+
+    def glv_trackball(self, x1, y1, x2, y2):
+        """Virtual Trackball
+        """
 
     def glv_rotate(self, alpha, beta, gamma):
         """Change the viewing position of the structure.  Changes to the
@@ -3843,7 +3945,7 @@ class GLViewer(GLObject):
 
         self.properties.update(R=upR)
         
-    def glv_render(self):
+    def glv_render_per(self):
         """Draw all GLDrawList objects onto the given glcontext/gldrawable.
         If the GLDrawList objects are not yet compiled into OpenGL draw
         lists, they will be compiled while they are drawn, since this is
@@ -3965,3 +4067,137 @@ class GLViewer(GLObject):
         ## render transparent objects
         for draw_list in self.glo_iter_children():
             draw_list.gldl_render(True) 
+
+    def glv_pre_render(self):
+        
+        ## OpenGL Features
+        glEnable(GL_NORMALIZE)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+        
+        ## Enables Smooth Color Shading
+	#glShadeModel(GL_SMOOTH)
+        
+        ## inital orientation
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        ## lighting
+        ambient  = (self.properties["GL_AMBIENT"],
+                    self.properties["GL_AMBIENT"],
+                    self.properties["GL_AMBIENT"],
+                    1.0)
+        diffuse  = (self.properties["GL_DIFFUSE"],
+                    self.properties["GL_DIFFUSE"],
+                    self.properties["GL_DIFFUSE"],
+                    1.0)
+        specular = (self.properties["GL_SPECULAR"],
+                    self.properties["GL_SPECULAR"],
+                    self.properties["GL_SPECULAR"],
+                    1.0)
+
+        ## use model abient light
+        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient)
+
+        ## light 0
+        glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
+        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
+        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 10.0, 0.0))
+        
+        ## light 1
+        glDisable(GL_LIGHT1)
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuse)
+        glLightfv(GL_LIGHT1, GL_SPECULAR, specular)
+        glLightfv(GL_LIGHT1, GL_POSITION, (0.0, 0.0, 100.0, 0.0))
+
+
+        ## ANTI-ALIASING
+        if self.properties["GL_LINE_SMOOTH"]==True:
+            glEnable(GL_LINE_SMOOTH)
+        else:
+            glDisable(GL_LINE_SMOOTH)
+
+        if self.properties["GL_POINT_SMOOTH"]==True:
+            glEnable(GL_POINT_SMOOTH)
+        else:
+            glDisable(GL_POINT_SMOOTH)
+
+        if self.properties["GL_POLYGON_SMOOTH"]==True:
+            glEnable(GL_POLYGON_SMOOTH)
+        else:
+            glDisable(GL_POLYGON_SMOOTH)
+
+
+        ## ALPHA BLENDING
+        if self.properties["GL_BLEND"]==True:
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            
+            ## FOG
+            if self.properties["GL_FOG"]==True:
+                glEnable(GL_FOG)
+                glFogf(GL_FOG_MODE,    GL_LINEAR)
+                glFogf(GL_FOG_START,   self.properties["GL_FOG_START"])
+                glFogf(GL_FOG_END,     self.properties["GL_FOG_END"])
+            else:
+                glDisable(GL_FOG)
+            
+        else:
+            glDisable(GL_BLEND)
+
+    def glv_render(self):
+        """Draw all GLDrawList objects onto the given glcontext/gldrawable.
+        If the GLDrawList objects are not yet compiled into OpenGL draw
+        lists, they will be compiled while they are drawn, since this is
+        a useful optimization.
+        """
+        ## setup vieweport
+        width  = self.properties["width"]
+        height = self.properties["height"]
+        glViewport(0, 0, width, height)
+
+        ## setup perspective matrix
+	glMatrixMode(GL_PROJECTION)
+ 	glLoadIdentity()
+
+        zoom  = self.properties["zoom"]/2.0
+        ratio = float(height)/float(width)
+
+        glOrtho(-zoom,       zoom,
+                -ratio*zoom, ratio*zoom,
+                self.properties["near"],
+                self.properties["far"])
+        
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+        self.glv_pre_render()
+        
+        ## inital orientation
+        R   = self.properties["R"]
+        t   = self.properties["t"]
+        cor = self.properties["cor"]
+
+        ## sphere at 0,0,0
+        self.glr_sphere((0.0, 0.0, 0.0), 1.0, 20)
+
+        glTranslatef(*t)
+
+        glTranslatef(*cor)
+        glMultMatrixf(
+            (R[0,0],           R[1,0],      R[2,0], 0.0,
+             R[0,1],           R[1,1],      R[2,1], 0.0,
+             R[0,2],           R[1,2],      R[2,2], 0.0,
+                0.0,              0.0,         0.0, 1.0) )
+        glTranslatef(*-cor)
+
+        self.glr_sphere(cor, 0.5, 20)
+
+        ## render solid objects
+        for draw_list in self.glo_iter_children():
+            draw_list.gldl_render()
+
+        ## render transparent objects
+        for draw_list in self.glo_iter_children():
+            draw_list.gldl_render(True) 
+

@@ -14,13 +14,13 @@ import gobject
 import gtk
 import gtk.gtkgl
 
-from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
+from OpenGL.GL            import *
+from OpenGL.GLU           import *
+from OpenGL.GLUT          import *
 
 from mmLib.PDB            import PDBFile
 from mmLib.Structure      import *
-from mmLib.FileLoader     import LoadStructure, SaveStructure
+from mmLib.FileLoader     import *
 from mmLib.GLViewer       import *
 from mmLib.Extensions.TLS import *
 
@@ -126,6 +126,10 @@ class DictListTreeView(gtk.TreeView):
 
 class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def __init__(self):
+        self.in_drag = False
+        self.beginx  = 0
+        self.beginy  = 0
+
         gtk.gtkgl.DrawingArea.__init__(self)
         GLViewer.__init__(self)
 
@@ -144,13 +148,14 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         
         self.set_size_request(300, 300)
 
-        self.connect('button_press_event',  self.gtk_glv_button_press_event)
-        self.connect('motion_notify_event', self.gtk_glv_motion_notify_event)
-        self.connect('realize',             self.gtk_glv_realize)
-        self.connect('map',                 self.gtk_glv_map)
-        self.connect('configure_event',     self.gtk_glv_configure_event)
-        self.connect('expose_event',        self.gtk_glv_expose_event)
-        self.connect('destroy',             self.gtk_glv_destroy)
+        self.connect('button_press_event',   self.gtk_glv_button_press_event)
+        self.connect('button_release_event', self.gtk_glv_button_release_event)
+        self.connect('motion_notify_event',  self.gtk_glv_motion_notify_event)
+        self.connect('realize',              self.gtk_glv_realize)
+        self.connect('map',                  self.gtk_glv_map)
+        self.connect('configure_event',      self.gtk_glv_configure_event)
+        self.connect('expose_event',         self.gtk_glv_expose_event)
+        self.connect('destroy',              self.gtk_glv_destroy)
 
     def gl_begin(self):
         """Sets up the OpenGL drawing context for drawing.  If
@@ -222,35 +227,44 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
             return gtk.FALSE
 
     def gtk_glv_button_press_event(self, glarea, event):
-        self.beginx = event.x
-        self.beginy = event.y
+        self.in_drag = True
+        self.beginx  = event.x
+        self.beginy  = event.y
+
+    def gtk_glv_button_release_event(self, glarea, event):
+        self.in_drag = False
+        self.beginx  = 0
+        self.beginy  = 0
+
+        print "Release"
 
     def gtk_glv_motion_notify_event(self, glarea, event):
+        """
+        """
+        if not self.in_drag:
+            return
+        
         width     = glarea.allocation.width
         height    = glarea.allocation.height
 
-        x = 0.0
-        y = 0.0
-        z = 0.0
-
-        rotx = 0.0
-        roty = 0.0
-        rotz = 0.0
-        
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            roty += 360.0 * ((event.x - self.beginx) / float(width)) 
-            rotx += 360.0 * ((event.y - self.beginy) / float(height))
+            roty = 360.0 * ((event.x - self.beginx) / float(width)) 
+            rotx = 360.0 * ((event.y - self.beginy) / float(height))
+            self.glv_rotate(rotx, roty, 0.0)
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
-            z = 50.0 * ((event.y - self.beginy) / float(height))
-            rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
+            dx = event.x - self.beginx
+            dy = self.beginy - event.y
+            self.glv_straif(dx, dy)
 
         elif (event.state & gtk.gdk.BUTTON3_MASK):
-            x = 50.0 * ((event.x - self.beginx) / float(height))
-            y = 50.0 * (-(event.y - self.beginy) / float(height))
-
-        self.glv_translate(x, y, z)
-        self.glv_rotate(rotx, roty, rotz)
+            if (event.state & gtk.gdk.SHIFT_MASK):
+                dx = event.x - self.beginx
+                dy = self.beginy - event.y
+                self.glv_clip(dy, dx)
+            else:
+                dy = event.y - self.beginy
+                self.glv_zoom(dy)
 
         self.beginx = event.x
         self.beginy = event.y
