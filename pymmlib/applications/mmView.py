@@ -258,8 +258,8 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
     def on_get_path(self, node):
 	'''returns the tree path (a tuple of indices at the various
-	levels) for a particular node.'''
-
+	levels) for a particular node.
+        '''
         if isinstance(node, Structure):
             return ( self.structure_list.index(node), )
 
