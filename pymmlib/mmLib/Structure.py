@@ -130,8 +130,8 @@ class Structure(object):
             cifdb     = copy.deepcopy(self.cifdb, memo),
             unit_cell = copy.deepcopy(self.unit_cell, memo))
 
-        for model in self.iter_models():
-            structure.add_model(copy.deepcopy(model, memo))
+        for model in self.model_list:
+            structure.add_model(copy.deepcopy(model, memo), True)
 
         return structure
 
@@ -388,7 +388,24 @@ class Structure(object):
             model = Model(model_id = atom.model_id)
             self.add_model(model, delay_sort)
 
-        model.add_atom(atom, delay_sort)
+        ## optimized add_atom()
+        chain_id    = atom.chain_id
+        fragment_id = atom.fragment_id
+            
+        if model.chain_dict.has_key(chain_id):
+            chain = model.chain_dict[chain_id]
+
+            if chain.fragment_dict.has_key(fragment_id):
+                fragment = chain.fragment_dict[fragment_id]
+
+                if fragment.res_name==atom.res_name:
+                    fragment.add_atom(atom)
+                else:
+                    raise FragmentOverwrite()
+            else:
+                chain.add_atom(atom, delay_sort)
+        else:
+            model.add_atom(atom, delay_sort)
 
     def remove_atom(self, atom):
         """Removes a Atom.
@@ -597,8 +614,8 @@ class Model(object):
 
     def __deepcopy__(self, memo):
         model = Model(model_id = self.model_id)
-        for chain in self:
-            model.add_chain(copy.deepcopy(chain, memo))
+        for chain in self.chain_list:
+            model.add_chain(copy.deepcopy(chain, memo), True)
         return model
 
     def __lt__(self, other):
@@ -700,11 +717,22 @@ class Model(object):
         """
         return len(self.chain_list)
 
-    def add_fragment(self, fragment):
+    def add_fragment(self, fragment, delay_sort=False):
         """Finish Me.
         """
         assert isinstance(fragment, Fragment)
-        raise FinishMe()
+        assert fragment.model_id==self.model_id
+
+        ## add new chain if necessary
+        try:
+            chain = self.chain_dict[fragment.chain_id]
+        except KeyError:
+            chain = Chain(
+                model_id = fragment.model_id,
+                chain_id = fragment.chain_id)
+            self.add_chain(chain, delay_sort)
+        
+        chain.add_fragment(fragment, delay_sort)
 
     def remove_fragment(self, fragment):
         """Removes a Fragment object.
@@ -777,7 +805,7 @@ class Model(object):
             self.add_chain(chain, delay_sort)
 
         ## add the atom to the chain
-        chain.add_atom(atom)
+        chain.add_atom(atom, delay_sort)
 
     def remove_atom(self, atom):
         """Removes a Atom object.
@@ -973,8 +1001,10 @@ class Segment(object):
         """
         segment = Segment(model_id = self.model_id,
                           chain_id = self.chain_id)
-        for fragment in self:
-            segment.add_fragment(copy.deepcopy(fragment, memo))
+
+        for fragment in self.fragment_list:
+            segment.add_fragment(copy.deepcopy(fragment, memo), True)
+
         return segment
     
     def __lt__(self, other):
@@ -1020,7 +1050,7 @@ class Segment(object):
         segment = self.__segment_slice__()
 
         for frag in self.fragment_list[start:stop]:
-            segment.add_fragment(frag, delay_sort=True)
+            segment.add_fragment(frag, True)
         
         return segment
 
@@ -1050,7 +1080,7 @@ class Segment(object):
                 if fragment_id_gt(frag.fragment_id, stop_frag_id):
                     break
 
-            segment.add_fragment(frag, delay_sort=True)
+            segment.add_fragment(frag, True)
 
         return segment
 
@@ -1436,8 +1466,8 @@ class Chain(Segment):
         """
         chain = Chain(model_id = self.model_id,
                       chain_id = self.chain_id)
-        for fragment in self:
-            chain.add_fragment(copy.deepcopy(fragment, memo))
+        for fragment in self.fragment_list:
+            chain.add_fragment(copy.deepcopy(fragment, memo), True)
         return chain
         
     def __segment_slice__(self):
@@ -1648,9 +1678,9 @@ class Fragment(object):
         attribute to the fragment.
         """
         assert isinstance(atom, Atom)
-        assert atom.chain_id == self.chain_id
+        assert atom.chain_id    == self.chain_id
         assert atom.fragment_id == self.fragment_id
-        assert atom.res_name == self.res_name
+        assert atom.res_name    == self.res_name
 
         name    = atom.name
         alt_loc = atom.alt_loc

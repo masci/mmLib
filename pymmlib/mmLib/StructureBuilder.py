@@ -84,7 +84,7 @@ class StructureBuilder(object):
             return atm
 
         try:
-            self.struct.add_atom(atm)
+            self.struct.add_atom(atm, True)
         except FragmentOverwrite:
             print "FragmentOverwrite: ",atm
             self.name_service_list.append(atm)
@@ -106,15 +106,13 @@ class StructureBuilder(object):
         ## XXX: it's possible to run out of chain IDs!
         def next_chain_id(suggest_chain_id):
             if suggest_chain_id != "":
-                try:
-                    self.struct[suggest_chain_id]
-                except KeyError:
+                chain = self.struct.get_chain(suggest_chain_id)
+                if not chain:
                     return suggest_chain_id
             
             for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-                try:
-                    self.struct[chain_id]
-                except KeyError:
+                chain = self.struct.get_chain(chain_id)
+                if not chain:
                     return chain_id
                 
             warning("name_service: exhausted PDB-allowed chain ids")
@@ -245,7 +243,7 @@ class StructureBuilder(object):
                 for frag in frag_list:
                     for atm in frag:
                         atm.chain_id = chain_id
-                        self.struct.add_atom(atm)
+                        self.struct.add_atom(atm, True)
 
         ## free the memory used by the polymer naming service
         del polymer_model_dict
@@ -377,7 +375,7 @@ class StructureBuilder(object):
                     for atm in frag:
                         atm.chain_id    = new_chain_id
                         atm.fragment_id = str(fragment_id_num)
-                        self.struct.add_atom(atm)
+                        self.struct.add_atom(atm, True)
 
             ## logging
             warning("NS: Added ChainID: %s with %3d Residues of Type: %s" % (
