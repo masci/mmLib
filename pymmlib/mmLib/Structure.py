@@ -9,7 +9,7 @@ from __future__ import generators
 from mmTypes        import *
 from GeometryDict   import *
 from AtomMath       import *
-from Library        import Library, DEFAULT_LIBRARY
+from Library        import *
 from UnitCell       import UnitCell
 from mmCIFDB        import *
 
@@ -102,8 +102,6 @@ class Structure(object):
     in the structure hierarchy, and contains these additional data
     objects:
 
-    library(mmLib.Library) The monomer library used by the structure.
-                              
     cifdb(mmLib.mmCIFDB) A mmCIF database with additional structure data.
 
     unit_cell(mmLib.UnitCell) Unit cell/Spacegroup for the structure.
@@ -113,7 +111,6 @@ class Structure(object):
     """
     def __init__(self, **args):
         self.structure_id     = args.get("structure_id") or "XXXX"
-        self.library          = args.get("library")      or DEFAULT_LIBRARY
         self.cifdb            = args.get("cifdb")        or mmCIFDB("XXXX")
         self.unit_cell        = args.get("unit_cell")    or UnitCell()
 
@@ -127,7 +124,6 @@ class Structure(object):
  
     def __deepcopy__(self, memo):
         structure = Structure(
-            library   = self.library,
             cifdb     = copy.deepcopy(self.cifdb, memo),
             unit_cell = copy.deepcopy(self.unit_cell, memo))
 
@@ -692,8 +688,6 @@ class Structure(object):
         distance between them is less than or equal to the sum of their
         covalent radii + 0.54A.
         """
-        lib = self.library
-        
         for model in self.iter_models():
             xyzdict = XYZDict(2.0)
             
@@ -708,13 +702,14 @@ class Structure(object):
 
                     ## calculate the expected bond distance by adding the
                     ## covalent radii + 0.54A
-                    try:
-                        bond_dist = \
-                            lib.get_element(atm1.element).covalent_radius +\
-                            lib.get_element(atm2.element).covalent_radius +\
-                            0.54
-                    except AttributeError:
+                    edesc1 = library_get_element_desc(atm1.element)
+                    edesc2 = library_get_element_desc(atm2.element)
+
+                    if edesc1==None or edesc2==None:
                         continue
+
+                    bond_dist = edesc1.covalent_radius +\
+                                edesc2.covalent_radius + 0.54
 
                     if dist>bond_dist:
                         continue
@@ -729,7 +724,6 @@ class Structure(object):
         """
         for frag in self.iter_fragments():
             frag.create_bonds()
-        #self.add_bonds_from_distance()
 
 
 class Model(object):
@@ -1446,16 +1440,15 @@ class Segment(object):
 
         ## add new fragment if necessary 
         if self.fragment_dict.has_key(atom.fragment_id)==False:
-            library = self.get_structure().library
             
-            if library.is_amino_acid(atom.res_name):
+            if library_is_amino_acid(atom.res_name):
                 fragment = AminoAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
                     res_name    = atom.res_name)
 
-            elif library.is_nucleic_acid(atom.res_name):
+            elif library_is_nucleic_acid(atom.res_name):
                 fragment = NucleicAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
@@ -1633,14 +1626,13 @@ class Chain(Segment):
         """Return the one letter code representation of the sequence as
         a string.
         """
-        library         = self.get_structure().library
         one_letter_code = ""
 
         for res_name, frag in self.sequence_fragment_list:
-            monomer = library.get_monomer(res_name)
+            mdesc = library_get_monomer_desc(res_name)
 
-            if monomer!=None and monomer.one_letter_code:
-                one_letter_code += monomer.one_letter_code
+            if mdesc!=None and mdesc.one_letter_code:
+                one_letter_code += mdesc.one_letter_code
             else:
                 one_letter_code += "(%s)" % (res_name)
 
@@ -2082,11 +2074,11 @@ class Fragment(object):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.
         """
-        mon = self.chain.model.structure.library.get_monomer(self.res_name)
-        if mon == None:
+        mdesc = library_get_monomer_desc(self.res_name)
+        if mdesc==None:
             return
 
-        for bond in mon.bond_list:
+        for bond in mdesc.bond_list:
             try:
                 atm1 = self[bond["atom1"]]
                 atm2 = self[bond["atom2"]]
@@ -2116,7 +2108,7 @@ class Fragment(object):
         """Returns True if the Fragment is a water molecule, returns False
         otherwise.
         """
-        return self.chain.model.structure.library.is_water(self.res_name)
+        return library_is_water(self.res_name)
 
 
 class Residue(Fragment):
@@ -2144,18 +2136,20 @@ class Residue(Fragment):
         between adjectent residues.
         """
         Fragment.create_bonds(self)
+        return
 
+        ## XXX: fixme
         next_res = self.get_offset_residue(1)
-        if next_res == None:
+        if next_res==None:
             return
 
-        library = self.chain.model.structure.library
-        mon1 = library.get_monomer(self.res_name)
-        mon2 = library.get_monomer(next_res.res_name)
-        if mon1 == None or mon2 == None:
+        mdesc1 = library_get_monomer_desc(self.res_name)
+        mdesc2 = library_get_monomer_desc(next_res.res_name)
+
+        if mdesc1==None or mdesc2==None:
             return
 
-        for (name1, name2) in mon1.get_polymer_bond_list(self, next_res):
+        for (name1, name2) in mdesc1.get_polymer_bond_list(self, next_res):
             try:
                 atm1 = self[name1]
                 atm2 = next_res[name2]
@@ -2317,12 +2311,12 @@ class AminoAcidResidue(Residue):
         """Calculates the given torsion angle for the monomer.  The torsion
         angles are defined by name in monomers.cif.
         """
-        mon = self.chain.model.structure.library.get_monomer(self.res_name)
+        mdesc = library_get_monomer_desc(self.res_name)
         try:
             (atom1_name,
              atom2_name,
              atom3_name,
-             atom4_name) = mon.torsion_angle_dict[torsion_angle_name]
+             atom4_name) = mdesc.torsion_angle_dict[torsion_angle_name]
         except KeyError:
             return None
 

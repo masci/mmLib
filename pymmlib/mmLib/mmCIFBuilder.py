@@ -8,8 +8,6 @@ from __future__ import generators
 import copy
 import string
 
-
-from mmTypes          import *
 from mmCIF            import *
 from Structure        import *
 from StructureBuilder import *

@@ -241,14 +241,14 @@ class PDBStructureBuilder(StructureBuilder):
             return name, None
         
         ## try the easy way out -- look up the atom in the monomer dictionary
-        mon = self.struct.library.get_monomer(res_name)
-        if mon:
+        mdesc = library_get_monomer_desc(res_name)
+        if mdesc!=None:
             try:
-                return name, mon.atom_dict[name]
+                return name, mdesc.atom_dict[name]
             except KeyError:
-                if mon.is_amino_acid() and name == "OXT":
+                if mdesc.is_amino_acid() and name == "OXT":
                     return name, "O"
-                if mon.is_amino_acid():
+                if mdesc.is_amino_acid():
                     warning("Invalid Atom Name: %s in Residue: %s" % (
                         name, res_name))
 
@@ -274,11 +274,11 @@ class PDBStructureBuilder(StructureBuilder):
         ## look up two possible element symbols in the library:
         ## e1 is the possible one-charactor symbol
         ## e2 is the possible two-charactor symbol
-        e1 = self.struct.library.get_element(strx[:1])
+        e1 = library_get_element_desc(strx[:1])
 
         x = strx[:2]
         if len(x) == 2 and x.isalpha():
-            e2 = self.struct.library.get_element(x)
+            e2 = library_get_element_desc(x)
         else:
             e2 = None
 

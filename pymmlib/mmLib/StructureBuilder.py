@@ -7,7 +7,6 @@ macromolecules.
 """
 
 from mmTypes   import *
-from Library   import *
 from Structure import *
 
 class StructureBuilderError(Exception):
@@ -179,9 +178,9 @@ class StructureBuilder(object):
         for atm in self.name_service_list[:]:
             
             ## determine the polymer type of the atom
-            if self.struct.library.is_amino_acid(atm.res_name):
+            if library_is_amino_acid(atm.res_name):
                 polymer_type = "protein"
-            elif self.struct.library.is_nucleic_acid(atm.res_name):
+            elif library_is_nucleic_acid(atm.res_name):
                 polymer_type = "dna"
             else:
                 ## if the atom is not a polymer, we definately have a break

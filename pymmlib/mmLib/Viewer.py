@@ -1741,16 +1741,14 @@ class GLAtomList(GLDrawList):
             return setting
 
         if setting=="Color By Element":
-            element = atom.get_structure().library.get_element(atom.element)
+            element = library_get_element_desc(atom.element)
             try:
-                return element.color
+                return element.color_rgbf
             except AttributeError:
                 return COLOR_RGBF["white"]
 
         elif setting=="Color By Residue Type":
-            library = atom.get_structure().library
-            monomer = library.get_monomer(atom.res_name)
-        
+            monomer = library_get_monomer_desc(atom.res_name)
             try:
                 return self.glal_res_type_color_dict[monomer.chem_type]
             except KeyError:
@@ -1908,9 +1906,9 @@ class GLAtomList(GLDrawList):
         ##
         
         for atm, pos in self.glal_iter_visible_atoms():
-            elem = atm.get_structure().library.get_element(atm.element)
-            if elem:
-                radius = elem.van_der_waals_radius
+            edesc = library_get_element_desc(atm.element)
+            if edesc!=None:
+                radius = edesc.vdw_radius
             else:
                 radius = 2.0
 

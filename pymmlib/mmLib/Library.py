@@ -11,378 +11,285 @@ import sys
 from mmTypes import *
 from mmCIF   import mmCIFFile
 
-    
+
 ###############################################################################
-## mmLib Library Interface
+## Library Data Locations
 ##
 
-class ElementInterface(object):
-    """Public inteface for element properties.
+(MMLIB_PATH, JUNK) = os.path.split(__file__)
+
+ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
+MMLIB_MONOMER_DATA_PATH = os.path.join(MMLIB_PATH, "Data", "monomers.cif")
+RCSB_MONOMER_DATA_PATH  = os.path.join(MMLIB_PATH, "Data", "Monomers") 
+    
+###############################################################################
+## Caches
+##
+
+ELEMENT_CACHE          = {}
+MONOMER_RES_NAME_CACHE = {}
+
+###############################################################################
+## Library Description Objects
+##
+
+class ElementDesc(object):
+    """
+    """
+    def __init__(self):
+        self.name                 = None
+        self.symbol               = None
+        self.group                = None
+        self.period               = None
+        self.atomic_number        = None
+        self.atomic_weight        = None
+        self.atomic_radius        = None
+        self.covalent_radius      = None
+        self.van_der_waals_radius = None
+        self.covalent_radius      = None
+        self.electronegativity    = None
+        self.color_rgbf           = None
+
+
+class MonomerDesc(object):
+    """
     """
     def __init__(self, **args):
-        self.name                 = args.get("name", "")
-        self.symbol               = args.get("symbol", "")
-        self.group                = args.get("group", "")
-        self.period               = args.get("period", "")
-        self.atomic_number        = args.get("atomic_number", 0)
-        self.atomic_weight        = args.get("atomic_weight", 0.0)
-        self.atomic_radius        = args.get("atomic_radius", 0.0)
-        self.covalent_radius      = args.get("covalent_radius", 0.0)
-        self.van_der_waals_radius = args.get("van_der_waals_radius", 0.0)
-        self.covalent_radius      = args.get("covalent_radius", 0.0)
-        self.electronegativity    = args.get("electronegativity", 0.0)
-        self.color                = args.get("color", (1.0, 1.0, 1.0))
+        self.res_name           = None
+        self.full_name          = None
+        self.one_letter_code    = None
+        self.type               = None
+        self.pdbx_type          = None
+        self.formula            = None
+        self.rcsb_class_1       = None
+        self.chem_type          = None
+        self.atom_list          = []
+        self.atom_dict          = {}
+        self.bond_list          = []
+        self.torsion_angle_dict = {}
 
-    def __str__(self):
-        return "Element=%s" % (self.name)
-
-
-class MonomerInterface(object):
-    """Public interface for monomer properties.
-    """
-    def __init__(self, **args):
-        self.res_name          = args.get("res_name", "")
-        self.full_name         = args.get("full_name", "")
-        self.one_letter_code   = args.get("one_letter_code", "")
-        self.type              = args.get("type", "")
-        self.pdbx_type         = args.get("pdbx_type", "")
-        self.formula           = args.get("formula", "")
-        self.rcsb_class_1      = args.get("rcsb_class_1", "")
-        self.chem_type         = args.get("chem_type", "")
-        
-        self.atom_list         = args.get("atom_list", [])
-        self.atom_dict         = args.get("atom_dict", {})
-        self.bond_list         = args.get("bond_list", [])
-        self.torsion_angle_dict= args.get("torsion_angle_dict", {})
+        self.amino_acid         = False
+        self.nucleic_acid       = False
+        self.water              = False
         
     def is_amino_acid(self):
         """Returns True if the Monomer is a amino acid, otherwise
         returns False.
         """
-        pass
+        return self.amino_acid
             
     def is_nucleic_acid(self):
         """Returns True if the Monomer is a nucleic acid, otherwise
         returns False.
         """
-        pass
+        return self.nucleic_acid
 
     def is_standard_residue(self):
         """
         """
-        return self.is_amino_acid() or self.is_nucleic_acid()
-    
+        return self.amino_acid or self.nucleic_acid
+
+    def is_non_standard_residue(self):
+        """
+        """
+        return not self.amino_acid and not self.nucleic_acid
+
     def is_water(self):
         """Returns True if the Monomer is a water molecule,
         otherwise returns False.
         """
-        pass
-
-    def get_polymer_bond_list(self, mon1, mon2):
-        """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
-        represents one bond between the atom named mon1_name in mon1 and
-        the atom named mon2_name in mon2.
-        """
-        pass
-
-
-class LibraryInterface(object):
-    """The public interface for implementing new Library classes
-    """
-    def get_element(self, symbol):
-        """Return the corresponding Element description instance for
-        the given element symbol.  Returns None if no description is
-        found.
-        """
-        pass
-    
-    def get_monomer(self, res_name):
-        """Returns the Monomer class instance for the monomer defined by
-        the 3 letter code res_name.  Returns None if no description is found.
-        """
-        pass
-        
-    def is_amino_acid(self, res_name):
-        """Returns True if the monomer defined by the 3 letter code
-        res_name is a L-amino acid, otherwise returns False.
-        """
-        pass
-
-    def is_nucleic_acid(self, res_name):
-        """Returns True if the monomer defined by res_name is a
-        nucleic acid, otherwise returns False.
-        """
-        pass
-
-    def is_standard_residue(self, res_name):
-        """
-        """
-        return self.is_amino_acid(res_name) or self.is_nucleic_acid(res_name)
-
-    def is_water(self, res_name):
-        """Returns True if the 3 letter code res_name is one of the
-        synonyms for water, otherwise returns False.
-        """
-        pass
+        return self.water
 
 
 ###############################################################################
-## mmLib Library Implementation
+## Library API
 ##
 
-class Element(ElementInterface):
-    """Element description class.  A element instance is loaded from data
-    in the mmLib/Data/elements.xml file.
+def library_get_element_desc(symbol):
+    """Loads/caches/returns a instance of the ElementDesc class for the given
+    element symbol.  The source of the element data is the
+    mmLib/Data/elements.cif file.
     """
-    def __init__(self, **args):
-        ElementInterface.__init__(self, **args)
+    assert type(symbol)==StringType
 
-        self.cif_data             = args["cif_data"]
-        element                   = self.cif_data["element"]
-        self.name                 = element["name"]
-        self.number               = int(element["number"])
-        self.atomic_weight        = float(element["atomic_weight"])
-        self.van_der_waals_radius = float(element["van_der_walls_radius"])
-        self.covalent_radius      = float(element.get("covalent_radius", 0.0))
+    try:
+        return ELEMENT_CACHE[symbol]
+    except KeyError:
+        pass
 
-        rgb                       = element["color_rgb"]
-        self.color                = (int(rgb[1:3], 16) / 255.0,
-                                     int(rgb[3:5], 16) / 255.0,
-                                     int(rgb[5:7], 16) / 255.0)
+    cif_file = mmCIFFile()
+    cif_file.load_file(ELEMENT_DATA_PATH)
+        
+    cif_data = cif_file.get_data(symbol)
+    if cif_data==None:
+        warning("element description not found for %s" % (symbol))
+        return None
+
+    ## create element description
+    element_desc = ElementDesc()
+
+    element_desc.cif_data = cif_data
+
+    element = cif_data.get_table("element")
+    element_desc.name            = element["name"]
+    element_desc.number          = int(element["number"])
+    element_desc.atomic_weight   = float(element["atomic_weight"])
+    element_desc.vdw_radius      = float(element["van_der_walls_radius"])
+    element_desc.covalent_radius = float(element.get("covalent_radius", 0.0))
+    
+    rgb8 = element["color_rgb"]
+    element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0,
+                               int(rgb8[3:5], 16) / 255.0,
+                               int(rgb8[5:7], 16) / 255.0)
+    
+    ELEMENT_CACHE[symbol] = element_desc
+    return element_desc
 
 
-class Monomer(MonomerInterface):
-    """Monomer definition from RCSB component dictionary.
+def library_get_monomer_desc(res_name):
+    """Loads/caches/returns the monomer description objec MonomerDesc
+    for the given monomer residue name.
     """
-    def __init__(self, **args):
-        MonomerInterface.__init__(self, **args)
+    assert type(res_name)==StringType
 
-        cif_file = mmCIFFile()
-        cif_file.load_file(open(args["path"], "r"))
+    try:
+        return MONOMER_RES_NAME_CACHE[res_name]
+    except KeyError:
+        pass
 
-        cif_data = cif_file[0]
+    ## this hack is necessary beause most PDB files do not have
+    ## a indicator in the 3-letter-code for RNA or DNA
+    dna_map = {
+        "C+": "C", "Cr": "C", "+C": "C",
+        "G+": "G", "Gr": "G", "+G": "G",
+        "A+": "A", "Ar": "A", "+A": "A",
+        "T+": "T", "Tr": "T", "+T": "T",
+        "U+": "U", "Ur": "U", "+U": "U",
+        }
 
-        chem_comp = cif_data["chem_comp"][0]
+    try:
+        lookup_name = dna_map[res_name]
+    except KeyError:
+        lookup_name = res_name.upper()
 
-        self.res_name     = chem_comp.get("res_name", self.res_name)
-        self.full_name    = chem_comp.get("name", self.full_name)
+    ## form path to locate the monomer library file
+    try:
+        r0 = lookup_name[0]
+    except IndexError:
+        return None
 
-        ## component type
-        self.type         = chem_comp.get("type", self.type)
-        self.type         = self.type.upper()
+    fil_name = "%s.cif" % (lookup_name.upper())
+    path     = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
 
-        self.pdbx_type    = chem_comp.get("pdbx_type", self.pdbx_type)
-        self.formula      = chem_comp.get("formula", self.formula)
-        self.rcsb_class_1 = chem_comp.get("rcsb_class_1", self.rcsb_class_1)
+    if not os.path.isfile(path):
+        warning("monomer description not found for %s" % (res_name))
+        return None
 
-        try:
-            chem_comp_atom = cif_data["chem_comp_atom"]
-        except KeyError:
-            pass
-        else:
-            for cif_row in chem_comp_atom:
-                name   = cif_row["atom_id"]
-                symbol = cif_row["type_symbol"]
+    ## generate monomer description    
+    mon_desc = MonomerDesc()
+
+    ## data from RCSB library
+    rcsb_cif_file = mmCIFFile()
+    rcsb_cif_file.load_file(open(path, "r"))
+    rcsb_cif_data = rcsb_cif_file[0]
+
+    chem_comp = rcsb_cif_data.get_table("chem_comp")[0]
+
+    mon_desc.res_name     = chem_comp.get("res_name")
+    mon_desc.full_name    = chem_comp.get("name")
+    mon_desc.type         = chem_comp.get("type")
+    mon_desc.pdbx_type    = chem_comp.get("pdbx_type")
+    mon_desc.formula      = chem_comp.get("formula")
+    mon_desc.rcsb_class_1 = chem_comp.get("rcsb_class_1")
+
+    chem_comp_atom = rcsb_cif_data.get_table("chem_comp_atom")
+    if chem_comp_atom!=None:
+        for cif_row in chem_comp_atom:
+            name   = cif_row["atom_id"]
+            symbol = cif_row["type_symbol"]
             
-                self.atom_list.append({"name": name, "symbol": symbol})
-                self.atom_dict[name] = symbol
+            mon_desc.atom_list.append({"name": name, "symbol": symbol})
+            mon_desc.atom_dict[name] = symbol
 
-        try:
-            chem_comp_bond = cif_data["chem_comp_bond"]
-        except KeyError:
-            pass
-        else:
-            for cif_row in chem_comp_bond:
-                atom1 = cif_row["atom_id_1"]
-                atom2 = cif_row["atom_id_2"]
-                self.bond_list.append({"atom1": atom1, "atom2": atom2}) 
-        
-        ## set items contained in mmlib's mon1_lib, which is a
-        ## mmcif file which supplements the RCSB's component
-        ## dictionary
-        mon1_lib = args["mon1_lib"]
-
-        try:
-            self.mon_cif_data = mon1_lib[self.res_name]
-        except KeyError:
-            pass
-        else:
-
-            ## get additional chemical information on amino acids
-            try:
-                chem_comp2 = self.mon_cif_data["chem_comp"]
-            except KeyError:
-                pass
-            else:
-                self.one_letter_code = chem_comp2["one_letter_code"]
-                self.chem_type = chem_comp2["chem_type"]
-
-            ## get torsion angle definitions
-            try:
-                torsion_angles = self.mon_cif_data["torsion_angles"]
-            except KeyError:
-                pass
-            else:
-                for cif_row in torsion_angles:
-                    self.torsion_angle_dict[cif_row["name"]] = (
-                        cif_row["atom1"],
-                        cif_row["atom2"],
-                        cif_row["atom3"],
-                        cif_row["atom4"])              
+    chem_comp_bond = rcsb_cif_data.get_table("chem_comp_bond")
+    if chem_comp_bond!=None:
+        for cif_row in chem_comp_bond:
+            atom1 = cif_row["atom_id_1"]
+            atom2 = cif_row["atom_id_2"]
+            mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
 
 
-    def is_amino_acid(self):
-        """Returns True if the Monomer is a amino acid, otherwise
-        returns False.
-        """
-        return self.type == "L-PEPTIDE LINKING"
-            
-    def is_nucleic_acid(self):
-        """Returns True if the Monomer is a nucleic acid, otherwise
-        returns False.
-        """
-        return self.type == "DNA LINKING" or self.type == "RNA LINKING"
+    ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
+    mmlib_cif_file = mmCIFFile()
+    mmlib_cif_file.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
 
-    def is_water(self):
-        """Returns True if the Monomer is a water molecule,
-        otherwise returns False.
-        """
-        return self.res_name=="HOH" or self.res_name=="WAT"
+    mmlib_cif_data = mmlib_cif_file.get_data(res_name)
+    if mmlib_cif_data!=None:
+        ## get additional chemical information on amino acids
+        chem_comp = mmlib_cif_data.get_table("chem_comp")
+        if chem_comp!=None:
+            mon_desc.one_letter_code = chem_comp["one_letter_code"]
+            mon_desc.chem_type = chem_comp["chem_type"]
 
-    def get_polymer_bond_list(self, mon1, mon2):
-        """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
-        represents one bond between the atom named mon1_name in mon1 and
-        the atom named mon2_name in mon2.
-        """
-        if self.is_amino_acid()==True:
-            return [("C", "N")]
-        elif self.is_nucleic_acid()==True:
-            return [("O3*", "P")]
-        return []
+        ## get torsion angle definitions
+        torsion_angles = mmlib_cif_data.get_table("torsion_angles")
+        if torsion_angles!=None:
+            for cif_row in torsion_angles:
+                mon_desc.torsion_angle_dict[cif_row["name"]] = (
+                    cif_row["atom1"],
+                    cif_row["atom2"],
+                    cif_row["atom3"],
+                    cif_row["atom4"])              
 
 
-class Library(LibraryInterface):
-    """Interface to the mmLib element and monomer library.  The library
-    data is in XML and mmCIF files in the Data directory of the mmLib
-    distribution.
+    ## set some derived flags on the monomer description
+    mon_type = mon_desc.type.upper()
+    
+    if mon_type=="L-PEPTIDE LINKING":
+        mon_desc.amino_acid = True
+
+    elif mon_type=="DNA LINKING" or mon_type=="RNA LINKING":
+        mon_desc.nucleic_acid = True
+
+    elif mon_type=="HOH" or mon_type=="WAT":
+        mon_desc.water = True
+
+
+    MONOMER_RES_NAME_CACHE[res_name] = mon_desc
+    return mon_desc
+
+
+def library_is_amino_acid(res_name):
+    """Returns True if the res_name is a amino acid.
     """
-    def __init__(self):
-        LibraryInterface.__init__(self)
-        
-        self.element_dict = {}
-        self.monomer_dict = {}
+    assert type(res_name) == StringType
 
-        ## set library paths -- this involves Python trickery
-        (path, x) = os.path.split(__file__)
-        
-        ## set elements.xml path
-        self.elm_lib_path  = os.path.join(path, "Data", "elements.cif")
-        self.mon1_lib_path = os.path.join(path, "Data", "monomers.cif")
-        self.mon_lib_path  = os.path.join(path, "Data", "Monomers") 
+    mdesc = library_get_monomer_desc(res_name)
+    if mdesc==None:
+        return False
 
-        ## doms to be loaded as needed
-        self.elm_cif_file = mmCIFFile()
-        self.elm_cif_file.load_file(self.elm_lib_path)
-        
-        ## open mmlib's monomer suppliment library
-        self.mon1_lib = mmCIFFile()
-        self.mon1_lib.load_file(self.mon1_lib_path)
-
-    def get_element(self, symbol):
-        """Loads and caches a instance of the Element class for the given
-        element symbol.  The source of the element data is the elements.xml
-        file.
-        """
-        assert type(symbol)==StringType
-
-        try:
-            return self.element_dict[symbol]
-        except KeyError:
-            pass
-
-        try:
-            cif_data = self.elm_cif_file[symbol]
-        except KeyError:
-            element = None
-        else:
-            element = Element(cif_data=cif_data, symbol=symbol)
-            
-        self.element_dict[symbol] = element
-
-        if element==None:
-            warning("element library: element not found %s" % (symbol))
-
-        return element
-
-    def get_monomer(self, res_name):
-        """Loads and caches the monomer description.
-        """
-        assert type(res_name)==StringType
-        
-        try:
-            return self.monomer_dict[res_name]
-        except KeyError:
-            pass
-
-        ## this hack is necessary beause most PDB files do not have
-        ## a indicator in the 3-letter-code for RNA or DNA
-        dna_map = {
-            "C+": "C", "Cr": "C", "+C": "C",
-            "G+": "G", "Gr": "G", "+G": "G",
-            "A+": "A", "Ar": "A", "+A": "A",
-            "T+": "T", "Tr": "T", "+T": "T",
-            "U+": "U", "Ur": "U", "+U": "U",
-            }
-
-        try:
-            lookup_name = dna_map[res_name]
-        except KeyError:
-            lookup_name = res_name.upper()
-
-        ## form path to locate the monomer library file
-        try:
-            r0 = lookup_name[0]
-        except IndexError:
-            return None
-
-        fil_name = "%s.cif" % (lookup_name.upper())
-        path     = os.path.join(self.mon_lib_path, r0, fil_name)
-        
-        if os.path.isfile(path):
-            mon = Monomer(res_name = res_name,
-                          mon1_lib = self.mon1_lib,
-                          path     = path)
-        else:
-            mon = None
-
-        self.monomer_dict[res_name] = mon
-
-        if mon==None:
-            warning("monomer library: monomer not found %s" % (res_name))
-        
-        return mon
-        
-    def is_amino_acid(self, res_name):
-        assert type(res_name) == StringType
-        try:
-            return self.get_monomer(res_name).is_amino_acid()
-        except AttributeError:
-            return False
-
-    def is_nucleic_acid(self, res_name):
-        assert type(res_name) == StringType
-        try:
-            return self.get_monomer(res_name).is_nucleic_acid()
-        except AttributeError:
-            return False
-
-    def is_water(self, res_name):
-        assert type(res_name) == StringType
-        return res_name in ["HOH", "WAT"]
+    return mdesc.is_amino_acid()
 
 
-##
-DEFAULT_LIBRARY = Library()
+def library_is_nucleic_acid(res_name):
+    """Returns True if the res_name is a nucleic acid.
+    """
+    assert type(res_name) == StringType
+
+    mdesc = library_get_monomer_desc(res_name)
+    if mdesc==None:
+        return False
+
+    return mdesc.is_nucleic_acid()
+
+
+def library_is_water(res_name):
+    """Return True if the res_name is water.
+    """
+    assert type(res_name) == StringType
+    if res_name=="HOH" or res_name=="WAT":
+        return True
+    return False
 
 
 ## <TESTING>
