@@ -14,10 +14,6 @@ import re
 import types
 from mmTypes import *
 
-## errors
-mmCIFError = "mmCIFError"
-
-
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
 ##
@@ -28,8 +24,25 @@ mmCIFError = "mmCIFError"
 ##         mmCIFDictionary -> [mmCIFData] -> [mmCIFTable] -> [mmCIFRow]
 ##
 
-mmCIFError = "mmCIFError"
 MAX_LINE = 80
+
+
+class mmCIFError(Exception):
+    """Base class of errors raised by Structure objects.
+    """
+    pass
+
+
+class mmCIFSyntaxError(Exception):
+    """Base class of errors raised by Structure objects.
+    """
+    def __init__(self, line_num, text):
+        self.line_num = line_num
+        self.text = text
+
+    def __str__(self):
+        return "[line: %d] %s" % (self.line_num, self.text)
+
 
 class mmCIFRow(dict):
     """Contains one row of data.  In a mmCIF file, this is one complete
@@ -413,11 +426,10 @@ class mmCIFFileParser(object):
         except StopIteration:
             pass
         else:
-            raise mmCIFError
+            raise mmCIFError()
 
     def syntax_error(self, err):
-        err = "[line %d] %s" % (self.line_number, err)
-        raise mmCIFError, err
+        raise mmCIFSyntaxError(self.line_number, err)
  
     def parse(self, token_iter, cif_file):
         cif_table_cache = {}

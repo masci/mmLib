@@ -179,16 +179,16 @@ class Structure(object):
         
         ## add new model if necesary
         try:
-            model = self.model_dict[atom.model]
+            model = self.model_dict[atom.model_id]
         except KeyError:
-            model = Model(model_id = atom.model)
+            model = Model(model_id = atom.model_id)
             self.add_model(model, delay_sort = True)
 
         ## add new chain if necessary
         try:
             chain = model.chain_dict[atom.chain_id]
         except KeyError:
-            chain = Chain(model_id = atom.model, chain_id = atom.chain_id)
+            chain = Chain(model_id = atom.model_id, chain_id = atom.chain_id)
             model.add_chain(chain, delay_sort = True)
 
         ## add new fragment if necessary 
@@ -1015,8 +1015,16 @@ class Fragment(object):
                 except KeyError:
                     ## case 2: atom has alt_loc partners, but not one
                     ##         for this given alt_loc
-                    del self.atom_list[i-ishift]
-                    del self.atom_dict[atmx.name]
+                    try:
+                        del self.atom_list[i-ishift]
+                    except IndexError:
+                        pass
+                    for atmx in atm.values():
+                        try:
+                            del self.atom_dict[atmx.name]
+                        except KeyError:
+                            pass
+                        break
                     ishift += 1
                 else:
                     ## case 3: atom has alt_loc partners, and one for
@@ -1045,9 +1053,12 @@ class Fragment(object):
     def iter_all_atoms(self):
         """Iterates of all Atoms in the Fragment includeing Altlocs.
         """
-        for atm in self.atom_list:
-            for atm2 in atm:
-                yield atm2
+        for atm in self.atom_order_list:
+            if isinstance(atm, Atom):
+                yield atm
+            else:
+                for atmx in atm:
+                    yield atmx
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -1398,6 +1409,14 @@ class NucleicAcidResidue(Residue):
 class Altloc(dict):
     """
     """
+    def __iter__(self):
+        """Iterates over all Altloc representations of this Atom.
+        """
+        alt_locs = self.keys()
+        alt_locs.sort()
+        for alt_loc in alt_locs:
+            yield self[alt_loc]
+    
     def add_atom(self, atom):
         """Adds a atom to the Altloc.
         """
@@ -1446,21 +1465,21 @@ class Atom(object):
     """
     def __init__(self,
                  name        = "",
-                 model       = "",
+                 model_id    = "",
                  alt_loc     = "",
                  res_name    = "",
                  fragment_id = "",
                  chain_id    = ""):
 
         assert type(name) == StringType
-        assert type(model) == StringType
+        assert type(model_id) == StringType
         assert type(alt_loc) == StringType
         assert type(res_name) == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id) == StringType
 
         self.name = name
-        self.model = model
+        self.model_id = model_id
         self.alt_loc = alt_loc
         self.res_name = res_name
         self.fragment_id = fragment_id
@@ -1480,7 +1499,7 @@ class Atom(object):
 
     def __str__(self):
         return 'Atom(n=%s,mdl=%s,alt=%s,rn=%s,fid=%s,cid=%s)' % (
-            self.name, self.model, self.alt_loc, self.res_name,
+            self.name, self.model_id, self.alt_loc, self.res_name,
             self.fragment_id, self.chain_id)
 
     def __len__(self):
@@ -1523,14 +1542,20 @@ class Atom(object):
             for alt_loc in alt_locs:
                 yield self.altloc[alt_loc]
 
-    def __contains__(self, atom):
+    def __contains__(self, atom_alt_loc):
         """Returns True if the argument matches a alternate conformation of
         the Atom.  The argument can be a alt_loc label, or a Atom object.
         """
-        try:
-            return self.altloc.__contains__(atom)
-        except AttributeError:
-            return atom == self
+        if isinstance(atom_alt_loc, Atom):
+            try:
+                return self.altloc[atom_alt_loc.alt_loc] == atom_alt_loc
+            except AttributeError:
+                return atom_alt_loc == self
+        elif type(atom_alt_loc) == StringType:
+            try:
+                return self.altloc.__contains__(atom_alt_loc)
+            except AttributeError:
+                return atom_alt_loc == self.alt_loc
 
     def remove(self, atom):
         """Removes the argument Atom from the Altloc. 
@@ -1584,7 +1609,7 @@ class Atom(object):
         used to indicate this bond is a standard bond.
         """
         assert isinstance(atom, Atom)
-        assert self.model == atom.model
+        assert self.model_id == atom.model_id
         assert ((self.alt_loc == atom.alt_loc) or
                 (self.alt_loc == "" and atom.alt_loc != "") or
                 (self.alt_loc != "" and atom.alt_loc == ""))

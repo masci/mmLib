@@ -77,7 +77,7 @@ class StructureBuilder(object):
         """
         ## create atom object
         atm = Atom(name        = atm_map.get("name", ""),
-                   model       = str(atm_map.get("model_num", "1")),
+                   model_id    = str(atm_map.get("model_num", "1")),
                    alt_loc     = atm_map.get("alt_loc", ""),
                    res_name    = atm_map.get("res_name", ""),
                    fragment_id = atm_map.get("fragment_id", ""),
@@ -183,7 +183,7 @@ class StructureBuilder(object):
         ## split atoms into fragments
         for atm in self.name_service_list:
             atm_id      = (atm.name, atm.alt_loc)
-            atm_frag_id = (atm.model,
+            atm_frag_id = (atm.model_id,
                            atm.chain_id,
                            atm.fragment_id,
                            atm.res_name)
@@ -213,9 +213,9 @@ class StructureBuilder(object):
                     cr_key_list.append(cr_key)
 
                 try:
-                    frag_list = model_dict[atm.model]
+                    frag_list = model_dict[atm.model_id]
                 except KeyError:
-                    frag_list = model_dict[atm.model] = []
+                    frag_list = model_dict[atm.model_id] = []
 
                 name_dict = {atm_id: True}
 

@@ -6,7 +6,7 @@ from mmLib.mmTypes import *
 """Misc. testing utility code code common to the test programs.
 """
 
-pdb_regex = ("pdb\w+\.gz","\w+\.pdb","\w+\.pdb\.gz","pdb\S+\.Z","pdb\S+\.gz")
+pdb_regex = ("pdb\w+\.gz","[\w+\.]+pdb","\w+\.pdb\.gz","pdb\S+\.Z","pdb\S+\.gz")
 cif_regex = ("\w+\.cif", "\w+\.cif\.Z", "\w+\.cif\.gz")
 all_regex = pdb_regex + cif_regex
 

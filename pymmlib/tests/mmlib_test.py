@@ -52,7 +52,7 @@ def atom_test(atom, stats):
     for bond in atom.iter_bonds():
         assert isinstance(bond, Bond)
         assert bond.atom1 == atom or bond.atom2 == atom
-        assert bond.atom1.model == bond.atom2.model
+        assert bond.atom1.model_id == bond.atom2.model_id
         assert bond.atom1.alt_loc == bond.atom2.alt_loc or \
                (bond.atom1.alt_loc == "" and bond.atom2.alt_loc != "") or \
                (bond.atom1.alt_loc != "" and bond.atom2.alt_loc == "")

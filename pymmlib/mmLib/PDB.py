@@ -11,10 +11,23 @@ from __future__ import generators
 import string
 import types
 import fpformat
-
 from Structure import *
 
-PDBError = "PDB Error"
+
+class PDBError(Exception):
+    """
+    """
+    pass
+
+
+class PDBValueError(PDBError):
+    """
+    """
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return self.text
 
 
 class PDBRecord(dict):
@@ -65,7 +78,7 @@ class PDBRecord(dict):
                 try:
                     s = fpformat.fix(s, int(ftype[6]))
                 except ValueError:
-                    raise PDBError, "field=%s %s not float" % (field, s)
+                    raise PDBValueError("field=%s %s not float" % (field, s))
 
             ## assert type
             try:
