@@ -65,6 +65,8 @@ def main(**args):
             ## filter atoms being added to the group
             ## add all atoms to the TLS group which are at full occupancy
             for atm in seg_atom_list:
+                if atm.element=="H":
+                    continue
 
                 if atm.occupancy<1.0:
                     continue
@@ -88,13 +90,18 @@ def main(**args):
             tls.origin = tls.calc_centroid()
 
             ## calculate tensors and print
-            tls.calc_TLS_least_squares_fit()
+            if args.get("use_dP2_fit")==True:
+                tls.calc_TLS_least_squares_fit()
+            else:
+                tls.calc_TLS_dP2_fit()
 
             if args["omit_neg_eigen"]==True:
                 if min(eigenvalues(tls.T))<=0.0:
-                       continue
+                    print "## Negitive T Eigenvalue"
+                    continue
                 if min(eigenvalues(tls.L))<=0.0:
-                       continue
+                    print "## Negitive L Eigenvalue"
+                    continue
             
             calcs = tls.shift_COR()
             Rfact = tls.calc_R()
@@ -183,7 +190,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "l:msnc:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "l:msnc:d")
     except getopt.GetoptError:
         usage()
         sys.exit(1)
@@ -194,6 +201,7 @@ if __name__ == "__main__":
     omit_single_bonded = False
     omit_neg_eigen     = False
     chain              = None
+    use_dP2_min        = False
 
     ## read program options
     for (opt, item) in opts:
@@ -216,6 +224,9 @@ if __name__ == "__main__":
         if opt=="-c":
             chain = item
 
+        if opt=="-d":
+            use_dP2_min = True
+
     ## make sure a file name was entered
     if len(args)!=1:
         usage()
@@ -226,4 +237,5 @@ if __name__ == "__main__":
          mainchain_only     = mainchain_only,
          omit_single_bonded = omit_single_bonded,
          omit_neg_eigen     = omit_neg_eigen,
-         chain              = chain)
+         chain              = chain,
+         use_dP2_min        = use_dP2_min)

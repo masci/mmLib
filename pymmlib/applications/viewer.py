@@ -86,6 +86,7 @@ def fit_TLS_segments(struct, seg_width = 6):
     cur_segment = []
 
     for chain in struct.iter_chains():
+
         for seg_atom_list in iter_segments(chain, seg_width):
 
             atm0 = seg_atom_list[0]
@@ -100,7 +101,22 @@ def fit_TLS_segments(struct, seg_width = 6):
             for atm in seg_atom_list:
                 if atm.occupancy<1.0:
                     continue
+                if atm.element=="H":
+                    continue
+
                 tls.append(atm)
+                continue
+
+                if atm.name in ["C", "N", "CA", "O"]:
+                    tls.append(atm)
+
+                else:
+                    for batm in atm.iter_bonded_atoms():
+                        if atm.name=="CA":
+                            tls.append(atm)
+                            break
+                    
+
 
             if len(tls)==0:
                 continue
@@ -222,7 +238,7 @@ def fit_TLS_segments(struct, seg_width = 6):
             if (max(eigenvalues(tls.L))*rad2deg2)<0.0:
                 tls_list.remove(tls)
                 print "removed small libration",
-            elif dP2>0.1:
+            elif dP2>0.3:
                 tls_list.remove(tls)
                 print "removed bad match",
                 cur_segment = []
@@ -603,107 +619,253 @@ class GLPropertyEditor(gtk.Notebook):
         self.prop_widget_dict = {}
 
         ## count the number of properties/pages to be displayed
-        page_prop_dict = {}
-        num_props = 0
-        for prop_desc in self.gl_object.glo_iter_property_desc():
-            if prop_desc.get("hidden", False)==True:
-                continue
-
-            catagory = prop_desc.get("catagory", "Show/Hide")
-            try:
-                page_prop_dict[catagory].append(prop_desc)
-            except KeyError:
-                page_prop_dict[catagory] = [prop_desc]
-
-        ## sort pages
-        catagories = page_prop_dict.keys()
+        catagory_dict = self.catagory_dict_sort()
+        
+        ## sort pages: make sure Show/Hide is the first page
+        catagories = catagory_dict.keys()
         if "Show/Hide" in catagories:
             catagories.remove("Show/Hide")
             catagories.insert(0, "Show/Hide")
             
         ## add Notebook pages and tables
-        table_dict = {}
         for catagory in catagories:
-            prop_list = page_prop_dict[catagory]
-
-            num_props = len(prop_list)
-
-            table = gtk.Table(2, num_props, gtk.FALSE)
+            table = self.build_catagory_widgets(catagory, catagory_dict)
             self.append_page(table, gtk.Label(catagory))
-
-            table.set_border_width(5)
-            table.set_row_spacings(5)
-            table.set_col_spacings(10)
-
-            table_row = 0
-
-            size_group = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
-
-            ## boolean types first since the toggle widgets don't look good mixed
-            ## with the entry widgets
-            for prop in prop_list:
-                ## only handling boolean right now
-                if prop["type"]!="boolean":
-                    continue
-
-                edit_widget = self.new_property_edit_widget(prop)
-                self.prop_widget_dict[prop["name"]] = edit_widget 
-
-                align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
-                align.add(edit_widget)
-
-                table.attach(align, 0, 2, table_row, table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
-                table_row += 1
-
-            ## create and layout the editing widgets
-            for prop in prop_list:
-                ## boolean types were already handled
-                if prop["type"]=="boolean":
-                    continue
-
-                label_widget = self.new_property_label_widget(prop)
-                #table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
-                table.attach(label_widget, 0, 1, table_row,table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
-
-                edit_widget = self.new_property_edit_widget(prop)
-                self.prop_widget_dict[prop["name"]] = edit_widget 
-
-                size_group.add_widget(edit_widget)
-                table.attach(edit_widget, 1, 2, table_row, table_row+1, gtk.FILL|gtk.SHRINK, 0, 0, 0)
-                table_row += 1
 
         self.properties_update_cb(self.gl_object.properties)
 
+    def catagory_dict_sort(self):
+        """Returns a tree of dictionaries/lists  catagory_dict[]->[prop list]
+        """
+        
+        ## count the number of properties/pages to be displayed
+        catagory_dict = {}
+        
+        for prop_desc in self.gl_object.glo_iter_property_desc():
+
+            ## skip hidden properties
+            if prop_desc.get("hidden", False)==True:
+                continue
+
+            ## get the catagory name, default to "Misc"
+            catagory = prop_desc.get("catagory", "Misc")
+            try:
+                catagory_dict[catagory].append(prop_desc)
+            except KeyError:
+                catagory_dict[catagory] = [prop_desc]
+
+        return catagory_dict
+
+    def build_catagory_widgets(self, catagory, catagory_dict):
+        """Returns the GtkTable widget will all the control widgets
+        """
+        prop_desc_list = catagory_dict[catagory]
+        num_properties = len(prop_desc_list)
+
+        ## create table widget
+        table = gtk.Table(2, num_properties, gtk.FALSE)
+        table.set_border_width(5)
+        table.set_row_spacings(5)
+        table.set_col_spacings(10)
+
+        ## size group widget to make the edit/display widgets
+        ## in the right column all the same size
+        size_group = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+
+        table_row  = 0
+
+        ## boolean types first since the toggle widgets don't look good mixed
+        ## with the entry widgets
+        for prop_desc in prop_desc_list:
+            name = prop_desc["name"]
+            
+            ## only handling boolean right now
+            if prop_desc["type"]!="boolean":
+                continue
+
+            ## create the widget for this property
+            edit_widget = self.new_property_edit_widget(prop_desc)
+
+            ## add the widget to a class dict so property name->widget is
+            ## easy to look up
+            self.prop_widget_dict[name] = edit_widget 
+
+            ## use a alignment widget in the table
+            align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+            align.add(edit_widget)
+
+            ## attach to table
+            table.attach(align,
+                         0, 2, table_row, table_row+1,
+                         gtk.FILL|gtk.EXPAND, 0, 0, 0)
+
+            table_row += 1
+
+
+        ## now create all the widgets for non-boolean types
+        for prop_desc in prop_desc_list:
+            name = prop_desc["name"]
+
+            ## boolean types were already handled
+            if prop_desc["type"]=="boolean":
+                continue
+
+            ## create the labell widget for the property and attach
+            ## it to the left side of the table
+            label_widget = self.new_property_label_widget(prop_desc)
+            align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
+            align.add(label_widget)
+            table.attach(align,
+                         0, 1, table_row, table_row+1,
+                         gtk.FILL, 0, 0, 0)
+
+            ## create the edit widget
+            edit_widget = self.new_property_edit_widget(prop_desc)
+            self.prop_widget_dict[name] = edit_widget 
+
+            ## use alignment widget in table
+            align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+            align.add(edit_widget)
+
+            ## add to size group and attach to table
+            size_group.add_widget(edit_widget)
+            
+            table.attach(align,
+                         1, 2, table_row, table_row+1,
+                         gtk.EXPAND|gtk.FILL, 0, 0, 0)
+
+            table_row += 1
+
+        table.show_all()
+        return table
+
     def destroy(self, widget):
-        """Called after this widget is destroyed.  Make sure to remove the callback we installed
-        to monitor property changes.
+        """Called after this widget is destroyed.  Make sure to remove the
+        callback we installed to monitor property changes.
         """
         self.gl_object.glo_remove_update_callback(self.properties_update_cb)
+
+    def markup_property_label(self, prop_desc, max_len = 20):
+        """
+        """
+        listx    = prop_desc.get("desc", prop_desc["name"]).split()
+        strx     = ""
+        line_len = 0
+        
+        for word in listx:
+            new_line_len = line_len + len(word)
+            if new_line_len>max_len:
+                strx     += "\n" + word
+                line_len = len(word)
+            elif line_len==0:
+                strx     += word
+                line_len += len(word)
+            else:
+                strx     += " " + word
+                line_len += len(word) + 1
+
+        return "<small>%s</small>" % (strx)
 
     def new_property_label_widget(self, prop):
         """Returns the label widget for property editing.
         """
-        label = gtk.Label(prop.get("desc", prop["name"]))
-        label.set_alignment(0, 1)
+        label = gtk.Label()
+        label.set_markup(self.markup_property_label(prop))
+        label.set_alignment(0.0, 0.5)
         return label
 
     def new_property_edit_widget(self, prop):
         """Returns the editing widget for a property.
         """
+
+        ## BOOLEAN
         if prop["type"]=="boolean":
             widget = gtk.CheckButton(prop.get("desc", prop["name"]))
+            widget.get_child().set_markup(
+                self.markup_property_label(prop, max_len=40))
+
+        ## INTEGER
         elif prop["type"]=="integer":
-            widget = gtk.Entry()
+            if prop.get("read_only", False)==True:
+                widget = gtk.Label()
+            else:
+                if prop.get("range")!=None:
+                    ## range format: min-max,step
+                    min_max, step = prop["range"].split(",")
+                    min, max      = min_max.split("-")
+
+                    min  = int(min)
+                    max  = int(max)
+                    step = int(step)
+
+                    widget = gtk.HScale()
+                    widget.set_digits(0)
+                    widget.set_range(float(min), float(max))
+                    widget.set_increments(float(step), float(step))
+
+                elif prop.get("spin")!=None:
+                    ## range format: min-max,step
+                    min_max, step = prop["spin"].split(",")
+                    min, max      = min_max.split("-")
+                    
+                    min  = int(min)
+                    max  = int(max)
+                    step = int(step)
+
+                    widget = gtk.SpinButton(climb_rate=float(step), digits=0)
+                    widget.set_range(float(min), float(max))
+                    widget.set_increments(float(step), float(step*10))
+                else:
+                    widget = gtk.Entry()
+
+        ## FLOAT
         elif prop["type"]=="float":
-            widget = gtk.Entry()
+            if prop.get("read_only", False)==True:
+                widget = gtk.Label()
+            else:
+                if prop.get("range")!=None:
+                    ## range format: min-max,step
+                    min_max, step = prop["range"].split(",")
+                    min, max      = min_max.split("-")
+
+                    min  = float(min)
+                    max  = float(max)
+                    step = float(step)
+
+                    widget = gtk.HScale()
+                    widget.set_digits(2)
+                    widget.set_range(min, max)
+                    widget.set_increments(step, step)
+
+                elif prop.get("spin")!=None:
+                    ## range format: min-max,step
+                    min_max, step = prop["spin"].split(",")
+                    min, max      = min_max.split("-")
+                    
+                    min  = float(min)
+                    max  = float(max)
+                    step = float(step)
+
+                    widget = gtk.SpinButton(climb_rate=step, digits=2)
+                    widget.set_range(min, max)
+                    widget.set_increments(step, step*10.0)
+
+                else:
+                    widget = gtk.Entry()
+
+        ## ARRAY(3)
         elif prop["type"]=="array(3)":
             widget = gtk.Label()
-            widget.set_markup(markup_vector3(self.gl_object.properties[prop["name"]]))
+
+        ## ARRAY(3,3)
         elif prop["type"]=="array(3,3)":
             widget = gtk.Label()
-            widget.set_markup(markup_matrix3(self.gl_object.properties[prop["name"]]))
+
+        ## COLOR
         elif prop["type"]=="color":
             widget = ColorSelection()
+
+        ## WTF?
         else:
             text = str(self.gl_object.properties[prop["name"]])
             widget = gtk.Label(text)
@@ -720,24 +882,48 @@ class GLPropertyEditor(gtk.Notebook):
                 continue
 
             prop_desc = self.gl_object.glo_get_property_desc(name)
-            
+
             if prop_desc["type"]=="boolean":
                 if self.gl_object.properties[name]==True:
                     widget.set_active(gtk.TRUE)
                 else:
                     widget.set_active(gtk.FALSE)
+
             elif prop_desc["type"]=="integer":
-                text = str(self.gl_object.properties[name])
-                widget.set_text(text)
+                if prop_desc.get("read_only", False)==True:
+                    text = "<small>%d</small>" % (self.gl_object.properties[name])
+                    widget.set_markup(text)
+                else:
+                    if prop_desc.get("range")!=None:
+                        widget.set_value(float(self.gl_object.properties[name]))
+                    elif prop_desc.get("spin")!=None:
+                        widget.set_value(float(self.gl_object.properties[name]))
+                    else:
+                        text = str(self.gl_object.properties[name])
+                        widget.set_text(text)
+
             elif prop_desc["type"]=="float":
-                text = str(self.gl_object.properties[name])
-                widget.set_text(text)
+                if prop_desc.get("read_only", False)==True:
+                    text = "<small>%12.6f</small>" % (self.gl_object.properties[name])
+                    widget.set_markup(text)
+                else:
+                    if prop_desc.get("range")!=None:
+                        widget.set_value(self.gl_object.properties[name])
+                    elif prop_desc.get("spin")!=None:
+                        widget.set_value(self.gl_object.properties[name])
+                    else:
+                        text = str(self.gl_object.properties[name])
+                        widget.set_text(text)
+
             elif prop_desc["type"]=="array(3)":
                 widget.set_markup(markup_vector3(self.gl_object.properties[name]))
+
             elif prop_desc["type"]=="array(3,3)":
                 widget.set_markup(markup_matrix3(self.gl_object.properties[name]))
+
             elif prop_desc["type"]=="color":
                 widget.set_color(self.gl_object.properties[name])
+
             else:
                 widget.set_text(str(self.gl_object.properties[name]))
 
@@ -748,6 +934,12 @@ class GLPropertyEditor(gtk.Notebook):
         update_dict = {}
         
         for prop in self.gl_object.glo_iter_property_desc():
+
+            ## skip read_only properties
+            if prop.get("read_only", False)==True:
+                continue
+
+            ## property name
             name = prop["name"]
 
             try:
@@ -755,6 +947,7 @@ class GLPropertyEditor(gtk.Notebook):
             except KeyError:
                 continue
 
+            ## retrieve data based on widget type
             if prop["type"]=="boolean":
                 if widget.get_active()==gtk.TRUE:
                     update_dict[name] = True
@@ -762,20 +955,26 @@ class GLPropertyEditor(gtk.Notebook):
                     update_dict[name] = False
 
             elif prop["type"]=="integer":
-                try:
-                    value = int(widget.get_text())
-                except ValueError:
-                    pass
+                if prop.get("range")!=None:
+                    update_dict[name] = int(widget.get_value())
+                elif prop.get("spin")!=None:
+                    update_dict[name] = int(widget.get_value())
                 else:
-                    update_dict[name] = value
+                    try:
+                        update_dict[name] = int(widget.get_text())
+                    except ValueError:
+                        pass
                     
             elif prop["type"]=="float":
-                try:
-                    value = float(widget.get_text())
-                except ValueError:
-                    pass
+                if prop.get("range")!=None:
+                    update_dict[name] = float(widget.get_value())
+                elif prop.get("spin")!=None:
+                    update_dict[name] = float(widget.get_value())
                 else:
-                    update_dict[name] = value
+                    try:
+                        update_dict[name] = float(widget.get_text())
+                    except ValueError:
+                        pass
 
             elif prop["type"]=="color":
                 update_dict[name] = widget.get_color()

@@ -19,7 +19,7 @@ class NewtonsMethod(Solver):
     using a finite difference jacobian.  This algorithm has been modified
     to handle a overdetermined system of equations.
     """
-    def __init__(self, F, N=100, h=1.0e-2, tol=1.0e-10):
+    def __init__(self, F, N=10, h=1.0e-6, tol=1.0e-10):
         """Initalize with the list of non-linear functions to solve.  F
         is a Python list of function objects.  Each function object needs
         to implement a __call__ method which takes a single x vector
@@ -43,12 +43,13 @@ class NewtonsMethod(Solver):
         """
         J  = zeros((len(self.F), len(x)), Float)
         h  = self.h
-        Eh = h * identity(len(x))
+        Eh = h * identity(len(x), Float)
 
         for i in range(len(self.F)):
             f = self.F[i]
+            
             for j in range(len(x)):
-                J[i,j] = (f(x + Eh[j]) - f(x)) / h
+                J[i,j] = (f(x + Eh[j]) - f(x - Eh[j])) / (2.0*h)
 
         return J
 
@@ -56,11 +57,10 @@ class NewtonsMethod(Solver):
         """Solves the system of nonlinear equations given the initial vector
         x.
         """
+
         x = x.copy()
 
         for n in range(self.N):
-            #print "Cycle: ",n
-            
             f = self.calc_F(x)
             J = self.calc_finite_difference_jacobian(x)
 
@@ -68,7 +68,11 @@ class NewtonsMethod(Solver):
 
             x += y
 
-            if math.sqrt(dot(y, y)) < self.tol:
+            tol = math.sqrt(dot(y, y))
+            print "Cycle: %d  dP2: %6.4f Tolerance: %f" % (
+                n, sum(f)/float(len(f)), tol)
+            
+            if tol<self.tol:
                 break
 
         return x

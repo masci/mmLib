@@ -450,94 +450,84 @@ class DP2TLSMin(object):
         xz = x*z
         yz = y*z
         
-        self.A = A = zeros((6,21), Float)
-
         u11,u22,u33,u12,u13,u23 = 0,1,2,3,4,5
 
-        A[u11, T11] = 1.0
-        A[u11, L22] = xx
-        A[u11, L33] = yy
-        A[u11, L23] = -2.0*yz
-        A[u11, S31] = -2.0*y
-        A[u11, S21] = 2.0*z
+        self.A           =  zeros((6,21), Float)
+
+        self.A[u11, T11] = 1.0
+        self.A[u11, L22] = zz
+        self.A[u11, L33] = yy
+        self.A[u11, L23] = -2.0*yz
+        self.A[u11, S31] = -2.0*y
+        self.A[u11, S21] = 2.0*z
         
-        A[u22, T22] = 1.0
-        A[u22, L11] = zz
-        A[u22, L33] = xx
-        A[u22, L13] = -2.0*xz
-        A[u22, S12] = -2.0*z
-        A[u22, S32] = 2.0*x
+        self.A[u22, T22] = 1.0
+        self.A[u22, L11] = zz
+        self.A[u22, L33] = xx
+        self.A[u22, L13] = -2.0*xz
+        self.A[u22, S12] = -2.0*z
+        self.A[u22, S32] = 2.0*x
 
-        A[u33, T33] = 1.0
-        A[u33, L11] = yy
-        A[u33, L22] = xx
-        A[u33, L12] = -2.0*xy
-        A[u33, S23] = -2.0*x
-        A[u33, S13] = 2.0*y
+        self.A[u33, T33] = 1.0
+        self.A[u33, L11] = yy
+        self.A[u33, L22] = xx
+        self.A[u33, L12] = -2.0*xy
+        self.A[u33, S23] = -2.0*x
+        self.A[u33, S13] = 2.0*y
 
-        A[u12, T12] = 1.0
-        A[u12, L33] = -xy
-        A[u12, L23] = xz
-        A[u12, L13] = yz
-        A[u12, L12] = -zz
-        A[u12, S11] = -z
-        A[u12, S22] = z
-        A[u12, S31] = x
-        A[u12, S32] = -y
+        self.A[u12, T12] = 1.0
+        self.A[u12, L33] = -xy
+        self.A[u12, L23] = xz
+        self.A[u12, L13] = yz
+        self.A[u12, L12] = -zz
+        self.A[u12, S11] = -z
+        self.A[u12, S22] = z
+        self.A[u12, S31] = x
+        self.A[u12, S32] = -y
 
-        A[u13, T13] = 1.0
-        A[u13, L22] = -xz
-        A[u13, L23] = xy
-        A[u13, L13] = -yy
-        A[u13, L12] = yz
-        A[u13, S11] = y
-        A[u13, S33] = -y
-        A[u13, S23] = z
-        A[u13, S21] = -x
+        self.A[u13, T13] = 1.0
+        self.A[u13, L22] = -xz
+        self.A[u13, L23] = xy
+        self.A[u13, L13] = -yy
+        self.A[u13, L12] = yz
+        self.A[u13, S11] = y
+        self.A[u13, S33] = -y
+        self.A[u13, S23] = z
+        self.A[u13, S21] = -x
 
-        A[u23, T23] = 1.0
-        A[u23, L11] = -yz
-        A[u23, L23] = -xx
-        A[u23, L13] = xy
-        A[u23, L12] = xz
-        A[u23, S22] = -x
-        A[u23, S33] = x
-        A[u23, S12] = y
-        A[u23, S13] = -z
+        self.A[u23, T23] = 1.0
+        self.A[u23, L11] = -yz
+        self.A[u23, L23] = -xx
+        self.A[u23, L13] = xy
+        self.A[u23, L12] = xz
+        self.A[u23, S22] = -x
+        self.A[u23, S33] = x
+        self.A[u23, S12] = y
+        self.A[u23, S13] = -z
         
     def __call__(self, TLS):
         U6 = matrixmultiply(self.A, TLS)
 
-
-        #print "A",self.A
-        #print "U6",U6
-        #print
-
         Utls = array([ [U6[0], U6[3], U6[4]],
                        [U6[3], U6[1], U6[5]],
-                       [U6[4], U6[5], U6[2]] ])
+                       [U6[4], U6[5], U6[2]] ], Float)
 
-
-        r = (self.U[0,0]-Utls[0,0])**2 + \
-            (self.U[1,1]-Utls[1,1])**2 + \
-            (self.U[2,2]-Utls[2,2])**2 + \
-            (self.U[0,1]-Utls[0,1])**2 + \
-            (self.U[0,2]-Utls[0,2])**2 + \
-            (self.U[1,2]-Utls[1,2])**2
-
-        #print r
-        return r
+##         r = (self.U[0,0]-Utls[0,0])**2 + \
+##             (self.U[1,1]-Utls[1,1])**2 + \
+##             (self.U[2,2]-Utls[2,2])**2 + \
+##             (self.U[0,1]-Utls[0,1])**2 + \
+##             (self.U[0,2]-Utls[0,2])**2 + \
+##             (self.U[1,2]-Utls[1,2])**2
 
         try:
             dp2 = calc_DP2uij(self.U, Utls)
-        except ValueError:
-            dp2 = 0.00
-            print "Value Error"
-
-        print "%.2f %.2f %.2f: %8.6f" % (self.position[0],
-                                         self.position[1],
-                                         self.position[2],
-                                         dp2)
+        except (LinAlgError, ValueError):
+##             print "## self.U"
+##             print self.U
+##             print "## Utls"
+##             print Utls
+            print "bad, very bad"
+            return 1.0
         
         return dp2
 
@@ -719,20 +709,24 @@ class TLSGroup(AtomList):
 
         self.T = array([ [ C[T11], C[T12], C[T13] ],
                          [ C[T12], C[T22], C[T23] ],
-                         [ C[T13], C[T23], C[T33] ] ])
+                         [ C[T13], C[T23], C[T33] ] ], Float)
 
         self.L = array([ [ C[L11], C[L12], C[L13] ],
                          [ C[L12], C[L22], C[L23] ],
-                         [ C[L13], C[L23], C[L33] ] ])
+                         [ C[L13], C[L23], C[L33] ] ], Float)
 
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
-                         [ C[S31], C[S32], C[S33] ] ])
+                         [ C[S31], C[S32], C[S33] ] ], Float)
 
 
     def calc_TLS_dP2_fit(self):
         """
         """
+        ## start out with a approxamation...
+        self.calc_TLS_least_squares_fit()
+
+        ## now for the dP2 minimization
         from mmLib.Solvers import NewtonsMethod
 
         ## use label indexing to avoid confusion!
@@ -740,7 +734,7 @@ class TLSGroup(AtomList):
         S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
             0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
 
-        C      = zeros(21, Float)
+        C = zeros(21, Float)
 
         C[T11] = self.T[0,0]
         C[T22] = self.T[1,1]
@@ -770,23 +764,21 @@ class TLSGroup(AtomList):
         for atm in self:
             min_func_list.append(DP2TLSMin(atm.position - self.origin, atm.U))
 
-        nmethod = NewtonsMethod(min_func_list, N=20)
+        nmethod = NewtonsMethod(min_func_list)
         
         C = nmethod.solve(C)
 
-        T = array([ [ C[T11], C[T12], C[T13] ],
-                    [ C[T12], C[T22], C[T23] ],
-                    [ C[T13], C[T23], C[T33] ] ])
-
-        L = array([ [ C[L11], C[L12], C[L13] ],
-                    [ C[L12], C[L22], C[L23] ],
-                    [ C[L13], C[L23], C[L33] ] ])
+        self.T = array([ [ C[T11], C[T12], C[T13] ],
+                         [ C[T12], C[T22], C[T23] ],
+                         [ C[T13], C[T23], C[T33] ] ], Float)
         
-        S = array([ [ C[S11], C[S12], C[S13] ],
-                    [ C[S21], C[S22], C[S23] ],
-                    [ C[S31], C[S32], C[S33] ] ])
-
-        return T, L, S
+        self.L = array([ [ C[L11], C[L12], C[L13] ],
+                         [ C[L12], C[L22], C[L23] ],
+                         [ C[L13], C[L23], C[L33] ] ], Float)
+        
+        self.S = array([ [ C[S11], C[S12], C[S13] ],
+                         [ C[S21], C[S22], C[S23] ],
+                         [ C[S31], C[S32], C[S33] ] ], Float)
 
     def calc_Utls(self, T, L, S, vec):
         """Returns the calculated value for the anisotropic U tensor for
@@ -997,7 +989,7 @@ class TLSGroup(AtomList):
         calcs["S^"] = cS
         
         ## ^rho: the origin-shift vector in the coordinate system of L
-        small = 0.001 * deg2rad2
+        small = 0.2 * deg2rad2
 
         cL1122 = cL[1,1] + cL[2,2]
         cL2200 = cL[2,2] + cL[0,0]
@@ -1102,20 +1094,20 @@ class TLSGroup(AtomList):
         if cL[0,0]>=small:
             cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
         else:
-            cL1rho = zeros(3)
+            cL1rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
         if cL[1,1]>=small:
             cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
         else:
-            cL2rho = zeros(3)
+            cL2rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
         if cL[2,2]>=small:
             cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0])
             
         else:
-            cL3rho = zeros(3)
+            cL3rho = zeros(3, Float)
 
         ## libration axes shifts in the origional orthogonal
         ## coordinate system

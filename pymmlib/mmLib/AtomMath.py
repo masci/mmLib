@@ -23,7 +23,7 @@ def cross(u, v):
     """
     return array([ u[1]*v[2] - u[2]*v[1],
                    u[2]*v[0] - u[0]*v[2],
-                   u[0]*v[1] - u[1]*v[0] ])
+                   u[0]*v[1] - u[1]*v[0] ], Float)
 
 def rmatrix(alpha, beta, gamma):
     """Return a rotation matrix based on the Euler angles alpha,
@@ -40,7 +40,7 @@ def rmatrix(alpha, beta, gamma):
     return array(
         [[cosB*cosG, cosG*sinA*sinB-cosA*sinG, cosA*cosG*sinB+sinA*sinG],
          [cosB*sinG, cosA*cosG+sinA*sinB*sinG, cosA*sinB*sinG-cosG*sinA ],
-         [-sinB,     cosB*sinA,                cosA*cosB ]])
+         [-sinB,     cosB*sinA,                cosA*cosB ]], Float)
 
 def rmatrixu(u, theta):
     """Return a rotation matrix caused by a right hand rotation of theta
@@ -49,24 +49,24 @@ def rmatrixu(u, theta):
     u    = normalize(u)
     U    = array([ [   0.0, -u[2],  u[1] ],
                    [  u[2],   0.0, -u[0] ],
-                   [ -u[1],  u[0],   0.0 ] ])
+                   [ -u[1],  u[0],   0.0 ] ], Float)
         
     cosT = math.cos(theta)
     sinT = math.sin(theta)
 
-    return identity(3)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
+    return identity(3, Float)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
 
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
     angles alpha, beta, and gamma.
     """
-    return rmatrix(alpha, beta, gamma) - identity(3)
+    return rmatrix(alpha, beta, gamma) - identity(3, Float)
 
 def dmatrixu(u, theta):
     """Return a displacement matrix caused by a right hand rotation of theta
     radians around vector u.
     """
-    return rmatrixu(u, theta) - identity(3)
+    return rmatrixu(u, theta) - identity(3, Float)
 
 def rmatrixz(u):
     """Return a rotation matrix which transforms the coordinate system
@@ -79,14 +79,14 @@ def rmatrixz(u):
     if d!=0.0:
         Rxz = array([ [  u/d, v/d,  0.0 ],
                       [ -v/d, u/d,  0.0 ],
-                      [  0.0, 0.0,  1.0 ] ])
+                      [  0.0, 0.0,  1.0 ] ], Float)
     else:
-        Rxz = identity(3)
+        Rxz = identity(3, Float)
 
 
     Rxz2z = array([ [   w, 0.0,    -d],
                     [ 0.0, 1.0,   0.0],
-                    [   d, 0.0,     w] ])
+                    [   d, 0.0,     w] ], Float)
 
     return matrixmultiply(Rxz2z, Rxz)
 	 
@@ -156,8 +156,8 @@ def calc_Suij(U, V):
     eqU = trace(U) / 3.0
     eqV = trace(V) / 3.0
 
-    isoU = eqU * identity(3)
-    isoV = eqV * identity(3)
+    isoU = eqU * identity(3, Float)
+    isoV = eqV * identity(3, Float)
 
     return ( calc_CCuij(U, (eqU/eqV)*V) /
              (calc_CCuij(U, isoU) * calc_CCuij(V, isoV)) )

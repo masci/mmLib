@@ -1977,7 +1977,7 @@ class Atom(object):
         """
         if self.temp_factor==None:
             return None
-        return identity(3) * (self.temp_factor / (24.0 * math.pi**2))
+        return identity(3, Float) * (self.temp_factor / (24.0 * math.pi**2))
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns
