@@ -22,6 +22,13 @@ from mmLib.OpenGLDriver   import OpenGLDriver
 from mmLib.Extensions.TLS import *
 
 ##
+## tweakers (tweakable constants)
+##
+BG_COLOR         = "0.3,0.3,0.3"
+GL_DOUBLE_BUFFER = True
+
+
+##
 ## constants
 ##
 WELCOME = """\
@@ -48,9 +55,6 @@ Mouse Navigation:
 ===============================================================================
 
 """
-
-
-GL_DOUBLE_BUFFER = True
 
 CHAR_ASCENT = 119.05
 CHAR_DECENT = 33.3
@@ -311,7 +315,7 @@ class GLUT_Viewer(GLViewer):
         self.term.write(WELCOME)
 
         GLViewer.__init__(self)
-        #self.properties.update(bg_color="White")
+        self.properties.update(bg_color=BG_COLOR)
 
     def command(self, cmd):
         cmd = cmd.strip()
