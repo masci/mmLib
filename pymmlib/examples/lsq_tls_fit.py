@@ -40,7 +40,7 @@ def main(path, opt_dict):
         tls_file = TLSFile()
         tls_file.set_file_format(TLSFileFormatTLSOUT())
         tls_file.load(fil)
-        
+
         for tls_desc in tls_file.tls_desc_list:
             tls = tls_desc.generate_tls_group(struct)
             tls.tls_desc = tls_desc
@@ -49,6 +49,9 @@ def main(path, opt_dict):
     else:
         ## create one TLS group per chain by default
         for chain in struct.iter_chains():
+            if chain.count_amino_acids()<10:
+                continue
+
             try:
                 chain_id1 = chain.chain_id
                 frag_id1  = chain[0].fragment_id
@@ -62,27 +65,46 @@ def main(path, opt_dict):
             tls_group_list.append(tls)
             tls.tls_desc = tls_desc
 
+            print "Creating TLS Group: %s" % (tls.name)
+
+            ##
+            print "Testing TLS/SideChain Model Fit..."
+            tls_group = TLSGroup()
+            rdict = tls_group.calc_segment_TLS_least_squares_fit(chain)
+            print "Residual:       ", rdict["lsq_residual"]
+            print "eigenvalues(T): ", eigenvalues(rdict["T"]) * U2B
+            print "eigenvalues(L): ", eigenvalues(rdict["L"]) * RAD2DEG2
+
 
     ## fit TLS groups and write output
-    print "REFMAC"
+    tls_file = TLSFile()
+    tls_file.set_file_format(TLSFileFormatTLSOUT())
+
     print
 
     for tls in tls_group_list:
 
-        if len(tls)<20:
-            print "NOT ENOUGH ATOMS IN TLSGROUP"
-            continue
+        print "[%s]" % (tls.name)
 
-        tls.origin = tls.calc_centroid()
-        tls.calc_TLS_least_squares_fit()
-        tls.shift_COR()
+        ## if the TLS group is null, then perform a LSQ-TLS fit
+        if tls.is_null():
+            print "Null Group: Running TLS-LSQ"
+            
+            if len(tls)<20:
+                print "ERROR: Not Enough Atoms in TLS Group."
+                continue
+
+            tls.origin = tls.calc_centroid()
+            lsq_residual = tls.calc_TLS_least_squares_fit()
+            print "LSQ-TLS Residual: %f" % (lsq_residual)
+            tls.shift_COR()
 
         tls.tls_desc.set_tls_group(tls)
-
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
         tls_file.tls_desc_list.append(tls.tls_desc)
-        tls_file.save(sys.stdout)
+
+    if opt_dict.has_key("-o"):
+        print "Saving TLSIN: %s" % (opt_dict["-o"])
+        tls_file.save(open(opt_dict["-o"], "w"))
 
 
     ## write out a PDB file with 0.0 tempature factors for all
@@ -90,28 +112,38 @@ def main(path, opt_dict):
     if opt_dict.has_key("-p"):
 
         ## dictionary of all atoms in TLS groups
-        tls_atoms = {}
+        atm_Utls = {}
         for tls in tls_group_list:
-            for atm in tls:
-                tls_atoms[atm] = True
+            for atm, Utls in tls.iter_atm_Utls():
+                atm_Utls[atm] = Utls
 
         ## set the temp_factor of TLS atoms to 0.0
         for atm in struct.iter_all_atoms():
-            if tls_atoms.has_key(atm):
+            if not atm_Utls.has_key(atm):
+                print "No TLS Group for Atom: ",atm
+                continue
+            
+            Utls = atm_Utls[atm]
 
-                for aatm in atm.iter_alt_loc():
+            for aatm in atm.iter_alt_loc():
+                tls_tf = trace(Utls)/3.0
+                ref_tf = trace(aatm.get_U())/3.0
+
+                if ref_tf>tls_tf:
+                    aatm.temp_factor = (ref_tf - tls_tf)*U2B
+                    aatm.U = None
+                else:
                     aatm.temp_factor = 0.0
-
+                    aatm.U = None
 
         ## save the struct
+        print "Saving XYZIN: %s" % (opt_dict["-p"])
         SaveStructure(fil=opt_dict["-p"], struct=struct)
-
-    print
 
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "t:p:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "t:p:o:")
     except getopt.GetoptError:
         usage()
         sys.exit(1)
@@ -121,9 +153,10 @@ if __name__ == "__main__":
         opt_dict[flag] = data
 
     try:
-        path = args[0]
+        pdb_path = args[0]
     except IndexError:
         usage()
         sys.exit(1)
 
-    main(path, opt_dict)
+
+    main(pdb_path, opt_dict)

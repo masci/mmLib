@@ -439,10 +439,10 @@ def cmp_struct(struct1, struct2):
         assert atm1.model_id      == atm2.model_id
         assert atm1.alt_loc       == atm2.alt_loc
 
-        assert atm1.position==atm2.position or \
+        assert (atm1.position==None and atm2.position==None) or \
                allclose(atm1.position, atm2.position)
 
-        assert atm1.sig_position==atm2.sig_position or \
+        assert (atm1.sig_position==None and atm2.sig_position==None) or \
                allclose(atm1.sig_position, atm2.sig_position)
         
         assert atm1.occupancy==atm2.occupancy or \
@@ -462,7 +462,7 @@ def cmp_struct(struct1, struct2):
         
         U1 = atm1.get_U()
         U2 = atm2.get_U()
-        assert U1==U2 or allclose(U1, U2)
+        assert (U1==None and U2==None) or allclose(U1, U2)
 
     for atm1 in struct1.iter_all_atoms():
         model2 = struct2.get_model(atm1.model_id)

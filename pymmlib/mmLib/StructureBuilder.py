@@ -582,16 +582,17 @@ class StructureBuilder(object):
         """The argument site_list is a list of Python dictionaries with
         information to build build Site objects into the Structure.
         """
-        for site in site_list:
+        for site_desc in site_list:
+            
             ## check for required site info
             try:
-                site["site_id"]
-                site["fragment_list"]
+                site_desc["site_id"]
+                site_desc["fragment_list"]
             except KeyError:
                 continue
 
             for model in self.struct.iter_models():
-                site = Site(**site)
+                site = Site(**site_desc)
                 model.add_site(site)
                 site.construct_fragments()
         

@@ -607,7 +607,7 @@ class Structure(object):
             xyzdict = XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
-                if atm.position:
+                if atm.position!=None:
                     xyzdict.add(atm.position, atm)
 
             for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(2.5):
@@ -1341,7 +1341,7 @@ class Segment(object):
         assert atom.chain_id==self.chain_id
 
         ## add new fragment if necessary 
-        if not self.fragment_dict.has_key(atom.fragment_id):
+        if self.fragment_dict.has_key(atom.fragment_id)==False:
             library = self.get_structure().library
             
             if library.is_amino_acid(atom.res_name):
@@ -1353,7 +1353,7 @@ class Segment(object):
 
             elif library.is_nucleic_acid(atom.res_name):
                 fragment = NucleicAcidResidue(
-                  model_id    = atom.model_id,
+                    model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
                     res_name    = atom.res_name)
@@ -1757,7 +1757,7 @@ class Fragment(object):
         alt_loc = atom.alt_loc
 
         if alt_loc=="":
-            if not self.alt_loc_dict.has_key(name):
+            if self.alt_loc_dict.has_key(name)==False:
                 ## CASE:
                 ##     add atom without alt_loc partners to the fragment
                 ## procedure:
@@ -1765,12 +1765,12 @@ class Fragment(object):
                 ##     fragment, and raise a AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
 
-                if not self.atom_dict.has_key(name):
+                if self.atom_dict.has_key(name)==False:
                     self.atom_order_list.append(atom)
                     self.atom_list.append(atom)
                     self.atom_dict[name] = atom
 
-                else:                    
+                else:
                     ## CASE:
                     ##     multiple atoms with the same name, without
                     ##     alt_loc labels, but they are really alt_loc
@@ -2813,7 +2813,7 @@ class Atom(object):
         """
         if self.temp_factor==None:
             return None
-        return identity(3, Float) * (self.temp_factor / (8.0 * math.pi**2))
+        return identity(3, Float) * (self.temp_factor * B2U)
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns

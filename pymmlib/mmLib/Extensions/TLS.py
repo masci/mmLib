@@ -721,7 +721,796 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         for tls_desc in tls_desc_list:
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
+
+
+def calc_s11_s22_s33(s2211, s1133):
+    """Calculates s11, s22, s33 based on s22-s11 and s11-s33 using
+    the constraint s11+s22+s33=0
+    """
+    s22 = 2.0*(s2211)/3.0 + s1133/3.0
+    s11 = s22 - s2211
+    s33 = s11 - s1133
+    return s11, s22, s33
+
+
+def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
+    """Calculate new tensors based on the center for reaction.
+    This method returns a dictionary of the calculations:
+
+    T^: T tensor in the coordinate system of L
+    L^: L tensor in the coordinate system of L
+    S^: S tensor in the coordinate system of L
+
+    COR: Center of Reaction
+
+    T',S',L': T,L,S tensors in origonal coordinate system
+              with the origin shifted to the center of reaction.
+    """
+    ## small_L is the smallest magnitude of L before it is considered 0.0
+    small_L = 1e-7
+
+    tls_info = {}
+
+    ## set the L tensor eigenvalues and eigenvectors
+    (eval_L, evec_L) = eigenvectors(L_orig)
+
+    tls_info["L1_eigen_val"] = eval_L[0]
+    tls_info["L2_eigen_val"] = eval_L[1]
+    tls_info["L3_eigen_val"] = eval_L[2]
+
+    tls_info["L1_eigen_vec"] = evec_L[0]
+    tls_info["L2_eigen_vec"] = evec_L[1]
+    tls_info["L3_eigen_vec"] = evec_L[2]
+
+    ## transpose the original the evec_L so it can be used
+    ## to rotate the other tensors
+    evec_L = transpose(evec_L)
+
+    ## carrot-L tensor (tensor WRT principal axes of L)
+    cL      = zeros([3,3], Float)
+    cL[0,0] = eval_L[0]
+    cL[1,1] = eval_L[1]
+    cL[2,2] = eval_L[2]
+
+    tls_info["L^"] = cL
+
+    ## carrot-T tensor (T tensor WRT principal axes of L)
+    cT = matrixmultiply(
+        matrixmultiply(transpose(evec_L), T_orig), evec_L)
+
+    tls_info["T^"] = cT
+
+    ## carrot-S tensor (S tensor WRT principal axes of L)
+    cS = matrixmultiply(
+        matrixmultiply(transpose(evec_L), S_orig), evec_L)
+
+    ## correct for left-handed libration eigenvectors
+    det = determinant(evec_L)
+    if int(det) != 1:
+        cS = -cS
+
+    tls_info["S^"] = cS
+
+    ## ^rho: the origin-shift vector in the coordinate system of L
+    cL1122 = cL[1,1] + cL[2,2]
+    cL2200 = cL[2,2] + cL[0,0]
+    cL0011 = cL[0,0] + cL[1,1]
+
+    if cL1122>small_L:
+        crho0 = (cS[1,2]-cS[2,1]) / cL1122
+    else:
+        crho0 = 0.0
+
+    if cL2200>small_L:
+        crho1 = (cS[2,0]-cS[0,2]) / cL2200
+    else:
+        crho1 = 0.0
+
+    if cL0011>small_L:
+        crho2 = (cS[0,1]-cS[1,0]) / cL0011
+    else:
+        crho2 = 0.0
+
+    crho = array([crho0, crho1, crho2], Float)
+
+    tls_info["RHO^"] = crho
+
+    ## rho: the origin-shift vector in orthogonal coordinates
+    rho = matrixmultiply(evec_L, crho)
+
+    tls_info["RHO"] = rho
+    tls_info["COR"] = origin + rho.copy()
+
+    ## set up the origin shift matrix PRHO WRT orthogonal axes
+    PRHO = array([ [    0.0,  rho[2], -rho[1]],
+                   [-rho[2],     0.0,  rho[0]],
+                   [ rho[1], -rho[0],     0.0] ], Float)
+
+    ## set up the origin shift matrix cPRHO WRT libration axes
+    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+                    [-crho[2],     0.0,  crho[0]],
+                    [ crho[1], -crho[0],     0.0] ], Float)
+
+    ## calculate tranpose of cPRHO, ans cS
+    cSt = transpose(cS)
+    cPRHOt = transpose(cPRHO)
+
+    ## calculate S'^ = S^ + L^*pRHOt
+    cSp = cS + matrixmultiply(cL, cPRHOt)
+    tls_info["S'^"] = cSp
+
+    ## L'^ = L^ = cL
+    tls_info["L'^"] = cL
+
+    ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
+    cTp = cT + \
+          matrixmultiply(cPRHO, cS) + \
+          matrixmultiply(cSt, cPRHOt) + \
+          matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+    tls_info["T'^"] = cTp
+
+    ## transpose of PRHO and S
+    PRHOt = transpose(PRHO)
+    St = transpose(S_orig)
+
+    ## calculate S' = S + L*PRHOt
+    Sp = S_orig + matrixmultiply(L_orig, PRHOt)
+    tls_info["S'"] = Sp
+
+    ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+    Tp = T_orig + \
+         matrixmultiply(PRHO, S_orig) + \
+         matrixmultiply(St, PRHOt) + \
+         matrixmultiply(matrixmultiply(PRHO, L_orig), PRHOt)
+    tls_info["T'"] = Tp
+
+    ## L' is just L
+    tls_info["L'"] = L_orig.copy()
+
+    ## now calculate the TLS motion description using 3 non
+    ## intersecting screw axes, with one
+
+    ## libration axis 1 shift in the L coordinate system        
+    if cL[0,0]>small_L:
+        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
+    else:
+        cL1rho = zeros(3, Float)
+
+    ## libration axis 2 shift in the L coordinate system
+    if cL[1,1]>small_L:
+        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
+    else:
+        cL2rho = zeros(3, Float)
+
+    ## libration axis 2 shift in the L coordinate system
+    if cL[2,2]>small_L:
+        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
+    else:
+        cL3rho = zeros(3, Float)
+
+    ## libration axes shifts in the origional orthogonal
+    ## coordinate system
+    tls_info["L1_rho"] = matrixmultiply(evec_L, cL1rho)
+    tls_info["L2_rho"] = matrixmultiply(evec_L, cL2rho)
+    tls_info["L3_rho"] = matrixmultiply(evec_L, cL3rho)
+
+    ## calculate screw pitches (A*R / R*R) = (A/R)
+    if cL[0,0]>small_L:
+        tls_info["L1_pitch"] = cS[0,0]/cL[0,0]
+    else:
+        tls_info["L1_pitch"] = 0.0
+
+    if cL[1,1]>small_L:
+        tls_info["L2_pitch"] = cS[1,1]/cL[1,1]
+    else:
+        tls_info["L2_pitch"] = 0.0
+
+    if cL[2,2]>small_L:
+        tls_info["L3_pitch"] = cS[2,2]/cL[2,2]
+    else:
+        tls_info["L3_pitch"] = 0.0
+
+    ## now calculate the reduction in T for the screw rotation axes
+    cTred = cT.copy()
+
+    for i in (0, 1, 2):
+        for k in (0, 1, 2):
+            if i==k:
+                continue
+            if cL[k,k]>small_L:
+                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
+
+    for i in (0, 1, 2):
+        for j in (0, 1, 2):
+            for k in (0, 1, 2):
+                if j==i:
+                    continue
+                if cL[k,k]>small_L:
+                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
+
+    ## rotate the newly calculated reduced-T tensor from the carrot
+    ## coordinate system (coordinate system of L) back to the structure
+    ## coordinate system
+    tls_info["rT'"] = matrixmultiply(
+        transpose(evec_L), matrixmultiply(cTred, evec_L))
+
+    return tls_info
+
+
+def calc_CA_pivot_TLS_least_squares_fit_ols(segment, weight_dict=None):
+    """Perform a LSQ-TLS fit on the given Segment object using
+    the TLS model with amino acid side chains which can pivot
+    about the CA atom.  This model uses 20 TLS parameters and 6
+    libration parameters per side chain.
+    """
+    
+    ## calculate the number of parameters in the model
+    num_atoms = segment.count_atoms()
+    num_frags = segment.count_fragments()
+
+    params = (6 * num_frags) + 20
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+    A = zeros((num_atoms * 6, params), Float)
+    b = zeros(num_atoms * 6,  Float)
+
+    i = -1
+    for atm in segment.iter_atoms():
+        i += 1
+
+        ## set x, y, z as the vector components from the TLS origin
+        x, y, z = atm.position
+
+        ## is this fit weighted?
+        if weight_dict!=None:
+            w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
+
+        ## calculate the A matrix indexes of the side-chain L tensors
+        frag  = atm.get_fragment()
+        atm_CA = frag.get_atom("CA")
+        if atm_CA!=None:
+            Ls_origin = atm_CA.position
+        else:
+            Ls_origin = None
+
+        ifrag = segment.index(frag)        
+        ls11 = 20 + (ifrag * 6)
+        Ls11, Ls22, Ls33, Ls12, Ls13, Ls23 = (
+            ls11, ls11+1, ls11+2, ls11+3, ls11+4, ls11+5)
+
+        ## indecies of the components of U
+        u11 =   i * 6
+        u22 = u11 + 1
+        u33 = u11 + 2
+        u12 = u11 + 3
+        u13 = u11 + 4
+        u23 = u11 + 5
+
+        ## set the B vector
+        Uatm   = atm.get_U()
+        b[u11] = w * Uatm[0,0]
+        b[u22] = w * Uatm[1,1]
+        b[u33] = w * Uatm[2,2]
+        b[u12] = w * Uatm[0,1]
+        b[u13] = w * Uatm[0,2]
+        b[u23] = w * Uatm[1,2]
+
+        ## C Matrix
+        xx = x*x
+        yy = y*y
+        zz = z*z
+
+        xy = x*y
+        xz = x*z
+        yz = y*z
+
+        A[u11, T11] = w * 1.0
+        A[u11, L22] = w * zz
+        A[u11, L33] = w * yy
+        A[u11, L23] = w * -2.0*yz
+        A[u11, S31] = w * -2.0*y
+        A[u11, S21] = w * 2.0*z
+
+        A[u22, T22] = w * 1.0
+        A[u22, L11] = w * zz
+        A[u22, L33] = w * xx
+        A[u22, L13] = w * -2.0*xz
+        A[u22, S12] = w * -2.0*z
+        A[u22, S32] = w * 2.0*x
+
+        A[u33, T33] = w * 1.0
+        A[u33, L11] = w * yy
+        A[u33, L22] = w * xx
+        A[u33, L12] = w * -2.0*xy
+        A[u33, S23] = w * -2.0*x
+        A[u33, S13] = w * 2.0*y
+
+        A[u12, T12] = w * 1.0
+        A[u12, L33] = w * -xy
+        A[u12, L23] = w * xz
+        A[u12, L13] = w * yz
+        A[u12, L12] = w * -zz
+        A[u12, S2211] = w * z
+        A[u12, S31] = w * x
+        A[u12, S32] = w * -y
+
+        A[u13, T13] = w * 1.0
+        A[u13, L22] = w * -xz
+        A[u13, L23] = w * xy
+        A[u13, L13] = w * -yy
+        A[u13, L12] = w * yz
+        A[u13, S1133] = w * y
+        A[u13, S23] = w * z
+        A[u13, S21] = w * -x
+
+        A[u23, T23] = w * 1.0
+        A[u23, L11] = w * -yz
+        A[u23, L23] = w * -xx
+        A[u23, L13] = w * xy
+        A[u23, L12] = w * xz
+        A[u23, S2211] = w * -x
+        A[u23, S1133] = w * -x
+        A[u23, S12] = w * y
+        A[u23, S13] = w * -z
+
+        ## independent side-chain Ls tensor
+        if Ls_origin!=None and atm.name not in ["N", "CA", "C", "O"]:
+            xs, ys, zs = atm.position - Ls_origin
+
+            #print atm, length(atm.position - Ls_origin)
+            #print atm.get_U()
+            #print u11, u22, u33, u12, u13, u23
+            #print Ls11, Ls22, Ls33, Ls12, Ls13, Ls23
+
+            xxs = xs * xs
+            yys = ys * ys
+            zzs = zs * zs
+            xys = xs * ys
+            xzs = xs * zs
+            yzs = ys * zs
+
+            A[u11, Ls22] = w * zzs
+            A[u11, Ls33] = w * yys
+            A[u11, Ls23] = w * -2.0 * yzs
+
+            A[u22, Ls11] = w * zzs
+            A[u22, Ls33] = w * xxs
+            A[u22, Ls13] = w * -2.0 * xzs
+
+            A[u33, Ls11] = w * yys
+            A[u33, Ls22] = w * xxs
+            A[u33, Ls12] = w * -2.0 * xys
+
+            A[u12, Ls33] = w * -xys
+            A[u12, Ls23] = w * xzs
+            A[u12, Ls13] = w * yzs
+            A[u12, Ls12] = w * -zzs
+
+            A[u13, Ls22] = w * -xzs
+            A[u13, Ls23] = w * xys
+            A[u13, Ls13] = w * -yys
+            A[u13, Ls12] = w * yzs
+
+            A[u23, Ls11] = w * -yzs
+            A[u23, Ls23] = w * -xxs
+            A[u23, Ls13] = w * xys
+            A[u23, Ls12] = w * xzs
+
+    ## solve by SVD
+    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
+
+    ## make W
+    dim_W = len(S)
+    W = zeros((dim_W, dim_W), Float)
+
+    for i in range(dim_W):
+        if S[i]>1e-5:
+            W[i,i] = 1.0 / S[i]
+        else:
+            W[i,i] = 0.0
+
+    M1 = matrixmultiply(transpose(Vt), W)
+    M2 = matrixmultiply(M1, transpose(U))
+    C  = matrixmultiply(M2, b)
+
+    T = array([ [ C[T11], C[T12], C[T13] ],
+                [ C[T12], C[T22], C[T23] ],
+                [ C[T13], C[T23], C[T33] ] ], Float)
+
+    L = array([ [ C[L11], C[L12], C[L13] ],
+                [ C[L12], C[L22], C[L23] ],
+                [ C[L13], C[L23], C[L33] ] ], Float)
+
+    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
+
+    S = array([ [    s11, C[S12], C[S13] ],
+                [ C[S21],    s22, C[S23] ],
+                [ C[S31], C[S32],    s33 ] ], Float)
+
+
+    ## calculate the lsq residual since silly Numeric Python won't
+    ## do it for us
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
+
+    ## caclculate the center of reaction for the group and
+    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
+
+    ret_dict = {}
+
+    ret_dict["T"] = cor_info["T'"]
+    ret_dict["L"] = cor_info["L'"]
+    ret_dict["S"] = cor_info["S'"]
+
+    ret_dict["lsq_residual"] = lsq_residual
+
+    ret_dict["num_atoms"] = num_atoms
+
+    return ret_dict
+
+
+def set_TLS_b(b, i, U, w):
+    b[i]   = w * U[0,0]
+    b[i+1] = w * U[1,1]
+    b[i+2] = w * U[2,2]
+    b[i+3] = w * U[0,1]
+    b[i+4] = w * U[0,2]
+    b[i+5] = w * U[1,2]
+
+
+def set_TLS_A(A, i, j, x, y, z, w):
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0+j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,
+        12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
+
+    ## indecies of the components of U
+    u11 =       i
+    u22 = u11 + 1
+    u33 = u11 + 2
+    u12 = u11 + 3
+    u13 = u11 + 4
+    u23 = u11 + 5
+
+    ## C Matrix
+    xx = x*x
+    yy = y*y
+    zz = z*z
+
+    xy = x*y
+    xz = x*z
+    yz = y*z
+
+    A[u11, T11] = w * 1.0
+    A[u11, L22] = w * zz
+    A[u11, L33] = w * yy
+    A[u11, L23] = w * -2.0*yz
+    A[u11, S31] = w * -2.0*y
+    A[u11, S21] = w * 2.0*z
+
+    A[u22, T22] = w * 1.0
+    A[u22, L11] = w * zz
+    A[u22, L33] = w * xx
+    A[u22, L13] = w * -2.0*xz
+    A[u22, S12] = w * -2.0*z
+    A[u22, S32] = w * 2.0*x
+
+    A[u33, T33] = w * 1.0
+    A[u33, L11] = w * yy
+    A[u33, L22] = w * xx
+    A[u33, L12] = w * -2.0*xy
+    A[u33, S23] = w * -2.0*x
+    A[u33, S13] = w * 2.0*y
+
+    A[u12, T12] = w * 1.0
+    A[u12, L33] = w * -xy
+    A[u12, L23] = w * xz
+    A[u12, L13] = w * yz
+    A[u12, L12] = w * -zz
+    A[u12, S2211] = w * z
+    A[u12, S31] = w * x
+    A[u12, S32] = w * -y
+
+    A[u13, T13] = w * 1.0
+    A[u13, L22] = w * -xz
+    A[u13, L23] = w * xy
+    A[u13, L13] = w * -yy
+    A[u13, L12] = w * yz
+    A[u13, S1133] = w * y
+    A[u13, S23] = w * z
+    A[u13, S21] = w * -x
+
+    A[u23, T23] = w * 1.0
+    A[u23, L11] = w * -yz
+    A[u23, L23] = w * -xx
+    A[u23, L13] = w * xy
+    A[u23, L12] = w * xz
+    A[u23, S2211] = w * -x
+    A[u23, S1133] = w * -x
+    A[u23, S12] = w * y
+    A[u23, S13] = w * -z
+
+
+def set_L_A(A, i, j, x, y, z, w):
+    L11, L22, L33, L12, L13, L23 = (
+        j, j+1, j+2, j+3, j+4, j+5)
+
+    ## indecies of the components of U
+    u11 =       i
+    u22 = u11 + 1
+    u33 = u11 + 2
+    u12 = u11 + 3
+    u13 = u11 + 4
+    u23 = u11 + 5
+
+    ##
+    xx = x * x
+    yy = y * y
+    zz = z * z
+    xy = x * y
+    xz = x * z
+    yz = y * z
+
+    A[u11, L22] = w * zz
+    A[u11, L33] = w * yy
+    A[u11, L23] = w * -2.0 * yz
+
+    A[u22, L11] = w * zz
+    A[u22, L33] = w * xx
+    A[u22, L13] = w * -2.0 * xz
+
+    A[u33, L11] = w * yy
+    A[u33, L22] = w * xx
+    A[u33, L12] = w * -2.0 * xy
+
+    A[u12, L33] = w * -xy
+    A[u12, L23] = w * xz
+    A[u12, L13] = w * yz
+    A[u12, L12] = w * -zz
+
+    A[u13, L22] = w * -xz
+    A[u13, L23] = w * xy
+    A[u13, L13] = w * -yy
+    A[u13, L12] = w * yz
+
+    A[u23, L11] = w * -yz
+    A[u23, L23] = w * -xx
+    A[u23, L13] = w * xy
+    A[u23, L12] = w * xz
+
+    
+def calc_CA_pivot_TLS_least_squares_fit_real(segment, weight_dict=None):
+    """Perform a LSQ-TLS fit on the given Segment object using
+    the TLS model with amino acid side chains which can pivot
+    about the CA atom.  This model uses 20 TLS parameters and 6
+    libration parameters per side chain.
+    """
+    
+    ## calculate the number of parameters in the model
+    num_atoms = segment.count_atoms()
+    num_frags = segment.count_fragments()
+
+    params = (6 * num_frags) + 20
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+    A = zeros((num_atoms * 6, params), Float)
+    b = zeros(num_atoms * 6,  Float)
+
+    i = -1
+    for atm in segment.iter_atoms():
+        i += 1
+
+        ## set x, y, z as the vector components from the TLS origin
+        x, y, z = atm.position
+
+        ## is this fit weighted?
+        if weight_dict!=None:
+            w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
+
+        ## indecies of the components of U
+        u11 = i * 6
+
+        ## set the b vector
+        set_TLS_b(b, u11, atm.get_U(), w)
+
+        ## set the A matrix
+        set_TLS_A(A, u11, 0, x, y, z, w)
+
+        ## independent side-chain Ls tensor
+        frag = atm.get_fragment()
+        if frag.is_amino_acid():
+            if atm.name not in ["N", "CA", "C", "O"]:
+                atm_CA = frag.get_atom("CA")                
+                if atm_CA!=None:
+                    l11 = 20 + (segment.index(frag) * 6)
+                    xs, ys, zs = atm.position - atm_CA.position
+                    set_L_A(A, u11, l11, xs, ys, zs, w)
+
+    ## solve by SVD
+    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
+
+    ## make W
+    dim_W = len(S)
+    W = zeros((dim_W, dim_W), Float)
+
+    for i in range(dim_W):
+        if S[i]>1e-5:
+            W[i,i] = 1.0 / S[i]
+        else:
+            W[i,i] = 0.0
+
+    M1 = matrixmultiply(transpose(Vt), W)
+    M2 = matrixmultiply(M1, transpose(U))
+    C  = matrixmultiply(M2, b)
+
+    T = array([ [ C[T11], C[T12], C[T13] ],
+                [ C[T12], C[T22], C[T23] ],
+                [ C[T13], C[T23], C[T33] ] ], Float)
+
+    L = array([ [ C[L11], C[L12], C[L13] ],
+                [ C[L12], C[L22], C[L23] ],
+                [ C[L13], C[L23], C[L33] ] ], Float)
+
+    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
+
+    S = array([ [    s11, C[S12], C[S13] ],
+                [ C[S21],    s22, C[S23] ],
+                [ C[S31], C[S32],    s33 ] ], Float)
+
+
+    ## calculate the lsq residual since silly Numeric Python won't
+    ## do it for us
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
+
+    ## caclculate the center of reaction for the group and
+    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
+
+    ret_dict = {}
+
+    ret_dict["T"] = cor_info["T'"]
+    ret_dict["L"] = cor_info["L'"]
+    ret_dict["S"] = cor_info["S'"]
+
+    ret_dict["lsq_residual"] = lsq_residual
+
+    ret_dict["num_atoms"] = num_atoms
+
+    return ret_dict
+
+    
+def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
+    """Perform a LSQ-TLS fit on the given Segment object using
+    the TLS model with amino acid side chains which can pivot
+    about the CA atom.  This model uses 20 TLS parameters and 6
+    libration parameters per side chain.
+    """
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+
+    
+    ## calculate the number of parameters in the model
+    num_atoms = segment.count_atoms()
+    num_frags = segment.count_fragments()
+    mid_ifrag  = num_frags / 2
+
+    params = (6 * num_frags) + 60
+
+    A = zeros((num_atoms*6, params), Float)
+    b = zeros(num_atoms*6,  Float)
+
+    i = -1
+    for atm in segment.iter_atoms():
+        i += 1
+
+        ## fragment index the atom is in
+        frag  = atm.get_fragment()
+        ifrag = segment.index(frag)
         
+        ## set x, y, z as the vector components from the TLS origin
+        x, y, z = atm.position
+
+        ## is this fit weighted?
+        if weight_dict!=None:
+            w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
+
+        ## indecies of the components of U
+        u11 = i * 6
+
+        ## set the b vector
+        set_TLS_b(b, u11, atm.get_U(), w)
+
+        ## set the A matrix
+        set_TLS_A(A, u11, 0, x, y, z, w)
+        if ifrag<mid_ifrag:
+            set_TLS_A(A, u11, 20, x, y, z, w)
+        else:
+            set_TLS_A(A, u11, 40, x, y, z, w)
+
+        ## independent side-chain Ls tensor
+        frag = atm.get_fragment()
+        if frag.is_amino_acid():
+            if atm.name not in ["N", "CA", "C", "O"]:
+                atm_CA = frag.get_atom("CA")                
+                if atm_CA!=None:
+                    l11 = 60 + (ifrag * 6)
+                    xs, ys, zs = atm.position - atm_CA.position
+                    set_L_A(A, u11, l11, xs, ys, zs, w)
+
+    ## solve by SVD
+    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
+
+    ## make W
+    dim_W = len(S)
+    W = zeros((dim_W, dim_W), Float)
+
+    for i in range(dim_W):
+        if S[i]>1e-5:
+            W[i,i] = 1.0 / S[i]
+        else:
+            W[i,i] = 0.0
+
+    M1 = matrixmultiply(transpose(Vt), W)
+    M2 = matrixmultiply(M1, transpose(U))
+    C  = matrixmultiply(M2, b)
+
+    T = array([ [ C[T11], C[T12], C[T13] ],
+                [ C[T12], C[T22], C[T23] ],
+                [ C[T13], C[T23], C[T33] ] ], Float)
+
+    L = array([ [ C[L11], C[L12], C[L13] ],
+                [ C[L12], C[L22], C[L23] ],
+                [ C[L13], C[L23], C[L33] ] ], Float)
+
+    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
+
+    S = array([ [    s11, C[S12], C[S13] ],
+                [ C[S21],    s22, C[S23] ],
+                [ C[S31], C[S32],    s33 ] ], Float)
+
+
+    ## calculate the lsq residual since silly Numeric Python won't
+    ## do it for us
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
+
+    ## caclculate the center of reaction for the group and
+    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
+
+    ret_dict = {}
+
+    ret_dict["T"] = cor_info["T'"]
+    ret_dict["L"] = cor_info["L'"]
+    ret_dict["S"] = cor_info["S'"]
+
+    ret_dict["lsq_residual"] = lsq_residual
+
+    ret_dict["num_atoms"] = num_atoms
+
+    return ret_dict
+
 
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
@@ -788,13 +1577,19 @@ class TLSGroup(AtomList):
         of the S tensor is set with the standard convention of
         the Trace(S) = 0.  Units in Radians*Angstroms.
         """
-        s22 = 2.0*(s2211)/3.0 + s1133/3.0
-        s11 = s22 - s2211
-        s33 = s11 - s1133
-
+        s11, s22, s33 = self.calc_s11_s22_s33(s2211, s1133)
         self.S = array([[s11, s12, s13],
                         [s21, s22, s23],
                         [s31, s32, s33]])
+
+    def calc_s11_s22_s33(self, s2211, s1133):
+        """Calculates s11, s22, s33 based on s22-s11 and s11-s33 using
+        the constraint s11+s22+s33=0
+        """
+        s22 = 2.0*(s2211)/3.0 + s1133/3.0
+        s11 = s22 - s2211
+        s33 = s11 - s1133
+        return s11, s22, s33
 
     def is_null(self):
         """Returns True if the T,L,S tensors are not set, or are set
@@ -824,7 +1619,6 @@ class TLSGroup(AtomList):
 
         for atm, Utls in self.iter_atm_Utls():
             if min(eigenvalues(Utls))<=small:
-                print "Utls EEK"
                 return False
 
         return True
@@ -837,10 +1631,10 @@ class TLSGroup(AtomList):
 
         ## use label indexing to avoid confusion!
         T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-        S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+        S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-        A = zeros((len(self)*6, 21), Float)
+        A = zeros((len(self)*6, 20), Float)
         b = zeros(len(self) * 6,  Float)
 
         i = -1
@@ -851,7 +1645,7 @@ class TLSGroup(AtomList):
             x, y, z = atm.position - self.origin
 
             ## is this fit weighted?
-            if weight_dict!=None and weight_dict.has_key(atm):
+            if weight_dict!=None:
                 w = math.sqrt(weight_dict[atm])
             else:
                 w = 1.0
@@ -908,8 +1702,7 @@ class TLSGroup(AtomList):
             A[u12, L23] = w * xz
             A[u12, L13] = w * yz
             A[u12, L12] = w * -zz
-            A[u12, S11] = w * -z
-            A[u12, S22] = w * z
+            A[u12, S2211] = w * z
             A[u12, S31] = w * x
             A[u12, S32] = w * -y
 
@@ -918,8 +1711,7 @@ class TLSGroup(AtomList):
             A[u13, L23] = w * xy
             A[u13, L13] = w * -yy
             A[u13, L12] = w * yz
-            A[u13, S11] = w * y
-            A[u13, S33] = w * -y
+            A[u13, S1133] = w * y
             A[u13, S23] = w * z
             A[u13, S21] = w * -x
 
@@ -928,15 +1720,12 @@ class TLSGroup(AtomList):
             A[u23, L23] = w * -xx
             A[u23, L13] = w * xy
             A[u23, L12] = w * xz
-            A[u23, S22] = w * -x
-            A[u23, S33] = w * x
+            A[u23, S2211] = w * -x
+            A[u23, S1133] = w * -x
             A[u23, S12] = w * y
             A[u23, S13] = w * -z
 
         (C, resid, rank, s) = linear_least_squares(A, b)
-
-        ## verify the trase of S is zero
-        assert allclose(C[S11]+C[S22]+C[S33], 0.0)
 
         self.T = array([ [ C[T11], C[T12], C[T13] ],
                          [ C[T12], C[T22], C[T23] ],
@@ -946,10 +1735,11 @@ class TLSGroup(AtomList):
                          [ C[L12], C[L22], C[L23] ],
                          [ C[L13], C[L23], C[L33] ] ], Float)
 
-        self.S = array([ [ C[S11], C[S12], C[S13] ],
-                         [ C[S21], C[S22], C[S23] ],
-                         [ C[S31], C[S32], C[S33] ] ], Float)
-
+        s11, s22, s33 = self.calc_s11_s22_s33(C[S2211], C[S1133])
+        
+        self.S = array([ [    s11, C[S12], C[S13] ],
+                         [ C[S21],    s22, C[S23] ],
+                         [ C[S31], C[S32],    s33 ] ], Float)
 
         ## calculate the lsq residual since silly Numeric Python won't
         ## do it for us
@@ -1041,7 +1831,7 @@ class TLSGroup(AtomList):
                   with the origin shifted to the center of reaction.
         """
         ## small_L is the smallest magnitude of L before it is considered 0.0
-        small_L = 0.002 * DEG2RAD2
+        small_L = 1e-7
 
         tls_info = {}
 
@@ -1266,16 +2056,7 @@ class TLSGroup(AtomList):
         tls_info["exp_mean_temp_factor"] = self.calc_adv_temp_factor()
         tls_info["exp_mean_anisotropy"]  = self.calc_adv_anisotropy()
 
-        ## TLS FIT
-        tls_info["valid_model"] = self.check_valid_model()
-        if not tls_info["valid_model"]:
-            return tls_info
-
-        ## goodness of fit 
         tls_info["R"] = self.calc_R()
-        tls_info["mean_S"], tls_info["mean_S_sigma"] = self.calc_mean_S()
-        tls_info["mean_dp2"], tls_info["mean_dp2_sigma"] = self.calc_mean_DP2()
-        tls_info["sum_dp2"] = self.calc_sum_DP2()
         
         ## model temp factors
         n = 0
@@ -1290,13 +2071,23 @@ class TLSGroup(AtomList):
             max_ev = max(evals)
             min_ev = min(evals)
 
-            mean_max_tf += u2b * max_ev
-            mean_tf     += u2b * trace(Utls) / 3.0
+            mean_max_tf += U2B * max_ev
+            mean_tf     += U2B * trace(Utls) / 3.0
             mean_aniso  += calc_anisotropy(Utls)
 
         tls_info["tls_mean_max_tf"] = mean_max_tf / float(n)
         tls_info["tls_mean_tf"]     = mean_tf     / float(n)
         tls_info["tls_mean_aniso"]  = mean_aniso  / float(n)        
+
+        ## TLS FIT
+        tls_info["valid_model"] = self.check_valid_model()
+        if not tls_info["valid_model"]:
+            return tls_info
+
+        ## goodness of fit 
+        tls_info["mean_S"], tls_info["mean_S_sigma"] = self.calc_mean_S()
+        tls_info["mean_dp2"], tls_info["mean_dp2_sigma"] = self.calc_mean_DP2()
+        tls_info["sum_dp2"] = self.calc_sum_DP2()
 
         return tls_info
 
@@ -1443,6 +2234,7 @@ class TLSStructureAnalysis(object):
         containing statistics on each of the fit TLS groups, the residues
         involved, and the TLS object itself.
         """
+        import copy
         
         ## arguments
         chain_ids               = args.get("chain_ids", None)
@@ -1469,6 +2261,10 @@ class TLSStructureAnalysis(object):
                 name     = "%s-%s" % (frag_id1, frag_id2)
 
                 ## create the TLSGroup
+                pv_struct = Structure()
+                pv_seg    = Chain(chain_id=segment.chain_id, model_id=segment.model_id)
+                pv_struct.add_chain(pv_seg)
+                
                 tls_group = TLSGroup()
 
                 ## add atoms into the TLSGroup
@@ -1477,18 +2273,26 @@ class TLSStructureAnalysis(object):
                     if self.atom_filter(atm, **args):
                         tls_group.append(atm)
 
+                        atm_cp = copy.deepcopy(atm)
+                        pv_seg.add_atom(atm_cp)
+
                 ## check for enough atoms(parameters) after atom filtering
                 if len(tls_group)<20:
                     continue
                 
                 ## calculate tensors and print
-                tls_group.calc_TLS_least_squares_fit()
+                lsq_residual = tls_group.calc_TLS_least_squares_fit()
                 tls_group.shift_COR()
                 tls_info = tls_group.calc_tls_info()
+                tls_info["lsq_residual"] = lsq_residual
+
+                ## calculate using CA-pivot TLS model for side chains
+                rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
+                tls_info["ca_pivot"] = rdict
 
                 ## check if the TLS model is valid
-                if not tls_info["valid_model"]:
-                    continue
+              #  if not tls_info["valid_model"]:
+              #      continue
 
                 ## add additional information
                 tls_info["name"]      = name
@@ -2595,7 +3399,8 @@ class GLTLSGroup(GLDrawList):
             Utls = self.tls_group.calc_Utls(T, L, S, atm.position - o)
 
             if self.properties["add_biso"]==True:
-                Utls = Utls + (B2U * atm.temp_factor * identity(3, Float))
+                if atm.temp_factor!=None:
+                    Utls = Utls + (B2U * atm.temp_factor * identity(3, Float))
             
             yield atm, Utls
     

@@ -329,13 +329,13 @@ class GLObject(object):
             name = prop_desc["name"]
 
             ## set the property value
-            try:
-                self.properties[name] = args[name]
-            except KeyError:
-                self.properties[name] = prop_desc["default"]
-            else:
-                if self.properties[name]==self.PropertyDefault:
+            if args.has_key(name):
+                if type(args[name])==type(self.PropertyDefault):
                     self.properties[name] = prop_desc["default"]
+                else:
+                    self.properties[name] = args[name]
+            else:
+                self.properties[name] = prop_desc["default"]
 
             ## if the update callbacks are to be triggered on initialization
             if prop_desc["update_on_init"]==True:
@@ -388,13 +388,27 @@ class GLObject(object):
             ## update_on_changed:
             ##     If true, trigger update callbacks when a value
             ##     is changed.
-            if ( (prop_desc["update_on_set"]==True) or
-                 (prop_desc["update_on_changed"]==True and
-                  self.properties[name]!=args[name]) ):
+            do_update = False
 
-                self.properties[name] = args[name]
-                if self.properties[name]==self.PropertyDefault:
+            if prop_desc["update_on_set"]==True:
+                do_update = True
+
+            elif prop_desc["update_on_changed"]==True:
+
+                ## special handling for Numeric/Numarray types
+                if isinstance(self.properties[name], ArrayType):
+                    if allclose(self.properties[name], args[name])==False:
+                        do_update = True
+
+                elif self.properties[name]!=args[name]:
+                    do_update = True
+            
+            if do_update==True:
+                
+                if type(args[name])==type(self.PropertyDefault):
                     self.properties[name] = prop_desc["default"]
+                else:
+                    self.properties[name] = args[name]
                     
                 updates[name] = self.properties[name]
 
@@ -2160,14 +2174,14 @@ class GLStructure(GLDrawList):
               "desc":     "Show Cartesian Axes",
               "catagory": "Show/Hide",
               "type":     "boolean",
-              "default":  True,
+              "default":  False,
               "action":  "redraw" })
         self.glo_add_property(
             { "name":     "unit_cell_visible",
               "desc":     "Show Unit Cell",
               "catagory": "Show/Hide",
               "type":     "boolean",
-              "default":  True,
+              "default":  False,
               "action":   "redraw" })        
         self.glo_add_property(
             { "name":        "symmetry",
@@ -2278,17 +2292,12 @@ class GLViewer(GLObject):
     rigid body.
     """
     def __init__(self):
-        self.quat = array((0.0, 0.0, 0.0, 1.0), Float)
-
         GLObject.__init__(self)
         self.glo_set_name("GLViewer")
         self.glo_add_update_callback(self.glv_update_cb)
         self.glo_init_properties()
 
         self.glv_driver_list = []
-
-        #self.glv_driver_list = [OpenGLDriver()]
-        #self.glv_driver_list = [OpenGLDriver(), Raster3DDriver()]
 
     def glo_install_properties(self):
         GLObject.glo_install_properties(self)
@@ -2455,6 +2464,108 @@ class GLViewer(GLObject):
         draw_list.glo_remove()
         self.glv_redraw()
 
+    def calc_inertia_tensor(self, atom_iter, origin):
+        """Calculate a moment-of-intertia like tensor.
+        """
+        I = zeros((3,3), Float)
+        for atm in atom_iter:
+            x = atm.position - origin
+
+            I[0,0] += x[1]**2 + x[2]**2
+            I[1,1] += x[0]**2 + x[2]**2
+            I[2,2] += x[0]**2 + x[1]**2
+
+            I[0,1] += - x[0]*x[1]
+            I[1,0] += - x[0]*x[1]
+
+            I[0,2] += - x[0]*x[2]
+            I[2,0] += - x[0]*x[2]
+
+            I[1,2] += - x[1]*x[2]
+            I[2,1] += - x[1]*x[2]
+
+        evals, evecs = eigenvectors(I)
+
+        elist = [(evals[0], evecs[0]),
+                 (evals[1], evecs[1]),
+                 (evals[2], evecs[2])]
+
+        elist.sort()
+        R = array((elist[0][1], elist[1][1], elist[2][1]), Float)
+
+        return R
+
+    def calc_orientation(self, struct):
+        """Orient the structure based on a moment-of-intertia like tensor
+        centered at the centroid of the structure.
+        """
+        slop = 2.0
+
+        def aa_atom_iter(struct):
+            for frag in struct.iter_amino_acids():
+                for atm in frag.iter_atoms():
+                    yield atm
+
+        centroid = calc_atom_centroid(aa_atom_iter(struct))
+        R = self.calc_inertia_tensor(aa_atom_iter(struct), centroid)
+
+        ori = {}
+
+        ## now calculate a rectangular box
+        first_atm = True
+
+        min_x = 0.0
+        max_x = 0.0
+        min_y = 0.0
+        max_y = 0.0
+        min_z = 0.0
+        max_z = 0.0
+
+        for atm in aa_atom_iter(struct):
+            x  = matrixmultiply(R, atm.position - centroid)
+
+            if first_atm==True:
+                first_atm = False
+
+                min_x = max_x = x[0]
+                min_y = max_y = x[1]
+                min_z = max_z = x[2]
+            else:
+                min_x = min(min_x, x[0])
+                max_x = max(max_x, x[0])
+                min_y = min(min_y, x[1])
+                max_y = max(max_y, x[1])
+                min_z = min(min_z, x[2])
+                max_z = max(max_z, x[2])
+
+        ## add slop
+        min_x -= slop
+        max_x += slop
+        min_y -= slop
+        max_y += slop
+        min_z -= slop
+        max_z += slop
+
+        ## calculate the zoom based on a target width
+        target_pwidth = 640
+
+        hwidth  = max(abs(min_x),abs(max_x))
+        hheight = max(abs(min_y),abs(max_y))
+        pheight = target_pwidth * (hheight / hwidth)
+        hzoom   = 2.0 * hwidth
+
+        ori["R"]        = R
+        ori["centroid"] = centroid
+        ori["pwidth"]   = target_pwidth
+        ori["pheight"]  = pheight 
+        ori["hzoom"]    = hzoom
+
+        ## calculate near, far clipping blane
+        ori["near"] = max_z
+        ori["far"]  = min_z
+
+        return ori
+
     def glv_add_struct(self, struct):
         """Adds the visualization for a mmLib.Structure.Structure object
         to the GLViewer.  It returns the GLStructure object created to
@@ -2465,47 +2576,17 @@ class GLViewer(GLObject):
         ## add the structure
         gl_struct = GLStructure(struct=struct)
         self.glv_add_draw_list(gl_struct)
+
+        ori = self.calc_orientation(struct)
         
-        ## select the center of the new structure as the rotation center
-        n        = 0
-        centroid = zeros(3, Float)
+        self.properties.update(
+            R         = ori["R"],
+            cor       = ori["centroid"],
+            zoom      = ori["hzoom"],
+            near      = ori["near"],
+            far       = ori["far"])
 
-        max_x = 0.0
-        max_y = 0.0
-        max_z = 0.0
-
-        min_x = 0.0
-        min_y = 0.0
-        min_z = 0.0
-
-        for atm in struct.iter_atoms():
-            n        += 1
-            centroid += atm.position
-            
-            max_x = max(max_x, atm.position[0])
-            max_y = max(max_y, atm.position[1])
-            max_z = max(max_z, atm.position[2])
-
-            min_x = min(min_x, atm.position[0])
-            min_y = min(min_y, atm.position[1])
-            min_z = min(min_z, atm.position[2])
-
-        if n>0:
-            centroid = centroid / float(n)
-
-            m1   = max(max_x, max(max_y, max_z))
-            m2   = min(min_x, min(min_y, min_z))
-            zoom = m1 - m2
-
-            near = max_z
-            far  = min_z
-
-            self.properties.update(
-                cor  = centroid,
-                zoom = zoom,
-                near = near,
-                far  = far)
-        
+        self.glv_redraw()
         return gl_struct
 
     def glv_redraw(self):
@@ -2587,6 +2668,7 @@ class GLViewer(GLObject):
     def glv_trackball(self, x1, y1, x2, y2):
         """Implements a virtual trackball.
         """
+        
         def project_to_sphere(r, x, y):
             d = math.sqrt(x*x + y*y)
             if d<(r*0.707):
@@ -2656,9 +2738,12 @@ class GLViewer(GLObject):
         a = matrixmultiply(transpose(R), a)
         q = rquaternionu(a, theta)
 
-        self.quat = addquaternion(q, self.quat)
-        R         = rmatrixquaternion(self.quat)
-        
+        ## convert the current rotation matrix to a quaternion so the
+        ## new rotation quaternion can be added to it
+        rq = quaternionrmatrix(R)
+        rq = addquaternion(q, rq)
+        R  = rmatrixquaternion(rq)
+
         self.properties.update(R=R)
 
     def glv_render(self):

@@ -14,8 +14,16 @@ import string
 import gzip
 
 from types         import *
-from Numeric       import *
-from LinearAlgebra import *
+
+## use old Numeric libraries, or the new Numarray
+use_numarray = True
+
+if use_numarray:
+    from numarray import *
+    from numarray.linear_algebra import *
+else:
+    from Numeric import *
+    from LinearAlgebra import *
 
 ## useful constents
 rad2deg  = 180.0 / math.pi
@@ -30,11 +38,8 @@ DEG2RAD2 = DEG2RAD * DEG2RAD
 
 ## converting between U (angstrom^2) temp factor
 ## values and B temp factor values
-b2u = 8.0 * math.pi * math.pi
-u2b = 1.0 / b2u
-
-B2U = 8.0 * math.pi * math.pi
-U2B = 1.0 / B2U
+U2B = 8.0 * math.pi**2
+B2U = 1.0 / U2B
 
 
 ## types, functions, things which are useful and difficult to

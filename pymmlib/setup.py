@@ -161,9 +161,9 @@ def glaccel_extension():
          "header":     "X11/extensions/Xext.h",
          "desc":       "X11 Extensions Library"},
 
-        {"library":    "Xi",
-         "header":     "X11/extensions/XIE.h",
-         "desc":       "X11 Extended Input Library"},
+    #    {"library":    "Xi",
+    #     "header":     "X11/extensions/XIE.h",
+    #     "desc":       "X11 Extended Input Library"},
 
         {"library":    "Xmu",
          "header":     "X11/Xmu/Xmu.h",

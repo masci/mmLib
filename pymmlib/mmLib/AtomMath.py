@@ -58,8 +58,8 @@ def rmatrixu(u, theta):
 
 def rquaternionu(u, theta):
     """Returns a quaternion representing the right handed rotation of theta
-    radians about vector u.
-    Quaternions are typed as Numeric Python arrays of length 4.
+    radians about vector u.Quaternions are typed as Numeric Python arrays of
+    length 4.
     """
     u    = normalize(u)
     q    = array((u[0], u[1], u[2], 0.0), Float) * math.sin(theta/2.0)
@@ -67,8 +67,8 @@ def rquaternionu(u, theta):
     return q
 
 def addquaternion(q1, q2):
-    """Adds quaterions q1 and q2.
-    Quaternions are typed as Numeric Python arrays of length 4.
+    """Adds quaterions q1 and q2. Quaternions are typed as Numeric
+    Python arrays of length 4.
     """
     q13 = q1[:3]
     q23 = q2[:3]
@@ -108,6 +108,42 @@ def rmatrixquaternion(q):
     r[2,2] = 1.0 - (2.0 * (q1*q1 + q0*q0))
 
     return r
+
+def quaternionrmatrix(r):
+    """Return a quaternion calculated from the argument rotation matrix R.
+    """
+    t = trace(r) + 1.0
+    
+    if t>1e-7:
+        s  = 0.5 / math.sqrt(t)
+        q0 = (r[2,1] - r[1,2]) * s
+        q1 = (r[0,2] - r[2,0]) * s
+        q2 = (r[1,0] - r[0,1]) * s
+        q3 = 0.25 / s;
+
+    else:
+        if r[0,0]>r[1,1] and r[0,0]>r[2,2]:
+            s  = math.sqrt(1.0 + r[0,0] - r[1,1] - r[2,2]) * 2.0
+            q0 = 0.25 * s
+            q1 = (r[0,1] + r[1,0]) / s
+            q2 = (r[2,0] + r[0,2]) / s
+            q3 = (r[1,2] - r[2,1]) / s
+
+        elif r[1,1]>r[2,2]:
+            s  = math.sqrt(1.0 + r[1,1] - r[0,0] - r[2,2]) * 2.0
+            q0 = (r[0,1] + r[1,0]) / s
+            q1 = 0.25 * s
+            q2 = (r[1,2] + r[2,1]) / s
+            q3 = (r[0,2] - r[2,0]) / s
+
+        else:
+            s  = math.sqrt(1.0 + r[2,2] - r[0,0] - r[1,1]) * 2.0
+            q0 = (r[0,2] + r[2,0]) / s
+            q1 = (r[1,2] + r[2,1]) / s
+            q2 = 0.25 * s
+            q3 = (r[0,1] - r[1,0]) / s
+
+    return array((q0, q1, q2, q3), Float)
 
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
@@ -190,8 +226,8 @@ def calc_torsion_angle(a1, a2, a3, a4):
 
     angle = arccos(scalar_product)
 
-    if direction < 0.0:
-        angle = -angle
+#    if direction < 0.0:
+#        angle = -angle
 
     return angle
 
@@ -239,7 +275,31 @@ def calc_anisotropy(U):
     evals = eigenvalues(U)
     return min(evals) / max(evals)
 
+def calc_atom_centroid(atom_iter):
+    """Calculates the centroid of all contained Atom instances and
+    returns a Vector to the centroid.
+    """
+    num      = 0
+    centroid = zeros(3, Float)
+    for atm in atom_iter:
+        if atm.position!=None:
+            centroid += atm.position
+            num += 1
+    return centroid / num
 
+def calc_atom_mean_temp_factor(atom_iter):
+    """Calculates the adverage temperature factor of all contained
+    Atom instances and returns the adverage temperature factor.
+    """
+    num_tf = 0
+    adv_tf = 0.0
+
+    for atm in atom_iter:
+        if atm.temp_factor!=None:
+            adv_tf += atm.temp_factor
+            num_tf += 1
+
+    return adv_tf / num_tf
 
 
 ### <TESTING>
