@@ -8,6 +8,9 @@
 import math
 from   mmTypes import *
 
+def convertAngle(angle):
+    return (angle * 180.0) / math.pi
+
 def calculateDistance(a1, a2):
     """Returns the distance between two argument atoms."""
     if not (a1 and a2): return None
@@ -23,7 +26,7 @@ def calculateAngle(a1, a2, a3):
 
     a21 = a1.position - a2.position
     a23 = a3.position - a2.position
-    return a21.angle(a23)
+    return convertAngle(a21.angle(a23))
 
 
 def calculateTorsionAngle(a1, a2, a3, a4):
@@ -54,28 +57,27 @@ def calculateTorsionAngle(a1, a2, a3, a4):
     if direction < 0.0:
         angle = -angle
 
-    return angle
+    return convertAngle(angle)
 
 
-##
-## <testing>
-##
+### <TESTING>
 if __name__ == "__main__":
     from Structure import *
 
-    a1 = Atom()
-    a1.setPosition(Vector(0.0,0.0,0.0))
+    struct = Structure()
+    
+    a1 = Atom(struct)
+    a1.position = Vector(0.0, -1.0, 0.0)
+    
+    a2 = Atom(struct)
+    a2.position = Vector(0.0, 0.0, 0.0)
 
-    a2 = Atom()
-    a2.setPosition(Vector(1.0,0.0,0.0))
+    a3 = Atom(struct)
+    a3.position = Vector(1.0, 0.0, 0.0)
 
-    a3 = Atom()
-    a3.setPosition(Vector(0.0,1.0,0.0))
+    a4 = Atom(struct)
+    a4.position = Vector(1.0, 1.0, -1.0)
 
-    a4 = Atom()
-    a4.setPosition(Vector(0.0,1.0,-1.0))
+    print calculateTorsionAngle(a1, a2, a3, a4)
+### </TESTING>
 
-    print calculateTorsionAngle(a1, a2, a3, a4) * 180 / math.pi
-##
-## </testing>
-##

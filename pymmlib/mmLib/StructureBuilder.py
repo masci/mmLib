@@ -40,50 +40,19 @@ class StructureBuilder:
 
         ## these caches are used to speed the contruction of the Structure
         self.atom_cache       = {}
-        self.fragment_cache   = {}
-        self.chain_cache      = []
-        self.alt_loc_cache    = []
         
         ## invokes the file parser, builds all the atoms
         self.parseFormat(fil)
 
         ## build mandatory parts of the structure
-        self.buildFragments()
-        self.buildChains()
+        self.buildStructure()
         
         ## build optional parts of the structure
-        if "polymers"  in self.build_properties: self.buildPolymers()
+        if "sequence"  in self.build_properties: self.buildSequence()
         if "bonds"     in self.build_properties: self.buildBonds()
-        #if "molecules" in self.build_properties: self.buildMolecules()
 
         ## free caches
         del self.atom_cache
-        del self.fragment_cache
-        del self.chain_cache
-        del self.alt_loc_cache
-
-    def addFragment(self, resName, fragmentID, chainID):
-        frag_id = (fragmentID, chainID)
-
-        try:
-            return self.fragment_cache[frag_id]
-        except KeyError:
-            pass
-
-        if self.structure.library.isAminoAcid(resName):
-            frag_class = AminoAcidResidue
-        elif self.structure.library.isNucleicAcid(resName):
-            frag_class = NucleicAcidResidue
-        else:
-            frag_class = Fragment
-
-        frag = frag_class(self.structure,
-                          res_name    = resName,
-                          fragment_id = fragmentID,
-                          chain_id    = chainID)
-
-        self.fragment_cache[frag_id] = frag
-        return frag
 
     def addAtom(self, name, altLoc, resName, fragmentID, chainID):
         atm_id = (name, altLoc, fragmentID, chainID)
@@ -93,184 +62,76 @@ class StructureBuilder:
         except KeyError:
             pass
 
-        atm = Atom(self.structure,
-                   name        = name,
+        atm = Atom(name        = name,
                    alt_loc     = altLoc,
                    res_name    = resName,
                    fragment_id = fragmentID,
                    chain_id    = chainID)
 
-        ## update caches
         self.atom_cache[atm_id] = atm
 
-        if altLoc not in self.alt_loc_cache:
-            self.alt_loc_cache.append(altLoc)
-            self.alt_loc_cache.sort()
-            
-        if chainID not in self.chain_cache:
-            self.chain_cache.append(chainID)
-            self.chain_cache.sort()
-
-        ## link alternate confirmations
-        if altLoc:
-            alt_loc_list = None
-
-            for (atm_id2, atm2) in self.atom_cache.items():
-                if atm_id[0]  == atm_id2[0] and \
-                   atm_id[1]  != atm_id2[1] and \
-                   atm_id[2:] == atm_id2[2:]:
-                    alt_loc_list = atm2.alt_loc_list
-
-            if alt_loc_list:
-                atm.alt_loc_list = alt_loc_list
-                atm.alt_loc_list.add(atm)
-            else:
-                atm.alt_loc_list = AltLocList()
-                atm.alt_loc_list.add(atm)
-        
         return atm
 
-    def buildFragments(self):
-        ## create the fragments and connect them to their atoms
-        for atm in self.atom_cache.values():
-            frag = self.addFragment(
-                atm.res_name, atm.fragment_id, atm.chain_id)
-            frag.atom_list.add(atm)
+    def buildStructure(self):
+        """Construct required parts of the mmLib.Structure hierarchy."""
 
-    def buildChains(self):
-        ## create the Chain objects and load them into a map of:
-        ##   chain_map[chain_id] -> Chain object
-        chain_map = {}
-        for chain_id in self.chain_cache:
-            chain_map[chain_id] = chain = Chain(self.structure, chain_id)
-            self.structure.chain_list.add(chain)
-
-        ## iterate through all fragments and connect them to their
-        ## Chain object according to chain_id
-        for frag in self.fragment_cache.values():
-            chain = chain_map[frag.chain_id]
-            chain.fragment_list.add(frag)
-            
-    def buildPolymers(self):
-        ## iterate through the chains, and search each chain for segments
-        ## of continous polymers; add these segments to the segment_list
-        ## as the 2-tuple (chain, [frag1, frag2, frag3, ...])
-        segment_list = []
-        for chain in self.structure.iterChains():
-
-            residue_class = None
-            residue_list  = []
-
-            for frag in chain.iterFragments():
-                if not residue_class:
-                    if isinstance(frag, Residue):
-                        residue_class = frag.__class__
-                        residue_list.append(frag)
-
-                elif isinstance(frag, residue_class):
-                    residue_list.append(frag)
-
-                elif residue_list and isinstance(frag, Residue):
-                    segment_list.append((chain, residue_list))
-                    residue_class = frag.__class__
-                    residue_list  = [frag]
-
-                elif residue_list:
-                    segment_list.append((chain, residue_list))
-                    residue_class = None
-                    residue_list  = []
-
-            if residue_list:
-                segment_list.append((chain, residue_list))
-
-        ## now determine segment type and construct:
-        ##  1) the correct Polymer object to contain it
-        ##  2) load the Polymer and add it to the Chain.polymer_list
-        for i in range(len(segment_list)):
-            (chain, residue_list) = segment_list[i]
-
-            res0       = residue_list[0]
-            polymer_id = len(chain.polymer_list)
-            poly       = res0.polymer_class(self.structure,
-                                            chain_id    = chain.chain_id,
-                                            polymer_id = polymer_id)
-
-            chain.polymer_list.add(poly)
-            for res in residue_list:
-                res.polymer_id = poly.polymer_id
-                poly.fragment_list.add(res)
-                            
-    def buildBonds(self):
-
-        def bond_atoms(atm1, atm2):
-            def make_bond(a1, a2):
-                bond = a1.getBond(a2)
-                if bond: return bond
-                return Bond(a1, a2)
-
-            ## this handles constructing the bonds for alternate
-            ## conformations correctly
-            alist1 = [aatm.alt_loc for aatm in atm1 if aatm.alt_loc]
-            alist2 = [aatm.alt_loc for aatm in atm2 if aatm.alt_loc]
-
-            if not (alist1 or alist2):
-                make_bond(atm1, atm2)
-
-            elif alist1 and alist2:
-                for alt_loc in alist1:
-                    make_bond(atm1[alt_loc], atm2[alt_loc])
-
-            elif alist1 and not alist2:
-                for alt_loc in alist1:
-                    make_bond(atm1[alt_loc], atm2)
+        def fragment_factory(atm):
+            if self.structure.library.isAminoAcid(atm.res_name):
+                frag_class = AminoAcidResidue
+                
+            elif self.structure.library.isNucleicAcid(atm.res_name):
+                frag_class = NucleicAcidResidue
 
             else:
-                for alt_loc in alist2:
-                    make_bond(atm1, atm2[alt_loc])  
+                frag_class = Fragment
 
-        ## BUILD BONDS INSIDE FRAGMENTS
-        for frag in self.structure.iterFragments():
-            ## lookup the definition of the monomer in the library
+            return frag_class(res_name    = atm.res_name,
+                              fragment_id = atm.fragment_id,
+                              chain_id    = atm.chain_id)
+
+        for atm in self.atom_cache.values():
+            ## retrieve/create Chain
             try:
-                mon = self.structure.library[frag.res_name]
+                chain = self.structure[atm.chain_id]
             except KeyError:
-                continue
+                chain = Chain(atm.chain_id)
+                self.structure.addChain(chain, delay_sort = True)
 
-            for (name1, name2) in mon.bond_list:
-                try:
-                    atm1 = frag[name1]
-                    atm2 = frag[name2]
-                except KeyError:
-                    continue
+            ## retrieve/create Fragment
+            try:
+                frag = chain[atm.fragment_id]
+            except KeyError:
+                frag = fragment_factory(atm)
+                chain.addFragment(frag, delay_sort = True)
 
-                bond_atoms(atm1, atm2)
+            frag.addAtom(atm)
 
-        ## BUILD BONDS BETWEEN RESIDUES IN POLYMERS
-        for poly in self.structure.iterPolymers():
-            for res1 in poly.iterResidues():
-                res2 = res1.getOffsetResidue(1)
-                if not res2: continue
+        ## sort structural objects into their correct order
+        self.structure.sort()
+        for chain in self.structure.iterChains():
+            chain.sort()
+        
+    def buildSequence(self):
+        """The residue sequence in a chain can be calculated by the
+        algorithm in mmLib.Structure.Chain.calcSequence(), or by the
+        sequence loaded from the input file.  This function use the
+        file data if it exists, otherwise it will try to calculate
+        the sequence."""
+        for chain in self.structure.iterChains():
+            print "buildSequence"
+            chain.calcSequence()
 
-                ## lookup the definition of the monomer in the library
-                try:
-                    mon1 = self.structure.library[res1.res_name]
-                    mon2 = self.structure.library[res2.res_name]
-                except KeyError:
-                    continue
-
-                for (name1, name2) in mon1.getPolymerBondList(res1, res2):
-                    try:
-                        atm1 = res1[name1]
-                        atm2 = res2[name2]
-                    except KeyError:
-                        continue
-
-                    bond_atoms(atm1, atm2)
-  
-    def buildMolecules(self):
-        pass
+    def buildBonds(self):
+        """Bonds are constructed using a combination of monomer library
+        bond definitions, and data loaded from parseFormat()."""
+        for frag in self.structure.iterFragments():
+            frag.createBonds()
 
     def loadAtom(self, atm_map):
+        """Called by the implementation of parseFormat to load all the
+        data for a single atom.  The data is contained in the atm_map
+        argument, and is not well documented at this point.  Look at
+        this function and you'll figure it out."""
         name       = atm_map["name"]
         altLoc     = atm_map["alt_loc"]
         resName    = atm_map["res_name"]
@@ -319,6 +180,16 @@ class StructureBuilder:
             atm.charge  = atm_map["charge"]
         except KeyError:
             pass
+
+    def loadSite(self, site_id, site_list):
+        """Called by the implementation of parseFormat to load information
+        about one site in the structure.  Sites are groups of residues
+        which are of special interest.  This usually means active sites
+        of enzymes and such."""
+        site = Site(site_id)
+        for (chain_id, frag_id) in site_list:
+            site.addFragment(chain_id, frag_id)
+        self.structure.sites.append(site)
 
 
 class CopyStructureBuilder(StructureBuilder):
@@ -391,10 +262,51 @@ class PDBStructureBuilder(StructureBuilder):
         atm_map["U[1][2]"] = getattr(rec, "u[0][1]") / 10000.0
         atm_map["U[1][3]"] = getattr(rec, "u[0][2]") / 10000.0
         atm_map["U[2][3]"] = getattr(rec, "u[1][2]") / 10000.0
+
+    def __process_SITE(self, site_map, rec):
+        site_id = getattr(rec, "siteID")
+
+        if not site_map.has_key(site_id):
+            site_map[site_id] = []
+
+        try:
+            chain_id = rec.chainID1
+            frag_id  = str(rec.seq1) + getattr(rec, "icode1", "")
+        except AttributeError:
+            return
+        else:
+            site_map[site_id].append((chain_id, frag_id))
+
+        try:
+            chain_id = rec.chainID2
+            frag_id  = str(rec.seq2) + getattr(rec, "icode2", "")
+        except AttributeError:
+            return
+        else:
+            site_map[site_id].append((chain_id, frag_id))
+
+        try:
+            chain_id = rec.chainID3
+            frag_id  = str(rec.seq3) + getattr(rec, "icode3", "")
+        except AttributeError:
+            return
+        else:
+            site_map[site_id].append((chain_id, frag_id))
+
+        try:
+            chain_id = rec.chainID4
+            frag_id  = str(rec.seq4) + getattr(rec, "icode4", "")
+        except AttributeError:
+            return
+        else:
+            site_map[site_id].append((chain_id, frag_id))
+
     
     def parseFormat(self, fil):
         pdb_file = PDB.PDBFile()
         pdb_file.loadFile(fil)
+
+        site_map      = {}
 
         atm_map       = {}
         record_list   = pdb_file.pdb_list
@@ -421,11 +333,17 @@ class PDBStructureBuilder(StructureBuilder):
                     print "ERROR WITH ANISOU RECORD:"
                     print rec
 
+            elif isinstance(rec, PDB.SITE):
+                self.__process_SITE(site_map, rec)
                 
         ## if we were in the process of building a atom,
         ## then load the final atm_map 
         if atm_map:
             self.loadAtom(atm_map)
+
+        ## load the SITE records collected during parsing
+        for (site_id, site_list) in site_map.items():
+            self.loadSite(site_id, site_list)
 
 
 class mmCIFStructureBuilder(StructureBuilder):
@@ -497,32 +415,48 @@ class mmCIFStructureBuilder(StructureBuilder):
                     atm_map["U[1][3]"] = float(cifattr(aniso, "U[1][3]"))
                     atm_map["U[2][3]"] = float(cifattr(aniso, "U[2][3]"))
                     
-
             self.loadAtom(atm_map)
 
 
+        ## load SITE data
+        if hasattr(cif_data, "struct_site_gen"):
+            site_map = {}
+        
+            for struct_site_gen in cif_data.struct_site_gen.getRowList():
+                ## extract data for chain_id and seq_id
+                site_id  = struct_site_gen.site_id
+
+                chain_id = struct_site_gen.auth_asym_id
+                if chain_id in ["?", "."]:
+                    chain_id = struct_site_gen.label_asym_id
+
+                frag_id  = struct_site_gen.auth_seq_id
+                if frag_id in ["?", "."]:
+                    frag_id = struct_site_gen.label_seq_id
+
+                ## skip bad rows
+                if chain_id in ["?", "."] or frag_id in ["?", "."]:
+                    continue
+                
+                if not site_map.has_key(site_id):
+                    site_map[site_id] = []
+
+                site_map[site_id].append((chain_id, frag_id))
+
+            for (site_id, site_list) in site_map.items():
+                self.loadSite(site_id, site_list)
+            
 
 ### <TESTING>
 if __name__ == "__main__":
     import sys
     struct = PDBStructureBuilder(sys.argv[1],
-                                 build_properties=("polymers","bonds")
+                                 build_properties=()
                                  ).structure
 
-    for res in struct.iterAminoAcids():
-        print "---"
-        print res.getOffsetResidue(-1)
-        print res
-        print res.getOffsetResidue(1)
-        print "---"
-
-    s2 = CopyStructureBuilder(res,
-                              build_properties=("polymers","bonds")
-                              ).structure
-    struct = None
-
-    for atm in s2.iterAtoms():
-        print atm
+    for atm in struct.iterAtoms():
+        if atm.alt_loc:
+            print atm
 
     print "# exit"
 ### </TESTING>

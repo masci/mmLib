@@ -50,7 +50,10 @@ class OrderedList(object):
         self.list.append(val)
 
 class OrderedTupleList(object):
-    """Implements a ordered Python list."""
+    """Implements a ordered Python list using tuples for list elements.  The
+    list is sorted according to Python tuple sorting rules, and the last
+    element of the tuple is always the list data.  The add method must be
+    overridden to add the proper sorting tuple."""
     def __init__(self):
         self.list = []
     def __len__(self):
@@ -83,47 +86,46 @@ class OrderedTupleList(object):
     def add(self, val):
         self.list.append((val,))
 
-class WeakrefList(object):
+class WeakrefList:
     """Implements a Python list, but it keeps weak references to the objects
     it contains.  Otherwise, it's exactly like the native list."""
     def __init__(self):
-        self.list = []
+        self.__list = []
     def __len__(self):
-        return len(self.list)
+        return len(self.__list)
     def __getitem__(self, i):
-        assert type(i) == IntType
-        return self.list[i]()
+        return self.__list[i]()
     def __setitem__(self, i, val):
-        assert type(i) == IntType
-        self.list[i] = weakref.ref(val)
-    def __delitem__(self, i):
-        assert type(i) == IntType
-        del self.list[i]
+        self.__list[i] = weakref.ref(val, self.__del_cb)
     def __iter__(self):
-        for ref in self.list: yield ref()
+        for ref in self.__list: yield ref()
     def __contains__(self, val):
-        return weakref.ref(val) in self.list
-    def del_cb(self, ref):
-        self.list.remove(ref)
+        return weakref.ref(val) in self.__list
+    def __del_cb(self, ref):
+        self.__list.remove(ref)
+    def len(self):
+        return len(self.__list)
     def append(self, val):
-        self.list.append(weakref.ref(val, self.del_cb))
+        self.__list.append(weakref.ref(val, self.__del_cb))
     def count(self, val):
-        return self.list.count(weakref.ref(val))
+        return self.__list.count(weakref.ref(val))
     def insert(self, i, val):
-        self.list.insert(i, weakref.ref(val, self.del_cb))
+        self.__list.insert(i, weakref.ref(val, self.__del_cb))
     def index(self, val):
-        return self.list.index(weakref.ref(val))
+        return self.__list.index(weakref.ref(val))
     def pop(self):
-        return self.list.pop()()
+        return self.__list.pop(self)()
     def remove(self, val):
-        self.list.remove(weakref.ref(val))
-    def reverse(self):
-        self.list.reverse()
+       self.__list.remove(weakref.ref(val))
     def sort(self):
-        self.list.sort()
+        def wcmp(a, b):
+            return cmp(a(), b())
+        self.__list.sort(wcmp)
 
 ## Fragment IDs are tricky things
 class FragmentID(object):
+    """A fragment ID class acts a lot like a string, but separates the
+    res_seq and icode internally."""
     def __init__(self, frag_id):
         try:
             self.res_seq  = int(frag_id)
@@ -133,9 +135,27 @@ class FragmentID(object):
         else:
             self.icode    = ""
     def __str__(self):
-        return str(self.res_seq)+self.icode
+        return str(self.res_seq) + self.icode
+    def __lt__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) < (other.res_seq, other.icode)
+    def __le__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
+    def __eq__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) == (other.res_seq, other.icode)
+    def __ne__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) != (other.res_seq, other.icode)
+    def __gt__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) > (other.res_seq, other.icode)
+    def __ge__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
     
-### TESTING
+### <TESTING>
 def wrl_test():
     class C:
         def __init__(self, i):
@@ -166,9 +186,8 @@ def wrl_test():
     print "# del l"
     del l
 
-
 if __name__ == "__main__":
     wrl_test()
     print "# exit"
-
+### </TESTING>
     

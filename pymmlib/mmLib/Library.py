@@ -77,9 +77,9 @@ class NucleicAcid(Monomer):
 
 class Library:
     def __init__(self):
-        from Elements     import ElementMap
-        from AminoAcids   import AminoAcidMap
-        from NucleicAcids import NucleicAcidMap
+        from Data.Elements     import ElementMap
+        from Data.AminoAcids   import AminoAcidMap
+        from Data.NucleicAcids import NucleicAcidMap
 
         self.element_map      = ElementMap
         self.amino_acid_map   = AminoAcidMap
