@@ -120,11 +120,11 @@ class StructureBuilder(object):
             self.struct.add_atom(atm, True)
 
         except FragmentOverwrite:
-            print "FragmentOverwrite: ",atm
+            warning("FragmentOverwrite: %s" % (atm))
             self.name_service_list.append(atm)
 
         except AtomOverwrite, err:
-            print "AtomOverwrite: ",err
+            warning("AtomOverwrite: %s" % (err))
             self.name_service_list.append(atm)
 
         return atm

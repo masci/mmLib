@@ -1945,9 +1945,11 @@ class Fragment(object):
                     ##     multiple atoms with the same name, without
                     ##     alt_loc labels, but they are really alt_loc
                     ##     partners
-
                     atomA = self.atom_dict[name]
                     assert atomA != atom
+
+                    warning("atom name clash %s, automatically "\
+                            "assigning ALTLOC labels" % (str(atomA)))
 
                     iA = self.atom_order_list.index(atomA)
 
