@@ -930,7 +930,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         gtk.Window.__init__(self)
 
         ## Create the toplevel window
-        self.set_default_size(500, 400)
+        self.set_default_size(600, 400)
         self.connect("delete-event", self.quit_cb, self)
 
         table = gtk.Table(1, 3, gtk.FALSE)
@@ -1723,7 +1723,8 @@ class HelpWindow(gtk.Window):
         self.text_view = gtk.TextView()
         self.sw.add(self.text_view)        
         self.text_view.set_editable(gtk.FALSE)
-
+        self.text_view.set_justification(gtk.JUSTIFY_LEFT)
+            
         self.set_text_message(
             "Click on a any mmCIF file item\n"
             "for help on that item.")
@@ -1755,7 +1756,15 @@ class HelpWindow(gtk.Window):
             return
         
         title_text = "No help available."
-        text = ""
+        text = None
+        default_value = None
+        range = "RANGE (max, min):     "
+        data_type = None
+        type_conditions = None
+        data_units = None
+        mandatory = None
+        dependent = ""
+        detail = "EXAMPLE(S):\n"
 
         if cif_save.has_key("category"):
             try:
@@ -1767,16 +1776,82 @@ class HelpWindow(gtk.Window):
             except KeyError, IndexError:
                 pass
 
+            for row in cif_save.get("category_examples", []):
+                try:
+                    detail += "\n" + row["detail"] + "\n"
+                except KeyError:
+                    pass
+                try:
+                    detail += row["case"]
+                except KeyError:
+                    pass
 
         elif cif_save.has_key("item"):
+            ## get title text
             try:
                 title_text = cif_save["item"][0]["name"]
             except KeyError, IndexError:
                 pass
+            ## get description
             try:
                 text = cif_save["item_description"][0]["description"]
             except KeyError, IndexError:
                 pass
+            ## get example details and cases
+            for row in cif_save.get("item_examples", []):
+                try:
+                    detail += row["detail"] + "\n"
+                except KeyError:
+                    pass
+                try:
+                    detail += row["case"] + "\n"
+                except KeyError:
+                    pass
+            ## get default value
+            try:
+                default_value = cif_save["item_default"][0]["value"]
+            except KeyError, IndexError:
+                pass
+            ## get data type
+            try:
+               data_type = cif_save["item_type"][0]["code"]
+            except KeyError, IndexError:
+                pass
+            ## get data type conditions
+            try:
+                type_conditions = cif_save["item_type_conditions"][0]["code"]
+            except KeyError, IndexError:
+                pass
+            ## get data units
+            try:
+                data_units = cif_save["item_units"][0]["code"]
+            except KeyError, IndexError:
+                pass
+            ## get mandatory item code
+            try:
+                mandatory = cif_save["item"][0]["mandatory_code"]
+            except KeyError, IndexError:
+                pass
+            ## get dependents
+            for row in cif_save.get("item_dependent", []):
+                 try:
+                     dependent += "\n          " + row["dependent_name"]
+                 except KeyError:
+                     pass
+            ## get range values
+            for row in cif_save.get("item_range", []):
+                maximum = None
+                minimum = None
+                try:
+                    maximum = row["maximum"]
+                    minimum = row["minimum"]
+                except KeyError:
+                    pass
+                if((maximum != None) & (minimum != None)):
+                    if(maximum == ""):
+                        maximum = " . "
+                    range += "(" + maximum + ", " + minimum + ")  "
+         
 
         ## take out alignment spaces
         ltmp = text.split("\n")
@@ -1790,18 +1865,45 @@ class HelpWindow(gtk.Window):
         ltmp = [x[ndiscard:] for x in ltmp]
         text = string.join(ltmp, "\n")
 
+        ltmp1 = detail.split("\n")
+        ndiscard = 80
+
+        for ln in ltmp1:
+            if len(ln) == 0:
+                continue
+            n = len(ln) - len(ln.lstrip())
+            ndiscard = min(ndiscard, n)
+        ltmp1 = [x[ndiscard:] for x in ltmp1]
+        detail = string.join(ltmp1, "\n")
+
         buffer = gtk.TextBuffer()
         
-        tag = buffer.create_tag("title")
-        tag.set_property("size-points", 14.0)
+        fontsize = buffer.create_tag("title")
+        fontsize.set_property("size-points", 14.0)
         
-        tag = buffer.create_tag("desc")
-        tag.set_property("wrap-mode", gtk.WRAP_WORD)
+        wordwrap = buffer.create_tag("wrap")
+        wordwrap.set_property("wrap-mode", gtk.WRAP_WORD)
 
         iter = buffer.get_start_iter()
 
-        buffer.insert_with_tags_by_name(iter, title_text + "\n\n", "title")
-        buffer.insert_with_tags_by_name(iter, text, "desc")
+        buffer.insert_with_tags_by_name(iter, title_text + "\n", "title")
+        if((mandatory != None) & (mandatory != "no")):
+            buffer.insert_with_tags_by_name(iter, "***Item is mandatory***\n", "wrap")
+        buffer.insert_with_tags_by_name(iter, "\n\n" + text + "\n\n\n", "wrap")        
+        if(data_type != None):
+            buffer.insert_with_tags_by_name(iter, "DATA TYPE:     " + data_type + "\n", "wrap")
+        if(type_conditions != None):
+            buffer.insert_with_tags_by_name(iter, "DATA TYPE CONDINTIONS:     " + type_conditions + "\n", "wrap")
+        if(data_units != None):
+            buffer.insert_with_tags_by_name(iter, "DATA UNITS:     " + data_units + "\n", "wrap")
+        if(default_value != None):            
+            buffer.insert_with_tags_by_name(iter, "DEFAULT VALUE:     " + default_value + "\n", "wrap")
+        if(range != "RANGE (max, min):     "):
+            buffer.insert_with_tags_by_name(iter, range + "\n", "wrap")
+        if(dependent != ""):
+            buffer.insert_with_tags_by_name(iter, "DEPENDENT(S):     " + dependent + "\n", "wrap")
+        if(detail != "EXAMPLE(S):\n"):
+             buffer.insert_with_tags_by_name(iter, detail, "wrap")
         
         self.text_view.set_buffer(buffer)
 
