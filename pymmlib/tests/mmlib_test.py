@@ -67,7 +67,7 @@ def atom_test(atom, stats):
 
     len(atom)
     
-    alt_loc = atom.get_structure().default_alt_loc
+    alt_loc = atom.get_structure().get_default_alt_loc()
 
     atom.get_fragment()
     atom.get_chain()

@@ -151,20 +151,13 @@ class Structure(object):
             return self.default_model[chain_idx]
         except TypeError:
             raise KeyError, chain_idx
-
-    def __delitem__(self, chain_idx):
-        """Removes the Chain from the default Model by its chain_id or
-        index in the Model.
-        """
-        try:
-            self.default_model.remove(self[chain_idx])
-        except AttributeError:
-            raise KeyError, chain_idx
             
     def __iter__(self):
         """Iterates the Chain objects in the Structure.
         """
-        return self.iter_chains()
+        if self.default_model:
+            return iter(self.default_model.chain_list)
+        return iter([])
 
     def __contains__(self, model_chain_idx):
         """Returns True if item is a Model in the Structure, or a
@@ -192,22 +185,6 @@ class Structure(object):
                 return self.default_model.index(model_chain)
             except AttributeError:
                 raise ValueError, model_chain
-        raise TypeError, model_chain
-
-    def remove(self, model_chain):
-        """Removes a Model or a default Model's Chain from the Structure.
-        """
-        if isinstance(model_chain, Model):
-            self.model_list.remove(model_chain)
-            del self.model_dict[model_chain.model_id]
-            model_chain.structure = None
-
-        elif isinstance(model_chain, Chain):
-            try:
-                self.default_model.remove(model_chain)
-            except AttributeError:
-                raise ValueError, model_chain
-
         raise TypeError, model_chain
 
     def sort(self):
@@ -245,102 +222,10 @@ class Structure(object):
         """Removes a child Model object.
         """
         assert isinstance(model, Model)
-        raise FinishMe()
-
-    def add_chain(self, chain, delay_sort=True):
-        """Adds a Chain object to the Structure.  Creates necessary parent
-        Model if necessary
-        """
-        assert isinstance(chain, Chain)
-
-        try:
-            model = self.model_dict[chain.model_id]
-        except KeyError:
-            model = Model(model_id = chain.model_id)
-            self.add_model(model)
-
-        model.add_chain(chain)
-
-        if not delay_sort:
-            self.default_model.chain_list.sort()
-
-    def remove_chain(self, chain):
-        assert isinstance(chain, Chain)
-        raise FinishMe()
-
-    def add_fragment(self, fragment):
-        assert isinstance(fragment, Fragment)
-        raise FinishMe()
-
-    def remove_fragment(self, fragment):
-        assert isinstance(fragment, Fragment)
-        raise FinishMe()
-
-    def add_atom(self, atom):
-        """Adds a Atom object to the Structure.  If a collision occurs, a
-        error is raised.
-        """
-        assert isinstance(atom, Atom)
-
-        ## add new model if necesary
-        try:
-            model = self.model_dict[atom.model_id]
-        except KeyError:
-            model = Model(model_id = atom.model_id)
-            self.add_model(model, delay_sort = True)
-
-        ## add new chain if necessary
-        try:
-            chain = model.chain_dict[atom.chain_id]
-        except KeyError:
-            chain = Chain(model_id = atom.model_id, chain_id = atom.chain_id)
-            model.add_chain(chain, delay_sort = True)
-
-        ## add new fragment if necessary 
-        try:
-            frag = chain[atom.fragment_id]
-        except KeyError:
-            if self.library.is_amino_acid(atom.res_name):
-                frag = AminoAcidResidue(
-                    res_name = atom.res_name,
-                    fragment_id = atom.fragment_id,
-                    chain_id = atom.chain_id)
-            elif self.library.is_nucleic_acid(atom.res_name):
-                frag = NucleicAcidResidue(
-                    res_name = atom.res_name,
-                    fragment_id = atom.fragment_id,
-                    chain_id = atom.chain_id)
-            else:
-                frag = Fragment(
-                    res_name = atom.res_name,
-                    fragment_id = atom.fragment_id,
-                    chain_id = atom.chain_id)
-
-            chain.add_fragment(frag, delay_sort = True)
-        else:
-            if frag.res_name != atom.res_name:
-                raise FragmentOverwrite()
-
-        frag.add_atom(atom)
-
-    def remove_atom(self, atom):
-        """Removes a Atom.
-        """
-        assert isinstance(atom, Atom)
-        raise FinishMe()
-
-    def get_structure(self):
-        """Returns self.
-        """
-        return self
-
-    def get_chain(self, chain_id):
-        """Returns the Chain object matching the chain_id charactor.
-        """
-        try:
-            return self[chain_id]
-        except KeyError:
-            return None
+        
+        self.model_list.remove(model)
+        del self.model_dict[model.model_id]
+        model.structure = None
 
     def get_default_model(self):
         """Returns the default Model object.
@@ -364,23 +249,6 @@ class Structure(object):
         not exist in the Structure.
         """
         self.set_default_model(model_id)
-        
-    def get_default_alt_loc(self):
-        """Returns the default alt_loc string.
-        """
-        return self.default_alt_loc
-
-    def set_default_alt_loc(self, alt_loc):
-        """Sets the default alt_loc for the Stucture.
-        """
-        self.default_alt_loc = alt_loc
-        for frag in self.iter_fragments():
-            frag.set_alt_loc(alt_loc)
-            
-    def set_alt_loc(self, alt_loc):
-        """DEP: Sets the default alt_loc for the Stucture.
-        """
-        self.set_default_alt_loc(alt_loc)
 
     def iter_models(self):
         """Iterates over all Model objects.
@@ -392,12 +260,41 @@ class Structure(object):
         """
         return len(self.model_list)
     
+    def add_chain(self, chain, delay_sort=True):
+        """Adds a Chain object to the Structure.  Creates necessary parent
+        Model if necessary
+        """
+        assert isinstance(chain, Chain)
+
+        try:
+            model = self.model_dict[chain.model_id]
+        except KeyError:
+            model = Model(model_id=chain.model_id)
+            self.add_model(model, delay_sort)
+
+        model.add_chain(chain, delay_sort)
+
+    def remove_chain(self, chain):
+        """Removes a Chain object.
+        """
+        assert isinstance(chain, Chain)
+        self.model_dict[chain.model_id].remove_chain(chain)
+
+    def get_chain(self, chain_id):
+        """Returns the Chain object matching the chain_id charactor.
+        """
+        if not self.default_model:
+            return None
+        if self.default_model.chain_dict.has_key(chain_id):
+            return self.default_model.chain_dict[chain_id]
+        return None
+
     def iter_chains(self):
         """Iterates over all Chain objects in the default Model, in
         alphabetical order according to their chain_id.
         """
         if self.default_model:
-            return self.default_model.iter_chains()
+            return iter(self.default_model.chain_list)
         return iter([])
 
     def count_chains(self):
@@ -407,13 +304,35 @@ class Structure(object):
             return self.default_model.count_chains()
         return 0
 
+    def add_fragment(self, fragment, delay_sort=True):
+        """Adds a Fragment object.
+        """
+        assert isinstance(fragment, Fragment)
+
+        try:
+            model = self.model_dict[fragment.model_id]
+        except KeyError:
+            model = Model(model_id=fragment.model_id)
+            self.add_model(model, delay_sort)
+
+        model.add_fragment(fragment)
+
+    def remove_fragment(self, fragment):
+        """Removes a Fragment object.
+        """
+        assert isinstance(fragment, Fragment)
+        self.model_dict[fragment.model_id].remove_fragment(fragment)
+
     def iter_fragments(self):
         """Iterates over all Fragment objects in the default Model.
         The iteration is performed in order according the the parent
         Chain's chain_id, and the Fragment's positioin within the chain.
         """
-        for chain in self.iter_chains():
-            for frag in chain.iter_fragments():
+        if not self.default_model:
+            raise StopIteration
+        
+        for chain in self.default_model.chain_list:
+            for frag in chain.fragment_list:
                 yield frag
 
     def count_fragments(self):
@@ -456,14 +375,39 @@ class Structure(object):
             n += chain.count_amino_acids()
         return n
 
+    def add_atom(self, atom, delay_sort=False):
+        """Adds a Atom object to the Structure.  If a collision occurs, a
+        error is raised.
+        """
+        assert isinstance(atom, Atom)
+
+        ## add new model if necesary
+        try:
+            model = self.model_dict[atom.model_id]
+        except KeyError:
+            model = Model(model_id = atom.model_id)
+            self.add_model(model, delay_sort)
+
+        model.add_atom(atom, delay_sort)
+
+    def remove_atom(self, atom):
+        """Removes a Atom.
+        """
+        assert isinstance(atom, Atom)
+        self.model_dict[atom.model_id].remove_atom(atom)
+
     def iter_atoms(self):
         """Iterates over all Atom objects in the default Model, using the
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
-        for chain in self.iter_chains():
-            for atm in chain.iter_atoms():
-                yield atm
+        if not self.default_model:
+            raise StopIteration
+        
+        for chain in self.default_model.chain_list:
+            for frag in chain.fragment_list:
+                for atm in frag.atom_list:
+                    yield atm
 
     def count_atoms(self):
         """Counts all Atom objects in the default Model using the
@@ -562,6 +506,28 @@ class Structure(object):
         if self.default_model:
             return self.default_model.iter_sites()
         return iter([])
+
+    def get_structure(self):
+        """Returns self.
+        """
+        return self
+
+    def get_default_alt_loc(self):
+        """Returns the default alt_loc string.
+        """
+        return self.default_alt_loc
+
+    def set_default_alt_loc(self, alt_loc):
+        """Sets the default alt_loc for the Stucture.
+        """
+        self.default_alt_loc = alt_loc
+        for frag in self.iter_fragments():
+            frag.set_alt_loc(alt_loc)
+            
+    def set_alt_loc(self, alt_loc):
+        """DEP: Sets the default alt_loc for the Stucture.
+        """
+        self.set_default_alt_loc(alt_loc)
 
     def add_bonds_from_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
@@ -666,16 +632,10 @@ class Model(object):
             return self.chain_list[chain_idx]
         raise TypeError, chain_idx
 
-    def __delitem__(self, chain_idx):
-        """Removes a Chain from the Model,, given the chain_id or index of
-        the Chain in the Model.
-        """
-        self.remove_chain(self[chain_idx])
-
     def __iter__(self):
         """Iterates the Chain objects in the Model.
         """
-        return self.iter_chains()
+        return iter(self.chain_list)
 
     def __contains__(self, chain_idx):
         """Returns True if the argument Chain or chain_id is in the Model.
@@ -691,11 +651,6 @@ class Model(object):
         """
         assert isinstance(chain, Chain)
         return self.chain_list.index(chain)
-
-    def remove(self, chain):
-        """Removes the Chain from the Model.
-        """
-        self.remove_chain(chain)
 
     def sort(self):
         """Sorts all Chains in the Model by their chain_id.
@@ -730,10 +685,9 @@ class Model(object):
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
-        try:
-            return self[chain_id]
-        except KeyError:
-            return None
+        if self.chain_dict.has_key(chain_id):
+            return self.chain_dict[chain_id]
+        return None
 
     def iter_chains(self):
         """Iterates over all Chain objects in alphabetical order according
@@ -753,18 +707,18 @@ class Model(object):
         raise FinishMe()
 
     def remove_fragment(self, fragment):
-        """Finish Me.
+        """Removes a Fragment object.
         """
         assert isinstance(fragment, Fragment)
-        raise FinishMe()
+        self.chain_dict[fragment.chain_id].remove_fragment(fragment)
 
     def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according the the parent Chain's chain_id, and the
         Fragment's positioin within the chain.
         """
-        for chain in self.iter_chains():
-            for frag in chain.iter_fragments():
+        for chain in self.chain_list:
+            for frag in chain.fragment_list:
                 yield frag
 
     def count_fragments(self):
@@ -807,26 +761,39 @@ class Model(object):
             n += chain.count_nucleic_acids()
         return n
 
-    def add_atom(self, atom):
+    def add_atom(self, atom, delay_sort=False):
         """Finish Me.
         """
         assert isinstance(atom, Atom)
-        raise FinishMe()
+        assert atom.model_id==self.model_id
+
+        ## add new chain if necessary
+        try:
+            chain = self.chain_dict[atom.chain_id]
+        except KeyError:
+            chain = Chain(
+                model_id = atom.model_id,
+                chain_id = atom.chain_id)
+            self.add_chain(chain, delay_sort)
+
+        ## add the atom to the chain
+        chain.add_atom(atom)
 
     def remove_atom(self, atom):
-        """Finish Me.
+        """Removes a Atom object.
         """
         assert isinstance(atom, Atom)
-        raise FinishMe()
-
+        assert atom.model_id==self.model_id        
+        self.chain_dict[atom.chain_id].remove_atom(atom)
 
     def iter_atoms(self):
         """Iterates over all Atom objects according to the Structure
         defaults.
         """
-        for chain in self.iter_chains():
-            for atm in chain.iter_atoms():
-                yield atm
+        for chain in self.chain_list:
+            for frag in chain.fragment_list:
+                for atm in frag.atom_list:
+                    yield atm
 
     def count_atoms(self):
         """Counts all Atom objects in according to the Structure defaults.
@@ -1124,13 +1091,6 @@ class Segment(object):
 
         raise TypeError, fragment_idx
 
-    def __delitem__(self, fragment_idx):
-        """Delete Fraagment from the segment.  This can take a reference to the
-        Fragment object to delete, the fragment_id of the Fragment to delete,
-        or the integer index of the Fragment within the Segment.
-        """
-        self.remove(self[fragment_idx])
-
     def __iter__(self):
         """Iterate all Fragments contained in the Segment.
         """
@@ -1147,11 +1107,6 @@ class Segment(object):
         """Return the 0-based index of the Framgent in the segment list.
         """
         return self.fragment_list.index(fragment)
-
-    def remove(self, fragment):
-        """Remove the Fragment from the Segment.
-        """
-        self.remove_fragment(fragment)
 
     def sort(self):
         """Sort the Fragments in the Segment into proper order.
@@ -1185,10 +1140,9 @@ class Segment(object):
     def get_fragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its fragment_id.
         """
-        try:
-            return self[fragment_id]
-        except KeyError:
-            return None
+        if self.fragment_dict.has_key(fragment_id):
+            return self.fragment_dict[fragment_id]
+        return None
 
     def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
@@ -1214,7 +1168,7 @@ class Segment(object):
         """Same as iter_fragments(), but only iterates over AminoAcidResidue
         objects.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if isinstance(frag, AminoAcidResidue):
                 yield frag
 
@@ -1238,7 +1192,7 @@ class Segment(object):
         """Same as iter_fragments(), but only iterates over NucleicAcidResidue
         objects.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if isinstance(frag, NucleicAcidResidue):
                 yield frag
 
@@ -1255,7 +1209,7 @@ class Segment(object):
         by the PDB.  Standard residues are AminoAcidResidue and
         NucliecAcidResiue objects.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if frag.is_standard_residue():
                 return True
         return False
@@ -1265,7 +1219,7 @@ class Segment(object):
         PDB.  Standard residues are AminoAcidResidue and
         NucliecAcidResiue objects.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if frag.is_standard_residue():
                 yield frag
 
@@ -1291,7 +1245,7 @@ class Segment(object):
         by the PDB.  Non-standard residues are anything which is not a
         amino or nucleic acid.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if not frag.is_standard_residue():
                 yield frag
 
@@ -1314,7 +1268,7 @@ class Segment(object):
     def iter_waters(self):
         """Iterate over all waters in the Segment.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             if frag.is_water():
                 yield frag
 
@@ -1327,24 +1281,56 @@ class Segment(object):
                 n += 1
         return n
 
-    def add_atom(self, atom):
-        """Finish Me.
+    def add_atom(self, atom, delay_sort=False):
+        """Adds a Atom.
         """
         assert isinstance(atom, Atom)
-        raise FinishMe()
+        assert atom.model_id==self.model_id
+        assert atom.chain_id==self.chain_id
 
+        ## add new fragment if necessary 
+        if not self.fragment_dict.has_key(atom.fragment_id):
+            library = self.get_structure().library
+            
+            if library.is_amino_acid(atom.res_name):
+                fragment = AminoAcidResidue(
+                    res_name    = atom.res_name,
+                    fragment_id = atom.fragment_id,
+                    chain_id    = atom.chain_id)
+
+            elif library.is_nucleic_acid(atom.res_name):
+                fragment = NucleicAcidResidue(
+                    res_name    = atom.res_name,
+                    fragment_id = atom.fragment_id,
+                    chain_id    = atom.chain_id)
+
+            else:
+                fragment = Fragment(
+                    res_name    = atom.res_name,
+                    fragment_id = atom.fragment_id,
+                    chain_id    = atom.chain_id)
+
+            self.add_fragment(fragment, delay_sort)
+
+        else:
+            fragment = self.fragment_dict[atom.fragment_id]
+            if fragment.res_name!=atom.res_name:
+                raise FragmentOverwrite()
+
+        fragment.add_atom(atom)
+            
     def remove_atom(self, atom):
-        """Finish Me.
+        """Removes a Atom object.
         """
         assert isinstance(atom, Atom)
-        raise FinishMe()
+        self.fragment_dict[atom.fragment_id].remove_atom(atom)
 
     def iter_atoms(self):
         """Iterates over all Atom objects within the Segment using the
         default conformation set in the parent Structure.
         """
-        for frag in self.iter_fragments():
-            for atm in frag.iter_atoms():
+        for frag in self.fragment_list:
+            for atm in frag.atom_list:
                 yield atm
 
     def count_atoms(self):
@@ -1357,7 +1343,7 @@ class Segment(object):
         """Performs a in-order iteration of all atoms in the Segment,
         including alternate conformations.
         """
-        for frag in self.iter_fragments():
+        for frag in self.fragment_list:
             for atm in frag.iter_all_atoms():
                 yield atm
 
@@ -1470,10 +1456,10 @@ class Chain(Segment):
         Segment.add_fragment(self, fragment, delay_sort)
         fragment.chain = self
 
-    def remove(self, fragment):
+    def remove_fragment(self, fragment):
         """Remove the Fragment from the Chain.
         """
-        Segment.remove(self, fragment)
+        Segment.remove_fragment(self, fragment)
         fragment.chain = None
         
     def set_chain_id(self, chain_id):
@@ -1588,17 +1574,12 @@ class Fragment(object):
             return self.atom_list[name_idx]
         raise TypeError, name_idx
 
-    def __delitem__(self, name_idx):
-        """Removes a Atom from the Fragment.
-        """
-        pass
-
     def __iter__(self):
         """Iterates the atoms within the fragment.  If the fragment contains
         atoms in alternate conformations, only the atoms with the structure's
         default_alt_loc are iterated.
         """
-        return self.iter_atoms()
+        return iter(self.atom_list)
 
     def __contains__(self, atom_idx):
         """Return True if the Atom object is contained in the fragment.
@@ -1779,7 +1760,6 @@ class Fragment(object):
             
         atom.fragment = self
 
-
     def remove_atom(self, atom):
         """Finish Me
         """
@@ -1790,10 +1770,9 @@ class Fragment(object):
         """Returns the matching Atom object contained in the Fragment.
         Returns None if a match is not found.
         """
-        try:
-            return self[name]
-        except KeyError:
+        if not self.atom_dict.has_key(name):
             return None
+        return self.atom_dict[name]
     
     def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment matching
@@ -1802,7 +1781,7 @@ class Fragment(object):
         return iter(self.atom_list)
 
     def count_atoms(self):
-        """
+        """Counts Atom objects.
         """
         return len(self.atom_list)
 
@@ -1817,7 +1796,7 @@ class Fragment(object):
                     yield atmx
 
     def count_all_atoms(self):
-        """
+        """Counts all Atom objects including Atoms in alternate conformations.
         """
         n = 0
         for atm in self.atom_order_list:
@@ -2511,12 +2490,6 @@ class Atom(object):
         else:
             return self.altloc[alt_loc]
 
-    def __delitem__(self, x):
-        """Deletes the alternate conformation of the atom matching the
-        argument.  The argument is the same as the argument for __getitem__.
-        """
-        self.remove(self[x])
-
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
@@ -2547,11 +2520,11 @@ class Atom(object):
             
         return False
 
-    def remove(self, atom):
+    def remove_alt_loc(self, atom):
         """Removes the argument Atom from the Altloc. 
         """
         try:
-            self.fragment.remove(atom)
+            self.fragment.remove_atom(atom)
         except AttributeError:
             if self.altloc!=None and self.altloc.has_key(atom.alt_loc):
                 del self.altloc[atom.alt_loc]
@@ -3288,7 +3261,6 @@ class Site(object):
         assert type(fragment_list)      == ListType
 
         self.model              = None
-
         self.site_id            = site_id
         self.fragment_dict_list = fragment_list
 
