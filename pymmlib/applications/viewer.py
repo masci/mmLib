@@ -49,10 +49,13 @@ def markup_matrix3(tensor):
                tensor[1,0], tensor[1,1], tensor[1,2],
                tensor[2,0], tensor[2,1], tensor[2,2])
 
-    
-class GtkGLViewer(gtk.gtkgl.DrawingArea):
+
+
+
+class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def __init__(self):
         gtk.gtkgl.DrawingArea.__init__(self)
+        GLViewer.__init__(self)
         gtk.gtkgl.widget_set_gl_capability(self, glconfig)
         
         self.set_size_request(300, 300)
@@ -66,9 +69,12 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         self.connect('expose_event',        self.expose_event)
         self.connect('destroy',             self.destroy)
 
-        self.glviewer        = None
-        self.unit_cell_draw  = None
-        self.atom_draw       = None
+
+    def get_gl_drawable(self):
+        return gtk.gtkgl.DrawingArea.get_gl_drawable(self)
+
+    def get_gl_context(self):
+        return gtk.gtkgl.DrawingArea.get_gl_context(self)
 
     def destroy(self, glarea):
         return gtk.TRUE
@@ -82,22 +88,16 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         height    = glarea.allocation.height
 
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            self.glviewer.roty = self.glviewer.roty + \
-                        (((event.x - self.beginx) / float(width)) * 360.0)
-            self.glviewer.rotx = self.glviewer.rotx + \
-                        (((event.y - self.beginy) / float(height)) * 360.0)
+            self.roty = self.roty + (((event.x - self.beginx) / float(width)) * 360.0)
+            self.rotx = self.rotx + (((event.y - self.beginy) / float(height)) * 360.0)
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
-            self.glviewer.zpos = self.glviewer.zpos + \
-                        (((event.y - self.beginy) / float(height)) * 50.0)
-
-            self.glviewer.zpos = max(self.glviewer.zpos, -450.0)
+            self.zpos = self.zpos + (((event.y - self.beginy) / float(height)) * 50.0)
+            self.zpos = max(self.zpos, -450.0)
 
         elif (event.state & gtk.gdk.BUTTON3_MASK):
-            self.glviewer.ypos = self.glviewer.ypos - \
-                        (((event.y - self.beginy) / float(height)) * 50.0)
-            self.glviewer.xpos = self.glviewer.xpos + \
-                        (((event.x - self.beginx) / float(width)) * 50.0)
+            self.ypos = self.ypos - (((event.y - self.beginy) / float(height)) * 50.0)
+            self.xpos = self.xpos + (((event.x - self.beginx) / float(width)) * 50.0)
 
         self.beginx = event.x
         self.beginy = event.y
@@ -105,13 +105,8 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         self.queue_draw()
 
     def configure_event(self, glarea, event):
-        if not self.glviewer:
-            self.glviewer = GLViewer(self.get_gl_context(),
-                                     self.get_gl_drawable())
-
         x, y, width, height = glarea.get_allocation()
-        self.glviewer.gl_resize(width, height)
-
+        self.gl_resize(width, height)
         self.queue_draw()
         return gtk.TRUE
 
@@ -126,19 +121,19 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         return gtk.TRUE
 
     def realize(self, glarea):
-        self.glviewer.gl_init()
+        self.gl_init()
         return gtk.TRUE
 
     def expose_event(self, glarea, event):
-        self.glviewer.gl_draw_lists()
+        self.gl_render()
         return gtk.TRUE
 
-    def append_struct(self, struct):
+    def add_struct(self, struct):
         """Adds a structure to this viewer, and returns the GLStructure
         object so it can be manipulated.
         """
         gl_struct = GLStructure(struct=struct)
-        self.glviewer.append(gl_struct)
+        self.add_draw_list(gl_struct)
         self.queue_draw()
         return gl_struct
 
@@ -146,6 +141,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         """Removes structure from the viewer.
         """
         pass
+
 
 
 class StructDetailsDialog(gtk.Dialog):
@@ -247,9 +243,11 @@ class GLPropertyEditor(gtk.Frame):
     GLObject widget supporting GLProperties.
     """
     def __init__(self, gl_object):
-        self.gl_object = gl_object
-
         gtk.Frame.__init__(self)
+        self.connect("destroy", self.destroy)
+
+        self.gl_object = gl_object
+        self.gl_object.properties.add_update_callback(self.properties_update_cb)
         
         self.prop_widget_dict = {}
         num_props = len(self.gl_object.properties.prop_list)
@@ -265,6 +263,9 @@ class GLPropertyEditor(gtk.Frame):
         ## boolean types first since the toggle widgets don't look good mixed
         ## with the entry widgets
         for prop in self.gl_object.properties.prop_list:
+            if prop.get("hidden", False)==True:
+                continue
+
             ## only handling boolean right now
             if prop["type"]!="boolean":
                 continue
@@ -280,6 +281,9 @@ class GLPropertyEditor(gtk.Frame):
 
         ## create and layout the editing widgets
         for prop in self.gl_object.properties.prop_list:
+            if prop.get("hidden", False)==True:
+                continue
+            
             ## boolean types were already handled
             if prop["type"]=="boolean":
                 continue
@@ -293,7 +297,13 @@ class GLPropertyEditor(gtk.Frame):
             table.attach(edit_widget, 1, 2, table_row, table_row+1, 0, 0, 0, 0)
             table_row += 1
 
-        self.update_widgets()
+        self.properties_update_cb()
+
+    def destroy(self, widget):
+        """Called after this widget is destroyed.  Make sure to remove the callback we installed
+        to monitor property changes.
+        """
+        self.gl_object.properties.remove_update_callback(self.properties_update_cb)
 
     def new_property_label_widget(self, prop):
         """Returns the label widget for property editing.
@@ -307,6 +317,8 @@ class GLPropertyEditor(gtk.Frame):
         """
         if prop["type"]=="boolean":
             widget = gtk.CheckButton(prop.get("desc", prop["name"]))
+        elif prop["type"]=="integer":
+            widget = gtk.Entry()
         elif prop["type"]=="float":
             widget = gtk.Entry()
         elif prop["type"]=="array(3)":
@@ -321,12 +333,16 @@ class GLPropertyEditor(gtk.Frame):
 
         return widget
 
-    def update_widgets(self):
-        """Read the edited values and apply them.
+    def properties_update_cb(self, updates={}, actions=[]):
+        """Read the property values and update the widgets to display the values.
         """
         for prop in self.gl_object.properties.prop_list:
             name   = prop["name"]
-            widget = self.prop_widget_dict[name]
+
+            try:
+                widget = self.prop_widget_dict[name]
+            except KeyError:
+                continue
 
             if prop["type"]=="boolean":
                 if self.gl_object.properties[name]==True:
@@ -338,23 +354,53 @@ class GLPropertyEditor(gtk.Frame):
                 text = str(self.gl_object.properties[name])
                 widget.set_text(text)
 
+    def update(self):
+        """Read values from widgets and apply them to the gl_object
+        properties.
+        """
+        update_dict = {}
+        
+        for prop in self.gl_object.properties.prop_list:
+            name   = prop["name"]
+
+            try:
+                widget = self.prop_widget_dict[name]
+            except KeyError:
+                continue
+
+            if prop["type"]=="boolean":
+                if widget.get_active()==gtk.TRUE:
+                    update_dict[name] = True
+                else:
+                    update_dict[name] = False
+
+            elif prop["type"]=="integer":
+                try:
+                    value = int(widget.get_text())
+                except ValueError:
+                    pass
+                else:
+                    update_dict[name] = value
+                    
+            elif prop["type"]=="float":
+                try:
+                    value = float(widget.get_text())
+                except ValueError:
+                    pass
+                else:
+                    update_dict[name] = value
+                    
+        self.gl_object.properties.update(**update_dict)
+
 
 class GLPropertyEditDialog(gtk.Dialog):
     def __init__(self, parent_window, gl_object):
-
-        gtk.Dialog.__init__(
-            self,
-            "Edit GLProperties",
-            parent_window,
-            gtk.DIALOG_DESTROY_WITH_PARENT)
-
-        self.set_default_size(10, 10)
-        
+        gtk.Dialog.__init__(self, "Edit GLProperties", parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
         self.set_resizable(gtk.FALSE)
         self.connect("response", self.response_cb)
 
         self.gl_prop_editor = GLPropertyEditor(gl_object)
-        self.vbox.pack_start(self.gl_prop_editor, gtk.FALSE, gtk.FALSE, 0)
+        self.vbox.pack_start(self.gl_prop_editor, gtk.TRUE, gtk.TRUE, 0)
 
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
@@ -399,34 +445,42 @@ class TLSDialog(gtk.Dialog):
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
-        self.store = gtk.ListStore(
-            gobject.TYPE_BOOLEAN,
-            gobject.TYPE_STRING,
-            gobject.TYPE_STRING,
-            gobject.TYPE_STRING,
-            gobject.TYPE_STRING)
+        self.model = gtk.TreeStore(
+            gobject.TYPE_BOOLEAN,   #0
+            gobject.TYPE_STRING,    #1
+            gobject.TYPE_STRING,    #2
+            gobject.TYPE_STRING,    #3
+            gobject.TYPE_STRING)    #4
      
-        treeview = gtk.TreeView(self.store)
+        treeview = gtk.TreeView(self.model)
         sw.add(treeview)
         treeview.connect("row-activated", self.row_activated_cb)
         treeview.set_rules_hint(gtk.TRUE)
-        treeview.set_search_column(0)
 
-        toggle_rend = gtk.CellRendererToggle()
-        toggle_rend.connect("toggled", self.view_toggled)
-        column = gtk.TreeViewColumn("Show", toggle_rend, active=0)
+        cell_rend = gtk.CellRendererToggle()
+        column = gtk.TreeViewColumn("Show", cell_rend)
+        column.add_attribute(cell_rend, "active", 0)
+        treeview.append_column(column)
+        cell_rend.connect("toggled", self.view_toggled)
+
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("TLS Group", cell_rend)
+        column.add_attribute(cell_rend, "markup", 1)
         treeview.append_column(column)
 
-        column = gtk.TreeViewColumn("TLS Group", gtk.CellRendererText(), markup=1)
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("T(A^2)", cell_rend)
+        column.add_attribute(cell_rend, "markup", 2)
         treeview.append_column(column)
 
-        column = gtk.TreeViewColumn("T (A^2)", gtk.CellRendererText(), markup=2)
-        treeview.append_column(column)
-    
-        column = gtk.TreeViewColumn("L (deg^2)", gtk.CellRendererText(), markup=3)
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("L(deg^2)", cell_rend)
+        column.add_attribute(cell_rend, "markup", 3)
         treeview.append_column(column)
 
-        column = gtk.TreeViewColumn("S (A*deg)", gtk.CellRendererText(), markup=4)
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("S(A*deg)", cell_rend)
+        column.add_attribute(cell_rend, "markup", 4)
         treeview.append_column(column)
 
         self.show_all()
@@ -436,7 +490,19 @@ class TLSDialog(gtk.Dialog):
     def response_cb(self, dialog, response_code):
         if response_code==gtk.RESPONSE_CLOSE:
             self.destroy()
-        if response_code==101 and self.sel_tls_group!=None:
+            
+        elif response_code==100:
+            file_sel = gtk.FileSelection("Select TLSOUT File")
+            file_sel.hide_fileop_buttons()
+            response = file_sel.run()
+
+            if response==gtk.RESPONSE_OK:
+                path = file_sel.get_filename()
+                if path!=None and path!="":
+                    self.load_TLSOUT(path)
+            file_sel.destroy()
+            
+        elif response_code==101 and self.sel_tls_group!=None:
             prop_dialog = GLPropertyEditDialog(self, self.sel_tls_group.gl_tls)
             prop_dialog.present()
 
@@ -447,38 +513,29 @@ class TLSDialog(gtk.Dialog):
         return self.tls_group_list[int(path)]
 
     def row_activated_cb(self, tree_view, path, column):
-        self.sel_tls_group = self.get_tls_group(path[0])
+        print "## row activated path = %s" % (str(path))
+        row = int(path[0])
+        self.sel_tls_group = self.tls_group_list[row]
 
     def view_toggled(self, cell, path):
+        print "## view_toggled path = %s" % (str(path))
+
+        ## why, oh why??
+        path = int(path)
+
         # get toggled iter
-        iter = self.store.get_iter((int(path),))
-        show_vis = self.store.get_value(iter, 0)
-        tls_group = self.get_tls_group(path)
+        iter = self.model.get_iter((path,))
+
+        show_vis = self.model.get_value(iter, 0)
+        tls_group = self.tls_group_list[path]
     
         # do something with the value
         if show_vis==gtk.TRUE:
-            show_vis = gtk.FALSE
-            tls_group.gl_tls.update(visible=False)
+            tls_group.gl_tls.properties.update(visible=False)
         else:
-            show_vis = gtk.TRUE
-            tls_group.gl_tls.update(visible=True)
+            tls_group.gl_tls.properties.update(visible=True)
 
         self.main_window.struct_gui.gtkglviewer.queue_draw()
-
-        # set new value
-        self.store.set(iter, 0, show_vis)
-
-    def clear_tls_groups(self):
-        """Remove the current TLS groups, including destroying
-        the tls.gl_tls OpenGL renderer
-        """
-        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
-
-        for tls_group in self.tls_group_list:
-            gl_viewer.remove(tls_group.gl_tls)
-            del tls_group.gl_tls
-        
-        self.tls_group_list = []
 
     def add_tls_group(self, tls_group):
         """Adds the TLS group and creates tls.gl_tls OpenGL
@@ -487,10 +544,30 @@ class TLSDialog(gtk.Dialog):
         self.tls_group_list.append(tls_group)
         
         tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
-        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
-        gl_viewer.append(tls_group.gl_tls)
+        tls_group.gl_tls.properties.add_update_callback(self.update_cb)
+
+        gl_viewer = self.main_window.struct_gui.gtkglviewer
+        gl_viewer.add_draw_list(tls_group.gl_tls)
 
         self.redraw_treeview()
+
+    def update_cb(self, updates={}, actions=[]):
+        """Property change callback from the GLTLSGroups.
+        """
+        self.redraw_treeview()
+
+    def clear_tls_groups(self):
+        """Remove the current TLS groups, including destroying
+        the tls.gl_tls OpenGL renderer
+        """
+        gl_viewer = self.main_window.struct_gui.gtkglviewer
+
+        for tls_group in self.tls_group_list:
+            gl_viewer.remove_draw_list(tls_group.gl_tls)
+            tls_group.gl_tls.properties.remove_update_callback(self.update_cb)
+            del tls_group.gl_tls
+        
+        self.tls_group_list = []
         
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
@@ -507,9 +584,11 @@ class TLSDialog(gtk.Dialog):
             tls_group.tls_info = tls_info
             self.add_tls_group(tls_group)
             
-    def load_TLSIN(self, path):
-        """Load TLS descriptions from a REMAC/CCP4 TLSIN file.
+    def load_TLSOUT(self, path):
+        """Load TLS descriptions from a REMAC/CCP4 TLSOUT file.
         """
+        print "## loading = ",path
+        
         self.clear_tls_groups()
 
         tls_file = TLSInfoList()
@@ -540,33 +619,22 @@ class TLSDialog(gtk.Dialog):
     def redraw_treeview(self):
         """Clear and redisplay the TLS group treeview list.
         """
-        self.store.clear()
+        self.model.clear()
+        self.model.clear()
 
         for tls in self.tls_group_list:
-            iter = self.store.append()
+            iter = self.model.append(None)
 
             if tls.gl_tls.properties["visible"]==True:
-                show_vis = gtk.TRUE
+                self.model.set(iter, 0, gtk.TRUE)
             else:
-                show_vis = gtk.FALSE
+                self.model.set(iter, 0, gtk.FALSE)
 
-            self.store.set(iter,
-                           0, show_vis,
-                           1, self.markup_tls_name(tls.tls_info),
-                           2, self.markup_tensor(tls.T),
-                           3, self.markup_tensor(tls.L*rad2deg2),
-                           4, self.markup_tensor(tls.S*rad2deg))
-
-    def show_tls_group_animation(self, tls):
-        """Show the TLS
-        """
-        gl_viewer = self.main_window.struct_gui.gtkglviewer.glviewer
-
-        tls.gl_tls = GLTLSGroup(tls_group = tls)
-        glviewer.append(tls.gl_tls)
-
-        gobject.timeout_add(25, self.timeout_cb, tls)
-                
+            self.model.set(iter, 1, self.markup_tls_name(tls.tls_info))
+            self.model.set(iter, 2, self.markup_tensor(tls.T))
+            self.model.set(iter, 3, self.markup_tensor(tls.L*rad2deg2))
+            self.model.set(iter, 4, self.markup_tensor(tls.S*rad2deg))
+        
     def timeout_cb(self, tls):
         tls.gl_tls.inc_time()
         self.context.struct_gui.gtkglviewer.queue_draw()
@@ -925,7 +993,7 @@ class MainWindow(object):
             visible = True
         else:
             visible = False
-        self.sel_struct_context.gl_struct.update(**{property: visible})            
+        self.sel_struct_context.gl_struct.properties.update(**{property: visible})            
         self.struct_gui.gtkglviewer.queue_draw()
 
     def color_menu_cb(self, callback_action, widget):
@@ -936,7 +1004,7 @@ class MainWindow(object):
         color_cmd = self.color_cmds.get_action(callback_action)
 
         if callback_action==100:
-            self.sel_struct_context.gl_struct.update(color=None)
+            self.sel_struct_context.gl_struct.properties.update(color=None)
 
         elif callback_action==101: 
             gl_struct = self.sel_struct_context.gl_struct
@@ -957,7 +1025,7 @@ class MainWindow(object):
                 else:
                     colori += 1
                 
-                gl_chain.update(color=color)
+                gl_chain.properties.update(color=color)
 
         self.struct_gui.gtkglviewer.queue_draw()
 
@@ -981,7 +1049,7 @@ class MainWindow(object):
 
         struct.path = path
         
-        gl_struct = self.struct_gui.gtkglviewer.append_struct(struct)
+        gl_struct = self.struct_gui.gtkglviewer.add_struct(struct)
 
         struct_context = StructureContext(struct, gl_struct)
         self.struct_context_list.append(struct_context)

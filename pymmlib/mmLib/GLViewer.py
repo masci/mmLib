@@ -4,12 +4,14 @@
 ## included as part of this package.
 """OpenGL rendering classes.
 """
-from __future__ import generators
+from __future__  import generators
+import weakref
+
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
-from mmTypes import *
-from Structure import *
+from mmTypes     import *
+from Structure   import *
 
 
 class GLProperties(dict):
@@ -18,13 +20,39 @@ class GLProperties(dict):
     """
     def __init__(self):
         dict.__init__(self)
-        self.prop_list = []
+        self.prop_list     = []
+        self.callback_list = []
+
+    def get_property(self, name):
+        """Returns a property dictionary by property name.
+        """
+        for prop in self.prop_list:
+            if prop["name"]==name:
+                return prop
+        return None
 
     def add(self, prop):
-        """Add a property.
+        """Add a property dictionary.  Do not allow properties with the same
+        name.
         """
+        assert self.get_property(prop["name"])==None
+        
         self.prop_list.append(prop)
         self[prop["name"]] =  prop["default"]
+
+    def add_update_callback(self, func):
+        """Adds a function which is called whenever property values change.
+        The function is called with two arguments: a updates dictionary
+        containing all updated properties and the values they were changed
+        to, and a actions list which contains a unique list of action
+        key words formed from the action fields of the updated properties.
+        """
+        self.callback_list.append(func)
+
+    def remove_update_callback(self, func):
+        """Removes the update callback.
+        """
+        self.callback_list.remove(func)
 
     def init(self, **args):
         """This is a special form of update which propagates all linked
@@ -35,19 +63,22 @@ class GLProperties(dict):
             self[name] = args.get(name, prop["default"])
 
             try:
-                linked_props = prop["linked properties"]
+                linked_props = prop["link"]
             except KeyError:
                 pass
             else:
                 for linked_prop in linked_props:
-                    object = linked_prop["object"]
-                    args   =  {linked_prop["name"]: self[name]}
-                    object.properties.init(**args)
+                    properties = linked_prop["gl_properties"]
+                    args = {linked_prop["name"]: self[name]}
+                    properties.init(**args)
 
     def update(self, **args):
         """Update the properties, and any linked values
         """
-        action_list = []
+        print "## update(%s)" % (str(args))
+        
+        updates = {}
+        actions = []
 
         for prop in self.prop_list:
             name      = prop["name"]
@@ -58,77 +89,79 @@ class GLProperties(dict):
             except KeyError:
                 pass
             else:
-                if self[name]!=old_value:
-                    if prop["action"] not in action_list:
-                        action_list.append(prop["action"])
+                if self[name]!=old_value or prop.has_key("link"):
+                    updates[name] = self[name]
+
+                    if prop["action"] not in actions:
+                        actions.append(prop["action"])
 
                 try:
-                    linked_props = prop["linked properties"]
+                    linked_props = prop["link"]
                 except KeyError:
                     pass
                 else:
                     for linked_prop in linked_props:
-                        object = linked_prop["object"]
-                        args   =  {linked_prop["name"]: self[name]}
-                        object.update(**args)
+                        properties = linked_prop["gl_properties"]
+                        args = {linked_prop["name"]: self[name]}
+                        properties.update(**args)
 
-        return action_list
+        for func in self.callback_list:
+            func(updates, actions)
 
+
+
+class GLDrawListProperties(GLProperties):
+    def __init__(self):
+        GLProperties.__init__(self)
+        
+        self.add(
+            { "name" :      "visible",
+              "desc":       "Visible",
+              "type":       "boolean",
+              "default":    True,
+              "action":     "redraw" })
+        self.add(
+            { "name" :      "origin",
+              "desc":       "Origin",
+              "type":       "array(3)",
+              "hidden":     True,
+              "default":    zeros(3, Float),
+              "action":     "redraw" })
+        self.add(
+            { "name" :      "axes",
+              "desc":       "Rotation Axes",
+              "type":       "array(3,3)",
+              "hidden":     True,
+              "default":    identity(3),
+              "action":     "redraw" })
+        self.add(
+            { "name" :      "rot_x",
+              "desc":       "Degrees Rotation About X Axis",
+              "type":       "float",
+              "hidden":     True,
+              "default":    0.0,
+              "action":     "redraw" })
+        self.add(
+            { "name" :      "rot_y",
+              "desc":       "Degrees Rotation About Y Axis",
+              "type":       "float",
+              "hidden":     True,
+              "default":    0.0,
+              "action":     "redraw" })
+        self.add(
+            { "name" :      "rot_z",
+              "desc":       "Degrees Rotation About Z Axis",
+              "type":       "float",
+              "hidden":     True,
+              "default":    0.0,
+              "action":     "redraw" })
+        
 
 class GLDrawList(object):
     """Fundamental OpenGL rigid entity.
     """
     def __init__(self, **args):
         self.gl_name = None
-
-        ## reflection properties of material
-        self.ambient  = 1.0
-        self.diffuse  = 1.0
-        self.specular = 0.2
-        self.material = (1.0, 1.0, 1.0, 1.0)
-
-        self.properties = GLProperties()
-        self.properties.add(
-            { "name" :      "visible",
-              "desc":       "Visible",
-              "type":       "boolean",
-              "default":    True,
-              "action":     "redraw" })
-        self.properties.add(
-            { "name" :      "origin",
-              "desc":       "Origin",
-              "type":       "array(3)",
-              "default":    zeros(3, Float),
-              "action":     "redraw" })
-        self.properties.add(
-            { "name" :      "axes",
-              "desc":       "Rotation Axes",
-              "type":       "array(3,3)",
-              "default":    identity(3),
-              "action":     "redraw" })
-        self.properties.add(
-            { "name" :      "rot_x",
-              "desc":       "Degrees Rotation About X Axis",
-              "type":       "float",
-              "default":    0.0,
-              "action":     "redraw" })
-        self.properties.add(
-            { "name" :      "rot_y",
-              "desc":       "Degrees Rotation About Y Axis",
-              "type":       "float",
-              "default":    0.0,
-              "action":     "redraw" })
-        self.properties.add(
-            { "name" :      "rot_z",
-              "desc":       "Degrees Rotation About Z Axis",
-              "type":       "float",
-              "default":    0.0,
-              "action":     "redraw" })
-
-        self.properties.init(**args)
-        
-    def update(self, **args):
-        self.properties.update(**args)
 
     def gl_push_matrix(self):
         """Rotate and translate to the correct position for drawing.
@@ -186,58 +219,82 @@ class GLDrawList(object):
         """
         pass
 
-    def set_material(self, r=1.0, g=1.0, b=1.0, br=1.0, alpha=1.0):
-        """Utility function used in subclasses to set material properties
-        before drawing.
+
+
+class GLDrawListContainer(GLDrawList):
+    """Base class for draw lists which contain other draw lists.
+    """
+    def iter_draw_lists(self):
+        """Iterates all draw lists.
         """
-        amb_r = self.ambient * r * br
-        amb_g = self.ambient * g * br
-        amb_b = self.ambient * b * br
-
-        dif_r = self.diffuse * br
-        spe_r = self.specular * br
-
-        shine = 50.0 * br
+        pass
+    
+    def gl_render(self):
+        if self.properties["visible"]==False:
+            return
         
-	glMaterial(GL_FRONT, GL_AMBIENT, [amb_r, amb_g, amb_b, alpha])
-	glMaterial(GL_FRONT, GL_DIFFUSE, [dif_r, dif_r, dif_r, alpha])
-	glMaterial(GL_FRONT, GL_SPECULAR,[spe_r, spe_r, spe_r, alpha])
-	glMaterial(GL_FRONT, GL_SHININESS, shine)
+        self.gl_push_matrix()
+
+        for draw_list in self.iter_draw_lists():
+            draw_list.gl_render()
+
+        if self.gl_name==None:
+            self.gl_compile_list()
+
+        glCallList(self.gl_name)
+
+        self.gl_pop_matrix()
+
+    def gl_delete_list(self):
+        for draw_list in self.iter_draw_lists():
+            draw_list.gl_delete_list()
+        GLDrawList.gl_delete_list(self)
+
+
+class GLAxesProperties(GLDrawListProperties):
+    def __init__(self):
+        GLDrawListProperties.__init__(self)
+
+        self.add(
+            { "name":       "line_length",
+              "type":       "float",
+              "default":    200.0,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "line_width",
+              "type":       "float",
+              "default":    10.0,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "color_x",
+              "type":       "color",
+              "default":    (1.0, 0.0, 0.0),
+              "action":     "recompile" })
+        self.add(
+            { "name":       "color_y",
+              "type":       "color",
+              "default":    (0.0, 1.0, 0.0),
+              "action":     "recompile" })
+        self.add(
+            { "name":       "color_z",
+              "type":       "color",
+              "default":    (0.0, 0.0, 1.0),
+              "action":     "recompile" })
 
 
 class GLAxes(GLDrawList):
     """Draw orthogonal axes in red = x, green = y, blue = z.
     """
     def __init__(self, **args):
-        GLDrawList.__init__(self)
+        GLDrawList.__init__(self, **args)
 
-        self.properties.add(
-            { "name":       "line_length",
-              "type":       "float",
-              "default":    200.0,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "line_width",
-              "type":       "float",
-              "default":    10.0,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "color_x",
-              "type":       "color",
-              "default":    (1.0, 0.0, 0.0),
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "color_y",
-              "type":       "color",
-              "default":    (0.0, 1.0, 0.0),
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "color_z",
-              "type":       "color",
-              "default":    (0.0, 0.0, 1.0),
-              "action":     "recompile" })
+        self.properties = args.get("properties", GLAxesProperties())
+        self.properties.add_update_callback(self.update_cb)
+        self.properties.init(**args)
 
-        self.properties.update(**args)
+    def update_cb(self, updates, actions):
+        if "recompile" in actions:
+            self.gl_delete_list()
         
     def gl_draw(self):
         glDisable(GL_LIGHTING)
@@ -262,25 +319,38 @@ class GLAxes(GLDrawList):
         glEnable(GL_LIGHTING)
 
 
-class GLUnitCell(GLDrawList):
-    """Draw unit cell.
-    """
-    def __init__(self, unit_cell, **args):
-        GLDrawList.__init__(self)
-        self.unit_cell = unit_cell
 
-        self.properties.add(
+class GLUnitCellProperties(GLDrawListProperties):
+    def __init__(self):
+        GLDrawListProperties.__init__(self)
+        
+        self.add(
             { "name":       "line_width",
               "type":       "float",
               "default":    2.0,
               "action":     "recompile" })
-        self.properties.add(
+        self.add(
             { "name":       "color",
               "type":       "color",
               "default":    (1.0, 1.0, 1.0),
               "action":     "recompile" })
 
+
+class GLUnitCell(GLDrawList):
+    """Draw unit cell.
+    """
+    def __init__(self, **args):
+        GLDrawList.__init__(self, **args)
+
+        self.properties = args.get("properties", GLUnitCellProperties())
+        self.properties.add_update_callback(self.update_cb)
         self.properties.init(**args)
+
+        self.unit_cell = args["unit_cell"]
+
+    def update_cb(self, updates, actions):
+        if "recompile" in actions:
+            self.gl_delete_list()
 
     def draw_cell(self, x1, y1, z1, x2, y2, z2):
         """Draw the unit cell lines in a rectangle starting at fractional
@@ -324,61 +394,88 @@ class GLUnitCell(GLDrawList):
         self.draw_cell(-1, -1, -1, 0, 0, 0)
 
 
+class GLAtomListProperties(GLDrawListProperties):
+    def __init__(self):
+        GLDrawListProperties.__init__(self)
+        
+        self.add(
+            { "name":       "sphere_quality",
+              "desc":       "CPK Sphere Quality",
+              "type":       "integer",
+              "default":    12,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "line_width",
+              "desc":       "Atom Line Drawing Width",
+              "type":       "float",
+              "default":    3.0,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "atom_origin",
+              "type":       "array(3)",
+              "hidden":     True,
+              "default":    None,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "lines",
+              "desc":       "Draw Atom Bond Lines",
+              "type":       "boolean",
+              "default":    True,
+              "action":     "recompile" })
+        self.add(
+            { "name":       "cpk",
+              "desc":       "Draw CPK Spheres",
+              "type":       "boolean",
+              "default":    False,
+              "action":    "recompile" })
+        self.add(
+            { "name":      "U",
+              "desc":      "Draw ADP Axes",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "recompile" })
+        self.add(
+            { "name":      "atm_U_attr",
+              "type":      "string",
+              "hidden":    True,
+              "default":   "U",
+              "action":    "recompile" })
+        self.add(
+            { "name":      "U_color",
+              "desc":      "Thermal Axes Color",
+              "type":      "color",
+              "default":   (1.0, 1.0, 1.0),
+              "action":    "recompile" })
+        self.add(
+            { "name":      "color",
+              "desc":      "Solid Color",
+              "type":      "color",
+              "default":   None,
+              "action":    "recompile" })
+        self.add(
+            { "name":      "color_func",
+              "type":      "function",
+              "hidden":    True,
+              "default":   None,
+              "action":    "recompile" })
+        
+
 class GLAtomList(GLDrawList, AtomList):
     """OpenGL renderer for a list of atoms.  Optional arguments iare:
     color, U, U_color.
     """
     def __init__(self, **args):
-        GLDrawList.__init__(self)
+        GLDrawList.__init__(self, **args)
         AtomList.__init__(self)
 
-        self.properties.add(
-            { "name":       "sphere_quality",
-              "default":    12,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "line_width",
-              "default":    3.0,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "atom_origin",
-              "default":    None,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "lines",
-              "default":    True,
-              "action":     "recompile" })
-        self.properties.add(
-            { "name":       "cpk",
-              "default":    False,
-              "action":    "recompile" })
-        self.properties.add(
-            { "name":      "U",
-              "default":   False,
-              "action":    "recompile" })
-        self.properties.add(
-            { "name":      "atm_U_attr",
-              "default":   "U",
-              "action":    "recompile" })
-        self.properties.add(
-            { "name":      "U_color",
-              "default":   (1.0, 1.0, 1.0),
-              "action":    "recompile" })
-        self.properties.add(
-            { "name":      "color",
-              "default":   None,
-              "action":    "recompile" })
-        self.properties.add(
-            { "name":      "color_func",
-              "default":   None,
-              "action":    "recompile" })
-        
+        self.properties = args.get("properties", GLAtomListProperties())
+        self.properties.add_update_callback(self.update_cb)
         self.properties.init(**args)
+
         self.el_color_cache = {}
 
-    def update(self, **args):
-        #print "## GLAtomList.update(%s)" % (str(args))
-        actions = self.properties.update(**args)
+    def update_cb(self, updates, actions):
+        print "## GLAtomList.update(%s)" % (str(updates))
         if "recompile" in actions:
             self.gl_delete_list()
 
@@ -449,6 +546,27 @@ class GLAtomList(GLDrawList, AtomList):
         sphere_quality = self.properties["sphere_quality"]
         glutSolidSphere(radius, sphere_quality, sphere_quality)
         glPopMatrix()
+
+    def set_material(self, r=1.0, g=1.0, b=1.0, br=1.0, alpha=1.0):
+        """Utility function used to set material for rendering CPK spheres.
+        """
+        ambient  = 0.5
+        diffuse  = 0.5
+        specular = 0.5
+
+        amb_r = ambient * r * br
+        amb_g = ambient * g * br
+        amb_b = ambient * b * br
+
+        dif_r = diffuse * br
+        spe_r = specular * br
+
+        shine = 50.0 * br
+        
+	glMaterial(GL_FRONT, GL_AMBIENT, [amb_r, amb_g, amb_b, alpha])
+	glMaterial(GL_FRONT, GL_DIFFUSE, [dif_r, dif_r, dif_r, alpha])
+	glMaterial(GL_FRONT, GL_SPECULAR,[spe_r, spe_r, spe_r, alpha])
+	glMaterial(GL_FRONT, GL_SHININESS, shine)
 
     def draw_lines(self, atm):
         """Draw a atom using bond lines only.
@@ -583,61 +701,70 @@ class GLAtomList(GLDrawList, AtomList):
             return
         
 
-class GLTLSGroup(GLDrawList):
-    """Draws TLS group
-    """
-    def __init__(self, **args):
-        GLDrawList.__init__(self)
-
-        self.properties.add(
+class GLTLSGroupProperties(GLDrawListProperties):
+    def __init__(self):
+        GLDrawListProperties.__init__(self)
+        
+        self.add(
             { "name":        "time",
               "desc":        "Simulation Time", 
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
-        self.properties.add(
-            { "name":       "line_width",
+        self.add(
+            { "name":       "tensor_line_width",
               "desc":       "Line Width of Tensors",
               "type":       "float",
               "default":    2.0,
               "action":     "recompile" })
-        self.properties.add(
+        self.add(
             { "name":        "TLS_visible",
               "desc":        "Show TLS Tensors",
               "type":        "boolean",
               "default":     True,
               "action":      "recompile" })
-        self.properties.add(
+        self.add(
             { "name":        "T_color",
               "desc":        "T Tensor Color",
               "type":        "color",
               "default":     (0.0, 1.0, 0.0),
               "action":      "recompile" })
-        self.properties.add(
+        self.add(
             { "name":       "L_color",
               "desc":       "L Tensor Color",
               "type":       "color",
               "default":    (1.0, 0.0, 0.0),
               "action":     "recompile" })
-        self.properties.add(
+        self.add(
             { "name":       "S_color",
               "desc":       "S Tensor Color",
               "type":       "color",
               "default":    (0.0, 0.0, 1.0),
               "action":     "recompile" })
-        self.properties.add(
+        self.add(
             { "name":        "CA_line_visible",
               "desc":        "Show Lines to C-Alpha Atoms",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
 
+
+class GLTLSGroup(GLDrawListContainer):
+    """Draws TLS group
+    """
+    def __init__(self, **args):
+        GLDrawListContainer.__init__(self)
+
         ## TLS calculations 
         self.tls_group = args["tls_group"] 
         self.calcs     = self.tls_group.calc_COR()        
         (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.L)
-        self.evalL   = eval
+        self.evalL     = eigen_values
 
+        ## properties 
+        self.properties = args.get("properties", GLTLSGroupProperties())
+        self.properties.add_update_callback(self.update_cb)
+        
         self.properties.init(
             origin = self.calcs["COR"],
             axes   = eigen_vectors,
@@ -650,33 +777,22 @@ class GLTLSGroup(GLDrawList):
             U_color     = (0.,1.,0.),
             color       = (1.,1.,1.),
             line_width  = 10.0,
-            origin      = self.calcs["COR"], 
             atom_origin = self.calcs["COR"])
 
         for atm, Ucalc in self.tls_group.iter_atm_Ucalc():
             atm.Ucalc = Ucalc
             self.gl_atom_list.append(atm)
 
-    def update(self, **args):
-        self.gl_atom_list.update(**args)
-        actions = self.properties.update(**args)
+    def update_cb(self, updates, actions):
         if "recompile" in actions:
             self.gl_delete_list()
-        if "update_time" in actions:
+        if "time" in updates:
             self.update_time()
 
-    def gl_render(self):
-        GLDrawList.gl_render(self)
-        self.gl_atom_list.gl_render()
+    def iter_draw_lists(self):
+        yield self.gl_atom_list
 
-    def gl_delete_list(self):
-        GLDrawList.gl_delete_list(self)
-        self.gl_atom_list.gl_delete_list()
-        
     def gl_draw(self):
-        ## draw atoms
-        self.gl_atom_list.gl_draw()
-        
         ## draw TLS axes
         if self.properties["TLS_visible"]==True:
             
@@ -711,7 +827,7 @@ class GLTLSGroup(GLDrawList):
         (eval, evec) = eigenvectors(ten)
 
         glDisable(GL_LIGHTING)
-        glLineWidth(self.properties["line_width"])
+        glLineWidth(self.properties["tensor_line_width"])
         
         for i in range(3):
             v = scale * eval[i] * array([evec[i,0],evec[i,1],evec[i,2]])
@@ -747,12 +863,16 @@ class GLTLSGroup(GLDrawList):
         dS = zeros(3)
         origin = array(self.calcs["COR"] + dS)
 
-        self.update(origin=origin, rot_x=Lx, rot_y=Ly, rot_z=Lz)
+        self.properties.update(origin=origin, rot_x=Lx, rot_y=Ly, rot_z=Lz)
 
 
-class GLChain(GLDrawList):
+
+class GLChain(GLDrawListContainer):
     def __init__(self, **args):
-        GLDrawList.__init__(self, **args)
+        GLDrawListContainer.__init__(self, **args)
+
+        self.properties = args.get("properties", GLDrawListProperties())
+        self.properties.add_update_callback(self.update_cb)
 
         self.chain          = args["chain"]
         self.aa_main_chain  = GLAtomList()
@@ -785,61 +905,67 @@ class GLChain(GLDrawList):
 
         if len(self.aa_main_chain)>0:
             self.properties.add(
-                { "name":              "aa_main_chain_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.aa_main_chain,
-                                         "name":   "visible" }] })
+                { "name":     "aa_main_chain_visible",
+                  "type":     "boolean",
+                  "default":  True,
+                  "action":   "redraw",
+                  "link":     [{"gl_properties": self.aa_main_chain.properties,
+                                "name":          "visible" }] })
         else:
             self.aa_main_chain = None
 
         if len(self.aa_side_chain)>0:
             self.properties.add(
-                { "name":              "aa_side_chain_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.aa_side_chain,
-                                        "name":   "visible" }] })
+                { "name":     "aa_side_chain_visible",
+                  "type":     "boolean",
+                  "default":  True,
+                  "action":   "redraw",
+                  "link":     [{"gl_properties": self.aa_side_chain.properties,
+                                "name":          "visible" }] })
         else:
             self.aa_side_chain = None
 
         if len(self.dna_main_chain)>0:
             self.properties.add(
-                { "name":              "dna_main_chain_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.dna_main_chain,
-                                        "name":   "visible" }] })
+                { "name":      "dna_main_chain_visible",
+                  "type":      "boolean",
+                  "default":   True,
+                  "action":    "redraw",
+                  "link":      [{"gl_properties": self.dna_main_chain.properties,
+                                 "name":          "visible" }] })
         else:
             self.dna_main_chain = None
 
         if len(self.dna_side_chain)>0:
             self.properties.add(
-                { "name":              "dna_side_chain_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.dna_side_chain,
-                                        "name":   "visible" }] })
+                { "name":      "dna_side_chain_visible",
+                  "type":      "boolean",
+                  "default":   True,
+                  "action":    "redraw",
+                  "link":      [{"gl_properties": self.dna_side_chain.properties,
+                                 "name":          "visible" }] })
         else:
             self.dna_side_chain = None
 
         if len(self.hetatm)>0:
             self.properties.add(
-                { "name":              "hetatm_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.hetatm,
-                                        "name":   "visible" }] })
+                { "name":      "hetatm_visible",
+                  "type":      "boolean",
+                  "default":   True,
+                  "action":    "redraw",
+                  "link":      [{"gl_properties": self.hetatm.properties,
+                                 "name":          "visible" }] })
         else:
             self.hetatm = None
 
         if len(self.water)>0:
             self.properties.add(
-                { "name":              "water_visible",
-                  "default":           True,
-                  "action":            "redraw",
-                  "linked properties": [{"object": self.water,
-                                        "name":   "visible" }] })
+                { "name":      "water_visible",
+                  "type":      "boolean",
+                  "default":   True,
+                  "action":    "redraw",
+                  "link":      [{"gl_properties": self.water.properties,
+                                 "name":          "visible" }] })
         else:
             self.water = None
 
@@ -847,25 +973,30 @@ class GLChain(GLDrawList):
         def linked_values(property):
             linked = []
             for gl_atom_list in self.iter_draw_lists():
-                linked.append({"object": gl_atom_list, "name": property})
+                linked.append({"gl_properties": gl_atom_list.properties,
+                               "name": property})
             return linked
 
         self.properties.add(
-            { "name":              "color",
-              "default":           None,
-              "action":            "redraw",
-              "linked properties": linked_values("color") })
+            { "name":      "color",
+              "type":      "color",
+              "default":   None,
+              "action":    "redraw",
+              "link":      linked_values("color") })
 
         self.properties.add(
-            { "name":              "U",
-              "default":           False,
-              "action":            "redraw",
-              "linked properties": linked_values("U") })
+            { "name":      "U",
+              "type":      "matrix(3,3)",
+              "default":   False,
+              "action":    "redraw",
+              "link":      linked_values("U") })
 
         self.properties.init(**args)
 
-    def update(self, **args):
-        self.properties.update(**args)
+    def update_cb(self, updates, actions):
+        print "GLChain.update(%s)" % (str(updates))
+        if "recompile" in actions:
+            self.gl_delete_list()
         
     def iter_draw_lists(self):
         """Iterate over all GL Lists.
@@ -877,29 +1008,18 @@ class GLChain(GLDrawList):
         if self.hetatm!=None:         yield self.hetatm
         if self.water!=None:          yield self.water
         
-    def gl_render(self):
-        self.gl_push_matrix()
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_render()
-        self.gl_pop_matrix()
-
-    def gl_draw(self):
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_draw()
-
-    def gl_delete_list(self):
-        """Delete all OpenGL draw lists.
-        """
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_delete_list()
 
 
-class GLStructure(GLDrawList):
+class GLStructure(GLDrawListContainer):
     def __init__(self, **args):
-        GLDrawList.__init__(self)
+        GLDrawListContainer.__init__(self, **args)
+
+        self.properties = args.get("properties", GLDrawListProperties())
+        self.properties.add_update_callback(self.update_cb)
+        
         self.struct         = args["struct"]
         self.gl_axes        = GLAxes()
-        self.gl_unit_cell   = GLUnitCell(self.struct.unit_cell)
+        self.gl_unit_cell   = GLUnitCell(unit_cell=self.struct.unit_cell)
         self.gl_chain_dict  = {}
 
         for chain in self.struct.iter_chains():
@@ -907,70 +1027,72 @@ class GLStructure(GLDrawList):
 
         self.properties.add(
             { "name":     "axes_visible",
+              "type":     "boolean",
               "default":  True,
               "action":  "redraw",
-              "linked properties": [{ "object": self.gl_axes,
-                                      "name":   "visible" }] })
+              "link":    [{ "gl_properties": self.gl_axes.properties,
+                            "name":          "visible" }] })
+
         self.properties.add(
-            { "name":       "unit_cell_visible",
-              "default":    True,
-              "action":     "redraw",
-              "linked properties": [{ "object": self.gl_unit_cell,
-                                      "name":   "visible" }] })
+            { "name":     "unit_cell_visible",
+              "type":     "boolean",
+              "default":  True,
+              "action":   "redraw",
+              "link":     [{ "gl_properties": self.gl_unit_cell.properties,
+                             "name":          "visible" }] })
 
         def gl_chain_linked(property):
             linked = []
             for gl_chain in self.gl_chain_dict.values():
-                linked.append({ "object": gl_chain,
-                                "name":   property })
+                linked.append({ "gl_properties": gl_chain.properties,
+                                "name":          property })
             return linked
 
         self.properties.add(
             { "name":              "aa_main_chain_visible",
               "default":           True,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("aa_main_chain_visible") })
+              "link": gl_chain_linked("aa_main_chain_visible") })
         self.properties.add(
             { "name":              "aa_side_chain_visible",
               "default":           True,
               "action":            "redraw" ,
-              "linked properties": gl_chain_linked("aa_side_chain_visible") })
+              "link": gl_chain_linked("aa_side_chain_visible") })
         self.properties.add(
             { "name":              "dna_main_chain_visible",
               "default":           True,
               "action":            "redraw" ,
-              "linked properties": gl_chain_linked("dna_main_chain_visible") })
+              "link": gl_chain_linked("dna_main_chain_visible") })
         self.properties.add(
             { "name":              "dna_side_chain_visible",
               "default":           True,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("dna_side_chain_visible") })
+              "link": gl_chain_linked("dna_side_chain_visible") })
         self.properties.add(
             { "name":              "hetatm_visible",
               "default":           True,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("hetatm_visible") })
+              "link": gl_chain_linked("hetatm_visible") })
         self.properties.add(
             { "name":              "water_visible",
               "default":           True,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("water_visible") })
+              "link": gl_chain_linked("water_visible") })
         self.properties.add(
             { "name":              "color",
               "default":           None,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("color") })
+              "link": gl_chain_linked("color") })
         self.properties.add(
             { "name":              "U",
               "default":           False,
               "action":            "redraw",
-              "linked properties": gl_chain_linked("U") })
+              "link": gl_chain_linked("U") })
 
         self.properties.init(**args)
 
-    def update(self, **args):
-        #print "## GLStructure.update(%s)" % (str(args))
-        self.properties.update(**args)
+    def update_cb(self, updates, actions):
+        print "## GLStructure.update(%s)" % (str(updates))
         
     def iter_draw_lists(self):
         """Iterate over all GL Lists.
@@ -979,22 +1101,6 @@ class GLStructure(GLDrawList):
         yield self.gl_unit_cell
         for gl_chain in self.gl_chain_dict.values():
             yield gl_chain
-
-    def gl_render(self):
-        self.gl_push_matrix()
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_render()
-        self.gl_pop_matrix()
-
-    def gl_draw(self):
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_draw()
-
-    def gl_delete_list(self):
-        """Delete all OpenGL draw lists.
-        """
-        for draw_list in self.iter_draw_lists():
-            draw_list.gl_delete_list()
 
     def color_by_residue_chem_type(self, atm):
         """GLAtomList color callback for coloring a structure by
@@ -1017,7 +1123,7 @@ class GLStructure(GLDrawList):
         return chem_type_color_dict[mon.chem_type]
 
 
-class GLViewer(list):
+class GLViewer(object):
     """This class renders a list of GLDrawList (or subclasses of) onto
     the given glcontext and gldrawable objects.  The glcontext and gldrawable
     must be created by the underling GUI toolkit, or perhaps the GLUT
@@ -1030,12 +1136,8 @@ class GLViewer(list):
     each GLDrawList to be redrawn very quickly as long as it moves as a
     rigid body.
     """
-    def __init__(self, glcontext, gldrawable):
-        list.__init__(self)
-        
-        ## gldrawable and glcontext to draw on
-        self.glcontext  = glcontext
-        self.gldrawable = gldrawable
+    def __init__(self):
+        self.gl_draw_lists = []
 
         ## position and rotation of viewer window
         self.xpos = 0.0
@@ -1045,22 +1147,37 @@ class GLViewer(list):
         self.roty = 0.0
         self.rotz = 0.0
 
-    def append(self, draw_list):
+    def add_draw_list(self, draw_list):
         """Append a GLDrawList.
         """
         assert isinstance(draw_list, GLDrawList)
-        list.append(self, draw_list)
+        self.gl_draw_lists.append(draw_list)
 
-    def remove(self, draw_list):
+    def remove_draw_list(self, draw_list):
         """Remove a GLDrawList.
         """
         assert isinstance(draw_list, GLDrawList)
-        list.remove(self, draw_list)
+        self.gl_draw_lists.remove(draw_list)
+
+    def get_gl_context(self):
+        """Implement in subclass to return the gl_context.
+        """
+        pass
+
+    def get_gl_drawable(self):
+        """Implement in subclass to reutrn the gl_drawable.
+        """
+        pass
 
     def gl_init(self):
         """Called once to initalize the GL scene before drawing.
         """
-        if not self.gldrawable.gl_begin(self.glcontext):
+        gl_drawable = self.get_gl_drawable()
+        gl_context  = self.get_gl_context()
+        if gl_drawable==None or gl_context==None:
+            return
+        
+        if not gl_drawable.gl_begin(gl_context):
             return
 
 	glLight(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
@@ -1076,13 +1193,18 @@ class GLViewer(list):
 	glDepthFunc(GL_LESS)
 	glEnable(GL_DEPTH_TEST)
 		
-        self.gldrawable.gl_end()
+        gl_drawable.gl_end()
     
     def gl_resize(self, width, height):
         """Called to set the size of the OpenGL window this class is
         drawing on.
         """
-	if not self.gldrawable.gl_begin(self.glcontext):
+        gl_drawable = self.get_gl_drawable()
+        gl_context  = self.get_gl_context()
+        if gl_drawable==None or gl_context==None:
+            return
+        
+	if not gl_drawable.gl_begin(gl_context):
             return
 	
 	glViewport(0, 0, width, height)
@@ -1097,15 +1219,20 @@ class GLViewer(list):
             glFrustum(-1.0, 1.0, -h, h, 3.0, 5000.0)
 	
 	glMatrixMode(GL_MODELVIEW)
-	self.gldrawable.gl_end()
+	gl_drawable.gl_end()
 
-    def gl_draw_lists(self):
+    def gl_render(self):
         """Draw all GLDrawList objects onto the given glcontext/gldrawable.
         If the GLDrawList objects are not yet compiled into OpenGL draw
         lists, they will be compiled while they are drawn, since this is
         a useful optimization.
         """
-	if not self.gldrawable.gl_begin(self.glcontext):
+        gl_drawable = self.get_gl_drawable()
+        gl_context  = self.get_gl_context()
+        if gl_drawable==None or gl_context==None:
+            return
+        
+	if not gl_drawable.gl_begin(gl_context):
             return
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -1117,12 +1244,12 @@ class GLViewer(list):
 	glRotatef(self.roty, 0.0, 1.0, 0.0)
         glRotatef(self.rotz, 0.0, 0.0, 1.0)
 
-        for draw_list in self:
+        for draw_list in self.gl_draw_lists:
             draw_list.gl_render()
             
-	if self.gldrawable.is_double_buffered():
-            self.gldrawable.swap_buffers()
+	if gl_drawable.is_double_buffered():
+            gl_drawable.swap_buffers()
 	else:
             glFlush()
 
-        self.gldrawable.gl_end()
+        gl_drawable.gl_end()
