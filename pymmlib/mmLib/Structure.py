@@ -2,83 +2,15 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-"""Classes for representing biological macromolecules."""
-
-from   __future__           import generators
+"""Classes for representing biological macromolecules.
+"""
+from   __future__ import generators
 import fpformat
 import weakref
-
-from   mmTypes              import *
-from   AtomMath             import *
-from   Library              import Library
-from   UnitCell             import UnitCell
-
-
-class FragmentGroupList(list):
-    """Specialized list class which holds a weak reference to the Structure,
-    and sets a get_structure() attribute for all the children added to it.
-    """
-    def __init__(self, struct):
-        list.__init__(self)
-        self.get_structure = weakref.ref(struct)
-
-    def __setitem__(self, x, item):
-        assert isinstance(item, FragmentGroup)
-        list.__setitem__(self, x, item)
-        item.get_structure = self.get_structure
-
-    def append(self, item):
-        assert isinstance(item, FragmentGroup)
-        list.append(self, item)
-        item.get_structure = self.get_structure
-
-    def insert(self, x, item):
-        assert isinstance(item, FragmentGroup)
-        list.insert(self, x, item)
-        item.get_structure = self.get_structure   
-
-
-class FragmentGroup(object):
-    """Provides base functionallity for grouping together fragments in a
-    Structure.
-    """
-    def __init__(self):
-        self.list         = []
-        self.get_structure = None
-
-    def add_fragment(self, chain_id, fragment_id):
-        self.list.append((chain_id, fragment_id))
-
-    def iter_fragments(self):
-        struct = self.get_structure()
-
-        for (chain_id, fragment_id) in self.list:
-            try:
-                yield struct[chain_id][fragment_id]
-            except KeyError, err:
-                print str(err)
-
-
-class Site(FragmentGroup):
-    def __init__(self, site_id):
-        FragmentGroup.__init__(self)
-        self.site_id = site_id
-
-    def __str__(self):
-        return "Site(%s)" % (self.site_id)
-
-
-class SecondaryStructure(FragmentGroup):
-    pass
-
-
-class AlphaHelix(SecondaryStructure):
-    pass
-
-
-class BetaSheet(SecondaryStructure):
-    pass
+from mmTypes import *
+from AtomMath import *
+from Library import Library
+from UnitCell import UnitCell
 
 
 class Structure(object):
@@ -114,34 +46,29 @@ class Structure(object):
                               beta sheets in the structure
     turns            (list)   list of Turn objects
     """
-    def __init__(self,
-                 library         = None,
-                 default_alt_loc = ""):
+    def __init__(self, library = None):
+        if library:
+            self.library = library
+        else:
+            self.library = Library()
 
         self.id              = ""
         self.date            = ""
         self.keywords        = ""
         self.pdbx_keywords   = ""
         self.title           = ""
-
         self.R_fact          = None
         self.free_R_fact     = None
         self.res_high        = None
         self.res_low         = None
-
         self.source_data     = None
-
-        self.library         = library
         self.unit_cell       = None
         self.space_group     = None
-
-        self.default_alt_loc = default_alt_loc
-
-        self.sites           = FragmentGroupList(self)
-        self.alpha_helices   = FragmentGroupList(self)
-        self.beta_sheets     = FragmentGroupList(self)
-        self.turns           = FragmentGroupList(self)
-
+        self.default_alt_loc = "A"
+        self.sites           = []
+        self.alpha_helices   = []
+        self.beta_sheets     = []
+        self.turns           = []
         self.__chain_list    = []
 
     def __str__(self):
@@ -188,7 +115,11 @@ class Structure(object):
         return iter(self.__chain_list)
 
     def __contains__(self, x):
-        return self[x] in self.__chain_list
+        if isinstance(x, Chain):
+            return x in self.__chain_list
+        elif type(x) == StringType:
+            return self[x] in self.__chain_list
+        raise TypeError, x
 
     def index(self, chain):
         """Returns the numeric index of the Chain object.
@@ -356,7 +287,11 @@ class Chain(object):
         return iter(self.__fragment_list)
 
     def __contains__(self, x):
-        return x in self.__fragment_list
+        if isinstance(x, Fragment):
+            return x in self.__fragment_list
+        elif type(x) == StringType:
+            return self[x] in self.__fragment_list
+        raise TypeError, x
 
     def index(self, frag):
         return self.__fragment_list.index(frag)
@@ -565,8 +500,11 @@ class Fragment(object):
             elif atom.alt_loc == alt_loc: yield atom
 
     def __contains__(self, x):
-        return x in self.__atom_list
-        return self[x] in self.__atom_list
+        if isinstance(x, Atom):
+            return x in self.__atom_list
+        elif type(x) == StringType:
+            return self[x] in self.__atom_list
+        raise TypeError, x
 
     def index(self, atom):
         assert isinstance(atom, Atom)
@@ -1003,7 +941,11 @@ class Atom(object):
         return iter(self.__alt_loc_list)
 
     def __contains__(self, x):
-        return self[x] in self.__alt_loc_list
+        if isinstance(x, Atom):
+            return x in self.__alt_loc_list
+        elif type(x) == StringType:
+            return self[x] in self.__alt_loc_list
+        raise TypeError, x
 
     def add_alt_loc(self, atom):
         assert isinstance(atom, Atom)
@@ -1101,7 +1043,9 @@ class Atom(object):
         return self.get_chain().get_structure()
 
     def calc_anisotropy(self):
-        """Calculates the ansitropy of that atom.
+        """Calculates the anisotropy of that atom.  Anisotropy is defined
+        as the ratio of the minimum/maximum eigenvalues of the 3x3
+        symmetric tensor defined by U.
         """
         ## no Anisotropic values, we have a spherical atom
         if not self.U: return 1.0
@@ -1168,7 +1112,36 @@ class FragmentList(list):
     """Provides the functionallity of a Python list class for containing
     Fragment instances.
     """
-    pass
+    def __setitem__(self, x, item):
+        assert isinstance(item, Fragment)
+        list.__setitem__(self, x, item)
+
+    def append(self, item):
+        assert isinstance(item, Fragment)
+        list.append(self, item)
+
+    def insert(self, x, item):
+        assert isinstance(item, Fragment)
+        list.insert(self, x, item)
+
+
+class Site(FragmentList):
+    """List of Fragments within a structure involved in a SITE description.
+    """
+    def __init__(self, name):
+        FragmentList.__init__(self)
+        self.name = name
+
+
+class AlphaHelix(FragmentList):
+    """List of Fragments within a structure which are part of a alpha
+    helix.
+    """
+
+class BetaSheet(FragmentList):
+    """List of Fragments within a structure which are part of a beta
+    sheet.
+    """
 
 
 class AtomList(list):
@@ -1176,6 +1149,18 @@ class AtomList(list):
     Atom instances.  It also provides class methods for performing some
     useful calculations on the list of atoms.
     """
+    def __setitem__(self, x, item):
+        assert isinstance(item, Atom)
+        list.__setitem__(self, x, item)
+
+    def append(self, item):
+        assert isinstance(item, Atom)
+        list.append(self, item)
+
+    def insert(self, x, item):
+        assert isinstance(item, Atom)
+        list.insert(self, x, item)
+    
     def calc_centroid(self):
         """Calculates the centroid of all contained Atom instances and
         returns a Vector to the centroid.

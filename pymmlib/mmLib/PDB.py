@@ -21,7 +21,8 @@ PDBError = "PDB Error"
 
 
 class PDBRecord(dict):
-    """Base class for all PDB file records."""
+    """Base class for all PDB file records.
+    """
     def __str__(self):
         return self.write()
 
@@ -669,7 +670,8 @@ class SCALE3(SCALEn):
 
 class MTRIXn(PDBRecord):
     """The MTRIXn (n = 1, 2, or 3) records present transformations expressing
-    non-crystallographic symmetry."""
+    non-crystallographic symmetry.
+    """
     _field_list = [
         ("serial", 8, 10, "integer", "rjust"),
         ("s[n][1]", 11, 20, "float.6", "rjust"),
@@ -689,7 +691,8 @@ class MTRIX3(MTRIXn):
 
 class TVECT(PDBRecord):
     """The TVECT records present the translation vector for infinite
-    covalently connected structures."""
+    covalently connected structures.
+    """
     _name = "TVECT "
     _field_list = [
         ("serial", 8, 10, "integer", "rjust"),
@@ -702,7 +705,8 @@ class TVECT(PDBRecord):
 class MODEL(PDBRecord):
     """The MODEL record specifies the model serial number when multiple
     structures are presented in a single coordinate entry, as is often
-    the case with structures determined by NMR."""
+    the case with structures determined by NMR.
+    """
     _name = "MODEL "
     _field_list = [
         ("serial", 11, 14, "integer", "rjust")]
@@ -712,7 +716,8 @@ class ATOM(PDBRecord):
     They also present the occupancy and temperature factor for each atom.
     Heterogen coordinates use the HETATM record type. The element symbol
     is always present on each ATOM record; segment identifier and charge
-    are optional."""
+    are optional.
+    """
     _name = "ATOM  "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -734,7 +739,8 @@ class ATOM(PDBRecord):
 class ANISOU(PDBRecord):
     """The ANISOU records present the anisotropic temperature factors.
     Columns 7 - 27 and 73 - 80 are identical to the corresponding
-    ATOM/HETATM record."""
+    ATOM/HETATM record.
+    """
     _name = "ANISOU"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -764,7 +770,8 @@ class SIGATM(PDBRecord):
     """The SIGATM records present the standard deviation
     of atomic parameters as they appear in ATOM and HETATM records.
     Columns 7 - 27 and 73 - 80 are identical to the corresponding
-    ATOM/HETATM record."""
+    ATOM/HETATM record.
+    """
     _name = "SIGATM"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -787,7 +794,8 @@ class SIGUIJ(PDBRecord):
     """The SIGUIJ records present the standard deviations of anisotropic
     temperature factors scaled by a factor of 10**4 (Angstroms**2). 
     Columns 7 - 27 and 73 - 80 are identical to the corresponding
-    ATOM/HETATM record."""
+    ATOM/HETATM record.
+    """
     _name = "SIGUIJ"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -809,7 +817,8 @@ class SIGUIJ(PDBRecord):
 
 class TER(PDBRecord):
     """The TER record indicates the end of a list of ATOM/HETATM records
-    for a chain."""
+    for a chain.
+    """
     _name = "TER   "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -820,7 +829,8 @@ class TER(PDBRecord):
     
 class ENDMDL(PDBRecord):
     """The ENDMDL records are paired with MODEL records to group individual
-    structures found in a coordinate entry."""
+    structures found in a coordinate entry.
+    """
     _name = "ENDMDL"
     _field_list = []
     
