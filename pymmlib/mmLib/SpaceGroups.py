@@ -120,7 +120,7 @@ class SymOp(tuple):
         return matrixmultiply(self[0], vec) + self[1]
 
 
-class SpaceGroup:
+class SpaceGroup(object):
     """
     """
     def __init__(self,

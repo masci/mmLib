@@ -43,7 +43,7 @@ class Element(object):
         return "Element=%s" % (self.name)
 
 
-class Monomer:
+class Monomer(object):
     """Base class for all monomer library entries.
     """
     def __init__(self,
@@ -131,7 +131,7 @@ class Water(Monomer):
     pass
 
 
-class Library:
+class Library(object):
     """Interface to chemical and monomer libraries.
     """
     def __init__(self):

@@ -1442,7 +1442,7 @@ class Bond(object):
         return self.atom2
 
 
-class AlphaHelix:
+class AlphaHelix(object):
     def __init__(self, structure, helix_id):
         self.structure = structure
         self.helix_id = helix_id
@@ -1498,7 +1498,7 @@ class AlphaHelix:
                 yield atm
 
 
-class BetaSheet:
+class BetaSheet(object):
     """List of Fragments within a structure which are part of a beta
     sheet.
     """
@@ -1510,7 +1510,7 @@ class BetaSheet:
         return "BetaSheet(id=%s)" % (self.sheet_id)
 
 
-class Site:
+class Site(object):
     """List of Fragments within a structure involved in a SITE description.
     """
     def __init__(self, structure, site_id):

@@ -12,7 +12,7 @@ from Library import Library
 from Structure import *
 
 
-class StructureBuilder:
+class StructureBuilder(object):
     """Builder class for the mmLib.Structure object hierarchy.
     StructureBuilder must be subclassed with a working parse_format()
     method to implement a working builder.

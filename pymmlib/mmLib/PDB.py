@@ -1415,7 +1415,7 @@ class PDBFile(list):
             call_processor(cont_list)
 
 
-class PDBFileBuilder:
+class PDBFileBuilder(object):
     """Builds a PDBFile object from a Structure object.
     """
     def __init__(self, struct, pdb_file):

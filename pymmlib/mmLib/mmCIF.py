@@ -386,7 +386,7 @@ class mmCIFDictionary(mmCIFFile):
 ##
 
 
-class mmCIFFileParser:
+class mmCIFFileParser(object):
     """Stateful parser which uses the mmCIFElementFile tokenizer to read
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
     data hierarchy.
@@ -599,7 +599,7 @@ class mmCIFFileParser:
                 yield tokm.groups()
 
 
-class mmCIFFileWriter:
+class mmCIFFileWriter(object):
     """Writes out a mmCIF file using the data in the mmCIFData list.
     """  
     def write_file(self, fil, cif_data_list):
@@ -918,7 +918,7 @@ mmCIFStandardColumnsMap = {
                      "pdbx_auth_atom_id"]}
 
 
-class mmCIFFileBuilder:
+class mmCIFFileBuilder(object):
     """Builds a mmCIF file from a Structure object.
     """
     cifdb_omit_list = [

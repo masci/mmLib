@@ -11,7 +11,7 @@ from mmTypes import *
 from Structure import *
 
 
-class GLDrawList:
+class GLDrawList(object):
     def __init__(self):
         self.name   = None
         self.origin = Vector(0.0, 0.0, 0.0)

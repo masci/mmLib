@@ -72,11 +72,6 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
-class dictlist(dict):
-    def __init__(self):
-        self.list = []
-
-
 def warning(x):
     """Writes warnings out to the file given in the environment variable
     MMLIB_WARNING, or mmlib_warning.txt by default.
