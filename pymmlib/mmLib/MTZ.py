@@ -6,24 +6,20 @@
 """MTZ file parser.  It has a few flaws I'm going to fix soon.  It will not
 correctly convert files saved on machines with different endian formats or
 integer/float sizes.  It cannot save MTZ files.  If anyone needs these
-features, email jpaint@u.washington.edu and I'll finish them. ;)"""
+features, email jpaint@u.washington.edu and I'll finish them. ;)
+"""
 
 import types
 import struct
 from   FileIO  import OpenFile
 
-
 ## Error
 MTZError = "MTZError"
-
-
 
 ## host system variable sizes 
 INT_SIZE   = struct.calcsize("i")
 FLOAT_SIZE = struct.calcsize("f")
 WORD_SIZE  = struct.calcsize("f")
-
-
 
 ## MTZ header keywords
 MTZKeywords = [
@@ -46,10 +42,10 @@ MTZKeywords = [
     "BATCH",
     "END"]
 
-
 class MTZFile:
-    """Reads a CCP4 MTZ file."""
-
+    """Class interface for reading and writing MTZ files which are used
+    to store HKL reflections in the CCP4 program suite.
+    """
     def __init__(self):
         self.int_size     = INT_SIZE
         self.float_size   = FLOAT_SIZE
@@ -61,15 +57,9 @@ class MTZFile:
         self.column_list  = []
         self.data_list    = []
 
-
     def __str__(self):
         return str(self.column_list)
     
-
-    def get_data_list(self):
-        return self.data_list
-
-
     def load_file(self, fil):
         self.fil = OpenFile(fil, "rb")
 
@@ -134,10 +124,8 @@ class MTZFile:
             row = struct.unpack(row_format, self.fil.read(row_bytes))
             self.data_list.append(row)
 
-    
     def save_file(self, fil):
         pass
-
 
     def get_offset(self, x):
         """Seeking in a MTZ file is a painful experience.  The documentation
@@ -146,25 +134,21 @@ class MTZFile:
         size of integers on the machine the MTZ file was written in."""
         return x * self.int_size
 
-
     def read_int(self):
         i = self.fil.read(self.int_size)
         (i,) = struct.unpack("i", i)
         return i
 
-
     def write_int(self, i):
         s = struct.pack("i", i)
         self.fil.write(s)
-
 
     def read_float(self):
         f = self.fil.read(self.float_size)
         (f,) = struct.unpack("f", f)
         return f
 
-
-
+### <TESTING>
 if __name__ == "__main__":
     import sys
 
@@ -178,5 +162,6 @@ if __name__ == "__main__":
     mtz.load_file(path)
     print mtz
 
-    for row in mtz.get_data_list():
+    for row in mtz.data_list():
         print row
+### </TESTING>

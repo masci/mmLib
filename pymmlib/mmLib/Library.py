@@ -7,9 +7,39 @@
 for the identification and construction of biopolymers and ligands."""
 
 
-class Monomer:
-    """Base class for all monomer library entries."""
+class Element(object):
+    """Class for holding the properties of a atomic element.
+    """
+    def __init__(self,
+                 name                    = "",
+                 symbol                  = "",
+                 group                   = "",
+                 period                  = "",
+                 atomic_number           = 0,
+                 atomic_weight           = 0.0,
+                 atomic_radius           = 0.0,
+                 covalent_radius         = 0.0,
+                 van_der_waals_radius    = 0.0,
+                 electronegativity       = 0.0):
 
+        self.name                 = name
+        self.symbol               = symbol
+        self.group                = group
+        self.period               = period
+        self.atomic_number        = atomic_number
+        self.atomic_weight        = atomic_weight
+        self.atomic_radius        = atomic_radius
+        self.covalent_radius      = covalent_radius
+        self.van_der_waals_radius = van_der_waals_radius
+        self.electronegativity    = electronegativity
+
+    def __str__(self):
+        return "Element=%s" % (self.name)
+
+
+class Monomer:
+    """Base class for all monomer library entries.
+    """
     def __init__(self,
                  name            = "",
                  full_name       = "",
@@ -23,10 +53,29 @@ class Monomer:
         self.atom_list         = atom_list
         self.bond_list         = bond_list
 
+    def is_amino_acid(self):
+        """Returns True if the Monomer is a amino acid, otherwise
+        returns False.
+        """
+        return isinstance(self, AminoAcid)
+
+    def is_nucleic_acid(self):
+        """Returns True if the Monomer is a nucleic acid, otherwise
+        returns False.
+        """
+        return isinstance(self, NucleicAcid)
+
+    def is_water(self):
+        """Returns True if the Monomer is a water molecule,
+        otherwise returns False.
+        """
+        return isinstance(self, Water)
+
     def get_polymer_bond_list(self, mon1, mon2):
         """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
         represents one bond between the atom named mon1_name in mon1 and
-        the atom named mon2_name in mon2."""
+        the atom named mon2_name in mon2.
+        """
         return []
 
 
@@ -64,18 +113,21 @@ class AminoAcid(Monomer):
         
 
 class NucleicAcid(Monomer):
-    """Empty definition class for building a Nucleic Acid library."""
-
-    def __init__(self):
-        self.name = ""
-        self.full_name = ""
-        self.one_letter_name = ""
-
+    """Empty definition class for building a Nucleic Acid library.
+    """
     def __str__(self):
         return "NucleicAcid=%s" % (self.name)
 
 
+class Water(Monomer):
+    """Monomer class for water molecules.
+    """
+    pass
+
+
 class Library:
+    """Interface to chemical and monomer libraries.
+    """
     def __init__(self):
         from Data.Elements     import ElementMap
         from Data.AminoAcids   import AminoAcidMap
@@ -97,6 +149,27 @@ class Library:
             pass
 
         raise KeyError
+
+    def get_element(self, element):
+        """Return the corresponding Element description instance for
+        the given element symbol.  Returns None if no description is
+        found.
+        """
+        try:
+            return self.element_map[element]
+        except KeyError:
+            pass
+        return None
+
+    def get_monomer(self, monomer_id):
+        """Returns the corresponding Monomer descripton instance for the
+        given monomer_id.  Returns None if no description is found.
+        """
+        try:
+            return self[monomer_id]
+        except KeyError:
+            pass
+        return None
         
     def is_amino_acid(self, res_name):
         return res_name in self.amino_acid_map

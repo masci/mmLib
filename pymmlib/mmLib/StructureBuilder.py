@@ -2,28 +2,24 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """Classes for building a mmLib.Structure representation of biological
-macromolecules."""
-
+macromolecules.
+"""
 import PDB
 import mmCIF
-
-from Library      import Library
-from Structure    import *
+from Library import Library
+from Structure import *
 
 
 class StructureBuilder:
     """Builder class for the mmLib.Structure object hierarchy.
     StructureBuilder must be subclassed with a working parse_format()
-    method to implement a working builder."""
-    
+    method to implement a working builder.
+    """
     def __init__(self,
                  fil,
-                 library          = None,
+                 library = None,
                  build_properties = ()):
-
-
         ## if no custom library was defined, use the default
         if not library:
             library = Library()
@@ -38,29 +34,65 @@ class StructureBuilder:
         ## other components
         self.build_properties = build_properties
 
-        ## these caches are used to speed the contruction of the Structure
-        self.atom_cache       = {}
-        
         ## invokes the file parser, builds all the atoms
-        self.parse_format(fil)
+        self.read_start(fil)
+        self.read_start_finalize()
+        self.read_atoms()
+        self.read_atoms_finalize()
+        self.read_metadata()
+        self.read_metadata_finalize()
+        self.read_end()
+        self.read_end_finalize()
 
-        ## build mandatory parts of the structure
-        self.build_structure()
-        
-        ## build optional parts of the structure
-        if "sequence"  in self.build_properties: self.build_sequence()
-        if "bonds"     in self.build_properties: self.build_bonds()
+    def read_start(self, fil):
+        """This methods needs to be reimplemented in a functional subclass.
+        This function is called with the file object (or any other object
+        passed in to build a Structure from) to begin the reading process.
+        This is usually used to open the source file.
+        """
+        pass
 
-        ## free caches
-        del self.atom_cache
+    def read_start_finalize(self):
+        """Called after the read_start method.  Does nothing currently,
+        but may be used in the future.
+        """
+        pass
 
-    def add_atom(self, name, altLoc, resName, fragmentID, chainID):
+    def read_atoms(self):
+        """This method needs to be reimplemented in a fuctional subclass.
+        The subclassed read_atoms method should call load_atom once for
+        every atom in the sturcture, and should not call any other
+        load_* methods.
+        """
+        pass
+
+    def load_atom(self, atm_map):
+        """Called repeatedly by the implementation of read_atoms to
+        load all the data for a single atom.  The data is contained
+        in the atm_map argument, and is not well documented at this
+        point.  Look at this function and you'll figure it out.
+        """
+        name       = atm_map["name"]
+        altLoc     = atm_map["alt_loc"]
+        resName    = atm_map["res_name"]
+        fragmentID = atm_map["fragment_id"]
+        chainID    = atm_map["chain_id"]
+
         atm_id = (name, altLoc, fragmentID, chainID)
 
-        try:
-            return self.atom_cache[atm_id]
-        except KeyError:
-            pass
+        ## allocate the atom cache if it does not exist
+        if not hasattr(self, "atom_cache"):
+            self.atom_cache = {}
+
+        ## don't allow the same atom to be loaded twice
+        if self.atom_cache.has_key(atm_id):
+            print "[DUPLICATE ATOM ERROR]", atm_id
+            return
+
+        ## don't allow atoms with blank altLoc if one has a altLoc
+        if altLoc and self.atom_cache.has_key((name, "", fragmentID, chainID)):
+            print "[ALTLOC LABELING ERROR]", (name, "", fragmentID, chainID)
+            return
 
         atm = Atom(name        = name,
                    alt_loc     = altLoc,
@@ -70,11 +102,31 @@ class StructureBuilder:
 
         self.atom_cache[atm_id] = atm
 
-        return atm
+        ## additional properties
+        atm.element     = atm_map["element"]
+        atm.position    = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
+        atm.occupancy   = atm_map["occupancy"]
+        atm.temp_factor = atm_map["temp_factor"]
 
-    def build_structure(self):
-        """Construct required parts of the mmLib.Structure hierarchy."""
+        try:
+            atm.U = (atm_map["U[1][1]"],
+                     atm_map["U[2][2]"],
+                     atm_map["U[3][3]"],
+                     atm_map["U[1][2]"],
+                     atm_map["U[1][3]"],
+                     atm_map["U[2][3]"])
+        except KeyError:
+            pass
 
+        try:
+            atm.charge  = atm_map["charge"]
+        except KeyError:
+            pass
+
+    def read_atoms_finalize(self):
+        """After loading all atom records, use the list of atom records to
+        build the structure.
+        """
         def fragment_factory(atm):
             if self.structure.library.is_amino_acid(atm.res_name):
                 frag_class = AminoAcidResidue
@@ -110,26 +162,21 @@ class StructureBuilder:
         self.structure.sort()
         for chain in self.structure.iter_chains():
             chain.sort()
-        
-    def build_sequence(self):
-        """The residue sequence in a chain can be calculated by the
-        algorithm in mmLib.Structure.Chain.calc_sequence(), or by the
-        sequence loaded from the input file.  This function use the
-        file data if it exists, otherwise it will try to calculate
-        the sequence."""
-        for chain in self.structure.iter_chains():
-            chain.calc_sequence()
 
-    def build_bonds(self):
-        """Bonds are constructed using a combination of monomer library
-        bond definitions, and data loaded from parse_format()."""
-        for frag in self.structure.iter_fragments():
-            frag.create_bonds()
+        ## we're done with the atom cache, delete it
+        del self.atom_cache
+
+    def read_metadata(self):
+        """This method needs to be reimplemented in a fuctional subclass.
+        The subclassed read_metadata method should call the various
+        load_* methods to set non-atom coordinate data for the Structure.
+        """
+        pass
 
     def load_info(self, info_map):
         """Called by the implementation of parse_format to load descriptive
-        information about the structure."""
-        
+        information about the structure.
+        """        
         try: self.structure.id = info_map["id"]
         except KeyError: pass
 
@@ -157,61 +204,9 @@ class StructureBuilder:
         try: self.structure.res_low = info_map["res_low"]
         except KeyError: pass  
 
-    def load_atom(self, atm_map):
-        """Called by the implementation of parse_format to load all the
-        data for a single atom.  The data is contained in the atm_map
-        argument, and is not well documented at this point.  Look at
-        this function and you'll figure it out."""
-        name       = atm_map["name"]
-        altLoc     = atm_map["alt_loc"]
-        resName    = atm_map["res_name"]
-        fragmentID = atm_map["fragment_id"]
-        chainID    = atm_map["chain_id"]
-
-        atm_id = (name, altLoc, fragmentID, chainID)
-
-        ## <XXX> check the data we're loading and make sure a few
-        ##       rules are followed; this is necessary, but a bit
-        ##       hackish to have this here
-
-        ## don't allow the same atom to be loaded twice
-        if self.atom_cache.has_key(atm_id):
-            print "[DUPLICATE ATOM ERROR]", atm_id
-            return
-
-        ## don't allow atoms with blank altLoc if one has a altLoc
-        if altLoc:
-            tmp_id = (name, "", fragmentID, chainID)
-            if self.atom_cache.has_key(tmp_id):
-                print "[ALTLOC LABELING ERROR]", atm_id
-
-        ##
-        ## </XXX>
-
-        atm = self.add_atom(name, altLoc, resName, fragmentID, chainID)
-
-        ## additional properties
-        atm.element     = atm_map["element"]
-        atm.position    = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
-        atm.occupancy   = atm_map["occupancy"]
-        atm.temp_factor = atm_map["temp_factor"]
-
-        try:
-            atm.U = (atm_map["U[1][1]"],
-                     atm_map["U[2][2]"],
-                     atm_map["U[3][3]"],
-                     atm_map["U[1][2]"],
-                     atm_map["U[1][3]"],
-                     atm_map["U[2][3]"])
-        except KeyError:
-            pass
-
-        try:
-            atm.charge  = atm_map["charge"]
-        except KeyError:
-            pass
-
     def load_unit_cell(self, ucell_map):
+        """Load the unit cell pararameters into the Structure.
+        """
         self.structure.unit_cell = UnitCell(
             ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
             ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
@@ -220,18 +215,44 @@ class StructureBuilder:
         """Called by the implementation of parse_format to load information
         about one site in the structure.  Sites are groups of residues
         which are of special interest.  This usually means active sites
-        of enzymes and such."""
+        of enzymes and such.
+        """
         site = Site(site_id)
         for (chain_id, frag_id) in site_list:
             site.add_fragment(chain_id, frag_id)
         self.structure.sites.append(site)
 
+    def read_metadata_finalize(self):
+        """Called after the the metadata loading is complete.
+        """
+        ## calculate sequences for all chains
+        for chain in self.structure.iter_chains():
+            chain.calc_sequence()
+
+        ## build bonds within structure
+        for frag in self.structure.iter_fragments():
+            frag.create_bonds()
+
+    def read_end(self):
+        """This method needs to be reimplemented in a fuctional subclass.
+        The subclassed read_end method can be used for any clean up from
+        the file loading process you need, or may be left unimplemented.
+        """
+        pass
+
+    def read_end_finalize(self):
+        """Called for final cleanup after structure source readinging is
+        done.  Currently, this method does nothing but may be used in
+        future versions.
+        """
+        pass
+
 
 class CopyStructureBuilder(StructureBuilder):
     """Builds a new Structure object by copying from a current Structure
     object.  This builder can take any member of the Structure object which
-    has a iter_atoms() method."""
-    
+    has a iter_atoms() method.
+    """
     def parse_format(self, fil):
         for atm in fil.iter_atoms():
             atm_map = {}
@@ -262,15 +283,65 @@ class CopyStructureBuilder(StructureBuilder):
             
 
 class PDBStructureBuilder(StructureBuilder):
-    """Builds a new Structure object by loading a PDB file."""
+    """Builds a new Structure object by loading a PDB file.
+    """
+    def read_start(self, fil):
+        self.pdb_file = PDB.PDBFile()
+        self.pdb_file.load_file(fil)
 
-    def __process_ATOM(self, atm_map, rec):
+    def read_atoms(self):
+        i = 0
+        while i < len(self.pdb_file.pdb_list):
+            rec = self.pdb_file.pdb_list[i]
+            if not isinstance(rec, PDB.ATOM):
+                i += 1
+                continue
+            atm_map = {}
+            try:
+                self.process_ATOM(atm_map, rec)
+            except:
+                print "ERROR WITH ATOM RECORD:\n",rec
+            try:
+                anisou_rec = self.pdb_file.pdb_list[i+1]
+            except IndexError:
+                pass
+            else:
+                if isinstance(rec, PDB.ANISOU):
+                    try:
+                        self.process_ANISOU(atm_map, rec)
+                    except:
+                        print "ERROR WITH ANISOU RECORD:\n",rec
+                    else:
+                        i += 1
+            self.load_atom(atm_map)
+            i += 1
+
+    def load_metadata(self):
+        site_map = {}
+        ucell_map = {}
+
+        ## gather metadata
+        for i in range(len(self.pdb_file.pdb_list)):
+            rec = self.pdb_file.pdb_list[i]
+            if isinstance(rec, PDB.SITE):
+                self.process_SITE(site_map, rec)
+            elif isinstance(rec, PDB.CRYST1):
+                self.process_CRYST1(ucell_map, rec)
+
+        ## load the SITE information if found
+        for (site_id, site_list) in site_map.items():
+            self.load_site(site_id, site_list)
+
+        ## load the unit cell parameters if found
+        if ucell_map:
+            self.load_unit_cell(ucell_map)
+
+    def process_ATOM(self, atm_map, rec):
         name    = getattr(rec, "name")       or ""
         element = getattr(rec, "element")    or ""
 
-        ## get the element symbol from the first letter in the
-        ## atom name
-        if not self.structure.library.element_map.has_key(element):
+        ## get the element symbol from the first letter in the atom name
+        if not self.structure.library.get_element(element):
             for c in name:
                 if c in string.letters:
                     element = c
@@ -290,7 +361,7 @@ class PDBStructureBuilder(StructureBuilder):
         atm_map["temp_factor"] = getattr(rec, "tempFactor") or 0.0
         atm_map["charge"]      = getattr(rec, "charge")     or 0.0
 
-    def __process_ANISOU(self, atm_map, rec):
+    def process_ANISOU(self, atm_map, rec):
         atm_map["U[1][1]"] = getattr(rec, "u[0][0]") / 10000.0
         atm_map["U[2][2]"] = getattr(rec, "u[1][1]") / 10000.0
         atm_map["U[3][3]"] = getattr(rec, "u[2][2]") / 10000.0
@@ -298,7 +369,7 @@ class PDBStructureBuilder(StructureBuilder):
         atm_map["U[1][3]"] = getattr(rec, "u[0][2]") / 10000.0
         atm_map["U[2][3]"] = getattr(rec, "u[1][2]") / 10000.0
 
-    def __process_SITE(self, site_map, rec):
+    def process_SITE(self, site_map, rec):
         site_id = getattr(rec, "siteID")
 
         if not site_map.has_key(site_id):
@@ -336,7 +407,7 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             site_map[site_id].append((chain_id, frag_id))
 
-    def __process_CRYST1(self, ucell_map, rec):
+    def process_CRYST1(self, ucell_map, rec):
         ucell_map["a"]      = getattr(rec, "a")
         ucell_map["b"]      = getattr(rec, "b")
         ucell_map["c"]      = getattr(rec, "c")
@@ -345,62 +416,12 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["gamma"]  = getattr(rec, "gamma")
         ucell_map["sgroup"] = getattr(rec, "sgroup")
         ucell_map["z"]      = getattr(rec, "z")
-    
-    def parse_format(self, fil):
-        pdb_file = PDB.PDBFile()
-        pdb_file.load_file(fil)
-
-        atm_map       = {}
-        site_map      = {}
-        ucell_map     = {}
-
-        record_list   = pdb_file.pdb_list
-
-        for i in range(len(record_list)):
-            rec = record_list[i]
-            
-            if isinstance(rec, PDB.ATOM):
-                ## load the last atom before moving to this one
-                if atm_map:
-                    self.load_atom(atm_map)
-                    atm_map = {}
-
-                try:
-                    self.__process_ATOM(atm_map, rec)
-                except:
-                    print "ERROR WITH ATOM RECORD:"
-                    print rec
-
-            elif isinstance(rec, PDB.ANISOU):
-                try:
-                    self.__process_ANISOU(atm_map, rec)
-                except:
-                    print "ERROR WITH ANISOU RECORD:"
-                    print rec
-
-            elif isinstance(rec, PDB.SITE):
-                self.__process_SITE(site_map, rec)
-
-            elif isinstance(rec, PDB.CRYST1):
-                self.__process_CRYST1(ucell_map, rec)
-                
-                
-        ## if we were in the process of building a atom,
-        ## then load the final atm_map 
-        if atm_map:
-            self.load_atom(atm_map)
-
-        ## load the SITE records collected during parsing
-        for (site_id, site_list) in site_map.items():
-            self.load_site(site_id, site_list)
-
-        if ucell_map:
-            self.load_unit_cell(ucell_map)
 
 
 class mmCIFStructureBuilder(StructureBuilder):
-    """Builds a new Structure object by loading a mmCIF file."""
-    
+    """Builds a new Structure object by loading a mmCIF file.
+    """
+
     def parse_format(self, fil):
         cif_file = mmCIF.mmCIFFile()
         cif_file.load_file(fil)

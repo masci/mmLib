@@ -3,7 +3,8 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-"""Library of nucleic acid residues."""
+"""Library of nucleic acid residues.
+"""
 
 from Library import NucleicAcid
 
@@ -14,3 +15,4 @@ NucleicAcidNames = [
 
 NucleicAcidMap = {
     }
+

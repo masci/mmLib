@@ -114,7 +114,6 @@ class Structure(object):
                               beta sheets in the structure
     turns            (list)   list of Turn objects
     """
-
     def __init__(self,
                  library         = None,
                  default_alt_loc = ""):
@@ -161,11 +160,14 @@ class Structure(object):
         return tstr
  
     def __len__(self):
+        """Returns the number of stored Chain objects.
+        """
         return len(self.__chain_list)
     
     def __getitem__(self, x):
         """Same as get_chain, but raises KeyError if the requested chain_id
-        is not found."""
+        is not found.
+        """
         if type(x) == StringType:
             for chain in self.__chain_list:
                 if chain.chain_id == x:
@@ -181,16 +183,22 @@ class Structure(object):
         self.__chain_list.remove(self[x])
 
     def __iter__(self):
+        """Iterates the Chain objects in the Structure.
+        """
         return iter(self.__chain_list)
 
     def __contains__(self, x):
         return self[x] in self.__chain_list
 
     def index(self, chain):
+        """Returns the numeric index of the Chain object.
+        """
         assert isinstance(chain, Chain)
         return self.__chain_list.index(chain)
 
     def remove(self, chain):
+        """Removes the 
+        """
         assert isinstance(chain, Chain)
         del chain.get_structure
         self.__chain_list.remove(chain)
@@ -324,8 +332,7 @@ class Chain(object):
             ## in the slice range, but I don't copy the fragments nor do
             ## I set the fragments's get_chain() function to return the
             ## new Chain object
-
-            chain              = Chain(self.chain_id)
+            chain               = Chain(self.chain_id)
             chain.get_structure = self.get_structure
 
             frag_start = self[x.start]
@@ -333,9 +340,7 @@ class Chain(object):
 
             for frag in self:
                 if frag >= frag_start and frag <= frag_stop:
-
                     chain.__fragment_list.append(frag)
-                    
                     if frag.fragment_id in self.sequence:
                         chain.sequence.append(frag.fragment_id)
 
@@ -424,7 +429,7 @@ class Chain(object):
             except KeyError:
                 pass
 
-    def set_chain_iD(self, chain_id):
+    def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain object, updating the chain_id
         for all objects in the Structure hierarchy."""
         
@@ -624,10 +629,10 @@ class Fragment(object):
     def get_structure(self):
         return self.get_chain().get_structure()
 
-    def set_fragment_iD(self, fragment_id):
+    def set_fragment_id(self, fragment_id):
         """Sets a new ID for the Fragment object, updating the fragment_id
-        for all objects in the Structure hierarchy."""
-        
+        for all objects in the Structure hierarchy.
+        """
         ## check for conflicting chain_id in the structure
         try:             self.get_chain()[fragment_id]
         except KeyError: pass
@@ -647,10 +652,10 @@ class Fragment(object):
 
     def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
-        from the monomer library."""
-        try:
-            mon = self.get_structure().library[self.res_name]
-        except KeyError:
+        from the monomer library.
+        """
+        mon = self.get_structure().library.get_monomer(self.res_name)
+        if not mon:
             return
 
         for (name1, name2) in mon.bond_list:
@@ -664,8 +669,8 @@ class Fragment(object):
 
 
 class Residue(Fragment):
-    """A subclass of Fragment representing one residue in a polymer chain."""
-
+    """A subclass of Fragment representing one residue in a polymer chain.
+    """
     def __init__(self,
                  res_name    = "",
                  fragment_id = "",
@@ -697,17 +702,17 @@ class Residue(Fragment):
     def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.  This version also constructs the bonds
-        between adjectent residues."""
+        between adjectent residues.
+        """
         Fragment.create_bonds(self)
 
         next_res = self.get_offset_residue(1)
         if not next_res:
             return
 
-        try:
-            mon1 = self.get_structure().library[self.res_name]
-            mon2 = self.get_structure().library[next_res.res_name]
-        except KeyError:
+        mon1 = self.get_structure().library.get_monomer(self.res_name)
+        mon2 = self.get_structure().library.get_monomer(next_res.res_name)
+        if not (mon1 and mon2):
             return
 
         for (name1, name2) in mon1.get_polymer_bond_list(self, next_res):
@@ -831,8 +836,8 @@ class AminoAcidResidue(Residue):
         """Calculates the Pucker torsion of a ring system.  Returns None
         for Amino Acids which do not have Pucker torsion angles.
         """
-        mon = self.get_structure().library[self.res_name]
-        if not mon.pucker_definition:
+        mon = self.get_structure().library.get_monomer(self.res_name)
+        if not mon or not mon.pucker_definition:
             return None
 
         a1 = self.get_atom(mon.pucker_definition[0])
@@ -842,7 +847,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi1(self):
-        mon = self.get_structure().library[self.res_name]
+        mon = self.get_structure().library.get_monomer(self.res_name)
         if not mon.chi1_definition:
             return None
         
@@ -853,7 +858,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi2(self):
-        mon = self.get_structure().library[self.res_name]
+        mon = self.get_structure().library.get_monomer(self.res_name)
         if not mon.chi2_definition:
             return None
         
@@ -864,7 +869,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi3(self):
-        mon = self.get_structure().library[self.res_name]
+        mon = self.get_structure().library.get_monomer(self.res_name)
         if not mon.chi3_definition:
             return None
         
@@ -875,7 +880,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi4(self):
-        mon = self.get_structure().library[self.res_name]
+        mon = self.get_structure().library.get_monomer(self.res_name)
         if not mon.chi4_definition:
             return None
         
@@ -901,7 +906,8 @@ class AminoAcidResidue(Residue):
 
 class NucleicAcidResidue(Residue):
     """A subclass of Residue representing one nuclic acid in a strand of
-    DNA or RNA."""
+    DNA or RNA.
+    """
     pass
 
 
@@ -1008,7 +1014,8 @@ class Atom(object):
         self.__alt_loc_list.sort()
 
     def get_alt_loc(self, alt_loc):
-        """Returns the Atom object matching the alt_loc argument."""
+        """Returns the Atom object matching the alt_loc argument.
+        """
         assert type(alt_loc) == StringType
 
         try:
@@ -1019,13 +1026,15 @@ class Atom(object):
     def iter_alt_loc(self):
         """Iterate over all alt_loc versions of this atom in the
         alphabetical order of the alt_loc labels.  If there are no
-        alt_loc versions, do not iterate."""
+        alt_loc versions, do not iterate.
+        """
         return iter(self)
 
     def create_bond(self, atom, bond_alt_loc = False):
         """Creates a bond between two Atom objects.  If bond_alt_loc
         is True, then the bond is also formed between the alternate
-        locations of the same atom."""
+        locations of the same atom.
+        """
         assert isinstance(atom, Atom)
 
         def make_bond(a1, a2):
@@ -1060,7 +1069,8 @@ class Atom(object):
             make_bond(atom)
 
     def get_bond(self, atom):
-        """Returns the Bond connecting self with the argument atom."""
+        """Returns the Bond connecting self with the argument atom.
+        """
         assert isinstance(atom, Atom)
 
         for bond in self.bond_list:
@@ -1069,25 +1079,30 @@ class Atom(object):
         return None
 
     def iter_bonds(self):
-        """Iterates over all the Bond edges connected to self."""
+        """Iterates over all the Bond edges connected to self.
+        """
         for bond in self.bond_list:
             yield bond
 
     def iter_bonded_atoms(self):
-        """Iterates over all the Atoms bonded to self."""
+        """Iterates over all the Atoms bonded to self.
+        """
         for bond in self.iter_bonds():
             yield bond.get_partner(self)
 
     def get_chain(self):
-        """Return the parent Chain object."""
+        """Return the parent Chain object.
+        """
         return self.get_fragment().get_chain()
 
     def get_structure(self):
-        """Return the parent Structure object,"""
+        """Return the parent Structure object.
+        """
         return self.get_chain().get_structure()
 
     def calc_anisotropy(self):
-        """Calculates the ansitropy of that atom."""
+        """Calculates the ansitropy of that atom.
+        """
         ## no Anisotropic values, we have a spherical atom
         if not self.U: return 1.0
 
@@ -1100,10 +1115,11 @@ class Atom(object):
         ansotropy = min(evals) / max(evals)
         return ansotropy
         
-    def iter_atomsByDistance(self, max_distance = None):
+    def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the
         farthest up to the cutoff distance max_distance if given.  Yields
-        the 2-tuple (dist, atm)."""
+        the 2-tuple (dist, atm).
+        """
         list = []
 
         if max_distance:
@@ -1115,13 +1131,13 @@ class Atom(object):
             for atm in self.get_structure().iter_atoms():
                 list.append((calculateDistance(self, atm), atm))
 
-
         list.sort()
         return iter(list)
 
 
 class Bond(object):
-    """Indicates two atoms are bonded together."""
+    """Indicates two atoms are bonded together.
+    """
     def __init__(self, atom1, atom2):
         assert isinstance(atom1, Atom)
         assert isinstance(atom2, Atom)
@@ -1150,15 +1166,16 @@ class Bond(object):
 
 class FragmentList(list):
     """Provides the functionallity of a Python list class for containing
-    Fragment instances."""
+    Fragment instances.
+    """
     pass
 
 
 class AtomList(list):
     """Provides the functionallity of a Python list class for containing
     Atom instances.  It also provides class methods for performing some
-    useful calculations on the list of atoms."""
-
+    useful calculations on the list of atoms.
+    """
     def calc_centroid(self):
         """Calculates the centroid of all contained Atom instances and
         returns a Vector to the centroid.

@@ -5,6 +5,8 @@
 
 """Library of atomic elements."""
 
+from Library import Element
+
 ElementNames = [
     'H', 'He', 'HE', 'Li', 'LI', 'Be', 'BE', 'B', 'C', 'N', 'O', 'F', 'Ne',
     'NE', 'Na', 'NA', 'Mg', 'MG', 'Al', 'AL', 'Si', 'SI', 'P', 'S', 'Cl',
@@ -24,36 +26,6 @@ ElementNames = [
     'CF', 'Es', 'ES', 'Fm', 'FM', 'Md', 'MD', 'No', 'NO', 'Lr', 'LR', 'Rf',
     'RF', 'Db', 'DB', 'Sg', 'SG', 'Bh', 'BH', 'Hs', 'HS', 'Mt', 'MT'
     ]
-
-class Element(object):
-    """Class for holding the properties of a element."""
-    
-    def __init__(self,
-                 name                    = "",
-                 symbol                  = "",
-                 group                   = "",
-                 period                  = "",
-                 atomic_number           = 0,
-                 atomic_weight           = 0.0,
-                 atomic_radius           = 0.0,
-                 covalent_radius         = 0.0,
-                 van_der_waals_radius    = 0.0,
-                 electronegativity       = 0.0):
-
-        self.name                 = name
-        self.symbol               = symbol
-        self.group                = group
-        self.period               = period
-        self.atomic_number        = atomic_number
-        self.atomic_weight        = atomic_weight
-        self.atomic_radius        = atomic_radius
-        self.covalent_radius      = covalent_radius
-        self.van_der_waals_radius = van_der_waals_radius
-        self.electronegativity    = electronegativity
-
-    def __str__(self):
-        return "Element=%s" % (self.name)
-
 
 H  = Element(
     name                 = "Hydrogen",
