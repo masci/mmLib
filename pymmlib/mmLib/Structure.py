@@ -526,6 +526,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_alpha_helicies()
+        raise StopIteration
 
     def add_beta_sheet(self, beta_sheet):
         """Adds a BetaSheet to the default Model object.
@@ -538,6 +539,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_beta_sheets()
+        raise StopIteration
 
     def add_site(self, site):
         """Adds a Site object to the default Model.
@@ -550,6 +552,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_sites()
+        raise StopIteration
 
     def add_bonds_from_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
@@ -862,16 +865,15 @@ class Model(object):
         return n
 
     def iter_atoms(self):
-        """Iterates over all Atom objects.  The iteration is preformed in
-        order according to the Chain and Fragment ordering rules the Atom
-        object is a part of.
+        """Iterates over all Atom objects according to the Structure
+        defaults.
         """
         for chain in self.iter_chains():
             for atm in chain.iter_atoms():
                 yield atm
 
     def count_atoms(self):
-        """Counts all Atom objects in the Structure's default alt_loc.
+        """Counts all Atom objects in according to the Structure defaults.
         """
         n = 0
         for atm in self.iter_atoms():
@@ -879,14 +881,16 @@ class Model(object):
         return n
 
     def iter_all_atoms(self):
-        """
+        """Iterates over all Atom objects including all atoms in multiple
+        conformations.
         """
         for chain in self.iter_chains():
             for atm in chain.iter_all_atoms():
                 yield atm
 
     def count_all_atoms(self):
-        """Counts all Atom objects.
+        """Counts all Atom objects including all atoms in multiple
+        conformations.
         """
         n = 0
         for atm in self.iter_all_atoms():
