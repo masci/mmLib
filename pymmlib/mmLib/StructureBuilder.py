@@ -27,15 +27,35 @@ class StructureBuilder(object):
     method to implement a working builder.
     """
     def __init__(self, **args):
+        debug("StructureBuilder.__init__()")
+        
         ## allocate a new Structure object for building if one was not
         ## passed to the StructureBuilder
-        self.struct = args.get("struct") or \
-                      Structure(library = args.get("library"))
+        self.struct = args.get("structure") or \
+                      args.get("struct") or \
+                      Structure()
+
+        ## set structure_id
+        if args.get("structure_id"):
+            self.struct.structure_id = args["structure_id"]
+
+        ## options
+        self.calc_sequence = args.get("calc_sequence", False)
+        self.library_bonds = args.get("library_bonds", False)
+        self.distance_bonds = args.get("distance_bonds", False)
 
         ## what items are going to be built into the Structure graph
         ## follow up with adding structural components which depend on
         ## other components
+        debug("build_properties=%s" % (str(args.get("build_properties"))))
+        
         self.build_properties = args.get("build_properties") or ()
+        if "calc_sequence" in self.build_properties:
+            self.calc_sequence = True
+        if "library_bonds" in self.build_properties:
+            self.library_bonds = True
+        if "distance_bonds" in self.build_properties:
+            self.distance_bonds = True
 
         ## caches used while building
         self.cache_chain = None
@@ -54,6 +74,9 @@ class StructureBuilder(object):
         if not self.halt: self.read_end()
         if not self.halt: self.read_end_finalize()
         ## self.struct is now built and ready for use
+
+        if self.halt==True:
+            fatal("self.halt==True")
 
     def read_start(self, fil, update_cb):
         """This methods needs to be reimplemented in a functional subclass.
@@ -346,8 +369,7 @@ class StructureBuilder(object):
                 fragment_id_num = 0
 
             elif new_chain_id == None or fragment_id_num == None:
-                print "name_service: unable to assign any chain ids"
-                sys.exit(1)
+                fatal("name_service: unable to assign any chain ids")
 
             ## get model dictionary
             model_dict = cr_dict[cr_key]
@@ -389,8 +411,10 @@ class StructureBuilder(object):
                         self.struct.add_atom(atm, True)
 
             ## logging
-            warning("NS: Added ChainID: %s with %3d Residues of Type: %s" % (
-                new_chain_id, fragment_id_num, cr_key[1]))
+            warning("name_serverice(): added chain_id=%s, res_name=%s, "\
+                    "num_residues=%d" % (new_chain_id,
+                                         cr_key[1],
+                                         fragment_id_num))
 
 
     def read_atoms_finalize(self):
@@ -410,6 +434,12 @@ class StructureBuilder(object):
         load_* methods to set non-atom coordinate data for the Structure.
         """
         pass
+
+    def load_structure_id(self, structure_id):
+        """
+        """
+        assert type(structure_id)==StringType
+        self.struct.structure_id = structure_id
 
     def load_unit_cell(self, ucell_map):
         """Called by the implementation of load_metadata to load the
@@ -613,16 +643,23 @@ class StructureBuilder(object):
         done.  Currently, this method does nothing but may be used in
         future versions.
         """
+        debug("read_end_finalize()")
+        
         ## calculate sequences for all chains
-        if "calc_sequence" in self.build_properties:
-            for chain in self.struct.iter_chains():
-                chain.calc_sequence()
+        if self.calc_sequence==True:
+            debug("read_end_finalize(): calc_sequence")
+            
+            for model in self.struct.iter_models():
+                for chain in model.iter_chains():
+                    chain.set_sequence(chain.calc_sequence())
 
         ## build bonds as defined in the monomer library
-        if "library_bonds" in self.build_properties:
+        if self.library_bonds==True:
+            debug("read_end_finalize(): library_bonds")
             self.struct.add_bonds_from_library()
 
         ## build bonds by covalent distance calculations
-        if "distance_bonds" in self.build_properties:
+        if self.distance_bonds==True:
+            debug("read_end_finalize(): distance_bonds")
             self.struct.add_bonds_from_covalent_distance()
             

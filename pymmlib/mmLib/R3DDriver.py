@@ -698,7 +698,10 @@ class Raster3DDriver(object):
         Ur = matrixmultiply(matrixmultiply(R, U), transpose(R))
         
         max_eigenvalue = max(eigenvalues(Ur))
-        limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(max_eigenvalue)
+        try:
+            limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(max_eigenvalue)
+        except ValueError:
+            limit_radius = 2.0
 
         try:
             quadric = inverse(Ur)

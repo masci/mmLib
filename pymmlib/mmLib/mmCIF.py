@@ -936,8 +936,7 @@ class mmCIFFileWriter(object):
                 self.write_multi_row_table(cif_table)
 
             else:
-                print "wtf?",cif_table
-                sys.exit(1)
+                fatal("write_cif_data()\n%s" % (str(cif_table)))
 
             self.writeln("#")
 

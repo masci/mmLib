@@ -16,12 +16,18 @@ from mmLib.Structure import *
 from mmLib.PDB       import *
 from mmLib.Viewer    import *
 
+###############################################################################
+## EXCEPTION BASE CLASS
+##
 
 class TLSError(Exception):
     """Base exception class for TLS module exceptions.
     """
     pass
 
+###############################################################################
+## SUPPORTED TLS FILE FORMATS
+##
 
 class TLSFileFormatError(TLSError):
     """Raised when a file format error is encountered while loading a
@@ -154,10 +160,31 @@ class TLSGroupDesc(object):
                 chain_id1, frag_id1, chain_id2, frag_id2, sel))
         return string.join(listx,';')
 
-    def generate_tls_group(self, struct):
-        """Returns a TLSGroup containing the appropriate atoms from the
-        argument Structure object, and with the origin, T, L, S tensors
-        set.
+    def iter_atoms(self, struct):
+        """Uses the TLS definition and the given Structure object to iterate
+        over all atoms which should be included in the TLS group according
+        to the range_list definitions.
+        """
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
+            assert chain_id1==chain_id2
+
+            chain1 = struct.get_chain(chain_id1)
+            if chain1==None:
+                warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
+                continue
+
+            try:
+                seg = chain1[frag_id1:frag_id2]
+            except KeyError:
+                warning("iter_tls_atoms():unable to find segment={%s..%s}" % (
+                    frag_id1, frag_id2))
+
+            for atm in seg.iter_atoms():
+                yield atm
+
+    def construct_tls_group(self):
+        """Creates a TLSGroup() object with the origin, T, L, and S tensors
+        set according to the TLS description.
         """
         tls_group = TLSGroup()
 
@@ -191,25 +218,26 @@ class TLSGroupDesc(object):
                 self.S[2,0],
                 self.S[2,1])
         
-        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
-
-            chain1 = struct.get_chain(chain_id1)
-            if chain1 == None:
-                print "[ERROR] no chain id: %s" % (chain_id1)
-                return None
-
-            try:
-                seg = chain1[frag_id1:frag_id2]
-            except KeyError:
-                print "[ERROR] unable to find segment: %s-%s" % (
-                    frag_id1, frag_id2)
-                return None
-
-            for atm in seg.iter_atoms():
-                tls_group.append(atm)
-            
         return tls_group
 
+    def construct_tls_group_with_atoms(self, struct):
+        """Creates a TLSGroup() object with the origin, T, L, and S tensors
+        set according to the TLS description, the add the Atoms to the TLSGroup
+        from the given argument Structure.
+        """
+        tls_group = self.construct_tls_group()
+        
+        for atm in self.iter_atoms(struct):
+            tls_group.append(atm)
+
+        return tls_group
+
+    def generate_tls_group(self, struct):
+        """Depricated: use construct_tls_group_with_atoms()
+        """
+        warning("generate_tls_group() depricated")
+        return self.construct_tls_group_with_atoms(struct)
+                
 
 class TLSFile(object):
     """Read/Write a TLS files containing one or more TLSGroupDesc
@@ -240,7 +268,20 @@ class TLSFile(object):
         self.path = path
         self.file_format.save(fil, self.tls_desc_list)
 
-    def generate_tls_group_list(self, struct):
+    def construct_tls_groups(self):
+        """Returns a list of TLSGroup instances constructed from the
+        TLSGroupDesc instances contained in this class.
+        """
+        tls_group_list = []
+
+        for tls_desc in self.tls_desc_list:
+            tls_group = tls_desc.construct_tls_group(struct)
+            if tls_group!=None:
+                tls_group_list.append(tls_group)
+
+        return tls_group_list
+
+    def construct_tls_groups_with_atoms(self, struct):
         """Returns a list of TLSGroup instances constructed from the Structure
         instance argument and the TLSGroupDesc instances contained in this
         class.
@@ -248,7 +289,7 @@ class TLSFile(object):
         tls_group_list = []
 
         for tls_desc in self.tls_desc_list:
-            tls_group = tls_desc.generate_tls_group(struct)
+            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
             if tls_group!=None:
                 tls_group_list.append(tls_group)
 
@@ -645,14 +686,6 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
 
         return tls_desc_list
 
-    def ft8(self, *fx):
-        """Converts the fx float tuple to a TLSOUT tensor output string.
-        """
-        strx = ""
-        for x in fx:
-            strx += fpformat.fix(x, 4).rjust(8)
-        return strx
-
     def tlsout_tls_desc(self, tls_desc):
         """Converts TLSGroupDesc instance to a multi-line string format
         ready to write to a TLSOUT file.
@@ -675,31 +708,30 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 chain_id2, frag_id2.rjust(5), sel))
 
         if tls_desc.origin!=None:
-            listx.append("ORIGIN %8.4f %8.4f %8.4f" % (
+            listx.append("ORIGIN   %8.4f %8.4f %8.4f" % (
                 tls_desc.origin[0], tls_desc.origin[1], tls_desc.origin[2]))
 
         if tls_desc.T!=None:
             ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
-            x = self.ft8(tls_desc.T[0,0], tls_desc.T[1,1], tls_desc.T[2,2],
-                         tls_desc.T[0,1], tls_desc.T[0,2], tls_desc.T[1,2])
-            listx.append("T   %s" % (x))
+            listx.append("T   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
+                tls_desc.T[0,0], tls_desc.T[1,1], tls_desc.T[2,2],
+                tls_desc.T[0,1], tls_desc.T[0,2], tls_desc.T[1,2]))
 
         if tls_desc.L!=None:
             ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
-            x = self.ft8(
+            listx.append("L   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
                 tls_desc.L[0,0] * RAD2DEG2,
                 tls_desc.L[1,1] * RAD2DEG2,
                 tls_desc.L[2,2] * RAD2DEG2,
                 tls_desc.L[0,1] * RAD2DEG2,
                 tls_desc.L[0,2] * RAD2DEG2,
-                tls_desc.L[1,2] * RAD2DEG2)
-
-            listx.append("L   %s" % (x))
+                tls_desc.L[1,2] * RAD2DEG2))
 
         if tls_desc.S!=None:
             ## REFMAC ORDER:
             ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
-            x = self.ft8(
+            listx.append(
+                "S   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
                 (tls_desc.S[1,1] - tls_desc.S[0,0]) * RAD2DEG,
                 (tls_desc.S[0,0] - tls_desc.S[2,2]) * RAD2DEG,
                 tls_desc.S[0,1] * RAD2DEG,
@@ -707,9 +739,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 tls_desc.S[1,2] * RAD2DEG,
                 tls_desc.S[1,0] * RAD2DEG,
                 tls_desc.S[2,0] * RAD2DEG,
-                tls_desc.S[2,1] * RAD2DEG)
-            
-            listx.append("S   %s" % (x))
+                tls_desc.S[2,1] * RAD2DEG))
 
         return string.join(listx, "\n")
 
@@ -722,6 +752,94 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
 
+###############################################################################
+## SOLVE TLS LSQ-FIT BY SVD
+##
+
+def solve_TLS_Ab(A, b):
+    """Sove a overdetermined TLS system by singular value decomposition.
+    """
+    ## solve by SVD
+    U, W, Vt = singular_value_decomposition(A, full_matrices=0)
+
+    V  = transpose(Vt)
+    Ut = transpose(U)
+
+    ## analize singular values and generate smallness cutoff
+    cutoff = max(W) * 1e-5
+
+    ## make W
+    dim_W = len(W)
+    Wi = zeros((dim_W, dim_W), Float)
+
+    for i in range(dim_W):
+        if W[i]>cutoff:
+            Wi[i,i] = 1.0 / W[i]
+        else:
+            #print "SVD: ill conditioned value %d=%f" % (i, W[i])
+            Wi[i,i] = 0.0
+
+    ## calculate the inverse of A
+    Ai = matrixmultiply(V, matrixmultiply(Wi, Ut))
+    ## calculate solution
+    x  = matrixmultiply(Ai, b)
+
+    return x
+
+###############################################################################
+## ISOTROPIC TLS MODEL
+##
+
+def set_TLSiso_b(b, i, Uiso, w):
+    """Sets the six rows of vector b with the experimental/target anisotropic
+    ADP values U starting at index b[i] and ending at b[i+6] with weight w.
+    """
+    b[i] = w * Uiso
+
+def set_TLSiso_A(A, i, j, x, y, z, w):
+    """Sets the one row of matrix A starting at A[i,j] with the istropic
+    TLS model coefficents for a atom located at t position x, y, z with
+    least-squares weight w.  Matrix A is filled to coumn j+12.
+    """
+    ## use label indexing to avoid confusion!
+    T, L11, L22, L33, L12, L13, L23, S12, S13, S23, S21, S31, S32 = (
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j)
+    
+    ## indecies of the components of U
+    UISO = i
+    
+    ## C Matrix
+    xx = x*x
+    yy = y*y
+    zz = z*z
+
+    xy = x*y
+    xz = x*z
+    yz = y*z
+
+    A[UISO, T]   = w * 1.0
+
+    A[UISO, L11] = w * ((zz + yy) / 3.0)
+    A[UISO, L22] = w * ((xx + zz) / 3.0)
+    A[UISO, L33] = w * ((xx + yy) / 3.0)
+
+    A[UISO, L12] = w * ((-2.0 * xy) / 3.0)
+    A[UISO, L13] = w * ((-2.0 * xz) / 3.0)
+    A[UISO, L23] = w * ((-2.0 * yz) / 3.0)
+
+    A[UISO, S12] = w * ((-2.0 * z) / 3.0)
+    A[UISO, S21] = w * (( 2.0 * z) / 3.0)
+
+    A[UISO, S13] = w * (( 2.0 * y) / 3.0)
+    A[UISO, S31] = w * ((-2.0 * y) / 3.0)
+
+    A[UISO, S23] = w * ((-2.0 * x) / 3.0)
+    A[UISO, S32] = w * (( 2.0 * x) / 3.0)
+
+
+###############################################################################
+## ANISOTROPIC TLS MODEL
+##
 
 def calc_s11_s22_s33(s2211, s1133):
     """Calculates s11, s22, s33 based on s22-s11 and s11-s33 using
@@ -732,210 +850,47 @@ def calc_s11_s22_s33(s2211, s1133):
     s33 = s11 - s1133
     return s11, s22, s33
 
-
-def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
-    """Calculate new tensors based on the center for reaction.
-    This method returns a dictionary of the calculations:
-
-    T^: T tensor in the coordinate system of L
-    L^: L tensor in the coordinate system of L
-    S^: S tensor in the coordinate system of L
-
-    COR: Center of Reaction
-
-    T',S',L': T,L,S tensors in origonal coordinate system
-              with the origin shifted to the center of reaction.
+def calc_Utls(T, L, S, position):
+    """Returns the calculated value for the anisotropic U tensor for
+    the given position.
     """
-    ## small_L is the smallest magnitude of L before it is considered 0.0
-    small_L = 1e-7
+    x, y, z = position
 
-    tls_info = {}
+    xx = x*x
+    yy = y*y
+    zz = z*z
 
-    ## set the L tensor eigenvalues and eigenvectors
-    (eval_L, evec_L) = eigenvectors(L_orig)
+    xy = x*y
+    yz = y*z
+    xz = x*z
 
-    tls_info["L1_eigen_val"] = eval_L[0]
-    tls_info["L2_eigen_val"] = eval_L[1]
-    tls_info["L3_eigen_val"] = eval_L[2]
+    u11 = T[0,0] \
+          + L[1,1]*zz + L[2,2]*yy - 2.0*L[1,2]*yz \
+          + 2.0*S[1,0]*z - 2.0*S[2,0]*y
 
-    tls_info["L1_eigen_vec"] = evec_L[0]
-    tls_info["L2_eigen_vec"] = evec_L[1]
-    tls_info["L3_eigen_vec"] = evec_L[2]
+    u22 = T[1,1] \
+          + L[0,0]*zz + L[2,2]*xx - 2.0*L[2,0]*xz \
+          - 2.0*S[0,1]*z + 2.0*S[2,1]*x
 
-    ## transpose the original the evec_L so it can be used
-    ## to rotate the other tensors
-    evec_L = transpose(evec_L)
+    u33 = T[2,2] \
+          + L[0,0]*yy + L[1,1]*xx - 2.0*L[0,1]*xy \
+          - 2.0*S[1,2]*x + 2.0*S[0,2]*y
 
-    ## carrot-L tensor (tensor WRT principal axes of L)
-    cL      = zeros([3,3], Float)
-    cL[0,0] = eval_L[0]
-    cL[1,1] = eval_L[1]
-    cL[2,2] = eval_L[2]
+    u12 = T[0,1] \
+          - L[2,2]*xy + L[1,2]*xz + L[2,0]*yz - L[0,1]*zz \
+          - S[0,0]*z + S[1,1]*z + S[2,0]*x - S[2,1]*y
 
-    tls_info["L^"] = cL
+    u13 = T[0,2] \
+          - L[1,1]*xz + L[1,2]*xy - L[2,0]*yy + L[0,1]*yz \
+          + S[0,0]*y - S[2,2]*y + S[1,2]*z - S[1,0]*x
 
-    ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = matrixmultiply(
-        matrixmultiply(transpose(evec_L), T_orig), evec_L)
+    u23 = T[1,2] \
+          - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz \
+          - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
 
-    tls_info["T^"] = cT
-
-    ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = matrixmultiply(
-        matrixmultiply(transpose(evec_L), S_orig), evec_L)
-
-    ## correct for left-handed libration eigenvectors
-    det = determinant(evec_L)
-    if int(det) != 1:
-        cS = -cS
-
-    tls_info["S^"] = cS
-
-    ## ^rho: the origin-shift vector in the coordinate system of L
-    cL1122 = cL[1,1] + cL[2,2]
-    cL2200 = cL[2,2] + cL[0,0]
-    cL0011 = cL[0,0] + cL[1,1]
-
-    if cL1122>small_L:
-        crho0 = (cS[1,2]-cS[2,1]) / cL1122
-    else:
-        crho0 = 0.0
-
-    if cL2200>small_L:
-        crho1 = (cS[2,0]-cS[0,2]) / cL2200
-    else:
-        crho1 = 0.0
-
-    if cL0011>small_L:
-        crho2 = (cS[0,1]-cS[1,0]) / cL0011
-    else:
-        crho2 = 0.0
-
-    crho = array([crho0, crho1, crho2], Float)
-
-    tls_info["RHO^"] = crho
-
-    ## rho: the origin-shift vector in orthogonal coordinates
-    rho = matrixmultiply(evec_L, crho)
-
-    tls_info["RHO"] = rho
-    tls_info["COR"] = origin + rho.copy()
-
-    ## set up the origin shift matrix PRHO WRT orthogonal axes
-    PRHO = array([ [    0.0,  rho[2], -rho[1]],
-                   [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], Float)
-
-    ## set up the origin shift matrix cPRHO WRT libration axes
-    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
-                    [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], Float)
-
-    ## calculate tranpose of cPRHO, ans cS
-    cSt = transpose(cS)
-    cPRHOt = transpose(cPRHO)
-
-    ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + matrixmultiply(cL, cPRHOt)
-    tls_info["S'^"] = cSp
-
-    ## L'^ = L^ = cL
-    tls_info["L'^"] = cL
-
-    ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + \
-          matrixmultiply(cPRHO, cS) + \
-          matrixmultiply(cSt, cPRHOt) + \
-          matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
-    tls_info["T'^"] = cTp
-
-    ## transpose of PRHO and S
-    PRHOt = transpose(PRHO)
-    St = transpose(S_orig)
-
-    ## calculate S' = S + L*PRHOt
-    Sp = S_orig + matrixmultiply(L_orig, PRHOt)
-    tls_info["S'"] = Sp
-
-    ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T_orig + \
-         matrixmultiply(PRHO, S_orig) + \
-         matrixmultiply(St, PRHOt) + \
-         matrixmultiply(matrixmultiply(PRHO, L_orig), PRHOt)
-    tls_info["T'"] = Tp
-
-    ## L' is just L
-    tls_info["L'"] = L_orig.copy()
-
-    ## now calculate the TLS motion description using 3 non
-    ## intersecting screw axes, with one
-
-    ## libration axis 1 shift in the L coordinate system        
-    if cL[0,0]>small_L:
-        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
-    else:
-        cL1rho = zeros(3, Float)
-
-    ## libration axis 2 shift in the L coordinate system
-    if cL[1,1]>small_L:
-        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
-    else:
-        cL2rho = zeros(3, Float)
-
-    ## libration axis 2 shift in the L coordinate system
-    if cL[2,2]>small_L:
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
-    else:
-        cL3rho = zeros(3, Float)
-
-    ## libration axes shifts in the origional orthogonal
-    ## coordinate system
-    tls_info["L1_rho"] = matrixmultiply(evec_L, cL1rho)
-    tls_info["L2_rho"] = matrixmultiply(evec_L, cL2rho)
-    tls_info["L3_rho"] = matrixmultiply(evec_L, cL3rho)
-
-    ## calculate screw pitches (A*R / R*R) = (A/R)
-    if cL[0,0]>small_L:
-        tls_info["L1_pitch"] = cS[0,0]/cL[0,0]
-    else:
-        tls_info["L1_pitch"] = 0.0
-
-    if cL[1,1]>small_L:
-        tls_info["L2_pitch"] = cS[1,1]/cL[1,1]
-    else:
-        tls_info["L2_pitch"] = 0.0
-
-    if cL[2,2]>small_L:
-        tls_info["L3_pitch"] = cS[2,2]/cL[2,2]
-    else:
-        tls_info["L3_pitch"] = 0.0
-
-    ## now calculate the reduction in T for the screw rotation axes
-    cTred = cT.copy()
-
-    for i in (0, 1, 2):
-        for k in (0, 1, 2):
-            if i==k:
-                continue
-            if cL[k,k]>small_L:
-                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
-
-    for i in (0, 1, 2):
-        for j in (0, 1, 2):
-            for k in (0, 1, 2):
-                if j==i:
-                    continue
-                if cL[k,k]>small_L:
-                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
-
-    ## rotate the newly calculated reduced-T tensor from the carrot
-    ## coordinate system (coordinate system of L) back to the structure
-    ## coordinate system
-    tls_info["rT'"] = matrixmultiply(
-        transpose(evec_L), matrixmultiply(cTred, evec_L))
-
-    return tls_info
-
+    return array([[u11, u12, u13],
+                  [u12, u22, u23],
+                  [u13, u23, u33]], Float)
 
 def set_TLS_b(b, i, U, w):
     """Sets the six rows of vector b with the experimental/target anisotropic
@@ -956,16 +911,16 @@ def set_TLS_A(A, i, j, x, y, z, w):
     ## use label indexing to avoid confusion!
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0+j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,
         12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
 
     ## indecies of the components of U
-    u11 =       i
-    u22 = u11 + 1
-    u33 = u11 + 2
-    u12 = u11 + 3
-    u13 = u11 + 4
-    u23 = u11 + 5
+    U11 =       i
+    U22 = U11 + 1
+    U33 = U11 + 2
+    U12 = U11 + 3
+    U13 = U11 + 4
+    U23 = U11 + 5
 
     ## C Matrix
     xx = x*x
@@ -976,109 +931,67 @@ def set_TLS_A(A, i, j, x, y, z, w):
     xz = x*z
     yz = y*z
 
-    A[u11, T11] = w * 1.0
-    A[u11, L22] = w * zz
-    A[u11, L33] = w * yy
-    A[u11, L23] = w * -2.0*yz
-    A[u11, S31] = w * -2.0*y
-    A[u11, S21] = w * 2.0*z
+    A[U11, T11] = w * 1.0
+    A[U11, L22] = w *        zz
+    A[U11, L33] = w *        yy
+    A[U11, L23] = w * -2.0 * yz
+    A[U11, S31] = w * -2.0 *  y
+    A[U11, S21] = w *  2.0 *  z
 
-    A[u22, T22] = w * 1.0
-    A[u22, L11] = w * zz
-    A[u22, L33] = w * xx
-    A[u22, L13] = w * -2.0*xz
-    A[u22, S12] = w * -2.0*z
-    A[u22, S32] = w * 2.0*x
+    A[U22, T22] = w * 1.0
+    A[U22, L11] = w *        zz
+    A[U22, L33] = w *        xx
+    A[U22, L13] = w * -2.0 * xz
+    A[U22, S12] = w * -2.0 *  z
+    A[U22, S32] = w *  2.0 *  x
 
-    A[u33, T33] = w * 1.0
-    A[u33, L11] = w * yy
-    A[u33, L22] = w * xx
-    A[u33, L12] = w * -2.0*xy
-    A[u33, S23] = w * -2.0*x
-    A[u33, S13] = w * 2.0*y
+    A[U33, T33] = w * 1.0
+    A[U33, L11] = w *        yy
+    A[U33, L22] = w *        xx
+    A[U33, L12] = w * -2.0 * xy
+    A[U33, S23] = w * -2.0 *  x
+    A[U33, S13] = w *  2.0 *  y
+    
+    A[U12, T12]   = w * 1.0
+    A[U12, L33]   = w * -xy
+    A[U12, L23]   = w *  xz
+    A[U12, L13]   = w *  yz
+    A[U12, L12]   = w * -zz
+    A[U12, S2211] = w *   z
+    A[U12, S31]   = w *   x
+    A[U12, S32]   = w *  -y
+    
+    A[U13, T13]   = w * 1.0
+    A[U13, L22]   = w * -xz
+    A[U13, L23]   = w *  xy
+    A[U13, L13]   = w * -yy
+    A[U13, L12]   = w *  yz
+    A[U13, S1133] = w *   y
+    A[U13, S23]   = w *   z
+    A[U13, S21]   = w *  -x
+    
+    A[U23, T23]   = w * 1.0
+    A[U23, L11]   = w * -yz
+    A[U23, L23]   = w * -xx
+    A[U23, L13]   = w *  xy
+    A[U23, L12]   = w *  xz
+    A[U23, S2211] = w *  -x
+    A[U23, S1133] = w *  -x
+    A[U23, S12]   = w *   y
+    A[U23, S13]   = w *  -z
 
-    A[u12, T12] = w * 1.0
-    A[u12, L33] = w * -xy
-    A[u12, L23] = w * xz
-    A[u12, L13] = w * yz
-    A[u12, L12] = w * -zz
-    A[u12, S2211] = w * z
-    A[u12, S31] = w * x
-    A[u12, S32] = w * -y
-
-    A[u13, T13] = w * 1.0
-    A[u13, L22] = w * -xz
-    A[u13, L23] = w * xy
-    A[u13, L13] = w * -yy
-    A[u13, L12] = w * yz
-    A[u13, S1133] = w * y
-    A[u13, S23] = w * z
-    A[u13, S21] = w * -x
-
-    A[u23, T23] = w * 1.0
-    A[u23, L11] = w * -yz
-    A[u23, L23] = w * -xx
-    A[u23, L13] = w * xy
-    A[u23, L12] = w * xz
-    A[u23, S2211] = w * -x
-    A[u23, S1133] = w * -x
-    A[u23, S12] = w * y
-    A[u23, S13] = w * -z
-
-
-def set_L_A(A, i, j, x, y, z, w):
-    """Sets coefficents of a L tensor in matrix A for a atom at position
-    x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
-    using weight w.
+def set_TLS_b(b, i, U, w):
+    """Sets the six rows of vector b with the experimental/target anisotropic
+    ADP values U starting at index b[i] and ending at b[i+6] with weight w.
     """
-    L11, L22, L33, L12, L13, L23 = (
-        j, j+1, j+2, j+3, j+4, j+5)
+    b[i]   = w * U[0,0]
+    b[i+1] = w * U[1,1]
+    b[i+2] = w * U[2,2]
+    b[i+3] = w * U[0,1]
+    b[i+4] = w * U[0,2]
+    b[i+5] = w * U[1,2]
 
-    ## indecies of the components of U
-    u11 =       i
-    u22 = u11 + 1
-    u33 = u11 + 2
-    u12 = u11 + 3
-    u13 = u11 + 4
-    u23 = u11 + 5
-
-    ##
-    xx = x * x
-    yy = y * y
-    zz = z * z
-    xy = x * y
-    xz = x * z
-    yz = y * z
-
-    A[u11, L22] = w * zz
-    A[u11, L33] = w * yy
-    A[u11, L23] = w * -2.0 * yz
-
-    A[u22, L11] = w * zz
-    A[u22, L33] = w * xx
-    A[u22, L13] = w * -2.0 * xz
-
-    A[u33, L11] = w * yy
-    A[u33, L22] = w * xx
-    A[u33, L12] = w * -2.0 * xy
-
-    A[u12, L33] = w * -xy
-    A[u12, L23] = w * xz
-    A[u12, L13] = w * yz
-    A[u12, L12] = w * -zz
-
-    A[u13, L22] = w * -xz
-    A[u13, L23] = w * xy
-    A[u13, L13] = w * -yy
-    A[u13, L12] = w * yz
-
-    A[u23, L11] = w * -yz
-    A[u23, L23] = w * -xx
-    A[u23, L13] = w * xy
-    A[u23, L12] = w * xz
-
-
-def calc_TLS_least_squares_fit(atom_list, weight_dict=None):
+def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
     the TLS model with amino acid side chains which can pivot
     about the CA atom.  This model uses 20 TLS parameters and 6
@@ -1101,39 +1014,23 @@ def calc_TLS_least_squares_fit(atom_list, weight_dict=None):
         i += 1
 
         ## set x, y, z as the vector components from the TLS origin
-        x, y, z = atm.position
+        x, y, z = atm.position - origin
 
         ## is this fit weighted?
         if weight_dict!=None:
             w = math.sqrt(weight_dict[atm])
-        else:
-            w = 1.0
 
         ## indecies of the components of U
-        u11 = i * 6
+        U11 = i * 6
 
         ## set the b vector
-        set_TLS_b(b, u11, atm.get_U(), w)
+        set_TLS_b(b, U11, atm.get_U(), w)
 
         ## set the A matrix
-        set_TLS_A(A, u11, 0, x, y, z, w)
+        set_TLS_A(A, U11, 0, x, y, z, w)
 
     ## solve by SVD
-    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
-
-    ## make W
-    dim_W = len(S)
-    W = zeros((dim_W, dim_W), Float)
-
-    for i in range(dim_W):
-        if S[i]>1e-5:
-            W[i,i] = 1.0 / S[i]
-        else:
-            W[i,i] = 0.0
-
-    M1 = matrixmultiply(transpose(Vt), W)
-    M2 = matrixmultiply(M1, transpose(U))
-    C  = matrixmultiply(M2, b)
+    C = solve_TLS_Ab(A, b)
 
     T = array([ [ C[T11], C[T12], C[T13] ],
                 [ C[T12], C[T22], C[T23] ],
@@ -1155,22 +1052,214 @@ def calc_TLS_least_squares_fit(atom_list, weight_dict=None):
     xw = utlsw - b
     lsq_residual = dot(xw, xw)
 
-    ## caclculate the center of reaction for the group and
-    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
+    return T, L, S, lsq_residual
 
-    ret_dict = {}
+def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
+    """Calculate new tensors based on the center for reaction.
+    This method returns a dictionary of the calculations:
 
-    ret_dict["T"] = cor_info["T'"]
-    ret_dict["L"] = cor_info["L'"]
-    ret_dict["S"] = cor_info["S'"]
+    T^: T tensor in the coordinate system of L
+    L^: L tensor in the coordinate system of L
+    S^: S tensor in the coordinate system of L
 
-    ret_dict["lsq_residual"] = lsq_residual
+    COR: Center of Reaction
 
-    ret_dict["num_atoms"] = num_atoms
-    ret_dict["params"] = params
+    T',S',L': T,L,S tensors in origonal coordinate system
+              with the origin shifted to the center of reaction.
+    """
+    ## LSMALL is the smallest magnitude of L before it is considered 0.0
+    LSMALL = 1e-6
 
-    return ret_dict
+    rdict = {}
 
+    ## set the L tensor eigenvalues and eigenvectors
+    (eval_L, evec_L) = eigenvectors(L_orig)
+
+    rdict["L1_eigen_val"] = eval_L[0]
+    rdict["L2_eigen_val"] = eval_L[1]
+    rdict["L3_eigen_val"] = eval_L[2]
+
+    rdict["L1_eigen_vec"] = evec_L[0]
+    rdict["L2_eigen_vec"] = evec_L[1]
+    rdict["L3_eigen_vec"] = evec_L[2]
+
+    ## transpose the original the evec_L so it can be used
+    ## to rotate the other tensors
+    evec_L = transpose(evec_L)
+
+    ## carrot-L tensor (tensor WRT principal axes of L)
+    cL      = zeros([3,3], Float)
+    cL[0,0] = eval_L[0]
+    cL[1,1] = eval_L[1]
+    cL[2,2] = eval_L[2]
+
+    rdict["L^"] = cL
+
+    ## carrot-T tensor (T tensor WRT principal axes of L)
+    cT = matrixmultiply(
+        matrixmultiply(transpose(evec_L), T_orig), evec_L)
+
+    rdict["T^"] = cT
+
+    ## carrot-S tensor (S tensor WRT principal axes of L)
+    cS = matrixmultiply(
+        matrixmultiply(transpose(evec_L), S_orig), evec_L)
+
+    ## correct for left-handed libration eigenvectors
+    det = determinant(evec_L)
+    if int(det) != 1:
+        cS = -cS
+
+    rdict["S^"] = cS
+
+    ## ^rho: the origin-shift vector in the coordinate system of L
+    cL1122 = cL[1,1] + cL[2,2]
+    cL2200 = cL[2,2] + cL[0,0]
+    cL0011 = cL[0,0] + cL[1,1]
+
+    if cL1122>LSMALL:
+        crho0 = (cS[1,2]-cS[2,1]) / cL1122
+    else:
+        crho0 = 0.0
+
+    if cL2200>LSMALL:
+        crho1 = (cS[2,0]-cS[0,2]) / cL2200
+    else:
+        crho1 = 0.0
+
+    if cL0011>LSMALL:
+        crho2 = (cS[0,1]-cS[1,0]) / cL0011
+    else:
+        crho2 = 0.0
+
+    crho = array([crho0, crho1, crho2], Float)
+
+    rdict["RHO^"] = crho
+
+    ## rho: the origin-shift vector in orthogonal coordinates
+    rho = matrixmultiply(evec_L, crho)
+
+    rdict["RHO"] = rho
+    rdict["COR"] = origin + rho.copy()
+
+    ## set up the origin shift matrix PRHO WRT orthogonal axes
+    PRHO = array([ [    0.0,  rho[2], -rho[1]],
+                   [-rho[2],     0.0,  rho[0]],
+                   [ rho[1], -rho[0],     0.0] ], Float)
+
+    ## set up the origin shift matrix cPRHO WRT libration axes
+    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+                    [-crho[2],     0.0,  crho[0]],
+                    [ crho[1], -crho[0],     0.0] ], Float)
+
+    ## calculate tranpose of cPRHO, ans cS
+    cSt = transpose(cS)
+    cPRHOt = transpose(cPRHO)
+
+    ## calculate S'^ = S^ + L^*pRHOt
+    cSp = cS + matrixmultiply(cL, cPRHOt)
+    rdict["S'^"] = cSp
+
+    ## L'^ = L^ = cL
+    rdict["L'^"] = cL
+
+    ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
+    cTp = cT + \
+          matrixmultiply(cPRHO, cS) + \
+          matrixmultiply(cSt, cPRHOt) + \
+          matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+    rdict["T'^"] = cTp
+
+    ## transpose of PRHO and S
+    PRHOt = transpose(PRHO)
+    St = transpose(S_orig)
+
+    ## calculate S' = S + L*PRHOt
+    Sp = S_orig + matrixmultiply(L_orig, PRHOt)
+    rdict["S'"] = Sp
+
+    ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+    Tp = T_orig + \
+         matrixmultiply(PRHO, S_orig) + \
+         matrixmultiply(St, PRHOt) + \
+         matrixmultiply(matrixmultiply(PRHO, L_orig), PRHOt)
+    rdict["T'"] = Tp
+
+    ## L' is just L
+    rdict["L'"] = L_orig.copy()
+
+    ## now calculate the TLS motion description using 3 non
+    ## intersecting screw axes, with one
+
+    ## libration axis 1 shift in the L coordinate system        
+    if cL[0,0]>LSMALL:
+        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
+    else:
+        cL1rho = zeros(3, Float)
+
+    ## libration axis 2 shift in the L coordinate system
+    if cL[1,1]>LSMALL:
+        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
+    else:
+        cL2rho = zeros(3, Float)
+
+    ## libration axis 2 shift in the L coordinate system
+    if cL[2,2]>LSMALL:
+        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
+    else:
+        cL3rho = zeros(3, Float)
+
+    ## libration axes shifts in the origional orthogonal
+    ## coordinate system
+    rdict["L1_rho"] = matrixmultiply(evec_L, cL1rho)
+    rdict["L2_rho"] = matrixmultiply(evec_L, cL2rho)
+    rdict["L3_rho"] = matrixmultiply(evec_L, cL3rho)
+
+    ## calculate screw pitches (A*R / R*R) = (A/R)
+    if cL[0,0]>LSMALL:
+        rdict["L1_pitch"] = cS[0,0]/cL[0,0]
+    else:
+        rdict["L1_pitch"] = 0.0
+
+    if cL[1,1]>LSMALL:
+        rdict["L2_pitch"] = cS[1,1]/cL[1,1]
+    else:
+        rdict["L2_pitch"] = 0.0
+
+    if cL[2,2]>LSMALL:
+        rdict["L3_pitch"] = cS[2,2]/cL[2,2]
+    else:
+        rdict["L3_pitch"] = 0.0
+
+    ## now calculate the reduction in T for the screw rotation axes
+    cTred = cT.copy()
+
+    for i in (0, 1, 2):
+        for k in (0, 1, 2):
+            if i==k:
+                continue
+            if cL[k,k]>LSMALL:
+                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
+
+    for i in (0, 1, 2):
+        for j in (0, 1, 2):
+            for k in (0, 1, 2):
+                if j==i:
+                    continue
+                if cL[k,k]>LSMALL:
+                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
+
+    ## rotate the newly calculated reduced-T tensor from the carrot
+    ## coordinate system (coordinate system of L) back to the structure
+    ## coordinate system
+    rdict["rT'"] = matrixmultiply(
+        transpose(evec_L), matrixmultiply(cTred, evec_L))
+
+    return rdict
+
+###############################################################################
+## NESTED VIBRATIONAL MODELS
+##
 
 pivot_side_chain_dict = {
     "TYR": "CB",
@@ -1178,6 +1267,58 @@ pivot_side_chain_dict = {
     "TRP": "CB",
     "HIS": "CB",
     "ARG": "CA" }
+
+def set_L_A(A, i, j, x, y, z, w):
+    """Sets coefficents of a L tensor in matrix A for a atom at position
+    x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
+    Using weight w.
+    """
+    L11, L22, L33, L12, L13, L23 = (
+        j, j+1, j+2, j+3, j+4, j+5)
+
+    ## indecies of the components of U
+    U11 =       i
+    U22 = U11 + 1
+    U33 = U11 + 2
+    U12 = U11 + 3
+    U13 = U11 + 4
+    U23 = U11 + 5
+
+    ## TLS coefficents
+    xx = x * x
+    yy = y * y
+    zz = z * z
+
+    xy = x * y
+    xz = x * z
+    yz = y * z
+
+    A[U11, L22] = w * zz
+    A[U11, L33] = w * yy
+    A[U11, L23] = w * -2.0 * yz
+
+    A[U22, L11] = w * zz
+    A[U22, L33] = w * xx
+    A[U22, L13] = w * -2.0 * xz
+
+    A[U33, L11] = w * yy
+    A[U33, L22] = w * xx
+    A[U33, L12] = w * -2.0 * xy
+
+    A[U12, L33] = w * -xy
+    A[U12, L23] = w * xz
+    A[U12, L13] = w * yz
+    A[U12, L12] = w * -zz
+
+    A[U13, L22] = w * -xz
+    A[U13, L23] = w * xy
+    A[U13, L13] = w * -yy
+    A[U13, L12] = w * yz
+
+    A[U23, L11] = w * -yz
+    A[U23, L23] = w * -xx
+    A[U23, L13] = w * xy
+    A[U23, L12] = w * xz
 
 def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
@@ -1233,22 +1374,14 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
                     set_L_A(A, u11, l11, xs, ys, zs, w)
 
     ## solve by SVD
-    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
+    C = solve_TLS_Ab(A, b)
 
-    ## make W
-    dim_W = len(S)
-    W = zeros((dim_W, dim_W), Float)
+    ## calculate the lsq residual
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
 
-    for i in range(dim_W):
-        if S[i]>1e-5:
-            W[i,i] = 1.0 / S[i]
-        else:
-            W[i,i] = 0.0
-
-    M1 = matrixmultiply(transpose(Vt), W)
-    M2 = matrixmultiply(M1, transpose(U))
-    C  = matrixmultiply(M2, b)
-
+    ## create the T,L,S tensors
     T = array([ [ C[T11], C[T12], C[T13] ],
                 [ C[T12], C[T22], C[T23] ],
                 [ C[T13], C[T23], C[T33] ] ], Float)
@@ -1263,12 +1396,6 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
                 [ C[S21],    s22, C[S23] ],
                 [ C[S31], C[S32],    s33 ] ], Float)
 
-
-    ## calculate the lsq residual since silly Numeric Python won't
-    ## do it for us
-    utlsw = matrixmultiply(A, C)
-    xw = utlsw - b
-    lsq_residual = dot(xw, xw)
 
     ## caclculate the center of reaction for the group and
     cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
@@ -1404,6 +1531,10 @@ def calc_CA_pivot_TLS_least_squares_fit_2(segment, weight_dict=None):
     return ret_dict
 
 
+
+###############################################################################
+## 
+
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
@@ -1454,7 +1585,7 @@ class TLSGroup(AtomList):
         """
         self.T = array([[t11, t12, t13],
                         [t12, t22, t23],
-                        [t13, t23, t33]])
+                        [t13, t23, t33]], Float)
 
     def set_L(self, l11, l22, l33, l12, l13, l23):
         """Sets the components of the symmetric L tensor from arguments.
@@ -1462,7 +1593,7 @@ class TLSGroup(AtomList):
         """
         self.L = array([[l11, l12, l13],
                         [l12, l22, l23],
-                        [l13, l23, l33]])
+                        [l13, l23, l33]], Float)
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the componets of the asymmetric S tenssor.  The trace
@@ -1472,7 +1603,7 @@ class TLSGroup(AtomList):
         s11, s22, s33 = self.calc_s11_s22_s33(s2211, s1133)
         self.S = array([[s11, s12, s13],
                         [s21, s22, s23],
-                        [s31, s32, s33]])
+                        [s31, s32, s33]], Float)
 
     def calc_s11_s22_s33(self, s2211, s1133):
         """Calculates s11, s22, s33 based on s22-s11 and s11-s33 using
@@ -1520,423 +1651,88 @@ class TLSGroup(AtomList):
         to the three TLS tensors: self.T, self.L, and self.S using the
         origin given by self.origin.
         """
+        T, L, S, lsq_residual = calc_TLS_least_squares_fit(
+            self, self.origin, weight_dict)
 
-        ## use label indexing to avoid confusion!
-        T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-        S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
-        A = zeros((len(self)*6, 20), Float)
-        b = zeros(len(self) * 6,  Float)
-
-        i = -1
-        for atm in self:
-            i += 1
-
-            ## set x, y, z as the vector components from the TLS origin
-            x, y, z = atm.position - self.origin
-
-            ## is this fit weighted?
-            if weight_dict!=None:
-                w = math.sqrt(weight_dict[atm])
-            else:
-                w = 1.0
-
-            ## indecies of the components of U
-            u11 =   i * 6
-            u22 = u11 + 1
-            u33 = u11 + 2
-            u12 = u11 + 3
-            u13 = u11 + 4
-            u23 = u11 + 5
-
-            ## set the B vector
-            Uatm   = atm.get_U()            
-            b[u11] = w * Uatm[0,0]
-            b[u22] = w * Uatm[1,1]
-            b[u33] = w * Uatm[2,2]
-            b[u12] = w * Uatm[0,1]
-            b[u13] = w * Uatm[0,2]
-            b[u23] = w * Uatm[1,2]
-
-            ## C Matrix
-            xx = x*x
-            yy = y*y
-            zz = z*z
-
-            xy = x*y
-            xz = x*z
-            yz = y*z
-
-            A[u11, T11] = w * 1.0
-            A[u11, L22] = w * zz
-            A[u11, L33] = w * yy
-            A[u11, L23] = w * -2.0*yz
-            A[u11, S31] = w * -2.0*y
-            A[u11, S21] = w * 2.0*z
-
-            A[u22, T22] = w * 1.0
-            A[u22, L11] = w * zz
-            A[u22, L33] = w * xx
-            A[u22, L13] = w * -2.0*xz
-            A[u22, S12] = w * -2.0*z
-            A[u22, S32] = w * 2.0*x
-
-            A[u33, T33] = w * 1.0
-            A[u33, L11] = w * yy
-            A[u33, L22] = w * xx
-            A[u33, L12] = w * -2.0*xy
-            A[u33, S23] = w * -2.0*x
-            A[u33, S13] = w * 2.0*y
-
-            A[u12, T12] = w * 1.0
-            A[u12, L33] = w * -xy
-            A[u12, L23] = w * xz
-            A[u12, L13] = w * yz
-            A[u12, L12] = w * -zz
-            A[u12, S2211] = w * z
-            A[u12, S31] = w * x
-            A[u12, S32] = w * -y
-
-            A[u13, T13] = w * 1.0
-            A[u13, L22] = w * -xz
-            A[u13, L23] = w * xy
-            A[u13, L13] = w * -yy
-            A[u13, L12] = w * yz
-            A[u13, S1133] = w * y
-            A[u13, S23] = w * z
-            A[u13, S21] = w * -x
-
-            A[u23, T23] = w * 1.0
-            A[u23, L11] = w * -yz
-            A[u23, L23] = w * -xx
-            A[u23, L13] = w * xy
-            A[u23, L12] = w * xz
-            A[u23, S2211] = w * -x
-            A[u23, S1133] = w * -x
-            A[u23, S12] = w * y
-            A[u23, S13] = w * -z
-
-        (C, resid, rank, s) = linear_least_squares(A, b)
-
-        self.T = array([ [ C[T11], C[T12], C[T13] ],
-                         [ C[T12], C[T22], C[T23] ],
-                         [ C[T13], C[T23], C[T33] ] ], Float)
-
-        self.L = array([ [ C[L11], C[L12], C[L13] ],
-                         [ C[L12], C[L22], C[L23] ],
-                         [ C[L13], C[L23], C[L33] ] ], Float)
-
-        s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
-        
-        self.S = array([ [    s11, C[S12], C[S13] ],
-                         [ C[S21],    s22, C[S23] ],
-                         [ C[S31], C[S32],    s33 ] ], Float)
-
-        ## calculate the lsq residual since silly Numeric Python won't
-        ## do it for us
-        utlsw = matrixmultiply(A, C)
-        xw = utlsw - b
-        lsq_residual = dot(xw, xw)
-
-        ## double-check
-        rdict = calc_TLS_least_squares_fit(self, weight_dict)
-        if not allclose(lsq_residual, rdict["lsq_residual"]):
-            print "EEK! lsq_residual %f %f" % (
-                lsq_residual, rdict["lsq_residual"])
+        self.T = T
+        self.L = L
+        self.S = S
 
         return lsq_residual
 
-    def calc_Utls(self, T, L, S, vec):
-        """Returns the calculated value for the anisotropic U tensor for
-        the given position.
+    def debug_TLS_least_squares_fit_rotation(self):
+        """Incrimentally rotates the TLS group atoms and fits TLS tensors to them
+        to check for coordinate system bias.
         """
-        x, y, z = vec
+        ## <double-check>
+        a = 0.0
+        while a<=math.pi:
+            a += math.pi / 16.0
+            
+            R = rmatrix(0.0, a, a)
+            Ri = transpose(R)
 
-        xx = x*x
-        yy = y*y
-        zz = z*z
+            old_pos = {}
+            old_U = {}
+            for atm in self:
+                old_pos[atm] = atm.position
+                old_U[atm] = atm.U
+                
+                atm.position = matrixmultiply(R, atm.position)
+                if atm.U!=None:
+                    atm.U = matrixmultiply(
+                        R, matrixmultiply(atm.U, transpose(R)))
 
-        xy = x*y
-        yz = y*z
-        xz = x*z
+            for atm in self:
+                assert allclose(old_pos[atm], matrixmultiply(Ri, atm.position))
 
-        u11 = T[0,0] \
-              + L[1,1]*zz + L[2,2]*yy - 2.0*L[1,2]*yz \
-              + 2.0*S[1,0]*z - 2.0*S[2,0]*y
+            centroid = self.calc_centroid()
 
-        u22 = T[1,1] \
-              + L[0,0]*zz + L[2,2]*xx - 2.0*L[2,0]*xz \
-              - 2.0*S[0,1]*z + 2.0*S[2,1]*x
+            rdict = calc_TLS_least_squares_fit(self, weight_dict)
+            if not allclose(lsq_residual, rdict["lsq_residual"]):
+                print "[EEK] a=%f lsqr=%f(%f)" % (
+                    a * RAD2DEG,
+                    rdict["lsq_residual"],
+                    lsq_residual)
+            else:
+                print "a=%f" % (a * RAD2DEG)
 
-        u33 = T[2,2] \
-              + L[0,0]*yy + L[1,1]*xx - 2.0*L[0,1]*xy \
-              - 2.0*S[1,2]*x + 2.0*S[0,2]*y
+            for atm in self:
+                atm.position = old_pos[atm]
+                atm.U = old_U[atm]
 
-        u12 = T[0,1] \
-              - L[2,2]*xy + L[1,2]*xz + L[2,0]*yz - L[0,1]*zz \
-              - S[0,0]*z + S[1,1]*z + S[2,0]*x - S[2,1]*y
+        return lsq_residual
 
-        u13 = T[0,2] \
-              - L[1,1]*xz + L[1,2]*xy - L[2,0]*yy + L[0,1]*yz \
-              + S[0,0]*y - S[2,2]*y + S[1,2]*z - S[1,0]*x
-
-        u23 = T[1,2] \
-              - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz \
-              - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
-
-        return array([[u11, u12, u13],
-                      [u12, u22, u23],
-                      [u13, u23, u33]])
-
-    def iter_atm_Utls(self, T=None, L=None, S=None, o=None):
+    def iter_atm_Utls(self):
         """Iterates all the atoms in the TLS object, returning the 2-tuple
         (atm, U) where U is the calcuated U value from the current values
         of the TLS object's T,L,S, tensors and origin.
         """
-        T      = T or self.T
-        L      = L or self.L
-        S      = S or self.S
-        origin = o or self.origin
+        T = self.T
+        L = self.L
+        S = self.S
+        o = self.origin
         
         for atm in self:
-            Utls = self.calc_Utls(T, L, S, atm.position - origin)
+            Utls = calc_Utls(T, L, S, atm.position - o)
             yield atm, Utls
+
+    def calc_COR(self):
+        """Returns the calc_COR() return information for this TLS Group.
+        """
+        return calc_TLS_center_of_reaction(self.T, self.L, self.S, self.origin)
 
     def shift_COR(self):
         """Shift the TLS group to the center of reaction.
         """
         calcs       = self.calc_COR()
-        
-        self.origin = calcs["COR"].copy()
         self.T      = calcs["T'"].copy()
         self.L      = calcs["L'"].copy()
         self.S      = calcs["S'"].copy()
+        self.origin = calcs["COR"].copy()
 
         return calcs
         
-    def calc_COR(self):
-        """Calculate new tensors based on the center for reaction.
-        This method returns a dictionary of the calculations:
-
-        T^: T tensor in the coordinate system of L
-        L^: L tensor in the coordinate system of L
-        S^: S tensor in the coordinate system of L
-
-        COR: Center of Reaction
-
-        T',S',L': T,L,S tensors in origonal coordinate system
-                  with the origin shifted to the center of reaction.
-        """
-        ## small_L is the smallest magnitude of L before it is considered 0.0
-        small_L = 1e-7
-
-        tls_info = {}
-
-        ## set the L tensor eigenvalues and eigenvectors
-        (eval_L, evec_L) = eigenvectors(self.L)
-
-        tls_info["L1_eigen_val"] = eval_L[0]
-        tls_info["L2_eigen_val"] = eval_L[1]
-        tls_info["L3_eigen_val"] = eval_L[2]
-        
-        tls_info["L1_eigen_vec"] = evec_L[0]
-        tls_info["L2_eigen_vec"] = evec_L[1]
-        tls_info["L3_eigen_vec"] = evec_L[2]
-
-        ## transpose the original the evec_L so it can be used
-        ## to rotate the other tensors
-        evec_L = transpose(evec_L)
-        
-        ## carrot-L tensor (tensor WRT principal axes of L)
-        cL      = zeros([3,3], Float)
-        cL[0,0] = eval_L[0]
-        cL[1,1] = eval_L[1]
-        cL[2,2] = eval_L[2]
-
-        tls_info["L^"] = cL
-
-        ## carrot-T tensor (T tensor WRT principal axes of L)
-        cT = matrixmultiply(
-            matrixmultiply(transpose(evec_L), self.T), evec_L)
-
-        tls_info["T^"] = cT
-
-        ## carrot-S tensor (S tensor WRT principal axes of L)
-        cS = matrixmultiply(
-            matrixmultiply(transpose(evec_L), self.S), evec_L)
-
-        ## correct for left-handed libration eigenvectors
-        det = determinant(evec_L)
-        if int(det) != 1:
-            cS = -cS
-
-        tls_info["S^"] = cS
-        
-        ## ^rho: the origin-shift vector in the coordinate system of L
-        cL1122 = cL[1,1] + cL[2,2]
-        cL2200 = cL[2,2] + cL[0,0]
-        cL0011 = cL[0,0] + cL[1,1]
-
-        if cL1122>small_L:
-            crho0 = (cS[1,2]-cS[2,1]) / cL1122
-        else:
-            crho0 = 0.0
-
-        if cL2200>small_L:
-            crho1 = (cS[2,0]-cS[0,2]) / cL2200
-        else:
-            crho1 = 0.0
-
-        if cL0011>small_L:
-            crho2 = (cS[0,1]-cS[1,0]) / cL0011
-        else:
-            crho2 = 0.0
-
-        crho = array([crho0, crho1, crho2], Float)
-
-        tls_info["RHO^"] = crho
-        
-        ## rho: the origin-shift vector in orthogonal coordinates
-        rho = matrixmultiply(evec_L, crho)
-        
-        tls_info["RHO"] = rho
-        tls_info["COR"] = array(self.origin, Float) + rho
-
-        ## set up the origin shift matrix PRHO WRT orthogonal axes
-        PRHO = array([ [    0.0,  rho[2], -rho[1]],
-                       [-rho[2],     0.0,  rho[0]],
-                       [ rho[1], -rho[0],     0.0] ], Float)
-
-        ## set up the origin shift matrix cPRHO WRT libration axes
-        cPRHO = array([ [    0.0,  crho[2], -crho[1]],
-                        [-crho[2],     0.0,  crho[0]],
-                        [ crho[1], -crho[0],     0.0] ], Float)
-
-        ## calculate tranpose of cPRHO, ans cS
-        cSt = transpose(cS)
-        cPRHOt = transpose(cPRHO)
-
-        ## calculate S'^ = S^ + L^*pRHOt
-        cSp = cS + matrixmultiply(cL, cPRHOt)
-        tls_info["S'^"] = cSp
-
-        ## L'^ = L^ = cL
-        tls_info["L'^"] = cL
-
-        ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-        cTp = cT + \
-              matrixmultiply(cPRHO, cS) + \
-              matrixmultiply(cSt, cPRHOt) + \
-              matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
-        tls_info["T'^"] = cTp
-
-        ## transpose of PRHO and S
-        PRHOt = transpose(PRHO)
-        St = transpose(self.S)
-
-        ## calculate S' = S + L*PRHOt
-        Sp = self.S + matrixmultiply(self.L, PRHOt)
-        tls_info["S'"] = Sp
-
-        ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-        Tp = self.T + \
-             matrixmultiply(PRHO, self.S) + \
-             matrixmultiply(St, PRHOt) + \
-             matrixmultiply(matrixmultiply(PRHO, self.L), PRHOt)
-        tls_info["T'"] = Tp
-
-        ## L' is just L
-        tls_info["L'"] = self.L.copy()
-
-        ## now calculate the TLS motion description using 3 non
-        ## intersecting screw axes, with one
-
-        ## libration axis 1 shift in the L coordinate system        
-        if cL[0,0]>small_L:
-            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
-        else:
-            cL1rho = zeros(3, Float)
-
-        ## libration axis 2 shift in the L coordinate system
-        if cL[1,1]>small_L:
-            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
-        else:
-            cL2rho = zeros(3, Float)
-
-        ## libration axis 2 shift in the L coordinate system
-        if cL[2,2]>small_L:
-            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
-        else:
-            cL3rho = zeros(3, Float)
-
-        ## libration axes shifts in the origional orthogonal
-        ## coordinate system
-        tls_info["L1_rho"] = matrixmultiply(evec_L, cL1rho)
-        tls_info["L2_rho"] = matrixmultiply(evec_L, cL2rho)
-        tls_info["L3_rho"] = matrixmultiply(evec_L, cL3rho)
-
-        ## calculate screw pitches (A*R / R*R) = (A/R)
-        if cL[0,0]>small_L:
-            tls_info["L1_pitch"] = cS[0,0]/cL[0,0]
-        else:
-            tls_info["L1_pitch"] = 0.0
-            
-        if cL[1,1]>small_L:
-            tls_info["L2_pitch"] = cS[1,1]/cL[1,1]
-        else:
-            tls_info["L2_pitch"] = 0.0
-
-        if cL[2,2]>small_L:
-            tls_info["L3_pitch"] = cS[2,2]/cL[2,2]
-        else:
-            tls_info["L3_pitch"] = 0.0
-
-        ## now calculate the reduction in T for the screw rotation axes
-        cTred = cT.copy()
-
-        for i in (0, 1, 2):
-            for k in (0, 1, 2):
-                if i==k:
-                    continue
-                if cL[k,k]>small_L:
-                    cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
-
-        for i in (0, 1, 2):
-            for j in (0, 1, 2):
-                for k in (0, 1, 2):
-                    if j==i:
-                        continue
-                    if cL[k,k]>small_L:
-                        cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
-
-        ## rotate the newly calculated reduced-T tensor from the carrot
-        ## coordinate system (coordinate system of L) back to the structure
-        ## coordinate system
-        tls_info["rT'"] = matrixmultiply(
-            transpose(evec_L), matrixmultiply(cTred, evec_L))
-
-        return tls_info
-
-    def verify_equivalent_models(self):
-        """XXX: Fixme
-        """
-        ### Verify that the the math we've just done is correct by
-        ### comparing the original TLS calculated U tensors with the
-        ### U tensors calculated from the COR
-        T_cor = tls_info["T'"].copy()
-        L_cor = tls_info["L'"].copy()
-        S_cor = tls_info["S'"].copy()
-
-        for atm in self:
-            x  = atm.position - self.origin
-            xp = atm.position - tls_info["COR"]
-
-            Utls     = self.calc_Utls(self.T, self.L, self.S, x)
-            Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
-
-            assert allclose(Utls, Utls_cor)
-
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,
         goodness of fit, various parameter averages, center of reaction
@@ -1973,9 +1769,9 @@ class TLSGroup(AtomList):
             mean_tf     += U2B * trace(Utls) / 3.0
             mean_aniso  += calc_anisotropy(Utls)
 
-        tls_info["tls_mean_max_tf"] = mean_max_tf / float(n)
-        tls_info["tls_mean_tf"]     = mean_tf     / float(n)
-        tls_info["tls_mean_aniso"]  = mean_aniso  / float(n)        
+        tls_info["tls_mean_max_temp_factor"] = mean_max_tf / float(n)
+        tls_info["tls_mean_temp_factor"]     = mean_tf     / float(n)
+        tls_info["tls_mean_anisotropy"]      = mean_aniso  / float(n)        
 
         ## TLS FIT
         tls_info["valid_model"] = self.check_valid_model()
@@ -2223,7 +2019,6 @@ class TLSStructureAnalysis(object):
 ### GLViewer Rendering components for TLS Groups
 ###
 
-
 def goodness_color(x):
     """x in range 0.0->1.0
     """
@@ -2235,7 +2030,6 @@ def goodness_color(x):
     b = max(0.0, math.sin(2.0 * math.pi * x))
 
     return (r, g, b)
-
 
 class GLTLSAtomList(GLAtomList):
     """OpenGL visualizations of TLS group atoms.
@@ -3307,7 +3101,7 @@ class GLTLSGroup(GLDrawList):
             if not visible:
                 continue
 
-            Utls = self.tls_group.calc_Utls(T, L, S, atm.position - o)
+            Utls = calc_Utls(T, L, S, atm.position - o)
 
             if self.properties["add_biso"]==True:
                 if atm.temp_factor!=None:

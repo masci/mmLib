@@ -112,9 +112,10 @@ class Structure(object):
     when iterating or retreiving Atom objects in the structure.
     """
     def __init__(self, **args):
-        self.library          = args.get("library")   or DEFAULT_LIBRARY
-        self.cifdb            = args.get("cifdb")     or mmCIFDB("XXXX")
-        self.unit_cell        = args.get("unit_cell") or UnitCell()
+        self.structure_id     = args.get("structure_id") or "XXXX"
+        self.library          = args.get("library")      or DEFAULT_LIBRARY
+        self.cifdb            = args.get("cifdb")        or mmCIFDB("XXXX")
+        self.unit_cell        = args.get("unit_cell")    or UnitCell()
 
         self.default_alt_loc = "A"
         self.default_model   = None
@@ -1531,14 +1532,12 @@ class Chain(Segment):
         """
         library         = self.get_structure().library
         one_letter_code = ""
-        
-        for res_name, fragment in self.sequence_fragment_list:
-            mon_def = library.get_monomer(res_name)
-            if not mon_def or not mon_def.is_standard_residue():
-                break
 
-            if mon_def.one_letter_code:
-                one_letter_code += mon_def.one_letter_code
+        for res_name, frag in self.sequence_fragment_list:
+            monomer = library.get_monomer(res_name)
+
+            if monomer!=None and monomer.one_letter_code:
+                one_letter_code += monomer.one_letter_code
             else:
                 one_letter_code += "(%s)" % (res_name)
 

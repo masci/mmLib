@@ -455,22 +455,9 @@ class mmCIFMerge(object):
     def sort_columns(self, cif_table):
         """Sort columns so they look nice ;)
         """
-        id_column     = []
-        id_columns    = []
-        value_columns = []
-
-        for column in cif_table.columns:
-            if column == "id":
-                id_column.append(column)
-            elif column.endswith("_id"):
-                id_columns.append(column)
-            else:
-                value_columns.append(column)
-
-        id_columns.sort()
-        value_columns.sort()
-
-        cif_table.columns = id_column + id_columns + value_columns
+        if "id" in cif_table.columns:
+            cif_table.columns.remove("id")
+            cif_table.columns.insert(0, "id")
 
     def remove_blank_values(self, cif_data):
         """Removes any blank [.?] from the cif_data block.

@@ -10,12 +10,12 @@ from mmTypes import *
 def length(u):
     """Calculates the length of u.
     """
-    return sqrt(dot(u, u))
+    return math.sqrt(dot(u, u))
 
 def normalize(u):
     """Returns the normalized vector along u.
     """
-    return u/sqrt(dot(u, u))
+    return u/math.sqrt(dot(u, u))
 
 def cross(u, v):
     """Cross product of u and v:
@@ -66,6 +66,20 @@ def rquaternionu(u, theta):
     q[3] = math.cos(theta/2.0)
     return q
 
+def addquaternion_sucks(q1, q2):
+    """Adds quaterions q1 and q2. Quaternions are typed as Numeric
+    Python arrays of length 4.
+    """
+    x1, y1, z1, w1 = q1
+    x2, y2, z2, w2 = q2
+
+    qr = array((w1*x2 + x1*w2 + y1*z2 - z1*y2,
+                w1*y2 + y1*w2 + z1*x2 - x1*z2,
+                w1*z2 + z1*w2 + x1*y2 - y1*x2,
+                w1*w2 - x1*x2 - y1*y2 - z1*z2), Float)
+
+    return qr
+
 def addquaternion(q1, q2):
     """Adds quaterions q1 and q2. Quaternions are typed as Numeric
     Python arrays of length 4.
@@ -109,43 +123,43 @@ def rmatrixquaternion(q):
 
     return r
 
-def quaternionrmatrix(r):
+def quaternionrmatrix(R):
     """Return a quaternion calculated from the argument rotation matrix R.
     """
-    t = trace(r) + 1.0
+    t = trace(R) + 1.0
     
-    if t>1e-7:
-        s  = 0.5 / math.sqrt(t)
-        q0 = (r[2,1] - r[1,2]) * s
-        q1 = (r[0,2] - r[2,0]) * s
-        q2 = (r[1,0] - r[0,1]) * s
-        q3 = 0.25 / s;
+    if t>1e-6:
+        s  = math.sqrt(t) * 2.0
+        x = (R[2,1] - R[1,2]) / s
+        y = (R[0,2] - R[2,0]) / s
+        z = (R[1,0] - R[0,1]) / s
+        w = 0.25 * s;
 
     else:
-        print "EEK! Quat Problem"
+        warning("quaternionrmatrix")
+        
+        if R[0,0]>R[1,1] and R[0,0]>R[2,2]:
+            s  = math.sqrt(1.0 + R[0,0] - R[1,1] - R[2,2]) * 2.0
+            x = 0.25 * s
+            y = (R[0,1] + R[1,0]) / s
+            z = (R[2,0] + R[0,2]) / s
+            w = (R[1,2] - R[1,2]) / s
 
-        if r[0,0]>r[1,1] and r[0,0]>r[2,2]:
-            s  = math.sqrt(1.0 + r[0,0] - r[1,1] - r[2,2]) * 2.0
-            q0 = 0.25 * s
-            q1 = (r[0,1] + r[1,0]) / s
-            q2 = (r[2,0] + r[0,2]) / s
-            q3 = (r[1,2] - r[2,1]) / s
-
-        elif r[1,1]>r[2,2]:
-            s  = math.sqrt(1.0 + r[1,1] - r[0,0] - r[2,2]) * 2.0
-            q0 = (r[0,1] + r[1,0]) / s
-            q1 = 0.25 * s
-            q2 = (r[1,2] + r[2,1]) / s
-            q3 = (r[0,2] - r[2,0]) / s
+        elif R[1,1]>R[2,2]:
+            s  = math.sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0
+            x = (R[0,1] + R[1,0]) / s
+            y = 0.25 * s
+            z = (R[1,2] + R[2,1]) / s
+            w = (R[0,2] - R[2,0]) / s
 
         else:
-            s  = math.sqrt(1.0 + r[2,2] - r[0,0] - r[1,1]) * 2.0
-            q0 = (r[0,2] + r[2,0]) / s
-            q1 = (r[1,2] + r[2,1]) / s
-            q2 = 0.25 * s
-            q3 = (r[0,1] - r[1,0]) / s
+            s  = math.sqrt(1.0 + R[2,2] - R[0,0] - R[1,1]) * 2.0
+            x = (R[0,2] + R[2,0]) / s
+            y = (R[1,2] + R[2,1]) / s
+            z = 0.25 * s
+            w = (R[1,0] - R[0,1]) / s
 
-    return array((q0, q1, q2, q3), Float)
+    return array((x, y, z, w), Float)
 
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
@@ -260,16 +274,12 @@ def calc_DP2uij(U, V):
     det_invU = determinant(invU)
     det_invV = determinant(invV)
 
-    pi3 = math.pi * math.pi * math.pi
-
-    Pu2 = math.sqrt( det_invU / (64.0 * pi3) )
-    Pv2 = math.sqrt( det_invV / (64.0 * pi3) )
-
-    Puv = math.sqrt( (det_invU * det_invV) /
-                     (8.0 * pi3 * determinant(invU + invV)) )
+    Pu2 = math.sqrt( det_invU / (64.0 * PI3) )
+    Pv2 = math.sqrt( det_invV / (64.0 * PI3) )
+    Puv = math.sqrt(
+        (det_invU * det_invV) / (8.0*PI3 * determinant(invU + invV)) )
 
     dP2 = Pu2 + Pv2 - (2.0 * Puv)
-    dP  = math.sqrt(dP2)
     
     return dP2
 

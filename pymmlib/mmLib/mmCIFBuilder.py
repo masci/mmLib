@@ -102,11 +102,7 @@ def setmaps_cif(smap, skey, dmap, dkey):
         x = smap[skey]
         if x=="?" or x=="." or x=="":
             return False
-        try:
-            dmap[dkey] = str(x)
-        except ValueError:
-            print "setmaps_cif(): ValueError",smap[skey]
-            return False
+        dmap[dkey] = str(x)
         return True
     return False
 
@@ -120,7 +116,7 @@ def setmapi_cif(smap, skey, dmap, dkey):
         try:
             dmap[dkey] = int(x)
         except ValueError:
-            print "setmapi_cif(): ValueError",smap[skey]
+            warning("setmapi_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
@@ -135,8 +131,8 @@ def setmapf_cif(smap, skey, dmap, dkey):
         try:
             dmap[dkey] = float(x)
         except ValueError:
-            print "setmapf_cif(): ValueError %s:%s:%s" % (
-                skey, smap[skey], dkey)
+            warning("setmapf_cif(%s=%s): ValueError" % (
+                skey, smap[skey]))
             return False
         return True
     return False
@@ -300,6 +296,8 @@ class mmCIFStructureBuilder(StructureBuilder):
             self.atom_site_id_map[atom_site_id] = atm
 
     def read_metadata(self):
+        self.read_structure_id()
+        
         ## copy selected mmCIF tables to the structure's mmCIF database
         skip_tables = ["atom_site",
                        "atom_site_anisotrop",
@@ -314,6 +312,16 @@ class mmCIFStructureBuilder(StructureBuilder):
         ## read bond information
         self.read_struct_conn()
 
+    def read_structure_id(self):
+        """Read the PDB ID.
+        """
+        try:
+            entry_id = self.cif_data["entry"]["id"]
+        except KeyError:
+            pass
+        else:
+            self.struct.load_structure_id(entry_id)
+
     def read_unit_cell(self):
         """Load unit cell and symmetry tables.
         """
@@ -322,7 +330,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         try:
             entry_id = self.cif_data["entry"]["id"]
         except KeyError:
-            warning("read_unit_cell: entry id not found")
+            warning("read_unit_cell(): entry id not found")
             return
 
         try:
@@ -486,11 +494,7 @@ class mmCIFFileBuilder(object):
     """
     def __init__(self, struct, cif_file):
         self.struct = struct
-
-        try:
-            self.entry_id = self.struct.cifdb["entry"]["id"]
-        except KeyError:
-            self.entry_id = "XXXX"
+        self.entry_id = self.struct.structure_id
 
         self.cif_data = mmCIFData(self.entry_id)
         cif_file.append(self.cif_data)
@@ -588,9 +592,10 @@ class mmCIFFileBuilder(object):
                 entity_id = entity.index(row) + 1
                 poly_entity_list.append((entity_id, sequence))
                 
-                row["id"]      = entity_id
-                row["type"]    = "polymer"
-                row["details"] = details
+                row["id"]              = entity_id
+                row["type"]            = "polymer"
+                row["ndb_description"] = details
+                row["details"]         = details
 
                 ## add the new sequence to the entity_poly table
                 entity_poly = self.get_table("entity_poly")

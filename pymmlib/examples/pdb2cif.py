@@ -44,30 +44,30 @@ if __name__ == '__main__':
         usage()
         sys.exit(0)
 
-    cif = "-"
-    pdb = "-"
+    infil  = "-"
+    outfil = "-"
 
     if   len(sys.argv) == 1:
         pass
     elif len(sys.argv) == 2:
-        cif = sys.argv[1]
+        infil = sys.argv[1]
     elif len(sys.argv) == 3:
-        cif = sys.argv[1]
-        pdb = sys.argv[2]
+        infil = sys.argv[1]
+        outfil = sys.argv[2]
     else:
         usage()
         sys.exit(1)
 
-    if cif == "-": cif = sys.stdin
-    if pdb == "-": pdb = sys.stdout
+    if infil == "-": infil = sys.stdin
+    if outfil == "-": outfil = sys.stdout
 
     struct = LoadStructure(
-                 fil = cif, 
-                 format = "PDB", 
-                 build_properties = ("no_bonds",) )
+                 fil = infil, 
+                 format = "PDB")
+               #  build_properties = ("calc_sequence", "build_bonds"))
 
     SaveStructure(
-        fil = pdb, 
+        fil = outfil, 
         structure = struct, 
         format = "CIF")
 

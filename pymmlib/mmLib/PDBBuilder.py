@@ -75,7 +75,7 @@ class PDBStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
-        warning("[ERROR PDB::%s] %s" % (rec_name, text))
+        warning("PDB::%s %s" % (rec_name, text))
 
     def get_fragment_id(self, rec, res_seq="resSeq", icode="iCode"):
         fragment_id = None
@@ -248,7 +248,9 @@ class PDBStructureBuilder(StructureBuilder):
             except KeyError:
                 if mon.is_amino_acid() and name == "OXT":
                     return name, "O"
-                #print "Invalid Atom Name: %s in Residue: %s" % (name, res_name)
+                if mon.is_amino_acid():
+                    warning("Invalid Atom Name: %s in Residue: %s" % (
+                        name, res_name))
 
         ## ok, that didn't work...
 
@@ -340,6 +342,9 @@ class PDBStructureBuilder(StructureBuilder):
         self.model_num = None
 
     def process_HEADER(self, rec):
+        if rec.get("idCode"):
+            self.load_structure_id(rec["idCode"])
+        
         self.struct.cifdb.set_single(
             "struct_keywords", "pdbx_keywords", rec.get("classification"))
         self.struct.cifdb.set_single(
@@ -946,8 +951,12 @@ class PDBFileBuilder(object):
         ## add HEADER records
         header = HEADER()
         self.pdb_file.append(header)
-        self.set_from_cifdb(header, "idCode",
-                            "entry", "id")
+
+        header["idCode"] = self.struct.structure_id
+        
+        #self.set_from_cifdb(header, "idCode",
+        #                    "entry", "id")
+
         self.set_from_cifdb(header, "depDate",
                             "database_pdb_rev", "date_original")
         self.set_from_cifdb(header, "classification",

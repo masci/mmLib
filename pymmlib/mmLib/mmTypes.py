@@ -15,10 +15,13 @@ import gzip
 
 from types import *
 
-## use old Numeric libraries, or the new Numarray
-use_numarray = False
+## turn on debugging
+_DEBUG = False
 
-if use_numarray:
+## use old Numeric libraries, or the new Numarray
+_USE_NUMARRAY = False
+
+if _USE_NUMARRAY:
     from numarray import *
     from numarray.linear_algebra import *
 else:
@@ -26,19 +29,18 @@ else:
     from LinearAlgebra import *
 
 ## useful constents
-rad2deg  = 180.0 / math.pi
-deg2rad  = math.pi / 180.0
-rad2deg2 = rad2deg * rad2deg
-deg2rad2 = deg2rad * deg2rad
+PI       = math.pi
+PI2      = math.pi**2
+PI3      = math.pi**3
 
-RAD2DEG  = 180.0 / math.pi
-DEG2RAD  = math.pi / 180.0
-RAD2DEG2 = RAD2DEG * RAD2DEG
-DEG2RAD2 = DEG2RAD * DEG2RAD
+RAD2DEG  = 180.0 / PI
+DEG2RAD  = PI / 180.0
+RAD2DEG2 = RAD2DEG**2
+DEG2RAD2 = DEG2RAD**2
 
 ## converting between U (angstrom^2) temp factor
 ## values and B temp factor values
-U2B = 8.0 * math.pi**2
+U2B = 8.0 * PI2
 B2U = 1.0 / U2B
 
 
@@ -203,14 +205,21 @@ def setmapfd(smap, skey, dmap, dkey, default=None):
     return True
 
 
+def fatal(x):
+    """Fatal errors.
+    """
+    sys.stderr.write("[FATAL] %s\n" % (x))
+    sys.exit(-1)
+    
+
 def warning(x):
     """Writes warnings out to the file given in the environment variable
     MMLIB_WARNING.  This can be set to a file path, "stdout", "stderr",
     or a empty string for no action.  It writes to the file
     mmlib_warning.txt by default.  
     """
-    x    = x + "\n"
-    path = os.environ.get("MMLIB_WARNING", "mmlib_warning.txt")
+    x = "[WARNING] %s\n" % (x)
+    path = os.environ.get("MMLIB_WARNING", "stderr")
 
     try:
         if path == "":
@@ -231,8 +240,11 @@ def debug(x):
     or a empty string for no action.  It writes to the file
     mmlib_warning.txt by default.
     """
-    x    = x + "\n"
-    path = os.environ.get("MMLIB_DEBUG", "mmlib_debug.txt")
+    if _DEBUG==False:
+        return
+    
+    x    = "[DEBUG] %s\n" % (x)
+    path = os.environ.get("MMLIB_DEBUG", "stderr")
 
     try:
         if path == "":

@@ -52,6 +52,7 @@ invert_symmetric_3(float U[6], float Ui[6])
 {
   float d;
 
+  /* calculate determinate */
   d = - U[4]*U[4]*U[1] + 2.0*U[3]*U[4]*U[5] - U[0]*U[5]*U[5]
     - U[3]*U[3]*U[2] + U[0]*U[1]*U[2];
 

@@ -5,6 +5,9 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## add in a extra bit of Biso
+ADD_EXTRA_BISO = False
+
 import sys
 import getopt
 
@@ -129,7 +132,7 @@ def main(path, opt_dict):
                 tls_tf = trace(Utls)/3.0
                 ref_tf = trace(aatm.get_U())/3.0
 
-                if ref_tf>tls_tf:
+                if ADD_EXTRA_BISO and ref_tf>tls_tf:
                     aatm.temp_factor = (ref_tf - tls_tf)*U2B
                     aatm.U = None
                 else:

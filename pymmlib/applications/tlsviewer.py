@@ -1002,6 +1002,30 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 ### TLS Analysis Dialog 
 ###
 
+def calc_include_atom(atm):
+    """Filter out atoms from the model which will cause problems or
+    cont contribute to the TLS analysis.
+    """
+    if atm.occupancy<=0.4:
+        return False
+    
+    if trace(atm.get_U())<=1e-7:
+        return False
+
+    return True
+
+def calc_atom_weight(atm):
+    """Weight the least-squares fit according to this function.
+    """
+    return 1.0
+    if atm.get_fragment().is_amino_acid():
+        if atm.name in ("N", "CA", "C"):
+            return 3.0
+        elif atm.name in ("CB", "O"):
+            return 2.0
+        
+    return 1.0
+
 class TLSDialog(gtk.Dialog):
     """Dialog for the visualization and analysis of TLS model parameters
     describing rigid body motion of a structure.  The TLS model parameters
@@ -1353,8 +1377,11 @@ class TLSDialog(gtk.Dialog):
             tls = {}
             tls["pdb_path"]  = path
             tls["tls_desc"]  = tls_desc
-            tls["tls_group"] = tls_desc.generate_tls_group(self.sc.struct)
+            tls["tls_group"] = tls_desc.construct_tls_group_with_atoms(
+                self.sc.struct)
             tls["name"]      = self.markup_tls_name(tls_desc)
+            tls["tls_info"]  = tls["tls_group"].calc_tls_info()
+            tls["lsq_fit"]   = False
             self.add_tls_group(tls)
             
     def load_TLSOUT(self, path):
@@ -1381,13 +1408,22 @@ class TLSDialog(gtk.Dialog):
         tls_list = []        
         for tls_desc in tls_file.tls_desc_list:
             tls = {}
-
+            tls_group          = tls_desc.construct_tls_group()
+            tls["tls_group"]   = tls_group
             tls["tlsout_path"] = path
             tls["tls_desc"]    = tls_desc
-            tls["tls_group"]   = tls_desc.generate_tls_group(self.sc.struct)
             tls["name"]        = self.markup_tls_name(tls_desc)
 
-            tls_group = tls["tls_group"]
+            ## add the atoms
+            if tls_group.is_null():
+                for atm in tls_desc.iter_atoms(self.sc.struct):
+                    if calc_include_atom(atm)==True:
+                        tls_group.append(atm)
+            else:
+                ## add all the atoms defined in the group
+                for atm in tls_desc.iter_atoms(self.sc.struct):
+                    tls_group.append(atm)
+
             if len(tls_group)==0:
                 print "[ERROR] no atoms in TLS group"
                 print tls_desc.range_list
@@ -1397,13 +1433,21 @@ class TLSDialog(gtk.Dialog):
 
             ## if the TLS group is NULL, then perform a LSQ fit of it
             if tls_group.is_null():
-                lsq_residual = tls_group.calc_TLS_least_squares_fit()
+                print tls["name"], "num atoms ", len(tls_group)
+
                 tls["lsq_fit"] = True
-                tls["lsq_residual"] = lsq_residual
+
+                weight_dict = {}
+                for atm in tls_group:
+                    weight_dict[atm] = calc_atom_weight(atm)
+
+                lsq_residual = tls_group.calc_TLS_least_squares_fit(weight_dict)
+
+                tls["lsq_residual"]      = lsq_residual
                 tls["lsq_residual_atom"] = lsq_residual / len(tls_group)
-                tls["tls_info"] = tls_group.calc_tls_info()
+                tls["tls_info"]          = tls_group.calc_tls_info()
             else:
-                tls["lsq_fit"] = False
+                tls["lsq_fit"]  = False
                 tls["tls_info"] = tls_group.calc_tls_info()
 
         ## add the groups
