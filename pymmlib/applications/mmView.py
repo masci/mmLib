@@ -357,7 +357,7 @@ class TLSDialog(gtk.Dialog):
 
         return segment_list
 
-    def make_tls_group_segments(self, seg_len = 20):
+    def make_tls_group_segments(self, seg_len = 6):
         """
         """
         self.tls_group_list = []

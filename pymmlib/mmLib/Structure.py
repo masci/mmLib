@@ -74,12 +74,15 @@ class Structure(object):
         self.model_dict      = {}
 
     def __str__(self):
-        return "Struct(id=%s, meth=)" % (self.cifdb.get_entry_id())
+        return "Struct(%s)" % (self.cifdb.get_entry_id())
  
     def __len__(self):
         """Returns the number of stored Chain objects.
         """
-        return len(self.model)
+        try:
+            return len(self.model)
+        except TypeError:
+            return 0
     
     def __getitem__(self, chain_idx):
         """Same as get_chain, but raises KeyError if the requested chain_id
@@ -181,8 +184,7 @@ class Structure(object):
             chain.structure = self
 
     def add_chain(self, chain, delay_sort = True):
-        """Adds a Chain object to the Structure, and set the chain's
-        structure attribute to self.
+        """Adds a Chain object to the Structure.
         """
         assert isinstance(chain, Chain)
 
@@ -944,13 +946,36 @@ class Fragment(object):
                 ##     check if a atom with the same name is already in the
                 ##     fragment, and raise a AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
-                if self.atom_dict.has_key(name):
-                    raise AtomOverwrite(
-                        "Atom name conflicts with: "+str(self.atom_dict[name]))
 
-                self.atom_order_list.append(atom)
-                self.atom_list.append(atom)
-                self.atom_dict[name] = atom
+                try:
+                    atomA = self.atom_dict[name]
+
+                except KeyError:
+                    ## case 1:
+                    ##     add atom to the fragment
+                    self.atom_order_list.append(atom)
+                    self.atom_list.append(atom)
+                    self.atom_dict[name] = atom
+                    
+                else:
+                    ## case 1.5:
+                    ##     multiple atoms with the same name, without
+                    ##     alt_loc labels, but they are really alt_loc
+                    ##     partners
+                    assert atomA != atom
+
+                    if atomA.occupancy < 1.0 and atom.occupancy < 1.0:
+                        iA = self.atom_order_list.index(atomA)
+
+                        self.alt_loc_dict[name] = altloc = Altloc()
+                        self.atom_order_list[iA] = altloc
+
+                        altloc.add_atom(atomA)
+                        altloc.add_atom(atom)
+
+                    else:
+                        raise AtomOverwrite(
+                            "overwrite %s with %s" % (atomA, atom))
 
             else:
                 ## case 2:
@@ -1445,10 +1470,8 @@ class Altloc(dict):
     def add_atom(self, atom):
         """Adds a atom to the Altloc.
         """
-        if self.has_key(atom.alt_loc):
-            print "ALTLOC[1]: ",str(atom)
+        if self.has_key(atom.alt_loc) or atom.alt_loc == "":
             atom.alt_loc = self.calc_next_alt_loc_id(atom)
-            print "ALTLOC[2]: ",str(atom)
 
         self[atom.alt_loc] = atom
         atom.altloc = self
@@ -1464,7 +1487,7 @@ class Altloc(dict):
             if not self.has_key(alt_loc):
                 return alt_loc
         raise AtomOverwrite(
-            "exhausted availible alt_loc labels for Atom: "+str(atom))
+            "exhausted availible alt_loc labels for "+str(atom))
         
 
 class Atom(object):
@@ -1489,44 +1512,93 @@ class Atom(object):
     Atom.U           - a 6-tuple of the anisotropic values
     Atom.charge      - charge on the atom
     """
-    def __init__(self,
-                 name        = "",
-                 model_id    = 1,
-                 alt_loc     = "",
-                 res_name    = "",
-                 fragment_id = "",
-                 chain_id    = ""):
+    def __init__(
+        self,
+        name            = "",
+        alt_loc         = "",
+        res_name        = "",
+        fragment_id     = "",
+        chain_id        = "",
+        model_id        = 1,
+        element         = "",
+        position        = None,
+        x               = None,
+        y               = None,
+        z               = None,
+        sig_position    = None,
+        sig_x           = None,
+        sig_y           = None,
+        sig_z           = None,
+        temp_factor     = None,
+        sig_temp_factor = None,
+        occupancy       = None,
+        sig_occupancy   = None,
+        charge          = None,
 
-        assert type(name) == StringType
-        assert type(model_id) == IntType
-        assert type(alt_loc) == StringType
-        assert type(res_name) == StringType
+        u11 = None, u22 = None, u33 = None,
+        u12 = None, u13 = None, u23 = None,
+
+        sig_u11 = None, sig_u22 = None, sig_u33 = None,
+        sig_u12 = None, sig_u13 = None, sig_u23 = None,
+
+        **args):
+
+        assert type(name)        == StringType
+        assert type(model_id)    == IntType
+        assert type(alt_loc)     == StringType
+        assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
-        assert type(chain_id) == StringType
+        assert type(chain_id)    == StringType
 
-        self.name = name
-        self.model_id = model_id
-        self.alt_loc = alt_loc
-        self.res_name = res_name
-        self.fragment_id = fragment_id
-        self.chain_id = chain_id
-        self.element = None
-        self.position = None
-        self.sig_position = None
-        self.occupancy = None
-        self.sig_occupancy = None
-        self.temp_factor = None
-        self.sig_temp_factor = None
-        self.U = None
-        self.sig_U = None
-        self.charge = None
+        self.name            = name
+        self.alt_loc         = alt_loc
+        self.res_name        = res_name
+        self.fragment_id     = fragment_id
+        self.chain_id        = chain_id
+        self.model_id        = model_id
+        self.element         = element
+        self.temp_factor     = temp_factor
+        self.sig_temp_factor = sig_temp_factor
+        self.occupancy       = occupancy
+        self.sig_occupancy   = sig_occupancy
+        self.charge          = charge
         
+        if position != None:
+            self.position = position
+        elif x != None or y != None or z != None:
+            self.position = Vector(x, y, z)
+        else:
+            self.position = None
+        
+        if sig_position != None:
+            self.sig_position = sig_position
+        elif sig_x != None or sig_y != None or sig_z != None:
+            self.sig_position = Vector(sig_x, sig_y, sig_z)
+        else:
+            self.sig_position = None
+
+        if u11 != None:
+            self.U = array(
+                [ [u11, u12, u13],
+                  [u12, u22, u23],
+                  [u13, u23, u33] ])
+        else:
+            self.U = None
+            
+        if sig_u11 != None:
+            self.sig_U = array(
+                [ [sig_u11, sig_u12, sig_u13],
+                  [sig_u12, sig_u22, sig_u23],
+                  [sig_u13, sig_u23, sig_u33] ])
+        else:
+            self.sig_U = None
+
         self.bond_list = []
 
     def __str__(self):
-        return 'Atom(n=%s,mdl=%s,alt=%s,rn=%s,fid=%s,cid=%s)' % (
-            self.name, self.model_id, self.alt_loc, self.res_name,
-            self.fragment_id, self.chain_id)
+        return "Atom(%4s%2s%4s%2s%4s%2d)" % (
+            self.name, self.alt_loc, self.res_name,
+            self.chain_id, self.fragment_id, self.model_id)
 
     def __len__(self):
         """Returns the number of alternate conformations of this atom.

@@ -76,55 +76,12 @@ class StructureBuilder(object):
         point.  Look at this function and you'll figure it out.
         """
         ## create atom object
-        atm = Atom(name        = atm_map.get("name", ""),
-                   model_id    = atm_map.get("model_num", 1),
-                   alt_loc     = atm_map.get("alt_loc", ""),
-                   res_name    = atm_map.get("res_name", ""),
-                   fragment_id = atm_map.get("fragment_id", ""),
-                   chain_id    = atm_map.get("chain_id", ""))
-
-        try: atm.element = atm_map["element"]
-        except KeyError: pass
-
-        try: atm.position = Vector(atm_map["x"],atm_map["y"],atm_map["z"])
-        except KeyError: pass
-
-        try: atm.occupancy = atm_map["occupancy"]
-        except KeyError: pass
-
-        try: atm.temp_factor = atm_map["temp_factor"]
-        except KeyError: pass
-
-        try: atm.charge = atm_map["charge"]
-        except KeyError: pass
-
-        try:
-            atm.sig_position = Vector(
-                atm_map["sig_x"],atm_map["sig_y"],atm_map["sig_z"])
-        except KeyError:
-            pass
-
-        try:
-            atm.set_U(atm_map["U[1][1]"], atm_map["U[2][2]"],
-                      atm_map["U[3][3]"], atm_map["U[1][2]"],
-                      atm_map["U[1][3]"], atm_map["U[2][3]"])
-        except KeyError:
-            pass
-
-        try:
-            atm.set_sig_U(atm_map["sig_U[1][1]"], atm_map["sig_U[2][2]"],
-                          atm_map["sig_U[3][3]"], atm_map["sig_U[1][2]"],
-                          atm_map["sig_U[1][3]"], atm_map["sig_U[2][3]"])
-        except KeyError:
-            pass
+        atm = Atom(**atm_map)
 
         ## survey the atom and structure and determine if the atom requres
         ## being passed to the naming service
-
         ## absence of requred fields
-        if atm.chain_id    == "" or \
-           atm.fragment_id == "" or \
-           atm.name        == "":
+        if atm.fragment_id == "" or atm.chain_id == "":
             self.name_service_list.append(atm)
             return atm
 
@@ -425,7 +382,7 @@ class PDBStructureBuilder(StructureBuilder):
         """Override load_atom to maintain a serial_num->atm map.
         """
         if self.model_num != None:
-            atm_map["model_num"] = self.model_num
+            atm_map["model_id"] = self.model_num
 
         atm = StructureBuilder.load_atom(self, atm_map)
 
@@ -609,20 +566,20 @@ class PDBStructureBuilder(StructureBuilder):
         setmapf(rec, "sigTempFactor", self.atm_map, "sig_temp_factor")
 
     def process_ANISOU(self, rec):
-        self.atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
-        self.atm_map["U[2][2]"] = rec.get("u[1][1]", 0.0) / 10000.0
-        self.atm_map["U[3][3]"] = rec.get("u[2][2]", 0.0) / 10000.0
-        self.atm_map["U[1][2]"] = rec.get("u[0][1]", 0.0) / 10000.0
-        self.atm_map["U[1][3]"] = rec.get("u[0][2]", 0.0) / 10000.0
-        self.atm_map["U[2][3]"] = rec.get("u[1][2]", 0.0) / 10000.0
+        self.atm_map["u11"] = rec.get("u[0][0]", 0.0) / 10000.0
+        self.atm_map["u22"] = rec.get("u[1][1]", 0.0) / 10000.0
+        self.atm_map["u33"] = rec.get("u[2][2]", 0.0) / 10000.0
+        self.atm_map["u12"] = rec.get("u[0][1]", 0.0) / 10000.0
+        self.atm_map["u13"] = rec.get("u[0][2]", 0.0) / 10000.0
+        self.atm_map["u23"] = rec.get("u[1][2]", 0.0) / 10000.0
 
     def process_SIGUIJ(self, rec):
-        self.atm_map["sig_U[1][1]"] = rec.get("sig[1][1]", 0.0) / 10000.0
-        self.atm_map["sig_U[2][2]"] = rec.get("sig[2][2]", 0.0) / 10000.0
-        self.atm_map["sig_U[3][3]"] = rec.get("sig[3][3]", 0.0) / 10000.0
-        self.atm_map["sig_U[1][2]"] = rec.get("sig[1][2]", 0.0) / 10000.0
-        self.atm_map["sig_U[1][3]"] = rec.get("sig[1][3]", 0.0) / 10000.0
-        self.atm_map["sig_U[2][3]"] = rec.get("sig[2][3]", 0.0) / 10000.0
+        self.atm_map["sig_u11"] = rec.get("sig[1][1]", 0.0) / 10000.0
+        self.atm_map["sig_u22"] = rec.get("sig[2][2]", 0.0) / 10000.0
+        self.atm_map["sig_u33"] = rec.get("sig[3][3]", 0.0) / 10000.0
+        self.atm_map["sig_u12"] = rec.get("sig[1][2]", 0.0) / 10000.0
+        self.atm_map["sig_u13"] = rec.get("sig[1][3]", 0.0) / 10000.0
+        self.atm_map["sig_u23"] = rec.get("sig[2][3]", 0.0) / 10000.0
 
     def process_MODEL(self, rec):
         self.model_num = rec.get("serial")
@@ -1193,7 +1150,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                     atm_map,   "sig_temp_factor")
 
             setmapi(atom_site, "pdbx_PDB_model_num",
-                    atm_map,   "model_num")
+                    atm_map,   "model_id")
 
             if aniso_table != None:
                 try:
@@ -1201,19 +1158,19 @@ class mmCIFStructureBuilder(StructureBuilder):
                 except KeyError:
                     warning("unable to find aniso row for atom")
                 else:
-                    setmapf(aniso, "U[1][1]", atm_map, "U[1][1]")
-                    setmapf(aniso, "U[2][2]", atm_map, "U[2][2]")
-                    setmapf(aniso, "U[3][3]", atm_map, "U[3][3]")
-                    setmapf(aniso, "U[1][2]", atm_map, "U[1][2]")
-                    setmapf(aniso, "U[1][3]", atm_map, "U[1][3]")
-                    setmapf(aniso, "U[2][3]", atm_map, "U[2][3]")
+                    setmapf(aniso, "U[1][1]", atm_map, "u11")
+                    setmapf(aniso, "U[2][2]", atm_map, "u22")
+                    setmapf(aniso, "U[3][3]", atm_map, "u33")
+                    setmapf(aniso, "U[1][2]", atm_map, "u12")
+                    setmapf(aniso, "U[1][3]", atm_map, "u13")
+                    setmapf(aniso, "U[2][3]", atm_map, "u23")
 
-                    setmapf(aniso, "U[1][1]_esd", atm_map, "sig_U[1][1]")
-                    setmapf(aniso, "U[2][2]_esd", atm_map, "sig_U[2][2]")
-                    setmapf(aniso, "U[3][3]_esd", atm_map, "sig_U[3][3]")
-                    setmapf(aniso, "U[1][2]_esd", atm_map, "sig_U[1][2]")
-                    setmapf(aniso, "U[1][3]_esd", atm_map, "sig_U[1][3]")
-                    setmapf(aniso, "U[2][3]_esd", atm_map, "sig_U[2][3]")
+                    setmapf(aniso, "U[1][1]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "U[2][2]_esd", atm_map, "sig_u22")
+                    setmapf(aniso, "U[3][3]_esd", atm_map, "sig_u33")
+                    setmapf(aniso, "U[1][2]_esd", atm_map, "sig_u12")
+                    setmapf(aniso, "U[1][3]_esd", atm_map, "sig_u13")
+                    setmapf(aniso, "U[2][3]_esd", atm_map, "sig_u23")
 
             atm = self.load_atom(atm_map)
             self.atom_site_id_map[atom_site_id] = atm
