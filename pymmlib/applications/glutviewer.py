@@ -67,7 +67,7 @@ class Terminal(object):
         self.height  = 0
         self.zplane  = 5000.0
 
-        self.term_alpha = 0.75
+        self.term_alpha = 0.5
 
         self.char_width = 80
         
