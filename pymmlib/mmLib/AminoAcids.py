@@ -7,8 +7,7 @@
 amino acid properties defined here should be properties which will never
 change, and more complex properties should be loaded by other libraries."""
 
-from Monomers import AminoAcid
-
+from Library import AminoAcid
 
 AminoAcidNames = [
     "ALA", "VAL", "LEU", "ILE", "GLY", "PRO", "CYS", "MET", "HIS",

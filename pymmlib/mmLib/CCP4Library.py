@@ -8,8 +8,7 @@ import sys
 import copy
 
 import mmCIF
-from   Monomers   import Monomer
-from   Library    import Library
+from   Library    import Monomer, Library
 
 
 

@@ -109,7 +109,7 @@ class AminoAcidResidueAlgorithms(object):
     def calcPuckerTorsion(self, conf_id = None):
         """Calculates the Pucker torsion of a ring system.  Returns None
         for Amino Acids which do not have Pucker torsion angles."""
-        mon = self.structure().library[self.res_name]
+        mon = self.getStructure().library[self.res_name]
         if not mon.pucker_definition:
             return None
 
@@ -120,7 +120,7 @@ class AminoAcidResidueAlgorithms(object):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calcTorsionChi1(self):
-        mon = self.structure().library[self.res_name]
+        mon = self.getStructure().library[self.res_name]
         if not mon.chi1_definition:
             return None
         
@@ -131,7 +131,7 @@ class AminoAcidResidueAlgorithms(object):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calcTorsionChi2(self):
-        mon = self.structure().library[self.res_name]
+        mon = self.getStructure().library[self.res_name]
         if not mon.chi2_definition:
             return None
         
@@ -142,7 +142,7 @@ class AminoAcidResidueAlgorithms(object):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calcTorsionChi3(self):
-        mon = self.structure().library[self.res_name]
+        mon = self.getStructure().library[self.res_name]
         if not mon.chi3_definition:
             return None
         
@@ -153,7 +153,7 @@ class AminoAcidResidueAlgorithms(object):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calcTorsionChi4(self):
-        mon = self.structure().library[self.res_name]
+        mon = self.getStructure().library[self.res_name]
         if not mon.chi4_definition:
             return None
         
@@ -196,7 +196,7 @@ class AtomAlgorithms(object):
         """Iterates all atoms in the Structure object from the closest to the
         farthest.  Yields the 2-tuple (dist, atm)."""
         list = []
-        for atm in self.structure().iterAtoms():
+        for atm in self.getStructure().iterAtoms():
             list.append((calculateDistance(self, atm), atm))
         list.sort()
 

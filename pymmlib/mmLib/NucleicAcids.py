@@ -7,25 +7,11 @@
 nucleic acid properties defined here should be properties which will never
 change, and more complex properties should be loaded by other libraries."""
 
-
+from Library import NucleicAcid
 
 
 NucleicAcidNames = [
     "A", "C", "G", "T", "U", "I", "+A", "+C", "+G", "+T", "+U", "+I"]
-
-
-class NucleicAcid:
-    """Empty definition class for building a Nucleic Acid library."""
-
-    def __init__(self):
-        self.name = ""
-        self.full_name = ""
-        self.one_letter_name = ""
-
-
-    def __str__(self):
-        return "NucleicAcid=%s" % (self.name)
-
 
 
 NucleicAcidMap = {

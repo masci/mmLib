@@ -223,7 +223,7 @@ class StructureMember(object):
     def __init__(self, structure):
         assert isinstance(structure, Structure)
         
-        self.structure = weakref.ref(structure)
+        self.getStructure = weakref.ref(structure)
 ### </STRUCTURE>
 
 
@@ -455,12 +455,12 @@ class Fragment(StructureMember):
     def getAtom(self, name):
         """Returns the matching Atom object contained in the Fragment.
         Returns None if a match is not found."""
-        return self.atom_list.get(name, self.structure().default_alt_loc)
+        return self.atom_list.get(name, self.getStructure().default_alt_loc)
     
     def iterAtoms(self):
         """Iterates over all Atom objects contained in the Fragment.
         There is no defined order for the iteration."""
-        return self.atom_list.__iter__(self.structure().default_alt_loc)
+        return self.atom_list.__iter__(self.getStructure().default_alt_loc)
 
     def iterBonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -475,7 +475,7 @@ class Fragment(StructureMember):
                     visited.insert(0, bond)
 
     def getOffsetFragment(self, offset):
-        chain = self.structure().getChain(self.chain_id)
+        chain = self.getStructure().getChain(self.chain_id)
         if not chain: return None
 
         i = chain.fragment_list.index(self) + offset
@@ -511,7 +511,7 @@ class Residue(Fragment):
                                     self.polymer_id)
 
     def getOffsetResidue(self, offset):
-        chain = self.structure().getChain(self.chain_id)
+        chain = self.getStructure().getChain(self.chain_id)
         if not chain: return None
 
         poly = chain.getPolymer(self.polymer_id)
@@ -548,18 +548,18 @@ class Bond(BondAlgorithms):
 
         assert atom1 != atom2
 
-        self.atom1 = weakref.ref(atom1)
-        self.atom2 = weakref.ref(atom2)
+        self.getAtom1 = weakref.ref(atom1)
+        self.getAtom2 = weakref.ref(atom2)
 
         atom1.bond_list.add(self)
         atom2.bond_list.add(self)
 
     def __str__(self):
-        return "Bond(%s...%s)" % (self.atom1(), self.atom2())
+        return "Bond(%s...%s)" % (self.getAtom1(), self.getAtom2())
 
     def getPartner(self, atm):
-        if   atm == self.atom1(): return self.atom2()
-        elif atm == self.atom2(): return self.atom1()
+        if   atm == self.getAtom1(): return self.getAtom2()
+        elif atm == self.getAtom2(): return self.getAtom1()
         return None
 
 
@@ -634,7 +634,7 @@ class Atom(StructureMember, AtomAlgorithms):
     def getAltLoc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument."""
         if self.alt_loc_list:
-            alt_loc = alt_loc or self.structure().default_alt_loc
+            alt_loc = alt_loc or self.getStructure().default_alt_loc
             for atm in self.alt_loc_list:
                 if atm.alt_loc == alt_loc: return atm
             return None
@@ -654,7 +654,7 @@ class Atom(StructureMember, AtomAlgorithms):
     def getBond(self, atm):
         """Returns the Bond connecting self with the argument atom."""
         for bond in self.bond_list:
-            if atm == bond.atom1() or atm == bond.atom2():
+            if atm == bond.getAtom1() or atm == bond.getAtom2():
                 return bond
         return None
 
