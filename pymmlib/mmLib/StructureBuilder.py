@@ -539,9 +539,10 @@ class PDBStructureBuilder(StructureBuilder):
         except KeyError:
             self.atm_map["name"] = ""
         else:
-            self.atm_map["name"] = name.strip()
-            
-            element = self.name2element(name)
+            (name, element) = self.guess_element_from_name(
+                name, rec.get("resName"))
+            if name != None:
+                self.atm_map["name"] = name
             if element != None:
                 self.atm_map["element"] = element
 
@@ -562,7 +563,30 @@ class PDBStructureBuilder(StructureBuilder):
         setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
         setmaps(rec, "charge", self.atm_map, "charge")
 
-    def name2element(self, name0):
+    def guess_element_from_name(self, name0, res_name):
+        """Try everything I can possibly think of to extract the element
+        symbol from the atom name.  If availible, use the monmer dictionary
+        to help narrow down the search.
+        """
+        ## strip any space from the name, and return now if there
+        ## is nothing left to work with
+        name = name0.strip()
+        if name == "":
+            self.pdb_error("ATOM", "record with blank name field")
+            return name, None
+        
+        ## try the easy way out -- look up the atom in the monomer dictionary
+        mon = self.struct.library.get_monomer(res_name)
+        if mon:
+            try:
+                return name, mon.atom_dict[name]
+            except KeyError:
+                if mon.is_amino_acid() and name == "OXT":
+                    return "O", "O"
+                print "Invalid Atom Name: %s in Residue: %s" % (name, res_name)
+
+        ## ok, that didn't work...
+
         ## set the space_flag to true if the name starts with a space
         ## which can indicate the name of the atom is only 1 charactor
         ## long
@@ -571,57 +595,50 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             space_flag = False
 
-        ## strip any space from the name, and return now if there
-        ## is nothing left to work with
-        name = name0.strip()
-        if name == "":
-            self.pdb_error("ATOM", "record with blank name field")
-            return None
-
-        ## set the digit0_flag to true if the first charactor of the
-        ## name is a digit -- commonly used in hydrogen naming
-        if name[0] in string.digits:
-            digit0_flag = True
-        else:
-            digit0_flag = False
-
-        ## get the first 1 or 2 consecutive alphabetic charactors
-        x = ""
+        ## digitsplt: take a name like 1HA and split it to ("1", "HA")
+        digitx = ""
+        strx   = ""
         for c in name:
-            if c in string.ascii_letters:
-                x += c
-                if len(x) == 2:
-                    break
-            elif x != "":
-                break
+            if strx == "" and c.isdigit():
+                digitx += c
+            else:
+                strx += c
 
-        ## if no charactors were extracted from the name, then, well,
-        ## that's bad
-        if x == "":
-            self.pdb_error(
-                "ATOM",
-                "unable to extract element from atom name: %s" % (name0))
-            return None
+        ## look up two possible element symbols in the library:
+        ## e1 is the possible one-charactor symbol
+        ## e2 is the possible two-charactor symbol
+        e1 = self.struct.library.get_element(strx[:1])
 
-        ## if the space_flag is false, it is possible the element is
-        ## two digits, if there is a space, it is likely a one charactor
-        ## element name
-        if space_flag == True:
-            element = x[0]
+        x = strx[:2]
+        if len(x) == 2 and x.isalpha():
+            e2 = self.struct.library.get_element(x)
         else:
-            element = x
-            
-        ## check to see if the element is valid
-        if self.struct.library.element_map.has_key(element):
-            return element
-        elif self.struct.library.element_map.has_key(element[:1]):
-            return element[:1]
-        else:
-            self.pdb_error(
-                "ATOM",
-                "unable to extract valid element from atom name: %s" % (name0))
+            e2 = None
 
-        return None
+        ## e1 or e2 must return somthing for us to proceed, otherwise,
+        ## there's just no possible element symbol contained in the atom
+        ## name
+        if e1 == None and e2 == None:
+            return name , None
+        elif e1 != None and e2 == None:
+            return name, e1.symbol
+
+        ## if we get here, then e1 and e2 are both valid elements
+
+        ## no monomer library help narrow down the choices, choose e1
+        if mon == None:
+            return name, e1.symbol
+        
+        e1x = e1.symbol in mon.atom_dict.values()
+        e2x = e2.symbol in mon.atom_dict.values()
+
+        if e1x == True and e2x == False:
+            return name, e1.symbol
+        elif e1x == False and e2x == True:
+            return name, e2.symbol
+
+        ## we're out of choices, choose e1
+        return name, e1.symbol
 
     def process_HETATM(self, rec):
         self.process_ATOM(rec)

@@ -744,10 +744,10 @@ class Fragment(object):
         if mon == None:
             return
 
-        for (name1, name2) in mon.bond_list:
+        for bond in mon.bond_list:
             try:
-                atm1 = self[name1]
-                atm2 = self[name2]
+                atm1 = self[bond["atom1"]]
+                atm2 = self[bond["atom2"]]
             except KeyError:
                 continue
             else:
@@ -1439,6 +1439,8 @@ class Bond(object):
         return "Bond(%s...%s)" % (self.atom1, self.atom2)
 
     def get_partner(self, atm):
+        """Returns the other atom involved in the bond.
+        """
         if   atm == self.atom1: return self.atom2
         elif atm == self.atom2: return self.atom1
         return None

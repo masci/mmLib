@@ -1078,16 +1078,17 @@ def ATOM_get_name(rec):
     used column alignment to distinguish calcium (CA) from, say,
     a alpha-carbon (CA)
     """
-    name = rec.get("name") or ""
+    name    = rec.get("name")    or ""
     element = rec.get("element") or ""
 
     if len(element) == 2:
         name = name.ljust(4)[:4]
     else:
-        if len(name) < 4:
-            name = " " + name.ljust(3)[:3]
-        else:
-            name = name.ljust(4)[:4]
+        l = len(name)
+        if    l == 0:            name = "".ljust(4)
+        elif  name[0].isdigit(): name = name.ljust(4)[:4]
+        elif  l <  4:            name = " " + name.ljust(3)[:3]
+        
     return name
 
 class MODEL(PDBRecord):
