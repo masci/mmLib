@@ -1008,6 +1008,8 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
         ## is this fit weighted?
         if weight_dict!=None:
             w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
 
         ## indecies of the components of U
         U11 = i * 6
@@ -1359,9 +1361,9 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
             if atm.name not in ["N", "CA", "C", "O"]:
                 atm_CA = frag.get_atom("CA")                
                 if atm_CA!=None:
-                    l11 = 20 + (segment.index(frag) * 6)
+                    L11 = 20 + (segment.index(frag) * 6)
                     xs, ys, zs = atm.position - atm_CA.position
-                    set_L_A(A, u11, l11, xs, ys, zs, w)
+                    set_L_A(A, U11, L11, xs, ys, zs, w)
 
     ## solve by SVD
     C = solve_TLS_Ab(A, b)
@@ -2364,7 +2366,8 @@ class GLTLSAtomList(GLAtomList):
         a       = self.properties["fan_opacity"]
 
         self.driver.glr_set_material_rgba(r, g, b, a)
-        
+
+        self.driver.glr_lighting_enable()
         self.driver.glr_normalize_enable()
         self.driver.glr_light_two_sides_enable()
         self.driver.glr_begin_triangle_fan()
@@ -2398,6 +2401,7 @@ class GLTLSAtomList(GLAtomList):
         self.driver.glr_end()
         self.driver.glr_light_two_sides_disable()
         self.driver.glr_normalize_disable()
+        self.driver.glr_lighting_disable()
         
 
 class GLTLSGroup(GLDrawList):
@@ -3316,7 +3320,7 @@ class GLTLSGroup(GLDrawList):
         self.driver.glr_end()
         self.driver.glr_light_two_sides_disable()
         self.driver.glr_normalize_disable()
-
+        self.driver.glr_lighting_disable()
 
 class GLTLSChain(GLDrawList):
     """Collects a list of GLTLSGroup instances which are all in the
