@@ -126,7 +126,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         return gtk.TRUE
 
     def expose_event(self, glarea, event):
-        self.glviewer.gl_drawLists()
+        self.glviewer.gl_draw_lists()
         return gtk.TRUE
 
     def set_unit_cell(self, unit_cell):

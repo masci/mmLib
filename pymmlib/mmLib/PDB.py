@@ -2,20 +2,17 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """Brookhaven PDB v2.2 file parsers.  All records in the PDB v2.2
 specification have coorasponding classes defined here.  PDB files are
 loaded into a list of these cassed, and also can be constrcted/modified
-and written back out as PDB files."""
-
-from   __future__           import generators
+and written back out as PDB files.
+"""
+from __future__ import generators
 import string
 import types
 import fpformat
-
-from   FileIO   import OpenFile
-from   mmTypes  import *
-
+from FileIO import OpenFile
+from mmTypes import *
 
 PDBError = "PDB Error"
 
@@ -52,9 +49,11 @@ class PDBRecord(dict):
             s = getattr(self, field) or ""
 
             ## convert integer and float types
-            if   ftype     == "string":     pass
-            elif ftype     == "integer":    s = str(s)
-            elif ftype[:5] == "float":
+            if   ftype == "string":
+                pass
+            elif ftype == "integer":
+                s = str(s)
+            elif ftype.startswith("float"):
                 try:
                     s = fpformat.fix(s, int(ftype[6]))
                 except ValueError:
@@ -68,8 +67,10 @@ class PDBRecord(dict):
                 raise PDBError, "field=%s value=%s len=%d > max=%d" % (
                     field, s, len(s), l)
 
-            if just == "ljust": ln += s.ljust(l)
-            else:               ln += s.rjust(l)
+            if just == "ljust":
+                ln += s.ljust(l)
+            else:
+                ln += s.rjust(l)
 
         return ln
 
@@ -93,7 +94,7 @@ class PDBRecord(dict):
                     print "int('%s') failed" % (s)
                     print "========================================="
                     continue
-            elif ftype[:5] == "float":
+            elif ftype.startswith("float"):
                 try:
                     s = float(s)
                 except ValueError:
@@ -114,7 +115,8 @@ class HEADER(PDBRecord):
     """This section contains records used to describe the experiment and the
     biological macromolecules present in the entry: HEADER, OBSLTE, TITLE,
     CAVEAT, COMPND, SOURCE, KEYWDS, EXPDTA, AUTHOR, REVDAT, SPRSDE, JRNL,
-    and REMARK records."""
+    and REMARK records.
+    """
     _name = "HEADER"
     _field_list = [
         ("classification", 11, 50, "string", "rjust"),
@@ -126,7 +128,8 @@ class OBSLTE(PDBRecord):
     This record acts as a flag in an entry which has been withdrawn from the
     PDB's full release. It indicates which, if any, new entries have replaced
     the withdrawn entry.  The format allows for the case of multiple new
-    entries replacing one existing entry."""
+    entries replacing one existing entry.
+    """
     _name = "OBSLTE"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -144,7 +147,8 @@ class OBSLTE(PDBRecord):
 class TITLE(PDBRecord):
     """The TITLE record contains a title for the experiment or analysis that is
     represented in the entry. It should identify an entry in the PDB in the
-    same way that a title identifies a paper."""
+    same way that a title identifies a paper.
+    """
     _name = "TITLE "
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -152,7 +156,8 @@ class TITLE(PDBRecord):
 
 class CAVEAT(PDBRecord):
     """CAVEAT warns of severe errors in an entry. Use caution when using an
-    entry containing this record."""
+    entry containing this record.
+    """
     _name = "CAVEAT"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -167,7 +172,8 @@ class COMPND(PDBRecord):
     editorial judgment in consultation with depositors in assigning these
     names.  For each macromolecular component, the molecule name, synonyms,
     number assigned by the Enzyme Commission (EC), and other relevant details
-    are specified. """ 
+    are specified.
+    """ 
     _name = "COMPND"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -178,7 +184,8 @@ class SOURCE(PDBRecord):
     each biological molecule in the entry. Sources are described by both the
     common name and the scientific name, e.g., genus and species. Strain and/or
     cell-line for immortalized cells are given when they help to uniquely
-    identify the biological entity studied."""
+    identify the biological entity studied.
+    """
     _name = "SOURCE"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -189,8 +196,9 @@ class KEYWDS(PDBRecord):
     in the KEYWDS record provide a simple means of categorizing entries and may
     be used to generate index files. This record addresses some of the
     limitations found in the classification field of the HEADER record. It
-    provides the opportunity to add further annotation to the entry in a concise
-    and computer-searchable fashion."""
+    provides the opportunity to add further annotation to the entry in a
+    concise and computer-searchable fashion.
+    """
     _name = "KEYWDS"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -207,7 +215,8 @@ class EXPDTA(PDBRecord):
     NEUTRON DIFFRACTION
     NMR
     THEORETICAL MODEL
-    X-RAY DIFFRACTION""" 
+    X-RAY DIFFRACTION
+    """ 
     _name = "EXPDTA"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -215,7 +224,8 @@ class EXPDTA(PDBRecord):
 
 class AUTHOR(PDBRecord):
     """The AUTHOR record contains the names of the people responsible for the
-    contents of the entry."""
+    contents of the entry.
+    """
     _name = "AUTHOR"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust"),
@@ -223,7 +233,8 @@ class AUTHOR(PDBRecord):
 
 class REVDAT(PDBRecord):
     """REVDAT records contain a history of the modifications made to an entry
-    since its release."""
+    since its release.
+    """
     _name = "REVDAT"
     _field_list = [
         ("modNum", 8, 10, "integer", "rjust"),
@@ -259,17 +270,20 @@ class JRNL(PDBRecord):
     """The JRNL record contains the primary literature citation that describes
     the experiment which resulted in the deposited coordinate set. There is at
     most one JRNL reference per entry. If there is no primary reference, then
-    there is no JRNL reference. Other references are given in REMARK 1."""
+    there is no JRNL reference. Other references are given in REMARK 1.
+    """
     _name = "JRNL  "
     _field_list = [
         ("text", 13, 70, "string", "ljust")]
 
 class REMARK(PDBRecord):
     """REMARK records present experimental details, annotations, comments, and
-    information not included in other records. In a number of cases, REMARKs are
-    used to expand the contents of other record types. A new level of structure
-    is being used for some REMARK records. This is expected to facilitate
-    searching and will assist in the conversion to a relational database."""
+    information not included in other records. In a number of cases, REMARKs
+    are used to expand the contents of other record types. A new level of
+    structure is being used for some REMARK records. This is expected to
+    facilitate searching and will assist in the conversion to a relational
+    database.
+    """
     _name = "REMARK"
     _field_list = [
         ("remarkNum", 8, 10, "integer", "rjust"),
@@ -282,7 +296,8 @@ class DBREF(PDBRecord):
     the sequence database is mandatory for each peptide chain with a length
     greater than ten (10) residues. For nucleic acid entries a DBREF
     record pointing to the Nucleic Acid Database (NDB) is mandatory when
-    the corresponding entry exists in NDB."""
+    the corresponding entry exists in NDB.
+    """
     _name = "DBREF "
     _field_list = [
         ("idCode", 8, 11, "string", "rjust"),
@@ -306,7 +321,8 @@ class SEQADV(PDBRecord):
     identify differences and not errors. No assumption is made as to which
     database contains the correct data. PDB may include REMARK records in
     the entry that reflect the depositor's view of which database has the
-    correct sequence."""
+    correct sequence.
+    """
     _name = "SEQADV"
     _field_list = [
         ("idCode", 8, 11, "string", "rjust"),
@@ -322,7 +338,8 @@ class SEQADV(PDBRecord):
     
 class SEQRES(PDBRecord):
     """The SEQRES records contain the amino acid or nucleic acid sequence of
-    residues in each chain of the macromolecule that was studied."""
+    residues in each chain of the macromolecule that was studied.
+    """
     _name = "SEQRES"
     _field_list = [
         ("serNum", 9, 10, "integer", "rjust"),
@@ -346,7 +363,8 @@ class MODRES(PDBRecord):
     """The MODRES record provides descriptions of modifications (e.g.,
     chemical or post-translational) to protein and nucleic acid residues.
     Included are a mapping between residue names given in a PDB entry and
-    standard residues."""
+    standard residues.
+    """
     _name = "MODRES"
     _field_list = [
         ("idCode", 8, 11, "string", "rjust"),
@@ -369,7 +387,8 @@ class HET(PDBRecord):
     - not an unknown amino acid or nucleic acid where UNK is used to
       indicate the unknown residue name. 
     Het records also describe heterogens for which the chemical identity
-    is unknown, in which case the group is assigned the hetID UNK."""
+    is unknown, in which case the group is assigned the hetID UNK.
+    """
     _name = "HET   "
     _field_list = [
         ("hetID", 8, 10, "string", "rjust"),
@@ -381,7 +400,8 @@ class HET(PDBRecord):
     
 class HETNAM(PDBRecord):
     """This record gives the chemical name of the compound with the
-    given hetID."""
+    given hetID.
+    """
     _name = "HETNAM"
     _field_list = [
         ("continuation", 9, 10, "string", "ljust"),
@@ -391,7 +411,8 @@ class HETNAM(PDBRecord):
 class HETSYN(PDBRecord):
     """This record provides synonyms, if any, for the compound in the
     corresponding (i.e., same hetID) HETNAM record. This is to allow
-    greater flexibility in searching for HET groups."""
+    greater flexibility in searching for HET groups.
+    """
     _name = "HETSYN"
     _field_list = [
         ("continuation", 9, 10, "string", "ljust"),
@@ -401,7 +422,8 @@ class HETSYN(PDBRecord):
 class FORMUL(PDBRecord):
     """The FORMUL record presents the chemical formula and charge of a
     non-standard group. (The formulas for the standard residues are given
-    in Appendix 5.)"""
+    in Appendix 5.)
+    """
     _name = "FORMUL"
     _field_list = [
         ("compNum", 9, 10, "integer", "rjust"),
@@ -414,7 +436,8 @@ class FORMUL(PDBRecord):
 class HELIX(PDBRecord):
     """HELIX records are used to identify the position of helices in the
     molecule. Helices are both named and numbered. The residues where the
-    helix begins and ends are noted, as well as the total length."""
+    helix begins and ends are noted, as well as the total length.
+    """
     _name = "HELIX "
     _field_list = [
         ("serNum", 8, 10, "integer", "rjust"),
@@ -434,7 +457,8 @@ class HELIX(PDBRecord):
 class SHEET(PDBRecord):
     """SHEET records are used to identify the position of sheets in the
     molecule. Sheets are both named and numbered. The residues where the
-    sheet begins and ends are noted."""
+    sheet begins and ends are noted.
+    """
     _name = "SHEET "
     _field_list = [
         ("strand", 8, 10, "integer", "rjust"),
@@ -481,7 +505,8 @@ class TURN(PDBRecord):
 class SSBOND(PDBRecord):
     """The SSBOND record identifies each disulfide bond in protein and
     polypeptide structures by identifying the two residues involved in the
-    bond."""
+    bond.
+    """
     _name = "SSBOND"
     _field_list = [
         ("serNum", 8, 10, "integer", "rjust"),
@@ -500,7 +525,8 @@ class LINK(PDBRecord):
     """The LINK records specify connectivity between residues that is not
     implied by the primary structure. Connectivity is expressed in terms of
     the atom names. This record supplements information given in CONECT
-    records and is provided here for convenience in searching."""
+    records and is provided here for convenience in searching.
+    """
     _name = "LINK  "
     _field_list = [
         ("name1", 13, 16, "string", "rjust"),
@@ -519,7 +545,8 @@ class LINK(PDBRecord):
         ("sym2", 67, 72, "string", "rjust")]
 
 class HYDBND(PDBRecord):
-    """The HYDBND records specify hydrogen bonds in the entry."""
+    """The HYDBND records specify hydrogen bonds in the entry.
+    """
     _name = "HYDBND"
     _field_list = [
         ("name1", 13, 16, "string", "rjust"),
@@ -543,7 +570,8 @@ class HYDBND(PDBRecord):
         ("sym2", 67, 72, "string", "rjust")]
 
 class SLTBRG(PDBRecord):
-    """The SLTBRG records specify salt bridges in the entry."""
+    """The SLTBRG records specify salt bridges in the entry.
+    """
     _name = "SLTBRG"
     _field_list = [
         ("name1", 13, 16, "string", "rjust"),
@@ -564,7 +592,8 @@ class SLTBRG(PDBRecord):
 class CISPEP(PDBRecord):
     """CISPEP records specify the prolines and other peptides found to be
     in the cis conformation. This record replaces the use of footnote records
-    to list cis peptides."""
+    to list cis peptides.
+    """
     _name = "CISPEP"
     _field_list = [
         ("serial", 8, 10, "integer", "rjust"),
@@ -582,7 +611,8 @@ class CISPEP(PDBRecord):
 ## SECTION 7: Miscellanious Features Section
 class SITE(PDBRecord):
     """The SITE records supply the identification of groups comprising
-    important sites in the macromolecule."""
+    important sites in the macromolecule.
+    """
     _name = "SITE  "
     _field_list = [
         ("seqNum", 8, 10, "integer", "rjust"),
@@ -609,7 +639,8 @@ class SITE(PDBRecord):
 class CRYSTn(PDBRecord):
     """The CRYSTn (n=1,2,3) record presents the unit cell parameters, space
     group, and Z value. If the structure was not determined by crystallographic
-    means, CRYSTn simply defines a unit cube."""
+    means, CRYSTn simply defines a unit cube.
+    """
     _field_list = [
         ("a", 7, 15, "float.3", "rjust"),
         ("b", 16, 24, "float.3", "rjust"),
@@ -632,7 +663,8 @@ class CRYST3(CRYSTn):
 class ORIGXn(PDBRecord):
     """The ORIGXn (n = 1, 2, or 3) records present the transformation from
     the orthogonal coordinates contained in the entry to the submitted
-    coordinates."""
+    coordinates.
+    """
     _field_list = [
         ("o[n][1]", 11, 20, "float.6", "rjust"),
         ("o[n][2]", 21, 30, "float.6", "rjust"),
@@ -652,7 +684,8 @@ class SCALEn(PDBRecord):
     """The SCALEn (n = 1, 2, or 3) records present the transformation from
     the orthogonal coordinates as contained in the entry to fractional
     crystallographic coordinates. Non-standard coordinate systems should
-    be explained in the remarks."""
+    be explained in the remarks.
+    """
     _field_list = [
         ("s[n][1]", 11, 20, "float.6", "rjust"),
         ("s[n][2]", 21, 30, "float.6", "rjust"),
@@ -842,7 +875,8 @@ class CONECT(PDBRecord):
     mandatory for HET groups (excluding water) and for other bonds not
     specified in the standard residue connectivity table which involve
     atoms in standard residues (see Appendix 4 for the list of standard
-    residues). These records are generated by the PDB."""
+    residues). These records are generated by the PDB.
+    """
     _name = "CONECT"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust"),
@@ -861,7 +895,8 @@ class CONECT(PDBRecord):
 class MASTER(PDBRecord):
     """The MASTER record is a control record for bookkeeping. It lists the
     number of lines in the coordinate entry or file for selected record
-    types."""
+    types.
+    """
     _name = "MASTER"
     _field_list = [
         ("numRemark", 11, 15, "integer", "rjust"),
@@ -878,7 +913,8 @@ class MASTER(PDBRecord):
         ("numSeq", 66, 70, "integer", "rjust")]
 
 class END(PDBRecord):
-    """The END record marks the end of the PDB file."""
+    """The END record marks the end of the PDB file.
+    """
     _name = "END   "
     _field_list = []
 
@@ -1100,12 +1136,14 @@ class PDBRecordList:
 
 class PDBFile:
     """Class for managing a PDB file.  Load, save, edit, and create PDB
-    files with this class."""
+    files with this class.
+    """
     def __init__(self):
         self.pdb_list = PDBRecordList()
 
     def load_file(self, fil):
-        """Loads a PDB file from File object fil."""
+        """Loads a PDB file from File object fil.
+        """
         fil = OpenFile(fil, "r")
         for ln in fil.readlines():
             ## find the record data element for the given line
@@ -1127,7 +1165,8 @@ class PDBFile:
         self.pdb_list.sort()
 
     def save_file(self, fil):
-        """Saves the PDBFile object in PDB file format to File object fil."""
+        """Saves the PDBFile object in PDB file format to File object fil.
+        """
         fil = OpenFile(fil, "w")
         for pdb_record in self.pdb_list:
             fil.write(str(pdb_record) + "\n")
@@ -1139,7 +1178,8 @@ class PDBFile:
           (<column-name>, <column-value>)
         For example:
           select_record_list(('_name','ATOM  '),('resName', 'LYS'))
-        returns a list of ATOM records which are part of a LYS residue."""
+        returns a list of ATOM records which are part of a LYS residue.
+        """
         ## clever optimization trickies
         (attr, val) = nvlist[0]
 
@@ -1166,7 +1206,8 @@ class PDBFile:
         return rec_list
 
     def get_chain_list(self):
-        """Returns a list of all the chain ids in the PDB file."""
+        """Returns a list of all the chain ids in the PDB file.
+        """
         chain_list = []
         for pdb_record in self.pdb_list:
             try:

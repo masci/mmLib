@@ -5,6 +5,7 @@
 """Classes for building a mmLib.Structure representation of biological
 macromolecules.
 """
+from mmTypes import *
 import PDB
 import mmCIF
 from Library import Library
@@ -67,7 +68,8 @@ class StructureBuilder:
         ## XXX -- I presently do not support more than one NMR
         ##        style MODEL; this is first on the list for the
         ##        next version
-        if atm_map.has_key("model") and atm_map["model"] > 1:
+        if atm_map.has_key("model_num") and atm_map["model_num"] > 1:
+            debug("NMR-style multi-models not supported yet")
             return
         ## /XXX
 
@@ -85,20 +87,27 @@ class StructureBuilder:
 
         ## don't allow the same atom to be loaded twice
         if self.atom_cache.has_key(atm_id):
-            print "[DUPLICATE ATOM ERROR]",atm_id
+            debug("duplicate atom "+str(atm_id))
             return
 
         ## don't allow atoms with blank altLoc if one has a altLoc
         if alt_loc and self.atom_cache.has_key((name,"",fragment_id,chain_id)):
-            print "[ALTLOC LABELING ERROR]", (name,"",fragment_id,chain_id)
+            debug("altloc labeling error "+name+fragment_id+chain_id)
             return
 
         atm = self.atom_cache[atm_id] = \
               Atom(name = name, alt_loc = alt_loc, res_name = res_name,
                    fragment_id = fragment_id, chain_id = chain_id)
 
-        ## additional properties
-        atm.element = atm_map["element"]
+        ## extract element symbol from atom name if it isn't given
+        try:
+            atm.element = atm_map["element"]
+        except KeyError:
+            for c in atm.name:
+                if c in string.letters:
+                    atm.element = c
+                    break
+        
         atm.position = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
         atm.occupancy = atm_map["occupancy"]
         atm.temp_factor = atm_map["temp_factor"]
@@ -220,14 +229,15 @@ class StructureBuilder:
         except KeyError: pass  
 
     def load_unit_cell(self, ucell_map):
-        """Load the unit cell pararameters into the Structure.
+        """Called by the implementation of load_metadata to load the
+        unit cell pararameters for the structure.
         """
         self.structure.unit_cell = UnitCell(
             ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
             ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
 
     def load_site(self, site_id, site_list):
-        """Called by the implementation of parse_format to load information
+        """Called by the implementation of load_metadata to load information
         about one site in the structure.  Sites are groups of residues
         which are of special interest.  This usually means active sites
         of enzymes and such.
@@ -240,6 +250,12 @@ class StructureBuilder:
             except KeyError:
                 continue
             site.append(frag)
+
+    def load_bond(self, bond_map):
+        """Call by the implementation of load_metadata to load bond
+        information on the structure.
+        """
+        pass
 
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
@@ -265,6 +281,26 @@ class StructureBuilder:
         future versions.
         """
         pass
+
+
+def setmap(func, map, key, row, default, *cols):
+    for col in cols:
+        if row.has_key(col):
+            map[key] = func(row[col])
+            return True
+    if default != None:
+        map[key] = default
+        return True
+    return False
+
+def setmaps(map, key, row, default, *cols):
+    return setmap(str, map, key, row, default, *cols)
+
+def setmapi(map, key, row, default, *cols):
+    return setmap(int, map, key, row, default, *cols)
+
+def setmapf(map, key, row, default, *cols):
+    return setmap(float, map, key, row, default, *cols)
 
 
 class CopyStructureBuilder(StructureBuilder):
@@ -317,9 +353,10 @@ class PDBStructureBuilder(StructureBuilder):
                 try:
                     self.process_ATOM(atm_map, rec)
                 except:
-                    print "ERROR WITH ATOM RECORD:\n",rec
+                    debug("bad PDB.ATOM record: "+str(rec))
                 else:
-                    atm_map["model"] = model_num
+                    if model_num != None:
+                        atm_map["model_num"] = model_num
 
             elif isinstance(rec, PDB.SIGATM):
                 self.process_SIGATM(atm_map, rec)
@@ -328,7 +365,7 @@ class PDBStructureBuilder(StructureBuilder):
                 try:
                     self.process_ANISOU(atm_map, rec)
                 except:
-                    print "ERROR WITH ANISOU RECORD:\n",rec
+                    debug("bad PDB.ANISOU record: "+str(rec))
 
             elif isinstance(rec, PDB.SIGUIJ):
                 self.process_SIGUIJ(atm_map, rec)
@@ -364,35 +401,29 @@ class PDBStructureBuilder(StructureBuilder):
             self.load_unit_cell(ucell_map)
 
     def process_ATOM(self, atm_map, rec):
-        name = rec.get("name", "")
-        element = rec.get("element", "")
+        setmaps(atm_map, "name", rec, None, "name")
+        setmaps(atm_map, "element", rec, None, "element")
+        setmaps(atm_map, "alt_loc", rec, None, "altLoc")
+        setmaps(atm_map, "res_name", rec, None, "resName")
+        setmaps(atm_map, "chain_id", rec, None, "chain_id")
 
-        ## get the element symbol from the first letter in the atom name
-        if not self.structure.library.get_element(element):
-            for c in name:
-                if c in string.letters:
-                    element = c
-                    break
-
-        atm_map["name"] = name
-        atm_map["element"] = element
-        atm_map["alt_loc"] = rec.get("altLoc", "")
-        atm_map["res_name"] = rec.get("resName", "")
-        atm_map["fragment_id"] = str(rec.get("resSeq",""))+rec.get("iCode","")
-        atm_map["chain_id"] = rec.get("chainID", "")
-        atm_map["x"] = rec.get("x", 0.0)
-        atm_map["y"] = rec.get("y", 0.0)
-        atm_map["z"] = rec.get("z", 0.0)
-        atm_map["occupancy"] = rec.get("occupancy", 0.0)
-        atm_map["temp_factor"] = rec.get("tempFactor", 0.0)
-        atm_map["charge"] = rec.get("charge", 0.0)
+        fragment_id = self.get_fragment_id(rec)
+        if fragment_id != None:
+            atm_map["fragment_id"] = fragment_id
+            
+        setmapf(atm_map, "x", rec, None, "x")
+        setmapf(atm_map, "x", rec, None, "x")
+        setmapf(atm_map, "x", rec, None, "x")
+        setmapf(atm_map, "occupancy", rec, None, "occupancy")
+        setmapf(atm_map, "temp_factor", rec, None, "tempFactor")
+        setmapf(atm_map, "charge", rec, None, "charge")
 
     def process_SIGATM(self, atm_map, rec):
-        atm_map["sig_x"] = rec.get("sigX", 0.0)
-        atm_map["sig_y"] = rec.get("sigY", 0.0)
-        atm_map["sig_z"] = rec.get("sigZ", 0.0)
-        atm_map["sig_occupancy"] = rec.get("sigOccupancy", 0.0)
-        atm_map["sig_temp_factor"] = rec.get("sigTempFactor", 0.0)
+        setmapf(atm_map, "sig_x", rec, None, "sigX")
+        setmapf(atm_map, "sig_x", rec, None, "sigY")
+        setmapf(atm_map, "sig_x", rec, None, "sigZ")
+        setmapf(atm_map, "sig_occupancy", rec, None, "sigOccupancy")
+        setmapf(atm_map, "sig_temp_factor", rec, None, "sigTempFactor")
 
     def process_ANISOU(self, atm_map, rec):
         atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
@@ -425,37 +456,41 @@ class PDBStructureBuilder(StructureBuilder):
         if not site_map.has_key(site_id):
             site_map[site_id] = []
 
-        try:
-            chain_id = rec["chainID1"]
-            frag_id = str(rec["seq1"])+rec.get("icode1","")
-        except AttributeError:
-            return
-        else:
-            site_map[site_id].append((chain_id, frag_id))
+        for i in range(1, 5):
+            chain_key = "chainID%d" % (i)
+            frag_key = "seq%d" % (i)
+            icode_key = "icode%d" % (i)
 
-        try:
-            chain_id = rec["chainID2"]
-            frag_id = str(rec["seq2"])+rec.get("icode2","")
-        except AttributeError:
-            return
-        else:
-            site_map[site_id].append((chain_id, frag_id))
+            if not rec.has_key(chain_key) or \
+               not rec.has_key(frag_key) or \
+               not rec.has_key(icode_key):
+                break
+            
+            site_map[site_id].append(
+                (rec[chain_key],
+                 self.get_fragment_id(rec, frag_key, icode_key)))
 
-        try:
-            chain_id = rec["chainID3"]
-            frag_id = str(rec["seq3"])+rec.get("icode3","")
-        except AttributeError:
-            return
-        else:
-            site_map[site_id].append((chain_id, frag_id))
+    def process_SSBOND(self, bond_map, rec):
+        bond_map["type"] = "disulfide"
+        bond_map["chain_id1"] = rec["chainID1"]
+        bond_map["fragment_id1"] = self.get_fragment_id(rec,"seqNum1","iCode1")
+        bond_map["chain_id2"] = rec["chainID2"]
+        bond_map["fragment_id2"] = self.get_fragment_id(rec,"seqNum2","iCode2")
+        setmaps(bond_map, "symop1", rec, None, "sym1")
+        setmaps(bond_map, "symop2", rec, None, "sym2")
 
-        try:
-            chain_id = rec["chainID4"]
-            frag_id = str(rec["seq4"])+rec.get("icode4","")
-        except AttributeError:
-            return
-        else:
-            site_map[site_id].append((chain_id, frag_id))
+    def process_LINK(self, bond_map, rec):
+        pass
+
+    def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
+        fragment_id = None
+        
+        if rec.has_key(res_seq):
+            fragment_id = str(rec[res_seq])
+            if rec.has_key(icode):
+                fragment_id += rec[icode]
+                
+        return fragment_id
 
 
 class mmCIFStructureBuilder(StructureBuilder):
@@ -469,20 +504,6 @@ class mmCIFStructureBuilder(StructureBuilder):
         self.cif_data = self.cif_file[0]
 
     def read_atoms(self):
-        def setmap(func, map, key, row, default, *cols):
-            for col in cols:
-                if row.has_key(col):
-                    map[key] = func(row[col])
-                    return
-            if default != None:
-                map[key] = default
-        def setmaps(map, key, row, default, *cols):
-            setmap(str, map, key, row, default, *cols)
-        def setmapi(map, key, row, default, *cols):
-            setmap(int, map, key, row, default, *cols)
-        def setmapf(map, key, row, default, *cols):
-            setmap(float, map, key, row, default, *cols)
-
         for atom_site in self.cif_data["atom_site"]:
             atm_map = {}
             setmaps(atm_map, "name", atom_site, None, "label_atom_id")
@@ -514,6 +535,8 @@ class mmCIFStructureBuilder(StructureBuilder):
                     setmapf(atm_map, "U[1][3]", atom_site, None, "U[1][3]")
                     setmapf(atm_map, "U[2][3]", atom_site, None, "U[2][3]")
 
+            setmapi(atm_map, "model_num", atom_site, None,"pdbx_PDB_model_num")
+
             self.load_atom(atm_map)
 
     def read_metadata(self):
@@ -525,44 +548,64 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         ## PDB ENTRY ID
         try: entry_id = self.cif_data["entry"][0]["id"]
-        except KeyError: print "missing entry.id"
+        except KeyError: debug("missing entry.id")
 
         ## INFO/EXPERIMENTAL DATA
         info_map = {"id" : entry_id}
 
-        try: info_map["date"] = \
-             self.cif_data["database_pdb_rev"][0]["date_original"]
-        except KeyError: print "missing database_pdb_rev.date_original"
+        try:
+            info_map["date"] = \
+                self.cif_data["database_pdb_rev"][0]["date_original"]
+        except KeyError:
+            debug("missing database_pdb_rev.date_original")
 
-        try: info_map["keywords"] = self.cif_data["struct_keywords"][0]["text"]
-        except KeyError: print "missing struct_keywords.text"
+        try:
+            info_map["keywords"] = self.cif_data["struct_keywords"][0]["text"]
+        except KeyError:
+            debug("missing struct_keywords.text")
 
-        try: info_map["pdbx_keywords"] = \
-             self.cif_data["struct_keywords"][0]["pdbx_keywords"]
-        except KeyError: print "missing struct_keywords.pdbx_keywords"
+        try:
+            info_map["pdbx_keywords"] = \
+                self.cif_data["struct_keywords"][0]["pdbx_keywords"]
+        except KeyError:
+            debug("missing struct_keywords.pdbx_keywords")
 
-        try: info_map["title"] = self.cif_data["struct"][0]["title"]
-        except KeyError: print "missing struct.title"
+        try:
+            info_map["title"] = self.cif_data["struct"][0]["title"]
+        except KeyError:
+            debug("missing struct.title")
 
-        try: info_map["R_fact"] = \
-            float(self.cif_data["refine"][0]["ls_R_factor_R_work"])
-        except KeyError:   print "missing refine.ls_R_factor_R_work"
-        except ValueError: print "missing refine.ls_R_factor_R_work"
+        try:
+            info_map["R_fact"] = \
+                float(self.cif_data["refine"][0]["ls_R_factor_R_work"])
+        except KeyError:
+            debug("missing refine.ls_R_factor_R_work")
+        except ValueError:
+            debug("missing refine.ls_R_factor_R_work")
         
-        try: info_map["free_R_fact"] = \
-             float(self.cif_data["refine"][0]["ls_R_factor_R_free"])
-        except KeyError:   print "missing refine.ls_R_factor_R_free"
-        except ValueError: print "missing refine.ls_R_factor_R_free"
+        try:
+            info_map["free_R_fact"] = \
+                float(self.cif_data["refine"][0]["ls_R_factor_R_free"])
+        except KeyError:
+            debug("missing refine.ls_R_factor_R_free")
+        except ValueError:
+            debug("missing refine.ls_R_factor_R_free")
 
-        try: info_map["res_high"] = \
-             float(self.cif_data["refine"][0]["ls_d_res_high"])
-        except KeyError:   print "missing refine.ls_d_res_high"
-        except ValueError: print "missing refine.ls_d_res_high"
+        try:
+            info_map["res_high"] = \
+                float(self.cif_data["refine"][0]["ls_d_res_high"])
+        except KeyError:
+            debug("missing refine.ls_d_res_high")
+        except ValueError:
+            debug("missing refine.ls_d_res_high")
 
-        try: info_map["res_low"] = \
-             float(self.cif_data["refine"][0]["ls_d_res_low"])
-        except KeyError:   print "missing refine.ls_d_res_low"
-        except ValueError: print "missing refine.ls_d_res_low"
+        try:
+            info_map["res_low"] = \
+                float(self.cif_data["refine"][0]["ls_d_res_low"])
+        except KeyError:
+            debug("missing refine.ls_d_res_low")
+        except ValueError:
+            debug("missing refine.ls_d_res_low")
         
         self.load_info(info_map)
 

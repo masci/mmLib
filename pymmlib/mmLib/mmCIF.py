@@ -45,6 +45,7 @@ class mmCIFRow(dict):
 class mmCIFTable(object):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
     are stored as mmCIFRow classes.
+    JMP: Rewrite to inherit from list.
     """
     def __init__(self, name, columns = None):
         self.name       = name
@@ -137,7 +138,9 @@ class mmCIFData(object):
     mmCIF files are represented differently here than their file format
     would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
     the files are represented here with their sections as "Tables" and
-    their subsections as "Columns".  The data is stored in "Rows"."""
+    their subsections as "Columns".  The data is stored in "Rows".
+    JMP: Rewrite to inherit from list.
+    """
     def __init__(self, name):
         self._name          = name
         self.__ctable_list  = []
@@ -176,7 +179,8 @@ class mmCIFData(object):
             return default
 
     def get_name(self):
-        """Returns the name given to the data section in the mmCIF file."""
+        """Returns the name given to the data section in the mmCIF file.
+        """
         return self._name
 
     def add_table(self, ctable):
@@ -188,7 +192,8 @@ class mmCIFData(object):
 
     def get_table(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
-        name is the section key in the mmCIF file."""
+        name is the section key in the mmCIF file.
+        """
         try:
             return self[name]
         except KeyError:
@@ -202,8 +207,10 @@ class mmCIFData(object):
             ctable.debug()
 
 
-class mmCIFFile:
-    """Class representing a mmCIF files."""
+class mmCIFFile(object):
+    """Class representing a mmCIF files.
+    JMP: Rewrite to inherit from list.
+    """
     def __init__(self):
         self.__cdata_list = []
 
@@ -366,9 +373,9 @@ class mmCIFElementFile:
                 raise EOFError, "mmCIFElementFile"
 
             if state == "read data":
-                if line[0] == '#':
+                if line.startswith("#"):
                     continue
-                if line[0] == ';':
+                if line.startswith(";"):
                     state = "read ;string"
                     temp = line[1:]
                     continue
@@ -379,7 +386,7 @@ class mmCIFElementFile:
                 continue
 
             if state == "read ;string":
-                if line[0] == ';':
+                if line.startswith(";"):
                     state = "read data"
                     self.elements.append((temp.rstrip(), "string"))
                     break
@@ -398,7 +405,6 @@ class mmCIFElementFile:
 
     def replace_element(self, element):
         self.elements.insert(0, element)
-
 
 
 class mmCIFFileParser:
@@ -423,7 +429,7 @@ class mmCIFFileParser:
                 self.done = 1
                 break
 
-            if s[:5] == 'data_':
+            if s.startswith("data_"):
                 data = mmCIFData(s[5:])
                 data_list.append(data)
                 self.read_data(data)
@@ -440,13 +446,13 @@ class mmCIFFileParser:
                 self.done = 1
                 break
 
-            if s[0] == '_':
+            if s.startswith("_"):
                 self.read_single(data, s)
                 
-            elif s[:5] == 'loop_':
+            elif s.startswith("loop_"):
                 self.read_loop(data, s)
 
-            elif s[:5] == 'data_':
+            elif s.startswith("data_"):
                 self.cife.replace_element((s,t))
                 break
 
@@ -474,7 +480,7 @@ class mmCIFFileParser:
         except EOFError:
             self.syntax_error('premature end of file')
 
-        if t == "token" and s[0] == '_':
+        if s.startswith("_") and t == "token":
             self.syntax_error('expected data got section=%s' % (s))
 
         row[cname] = s
@@ -491,7 +497,7 @@ class mmCIFFileParser:
                 self.syntax_error('premature end of file')
 
             ## no more column names, this is data
-            if t == "string" or s[0] != '_':
+            if t == "string" or not s.startswith("_"):
                 self.cife.replace_element((s,t))
                 break
 
@@ -519,7 +525,7 @@ class mmCIFFileParser:
                     self.syntax_error('loop values incomplete')
 
                 ## freak out
-                if t == "token" and s[0] == '_':
+                if s.startswith("_") and t == "token":
                     self.syntax_error('expected data got section=%s' % (s))
 
                 row[cname] = s
@@ -532,17 +538,16 @@ class mmCIFFileParser:
 
             ## if the next element is a mmCIF control token, then break
             if t == "token":
-                if s[0]  == '_':     break
-                if s[:5] == 'data_': break
-                if s[:5] == 'loop_': break
-                if s[:5] == 'save_': break
-
+                if s.startswith("_") or s.startswith("data_") or \
+                   s.startswith("loop_") or s.startswith("save_"):
+                   break
 
 
 class mmCIFDictionaryParser(mmCIFFileParser):
     """Subclassed from mmCIFFileParser and extended to support the additional
     syntax encountered in the dictionary files.  I wrote this quite a while
-    ago, and now that I look at it again, I suspect it's not complete."""
+    ago, and now that I look at it again, I suspect it's not complete.
+    """
     def parse_file(self, fil):
         self.done = 0
         self.cife = mmCIFElementFile(fil)
@@ -551,7 +556,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
         except EOFError:
             return None
 
-        if s[:5] != 'data_':
+        if not s.startswith("data_"):
             self.syntax_error('unexpected element=%s' % (s))
             
         return self.read_save_list(dict)
@@ -566,17 +571,17 @@ class mmCIFDictionaryParser(mmCIFFileParser):
                 self.done = 1
                 break
 
-            if s[0] == '_':
+            if s.startswith("_"):
                 self.read_single(data, s)
 
-            elif s[:5] == 'save_':
+            elif s.startswith("save_"):
                 save = self.read_save(mmCIFData(), s)
                 save_list.append(save)
                 
-            elif s[:5] == 'loop_':
+            elif s.startswith("loop_"):
                 self.read_loop(s)
 
-            elif s[:5] == 'data_':
+            elif s.startswith("data_"):
                 self.syntax_error('two data_ subsections in dictionary')
 
             else:
@@ -585,7 +590,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
         return save_list
 
     def read_save(self, data, s):
-        if s[:6] == 'save__':
+        if s.startswith("save__"):
             name = s[6:]
         else:
             name = s[5:]
@@ -612,17 +617,17 @@ class mmCIFDictionaryParser(mmCIFFileParser):
                 self.done = 1
                 break
 
-            if s[0] == '_':
+            if s.startswith("_"):
                 self.read_single(data, s)
                 
-            elif s[:5] == 'loop_':
+            elif s.startswith("loop_"):
                 self.read_loop(data, s)
 
-            elif s[:5] == 'data_':
+            elif s.startswith("data_"):
                 self.syntax_error('two data_ subsections in dictionary')
                 break
 
-            elif s[:5] == 'save_':
+            elif s.startswith("save_"):
                 self.cife.replace_element((s,t))
                 break
             
@@ -632,8 +637,8 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 
 
 class mmCIFFileWriter:
-    """Writes out a mmCIF file using the data in the mmCIFData list."""  
-
+    """Writes out a mmCIF file using the data in the mmCIFData list.
+    """  
     def write_file(self, fil, cif_data_list):
         self.fil = fil
 

@@ -2,93 +2,24 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """Specialized types used by mmLib.  In some cases the types are
 custom, and the code for those is here.  Inother cases the types are
-imported from other Python packages."""
-
-from   __future__           import generators
+imported from other Python packages.
+"""
+from __future__ import generators
+import sys
 import string
-
-## we need weak references
 import weakref
+from types import *
+from Scientific.Geometry  import Vector
+from Numeric import *
+from LinearAlgebra import *
 
-## get all the Python types
-from   types                import *
-
-## use Vector classes from the Scientific Python package
-from   Scientific.Geometry  import Vector
-
-## use Numeric Python (Numeric, LinearAlgebra) for array(matrix)
-from   Numeric              import *
-from   LinearAlgebra        import *
-
-
-class OrderedList(object):
-    """Implements a ordered Python list."""
-    def __init__(self):
-        self.list = []
-    def __len__(self):
-        return len(self.list)
-    def __getitem__(self, i):
-        assert type(i) == IntType
-        return self.list[i]
-    def __delitem__(self, i):
-        assert type(i) == IntType
-        del self.list[i]
-    def __iter__(self):
-        for val in self.list: yield val
-    def __contains__(self, val):
-        return val in self.list
-    def count(self, val):
-        return self.list.count(val)
-    def index(self, val):
-        return self.list.index(val)
-    def remove(self, val):
-        self.list.remove(val)
-    def add(self, val):
-        self.list.append(val)
-
-class OrderedTupleList(object):
-    """Implements a ordered Python list using tuples for list elements.  The
-    list is sorted according to Python tuple sorting rules, and the last
-    element of the tuple is always the list data.  The add method must be
-    overridden to add the proper sorting tuple."""
-    def __init__(self):
-        self.list = []
-    def __len__(self):
-        return len(self.list)
-    def __getitem__(self, i):
-        assert type(i) == IntType
-        return self.list[i][-1]
-    def __delitem__(self, i):
-        assert type(i) == IntType
-        del self.list[i]
-    def __iter__(self):
-        for item in self.list: yield item[-1]
-    def __contains__(self, val):
-        for item in self.list:
-            if val == item[-1]: return True
-        return False
-    def count(self, val):
-        cnt = 0
-        for item in self.list:
-            if val == item[-1]: cnt += 1
-        return cnt
-    def index(self, val):
-        for item in self.list:
-            if val == item[-1]: return self.list.index(item)
-        raise ValueError, "list.index(x): x not in list"
-    def remove(self, val):
-        if item in self.list:
-            if val == item[-1]: self.list.remove(item)
-        raise ValueError, "list.index(x): x not in list"
-    def add(self, val):
-        self.list.append((val,))
 
 class WeakrefList:
     """Implements a Python list, but it keeps weak references to the objects
-    it contains.  Otherwise, it's exactly like the native list."""
+    it contains.  Otherwise, it's exactly like the native list.
+    """
     def __init__(self):
         self.__list = []
     def __len__(self):
@@ -122,10 +53,11 @@ class WeakrefList:
             return cmp(a(), b())
         self.__list.sort(wcmp)
 
-## Fragment IDs are tricky things
+
 class FragmentID(object):
     """A fragment ID class acts a lot like a string, but separates the
-    res_seq and icode internally."""
+    res_seq and icode internally.
+    """
     def __init__(self, frag_id):
         try:
             self.res_seq  = int(frag_id)
@@ -154,7 +86,16 @@ class FragmentID(object):
     def __ge__(self, other):
         assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
-    
+
+
+def debug(x):
+    """If the -w option is used in any mmLib program, then print all the
+    debug messages.
+    """
+    if "-w" in sys.argv:
+        print "DBG: ",x
+
+
 ### <TESTING>
 def wrl_test():
     class C:

@@ -1145,11 +1145,14 @@ class AlphaHelix(FragmentList):
     """List of Fragments within a structure which are part of a alpha
     helix.
     """
+    pass
+
 
 class BetaSheet(FragmentList):
     """List of Fragments within a structure which are part of a beta
     sheet.
     """
+    pass
 
 
 class AtomList(list):

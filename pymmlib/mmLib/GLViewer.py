@@ -2,12 +2,13 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
+"""OpenGL rendering classes.
+"""
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
-
 from mmTypes import *
+from Structure import *
 
 
 class GLDrawList:
@@ -27,8 +28,10 @@ class GLDrawList:
 
         print "gl_compile_list name = ", self.name
 
-        if execute: glNewList(self.name, GL_COMPILE_AND_EXECUTE)
-        else:       glNewList(self.name, GL_COMPILE)
+        if execute:
+            glNewList(self.name, GL_COMPILE_AND_EXECUTE)
+        else:
+            glNewList(self.name, GL_COMPILE)
         
         self.gl_draw()
         glEndList()
@@ -40,7 +43,6 @@ class GLDrawList:
 
     def gl_call_list(self):
         #print "gl_call_list = ",self.name
-
         glPushMatrix()
 
         apply(glTranslatef, self.origin)
@@ -133,7 +135,9 @@ class GLUnitCellDrawList(GLDrawList):
 	glMaterial(GL_FRONT, GL_SHININESS, 50.0 * brightness)
 
 
-class GLAtomDrawList(GLDrawList, list):
+class GLAtomDrawList(GLDrawList, AtomList):
+    """OpenGL renderer for a list of atoms.
+    """
     def __init__(self):
         GLDrawList.__init__(self)
         list.__init__(self)
@@ -199,20 +203,16 @@ class GLAtomDrawList(GLDrawList, list):
         glutSolidSphere(0.1, 12, 12)
 
         ## U axes
-        m = array([[ atm.U[0], atm.U[3], atm.U[4] ],
-                   [ atm.U[3], atm.U[1], atm.U[5] ],
-                   [ atm.U[4], atm.U[5], atm.U[2] ]])
-        
-        (eval, evec) = eigenvectors(m)
-
-        if self.draw_u:
-            self.set_material(1.0, 1.0, 1.0, 1.0)
-            for i in range(3):
-                glLineWidth(1.0)
-                glBegin(GL_LINES)
-                apply(glVertex3f,  evec[i])
-                apply(glVertex3f, -evec[i])
-                glEnd()
+        if atm.U:
+            (eval, evec) = eigenvectors(atm.U)
+            if self.draw_u:
+                self.set_material(1.0, 1.0, 1.0, 1.0)
+                for i in range(3):
+                    glLineWidth(1.0)
+                    glBegin(GL_LINES)
+                    apply(glVertex3f,  evec[i])
+                    apply(glVertex3f, -evec[i])
+                    glEnd()
 
         glPopMatrix()
         
@@ -250,8 +250,18 @@ class GLAtomDrawList(GLDrawList, list):
         
 
 class GLViewer(list):
-    """Inherits from Python's list object.  To draw """
-    
+    """This class renders a list of GLDrawList (or subclasses of) onto
+    the given glcontext and gldrawable objects.  The glcontext and gldrawable
+    must be created by the underling GUI toolkit, or perhaps the GLUT
+    libraries.  This class is completely platform and tookit independent
+    once it is passed the glcontext and gldrawable.  The design of this
+    class and the associated GLDrawList classes incorporates some basic
+    OpenGL drawing optimizations.  The GLDrawList objects are drawn and
+    compiled into OpenGL draw lists, and have their own
+    transformation/rotation operators WRT the GLViewer origin, allowing
+    each GLDrawList to be redrawn very quickly as long as it moves as a
+    rigid body.
+    """
     def __init__(self, glcontext, gldrawable):
         list.__init__(self)
         
@@ -268,14 +278,20 @@ class GLViewer(list):
         self.rotz = 0.0
 
     def append(self, draw_list):
+        """Append a GLDrawList.
+        """
         assert isinstance(draw_list, GLDrawList)
         list.append(self, draw_list)
 
     def remove(self, draw_list):
+        """Remove a GLDrawList.
+        """
         assert isinstance(draw_list, GLDrawList)
         list.remove(self, draw_list)
 
     def gl_init(self):
+        """Called once to initalize the GL scene before drawing.
+        """
         if not self.gldrawable.gl_begin(self.glcontext):
             return
 
@@ -295,6 +311,9 @@ class GLViewer(list):
         self.gldrawable.gl_end()
     
     def gl_resize(self, width, height):
+        """Called to set the size of the OpenGL window this class is
+        drawing on.
+        """
 	if not self.gldrawable.gl_begin(self.glcontext):
             return
 	
@@ -312,9 +331,12 @@ class GLViewer(list):
 	glMatrixMode(GL_MODELVIEW)
 	self.gldrawable.gl_end()
 
-    def gl_drawLists(self):
-        #print "begin"
-        
+    def gl_draw_lists(self):
+        """Draw all GLDrawList objects onto the given glcontext/gldrawable.
+        If the GLDrawList objects are not yet compiled into OpenGL draw
+        lists, they will be compiled while they are drawn, since this is
+        a useful optimization.
+        """
 	if not self.gldrawable.gl_begin(self.glcontext):
             return
 
@@ -327,15 +349,15 @@ class GLViewer(list):
 	glRotatef(self.roty, 0.0, 1.0, 0.0)
         glRotatef(self.rotz, 0.0, 0.0, 1.0)
 
-        #glutSolidSphere(3.0, 12, 12)
-
         for draw_list in self:
-            if draw_list.name == None: draw_list.gl_compile_list(execute = 1)
-            else:                      draw_list.gl_call_list()
+            if draw_list.name == None:
+                draw_list.gl_compile_list(execute = 1)
+            else:
+                draw_list.gl_call_list()
             
-	if self.gldrawable.is_double_buffered(): self.gldrawable.swap_buffers()
-	else:                                    glFlush()
+	if self.gldrawable.is_double_buffered():
+            self.gldrawable.swap_buffers()
+	else:
+            glFlush()
 
         self.gldrawable.gl_end()
-
-        #print "end"
