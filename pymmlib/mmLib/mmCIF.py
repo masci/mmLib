@@ -786,6 +786,8 @@ class mmCIFFileWriter:
                 self.writeln()
 
 
+
+
                 
 ##
 ## <testing>

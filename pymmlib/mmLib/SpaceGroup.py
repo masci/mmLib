@@ -8,7 +8,7 @@ from mmTypes import *
 
 
 class SymmetryOperator:
-
+    ## rotation matricies
     mat_i    = identity(3)
     mat_inv  = -1.0 * identity(3)
     mat_2z   = array([[-1.0, 0.0, 0.0], [0.0,-1.0, 0.0], [0.0, 0.0, 1.0]])
@@ -18,7 +18,7 @@ class SymmetryOperator:
     mat_2q   = array([[0.0,-1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0,-1.0]])
     mat_2qq  = array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0,-1.0]])
     mat_3abc = array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-
+    ## translation vectors
     vec_0 = array([0.0, 0.0, 0.0])
     vec_a = array([0.5, 0.0, 0.0])
     vec_b = array([0.0, 0.5, 0.0])
@@ -38,7 +38,6 @@ class SymmetryOperator:
     vec_H = array([0.666667, 0.333333, 0.0])
     vec_F1= array([0.0, 0.5, 0.5])
     vec_F2= array([0.5, 0.0, 0.5])
-
     def __init__(self, symop_desc):
         (symX, symY, symZ) = symop_desc.split(",")
 
@@ -59,7 +58,10 @@ class SymmetryOperator:
             rot = ""
             for t in ["1/2", "1/4", "1/3", "2/3"]:
                 if x.find(t) > -1:
-                    tr = 
+                    tr = t
+                    x.replace(t, "")
+                    break
+            
 
 
 class SpaceGroup:

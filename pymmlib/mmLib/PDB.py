@@ -1221,58 +1221,140 @@ class PDBFile:
 
 
 class StructurePDBFileBuilder:
-    def __init__(self, structure):
-        self.structure = structure
-        self.pdb_file  = PDBFile()
+    """Builds a PDBFile object from a Structure object.
+    """
+    def __init__(self, struct):
+        self.struct = struct
+        self.pdb_file = PDBFile()
 
-        for atm in self.structure.iter_atoms():
-            for alt_atm in atm.iter_alt_loc():
-                self.__add_atom(alt_atm)
+        self.atom_serial_num = 1
+        self.atom_serial_map = {}
 
-        self.pdb_file.pdb_list.sort()
+        self.add_header_records()
+        self.add_atom_records()
 
-    def __add_atom(self, atm):
-        atom_rec             = ATOM()
+    def new_atom_serial(self, atm):
+        """Gets the next available atom serial number for the given atom
+        instance, and stores a map from atm->atom_serial_num for use
+        when creating PDB records which require serial number identification
+        of the atoms.
+        """
+        try:
+            return self.atom_serial_map[atm]
+        except KeyError:
+            pass
+        atom_serial_num = self.atom_serial_num
+        self.atom_serial_num += 1
+        self.atom_serial_map[atm] = atom_serial_num
+        return atom_serial_num
 
-        fid                  = FragmentID(atm.fragment_id)
+    def add_header_records(self):
+        pass
 
-        atom_rec.chainID     = atm.chain_id
-        atom_rec.resName     = atm.res_name
-        atom_rec.resSeq      = fid.res_seq
-        atom_rec.iCode       = fid.icode
-        atom_rec.name        = atm.name
-        atom_rec.element     = atm.element
-        atom_rec.altLoc      = atm.alt_loc
-        atom_rec.x           = atm.position[0]
-        atom_rec.y           = atm.position[1]
-        atom_rec.z           = atm.position[2]
-        atom_rec.occupancy   = atm.occupancy
-        atom_rec.tempFactor  = atm.temp_factor
-        atom_rec.charge      = atm.charge
+    def add_atom_records(self):
+        rec_list = []
 
-        self.pdb_file.pdb_list.add(atom_rec)
+        ## atom records for standard groups
+        for chain in self.struct.iter_chains():
+            res = None
+            for res in chain.iter_standard_residues():
+                for atm in res.iter_atoms():
+                    for alt_atm in atm.iter_alt_loc():
+                        rec_list += self.make_atom_records("ATOM", alt_atm)
+
+            ## chain termination record
+            if res:
+                ter_rec = TER()
+                rec_list.append(ter_rec)
+                fid = FragmentID(res.fragment_id)
+                ter_rec["serial"]  = self.new_atom_serial(res)
+                ter_rec["resName"] = res.res_name
+                ter_rec["chainID"] = res.chain_id
+                ter_rec["resSeq"]  = fid.res_seq
+                ter_rec["iCode"]   = fid.icode
+
+        ## hetatm records for non-standard groups
+        for chain in self.struct.iter_chains():
+
+            for frag in chain.iter_non_standard_residues():
+                for atm in frag.iter_atoms():
+                    for alt_atm in atm.iter_alt_loc():
+                        rec_list += self.make_atom_records("HETATM", alt_atm)
+
+        for rec in rec_list:
+            self.pdb_file.pdb_list.add(rec)
+
+    def make_atom_records(self, rec_type, atm):
+        ar_list = []
+
+        if rec_type == "ATOM":
+            atom_rec = ATOM()
+        elif rec_type == "HETATM":
+            atom_rec = HETATM()
+
+        ar_list.append(atom_rec)
+        serial = self.new_atom_serial(atm)
+        fid = FragmentID(atm.fragment_id)
+
+        atom_rec["serial"]      = serial
+        atom_rec["chainID"]     = atm.chain_id
+        atom_rec["resName"]     = atm.res_name
+        atom_rec["resSeq"]      = fid.res_seq
+        atom_rec["iCode"]       = fid.icode
+        atom_rec["name"]        = atm.name
+        atom_rec["element"]     = atm.element
+        atom_rec["altLoc"]      = atm.alt_loc
+        atom_rec["x"]           = atm.position[0]
+        atom_rec["y"]           = atm.position[1]
+        atom_rec["z"]           = atm.position[2]
+        atom_rec["occupancy"]   = atm.occupancy
+        atom_rec["tempFactor"]  = atm.temp_factor
+        atom_rec["charge"]      = atm.charge
+
+        def atom_common(arec1, arec2):
+            arec2["serial"]  = arec1["serial"]
+            arec2["chainID"] = arec1["chainID"]
+            arec2["resName"] = arec1["resName"]
+            arec2["resSeq"]  = arec1["resSeq"]
+            arec2["iCode"]   = arec1["iCode"]
+            arec2["name"]    = arec1["name"]
+            arec2["altLoc"]  = arec1["altLoc"]
+            arec2["element"] = arec1["element"]
+            arec2["charge"]  = arec1["charge"]
+
+        if atm.sig_position:
+            sigatm_rec = SIGATM()
+            ar_list.append(sigatm_rec)
+            atom_common(atom_rec, sigatm_rec)
+            sigatm_rec["sigX"] = atm.sig_position[0]
+            sigatm_rec["sigY"] = atm.sig_position[1]
+            sigatm_rec["sigZ"] = atm.sig_position[2]
+            sigatm_rec["sigOccupancy"] = atm.sig_temp_factor
+            sigatm_rec["sigTempFactor"] = atm.sig_occupancy
 
         if atm.U:
-            anisou_rec             = ANISOU()
-            anisou_rec.chainID     = atom_rec.chainID
-            anisou_rec.resName     = atom_rec.resName
-            anisou_rec.resSeq      = atom_rec.resSeq
-            anisou_rec.iCode       = atom_rec.iCode
-            anisou_rec.name        = atom_rec.name
-            anisou_rec.altLoc      = atom_rec.altLoc
-            anisou_rec.element     = atom_rec.element
-            anisou_rec.charge      = atom_rec.charge
+            anisou_rec = ANISOU()
+            ar_list.append(anisou_rec)
+            atom_common(atom_rec, anisou_rec)
+            anisou_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
+            anisou_rec["u[2][2]"] = int(atm.U[1,1] * 10000.0)
+            anisou_rec["u[3][3]"] = int(atm.U[2,2] * 10000.0)
+            anisou_rec["u[1][2]"] = int(atm.U[0,1] * 10000.0)
+            anisou_rec["u[1][3]"] = int(atm.U[0,2] * 10000.0)
+            anisou_rec["u[2][3]"] = int(atm.U[1,2] * 10000.0)
 
-            setattr(anisou_rec, "u[0][0]", int(atm.U[0] * 10000.0))
-            setattr(anisou_rec, "u[1][1]", int(atm.U[1] * 10000.0))
-            setattr(anisou_rec, "u[2][2]", int(atm.U[2] * 10000.0))
-            setattr(anisou_rec, "u[0][1]", int(atm.U[3] * 10000.0))
-            setattr(anisou_rec, "u[0][2]", int(atm.U[4] * 10000.0))
-            setattr(anisou_rec, "u[1][2]", int(atm.U[5] * 10000.0))
+        if atm.sig_U:
+            siguij_rec = siguij()
+            arlist.append(siguij_rec)
+            atom_common(atom_rec, siguij_rec)
+            siguij_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
+            siguij_rec["u[2][2]"] = int(atm.U[1,1] * 10000.0)
+            siguij_rec["u[3][3]"] = int(atm.U[2,2] * 10000.0)
+            siguij_rec["u[1][2]"] = int(atm.U[0,1] * 10000.0)
+            siguij_rec["u[1][3]"] = int(atm.U[0,2] * 10000.0)
+            siguij_rec["u[2][3]"] = int(atm.U[1,2] * 10000.0)
 
-            self.pdb_file.pdb_list.add(anisou_rec)
-
-        
+        return ar_list
 
 
 ### <testing>

@@ -340,6 +340,25 @@ class Chain(object):
             if isinstance(frag, NucleicAcidResidue):
                 yield frag
 
+    def iter_standard_residues(self):
+        """Iterates over standard residues in the chain, as defined by the
+        PDB.  Standard residues are amino and nucleic acid residues.
+        """
+        for frag in self.iter_fragments():
+            if isinstance(frag, AminoAcidResidue) or \
+               isinstance(frag, NucleicAcidResidue):
+                yield frag
+
+    def iter_non_standard_residues(self):
+        """Iterates over non-standard residues in the chain, as defined
+        by the PDB.  Non-standard residues are anything which is not a
+        amino or nucleic acid.
+        """
+        for frag in self.iter_fragments():
+            if not (isinstance(frag, AminoAcidResidue) or \
+                    isinstance(frag, NucleicAcidResidue)):
+                yield frag
+
     def iter_atoms(self):
         """Iterates over all Atom objects within the Chain."""
         for frag in self.iter_fragments():
@@ -638,7 +657,7 @@ class Residue(Fragment):
         """
         assert type(offset) == IntType
         
-        frag = Fragment.get_offset_residue(self, offset)
+        frag = Fragment.get_offset_fragment(self, offset)
         if type(self) == type(frag):
             return frag
         return None
@@ -884,18 +903,21 @@ class Atom(object):
                  fragment_id = "",
                  chain_id    = ""):
 
-        self.name         = name
-        self.alt_loc      = alt_loc
-        self.res_name     = res_name
-        self.fragment_id  = fragment_id
-        self.chain_id     = chain_id
-
-        self.element      = None
-        self.position     = None
-        self.occupancy    = None
-        self.temp_factor  = None
-        self.U            = None
-        self.charge       = None
+        self.name = name
+        self.alt_loc = alt_loc
+        self.res_name = res_name
+        self.fragment_id = fragment_id
+        self.chain_id = chain_id
+        self.element = None
+        self.position = None
+        self.sig_position = None
+        self.occupancy = None
+        self.sig_occupancy = None
+        self.temp_factor = None
+        self.sig_temp_factor = None
+        self.U = None
+        self.sig_U = None
+        self.charge = None
 
         self.__alt_loc_list = WeakrefList()
         self.__alt_loc_list.append(self)
