@@ -7,6 +7,7 @@ import sys
 import math
 import string
 import cPickle
+import copy
 
 import pygtk
 pygtk.require("2.0")
@@ -112,7 +113,7 @@ class FileControlEditDialog(gtk.Dialog):
                             msg,
                             self.context.mw,
                             gtk.DIALOG_DESTROY_WITH_PARENT|gtk.DIALOG_MODAL)
-
+        self.set_border_width(10)
         self.add_button(gtk.STOCK_OK, gtk.RESPONSE_OK)
         self.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
         self.connect("response", self.response_cb)
@@ -160,6 +161,7 @@ class TableTreeControl(gtk.TreeView):
         self.context = context
         self.fade_list = []
         self.cif_table = None
+        self.disable_edited_cb = False
 
         gtk.TreeView.__init__(self)
         self.set_rules_hint(gtk.TRUE)
@@ -196,6 +198,9 @@ class TableTreeControl(gtk.TreeView):
     def cell_edited_cb(self, cell, row, new_text):
         """Called when a cell has been edited, and a new value entered.
         """
+        if self.disable_edited_cb:
+            return
+
         col_name = cell.get_data("col_name")
         cif_row_index = int(row)
         cif_row = self.cif_table[cif_row_index]
@@ -262,8 +267,12 @@ class TableTreeControl(gtk.TreeView):
         """
         self.cif_table = cif_table
 
-        ## this sets the control blank
-        if self.cif_table == None or len(self.cif_table.columns) == 0:
+        ## remove any existing columns
+        for col in self.get_columns():
+            self.remove_column(col)
+
+        ## this sets the control blank if there is no model
+        if self.cif_table == None:
             self.context.mw.table_frame.set_label("")
             self.set_model(None)
             return
@@ -272,16 +281,21 @@ class TableTreeControl(gtk.TreeView):
         self.context.mw.table_frame.set_label(
             "%s.%s" % (cif_table.data.name, cif_table.name))
 
+        ## does somthing helpful if there are no columns in the set table
+        if len(self.cif_table.columns) == 0:
+            cell = gtk.CellRendererText()
+            col = gtk.TreeViewColumn("No data columns in table...", cell)
+            self.append_column(col)
+            self.model = gtk.ListStore(gobject.TYPE_STRING)
+            self.set_model(self.model)
+            return
+
         ## create the new self.model
         num_cols = len(self.cif_table.columns)
         gtk_cols = [gobject.TYPE_STRING, gobject.TYPE_BOOLEAN] * num_cols
 
         self.model = gtk.ListStore(*gtk_cols)
         self.set_model(self.model)
-        
-        ## remove any existing columns
-        for col in self.get_columns():
-            self.remove_column(col)
 
         ## add columns based on self.cif_table.columns
         for col_name in self.cif_table.columns:
@@ -386,7 +400,10 @@ class TableTreeControl(gtk.TreeView):
             self.set_cif_row(cif_row)
 
         iter = self.cif_row_get_iter(cif_row)
+
+        self.disable_edited_cb = True
         iter = self.model.remove(iter)
+        self.disable_edited_cb = False
 
     def update_cif_row(self, cif_row, fade = False):
         """Updates the values of the cif_row in the model.
@@ -599,15 +616,11 @@ class FileTreeControl(gtk.TreeView):
         """This is a little hokey and inefficent, oh well.
         """
         do_table_reset = False
-        
+
         cur_table = self.context.mw.table_ctrl.cif_table
         if cur_table:
-            if isinstance(cif, mmCIFData):
-                if cif == cur_table.data:
-                    do_table_reset = True
-            elif isinstance(cif, mmCIFTable):
-                if cif == cur_table:
-                    do_table_reset = True
+            if cif == cur_table.data or cif == cur_table:
+                do_table_reset = True
 
         ## update table_ctrl view
         if do_table_reset:
@@ -640,7 +653,6 @@ class FileTreeControl(gtk.TreeView):
         """
         iter = self.get_cif_iter(cif_data)
         self.model.remove(iter)
-        self.update_table_ctrl(cif_data)
 
     def cif_table_changed(self, cif_table):
         """Update because the name of cif_table changed.
@@ -659,7 +671,8 @@ class FileTreeControl(gtk.TreeView):
             parent = self.model.get_iter((i, ))
             iter = self.model.prepend(parent)
         elif j > 0:
-            sibling = self.model.get_iter((i, j-1))
+            path = (i, j-1)
+            sibling = self.model.get_iter(path)
             iter = self.model.insert_after(None, sibling)
         
         self.add_model_cif_table(iter, cif_table)
@@ -670,7 +683,6 @@ class FileTreeControl(gtk.TreeView):
         """
         iter = self.get_cif_iter(cif_table)
         self.model.remove(iter)
-        self.update_table_ctrl(cif_table)
 
     def cif_table_column_changed(self, cif_table, col_name):
         """Update because the name of a column in cif_table changed from
@@ -702,8 +714,6 @@ class FileTreeControl(gtk.TreeView):
         """
         iter = self.get_cif_iter((cif_table, col_name))
         self.model.remove(iter)
-        self.update_table_ctrl(cif_table, col_name)
-
 
     def new_cif_data(self):
         """Create a new cif_data->cif_table->column->cif_row
@@ -720,21 +730,29 @@ class FileTreeControl(gtk.TreeView):
         cif_table.append(mmCIFRow())
         return cif_table
 
-    def do_insert_sibling_at_selected(self, ins_cif = None, before = False):
+    def do_insert_sibling_at_selected(
+        self, ins_cif = None, before = False, sel_cif = None,
+        col_val_list = None):
         """Insert a sibling item before or after the selected item in the
         control.
         """
-        cif = self.get_selected_cif()
+        if sel_cif == None:
+            cif = self.get_selected_cif()
+        else:
+            cif = sel_cif
 
         ## if nothing is selected, perform check if the cif_file is empty
         ## if it is, then at least add a new mmCIFData
         if cif == None:
             if len(self.context.cif_file) == 0:
-                self.context.cif_file_insert_data(
-                    self.context.cif_file, -1, self.new_cif_data()) 
-            return
+                if ins_cif and isinstance(ins_cif, mmCIFData):
+                    self.context.cif_file_insert_data(
+                        self.context.cif_file, -1, ins_cif)
+                elif ins_cif == None:
+                    self.context.cif_file_insert_data(
+                        self.context.cif_file, -1, self.new_cif_data()) 
         
-        if isinstance(cif, mmCIFData):
+        elif isinstance(cif, mmCIFData):
             i = cif.file.index(cif)
             if ins_cif == None:
                 ins_cif = self.new_cif_data()
@@ -758,20 +776,32 @@ class FileTreeControl(gtk.TreeView):
             (cif_table, col_name) = cif
             i = cif_table.columns.index(col_name)            
             if ins_cif == None:
-                ins_cif = "New_Column"
+                ins_cif = "New_Subsection"
             if not before:
                 i += 1
-            self.context.cif_table_column_insert(cif_table, i, ins_cif)
+            self.context.cif_table_column_insert(
+                cif_table, i, ins_cif, col_val_list)
             
-    def do_append_child_at_selected(self, ins_cif = None):
+    def do_append_child_at_selected(
+        self, ins_cif = None, sel_cif = None, col_val_list = None):
         """Insert a child item before or after the selected item in the
         control.
         """
-        cif = self.get_selected_cif()
+        if sel_cif == None:
+            cif = self.get_selected_cif()
+        else:
+            cif = sel_cif
+
         if cif == None:
-            return
+            if len(self.context.cif_file) == 0:
+                if ins_cif and isinstance(ins_cif, mmCIFData):
+                    self.context.cif_file_insert_data(
+                        self.context.cif_file, -1, ins_cif)
+                elif ins_cif == None:
+                    self.context.cif_file_insert_data(
+                        self.context.cif_file, -1, self.new_cif_data()) 
         
-        if isinstance(cif, mmCIFData):
+        elif isinstance(cif, mmCIFData):
             if ins_cif == None:
                 ins_cif = self.new_cif_table()
             else:
@@ -780,15 +810,21 @@ class FileTreeControl(gtk.TreeView):
 
         elif isinstance(cif, mmCIFTable):
             if ins_cif == None:
-                ins_cif = "New_Column"
-            self.context.cif_table_column_insert(cif, -1, ins_cif)
+                self.context.cif_table_column_insert(cif, -1, "New_Column")
+            else:
+                (col_name, col_val_list) = ins_cif
+                self.context.cif_table_column_insert(
+                    cif, -1, col_name, col_val_list)
             
-    def do_delete_selected(self):
+    def do_delete_selected(self, sel_cif = None):
         """Delete the currently selected item in the control.
         """
-        cif = self.get_selected_cif()
-        if cif == None:
-            return
+        if sel_cif == None:
+            cif = self.get_selected_cif()
+            if cif == None:
+                return
+        else:
+            cif = sel_cif
         
         if isinstance(cif, mmCIFData):
             self.context.cif_data_remove(cif)
@@ -800,6 +836,78 @@ class FileTreeControl(gtk.TreeView):
             (cif_table, col_name) = cif
             self.context.cif_table_column_remove(cif_table, col_name)
 
+    def do_copy_selected(self, cut = False):
+        """Copy the currently selected item in the copy buffer,
+        and optionally delete.
+        """
+        cif = self.get_selected_cif()
+        if cif == None:
+            return
+
+        cif = copy.deepcopy(cif)
+        
+        if isinstance(cif, mmCIFData):
+            APP.buffer = cif
+            if cut:
+                self.context.cif_data_remove(cif)
+
+        elif isinstance(cif, mmCIFTable):
+            APP.buffer = cif
+            if cut:
+                self.context.cif_table_remove(cif)
+
+        elif isinstance(cif, tuple):
+            (cif_table, col_name) = cif
+            col_val_list = []
+            for cif_row in cif_table:
+                col_val_list.append(cif_row[col_name])
+            APP.buffer = (col_name, col_val_list)
+            if cut:
+                self.context.cif_table_column_remove(cif_table, col_name)
+
+    def do_paste_selected(self, before = False):
+        """Insert the current application paste buffer.
+        """
+        ins_cif = copy.deepcopy(APP.buffer)
+        if ins_cif == None:
+            return
+
+        sel_cif = self.get_selected_cif()
+
+        if sel_cif == None:
+            if isinstance(ins_cif, mmCIFData):
+                self.do_append_child_at_selected(ins_cif)
+
+        elif isinstance(sel_cif, mmCIFData):
+            if isinstance(ins_cif, mmCIFData):
+                self.do_insert_sibling_at_selected(ins_cif, before = before)
+            elif isinstance(ins_cif, mmCIFTable):
+                self.do_append_child_at_selected(ins_cif)
+
+        elif isinstance(sel_cif, mmCIFTable):
+            if isinstance(ins_cif, mmCIFData):
+                self.do_insert_sibling_at_selected(
+                    ins_cif, before = before, sel_cif = sel_cif.data)
+            elif isinstance(ins_cif, mmCIFTable):
+                self.do_insert_sibling_at_selected(ins_cif, before = before)
+            elif isinstance(ins_cif, tuple):
+                self.do_append_child_at_selected(ins_cif)
+                
+        elif isinstance(sel_cif, tuple):
+            (cif_table, col_name) = sel_cif
+
+            if isinstance(ins_cif, mmCIFData):
+                 self.do_insert_sibling_at_selected(
+                    ins_cif, before = before, sel_cif = cif_table.data)
+            elif isinstance(ins_cif, mmCIFTable):
+                self.do_insert_sibling_at_selected(
+                    ins_cif, before = before, sel_cif = cif_table)
+            elif isinstance(ins_cif, tuple):
+                (col_name, col_val_list) = ins_cif
+                self.do_insert_sibling_at_selected(
+                    ins_cif = col_name,
+                    col_val_list = col_val_list,
+                    before = before)
 
     def do_change_name_selected(self):
         """Change the name of the currently selected item in the control.
@@ -1018,17 +1126,17 @@ class mmCIFEditorMainWindow(gtk.Window):
     def cut_cb(self, *args):
         """/Edit/Cut callback.
         """
-        pass
+        self.file_ctrl.do_copy_selected(cut = True)
 
     def copy_cb(self, *args):
         """/Edit/Copy callback.
         """
-        pass
+        self.file_ctrl.do_copy_selected()
 
     def paste_cb(self, *args):
         """/Edit/Paste callback.
         """
-        pass
+        self.file_ctrl.do_paste_selected()
 
     def insert_cif_before_cb(self, *args):
         self.file_ctrl.do_insert_sibling_at_selected(before = True)
@@ -1054,23 +1162,25 @@ class mmCIFEditorMainWindow(gtk.Window):
     def delete_cif_row_cb(self, *args):
         self.table_ctrl.do_delete_selected()
 
-    def enable_save(self, enable):
-        """Enables all save menuitems.
+    def update_menuitem_enable_status(self):
+        """Sets enabled status of all menuitems.
         """
-        menuitem = self.item_factory.get_item('/File/Save')
-        if enable:
-            menuitem.set_sensitive(gtk.TRUE)
+        mi_save = self.item_factory.get_item('/File/Save')
+        mi_save_as = self.item_factory.get_item('/File/Save As...')
+        if self.context.saved:
+            mi_save.set_sensitive(gtk.FALSE)
+            mi_save_as.set_sensitive(gtk.FALSE)
         else:
-            menuitem.set_sensitive(gtk.FALSE)
+            mi_save_as.set_sensitive(gtk.TRUE)
+            if self.context.path != None:
+                mi_save.set_sensitive(gtk.TRUE)
 
-    def enable_undo(self, enable):
-        """Enables undo menuitem.
-        """
-        menuitem = self.item_factory.get_item('/Edit/Undo')
-        if enable:
-            menuitem.set_sensitive(gtk.TRUE)
+        ## turn on undo if there is a undo stack
+        mi = self.item_factory.get_item('/Edit/Undo')
+        if self.context.undo_list:
+            mi.set_sensitive(gtk.TRUE)
         else:
-            menuitem.set_sensitive(gtk.FALSE)
+            mi.set_sensitive(gtk.FALSE)
 
     def set_status_bar(self, text):
         """Sets the text on the windows statusbar.
@@ -1135,7 +1245,7 @@ class mmCIFEditor:
         self.cif_row_set_value_notify(cif_row, col_name)
 
     def cif_row_set_value_undo(self, cif_row, col_name, value):
-        self.cif_row_set_value(cif_row, col_name, value, False)
+        self.cif_row_set_value(cif_row, col_name, value, save_undo = False)
 
     def cif_row_set_value_notify(self, cif_row, col_name):
         pass
@@ -1151,13 +1261,16 @@ class mmCIFEditor:
 
         self.cif_row_remove_notify(cif_row)
         cif_row.table.remove(cif_row)
+        self.cif_row_remove_complete_notify(cif_row)
 
-    def cif_row_remove_undo(self, i, cif_row):
-        self.cif_table_insert_row(cif_row.table, i, cif_row, False)
-        
     def cif_row_remove_notify(self, cif_row):
         pass
+    def cif_row_remove_complete_notify(self, cif_row):
+        pass
 
+    def cif_row_remove_undo(self, i, cif_row):
+        self.cif_table_insert_row(cif_row.table, i, cif_row, save_undo = False)
+        
     def cif_table_insert_row(self, cif_table, i, cif_row, save_undo = True):
         """Inserts a new cif_row into cif_table at position i.
         """
@@ -1165,11 +1278,14 @@ class mmCIFEditor:
             undo = (self.cif_table_insert_row_undo, cif_row)
             self.undo_list.append(undo)
 
-        cif_table.insert(i, cif_row)
+        if i == -1:
+            cif_table.append(cif_row)
+        else:
+            cif_table.insert(i, cif_row)
         self.cif_table_insert_row_notify(cif_row)
 
     def cif_table_insert_row_undo(self, cif_row):
-        self.cif_row_remove(cif_row, False)
+        self.cif_row_remove(cif_row, save_undo = False)
 
     def cif_table_insert_row_notify(self, cif_row):
         pass
@@ -1181,11 +1297,14 @@ class mmCIFEditor:
             undo = (self.cif_data_insert_table_undo, cif_table)
             self.undo_list.append(undo)
 
-        cif_data.insert(i, cif_table)
+        if i == -1:
+            cif_data.append(cif_table)
+        else:
+            cif_data.insert(i, cif_table)
         self.cif_data_insert_table_notify(cif_table)
 
     def cif_data_insert_table_undo(self, cif_table):
-        self.cif_table_remove(cif_table, False)
+        self.cif_table_remove(cif_table, save_undo = False)
 
     def cif_data_insert_table_notify(self, cif_table):
         pass
@@ -1211,15 +1330,19 @@ class mmCIFEditor:
 
         self.cif_table_remove_notify(cif_table)
         cif_table.data.remove(cif_table)
-
-    def cif_table_remove_undo(self, i, cif_table):
-        self.cif_data_insert_table(cif_table.data, i, cif_table, False)
+        self.cif_table_remove_complete_notify(cif_table)
 
     def cif_table_remove_notify(self, cif_table):
         pass
+    def cif_table_remove_complete_notify(self, cif_table):
+        pass
+
+    def cif_table_remove_undo(self, i, cif_table):
+        self.cif_data_insert_table(
+            cif_table.data, i, cif_table, save_undo = False)
 
     def cif_table_set_name_undo(self, cif_table, old_name):
-        self.cif_table_set_name(cif_table, old_name, False)
+        self.cif_table_set_name(cif_table, old_name, save_undo = False)
 
     def cif_table_set_name_notify(self, cif_table):
         pass
@@ -1251,13 +1374,14 @@ class mmCIFEditor:
         self.cif_table_column_set_name_notify(cif_table, col_name)
             
     def cif_table_column_set_name_undo(self, cif_table, i, old_name):
-        self.cif_table_column_set_name(cif_table, i, old_name, False)
+        self.cif_table_column_set_name(
+            cif_table, i, old_name, save_undo = False)
 
     def cif_table_column_set_name_notify(self, cif_table, col_name):
         pass
     
     def cif_table_column_insert(
-        self, cif_table, i, col_name, save_undo = True):
+        self, cif_table, i, col_name, col_val_list = None, save_undo = True):
         """Calls cif_table.insert(i, col_name)
         """
         ## do not allow duplicate column names
@@ -1269,11 +1393,18 @@ class mmCIFEditor:
                     cif_table, col_name)
             self.undo_list.append(undo)
 
-        cif_table.columns.insert(i, col_name)
+        if i == -1:
+            cif_table.columns.append(col_name)
+        else:
+            cif_table.columns.insert(i, col_name)
+
+        if col_val_list:
+            for i in range(len(cif_table)):
+                cif_table[i][col_name] = col_val_list[i]
         self.cif_table_column_insert_notify(cif_table, col_name)
 
     def cif_table_column_insert_undo(self, cif_table, col_name):
-        self.cif_table_column_remove(cif_table, col_name, False)
+        self.cif_table_column_remove(cif_table, col_name, save_undo = False)
 
     def cif_table_column_insert_notify(self, cif_table, col_name):
         pass
@@ -1299,13 +1430,16 @@ class mmCIFEditor:
                 del cif_row[col_name]
             except KeyError:
                 pass
+        self.cif_table_column_remove_complete_notify(cif_table, col_name)
 
     def cif_table_column_remove_notify(self, cif_table, col_name):
+        pass
+    def cif_table_column_remove_complete_notify(self, cif_table, col_name):
         pass
 
     def cif_table_column_remove_undo(
         self, cif_table, i, col_name, rebuild_list):
-        self.cif_table_column_insert(cif_table, i, col_name, False)
+        self.cif_table_column_insert(cif_table, i, col_name, save_undo = False)
         for i in range(len(cif_table)):
             cif_table[i][col_name] = rebuild_list[i]
 
@@ -1316,11 +1450,14 @@ class mmCIFEditor:
             undo = (self.cif_file_insert_data_undo, cif_data)
             self.undo_list.append(undo)
 
-        cif_file.insert(i, cif_data)
+        if i == -1:
+            cif_file.append(cif_data)
+        else:
+            cif_file.insert(i, cif_data)
         self.cif_file_insert_data_notify(cif_data)
 
     def cif_file_insert_data_undo(self, cif_data):
-        self.cif_data_remove(cif_data, False)
+        self.cif_data_remove(cif_data, save_undo = False)
 
     def cif_file_insert_data_notify(self, cif_data):
         pass
@@ -1336,12 +1473,16 @@ class mmCIFEditor:
 
         self.cif_data_remove_notify(cif_data)
         cif_data.file.remove(cif_data)
-
-    def cif_data_remove_undo(self, i, cif_data):
-        self.cif_data_insert(i, cif_data, False)
+        self.cif_data_remove_complete_notify(cif_data)
 
     def cif_data_remove_notify(self, cif_data):
         pass
+    def cif_data_remove_complete_notify(self, cif_data):
+        pass
+
+    def cif_data_remove_undo(self, i, cif_data):
+        self.cif_file_insert_data(
+            cif_data.file, i, cif_data, save_undo = False)
 
     def cif_data_set_name(self, cif_data, name, save_undo = True):
         """Sets the name of a cif_data
@@ -1354,7 +1495,7 @@ class mmCIFEditor:
         self.cif_data_set_name_notify(cif_data)
 
     def cif_data_set_name_undo(self, cif_data, old_name):
-        self.cif_data_set_name(cif_data, old_name, False)
+        self.cif_data_set_name(cif_data, old_name, save_undo = False)
 
     def cif_data_set_name_notify(self, cif_data):
         pass
@@ -1464,11 +1605,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
         self.update_enabled_menuitems()
 
     def update_enabled_menuitems(self):
-        """Called whenever a edit is made to the CIF file.  This function
-        updates the enabled/disabled state of menuitems in the GUI.
-        """
-        self.mw.enable_save(not self.saved)
-        self.mw.enable_undo(len(self.undo_list) > 0)
+        self.mw.update_menuitem_enable_status()
 
 
     def cif_table_insert_row_notify(self, cif_row):
@@ -1485,13 +1622,15 @@ class mmCIFEditorWindowContext(mmCIFEditor):
     def cif_data_insert_table_notify(self, cif_table):
         self.mw.file_ctrl.cif_table_insert(cif_table)
         self.changed()
-    def cif_table_remove_notify(self, cif_table):
-        self.mw.file_ctrl.cif_table_remove(cif_table)
-        self.changed()
     def cif_table_set_name_notify(self, cif_table):
         self.mw.file_ctrl.cif_table_changed(cif_table)
         self.changed()
-
+    def cif_table_remove_notify(self, cif_table):
+        self.mw.file_ctrl.cif_table_remove(cif_table)
+        self.changed()
+    def cif_table_remove_complete_notify(self, cif_table):
+        if self.mw.table_ctrl.cif_table == cif_table:
+            self.mw.table_ctrl.set_cif_table(None)
 
     def cif_table_column_set_name_notify(self, cif_table, col_name):
         self.mw.file_ctrl.cif_table_column_changed(cif_table, col_name)
@@ -1502,18 +1641,34 @@ class mmCIFEditorWindowContext(mmCIFEditor):
     def cif_table_column_remove_notify(self, cif_table, col_name):
         self.mw.file_ctrl.cif_table_column_remove(cif_table, col_name)
         self.changed()
+    def cif_table_column_remove_complete_notify(self, cif_table, col_name):
+        self.mw.file_ctrl.update_table_ctrl(cif_table, col_name)
 
 
     def cif_file_insert_data_notify(self, cif_data):
         self.mw.file_ctrl.cif_data_insert(cif_data)
         self.changed()
-    def cif_data_remove_notify(self, cif_data):
-        self.mw.file_ctrl.cif_data_remove(cif_data)
-        self.changed()
     def cif_data_set_name_notify(self, cif_data):
         self.mw.file_ctrl.cif_data_changed(cif_data)
         self.changed()
+    def cif_data_remove_notify(self, cif_data):
+        self.mw.file_ctrl.cif_data_remove(cif_data)
+        self.changed()
+    def cif_data_remove_complete_notify(self, cif_data):
+        if self.mw.table_ctrl.cif_table in cif_data:
+            self.mw.table_ctrl.set_cif_table(None)
 
+
+    def error(self, text):
+        dialog = gtk.MessageDialog(
+            self.mw,
+            gtk.DIALOG_DESTROY_WITH_PARENT,
+            gtk.MESSAGE_ERROR,
+            gtk.BUTTONS_CLOSE,
+            text)
+        
+        dialog.run()
+        dialog.destroy()
     
 ## </mmCIF EDITOR PANEL>
 
@@ -1920,6 +2075,8 @@ class CIFEditorApplication(list):
                 "mmCIF dictionary files.\n"
                 "\n"
                 "Item: " + tag)
+
+
 
 ## <MAIN>
 

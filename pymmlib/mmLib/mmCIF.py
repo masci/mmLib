@@ -11,8 +11,8 @@ mmCIF parser.
 from __future__ import generators
 import string
 import types
-import weakref
 from mmTypes import *
+
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -32,7 +32,8 @@ class mmCIFRow(dict):
     set of data found under a section.  The data can be accessed by using
     the column names as class attributes.
     """
-    pass
+    def __eq__(self, other):
+        return id(self) == id(other)
 
 
 class mmCIFTable(list):
@@ -44,6 +45,9 @@ class mmCIFTable(list):
         self.name = name
         self.columns = columns or []
 
+    def __eq__(self, other):
+        return id(self) == id(other)
+    
     def __setitem__(self, i, row):
         assert isinstance(row, mmCIFRow)
         row.table = self
@@ -112,30 +116,19 @@ class mmCIFData(list):
     """
     def __init__(self, name):
         list.__init__(self)
-        self.cache = {}
         self.name = name
 
+    def __eq__(self, other):
+        return id(self) == id(other)
+    
     def __getitem__(self, x):
         if type(x) == IntType:
             return list.__getitem__(self, x)
 
         elif type(x) == StringType:
-            ## try to retrieve from cache
-            if self.cache.has_key(x):
-                ctable = self.cache[x]()
-
-                ## make sure the cache is valid
-                if ctable and ctable.name == x:
-                    return ctable
-                else:
-                    del self.cache[x]
-
-            ## lookup table and set cache
             for ctable in self:
                 if x == ctable.name:
-                    self.cache[x] = weakref.ref(ctable)
                     return ctable
-                
             raise KeyError, x
 
         raise TypeError, x
@@ -212,6 +205,9 @@ class mmCIFFile(list):
 
         raise TypeError, x
 
+    def __eq__(self, other):
+        return id(self) == id(other)
+    
     def __delitem__(self, x):
         list.remove(self, self[x])
 
