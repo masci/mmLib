@@ -2760,20 +2760,21 @@ class GLViewer(GLObject, OpenGLRenderMethods):
             min_y = min(min_y, atm.position[1])
             min_z = min(min_z, atm.position[2])
 
-        centroid = centroid / float(n)
+        if n>0:
+            centroid = centroid / float(n)
 
-        m1   = max(max_x, max(max_y, max_z))
-        m2   = min(min_x, min(min_y, min_z))
-        zoom = m1 - m2
+            m1   = max(max_x, max(max_y, max_z))
+            m2   = min(min_x, min(min_y, min_z))
+            zoom = m1 - m2
 
-        near = - zoom / 2.0
-        far  =   zoom / 2.0
+            near = - zoom / 2.0
+            far  =   zoom / 2.0
 
-        self.properties.update(
-            cor  = centroid,
-            zoom = zoom,
-            near = near,
-            far  = far)
+            self.properties.update(
+                cor  = centroid,
+                zoom = zoom,
+                near = near,
+                far  = far)
         
         return gl_struct
 

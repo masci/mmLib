@@ -2566,8 +2566,8 @@ class TLSDialog(gtk.Dialog):
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
-        self.add_button("Open TLSIN", 100)
-        self.add_button("Graphics Properties", 101)
+        self.add_button("Open TLSOUT", 100)
+        self.add_button("Save TLSOUT", 101)
         self.add_button("Fit TLS Groups", 102)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
 
@@ -2651,28 +2651,52 @@ class TLSDialog(gtk.Dialog):
         """
         if response_code==gtk.RESPONSE_CLOSE:
             self.destroy()
-            
         elif response_code==100:
-            file_sel = gtk.FileSelection("Select TLSOUT File")
-            file_sel.hide_fileop_buttons()
-            response = file_sel.run()
-
-            if response==gtk.RESPONSE_OK:
-                path = file_sel.get_filename()
-                if path!=None and path!="":
-                    self.load_TLSOUT(path)
-            file_sel.destroy()
-            
-        elif response_code==101 and self.selected_tls!=None:
-            ## use the GLPropertyBrowserDialog associated with
-            ## the application main window to present the
-            ## properties of the gl_tls object for modification            
-            self.main_window.autoselect_gl_prop_browser(
-                self.selected_tls["GLTLSGroup"])
-
+            self.load_TLSOUT_cb()
+        elif response_code==101:
+            self.save_TLSOUT_cb()
         elif response_code==102:
             self.load_TLS_fit()
 
+    def load_TLSOUT_cb(self):
+        """Loads a TLSOUT File -- callback handler for button.
+        """
+        file_sel = gtk.FileSelection("Select TLSOUT File To Load")
+        file_sel.hide_fileop_buttons()
+        response = file_sel.run()
+
+        if response==gtk.RESPONSE_OK:
+            path = file_sel.get_filename()
+            if path!=None and path!="":
+                self.load_TLSOUT(path)
+
+        file_sel.destroy()
+
+    def save_TLSOUT_cb(self):
+        """Saves a TLSOUT File -- callback handler for button.
+        """
+        file_sel  = gtk.FileSelection("Save TLSOUT File")
+        response  = file_sel.run()        
+        save_path = file_sel.get_filename()
+        file_sel.destroy()
+
+        if not save_path or response!=gtk.RESPONSE_OK:
+            return
+
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatTLSOUT())
+
+        for tls in self.tls_list:
+            tls_desc = tls["tls_desc"]
+            tls_file.tls_desc_list.append(tls_desc)
+            tls_desc.set_name(tls["name"])
+            tls_desc.set_tls_group(tls["tls_group"])
+
+        try:
+            tls_file.save(open(save_path, "w"))
+        except IOError, err:
+            self.error_dialog("Error Saving File: %s" % (str(err)))
+        
     def destroy_cb(self, *args):
         """Destroy the TLS dialog and everything it has built
         in the GLObject viewer.
@@ -2680,8 +2704,13 @@ class TLSDialog(gtk.Dialog):
         self.clear_tls_groups()
 
     def row_activated_cb(self, tree_view, path, column):
+        """ Use the GLPropertyBrowserDialog associated with the
+        application main window to present the properties of the
+        gl_tls object for modification.
+        """
         index = int(path[0])
-        self.selected_tls = self.tls_list[index]
+        selected_tls = self.tls_list[index]
+        self.main_window.autoselect_gl_prop_browser(selected_tls["GLTLSGroup"])
 
     def button_release_event_cb(self, tree_view, bevent):
         x = int(bevent.x)
@@ -2927,6 +2956,7 @@ class TLSDialog(gtk.Dialog):
             tls = {}
             tls["tls_group"] = tls_info["tls_group"]
             tls["tls_info"]  = tls_info
+            tls["tls_desc"]  = tls_info["tls_desc"]
             tls["name"]      = tls_info["name"]
             tls["TLS_fit"]   = True
             tls["lsq_fit"]   = True
@@ -3278,6 +3308,16 @@ class TLSSearchDialog(gtk.Dialog):
             tls_info["R"]             = "%.3f" % (tls_info["R"])
             tls_info["<DP2>"]         = "%.4f" % (tls_info["mean_dp2"])
             tls_info["Atoms"]         = str(tls_info["num_atoms"])
+            
+            ## create a TLSGroupDesc object for this tls group
+            tls_desc = TLSGroupDesc()
+            tls_desc.set_name(tls_info["name"])
+            tls_desc.set_tls_group(tls_info["tls_group"])
+            tls_desc.add_range(
+                tls_info["chain_id"], tls_info["frag_id1"],
+                tls_info["chain_id"], tls_info["frag_id2"], "ALL")
+
+            tls_info["tls_desc"] = tls_desc
             
             self.treeview.set_dict_list(self.tls_info_list)
 

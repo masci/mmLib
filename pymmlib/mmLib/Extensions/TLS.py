@@ -165,7 +165,9 @@ class TLSGroupDesc(object):
             tls_group.name = self.name
 
         if self.origin!=None:
-            tls_group.set_origin(self.origin[0], self.origin[1], self.origin[2])
+            tls_group.set_origin(self.origin[0],
+                                 self.origin[1],
+                                 self.origin[2])
 
         if self.T!=None:
             tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2],
@@ -1467,7 +1469,10 @@ class TLSStructureAnalysis(object):
                 tls_info = tls_group.calc_tls_info()
 
                 ## add additional information
-                tls_info["name"]      = name 
+                tls_info["name"]      = name
+                tls_info["chain_id"]  = chain.chain_id
+                tls_info["frag_id1"]  = frag_id1
+                tls_info["frag_id2"]  = frag_id2
                 tls_info["tls_group"] = tls_group
                 tls_info["residues"]  = segment
                 tls_info["segment"]   = segment
