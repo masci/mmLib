@@ -1196,6 +1196,13 @@ class StructurePDBFileBuilder:
                 anisou_rec.name        = atom_rec.name
                 anisou_rec.altLoc      = atom_rec.altLoc
 
+                setattr(anisou_rec, "u[0][0]", int(atm.U[0] * 1000.0))
+                setattr(anisou_rec, "u[1][1]", int(atm.U[1] * 1000.0))
+                setattr(anisou_rec, "u[2][2]", int(atm.U[2] * 1000.0))
+                setattr(anisou_rec, "u[0][1]", int(atm.U[3] * 1000.0))
+                setattr(anisou_rec, "u[0][2]", int(atm.U[4] * 1000.0))
+                setattr(anisou_rec, "u[1][2]", int(atm.U[5] * 1000.0))
+
                 self.pdb_file.pdb_list.add(anisou_rec)
 
         for atm in self.structure.iterAtoms():

@@ -391,8 +391,7 @@ class PDBStructureBuilder(StructureBuilder):
             rec = record_list[i]
             
             if isinstance(rec, PDB.ATOM):
-                atm_map = {}
-
+                atm_map                = {}
                 atm_map["name"]        = getattr(rec, "name")       or ""
                 atm_map["element"]     = getattr(rec, "element")    or ""
                 atm_map["alt_loc"]     = getattr(rec, "altLoc")     or ""

@@ -16,23 +16,18 @@ from   PDB              import StructurePDBFileBuilder
 
 def decode_format(path, format):
     """Returns the 3-letter MIME code for the file format."""
-    ## check for compressed file
-    ext = format
-    if type(path) == StringType and format == "":
+    if format: return format
+
+    ## check/remove compressed file extention
+    if path and type(path) == StringType:
         (base, ext) = os.path.splitext(path)
-        ext = string.lower(ext)
-    elif type(path) != StringType and format == "":
-        ## default format
-        format = ".pdb"
+        if ext.lower() in ['.z', '.gz', '.bz2']:
+            path = base
 
-    ## remove the compression extention if it is there
-    if ext in ['.z', '.gz', '.bz2']:
-        (base, ext) = os.path.splitext(base)
-        ext = string.lower(ext)
+    (base, ext) = os.path.splitext(path)
+    ext = ext.lower()
 
-    ## select adaptor based on file extention
-    if ext == '.cif':
-        return "CIF"
+    if ext == ".cif": return "CIF"
     return "PDB"
 
 
@@ -73,5 +68,5 @@ def SaveStructure(fil,
 if __name__ == "__main__":
     import sys
     struct = LoadStructure(sys.argv[1], build_properties=("polymers","bonds"))
-    SaveStructure(sys.stdout, struct)
+    SaveStructure(sys.stdout, struct, "PDB")
 ### </TESTING>
