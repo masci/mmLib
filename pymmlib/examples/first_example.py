@@ -189,17 +189,16 @@ if __name__ == "__main__":
     try:
         path = sys.argv[1]
     except IndexError:
-        print "usage: ansotropy.py <PDB/mmCIF file>"
+        print "usage: ansotropy.py <PDB/mmCIF file or directory of files>"
+        sys.exit(1)
 
     if os.path.isfile(path):
         main(path)
     elif os.path.isdir(path):
         for name in os.listdir(path):
             name = os.path.join(path, name)
-
             if not os.path.isfile(name):
                 continue
-
             try:
                 main(name)
             except:

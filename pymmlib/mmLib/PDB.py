@@ -24,6 +24,9 @@ class PDBRecord(dict):
         return self.write()
 
     def write(self):
+        """Return a properly formed PDB record string from the instance
+        dictionary values.
+        """
         ln = self._name
         
         for (field, start, end, ftype, just, get_func) in self._field_list:
@@ -68,9 +71,13 @@ class PDBRecord(dict):
 
         return ln
 
-    def read(self, rec):
+    def read(self, line):
+        """Read the PDB record line and convert the fields to the appropriate
+        dictionary values for this class.
+        """
+
         for (field, start, end, ftype, just, get_func) in self._field_list:
-            s = rec[start-1:end]
+            s = line[start-1:end]
             if not s or not s.strip():
                 continue
 
@@ -85,7 +92,7 @@ class PDBRecord(dict):
                     s = int(s)
                 except ValueError:
                     debug("PDB parser: int(%s) failed on record" % (s))
-                    debug(str(rec))
+                    debug(str(line))
                     continue
 
             elif ftype.startswith("float"):
@@ -93,7 +100,7 @@ class PDBRecord(dict):
                     s = float(s)
                 except ValueError:
                     debug("PDB parser: float(%s) failed on record" % (s))
-                    debug(str(rec))
+                    debug(str(line))
                     continue
 
             self[field] = s
@@ -145,6 +152,81 @@ class PDBRecord(dict):
             listx.append(dictx)
         return listx
 
+    def reccat_multi(self, rec_list, primary_key, translations):
+        """Create a list of dictionaries from a list of records.  This
+        method has complex behavior to support translations of several
+        PDB records into a Python format.  The primary key is used to
+        seperate the dictionaries within the list, and the translation
+        argument is a list of strings or 2-tuples,  If the translation is a
+        string, the value from the PDB record field is copied to the return
+        dictionary.  If the field is a 2-tuple==t, then t[0] is the return
+        dictionary key whose value is a list formed from the list of
+        PDB fields in t[1].
+        """
+        if type(rec_list) != ListType:
+            rec_list = [rec_list]
+        
+        listx = []
+        for rec in rec_list:
+
+            ## XXX: add primary key generation for bad records
+            try:
+                pkey = rec[primary_key]
+            except KeyError:
+                ## if the record has no primary key, retrieve it from the
+                ## last dictionary which is in the same order as the
+                ## record list
+                try:
+                    pkey = listx[-1][primary_key]
+                except KeyError:
+                    continue
+                except IndexError:
+                    continue
+
+            ## search for a dictionary in listx with the same primary key
+            dictx = None
+            for dx in listx:
+                if dx[primary_key] == pkey:
+                    dictx = dx
+                    break
+
+            ## new dictx if not found
+            if dictx == None:
+                dictx = {primary_key: pkey}
+                listx.append(dictx)
+
+            ## translate the PDB record into dictx
+            for trans in translations:
+
+                ## source is a list of fields which should be
+                ## added to a list under the dest key in dictx
+                if type(trans) == TupleType:
+                    (dest, srcs) = trans
+                    
+                    for sx in srcs:
+                        if dictx.has_key(dest):
+                            try:
+                                dictx[dest].append(rec[sx])
+                            except KeyError:
+                                pass
+                        else:
+                            try:
+                                dictx[dest] = [rec[sx]]
+                            except KeyError:
+                                pass
+
+                ## source is a single record field which should be
+                ## added to dictx under the dest key
+                else:
+                    try:
+                        dictx[trans] = rec[trans]
+                    except KeyError:
+                        pass
+
+        return listx    
+
+        
+
     
 ###############################################################################
 ## BEGIN PDB RECORD DEFINITIONS
@@ -187,36 +269,11 @@ class OBSLTE(PDBRecord):
         """Processes continued record list to a list of dictionary objects.
         Each dictionary contains the data from one OBSLTE idCode.
         """
-        obslte_list = []
-
-        for rec in recs:
-            idCode = rec.get("idCode", "")
-            obs = None
-
-            ## find any matching idCode 
-            for obsx in obslte_list:
-                if obsx.get("idCode") == idCode:
-                    obs = obsx
-                    break
-
-            ## if no entry exists, create new dict for idCode
-            if obs == None:
-                obs = {"idCode" : idCode}
-                self.obslte.append(obs)
-
-                repDate = rec.get("repDate")
-                if repDate:
-                    obs["repDate"] = repDate
-
-                obs["idCodes"] = []
-
-            ## get the idCodes
-            for i in range(1,9):
-                idCode = rec.get("rIdCode%d" % (i))
-                if idCode:
-                    obs["idCodes"].append(idCode)
-
-        return obslte_list
+        return self.reccat_multi(
+            recs, "idCode",
+            ["repDate",
+             ("rIdCodes", ["rIdCode1", "rIdCode2", "rIdCode3", "rIdCode4",
+                           "rIdCode5", "rIdCode6", "rIdCode7", "rIdCode8"])])
     
 class TITLE(PDBRecord):
     """The TITLE record contains a title for the experiment or analysis that is
@@ -363,7 +420,7 @@ class EXPDTA(PDBRecord):
                     break
 
             if tech != None:
-                expdta.append((tech, cmnt))
+                expdta_list.append((tech, cmnt))
 
         return expdta_list
 
@@ -395,6 +452,14 @@ class REVDAT(PDBRecord):
         ("record3", 54, 59, "string", "ljust", None),
         ("record4", 61, 66, "string", "ljust", None)]
 
+    def process(self, recs):
+        return self.reccat_multi(
+            recs, "modNum",
+            ["modDate",
+             "modID",
+             "modType",
+             ("records", ["record1", "record2", "record3", "record4"])])
+
 class SPRSDE(PDBRecord):
     """The SPRSDE records contain a list of the ID codes of entries that were
     made obsolete by the given coordinate entry and withdrawn from the PDB
@@ -413,6 +478,13 @@ class SPRSDE(PDBRecord):
         ("sIdCode6", 57, 60, "string", "rjust", None),
         ("sIdCode7", 62, 65, "string", "rjust", None),
         ("sIdCode8", 67, 70, "string", "rjust", None)]
+
+    def process(self, recs):
+        return self.reccat_multi(
+            recs, "idCode",
+            ["sprsdeDate",
+             ("sIdCodes", ["sIdCode1", "sIdCode2", "sIdCode3", "sIdCode4",
+                           "sIdCode5", "sIdCode6", "sIdCode7", "sIdCode8"])])
 
 class JRNL(PDBRecord):
     """The JRNL record contains the primary literature citation that describes
@@ -1273,10 +1345,18 @@ class PDBFile(list):
             ## call process handler for records
             if hasattr(processor, process):
                 getattr(processor, process)(recs)
+            elif hasattr(processor, "process_default"):
+                getattr(processor, "process_default")(recs)
 
             ## call preprocessor and processor for records
-            if hasattr(rec, "process") and hasattr(processor, preprocess):
-                getattr(processor, preprocess)(getattr(rec, "process")(recs))
+            if hasattr(rec, "process"):
+                pfunc = getattr(rec, "process")
+                if hasattr(processor, preprocess):
+                    pfunc_cb = getattr(processor, preprocess)
+                    pfunc_cb(pfunc(recs))
+                elif hasattr(processor, "preprocess_default"):
+                    pfunc_cb = getattr(processor, "preprocess_default")
+                    pfunc_cb(name, pfunc(recs))
 
         cont_list = []
         for i in range(len(self)):
