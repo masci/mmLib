@@ -87,7 +87,7 @@ def pdb_stats(path):
             ser = "%s-%s" % (ser, model)
 
             if serial_map.has_key(ser):
-                print "DUPLICATE ID"
+                print "PDB DUPLICATE ID"
                 print "[1]",serial_map[ser]
                 print "[2]",ln
                 sys.exit(1)
@@ -118,7 +118,7 @@ def cif_stats(path):
             aid = m.group(1)
 
             if atom_site_ids.has_key(aid):
-                print "DUPLICATE ID"
+                print "CIF DUPLICATE ID"
                 print "[1]",atom_site_ids[aid]
                 print "[2]",ln
                 sys.exit(1)

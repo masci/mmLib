@@ -173,11 +173,16 @@ def struct_test(struct, stats):
     stats["testing"] = struct
 
     len(struct)
+    
+    alt_loc_list = struct.alt_loc_list()
+    print "alt_loc_list: ",alt_loc_list
+
 
     old_model = struct.model
     for model in struct.iter_models():
-        struct.set_model(model)
+        print model
 
+        struct.set_model(model)
         assert model in struct
 
         for chain in struct.iter_chains():
@@ -213,13 +218,11 @@ def struct_test(struct, stats):
             assert isinstance(bond, Bond)
 
         old_alt_loc  = struct.default_alt_loc
-        alt_loc_list = struct.alt_loc_list()
         for alt_loc in alt_loc_list:
             struct.set_alt_loc(alt_loc)
             for atm in struct.iter_atoms():
                 assert atm.alt_loc == "" or atm.alt_loc == alt_loc
         struct.set_alt_loc(old_alt_loc)
-
 
     struct.set_model(old_model)
     
@@ -238,10 +241,8 @@ def run_structure_tests(struct, stats):
     for frag in struct.iter_fragments():
         fragment_test(frag, stats)
 
-    for model in struct.iter_models():
-        for frag in struct.iter_fragments():
-            for atm in frag.iter_all_atoms():
-                atom_test(atm, stats)
+    for atm in struct.iter_all_atoms():
+        atom_test(atm, stats)
 
 
 
@@ -267,6 +268,7 @@ def save_verify(struct, stats):
     compare structures.
     """
     ## pdb
+    print "[temp.pdb]"
     SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
     fil_stats = test_util.pdb_stats("temp.pdb")
 
@@ -274,11 +276,10 @@ def save_verify(struct, stats):
     pdb_struct = LoadStructure(fil="temp.pdb")
     run_structure_tests(pdb_struct, struct_stats)
 
-    print "[temp.pdb]"
     struct_stats.print_stats()
     
-    
     ## mmCIF
+    print "[temp.cif]"
     SaveStructure(fil="temp.cif", struct=struct, format="CIF")
     fil_stats = test_util.cif_stats("temp.cif")
 
@@ -286,7 +287,6 @@ def save_verify(struct, stats):
     cif_struct = LoadStructure(fil="temp.cif")
     run_structure_tests(cif_struct, struct_stats)
 
-    print "[temp.cif]"
     struct_stats.print_stats()
     
     

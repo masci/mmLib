@@ -77,7 +77,7 @@ class StructureBuilder(object):
         """
         ## create atom object
         atm = Atom(name        = atm_map.get("name", ""),
-                   model_id    = str(atm_map.get("model_num", "1")),
+                   model_id    = atm_map.get("model_num", 1),
                    alt_loc     = atm_map.get("alt_loc", ""),
                    res_name    = atm_map.get("res_name", ""),
                    fragment_id = atm_map.get("fragment_id", ""),
@@ -133,8 +133,8 @@ class StructureBuilder(object):
         except FragmentOverwrite:
             print "FragmentOverwrite: ",atm
             self.name_service_list.append(atm)
-        except AtomOverwrite:
-            print "AtomOverwrite: ",atm
+        except AtomOverwrite, err:
+            print err
             self.name_service_list.append(atm)
 
         return atm
@@ -578,6 +578,8 @@ class PDBStructureBuilder(StructureBuilder):
             return name , None
         elif e1 != None and e2 == None:
             return name, e1.symbol
+        elif e1 == None and e2 != None:
+            return name, e2.symbol
 
         ## if we get here, then e1 and e2 are both valid elements
 

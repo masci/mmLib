@@ -955,7 +955,8 @@ mmCIFStandardColumnsMap = {
     "symmetry":     ["entry_id", "space_group_name_H-M", "cell_setting",
                      "Int_Tables_number"],
 
-    "atom_site":    ["group_PDB", "id", "type_symbol", "label_entity_id",
+    "atom_site":    ["group_PDB",
+                     "id", "type_symbol", "label_entity_id",
                      "Cartn_x", "Cartn_y", "Cartn_z", 
                      "occupancy", "B_iso_or_equiv", "Cartn_x_esd",
                      "Cartn_y_esd", "Cartn_z_esd", "occupancy_esd",
@@ -964,7 +965,7 @@ mmCIFStandardColumnsMap = {
                      "auth_seq_id",
                      "auth_comp_id",
                      "auth_alt_id",
-                     "auth_atom_id"],
+                     "auth_atom_id", "pdbx_PDB_model_num"],
 
     "atom_site_anisotrop": [
                      "id", "type_symbol", "label_entity_id",
@@ -1162,24 +1163,15 @@ class mmCIFFileBuilder(object):
         """Adds the _atom_site table.
         """
         atom_site = self.get_table("atom_site")        
-        orig_model = self.struct.model
         atom_id = 0
 
-        for model in self.struct.iter_models():
-            self.struct.model = model
+        for atm in self.struct.iter_all_atoms():
+            asrow = mmCIFRow()
+            atom_site.append(asrow)
 
-            for frag in self.struct.iter_fragments():
-                for atm in frag.iter_all_atoms():
-                    asrow = mmCIFRow()
-                    atom_site.append(asrow)
-
-                    atom_id += 1
-                    asrow["id"] = atom_id
-                    asrow["pdbx_PDB_model_num"] = model.model_id
-                    
-                    self.set_atom_site_row(asrow, atm)
-
-        self.struct.model = orig_model
+            atom_id += 1
+            asrow["id"] = atom_id
+            self.set_atom_site_row(asrow, atm)
 
     def set_atom_site_row(self, asrow, atm):
         if atm.get_fragment().is_standard_residue():
@@ -1199,7 +1191,8 @@ class mmCIFFileBuilder(object):
         asrow["Cartn_z"] = atm.position[2]
         asrow["occupancy"] = atm.occupancy
         asrow["B_iso_or_equiv"] = atm.temp_factor
-
+        asrow["pdbx_PDB_model_num"] = atm.model_id
+        
         if atm.sig_position:
             asrow["Cartn_x_esd"] = atm.sig_position[0]
             asrow["Cartn_y_esd"] = atm.sig_position[1]

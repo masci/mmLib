@@ -43,8 +43,10 @@ class AtomOverwrite(StructureError):
     added to a Structure or Fragment has the same chain_id, fragment_id,
     name, and alt_loc as a Atom already in the Structure or Fragment.
     """
-    pass
-
+    def __init__(self, text):
+        self.text = text
+    def __str__(self):
+        return self.text
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
@@ -173,6 +175,7 @@ class Structure(object):
 
         self.model_list.append(model)
         self.model_dict[model.model_id] = model
+
         model.structure = self
         for chain in model.iter_chains():
             chain.structure = self
@@ -323,6 +326,10 @@ class Structure(object):
         for model in self.iter_models():
             for frag in model.iter_fragments():
                 for atm in frag.iter_all_atoms():
+
+                    #print len(self.model_list)
+                    #print atm
+
                     yield atm
 
     def iter_bonds(self):
@@ -342,14 +349,10 @@ class Structure(object):
         """Return the unique list of Atom alternate location IDs found in
         the Structure.
         """
-        al_list = [""]
-        
-        for model in self.iter_models():
-            for frag in model.iter_fragments():
-                for atm in frag.iter_all_atoms():
-                    if atm.alt_loc != "" and atm.alt_loc not in al_list:
-                        al_list.append(atm.alt_loc)
-
+        al_list = []
+        for atm in self.iter_all_atoms():
+            if atm.alt_loc != "" and atm.alt_loc not in al_list:
+                al_list.append(atm.alt_loc)
         return al_list
 
     def iter_alpha_helicies(self):
@@ -415,31 +418,31 @@ class Structure(object):
 class Model(object):
     """Multiple models support.
     """
-    def __init__(self, model_id = ""):
-        assert type(model_id) == StringType
+    def __init__(self, model_id = 1):
+        assert type(model_id) == IntType
 
         self.model_id   = model_id
         self.chain_dict = {}
         self.chain_list = []
 
     def __str__(self):
-        return "Model(model_id = %s)" % (self.model_id)
+        return "Model(model_id=%d)" % (self.model_id)
 
     def __lt__(self, other):
         assert isinstance(other, Model)
-        return self.model_id < other.model_id
+        return int(self.model_id) < int(other.model_id)
         
     def __le__(self, other):
         assert isinstance(other, Model)
-        return self.model_id <= other.model_id
+        return int(self.model_id) <= int(other.model_id)
         
     def __gt__(self, other):
         assert isinstance(other, Model)
-        return self.model_id > other.model_id
+        return int(self.model_id) > int(other.model_id)
 
     def __ge__(self, other):
         assert isinstance(other, Model)
-        return self.model_id >= other.model_id
+        return int(self.model_id) >= int(other.model_id)
 
     def __len__(self):
         """Returns the number of stored Chain objects.
@@ -586,8 +589,8 @@ class Model(object):
 class Chain(object):
     """Chain objects conatain a ordered list of Fragment objects.
     """
-    def __init__(self, model_id = "", chain_id = ""):
-        assert type(model_id) == StringType
+    def __init__(self, model_id = 1, chain_id = ""):
+        assert type(model_id) == IntType
         assert type(chain_id) == StringType
 
         self.model_id = model_id
@@ -603,12 +606,12 @@ class Chain(object):
 
     def __str__(self):
         try:
-            return "Chain(%s, %s...%s)" % (
-                self.chain_id,
+            return "Chain(%d:%s, %s...%s)" % (
+                self.model_id, self.chain_id,
                 self.fragment_list[0],
                 self.fragment_list[-1])
         except IndexError:
-             return "Chain(%s)" % (self.chain_id)
+             return "Chain(%d:%s)" % (self.model_id, self.chain_id)
 
     def __lt__(self, other):
         assert isinstance(other, Chain)
@@ -942,7 +945,8 @@ class Fragment(object):
                 ##     fragment, and raise a AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
                 if self.atom_dict.has_key(name):
-                    raise AtomOverwrite()
+                    raise AtomOverwrite(
+                        "Atom name conflicts with: "+str(self.atom_dict[name]))
 
                 self.atom_order_list.append(atom)
                 self.atom_list.append(atom)
@@ -1459,7 +1463,8 @@ class Altloc(dict):
         for alt_loc in string.uppercase:
             if not self.has_key(alt_loc):
                 return alt_loc
-        raise AtomOverwrite()
+        raise AtomOverwrite(
+            "exhausted availible alt_loc labels for Atom: "+str(atom))
         
 
 class Atom(object):
@@ -1486,14 +1491,14 @@ class Atom(object):
     """
     def __init__(self,
                  name        = "",
-                 model_id    = "",
+                 model_id    = 1,
                  alt_loc     = "",
                  res_name    = "",
                  fragment_id = "",
                  chain_id    = ""):
 
         assert type(name) == StringType
-        assert type(model_id) == StringType
+        assert type(model_id) == IntType
         assert type(alt_loc) == StringType
         assert type(res_name) == StringType
         assert type(fragment_id) == StringType
