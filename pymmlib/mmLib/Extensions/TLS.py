@@ -1973,14 +1973,15 @@ class TLSStructureAnalysis(object):
                     continue
                 
                 ## calculate tensors and print
+                warning("calculating fit: %s...%s" % (frag_id1, frag_id2))
                 lsq_residual = tls_group.calc_TLS_least_squares_fit()
                 tls_group.shift_COR()
                 tls_info = tls_group.calc_tls_info()
                 tls_info["lsq_residual"] = lsq_residual
 
                 ## calculate using CA-pivot TLS model for side chains
-                rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
-                tls_info["ca_pivot"] = rdict
+                #rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
+                #tls_info["ca_pivot"] = rdict
 
                 ## check if the TLS model is valid
                 if not tls_info["valid_model"]:
