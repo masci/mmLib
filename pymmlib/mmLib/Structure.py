@@ -391,10 +391,10 @@ class Chain(object):
     def calc_sequence(self):
         """Attempts to calculate the residue sequence contained in the
         Chain object.  This is a simple algorithm: find the longest running
-        sequence of the same bio-residue, and that's the sequence."""
-
-        slist          = []
-        sequence_list  = None
+        sequence of the same bio-residue, and that's the sequence.
+        """
+        slist = []
+        sequence_list = None
         sequence_class = None
 
         ## iterate through all fragments in the chain and create a
@@ -439,7 +439,6 @@ class Fragment(object):
     Fragment.res_seq      - the sequence id of the fragment/residue
     Fragment.chain_id     - the ID of the chain containing this fragment
     """
-
     def __init__(self,
                  res_name    = "",
                  fragment_id = "",
@@ -533,7 +532,8 @@ class Fragment(object):
 
     def get_atom(self, name):
         """Returns the matching Atom object contained in the Fragment.
-        Returns None if a match is not found."""
+        Returns None if a match is not found.
+        """
         try:
             return self[name]
         except KeyError:
@@ -541,7 +541,8 @@ class Fragment(object):
     
     def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment.
-        There is no defined order for the iteration."""
+        There is no defined order for the iteration.
+        """
         return iter(self)
 
     def iter_bonds(self):
@@ -557,6 +558,9 @@ class Fragment(object):
                     visited.insert(0, bond)
 
     def get_offset_fragment(self, offset):
+        """Returns the fragment in the same chain at integer offset from
+        self.  Returns None if no fragment is found.
+        """
         assert type(offset) == IntType
         
         chain = self.get_chain()
@@ -565,6 +569,8 @@ class Fragment(object):
         except IndexError: return None
 
     def get_structure(self):
+        """Returns the parent structure.
+        """
         return self.get_chain().get_structure()
 
     def set_fragment_id(self, fragment_id):
@@ -626,16 +632,16 @@ class Residue(Fragment):
                                  self.chain_id)
 
     def get_offset_residue(self, offset):
+        """Returns the residue along the chain at the given integer offset
+        from self.  Returns None if there is no residue at that offset, or
+        if the fragment found is not the same type of residue as self.
+        """
         assert type(offset) == IntType
         
-        chain = self.get_chain()
-
-        try:               i = chain.sequence_list.index(self.fragment_id)
-        except ValueError: return None
-
-        try:               frag_id = chain.sequence_list[i + offset]
-        except IndexError: return None
-        else:              return chain[frag_id]
+        frag = Fragment.get_offset_residue(self, offset)
+        if type(self) == type(frag):
+            return frag
+        return None
 
     def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
