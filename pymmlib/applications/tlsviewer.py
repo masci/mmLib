@@ -357,15 +357,16 @@ class GLTLSAtomList(GLAtomList):
         """Draws a fan from the TLS group center of reaction to the
         TLS group backbone atoms.
         """
-        glEnable(GL_LIGHTING)
-
         COR     = self.properties["COR"]
         r, g, b = self.properties["tls_color"]
         a       = self.properties["fan_opacity"]
 
         self.glr_set_material_rgb(r, g, b, a)
-        
+
+        glEnable(GL_LIGHTING)
+        glEnable(GL_NORMALIZE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        
         glBegin(GL_TRIANGLE_FAN)
 
         v1 = None
@@ -399,18 +400,17 @@ class GLTLSGroup(GLDrawList):
     """Top level visualization object for a TLS group.
     """
     def __init__(self, **args):
+        self.tls_group = args["tls_group"]
+        self.tls_info  = None
+
         GLDrawList.__init__(self)
 
-        self.tls_group = args["tls_group"]
-        self.tls_info = self.tls_group.calc_tls_info()
-        
-        if self.tls_group.name!="":
+        if self.tls_group.name:
             self.glo_set_name("TLS Group: %s" % (self.tls_group.name))
 
         ## add a child GLTLSAtomList for the animated atoms
         self.gl_atom_list = GLTLSAtomList(
             tls_group        = self.tls_group,
-            tls_info         = self.tls_info,
             trace            = True,
             lines            = False,
             fan_visible      = False)
@@ -501,59 +501,92 @@ class GLTLSGroup(GLDrawList):
         ## initalize properties
         self.glo_add_update_callback(self.tls_update_cb)
 
-        self.glo_init_properties(
-            COR          = self.tls_info["COR"],
+        if not self.tls_group.is_null():
+            self.tls_info = self.tls_group.calc_tls_info()
 
-            T            = self.tls_info["T'"],
-            rT           = self.tls_info["rT'"],
-            L            = self.tls_info["L'"] * RAD2DEG2,
-            S            = self.tls_info["S'"] * RAD2DEG,
+            self.glo_init_properties(
+                COR          = self.tls_info["COR"],
 
-            L1_eigen_vec = self.tls_info["L1_eigen_vec"],
-            L2_eigen_vec = self.tls_info["L2_eigen_vec"],
-            L3_eigen_vec = self.tls_info["L3_eigen_vec"],
+                T            = self.tls_info["T'"],
+                rT           = self.tls_info["rT'"],
+                L            = self.tls_info["L'"] * RAD2DEG2,
+                S            = self.tls_info["S'"] * RAD2DEG,
 
-            L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
-            L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
-            L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+                L1_eigen_vec = self.tls_info["L1_eigen_vec"],
+                L2_eigen_vec = self.tls_info["L2_eigen_vec"],
+                L3_eigen_vec = self.tls_info["L3_eigen_vec"],
 
-            L1_rho       = self.tls_info["L1_rho"],
-            L2_rho       = self.tls_info["L2_rho"],
-            L3_rho       = self.tls_info["L3_rho"],
-            
-            L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
-            L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
-            L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG),
-            **args)
+                L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
+                L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
+                L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+
+                L1_rho       = self.tls_info["L1_rho"],
+                L2_rho       = self.tls_info["L2_rho"],
+                L3_rho       = self.tls_info["L3_rho"],
+
+                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
+                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
+                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG),
+                **args)
+        else:
+            self.glo_init_properties(**args)
 
     def set_tls_group(self, tls_group):
         """Set a new TLSGroup.
         """
         self.tls_group = tls_group
-        self.tls_info = self.tls_group.calc_tls_info()
-        
-        self.properties.update(
-            COR          = self.tls_info["COR"],
-            T            = self.tls_info["T'"],
-            Tr           = self.tls_info["rT'"],
-            L            = self.tls_info["L'"] * RAD2DEG2,
-            S            = self.tls_info["S'"] * RAD2DEG,
 
-            L1_eigen_vec = self.tls_info["L1_eigen_vec"],
-            L2_eigen_vec = self.tls_info["L2_eigen_vec"],
-            L3_eigen_vec = self.tls_info["L3_eigen_vec"],
+        if not self.tls_group.is_null():
+            self.tls_info = self.tls_group.calc_tls_info()
 
-            L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
-            L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
-            L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+            self.properties.update(
+                COR          = self.tls_info["COR"],
+                T            = self.tls_info["T'"],
+                Tr           = self.tls_info["rT'"],
+                L            = self.tls_info["L'"] * RAD2DEG2,
+                S            = self.tls_info["S'"] * RAD2DEG,
 
-            L1_rho       = self.tls_info["L1_rho"],
-            L2_rho       = self.tls_info["L2_rho"],
-            L3_rho       = self.tls_info["L3_rho"],
+                L1_eigen_vec = self.tls_info["L1_eigen_vec"],
+                L2_eigen_vec = self.tls_info["L2_eigen_vec"],
+                L3_eigen_vec = self.tls_info["L3_eigen_vec"],
 
-            L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
-            L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
-            L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG) )
+                L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
+                L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
+                L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+
+                L1_rho       = self.tls_info["L1_rho"],
+                L2_rho       = self.tls_info["L2_rho"],
+                L3_rho       = self.tls_info["L3_rho"],
+
+                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
+                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
+                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG) )
+
+        else:
+            self.tls_info = None
+
+            self.properties.update(
+                COR          = GLObject.PropertyDefault,
+                T            = GLObject.PropertyDefault,
+                Tr           = GLObject.PropertyDefault,
+                L            = GLObject.PropertyDefault,
+                S            = GLObject.PropertyDefault,
+
+                L1_eigen_vec = GLObject.PropertyDefault,
+                L2_eigen_vec = GLObject.PropertyDefault,
+                L3_eigen_vec = GLObject.PropertyDefault,
+
+                L1_eigen_val = GLObject.PropertyDefault,
+                L2_eigen_val = GLObject.PropertyDefault,
+                L3_eigen_val = GLObject.PropertyDefault,
+
+                L1_rho       = GLObject.PropertyDefault,
+                L2_rho       = GLObject.PropertyDefault,
+                L3_rho       = GLObject.PropertyDefault,
+
+                L1_pitch     = GLObject.PropertyDefault,
+                L2_pitch     = GLObject.PropertyDefault,
+                L3_pitch     = GLObject.PropertyDefault )
 
     def glo_install_properties(self):
         GLDrawList.glo_install_properties(self)
@@ -991,6 +1024,9 @@ class GLTLSGroup(GLDrawList):
     def update_time(self):
         """Changes the time of the TLS group simulating harmonic motion.
         """
+        if self.tls_group.is_null():
+            return
+
         pi2 = 2.0 * math.pi
         sin_tm = math.sin(pi2 * 3.0 * self.properties["time"])
 
@@ -1070,11 +1106,14 @@ class GLTLSGroup(GLDrawList):
     def draw_tensors(self):
         """Draw tensor axis.
         """
+        if self.tls_group.is_null():
+            return
+        
         glPushMatrix()
         glTranslatef(*self.properties["COR"])
 
         ## T: units (A^2)
-        r, g, b = self.properties["T_color"]
+        r, g, b = self.properties["tls_color"]
         self.glr_set_material_rgb(r, g, b, 1.0)
         self.glr_Uellipse((0.0, 0.0, 0.0),
                           self.properties["rT"],
@@ -1100,7 +1139,7 @@ class GLTLSGroup(GLDrawList):
             L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
-            glColor3f(*self.properties["L_color"])
+            glColor3f(*self.properties["tls_color"])
 
             ## draw lines from COR to the axis
             glDisable(GL_LIGHTING)
@@ -1110,7 +1149,7 @@ class GLTLSGroup(GLDrawList):
             glEnd()
 
             ## draw axis
-            r, g, b = self.properties["L_color"]
+            r, g, b = self.properties["tls_color"]
             self.glr_set_material_rgb(r, g, b, 1.0)
             self.glr_axis(L_rho - (0.5 * L_v), L_v,
                           self.properties["L_axis_radius"])
@@ -1129,6 +1168,9 @@ class GLTLSGroup(GLDrawList):
         """Render the anisotropic thremal axes calculated from the TLS
         model.
         """
+        if self.tls_group.is_null():
+            return
+        
         prob  = self.properties["adp_prob"]
         color = self.properties["tls_color"]
 
@@ -1139,6 +1181,9 @@ class GLTLSGroup(GLDrawList):
         """Render the anisotropic thremal ellipseoids at the given probability
         contour calculated from the TLS model.
         """
+        if self.tls_group.is_null():
+            return
+        
         prob    = self.properties["adp_prob"]
         r, g, b = self.properties["tls_color"]
         a       = self.properties["ellipse_opacity"]
@@ -1151,6 +1196,9 @@ class GLTLSGroup(GLDrawList):
         """Render the anisotropic thremal peanuts calculated from the TLS
         model.
         """
+        if self.tls_group.is_null():
+            return
+        
         r, g, b = self.properties["tls_color"]
         a       = self.properties["rms_opacity"]
         self.glr_set_material_rgb(r, g, b, a)
@@ -1159,25 +1207,31 @@ class GLTLSGroup(GLDrawList):
             self.glr_Urms(atm.position, Utls)
 
     def draw_L1_surface(self):
-         self.draw_tls_surface(
-             self.properties["L1_eigen_vec"],
-             self.properties["L1_eigen_val"],
-             self.properties["L1_rho"],
-             self.properties["L1_pitch"])
+        if self.tls_group.is_null():
+            return
+        self.draw_tls_surface(
+            self.properties["L1_eigen_vec"],
+            self.properties["L1_eigen_val"],
+            self.properties["L1_rho"],
+            self.properties["L1_pitch"])
 
     def draw_L2_surface(self):
-         self.draw_tls_surface(
-             self.properties["L2_eigen_vec"],
-             self.properties["L2_eigen_val"],
-             self.properties["L2_rho"],
-             self.properties["L2_pitch"])
+        if self.tls_group.is_null():
+            return
+        self.draw_tls_surface(
+            self.properties["L2_eigen_vec"],
+            self.properties["L2_eigen_val"],
+            self.properties["L2_rho"],
+            self.properties["L2_pitch"])
 
     def draw_L3_surface(self):
-         self.draw_tls_surface(
-             self.properties["L3_eigen_vec"],
-             self.properties["L3_eigen_val"],
-             self.properties["L3_rho"],
-             self.properties["L3_pitch"])
+        if self.tls_group.is_null():
+            return
+        self.draw_tls_surface(
+            self.properties["L3_eigen_vec"],
+            self.properties["L3_eigen_val"],
+            self.properties["L3_rho"],
+            self.properties["L3_pitch"])
 
     def draw_tls_surface(self, Lx_eigen_vec, Lx_eigen_val, Lx_rho, Lx_pitch):
         """Draws the TLS probability surface for a single non-intersecting
@@ -2337,7 +2391,7 @@ class GLPropertyTreeControl(gtk.TreeView):
         self.set_model(self.model)
 
         cell = gtk.CellRendererText()
-        self.column = gtk.TreeViewColumn("OpenGL Renderer", cell)
+        self.column = gtk.TreeViewColumn("Graphics Objects", cell)
         self.column.add_attribute(cell, "text", 0)
         self.append_column(self.column)
 
@@ -2777,16 +2831,21 @@ class TLSDialog(gtk.Dialog):
         """Remove the current TLS groups, including destroying
         the tls.gl_tls OpenGL renderer
         """
-        ## reset
-        self.chn_colori = {}
-        
         gl_viewer = self.sc.gl_struct.glo_get_root()
 
+        ## remove the individual GLTLSGroup visualization objects
         for tls_group in self.tls_group_list:
             gl_viewer.glv_remove_draw_list(tls_group.gl_tls)
             tls_group.gl_tls.glo_remove_update_callback(self.update_cb)
             del tls_group.gl_tls
-        
+
+        ## remove the GLTLSChain objects
+        for gl_tls_chain in self.gl_tls_chain.values():
+            gl_viewer.glv_remove_draw_list(gl_tls_chain)
+        self.gl_tls_chain = {}
+
+        ## re-initalize
+        self.chn_colori     = {}
         self.tls_group_list = []
         self.animation_list = []
 
@@ -3333,7 +3392,7 @@ class MainWindow(object):
 
         ## Create the toplevel window
         self.window = gtk.Window()
-        self.window.set_title("mmLib Viewer")
+        self.window.set_title("TLSViewer")
         self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.file_quit, self)
 
@@ -3363,8 +3422,8 @@ class MainWindow(object):
             ('/Visualization/_Properties Browser...', None,
              self.visualization_properties_browser, 0, None),
 
-            ('/_Tools', None, None, 0, '<Branch>'),
-            ('/Tools/TLS Analysis...', None, self.tools_tls_analysis, 0, None),
+            ('/_TLS', None, None, 0, '<Branch>'),
+            ('/TLS/TLS Analysis...', None, self.tools_tls_analysis, 0, None),
 
             ('/_Structures', None, None, 0, '<Branch>'),
 
@@ -3582,7 +3641,7 @@ class MainWindow(object):
         ## now add the tab dictionary
         self.tab_list.append(tab)
 
-        tab["name"]      = "Page %d" % (tab["num"])
+        tab["name"]      = "Tab %d" % (tab["num"])
         tab["gl_viewer"] = GtkGLViewer()
 
         page_num  = self.notebook.append_page(

@@ -1,3 +1,10 @@
+## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distrobution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""Library of colors matching PyMol color names.
+"""
+
 COLORS = [
     ('white', (1.0, 1.0, 1.0)),
     ('black', (0.0, 0.0, 0.0)),
@@ -12,10 +19,10 @@ COLORS = [
     ('salmon', (1.0, 0.6, 0.5)),
     ('lime', (0.5, 1.0, 0.5)),
     ('slate', (0.5, 0.5, 1.0)),
+    ('bluegreen', (0.0, 1.0, 0.5)),
     ('hotpink', (1.0, 0.0, 0.5)),
     ('orange', (1.0, 0.5, 0.0)),
     ('yellowgreen', (0.5, 1.0, 0.0)),
-    ('bluegreen', (0.0, 1.0, 0.5)),
     ('blueviolet', (0.5, 0.0, 1.0)),
     ('marine', (0.0, 0.5, 1.0)),
     ('olive', (0.75, 0.75, 0.0)),

@@ -42,6 +42,10 @@ class GLPropertyDict(dict):
         self.gl_object.glo_update_properties(**args)
 
 
+class GLPropertyDefault(object):
+    pass
+
+
 class GLObject(object):
     """Base class for all OpenGL rendering objects.  It combines a
     composite-style tree structure with a system for setting properties.
@@ -50,6 +54,9 @@ class GLObject(object):
     requres the GLProperties object which is the access object for the
     properties.
     """
+    
+    PropertyDefault = GLPropertyDefault()
+
     def __init__(self, **args):
         object.__init__(self)
 
@@ -336,6 +343,9 @@ class GLObject(object):
                 self.properties[name] = args[name]
             except KeyError:
                 self.properties[name] = prop_desc["default"]
+            else:
+                if self.properties[name]==self.PropertyDefault:
+                    self.properties[name] = prop_desc["default"]
 
             ## if the update callbacks are to be triggered on initialization
             if prop_desc["update_on_init"]==True:
@@ -392,7 +402,11 @@ class GLObject(object):
                  (prop_desc["update_on_changed"]==True and
                   self.properties[name]!=args[name]) ):
 
-                self.properties[name] = updates[name] = args[name]
+                self.properties[name] = args[name]
+                if self.properties[name]==self.PropertyDefault:
+                    self.properties[name] = prop_desc["default"]
+                    
+                updates[name] = self.properties[name]
 
                 ## now update the actions taken when a property changes
                 ## case 1: action is a string
@@ -2376,6 +2390,16 @@ class GLViewer(GLObject, OpenGLRenderMethods):
     def glo_install_properties(self):
         GLObject.glo_install_properties(self)
 
+        ## Background
+        self.glo_add_property(
+            { "name":      "bg_color",
+              "desc":      "Background Color",
+              "catagory":  "Background",
+              "type":      "enum_string",
+              "default":   "Black",
+              "enum_list": ["Black", "White", "Dark Green"],
+              "action":    "redraw" })
+
         ## View
         self.glo_add_property(
             { "name":      "R",
@@ -2742,15 +2766,21 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         """
         ## OpenGL Features
         glEnable(GL_NORMALIZE)
+        glEnable(GL_CULL_FACE)
+        glShadeModel(GL_SMOOTH)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
         
-        ## Enables Smooth Color Shading
-	#glShadeModel(GL_SMOOTH)
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
         
-        ## inital orientation
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
+        ## background color
+        if self.properties["bg_color"]=="Black":
+            glClearColor(0.0, 0.0, 0.0, 0.0)
+        elif self.properties["bg_color"]=="White":
+            glClearColor(1.0, 1.0, 1.0, 0.0)
+        elif self.properties["bg_color"]=="Dark Green":
+            glClearColor(0.0, 0.2, 0.0, 0.1)
+
         ## lighting
         ambient  = (self.properties["GL_AMBIENT"],
                     self.properties["GL_AMBIENT"],
