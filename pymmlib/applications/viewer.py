@@ -384,15 +384,23 @@ class GLPropertyEditor(gtk.Notebook):
             if prop_desc.get("hidden", False)==True:
                 continue
 
-            catagory = prop_desc.get("catagory", "Visualization")
+            catagory = prop_desc.get("catagory", "Show/Hide")
             try:
                 page_prop_dict[catagory].append(prop_desc)
             except KeyError:
                 page_prop_dict[catagory] = [prop_desc]
+
+        ## sort pages
+        catagories = page_prop_dict.keys()
+        if "Show/Hide" in catagories:
+            catagories.remove("Show/Hide")
+            catagories.insert(0, "Show/Hide")
             
         ## add Notebook pages and tables
         table_dict = {}
-        for catagory, prop_list in page_prop_dict.items():
+        for catagory in catagories:
+            prop_list = page_prop_dict[catagory]
+
             num_props = len(prop_list)
 
             table = gtk.Table(2, num_props, gtk.FALSE)
@@ -872,7 +880,7 @@ class TLSDialog(gtk.Dialog):
 
         self.show_all()
 
-        gobject.timeout_add(50, self.timeout_cb)
+        gobject.timeout_add(100, self.timeout_cb)
 
         self.load_PDB(self.struct_context.struct.path)
 

@@ -91,6 +91,15 @@ class TLSInfo(object):
 
     def __str__(self):
         return self.refmac_description()
+
+    def create_tls_name(self):
+        """Creates a name for the TLS group using the selected
+        residue ranges.
+        """
+        listx = []
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
+            listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
+        return string.join(listx,';')
         
     def refmac_description(self):
         """Return a string describing the TLS group in REFMAC/CCP4 format.
@@ -137,7 +146,12 @@ class TLSInfo(object):
         set.
         """
         tls = TLSGroup()
-        tls.name = self.name
+
+        if self.name=="":
+            tls.name = self.create_tls_name()
+        else:
+            tls.name = self.name
+
         tls.set_origin(*self.origin)
         tls.set_T(*self.T)
         tls.set_L(*self.L)

@@ -161,17 +161,27 @@ class GLObject(object):
 
         self.properties                      = GLPropertyDict(self)
         self.__globject_properties_id        = None
+        self.__globject_properties_name      = None
         self.__globject_properties           = []
         self.__globject_properties_callbacks = []
 
         self.glo_install_properties()
 
     def glo_name(self):
-        if self.__globject_properties_id!=None:
+        """Returns the GLObject name.
+        """
+        if self.__globject_properties_name!=None:
+            return self.__globject_properties_name
+        elif self.__globject_properties_id!=None:
             return "%s(%s)" % (self.__class__.__name__,
                                self.__globject_properties_id)
         else:
             return self.__class__.__name__
+
+    def glo_set_name(self, name):
+        """Sets the GLObject name.
+        """
+        self.__globject_properties_name = name
 
     def glo_add_child(self, child):
         assert isinstance(child, GLObject)
@@ -731,16 +741,14 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         if self.properties["visible"]==False:
             return
         
-        ## pop the matrix pushed by properties["origin"], properties["rot_x"]
-        ## properties["rot_y"], and properties["rot_z"]
-        self.gldl_push_matrix()
-
         ## render this GLDrawList, compiling a new OpenGL draw list if needed
         if self.gl_name==None:
             self.gl_name = glGenLists(1)
             glNewList(self.gl_name, GL_COMPILE)
             self.gldl_draw()
             glEndList()
+
+        self.gldl_push_matrix()
 
         ## support multiple rendering images by implementing class
         ## iterators gldl_iter_multidraw_all() for multiple
@@ -798,6 +806,7 @@ class GLAxes(GLDrawList):
     """
     def __init__(self, **args):
         GLDrawList.__init__(self, **args)
+        self.glo_set_name("Cartesian Axes")
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
@@ -860,6 +869,7 @@ class GLUnitCell(GLDrawList):
     def __init__(self, **args):
         GLDrawList.__init__(self, **args)
         self.unit_cell = args["unit_cell"]
+        self.glo_set_name("Unit Cell")
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
@@ -1614,6 +1624,11 @@ class GLTLSAtomList(GLAtomList):
             self.properties.update(lines=False)
 
     def gldl_iter_multidraw_self(self):
+        for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
+            for draw_flag2 in self.gldl_iter_multidraw_animate():
+                yield True
+            
+    def gldl_iter_multidraw_animate(self):
         """
         """
         for Lx_axis, Lx_rho, Lx_pitch, Lx_rot in (
@@ -1643,10 +1658,7 @@ class GLTLSAtomList(GLAtomList):
             glTranslatef(*Lx_rho + screw)
             glRotatef(Lx_rot, *Lx_axis)
             glTranslatef(*-Lx_rho)
-
-            for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
-                yield True
-
+            yield True
             glPopMatrix()
 
             ## negitive rotation
@@ -1654,11 +1666,9 @@ class GLTLSAtomList(GLAtomList):
             glTranslatef(*Lx_rho - screw)
             glRotatef(-Lx_rot, *Lx_axis)
             glTranslatef(*-Lx_rho)
-
-            for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
-                yield True
-
+            yield True
             glPopMatrix()
+
 
     def gldl_iter_multidraw_self_old_slow(self):
         """
@@ -1724,14 +1734,17 @@ class GLTLSGroup(GLDrawList):
     def __init__(self, **args):
         GLDrawList.__init__(self)
 
-        ## TLS calculations
-
-        ## step 1: copy the TLS group
         orig_tls_group        = args["tls_group"]
+
+        if orig_tls_group.name!="":
+            self.glo_set_name("TLS Group: %s" % (orig_tls_group.name))
+        
+        ## TLS calculations        
+        ## step 1: copy the TLS group
         calcs                 = orig_tls_group.calc_COR()
 
         ## create this object's TLS group at the center of reaction
-        self.tls_group        = TLSGroup(orig_tls_group)      
+        self.tls_group        = TLSGroup(orig_tls_group)
         self.tls_group.origin = calcs["COR"].copy()
         self.tls_group.T      = calcs["T'"].copy()
         self.tls_group.L      = calcs["L'"].copy()
@@ -1743,6 +1756,10 @@ class GLTLSGroup(GLDrawList):
         self.gl_screw_rot1 = GLTLSScrewRotation(atom_list = self.tls_group)
         self.gl_screw_rot2 = GLTLSScrewRotation(atom_list = self.tls_group)
         self.gl_screw_rot3 = GLTLSScrewRotation(atom_list = self.tls_group)
+
+        self.gl_screw_rot1.glo_set_name("L1 Screw Rotation")
+        self.gl_screw_rot2.glo_set_name("L2 Screw Rotation")
+        self.gl_screw_rot3.glo_set_name("L3 Screw Rotation")
         
         self.gl_screw_rot1.glo_set_properties_id("gl_screw_rot1")
         self.gl_screw_rot2.glo_set_properties_id("gl_screw_rot2")
@@ -1810,6 +1827,7 @@ class GLTLSGroup(GLDrawList):
             origin      = calcs["COR"],
             atom_origin = calcs["COR"])
 
+        self.gl_atom_list.glo_set_name("TLS Atom Animation")
         self.gl_atom_list.glo_set_properties_id("gl_atom_list")
         self.glo_add_child(self.gl_atom_list)
         
@@ -2147,7 +2165,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "Show Animated Atoms", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
-              "default":     False,
+              "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw1_visible",
@@ -2404,6 +2422,7 @@ class GLChain(GLDrawList):
                     self.hetatm.atom_list.append(atm)
 
         if len(self.aa_main_chain.atom_list)>0:
+            self.aa_main_chain.glo_set_name("Protein Main Chain")
             self.aa_main_chain.glo_set_properties_id("aa_main_chain")
             self.glo_add_child(self.aa_main_chain)
             self.glo_link_child_property(
@@ -2412,6 +2431,7 @@ class GLChain(GLDrawList):
             self.aa_main_chain = None
 
         if len(self.aa_side_chain.atom_list)>0:
+            self.aa_side_chain.glo_set_name("Protein Side Chain")
             self.aa_side_chain.glo_set_properties_id("aa_side_chain")
             self.glo_add_child(self.aa_side_chain)
             self.glo_link_child_property(
@@ -2420,6 +2440,7 @@ class GLChain(GLDrawList):
             self.aa_side_chain = None
 
         if len(self.dna_main_chain.atom_list)>0:
+            self.dna_main_chain.glo_set_name("DNA Main Chain")
             self.dna_main_chain.glo_set_properties_id("dna_main_chain")
             self.glo_add_child(self.dna_main_chain)
             self.glo_link_child_property(
@@ -2428,6 +2449,7 @@ class GLChain(GLDrawList):
             self.dna_main_chain = None
 
         if len(self.dna_side_chain.atom_list)>0:
+            self.dna_side_chain.glo_set_name("DNA Side Chain")
             self.dna_side_chain.glo_set_properties_id("dna_side_chain")
             self.glo_add_child(self.dna_side_chain)
             self.glo_link_child_property(
@@ -2436,6 +2458,7 @@ class GLChain(GLDrawList):
             self.dna_side_chain = None
 
         if len(self.hetatm.atom_list)>0:
+            self.hetatm.glo_set_name("Hetrogen Atoms")
             self.hetatm.glo_set_properties_id("hetatm")
             self.glo_add_child(self.hetatm)
             self.glo_link_child_property(
@@ -2444,6 +2467,7 @@ class GLChain(GLDrawList):
             self.hetatm = None
 
         if len(self.water.atom_list)>0:
+            self.water.glo_set_name("Water")
             self.water.glo_set_properties_id("water")
             self.glo_add_child(self.water)
             self.glo_link_child_property(
@@ -2697,6 +2721,84 @@ class GLViewer(GLObject):
               "default":  array([0.0, 0.0, -50]),
               "action":   "redraw" })
 
+        ## OpenGL Lighting
+        self.glo_add_property(
+            { "name":      "GL_AMBIENT",
+              "desc":      "Ambient Light",
+              "catagory":  "OpenGL Lighting",
+              "type":      "float",
+              "default":   0.5,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_SPECULAR",
+              "desc":      "Specular Light",
+              "catagory":  "OpenGL Lighting",
+              "type":      "float",
+              "default":   1.0,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_DIFFUSE",
+              "desc":      "Diffuse Light",
+              "catagory":  "OpenGL Lighting",
+              "type":      "float",
+              "default":   0.0,
+              "action":    "redraw" })
+
+
+        ## High-Performance OpenGL Features
+        self.glo_add_property(
+            { "name":      "GL_LINE_SMOOTH",
+              "desc":      "Smooth Lines",
+              "catagory":  "OpenGL Performance",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_POINT_SMOOTH",
+              "desc":      "Smooth Points",
+              "catagory":  "OpenGL Performance",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_POLYGON_SMOOTH",
+              "desc":      "Smooth Polygons",
+              "catagory":  "OpenGL Performance",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_BLEND",
+              "desc":      "Alpha-Blending (required for Fog)",
+              "catagory":  "OpenGL Performance",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_FOG",
+              "desc":      "Enable Fog",
+              "catagory":  "OpenGL Performance",
+              "type":      "boolean",
+              "default":   False,
+              "action":    "redraw" })
+
+        ## Fog Properties
+        self.glo_add_property(
+            { "name":      "GL_FOG_START",
+              "desc":      "Fog Start Parameter",
+              "catagory":  "Fog",
+              "type":      "float",
+              "default":   20.0,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "GL_FOG_END",
+              "desc":      "Fog End Parameter",
+              "catagory":  "Fog",
+              "type":      "float",
+              "default":   50.0,
+              "action":    "redraw" })
+
+        
     def glo_name(self):
         return "GLViewer"
 
@@ -2745,44 +2847,7 @@ class GLViewer(GLObject):
     def glv_init(self):
         """Called once to initalize the GL scene before drawing.
         """
-        ambient        = [0.0, 0.0, 0.0, 1.0]
-        diffuse        = [1.0, 1.0, 1.0, 1.0]
-        specular       = [1.0, 1.0, 1.0, 1.0]
-        position       = [0.0, 3.0, 3.0, 0.0]
-        lmodel_ambient = [0.5, 0.5, 0.5, 1.0]
-        local_view     = [0.0]
-        
-        glLightfv(GL_LIGHT0, GL_AMBIENT, ambient)
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT0, GL_POSITION, position)
-        
-        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, lmodel_ambient)
-        glLightModelfv(GL_LIGHT_MODEL_LOCAL_VIEWER, local_view)
-        
-        glFrontFace(GL_CW)
-        glEnable(GL_LIGHTING)
-        glEnable(GL_LIGHT0)
-        glEnable(GL_AUTO_NORMAL)
-        glEnable(GL_NORMALIZE)
-        glEnable(GL_DEPTH_TEST)	
-
-	glDepthFunc(GL_LESS)
-	glEnable(GL_DEPTH_TEST)
-
-        ## FOG
-        #glEnable(GL_FOG)
-        #glFogf(GL_FOG_MODE, GL_EXP)
-        #glFogf(GL_FOG_DENSITY, 0.01)
-        #glFogf(GL_FOG_START, 20.0)
-
-        ## ANTI-ALIASING
-        glEnable(GL_LINE_SMOOTH)
-        glEnable(GL_POINT_SMOOTH)
-        #glEnable(GL_POLYGON_SMOOTH)
-
-        ## ALPHA BLENDING
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        pass
 
     def glv_resize(self, width, height):
         """Called to set the size of the OpenGL window this class is
@@ -2840,6 +2905,7 @@ class GLViewer(GLObject):
         lists, they will be compiled while they are drawn, since this is
         a useful optimization.
         """
+        ## orientation
         R = self.properties["R"]
         t = self.properties["t"]
 
@@ -2856,5 +2922,74 @@ class GLViewer(GLObject):
 
         glTranslatef(t[0], t[1], t[2] + 10.0)
 
+
+        ## OpenGL Features
+        glEnable(GL_AUTO_NORMAL)
+        glEnable(GL_NORMALIZE)
+        glEnable(GL_DEPTH_TEST)
+
+        
+        ## lighting
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        
+        glLightModelfv(GL_LIGHT_MODEL_AMBIENT,
+                       [self.properties["GL_AMBIENT"],
+                        self.properties["GL_AMBIENT"],
+                        self.properties["GL_AMBIENT"],
+                        1.0])
+
+        glLightfv(GL_LIGHT0, GL_DIFFUSE,
+                  [self.properties["GL_DIFFUSE"],
+                   self.properties["GL_DIFFUSE"],
+                   self.properties["GL_DIFFUSE"],
+                   1.0])
+
+        glLightfv(GL_LIGHT0, GL_SPECULAR,
+                  [self.properties["GL_SPECULAR"],
+                   self.properties["GL_SPECULAR"],
+                   self.properties["GL_SPECULAR"],
+                   1.0])
+
+        glLightfv(GL_LIGHT0, GL_POSITION,
+                  [0.0, 0.0, 1.0, 0.0])
+
+
+        ## ANTI-ALIASING
+        if self.properties["GL_LINE_SMOOTH"]==True:
+            glEnable(GL_LINE_SMOOTH)
+        else:
+            glDisable(GL_LINE_SMOOTH)
+
+        if self.properties["GL_POINT_SMOOTH"]==True:
+            glEnable(GL_POINT_SMOOTH)
+        else:
+            glDisable(GL_POINT_SMOOTH)
+
+        if self.properties["GL_POLYGON_SMOOTH"]==True:
+            glEnable(GL_POLYGON_SMOOTH)
+        else:
+            glDisable(GL_POLYGON_SMOOTH)
+
+
+        ## ALPHA BLENDING
+        if self.properties["GL_BLEND"]==True:
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+            ## FOG
+            if self.properties["GL_FOG"]==True:
+                glEnable(GL_FOG)
+                glFogf(GL_FOG_MODE,    GL_LINEAR)
+                glFogf(GL_FOG_START,   self.properties["GL_FOG_START"])
+                glFogf(GL_FOG_END,     self.properties["GL_FOG_END"])
+            else:
+                glDisable(GL_FOG)
+            
+        else:
+            glDisable(GL_BLEND)
+
+
+        ## render
         for draw_list in self.glo_iter_children():
             draw_list.gldl_render()
