@@ -323,13 +323,13 @@ class Structure(object):
             for aa in chain.iter_nucleic_acids():
                 yield aa
 
-    def iter_atoms(self, **args):
+    def iter_atoms(self):
         """Iterates over all Atom objects in the current Model, using the
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
         for chain in self.iter_chains():
-            for atm in chain.iter_atoms(**args):
+            for atm in chain.iter_atoms():
                 yield atm
 
     def iter_all_atoms(self):
@@ -579,13 +579,20 @@ class Model(object):
             for aa in chain.iter_nucleic_acids():
                 yield aa
 
-    def iter_atoms(self, **args):
+    def iter_atoms(self):
         """Iterates over all Atom objects.  The iteration is preformed in
         order according to the Chain and Fragment ordering rules the Atom
         object is a part of.
         """
         for chain in self.iter_chains():
-            for atm in chain.iter_atoms(**args):
+            for atm in chain.iter_atoms():
+                yield atm
+
+    def iter_all_atoms(self):
+        """
+        """
+        for chain in self.iter_chains():
+            for atm in chain.iter_all_atoms():
                 yield atm
 
     def iter_bonds(self):
@@ -784,11 +791,18 @@ class Chain(object):
             if not frag.is_standard_residue():
                 yield frag
 
-    def iter_atoms(self, **args):
+    def iter_atoms(self):
         """Iterates over all Atom objects within the Chain.
         """
         for frag in self.iter_fragments():
-            for atm in frag.iter_atoms(**args):
+            for atm in frag.iter_atoms():
+                yield atm
+    
+    def iter_all_atoms(self):
+        """
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_all_atoms():
                 yield atm
                 
     def iter_bonds(self):
@@ -1166,7 +1180,7 @@ class Fragment(object):
         except KeyError:
             return None
     
-    def iter_atoms(self, **args):
+    def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment matching
         the current model and default alt_loc.
         """

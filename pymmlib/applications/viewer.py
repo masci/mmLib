@@ -228,18 +228,15 @@ class TLSDialog(gtk.Dialog):
     """Dialog for TLS analysis of a structure.
     """    
     def __init__(self, **args):
-        self.context        = args["context"]
-        self.struct         = args["struct"]
-        self.win_title      = args.get("title", str(self.struct))
+        self.main_window    = args["main_window"]
+        self.struct_context = args["struct_context"]
 
-        self.tls_group_list    = []
-        self.gl_tls_group_dict = {}
+        gtk.Dialog.__init__(
+            self,
+            "TLS Analysis: %s" % (str(self.struct_context.struct)),
+            self.main_window.window,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
         
-        gtk.Dialog.__init__(self,
-                            "TLS Analysis: %s" % (self.win_title),
-                            self.context.window,
-                            gtk.DIALOG_DESTROY_WITH_PARENT)
-
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.set_default_size(400, 400)
         
@@ -272,27 +269,33 @@ class TLSDialog(gtk.Dialog):
         treeview.append_column(column)
 
         column = gtk.TreeViewColumn(
-            "<markup>T(A<sup>2</sup>)</markup>",
+            "T (A^2)",
             gtk.CellRendererText(),
             text=1)
         treeview.append_column(column)
     
         column = gtk.TreeViewColumn(
-            "<markup>L(Deg<sup>2</sup></markup>",
+            "L (deg^2)",
             gtk.CellRendererText(),
             text=2)
         treeview.append_column(column)
 
         column = gtk.TreeViewColumn(
-            "Mean Translation (A^2)",
+            "S (A*deg)",
             gtk.CellRendererText(),
             text=3)
         treeview.append_column(column)
 
         column = gtk.TreeViewColumn(
-            "Mean Libration (deg^2)",
+            "Mean Translation (A^2)",
             gtk.CellRendererText(),
             text=4)
+        treeview.append_column(column)
+
+        column = gtk.TreeViewColumn(
+            "Mean Libration (deg^2)",
+            gtk.CellRendererText(),
+            text=5)
         treeview.append_column(column)
 
         self.show_all()
@@ -366,7 +369,7 @@ class StructureTreeControl(gtk.TreeView):
         """Retrieve selected node, then call the correct set method for the
         type.
         """
-        self.context.set_selected_item(self.resolv_path(path))
+        self.context.set_selected_struct_obj(self.resolv_path(path))
     
     def button_release_event_cb(self, tree_view, bevent):
         """
@@ -414,7 +417,7 @@ class StructureTreeControl(gtk.TreeView):
         self.redraw()
 
 
-class StructureGUI:
+class StructureGUI(object):
     def __init__(self, context):
         self.context = context        
     
@@ -439,13 +442,87 @@ class StructureGUI:
         return self.hpaned
 
 
-class MainWindow:
-    def __init__(self, quit_notify_cb):
+class ViewCommands(list):
+    def __init__(self):
+        view_cmds = [
+            { "menu path":       "/View/Carteasion Axes",
+              "glstruct property": "axes_visible",
+              "action":          100 },
 
-        self.struct_list         = []
-        self.struct_dict         = {}
-        
-        self.selected_struct_obj = None        
+            { "menu path":         "/View/Unit Cell",
+              "glstruct property": "unit_cell_visible",
+              "action":            101 },
+
+            { "menu path":       "/View/Protein Main Chain",
+              "glstruct property": "aa_main_chain_visible",
+              "action":          102 },
+
+            { "menu path":       "/View/Protein Side Chain",
+              "glstruct property": "aa_side_chain_visible",
+              "action":          103 },
+
+            { "menu path":       "/View/DNA Main Chain",
+              "glstruct property": "dna_main_chain_visible",
+              "action":          104 },
+
+            { "menu path":       "/View/DNA Side Chain",
+              "glstruct property": "dna_side_chain_visible",
+              "action":          105 },
+
+            { "menu path":       "/View/HET Group",
+              "glstruct property": "hetatm_visible",
+              "action":          106 },
+
+            { "menu path":       "/View/Water",
+              "glstruct property": "water_visible",
+              "action":          107},
+            
+            { "menu path":       "/View/Thermal Axes",
+              "glstruct property": "U",
+              "action":          108},
+            ]
+
+        list.__init__(self, view_cmds)
+
+    def get_action(self, action):
+        """Return the cmd dictionary by action number.
+        """
+        for cmd in self:
+            if cmd["action"]==action:
+                return cmd
+        return None
+
+
+class ColorCommands(list):
+    def __init__(self):
+        list.__init__(self, [
+            { "menu path":  "/Colors/Color by Atom Type",
+              "action":     100 },
+            { "menu path":  "/Colors/Color by Chain",
+              "action":     101 } ])
+
+    def get_action(self, action):
+        """Return the cmd dictionary by action number.
+        """
+        for cmd in self:
+            if cmd["action"]==action:
+                return cmd
+        return None
+
+
+class StructureContext(object):
+    def __init__(self, struct, gl_struct):
+        self.struct    = struct
+        self.gl_struct = gl_struct
+
+
+class MainWindow(object):
+    def __init__(self, quit_notify_cb):
+        self.struct_context_list = []
+        self.sel_struct_context  = None
+        self.sel_struct_obj      = None
+        self.view_cmds           = ViewCommands()
+        self.color_cmds          = ColorCommands()
         self.quit_notify_cb      = quit_notify_cb
 
         ## dialog lists
@@ -458,83 +535,50 @@ class MainWindow:
         self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.quit_cb, self)
 
-        table = gtk.Table(1, 5, gtk.FALSE)
+        table = gtk.Table(1, 4, gtk.FALSE)
         self.window.add(table)
 
-        ### MENUBAR
-        MENU_ITEMS = (
-            ('/_File',
-             None,
-             None,
-             0,
-             '<Branch>' ),
+        ## file menu bar
+        file_menu_items = [
+            ('/_File',            None,          None,               0,'<Branch>'),
+            ('/File/_New Window', None,          self.new_window_cb, 0,'<StockItem>',gtk.STOCK_NEW),
+            ('/File/_Open',       None,          self.open_cb,       0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/sep1',        None,          None,               0,'<Separator>'),
+            ('/File/_Quit',      '<control>Q',   self.quit_cb,       0,'<StockItem>',gtk.STOCK_QUIT) ]
 
-            ('/File/_New Window',
-             '',
-             self.new_window_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_NEW),
+        view_menu_items = [
+            ('/_View', None, None, 0, '<Branch>') ]
+        
+        for view_cmd in self.view_cmds:
+            view_menu_items.append(
+                (view_cmd["menu path"], None, self.view_menu_cb, view_cmd["action"], '<CheckItem>') )
 
-            ('/File/_New Tab',
-             '',
-             self.new_tab_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_NEW),
+        color_menu_items = [
+            ('/_Colors', None, None, 0, '<Branch>') ]
+        
+        for color_cmd in self.color_cmds:
+            color_menu_items.append(
+                (color_cmd["menu path"], None, self.color_menu_cb, color_cmd["action"]) )
             
-            ('/File/_Open',
-             '',
-             self.open_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_OPEN),
-            
-            ('/File/sep1',
-             None,
-             None,
-             0,
-             '<Separator>'),
+        tools_menu_items = [
+            ('/_Tools', None, None, 0, '<Branch>'),
+            ('/Tools/Selected Item Details...', None, self.details_dialog_cb, 0, None),
+            ('/Tools/TLS Analysis...',          None, self.tls_dialog_cb,     0, None) ]
 
-            ('/File/_Quit',
-             '<control>Q',
-             self.quit_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_QUIT),
+        help_menu_items = [
+            ('/_Help',       None, None, 0, '<Branch>'),
+            ('/Help/_About', None, None, 0, None) ]
 
-            ('/Tools/Selected Item Details...',
-             '',
-             self.details_dialog_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_ADD),
-
-            ('/Tools/TLS Analysis...',
-             '',
-             self.tls_dialog_cb,
-             0,
-             '<StockItem>',
-             gtk.STOCK_ADD),
-
-            ('/_Help',
-             None,
-             None,
-             0,
-             '<Branch>'),
-            
-            ('/Help/_About',
-             None,
-             None, #callback
-             0,
-             ''))
+        menu_items = file_menu_items +\
+                     view_menu_items +\
+                     color_menu_items +\
+                     tools_menu_items +\
+                     help_menu_items
 
         self.accel_group = gtk.AccelGroup()
         self.window.add_accel_group(self.accel_group)
-
-        self.item_factory = gtk.ItemFactory(
-            gtk.MenuBar, '<main>', self.accel_group)
-        self.item_factory.create_items(MENU_ITEMS, self)
+        self.item_factory = gtk.ItemFactory(gtk.MenuBar, '<main>', self.accel_group)
+        self.item_factory.create_items(menu_items)
     
         table.attach(self.item_factory.get_widget('<main>'),
                      # X direction              Y direction
@@ -542,102 +586,11 @@ class MainWindow:
                      gtk.EXPAND | gtk.FILL,     0,
                      0,                         0)
 
-        ### /MENUBAR
-
-        ## Create toolbar
-        self.toolbar1 = gtk.Toolbar()
-        table.attach(self.toolbar1,
-                     # X direction              Y direction
-                     0, 1,                      1, 2,
-                     gtk.EXPAND | gtk.FILL,     0,
-                     0,                         0)
-
-
-        self.axes_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "Axis",
-            "Show/Hide Carteasion Axis",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_axes")
-
-        self.unit_cell_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "Unit Cell",
-            "Show/Hide Unit Cell",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_unit_cell")
-        
-        self.aa_main_chain_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "AA Main Chain",
-            "Show/Hide Amino Acid Main Chain Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_aa_main_chain")
-
-        self.aa_side_chain_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "AA Side Chain",
-            "Show/Hide Amino Acid Side Chain Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_aa_side_chain")
-
-        self.dna_main_chain_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "DNA Main Chain",
-            "Show/Hide Nucleic Acid Main Chain Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_dna_main_chain")
-
-        self.dna_side_chain_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "DNA Side Chain",
-            "Show/Hide Nucleic Acid Side Chain Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_dna_side_chain")
-
-        self.hetatm_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "HET Atoms",
-            "Show/Hide HET Group Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_hetatm")
-        
-        self.water_tb = self.toolbar1.append_element(
-            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
-            None,
-            "Water",
-            "Show/Hide Water Atoms",
-            "",
-            None, #widget/icon
-            self.toolbar_tb_cb,
-            "show_water")
-
-        ## Second toolbar
+        ## Toolbar
         self.hbox1 = gtk.HBox()
         table.attach(self.hbox1,
                      # X direction              Y direction
-                     0, 1,                      2, 3,
+                     0, 1,                      1, 2,
                      gtk.EXPAND | gtk.FILL,     0,
                      0,                         0)
 
@@ -650,11 +603,11 @@ class MainWindow:
         self.select_label.set_editable(gtk.FALSE)
         self.hbox1.pack_start(self.select_label, gtk.TRUE, gtk.TRUE, 0)
 
-        ## Create document
+        ## Create document        
         self.struct_gui = StructureGUI(self)
         table.attach(self.struct_gui.get_widget(),
                      # X direction           Y direction
-                     0, 1,                   3, 4,
+                     0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  gtk.EXPAND | gtk.FILL,
                      0,                      0)
 
@@ -662,7 +615,7 @@ class MainWindow:
         self.hbox = gtk.HBox()
         table.attach(self.hbox,
                      # X direction           Y direction
-                     0, 1,                   4, 5,
+                     0, 1,                   3, 4,
                      gtk.EXPAND | gtk.FILL,  0,
                      0,                      0)
 
@@ -690,27 +643,24 @@ class MainWindow:
         if hasattr(self, "file_selector"):
             self.file_selector.present()
             return
-
         self.file_selector = gtk.FileSelection("Select file to view");
-
         ok_button = self.file_selector.ok_button
         ok_button.connect("clicked", self.open_ok_cb, None)
-
         cancel_button = self.file_selector.cancel_button
-        cancel_button.connect("clicked", self.open_cancel_cb, None)
-        
-        file_selector.present()
+        cancel_button.connect("clicked", self.open_cancel_cb, None)        
+        self.file_selector.present()
+
+    def destroy_file_selector(self):
+        self.file_selector.destroy()
+        del self.file_selector
 
     def open_ok_cb(self, *args):
         path = self.file_selector.get_filename()
-
-        self.file_selector.destroy()
-        del self.file_selector
-        
+        self.destroy_file_selector()
         self.load_file(path)
 
     def open_cancel_cb(self, *args):
-        file_selector.destroy()
+        self.destroy_file_selector()
 
     def quit_cb(self, *args):
         self.quit_notify_cb(self.window, self)
@@ -722,37 +672,68 @@ class MainWindow:
         if self.selected_struct_obj == None:
             self.error_dialog("No Structure Selected.")
             return
-        
         details = StructDetailsDialog(self)
         details.set_struct_obj(self.selected_struct_obj)
         details.present()
 
     def tls_dialog_cb(self, *args):
-        struct = self.get_selected_struct()
-        if struct == None:
+        if self.sel_struct_context==None:
             return
-        tls = TLSDialog(context = self, struct = struct, title = str(struct))
+        tls = TLSDialog(
+            main_window    = self,
+            struct_context = self.sel_struct_context)
         tls.present()
 
-    def toolbar_tb_cb(self, tbutton, show_func_name):
-        """Toolbar toggle button helper function
+    def view_menu_cb(self, callback_action, widget):
+        """Callback for the View menu.
         """
-        struct = self.get_selected_struct()
-        if struct == None:
+        if self.sel_struct_context==None:
             return
-
-        show_func = getattr(self.struct_dict[struct], show_func_name)
-        
-        if tbutton.get_active() == gtk.TRUE:
-            show_func(True)
+        view_cmd  = self.view_cmds.get_action(callback_action)
+        property  = view_cmd["glstruct property"]
+        menu_item = self.item_factory.get_item(view_cmd["menu path"])
+        if menu_item.get_active() == gtk.TRUE:
+            visible = True
         else:
-            show_func(False)
+            visible = False
+        self.sel_struct_context.gl_struct.update(**{property: visible})            
+        self.struct_gui.gtkglviewer.queue_draw()
+
+    def color_menu_cb(self, callback_action, widget):
+        """Callback for the Color menu.
+        """
+        if self.sel_struct_context==None:
+            return
+        color_cmd = self.color_cmds.get_action(callback_action)
+
+        if callback_action==100:
+            self.sel_struct_context.gl_struct.update(color=None)
+
+        elif callback_action==101: 
+            gl_struct = self.sel_struct_context.gl_struct
+
+            color_list = [(1.,0.,0.),(0.,1.,0.),(0.,0.,1.),(1.,1.,0.),(0.,1.,1.),(1.,0.,1.),(1.,1.,1.)]
+            colori = 0
+
+            chain_ids = gl_struct.gl_chain_dict.keys()
+            chain_ids.sort()
+            
+            for chain_id in chain_ids:
+                gl_chain = gl_struct.gl_chain_dict[chain_id]
+                
+                try:
+                    color = color_list[colori]
+                except IndexError:
+                    color = color_list[-1]
+                else:
+                    colori += 1
+                
+                gl_chain.update(color=color)
+
         self.struct_gui.gtkglviewer.queue_draw()
 
     def set_title(self, title):
-        title = "Viewer: " + title
-        title = title[:50]
-        self.window.set_title(title)
+        self.window.set_title("Viewer: %s" % (title[:50]))
 
     def set_statusbar(self, text):
         self.statusbar.pop(0)
@@ -763,26 +744,26 @@ class MainWindow:
         """
         self.set_title(path)
         self.set_statusbar("Loading: %s" % (path))
-        self.load_structure(path)
-        self.set_statusbar("")
-        self.progress.set_fraction(0.0)
-        
-        return gtk.FALSE
-    
-    def load_structure(self, path):
+
         struct = LoadStructure(
             fil              = path,
             update_cb        = self.update_cb,
             build_properties = ("sequence","bonds"))
 
-        self.struct_list.append(struct)
-
-        ## update the treeview/glviewer
-        self.struct_gui.struct_ctrl.append_struct(struct)
-
+        struct.path = struct
+        
         gl_struct = self.struct_gui.gtkglviewer.append_struct(struct)
-        self.struct_dict[struct] = gl_struct
 
+        struct_context = StructureContext(struct, gl_struct)
+        self.struct_context_list.append(struct_context)
+        self.struct_gui.struct_ctrl.append_struct(struct_context.struct)
+        if self.sel_struct_context==None:
+            self.set_selected_struct_obj(struct)
+
+        self.set_statusbar("")
+        self.progress.set_fraction(0.0)
+        return gtk.FALSE
+    
     def update_cb(self, percent):
         """Callback for file loading code to inform the GUI of how
         of the file has been read
@@ -791,42 +772,46 @@ class MainWindow:
         while gtk.events_pending():
             gtk.main_iteration(gtk.TRUE)
 
-    def set_selected_item(self, struct_obj):
+    def set_selected_struct_obj(self, struct_obj):
         """Set the currently selected structure item.
         """
-        if struct_obj == None:
+        self.sel_struct_obj = struct_obj
+        
+        ## nothing selected
+        if struct_obj==None:
+            self.sel_struct_context = None
             self.select_label.set_text("")
-            self.axes_cb.set_active(gtk.FALSE)
-            self.unit_cell_tb.set_active(gtk.FALSE)
-            return
 
-        self.selected_struct_obj = struct_obj
-        struct = self.get_selected_struct()
-        self.select_label.set_text(str(self.selected_struct_obj))
-        gl_struct = self.struct_dict[struct]
+            for view_cmd in self.view_cmds:
+                menu_item = self.item_factory.get_item(view_cmd["menu path"])
+                menu_item.set_active(view_cmd["checked"])
 
-        def set_tbutton(tbutton, show_func):
-            if show_func() == False:
-                tbutton.set_active(gtk.FALSE)
-            else:
-                tbutton.set_active(gtk.TRUE)
-            
-        set_tbutton(self.axes_tb, gl_struct.show_axes)
-        set_tbutton(self.unit_cell_tb, gl_struct.show_unit_cell)
-        set_tbutton(self.aa_main_chain_tb, gl_struct.show_aa_main_chain)
-        set_tbutton(self.aa_side_chain_tb, gl_struct.show_aa_side_chain)
-        set_tbutton(self.dna_main_chain_tb, gl_struct.show_dna_main_chain)
-        set_tbutton(self.dna_side_chain_tb, gl_struct.show_dna_side_chain)
-        set_tbutton(self.water_tb, gl_struct.show_water)
-        set_tbutton(self.hetatm_tb, gl_struct.show_hetatm)
+        else:
+            self.select_label.set_text(str(self.sel_struct_obj))
 
-    def get_selected_struct(self):
-        """Returns the structure object of the selected item.
+            struct = struct_obj.get_structure()
+            self.sel_struct_context = self.get_struct_context(struct)
+            self.set_selected_struct_context(self.sel_struct_context)
+
+    def set_selected_struct_context(self, struct_context):
+        """Sets the current struct_context and updates the context
+        sensitive GUI widgets.
         """
-        if self.selected_struct_obj == None:
-            self.error_dialog("No Structure Selected.")
-            return None
-        return self.selected_struct_obj.get_structure()
+        for view_cmd in self.view_cmds:
+            property  = view_cmd["glstruct property"]
+            menu_item = self.item_factory.get_item(view_cmd["menu path"])
+            if struct_context.gl_struct.properties[property]==False:
+                menu_item.set_active(gtk.FALSE)
+            else:
+                menu_item.set_active(gtk.TRUE)
+
+    def get_struct_context(self, struct):
+        """Returns the struct_context containing struct.
+        """
+        for struct_context in self.struct_context_list:
+            if struct_context.struct==struct:
+                return struct_context
+        return None
 
 
 def main(path = None):
