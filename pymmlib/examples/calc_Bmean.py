@@ -9,11 +9,12 @@
 ## the protein atoms of a structure.
 
 import sys
-from mmLib.FileLoader import LoadStructure, SaveStructure
-from mmLib.Structure import *
+
+from mmLib.Structure  import *
+from mmLib.FileLoader import LoadStructure
+
 
 def main(path):
-
     ## load structure
     struct = LoadStructure(
         fil = path,
@@ -27,29 +28,25 @@ def main(path):
     min_B = 1000.0
     max_B = 0.0
 
+    for atm in struct.iter_all_atoms():
+        num_atoms += 1
+        mean_B    += atm.temp_factor
+        
+        min_B = min(min_B, atm.temp_factor)
+        max_B = max(max_B, atm.temp_factor)
 
-    for res in struct.iter_amino_acids():
-        for atm in res.iter_atoms():
-            if atm.element == "H":
-                continue
+    if num_atoms>0:
+        mean_B = mean_B / num_atoms
+        print "mean B: ",mean_B
+        print "max  B: ",max_B
+        print "min  B: ",min_B
 
-            num_atoms += 1
-            mean_B    += atm.temp_factor
-
-            min_B = min(min_B, atm.temp_factor)
-            max_B = max(max_B, atm.temp_factor)
-
-    
-            
-    mean_B = mean_B / num_atoms
-
-    print "mean B: ",mean_B
-    print "max  B: ",max_B
-    print "min  B: ",min_B
+    else:
+        print "No Atoms Found"
 
 try:
     path = sys.argv[1]
 except IndexError:
-    print "usage: badv.py <PDB/mmCIF file>"
+    print "usage: calc_Bmean.py <PDB/mmCIF file>"
 else:
     main(path)

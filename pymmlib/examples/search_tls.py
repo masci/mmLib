@@ -162,15 +162,11 @@ def main(**args):
         chain_ids           = args.get("chain", None),
         residue_width       = args["seg_len"],
         use_side_chains     = not args["mainchain_only"],
-        include_single_bond = not args["omit_single_bonded"]):
+        include_single_bond = not args["omit_single_bonded"],
+        calc_pivot_model    = True):
 
         tls_num += 1
         tls_info["segment_num"] = tls_num
-        
-        lsqr = tls_info["lsq_residual"]
-        num_atoms = tls_info["num_atoms"]
-        tls_info["lsq_residual_atom"] = lsqr/num_atoms
-
 
         if tls_info.has_key("error"):
             print "# [ERROR:%s] %s" % (tls_info["name"], tls_info["error"])
@@ -199,6 +195,10 @@ def main(**args):
             tab.prnt_row(row)
             continue
         
+        lsqr = tls_info["lsq_residual"]
+        num_atoms = tls_info["num_atoms"]
+        tls_info["lsq_residual_atom"] = lsqr/num_atoms
+
         ## calculate adverage temp factor and anisotropy
         tls_group = tls_info["tls_group"]
 
