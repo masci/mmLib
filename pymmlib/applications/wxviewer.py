@@ -5,6 +5,12 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""wxViewer is a molecular viewer using the GLViewer module for
+the wxPython/wxWidgets toolkits.  This _should_ make it
+multi platform.  The wxGLViewer widget can be taken and used in
+custom applications.
+"""
+
 import os
 import sys
 
@@ -23,6 +29,9 @@ from mmLib.GLViewer       import *
 
 
 class wxGLViewer(wx.glcanvas.GLCanvas):
+    """Subclass of wx.glcanvas.GLCanvas implementing mmLib's
+    GLViewer as a wxPython widget.
+    """
     def __init__(self, parent):
         self.init = False
         self.mmlib_glviewer = GLViewer()

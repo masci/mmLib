@@ -16,6 +16,17 @@ from Extensions.TLS import *
 
 ## <hack>
 
+TESS_TRIANGLES = [
+    array([ 1.0,  1.0,  1.0]),
+    array([ 1.0,  1.0, -1.0]),
+    array([ 1.0, -1.0,  1.0]),
+    array([ 1.0, -1.0, -1.0]),
+    array([-1.0,  1.0,  1.0]),
+    array([-1.0,  1.0, -1.0]),
+    array([-1.0, -1.0,  1.0]),
+    array([-1.0, -1.0, -1.0]),
+    ]
+
 GL_MATERIALS = [
     { "name":         "emerald",
       "GL_AMBIENT":   (0.0215, 0.1745, 0.0215),
@@ -1122,9 +1133,9 @@ class GLAtomList(GLDrawList):
 
         eigen_values, eigen_vectors = eigenvectors(U)
 
-        v0_peak = 1.414 * math.sqrt(abs(eigen_values[0]))
-        v1_peak = 1.414 * math.sqrt(abs(eigen_values[1]))
-        v2_peak = 1.414 * math.sqrt(abs(eigen_values[2]))
+        v0_peak = math.sqrt(abs(eigen_values[0]))
+        v1_peak = math.sqrt(abs(eigen_values[1]))
+        v2_peak = math.sqrt(abs(eigen_values[2]))
         
         v0 = eigen_vectors[0] * v0_peak
         v1 = eigen_vectors[1] * v1_peak
@@ -1146,7 +1157,6 @@ class GLAtomList(GLDrawList):
         glVertex3f(*position + v2)
 
         glEnd()
-
 
 
 class GLSymmetry(GLDrawListContainer):
@@ -1171,6 +1181,24 @@ class GLTLSAtomList(GLAtomList):
               "default":     identity(3),
               "action":      "recompile" })
         self.glo_add_property(
+            { "name":        "L1_rho",
+              "desc":        "L1 translation from COR", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_rho",
+              "desc":        "L2 translation from COR", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_rho",
+              "desc":        "L3 translation from COR", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "L1",
               "desc":        "L1 Rotation", 
               "type":        "float",
@@ -1193,19 +1221,43 @@ class GLTLSAtomList(GLAtomList):
         GLAtomList.update_cb(self, updates, actions)
         if "trace" in updates:
             self.properties.update(lines=False)
- 
+
+    def gl_draw_rotation(self):
+        L_axes = self.properties["L_eigen_vec"]
+
+        L1_rot = self.properties["L1"]
+        L2_rot = self.properties["L2"]
+        L3_rot = self.properties["L3"]
+
+        L1_rho = self.properties["L1_rho"]
+        L2_rho = self.properties["L2_rho"]
+        L3_rho = self.properties["L3_rho"]
+
+        glPushMatrix()
+        glTranslatef(*L1_rho)
+        glRotatef(L1_rot, *L_axes[0])
+        glTranslatef(*-L1_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
+        glPushMatrix()
+        glTranslatef(*L2_rho)
+        glRotatef(L2_rot, *L_axes[1])
+        glTranslatef(*-L2_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
+        glPushMatrix()
+        glTranslatef(*L3_rho)
+        glRotatef(L3_rot, *L_axes[2])
+        glTranslatef(*-L3_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
     def gl_call_list(self):
         gl_struct = self.glo_get_glstructure()
         if gl_struct==None or self.properties["symmetry"]==False:
-            glPushMatrix()
-            
-            axes = self.properties["L_eigen_vec"]
-            glRotatef(self.properties["L1"], *axes[0])
-            glRotatef(self.properties["L2"], *axes[1])
-            glRotatef(self.properties["L3"], *axes[2])
-            
-            GLDrawList.gl_call_list(self)
-            glPopMatrix()
+            self.gl_draw_rotation()
             return
 
         for symop in gl_struct.iter_orth_symops():
@@ -1223,12 +1275,7 @@ class GLTLSAtomList(GLAtomList):
             if self.properties["atom_origin"]!=None:
                 glTranslatef(*self.properties["atom_origin"])
 
-            axes = self.properties["L_eigen_vec"]
-            glRotatef(self.properties["L1"], *axes[0])
-            glRotatef(self.properties["L2"], *axes[1])
-            glRotatef(self.properties["L3"], *axes[2])
-            
-            GLDrawList.gl_call_list(self)
+            self.gl_draw_rotation()
 
             glPopMatrix()
                 
@@ -1268,7 +1315,7 @@ class GLTLSGroup(GLDrawListContainer):
             atm_U_attr  = "Utls",
             atom_origin = self.tls_group.origin)
 
-        for atm, Utls in self.tls_group.iter_atm_Ucalc():
+        for atm, Utls in self.tls_group.iter_atm_Utls():
             atm.Utls = Utls
             self.gl_atom_list.atom_list.append(atm)
 
@@ -1279,6 +1326,12 @@ class GLTLSGroup(GLDrawListContainer):
             "L_eigen_vec", "gl_atom_list", "L_eigen_vec")
         self.glo_link_child_property(
             "L_eigen_val", "gl_atom_list", "L_eigen_val")
+        self.glo_link_child_property(
+            "L1_rho", "gl_atom_list", "L1_rho")
+        self.glo_link_child_property(
+            "L2_rho", "gl_atom_list", "L2_rho")
+        self.glo_link_child_property(
+            "L3_rho", "gl_atom_list", "L3_rho")
         self.glo_link_child_property(
             "L1", "gl_atom_list", "L1")
         self.glo_link_child_property(
@@ -1304,6 +1357,9 @@ class GLTLSGroup(GLDrawListContainer):
             origin      = self.tls_group.origin,
             L_eigen_vec = L_eigen_vec,
             L_eigen_val = L_eigen_val,
+            L1_rho      = self.calcs["L1_rho"],
+            L2_rho      = self.calcs["L2_rho"],
+            L3_rho      = self.calcs["L3_rho"],
             **args)
 
     def glo_install_properties(self):
@@ -1318,6 +1374,24 @@ class GLTLSGroup(GLDrawListContainer):
         self.glo_add_property(
             { "name":        "L_eigen_val",
               "desc":        "L Eigen Values", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_rho",
+              "desc":        "L1 translation from COR", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_rho",
+              "desc":        "L2 translation from COR", 
+              "type":        "array(3)",
+              "default":     zeros(3),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_rho",
+              "desc":        "L3 translation from COR", 
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
@@ -1446,19 +1520,42 @@ class GLTLSGroup(GLDrawListContainer):
         if "time" in updates:
             self.update_time()
 
+    def gl_draw_rotation(self):
+        L_axes = self.properties["L_eigen_vec"]
+
+        L1_rot = self.properties["L1"]
+        L2_rot = self.properties["L2"]
+        L3_rot = self.properties["L3"]
+
+        L1_rho = self.properties["L1_rho"]
+        L2_rho = self.properties["L2_rho"]
+        L3_rho = self.properties["L3_rho"]
+
+        glPushMatrix()
+        glTranslatef(*L1_rho)
+        glRotatef(L1_rot, *L_axes[0])
+        glTranslatef(*-L1_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
+        glPushMatrix()
+        glTranslatef(*L2_rho)
+        glRotatef(L2_rot, *L_axes[1])
+        glTranslatef(*-L2_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
+        glPushMatrix()
+        glTranslatef(*L3_rho)
+        glRotatef(L3_rot, *L_axes[2])
+        glTranslatef(*-L3_rho)
+        GLDrawList.gl_call_list(self)
+        glPopMatrix()
+
     def gl_call_list(self):
         gl_struct = self.glo_get_glstructure()
         if gl_struct==None or self.properties["symmetry"]==False:
-            glPushMatrix()
-
-            axes = self.properties["L_eigen_vec"]
-            glRotatef(self.properties["L1"], *axes[0])
-            glRotatef(self.properties["L2"], *axes[1])
-            glRotatef(self.properties["L3"], *axes[2])
-            
-            GLDrawList.gl_call_list(self)
-
-            glPopMatrix()
+            self.gl_draw_rotation()
             return
 
         for symop in gl_struct.iter_orth_symops():
@@ -1473,14 +1570,7 @@ class GLTLSGroup(GLDrawListContainer):
                  symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
             
             glTranslatef(*self.properties["origin"])
-
-            axes = self.properties["L_eigen_vec"]
-            glRotatef(self.properties["L1"], *axes[0])
-            glRotatef(self.properties["L2"], *axes[1])
-            glRotatef(self.properties["L3"], *axes[2])
-            
-            GLDrawList.gl_call_list(self)
-
+            self.gl_draw_rotation()
             glPopMatrix()
 
     def gl_draw(self):
@@ -1498,6 +1588,33 @@ class GLTLSGroup(GLDrawListContainer):
         if self.properties["fan_visible"]==True:
             self.draw_fan()
 
+    def draw_U_axes(self, atm):
+        """Draw the U axes with their individual T, L, and S contributions.
+        """
+        o = self.calc_position(atm.position)
+        Ut, Ul, Us = self.tls_group.calc_UtUlUs(atm.position)
+
+        lval, lvec = eigenvectors(Ul)
+
+        Ul1 = math.sqrt(abs(lval[0])) * lvec[0]
+        Ul2 = math.sqrt(abs(lval[1])) * lvec[1]
+        Ul3 = math.sqrt(abs(lval[2])) * lvec[2]
+        
+        glDisable(GL_LIGHTING)
+        glLineWidth(1.0)
+
+        ## Ul
+        
+        glColor3f(1.0, 1.0, 1.0, 1.0)
+        glBegin(GL_LINES)
+        glVertex3f(*o + v0)
+        glVertex3f(*o + v0)
+        glVertex3f(*o - v1)
+        glVertex3f(*o + v1)
+        glVertex3f(*o - v2)
+        glVertex3f(*o + v2)
+        glEnd()
+        
     def draw_CA_lines(self):
         glDisable(GL_LIGHTING)
         glColor3f(0.5, 0.5, 0.5)
@@ -1548,7 +1665,7 @@ class GLTLSGroup(GLDrawListContainer):
         (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.T)
         
         for i in range(3):
-            amplitude = 1.414 * math.sqrt(abs(eigen_values[i]))
+            amplitude = math.sqrt(abs(eigen_values[i]))
             scaled_amplitude = scale * amplitude
             v = scaled_amplitude * array(eigen_vectors[i])
 
@@ -1561,14 +1678,21 @@ class GLTLSGroup(GLDrawListContainer):
         glColor3f(*self.properties["L_color"])
         (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.L)
         
-        for i in range(3):
-            amplitude = 1.414 * rad2deg * math.sqrt(abs(eigen_values[i]))
+        for i, x in [(0, "L1_rho"), (1, "L2_rho"), (2, "L3_rho")]:
+            amplitude = rad2deg * math.sqrt(abs(eigen_values[i]))
             scaled_amplitude = scale * amplitude
             v = scaled_amplitude * array(eigen_vectors[i])
 
+            rho = self.properties[x]
+
             glBegin(GL_LINES)
-            glVertex3f(*-v)
-            glVertex3f(*v)
+
+            glVertex3f(0.0, 0.0, 0.0)
+            glVertex3f(*rho)
+            
+            glVertex3f(*-v + rho)
+            glVertex3f(* v + rho)
+
             glEnd()
 
         ## S: units (A*RAD)
@@ -1576,7 +1700,7 @@ class GLTLSGroup(GLDrawListContainer):
         (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.S)
         
         for i in range(3):
-            amplitude = 1.414 * rad2deg * abs(eigen_values[i])
+            amplitude = rad2deg * abs(eigen_values[i])
             scaled_amplitude = scale * amplitude
             v = scaled_amplitude * array(eigen_vectors[i])
 
@@ -1594,9 +1718,9 @@ class GLTLSGroup(GLDrawListContainer):
         L_eigen_val = self.properties["L_eigen_val"]
         L_eigen_vec = self.properties["L_eigen_vec"]
         
-        L1_peak = 1.414 * math.sqrt(abs(L_eigen_val[0] * rad2deg2))
-        L2_peak = 1.414 * math.sqrt(abs(L_eigen_val[1] * rad2deg2))
-        L3_peak = 1.414 * math.sqrt(abs(L_eigen_val[2] * rad2deg2))
+        L1_peak = math.sqrt(abs(L_eigen_val[0] * rad2deg2))
+        L2_peak = math.sqrt(abs(L_eigen_val[1] * rad2deg2))
+        L3_peak = math.sqrt(abs(L_eigen_val[2] * rad2deg2))
         
         L1 = L1_peak * sin_tm 
         L2 = L2_peak * sin_tm
@@ -1969,14 +2093,6 @@ class GLViewer(GLObject):
     def gl_init(self):
         """Called once to initalize the GL scene before drawing.
         """
-        gl_drawable = self.get_gl_drawable()
-        gl_context  = self.get_gl_context()
-        if gl_drawable==None or gl_context==None:
-            return
-        
-        if not gl_drawable.gl_begin(gl_context):
-            return        
-
         ambient        = [0.0, 0.0, 0.0, 1.0]
         diffuse        = [1.0, 1.0, 1.0, 1.0]
         specular       = [1.0, 1.0, 1.0, 1.0]
@@ -2015,20 +2131,10 @@ class GLViewer(GLObject):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        gl_drawable.gl_end()
-    
     def gl_resize(self, width, height):
         """Called to set the size of the OpenGL window this class is
         drawing on.
         """
-        gl_drawable = self.get_gl_drawable()
-        gl_context  = self.get_gl_context()
-        if gl_drawable==None or gl_context==None:
-            return
-        
-	if not gl_drawable.gl_begin(gl_context):
-            return
-	
 	glViewport(0, 0, width, height)
 	glMatrixMode(GL_PROJECTION)
 	glLoadIdentity()
@@ -2041,8 +2147,6 @@ class GLViewer(GLObject):
             glFrustum(-1.0, 1.0, -h, h, 3.0, 5000.0)
 	
 	glMatrixMode(GL_MODELVIEW)
-	gl_drawable.gl_end()
-
 
     def ROT(self):
         alpha = - self.rotx * deg2rad
@@ -2090,7 +2194,6 @@ class GLViewer(GLObject):
         self.xpos += delta[0]
         self.ypos += delta[1]
         self.zpos += delta[2]
-
         
     def gl_render(self):
         """Draw all GLDrawList objects onto the given glcontext/gldrawable.
@@ -2098,14 +2201,6 @@ class GLViewer(GLObject):
         lists, they will be compiled while they are drawn, since this is
         a useful optimization.
         """
-        gl_drawable = self.get_gl_drawable()
-        gl_context  = self.get_gl_context()
-        if gl_drawable==None or gl_context==None:
-            return
-        
-	if not gl_drawable.gl_begin(gl_context):
-            return
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	glLoadIdentity()
 
@@ -2119,10 +2214,3 @@ class GLViewer(GLObject):
 
         for draw_list in self.glo_iter_children():
             draw_list.gl_render()
-            
-	if gl_drawable.is_double_buffered():
-            gl_drawable.swap_buffers()
-	else:
-            glFlush()
-        
-        gl_drawable.gl_end()

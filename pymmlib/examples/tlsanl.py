@@ -104,6 +104,23 @@ def print_TLSGroup(tls):
     print
 
 
+    print
+    print "SHIFT OF LIBRATION AXES TO DIAGNOLIZE S WRT ORTHOGONAL AXES USING"
+    print "FROM THE ORIGIN OF CALCULATION (A): "
+    print "L1 (A): " + astr(calcs["L1"] + calcs["COR"])
+    print "L2 (A): " + astr(calcs["L2"] + calcs["COR"])
+    print "L3 (A): " + astr(calcs["L3"] + calcs["COR"])
+    print
+
+    print
+    print "SHIFT OF LIBRATION AXES TO DIAGNOLIZE S WRT ORTHOGONAL AXES USING"
+    print "FROM THE CENTER OF REACTION (A): "
+    print "L1 (A): " + astr(calcs["L1"])
+    print "L2 (A): " + astr(calcs["L2"])
+    print "L3 (A): " + astr(calcs["L3"])
+    print
+
+
 
 def main(pdb_path, tls_out_path, calc_tls):
 
@@ -122,7 +139,7 @@ def main(pdb_path, tls_out_path, calc_tls):
         print_TLSGroup(tls)
 
     else:
-        tls_groups = TLSGroupFile()
+        tls_groups = TLSInfoList()
 
         ## get TLS groups from REMARK statments in PDB file
         if tls_out_path == None:
@@ -139,7 +156,7 @@ def main(pdb_path, tls_out_path, calc_tls):
             tls_groups.load_refmac_tlsout_file(fil)
 
         ## print the TLS groups
-        for tls_info in tls_groups.tls_info_list:
+        for tls_info in tls_groups:
             tls = tls_info.make_tls_group(struct)
             print_TLSGroup(tls)
         

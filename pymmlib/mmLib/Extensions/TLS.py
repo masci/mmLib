@@ -508,7 +508,7 @@ class TLSGroup(AtomList):
 
         self.S = self.S * deg2rad
 
-    def calc_tls_tensors(self):
+    def calc_TLS_least_squares_fit(self):
         """Perform a least-squares fit of the atoms contained in self
         to the three TLS tensors: self.T, self.L, and self.S using the
         origin given by self.origin.
@@ -618,11 +618,16 @@ class TLSGroup(AtomList):
                          [ C[10], C[11], C[12] ],
                          [ C[15], C[16], C[17] ] ])
 
-    def calc_Utls(self, T, L, S, r):
+    def calc_Utls(self, r, T = None, L = None, S = None, o = None):
         """Returns the calculated value for the anisotropic U tensor for
         the given position.
-        """ 
-        x, y, z = r - self.origin
+        """
+        T = T or self.T
+        L = L or self.L
+        S = S or self.S
+        o = o or self.origin
+
+        x, y, z = r - o
 
         xx = x*x
         yy = y*y
@@ -684,162 +689,103 @@ class TLSGroup(AtomList):
 
         return U
 
-    def iter_atm_Ucalc(self):
+    def iter_atm_Utls(self, T = None, L = None, S = None, o = None):
         """Iterates all the atoms in the TLS object, returning the 2-tuple
         (atm, U) where U is the calcuated U value from the current values
         of the TLS object's T,L,S, tensors and origin.
         """
-        T = self.T
-        L = self.L
-        S = self.S
-        O = self.origin
+        T = T or self.T
+        L = L or self.L
+        S = S or self.S
+        o = o or self.origin
         
         for atm in self:
-            x, y, z = atm.position - O
+            yield atm, self.calc_Utls(atm.position, T, L, S, o)
 
-            xx = x*x
-            yy = y*y
-            zz = z*z
-
-            xy = x*y
-            yz = y*z
-            xz = x*z
-
-            u11 = (         T[0,0]
-                    + 2.0 * S[1,0] * z
-                    +       L[1,1] * zz 
-                    - 2.0 * S[2,0] * y 
-                    - 2.0 * L[2,1] * yz
-                    +       L[2,2] * yy )
-            u12 = (         T[1,0]
-                    -       S[0,0] * z
-                    - 2.0 * S[0,1] * y
-                    +       S[1,1] * z
-                    -       L[1,0] * zz
-                    +       S[2,0] * x
-                    -       S[2,1] * y
-                    +       L[2,0] * yz
-                    +       L[2,1] * xz
-                    -       L[2,2] * xy )
-            u22 = (         T[1,1]
-                    +       L[0,0] * zz
-                    + 2.0 * S[2,1] * x
-                    - 2.0 * L[2,0] * xz
-                    +       L[2,2] * xx )
-            u13 = (         T[2,0]
-                    +       S[0,0] * y
-                    -       S[1,0] * x
-                    +       S[1,2] * z
-                    +       L[1,0] * yz
-                    -       L[1,1] * xz
-                    -       S[2,2] * y
-                    -       L[2,0] * yy
-                    +       L[2,1] * xy )
-            u23 = (         T[2,1]
-                    +       S[0,1] * y
-                    -       S[0,2] * z
-                    -       L[0,0] * yz
-                    -       S[1,1] * x
-                    +       L[1,0] * xz
-                    +       S[2,2] * x 
-                    +       L[2,0] * xy
-                    -       L[2,1] * xx )
-            u33 = (         T[2,2]
-                    + 2.0 * S[0,2] * y
-                    +       L[0,0] * yy
-                    - 2.0 * S[1,2] * x
-                    - 2.0 * L[1,0] * xy
-                    +       L[1,1] * xx )
-
-            U = array ([[u11, u12, u13],
-                        [u12, u22, u23],
-                        [u13, u23, u33]])
-
-            yield (atm, U)
-
-    def iter_atm_UtUlUs(self):
-        """Iterates all the atoms in the TLS object, returning the 2-tuple
+    def calc_UtUlUs(self, r, T = None, L = None, S = None, o = None):
+        """Calculates TLS object, returning the 2-tuple
         (atm, U) where U is the calcuated U value from the current values
         of the TLS object's T,L,S, tensors and origin.
         """
-        T = self.T
-        L = self.L
-        S = self.S
-        O = self.origin
+        T = T or self.T
+        L = L or self.L
+        S = S or self.S
+        o = o or self.origin
 
+        ## T tensor contribution
         Ut = T.copy()
-        
-        for atm in self:
-            x, y, z = atm.position - O
 
-            xx = x*x
-            yy = y*y
-            zz = z*z
+        ## L and S tensor contribution
+        x, y, z = atm.position - o
 
-            xy = x*y
-            yz = y*z
-            xz = x*z
+        xx = x*x
+        yy = y*y
+        zz = z*z
 
-            ul11 = (+       L[1,1] * zz 
-                    - 2.0 * L[2,1] * yz
-                    +       L[2,2] * yy )
+        xy = x*y
+        yz = y*z
+        xz = x*z
 
-            us11 = (+ 2.0 * S[1,0] * z
-                    - 2.0 * S[2,0] * y )
+        ul11 = (+       L[1,1] * zz 
+                - 2.0 * L[2,1] * yz
+                +       L[2,2] * yy )
 
-            ul12 = (-       L[1,0] * zz
-                    +       L[2,0] * yz
-                    +       L[2,1] * xz
-                    -       L[2,2] * xy )
-            
-            us12 = ( -       S[0,0] * z
-                     - 2.0 * S[0,1] * y
-                     +       S[1,1] * z
-                     +       S[2,0] * x
-                     -       S[2,1] * y )
-            
-            ul22 = (+       L[0,0] * zz
-                    - 2.0 * L[2,0] * xz
-                    +       L[2,2] * xx )
+        us11 = (+ 2.0 * S[1,0] * z
+                - 2.0 * S[2,0] * y )
 
-            us22 = (+ 2.0 * S[2,1] * x )
+        ul12 = (-       L[1,0] * zz
+                +       L[2,0] * yz
+                +       L[2,1] * xz
+                -       L[2,2] * xy )
 
-            ul13 = (+       L[1,0] * yz
-                    -       L[1,1] * xz
-                    -       L[2,0] * yy
-                    +       L[2,1] * xy )
+        us12 = ( -       S[0,0] * z
+                 - 2.0 * S[0,1] * y
+                 +       S[1,1] * z
+                 +       S[2,0] * x
+                 -       S[2,1] * y )
 
-            us13 = (+       S[0,0] * y
-                    -       S[1,0] * x
-                    +       S[1,2] * z
-                    -       S[2,2] * y)
+        ul22 = (+       L[0,0] * zz
+                - 2.0 * L[2,0] * xz
+                +       L[2,2] * xx )
 
-            ul23 = (-       L[0,0] * yz
-                    +       L[1,0] * xz
-                    +       L[2,0] * xy
-                    -       L[2,1] * xx )
+        us22 = (+ 2.0 * S[2,1] * x )
 
-            us23 = (+       S[0,1] * y
-                    -       S[0,2] * z
-                    -       S[1,1] * x
-                    +       S[2,2] * x )
+        ul13 = (+       L[1,0] * yz
+                -       L[1,1] * xz
+                -       L[2,0] * yy
+                +       L[2,1] * xy )
 
-            ul33 = (+       L[0,0] * yy
-                    - 2.0 * L[1,0] * xy
-                    +       L[1,1] * xx )
+        us13 = (+       S[0,0] * y
+                -       S[1,0] * x
+                +       S[1,2] * z
+                -       S[2,2] * y)
 
-            us33 = (+ 2.0 * S[0,2] * y
-                    - 2.0 * S[1,2] * x )
+        ul23 = (-       L[0,0] * yz
+                +       L[1,0] * xz
+                +       L[2,0] * xy
+                -       L[2,1] * xx )
 
-            Ul = array ([[ul11, ul12, ul13],
-                         [ul12, ul22, ul23],
-                         [ul13, ul23, ul33]])
+        us23 = (+       S[0,1] * y
+                -       S[0,2] * z
+                -       S[1,1] * x
+                +       S[2,2] * x )
 
-            Us = array ([[us11, us12, us13],
-                         [us12, us22, us23],
-                         [us13, us23, us33]])
+        ul33 = (+       L[0,0] * yy
+                - 2.0 * L[1,0] * xy
+                +       L[1,1] * xx )
 
-            yield (atm, Ut, Ul, Us)
+        us33 = (+ 2.0 * S[0,2] * y
+                - 2.0 * S[1,2] * x )
+
+        Ul = array ([[ul11, ul12, ul13],
+                     [ul12, ul22, ul23],
+                     [ul13, ul23, ul33]])
+
+        Us = array ([[us11, us12, us13],
+                     [us12, us22, us23],
+                     [us13, us23, us33]])
+
+        yield (atm, Ut, Ul, Us)
 
     def calc_R(self):
         """Calculate the R factor of U vs. Utls.
@@ -895,6 +841,11 @@ class TLSGroup(AtomList):
         T^: T tensor in the coordinate system of L
         L^: L tensor in the coordinate system of L
         S^: S tensor in the coordinate system of L
+
+        COR: Center of Reaction
+
+        T',S',L': T,L,S tensors in origonal coordinate system
+                  with the origin shifted to the center of reaction.
         
         """
         calcs = {}
@@ -955,7 +906,7 @@ class TLSGroup(AtomList):
         cPRHOt = transpose(cPRHO)
 
         ## calculate S'^ = S^ + L^*pRHOt
-        cSp = cS + matrixmultiply(cL, cPRHOt) 
+        cSp = cS + matrixmultiply(cL, cPRHOt)
         calcs["S'^"] = cSp
 
         ## L'^ = L^ = cL
@@ -984,7 +935,23 @@ class TLSGroup(AtomList):
         calcs["T'"] = Tp
 
         ## L' is just L
-        calcs["L'"] = self.L
+        calcs["L'"] = self.L.copy()
+
+        ## now calculate the TLS motion description using 3 non
+        ## intersecting screw axes, with one
+
+        ## libration axis 1 shift in the L coordinate system
+        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
+        ## libration axis 2 shift in the L coordinate system
+        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
+        ## libration axis 2 shift in the L coordinate system
+        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,1]/cL[2,2], 0.0])
+
+        ## libration axes shifts in the origional orthogonal
+        ## coordinate system
+        calcs["L1_rho"] = matrixmultiply(evec_L, cL1rho)
+        calcs["L2_rho"] = matrixmultiply(evec_L, cL2rho)
+        calcs["L3_rho"] = matrixmultiply(evec_L, cL3rho)
 
         return calcs
 
