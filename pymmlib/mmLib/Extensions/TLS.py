@@ -1470,7 +1470,7 @@ class TLSStructureAnalysis(object):
             return stats
 
         ## keep a dictionary of segments known to have negitive eigenvalues
-        bad_segments = {}
+        segment_cache = {}
         
         ## list of all TLS groups
         best_splits = []
@@ -1491,40 +1491,43 @@ class TLSStructureAnalysis(object):
 
                 print "SPLIT: ",
 
-                bad_split = False
-
-                for seg in segment_set:
-                    seg_key = "%s-%s" % (
-                        seg[0].fragment_id,seg[-1].fragment_id)
-                    print seg_key," ",
-                    if bad_segments.has_key(seg_key):
-                        bad_split = True
-                        break
-
-                if bad_split:
-                    print "[NEG::%s]" % (seg_key)
-                    continue
-
-
-                ## keep data on this split
+                ## keep data on this split (all segments)
                 split_info = {
                     "segment_set":   segment_set,
                     "total_DP2":  0.0,
                     "stats_list": [],
                     }
 
-                ## TLS fit the segments
+                ## TLS fit the segments (individual segments)
                 tls_fit_ok = True
                 for segment in segment_set:
 
-                    stats = tls_fit_segment(segment)
+                    ## this semgnet key is used by the segment_cache
+                    ## to keep data on this segment
+                    seg_key = "%s-%s" % (
+                        segment[0].fragment_id, segment[-1].fragment_id)
+
+                    ## get the stats for this TLS segment fit from the
+                    ## cache, or compute the fit and add the result to
+                    ## the cache
+                    if segment_cache.has_key(seg_key):
+                        stats = segment_cache[seg_key]
+                        print "[%s]"%(seg_key),
+                    else:
+                        stats = tls_fit_segment(segment)
+                        segment_cache[seg_key] = stats
+                        print "[*%s]"%(seg_key),
+                        
+                    ## check if the segment has a valid TLS fit
+                    ## if it does, then cache it and move on,
+                    ## if it doesn't, then further checking this segment
+                    ## set is useless so break and move on
                     if stats==None:
-                        seg_key = "%s-%s" % (
-                            segment[0].fragment_id, segment[-1].fragment_id)
-                        bad_segments[seg_key] = True
+                        print "[NEG::%s]" % (seg_key)
                         tls_fit_ok = False
                         break
 
+                    ## add the segment TLS stats to the split_info dict
                     split_info["stats_list"].append(stats)
                     split_info["total_DP2"] += stats["total_DP2"]
 
