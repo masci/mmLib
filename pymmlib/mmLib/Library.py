@@ -5,12 +5,13 @@
 
 ## NOTES:
 ## Standard Van der Walls radii are from J.Phys.Chem., 68, 441, 1964.
-import os
-from mmLib.mmCIF import mmCIFFile
 
 """Monomer and element library data classes.  The Library classes are used
 for the identification and construction of biopolymers and ligands.
 """
+
+import os
+from mmLib.mmCIF import mmCIFFile
 
 
 class Element(object):
