@@ -2,19 +2,17 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """This module provides a primitive mmCIF file parser.  Files are parsed
 into a set of data structures where they can be further processed.  The
 data structures can also be constructed and written back out as mmCIF.
 A CIF dictionary parser is also included as a specialized version of the
-mmCIF parser."""
-
-from   __future__           import generators
+mmCIF parser.
+"""
+from __future__ import generators
 import string
 import types
-
-from   FileIO               import OpenFile
-from   mmTypes              import *
+from FileIO import OpenFile
+from mmTypes import *
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -32,7 +30,8 @@ mmCIFError = "mmCIFError"
 class mmCIFRow(dict):
     """Contains one row of data.  In a mmCIF file, this is one complete
     set of data found under a section.  The data can be accessed by using
-    the column names as class attributes."""
+    the column names as class attributes.
+    """
     def __getattr__(self, attr):
         try:
             return self[attr]
@@ -41,12 +40,12 @@ class mmCIFRow(dict):
 
     def __setattr__(self, attr, val):
         self[attr] = val
-        
+
 
 class mmCIFTable(object):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
-    are stored as mmCIFRow classes."""
-
+    are stored as mmCIFRow classes.
+    """
     def __init__(self, name, columns = None):
         self.name       = name
         self.columns    = columns or []
@@ -80,33 +79,25 @@ class mmCIFTable(object):
 
     def add_column(self, cname):
         """Adds a column to the table.  In this case, a column is a
-        mmCIF subsection."""
+        mmCIF subsection.
+        """
         self.columns.append(cname)
         
     def column_index(self, cname):
-        """Returns the column index of from the column name."""
+        """Returns the column index of from the column name.
+        """
         return self.columns.index(cname)
 
     def get_column_list(self):
-        """Returns a list of all column names, in order."""
+        """Returns a list of all column names, in order.
+        """
         return self.columns
 
     def add_row(self, row):
-        """Adds a mmCIFRow to the table."""
+        """Adds a mmCIFRow to the table.
+        """
         assert isinstance(row, mmCIFRow)
         self.append(row)
-
-    def get_one_row(self):
-        """Some tables are defined to have only one row.  Return it or
-        raise an error."""
-        if len(self.__row_list) != 1:
-            raise mmCIFError, "table=%s has num_rows=%d" % (
-                self.name, len(self.__row_list))
-        return self.__row_list[0]
-
-    def get_row_list(self):
-        """Returns a list of all mmCIFRow classes contained in the table."""
-        return self.__row_list
 
     def select_row_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
@@ -114,7 +105,8 @@ class mmCIFTable(object):
           (<column-name>, <column-value>)
         For example:
           select_row_list(('atom_id','CA'),('entity_id', '1'))
-        returns a list of rows with atom_id==1 and entity_id==1."""
+        returns a list of rows with atom_id==1 and entity_id==1.
+        """
         ## clever optimization tricks
         (attr, val) = nvlist[0]
         
@@ -270,12 +262,11 @@ class mmCIFFile:
 class mmCIFDictionary(mmCIFFile):
     """Class representing a mmCIF dictionary.  The constructor of this class
     takes two arguments.  The first is the string path for the file, or
-    alternativly a file object."""
-
+    alternativly a file object.
+    """
     def __init__(self, path_or_fil):
         self._path = path_or_fil
         self._data_list = []
-
 
     def load(self):
         if type(self._path) == types.StringType:
@@ -285,8 +276,6 @@ class mmCIFDictionary(mmCIFFile):
 
         for cif_data in mmCIFDictionaryParser().parse_file(fil):
             self.add_data(cif_data)
-
-
 
 ##
 ## FILE PARSERS/WRITERS
@@ -299,9 +288,9 @@ QUOTES = ["'", '"']
 MAX_LINE = 80
 
 
-
 class mmCIFElementFile:
-    """Tokenizes a mmCIF file for the state parser."""
+    """Tokenizes a mmCIF file for the state parser.
+    """
     def __init__(self, file):
         self.file = file
         self.line_number = 0
@@ -309,7 +298,8 @@ class mmCIFElementFile:
 
     def escaped(self, line, i):
         """Given a line and a charactor index, determine if the charactor
-        at index i is escaped."""
+        at index i is escaped.
+        """
         j = i - 1
         while 1:
             try:
@@ -337,7 +327,10 @@ class mmCIFElementFile:
             elif state == "element":
                 if line[i] in string.whitespace:
                     state = "whitespace"
-                    list.append((line[j:i], "token"))
+                    tok = line[j:i]
+                    if tok == ".":
+                        tok = ""
+                    list.append((tok, "token"))
                 continue
 
             elif state == "quote":
@@ -352,7 +345,10 @@ class mmCIFElementFile:
                 continue
 
         if  state == "element":
-            list.append((line[j:],"token"))
+            tok = line[j:]
+            if tok == ".":
+                tok = ""
+            list.append((tok,"token"))
 
         elif state == "quote":
             list.append((line[j+1:-1],"string")) ## strip out the quotes
@@ -408,10 +404,9 @@ class mmCIFElementFile:
 class mmCIFFileParser:
     """Stateful parser which uses the mmCIFElementFile tokenizer to read
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
-    data hierarchy."""
-
+    data hierarchy.
+    """
     error = "mmCIF Syntax Error"
-
     def syntax_error(self, err):
         err = "[line %d] %s" % (self.cife.line_number, err)
         raise self.error, err
@@ -433,7 +428,7 @@ class mmCIFFileParser:
                 data_list.append(data)
                 self.read_data(data)
             else:
-                self.syntax_error('unexpected element=%s' % (s))
+                self.syntax_error('unexpected element="%s"' % (s))
 
         return data_list
 
@@ -470,7 +465,7 @@ class mmCIFFileParser:
             if cname in table.get_column_list():
                 self.syntax_error('redefined single column %s.%s' % (
                     tname, cname))
-
+    
         table.add_column(cname)
         row = table[0]
 

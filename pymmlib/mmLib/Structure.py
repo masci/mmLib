@@ -1042,6 +1042,20 @@ class Atom(object):
         """
         return self.get_chain().get_structure()
 
+    def set_U(self, u11, u22, u33, u12, u13, u23):
+        """Sets the symmetric U tensor from the six unique values.
+        """
+        self.U = array([[u11, u12, u13],
+                        [u12, u22, u23],
+                        [u13, u23, u33]])
+
+    def set_sig_U(self, u11, u22, u33, u12, u13, u23):
+        """Sets the symmetric sig_U tensor from the six unique values.
+        """
+        self.sig_U = array([[u11, u12, u13],
+                            [u12, u22, u23],
+                            [u13, u23, u33]])
+
     def calc_anisotropy(self):
         """Calculates the anisotropy of that atom.  Anisotropy is defined
         as the ratio of the minimum/maximum eigenvalues of the 3x3
@@ -1049,13 +1063,7 @@ class Atom(object):
         """
         ## no Anisotropic values, we have a spherical atom
         if not self.U: return 1.0
-
-        ## build Numeric Python (NumPy) matrix
-        m = array([[ self.U[0], self.U[3], self.U[4] ],
-                   [ self.U[3], self.U[1], self.U[5] ],
-                   [ self.U[4], self.U[5], self.U[2] ]])
-
-        evals = eigenvalues(m)
+        evals = eigenvalues(self.U)
         ansotropy = min(evals) / max(evals)
         return ansotropy
         

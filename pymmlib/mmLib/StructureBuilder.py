@@ -98,18 +98,28 @@ class StructureBuilder:
                    fragment_id = fragment_id, chain_id = chain_id)
 
         ## additional properties
-        atm.element     = atm_map["element"]
-        atm.position    = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
-        atm.occupancy   = atm_map["occupancy"]
+        atm.element = atm_map["element"]
+        atm.position = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
+        atm.occupancy = atm_map["occupancy"]
         atm.temp_factor = atm_map["temp_factor"]
 
         try:
-            atm.U = (atm_map["U[1][1]"],
-                     atm_map["U[2][2]"],
-                     atm_map["U[3][3]"],
-                     atm_map["U[1][2]"],
-                     atm_map["U[1][3]"],
-                     atm_map["U[2][3]"])
+            atm.sig_position = Vector(
+                atm_map["sig_x"], atm_map["sig_y"], atm_map["sig_z"])
+        except KeyError:
+            pass
+
+        try:
+            atm.set_U(atm_map["U[1][1]"], atm_map["U[2][2]"],
+                      atm_map["U[3][3]"], atm_map["U[1][2]"],
+                      atm_map["U[1][3]"], atm_map["U[2][3]"])
+        except KeyError:
+            pass
+
+        try:
+            atm.set_sig_U(atm_map["sig_U[1][1]"], atm_map["sig_U[2][2]"],
+                          atm_map["sig_U[3][3]"], atm_map["sig_U[1][2]"],
+                          atm_map["sig_U[1][3]"], atm_map["sig_U[2][3]"])
         except KeyError:
             pass
 
@@ -459,66 +469,54 @@ class mmCIFStructureBuilder(StructureBuilder):
         self.cif_data = self.cif_file[0]
 
     def read_atoms(self):
+        def setmap(func, map, key, row, default, *cols):
+            for col in cols:
+                if row.has_key(col):
+                    map[key] = func(row[col])
+                    return
+            if default != None:
+                map[key] = default
+        def setmaps(map, key, row, default, *cols):
+            setmap(str, map, key, row, default, *cols)
+        def setmapi(map, key, row, default, *cols):
+            setmap(int, map, key, row, default, *cols)
+        def setmapf(map, key, row, default, *cols):
+            setmap(float, map, key, row, default, *cols)
 
-        def cifattr(cif_row, attr, default = ""):
-            val = cif_row.get(attr, default)
-            if val == "?" or val == ".":
-                val = ""
-            return val
-        
         for atom_site in self.cif_data["atom_site"]:
             atm_map = {}
+            setmaps(atm_map, "name", atom_site, None, "label_atom_id")
+            setmaps(atm_map, "alt_loc", atom_site, None, "label_alt_id")
+            setmaps(atm_map, "res_name", atom_site, None, "auth_comp_id",
+                   "label_comp_id")
+            setmaps(atm_map, "fragment_id", atom_site, None, "auth_seq_id",
+                   "label_seq_id")
+            setmaps(atm_map, "chain_id", atom_site, None, "auth_asym_id",
+                    "label_asym_id")
+            setmaps(atm_map, "element", atom_site, None, "type_symbol")
+            setmapf(atm_map, "x", atom_site, None, "Cartn_x") 
+            setmapf(atm_map, "y", atom_site, None, "Cartn_y") 
+            setmapf(atm_map, "z", atom_site, None, "Cartn_z")
+            setmapf(atm_map, "occupancy", atom_site, None, "occupancy")
+            setmapf(atm_map, "temp_factor", atom_site, None, "B_iso_or_equiv")
 
-            atm_map["name"]      = cifattr(atom_site, "label_atom_id")
-            atm_map["alt_loc"]   = cifattr(atom_site, "label_alt_id")
-            
-            atm_map["res_name"]  = \
-                cifattr(atom_site, "auth_comp_id") or \
-                cifattr(atom_site, "label_comp_id")
-
-            atm_map["fragment_id"] = \
-                cifattr(atom_site, "auth_seq_id") or \
-                cifattr(atom_site, "label_seq_id")
-
-            atm_map["chain_id"]    = \
-                cifattr(atom_site, "auth_asym_id") or \
-                cifattr(atom_site, "label_asym_id")
-
-            atm_map["element"]   = cifattr(atom_site, "type_symbol")
-
-            atm_map["x"]         = \
-                float(cifattr(atom_site, "Cartn_x"))
-
-            atm_map["y"]         = \
-                float(cifattr(atom_site, "Cartn_y"))
-
-            atm_map["z"]         = \
-                float(cifattr(atom_site, "Cartn_z"))
-
-            atm_map["occupancy"] = \
-                float(cifattr(atom_site, "occupancy"))
-
-            atm_map["temp_factor"] = \
-                float(cifattr(atom_site, "B_iso_or_equiv"))
-
-            if cif_data.has_key("atom_site_anisotrop"):
-                ctable = cif_data["atom_site_anisotrop"]
+            if self.cif_data.has_key("atom_site_anisotrop"):
+                ctable = self.cif_data["atom_site_anisotrop"]
                 try:
                     (aniso, ) = ctable.select_row_list(("id", atom_site["id"]))
                 except ValueError:
                     pass
                 else:
-                    atm_map["U[1][1]"] = float(cifattr(aniso, "U[1][1]"))
-                    atm_map["U[2][2]"] = float(cifattr(aniso, "U[2][2]"))
-                    atm_map["U[3][3]"] = float(cifattr(aniso, "U[3][3]"))
-                    atm_map["U[1][2]"] = float(cifattr(aniso, "U[1][2]"))
-                    atm_map["U[1][3]"] = float(cifattr(aniso, "U[1][3]"))
-                    atm_map["U[2][3]"] = float(cifattr(aniso, "U[2][3]"))
+                    setmapf(atm_map, "U[1][1]", atom_site, None, "U[1][1]")
+                    setmapf(atm_map, "U[2][2]", atom_site, None, "U[2][2]")
+                    setmapf(atm_map, "U[3][3]", atom_site, None, "U[3][3]")
+                    setmapf(atm_map, "U[1][2]", atom_site, None, "U[1][2]")
+                    setmapf(atm_map, "U[1][3]", atom_site, None, "U[1][3]")
+                    setmapf(atm_map, "U[2][3]", atom_site, None, "U[2][3]")
 
             self.load_atom(atm_map)
 
     def read_metadata(self):
-
         def cifattr(cif_row, attr, default = ""):
             val = cif_row.get(attr, default)
             if val == "?" or val == ".":
@@ -526,53 +524,53 @@ class mmCIFStructureBuilder(StructureBuilder):
             return val
 
         ## PDB ENTRY ID
-        try: entry_id = cif_data["entry"][0]["id"]
+        try: entry_id = self.cif_data["entry"][0]["id"]
         except KeyError: print "missing entry.id"
 
         ## INFO/EXPERIMENTAL DATA
         info_map = {"id" : entry_id}
 
         try: info_map["date"] = \
-             cif_data["database_pdb_rev"][0]["date_original"]
+             self.cif_data["database_pdb_rev"][0]["date_original"]
         except KeyError: print "missing database_pdb_rev.date_original"
 
-        try: info_map["keywords"] = cif_data["struct_keywords"][0]["text"]
+        try: info_map["keywords"] = self.cif_data["struct_keywords"][0]["text"]
         except KeyError: print "missing struct_keywords.text"
 
         try: info_map["pdbx_keywords"] = \
-             cif_data["struct_keywords"][0]["pdbx_keywords"]
+             self.cif_data["struct_keywords"][0]["pdbx_keywords"]
         except KeyError: print "missing struct_keywords.pdbx_keywords"
 
-        try: info_map["title"] = cif_data["struct"][0]["title"]
+        try: info_map["title"] = self.cif_data["struct"][0]["title"]
         except KeyError: print "missing struct.title"
 
         try: info_map["R_fact"] = \
-            float(cif_data["refine"][0]["ls_R_factor_R_work"])
+            float(self.cif_data["refine"][0]["ls_R_factor_R_work"])
         except KeyError:   print "missing refine.ls_R_factor_R_work"
         except ValueError: print "missing refine.ls_R_factor_R_work"
         
         try: info_map["free_R_fact"] = \
-             float(cif_data["refine"][0]["ls_R_factor_R_free"])
+             float(self.cif_data["refine"][0]["ls_R_factor_R_free"])
         except KeyError:   print "missing refine.ls_R_factor_R_free"
         except ValueError: print "missing refine.ls_R_factor_R_free"
 
         try: info_map["res_high"] = \
-             float(cif_data["refine"][0]["ls_d_res_high"])
+             float(self.cif_data["refine"][0]["ls_d_res_high"])
         except KeyError:   print "missing refine.ls_d_res_high"
         except ValueError: print "missing refine.ls_d_res_high"
 
         try: info_map["res_low"] = \
-             float(cif_data["refine"][0]["ls_d_res_low"])
+             float(self.cif_data["refine"][0]["ls_d_res_low"])
         except KeyError:   print "missing refine.ls_d_res_low"
         except ValueError: print "missing refine.ls_d_res_low"
         
         self.load_info(info_map)
 
         ## SITE
-        if cif_data.has_key("struct_site_gen"):
+        if self.cif_data.has_key("struct_site_gen"):
             site_map = {}
         
-            for struct_site_gen in cif_data["struct_site_gen"]:
+            for struct_site_gen in self.cif_data["struct_site_gen"]:
                 ## extract data for chain_id and seq_id
                 site_id  = struct_site_gen["site_id"]
 
@@ -599,11 +597,11 @@ class mmCIFStructureBuilder(StructureBuilder):
         ## UNIT CELL
         ucell_map = {}
                 
-        if cif_data.has_key("cell"):
+        if self.cif_data.has_key("cell"):
             ucell_map = {}
             
             try:
-                (cell,) = cif_data["cell"].select_row_list(
+                (cell,) = self.cif_data["cell"].select_row_list(
                     ("entry_id", entry_id))
             except ValueError:
                 pass
@@ -616,9 +614,9 @@ class mmCIFStructureBuilder(StructureBuilder):
                 ucell_map["gamma"] = float(cell["angle_gamma"])
                 ucell_map["z"]     = int(cell["Z_PDB"])
 
-        if cif_data.has_key("symmetry"):
+        if self.cif_data.has_key("symmetry"):
             try:
-                (symm,) = cif_data["symmetry"].select_row_list(
+                (symm,) = self.cif_data["symmetry"].select_row_list(
                     ("entry_id", entry_id))
             except ValueError:
                 pass
