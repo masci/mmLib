@@ -1697,7 +1697,7 @@ class AboutWindow(gtk.Dialog):
             "\n"
             "University of Washington\n"
             "Jay Painter\n"
-            "Ethan Merrit")
+            "Ethan Merritt")
 
     def delete_event_cb(self, *args):
         self.hide()
