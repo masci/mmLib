@@ -829,7 +829,7 @@ class TLSGroup(AtomList):
 
         return True
 
-    def calc_TLS_least_squares_fit(self):
+    def calc_TLS_least_squares_fit(self, weight_dict=None):
         """Perform a least-squares fit of the atoms contained in self
         to the three TLS tensors: self.T, self.L, and self.S using the
         origin given by self.origin.
@@ -850,6 +850,12 @@ class TLSGroup(AtomList):
             ## set x, y, z as the vector components from the TLS origin
             x, y, z = atm.position - self.origin
 
+            ## is this fit weighted?
+            if weight_dict!=None and weight_dict.has_key(atm):
+                w = math.sqrt(weight_dict[atm])
+            else:
+                w = 1.0
+
             ## indecies of the components of U
             u11 =   i * 6
             u22 = u11 + 1
@@ -860,12 +866,12 @@ class TLSGroup(AtomList):
 
             ## set the B vector
             Uatm   = atm.get_U()            
-            b[u11] = Uatm[0,0]
-            b[u22] = Uatm[1,1]
-            b[u33] = Uatm[2,2]
-            b[u12] = Uatm[0,1]
-            b[u13] = Uatm[0,2]
-            b[u23] = Uatm[1,2]
+            b[u11] = w * Uatm[0,0]
+            b[u22] = w * Uatm[1,1]
+            b[u33] = w * Uatm[2,2]
+            b[u12] = w * Uatm[0,1]
+            b[u13] = w * Uatm[0,2]
+            b[u23] = w * Uatm[1,2]
 
             ## C Matrix
             xx = x*x
@@ -876,58 +882,58 @@ class TLSGroup(AtomList):
             xz = x*z
             yz = y*z
 
-            A[u11, T11] = 1.0
-            A[u11, L22] = zz
-            A[u11, L33] = yy
-            A[u11, L23] = -2.0*yz
-            A[u11, S31] = -2.0*y
-            A[u11, S21] = 2.0*z
+            A[u11, T11] = w * 1.0
+            A[u11, L22] = w * zz
+            A[u11, L33] = w * yy
+            A[u11, L23] = w * -2.0*yz
+            A[u11, S31] = w * -2.0*y
+            A[u11, S21] = w * 2.0*z
 
-            A[u22, T22] = 1.0
-            A[u22, L11] = zz
-            A[u22, L33] = xx
-            A[u22, L13] = -2.0*xz
-            A[u22, S12] = -2.0*z
-            A[u22, S32] = 2.0*x
+            A[u22, T22] = w * 1.0
+            A[u22, L11] = w * zz
+            A[u22, L33] = w * xx
+            A[u22, L13] = w * -2.0*xz
+            A[u22, S12] = w * -2.0*z
+            A[u22, S32] = w * 2.0*x
 
-            A[u33, T33] = 1.0
-            A[u33, L11] = yy
-            A[u33, L22] = xx
-            A[u33, L12] = -2.0*xy
-            A[u33, S23] = -2.0*x
-            A[u33, S13] = 2.0*y
+            A[u33, T33] = w * 1.0
+            A[u33, L11] = w * yy
+            A[u33, L22] = w * xx
+            A[u33, L12] = w * -2.0*xy
+            A[u33, S23] = w * -2.0*x
+            A[u33, S13] = w * 2.0*y
 
-            A[u12, T12] = 1.0
-            A[u12, L33] = -xy
-            A[u12, L23] = xz
-            A[u12, L13] = yz
-            A[u12, L12] = -zz
-            A[u12, S11] = -z
-            A[u12, S22] = z
-            A[u12, S31] = x
-            A[u12, S32] = -y
+            A[u12, T12] = w * 1.0
+            A[u12, L33] = w * -xy
+            A[u12, L23] = w * xz
+            A[u12, L13] = w * yz
+            A[u12, L12] = w * -zz
+            A[u12, S11] = w * -z
+            A[u12, S22] = w * z
+            A[u12, S31] = w * x
+            A[u12, S32] = w * -y
 
-            A[u13, T13] = 1.0
-            A[u13, L22] = -xz
-            A[u13, L23] = xy
-            A[u13, L13] = -yy
-            A[u13, L12] = yz
-            A[u13, S11] = y
-            A[u13, S33] = -y
-            A[u13, S23] = z
-            A[u13, S21] = -x
+            A[u13, T13] = w * 1.0
+            A[u13, L22] = w * -xz
+            A[u13, L23] = w * xy
+            A[u13, L13] = w * -yy
+            A[u13, L12] = w * yz
+            A[u13, S11] = w * y
+            A[u13, S33] = w * -y
+            A[u13, S23] = w * z
+            A[u13, S21] = w * -x
 
-            A[u23, T23] = 1.0
-            A[u23, L11] = -yz
-            A[u23, L23] = -xx
-            A[u23, L13] = xy
-            A[u23, L12] = xz
-            A[u23, S22] = -x
-            A[u23, S33] = x
-            A[u23, S12] = y
-            A[u23, S13] = -z
+            A[u23, T23] = w * 1.0
+            A[u23, L11] = w * -yz
+            A[u23, L23] = w * -xx
+            A[u23, L13] = w * xy
+            A[u23, L12] = w * xz
+            A[u23, S22] = w * -x
+            A[u23, S33] = w * x
+            A[u23, S12] = w * y
+            A[u23, S13] = w * -z
 
-        (C, lsq_residual, rank, s) = linear_least_squares(A, b)
+        (C, resid, rank, s) = linear_least_squares(A, b)
 
         ## verify the trase of S is zero
         assert allclose(C[S11]+C[S22]+C[S33], 0.0)
@@ -943,6 +949,13 @@ class TLSGroup(AtomList):
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
                          [ C[S31], C[S32], C[S33] ] ], Float)
+
+
+        ## calculate the lsq residual since silly Numeric Python won't
+        ## do it for us
+        utlsw = matrixmultiply(A, C)
+        xw = utlsw - b
+        lsq_residual = dot(xw, xw)
 
         return lsq_residual
 

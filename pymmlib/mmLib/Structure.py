@@ -3473,7 +3473,7 @@ class AtomList(list):
         num      = 0
         centroid = zeros(3, Float)
         for atm in self:
-            if atm.position:
+            if atm.position!=None:
                 centroid += atm.position
                 num += 1
         return centroid / num
@@ -3486,7 +3486,7 @@ class AtomList(list):
         adv_tf = 0.0
 
         for atm in self:
-            if atm.temp_factor:
+            if atm.temp_factor!=None:
                 adv_tf += atm.temp_factor
                 num_tf += 1
 
@@ -3504,7 +3504,7 @@ class AtomList(list):
             ## use the atom's U matrix if it exists, otherwise use the
             ## temperature factor
 
-            if atm.U != None:
+            if atm.U!=None:
                 adv_U += atm.U
                 num_U += 1
 
