@@ -494,6 +494,63 @@ class GLPropertyEditor(gtk.Frame):
         self.gl_object.glo_update_properties(**update_dict)
 
 
+class GLPropertyTreeControl(gtk.TreeView):
+    def __init__(self, context):
+        self.context   = context
+        self.path_dict = {}
+        
+        gtk.TreeView.__init__(self)
+        self.get_selection().set_mode(gtk.SELECTION_BROWSE)
+        
+        self.connect("row-activated", self.row_activated_cb)
+        self.connect("button-release-event", self.button_release_event_cb)
+
+        self.model = gtk.TreeStore(gobject.TYPE_STRING)
+        self.set_model(self.model)
+
+        cell = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("Structure", cell)
+        column.add_attribute(cell, "text", 0)
+        self.append_column(column)
+
+        self.redraw()
+
+    def row_activated_cb(self, tree_view, path, column):
+        """Retrieve selected node, then call the correct set method for the
+        type.
+        """
+        self.context.set_selected_struct_obj(self.resolv_path(path))
+    
+    def button_release_event_cb(self, tree_view, bevent):
+        """
+        """
+        pass
+
+    def resolv_path(self, path):
+        """Get the item in the tree view at the specified path.
+        """
+        itemx = self.struct_list
+        for i in path:
+            itemx = itemx[i]
+        return itemx
+        
+    def redraw(self):
+        """Clear and refresh the view of the widget according to the
+        self.struct_list
+        """
+        self.model.clear()
+        self.recursive_redraw(self.context.gl_viewer)
+        
+    def recurive_redraw(self, gl_object, parent_iter = None):
+        """
+        """
+        iter = self.model.append(parent_iter)
+        self.model.set(iter, 0, str(gl_object.__class__.__name__))
+
+        for child in gl_object.iter_children():
+            self.recurive_redraw(child, iter)
+
+
 class GLPropertyEditDialog(gtk.Dialog):
     def __init__(self, parent_window, gl_object):
         gtk.Dialog.__init__(self, "Edit GLProperties", parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
@@ -514,6 +571,28 @@ class GLPropertyEditDialog(gtk.Dialog):
         if response_code==100:
             self.gl_prop_editor.update()
     
+
+class GLPropertyBrowserDialog(gtk.Dialog):
+    """
+    """
+    def __init__(self, parent_window, gl_object):
+        gtk.Dialog.__init__(self, "Edit GLProperties", parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
+        self.connect("response", self.response_cb)
+
+        self.gl_prop_editor = GLPropertyEditor(gl_object)
+        self.vbox.pack_start(self.gl_prop_editor, gtk.TRUE, gtk.TRUE, 0)
+
+        self.add_button(gtk.STOCK_APPLY, 100)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+
+        self.show_all()
+
+    def response_cb(self, dialog, response_code):
+        if response_code==gtk.RESPONSE_CLOSE:
+            self.destroy()
+        if response_code==100:
+            self.gl_prop_editor.update()    
+
 
 class TLSDialog(gtk.Dialog):
     """Dialog for TLS analysis of a structure.
@@ -777,7 +856,7 @@ class TLSDialog(gtk.Dialog):
             tls_group.gl_tls.properties.update(time=self.animation_time)
         return gtk.TRUE
 
-
+        
 class StructureTreeControl(gtk.TreeView):
     def __init__(self, context):
         self.context = context

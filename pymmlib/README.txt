@@ -1,4 +1,4 @@
-mmLib-0.5: Macromolecular Library (mmLib)
+mmLib-0.7: Macromolecular Library (mmLib)
 http://pymmlib.sourceforget.net/
 -------------------------------------------------------------------------------
 
@@ -47,10 +47,10 @@ If you want to use mmLib without installing it as root, you can set the
 PYTHONPATH environment variable.  For example, to unpack mmLib and run the
 example programs and applications:
 
-# tar xzf pymmlib-0.5.tar.gz
-# export PYTHONPATH=/home/jpaint/pymmlib-0.5
-# cd pymmlib-0.5/tests
-# python mmlib_test.py /home/jpaint/myfile.pdb
+# tar xzf pymmlib-0.7.tar.gz
+# export PYTHONPATH=/home/jpaint/pymmlib-0.7
+# cd pymmlib-0.7/tests
+# python mmlib_test.py /home/jpaint/myfile.[pdb|cif]
 
 PROBLEMS/BUG REPORTS/CONTACT::
 You can contact us through our SourceForge site, or email us directly at:
