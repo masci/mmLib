@@ -1,3 +1,4 @@
 include *.txt
 recursive-include examples *.py
+recursive-include applications *.py
 recursive-include doc *

@@ -76,25 +76,28 @@ class StructureBuilder:
             return
         ## /XXX
 
-        ## <really, really, required>
-        name = atm_map["name"]
-        fragment_id = atm_map["fragment_id"]
-        chain_id = atm_map["chain_id"]
-        ### </really, really, required>
-        
+        ## required items
+        name = atm_map.get("name", "")
+        fragment_id = atm_map.get("fragment_id", "")
+        chain_id = atm_map.get("chain_id", "")
         res_name = atm_map.get("res_name", "")
         alt_loc = atm_map.get("alt_loc", "")
 
-        ## form the cache ID for the atom and
         ## allocate the atom cache if it does not exist
-        atm_id = (name, alt_loc, fragment_id, chain_id)
         if not hasattr(self, "atom_cache"):
             self.atom_cache = {}
 
-        ## don't allow the same atom to be loaded twice
+        ## find a unique atm_id for the atom, modify the name of the
+        ## atom if necessary
+        atm_id = (name, alt_loc, fragment_id, chain_id)
+
         if self.atom_cache.has_key(atm_id):
-            debug("duplicate atom "+str(atm_id))
-            return
+            old_name = name
+            i = 2
+            while self.atom_cache.has_key(atm_id):
+                name = "%s%d" % (old_name, i)
+                atm_id = (name, alt_loc, fragment_id, chain_id)
+                i += 1
 
         ## don't allow atoms with blank altLoc if one has a altLoc
         if alt_loc and self.atom_cache.has_key((name,"",fragment_id,chain_id)):
