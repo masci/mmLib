@@ -114,7 +114,7 @@ class DictListTreeView(gtk.TreeView):
 
             for i in range(len(self.column_list)):
                 column_desc = self.column_list[i]
-                self.model.set(iter, i, dictX[column_desc])
+                self.model.set(iter, i, dictX.get(column_desc, ""))
 
 
 ###############################################################################
@@ -362,6 +362,111 @@ class ColorSelection(gtk.Combo):
     def get_color(self):
         self.activate(self.entry, None)
         return self.color
+
+
+class GLAtomColorSelection(gtk.Combo):
+
+    color_dict = {
+        "white":   (1.0, 1.0, 1.0),
+        "red":     (1.0, 0.0, 0.0),
+        "green":   (0.0, 1.0, 0.0),
+        "blue":    (0.0, 0.0, 1.0) }
+        
+    def __init__(self):
+        gtk.Combo.__init__(self)
+        self.color = None
+        self.atm_color = None
+        self.entry.connect("activate", self.activate, None)
+
+    def activate(self, entry, junk):
+        txt = self.entry.get_text()
+
+        ## color format: r, g, b
+        try:
+            r, g, b = txt.split(",")
+            color = (float(r), float(g), float(b))
+        except ValueError:
+            pass
+        else:
+            self.set_color_val(color)
+            return
+
+        ## color format: Random
+        if txt=="random":
+            color = (random.random(),
+                     random.random(),
+                     random.random())
+            self.set_color_val(color)
+            return
+
+        ## color fomat: match color name
+        try:
+            color = self.color_dict[txt.lower()]
+        except KeyError:
+            pass
+        else:
+            self.set_color_val(color)
+            return
+
+        ## keyword color settings
+        self.set_color_val(txt)
+
+    def match_color_name(self, color):
+        if type(color)==StringType:
+            return color
+        elif type(color)==TupleType:
+            for color_name, color_val in self.color_dict.items():
+                if color==color_val:
+                    return color_name
+
+            return "%3.2f,%3.2f,%3.2f" % (color[0], color[1], color[2])
+
+        return "WTF??"
+    
+    def set_color_val(self, color):
+        self.color     = color
+        self.atm_color = GLAtomColor(color)
+
+        ## go through the GLAtomColor enumeration list and add the
+        ## color selection options
+        self.set_popdown_strings(
+            ["random"] + self.color_dict.keys() +\
+            self.atm_color.settings.keys())
+        
+        name = self.match_color_name(color)
+        self.entry.set_text(name)
+
+    def set_gl_atom_color(self, gl_atom_color):
+        self.set_color_val(gl_atom_color.setting)
+
+    def get_gl_atom_color(self):
+        self.activate(self.entry, None)
+        return self.atm_color
+
+
+class EnumeratedStringEntry(gtk.Combo):
+    """Allows the entry of a custom string or a choice of a list of
+    enumerations.
+    """
+    def __init__(self, enum_list):
+        gtk.Combo.__init__(self)
+        self.entry.connect("activate", self.activate, None)
+
+        self.enum_list = enum_list[:]
+        self.string    = None
+
+    def activate(self, entry, junk):
+        txt = self.entry.get_text()
+        self.set_string(txt)
+
+    def set_string(self, string):
+        self.string = string
+        self.set_popdown_strings(self.enum_list)
+        self.entry.set_text(string)
+
+    def get_string(self):
+        self.activate(self.entry, None)
+        return self.string
 
 
 class GLPropertyEditor(gtk.Notebook):
@@ -625,7 +730,11 @@ class GLPropertyEditor(gtk.Notebook):
         ## COLOR
         elif prop["type"]=="color":
             widget = ColorSelection()
-
+            
+        ## ENUMERATED STRING
+        elif prop["type"]=="enum_string":
+            widget = EnumeratedStringEntry(prop["enum_list"])
+        
         ## WTF?
         else:
             text = str(self.gl_object.properties[prop["name"]])
@@ -658,17 +767,20 @@ class GLPropertyEditor(gtk.Notebook):
                     widget.set_markup(text)
                 else:
                     if prop_desc.get("range")!=None:
-                        widget.set_value(float(self.gl_object.properties[name]))
+                        widget.set_value(
+                            float(self.gl_object.properties[name]))
                     elif prop_desc.get("spin")!=None:
-                        widget.set_value(float(self.gl_object.properties[name]))
+                        widget.set_value(
+                            float(self.gl_object.properties[name]))
                     else:
                         text = str(self.gl_object.properties[name])
                         widget.set_text(text)
 
             elif prop_desc["type"]=="float":
                 if prop_desc.get("read_only", False)==True:
-                    text = "<small>%12.6f</small>" % (self.gl_object.properties[name])
-                    widget.set_markup(text)
+                    widget.set_markup(
+                        "<small>%12.6f</small>" % (
+                        self.gl_object.properties[name]))
                 else:
                     if prop_desc.get("range")!=None:
                         widget.set_value(self.gl_object.properties[name])
@@ -679,13 +791,18 @@ class GLPropertyEditor(gtk.Notebook):
                         widget.set_text(text)
 
             elif prop_desc["type"]=="array(3)":
-                widget.set_markup(markup_vector3(self.gl_object.properties[name]))
+                widget.set_markup(
+                    markup_vector3(self.gl_object.properties[name]))
 
             elif prop_desc["type"]=="array(3,3)":
-                widget.set_markup(markup_matrix3(self.gl_object.properties[name]))
+                widget.set_markup(
+                    markup_matrix3(self.gl_object.properties[name]))
 
             elif prop_desc["type"]=="color":
                 widget.set_color(self.gl_object.properties[name])
+
+            elif prop_desc["type"]=="enum_string":
+                widget.set_string(self.gl_object.properties[name])
 
             else:
                 widget.set_text(str(self.gl_object.properties[name]))
@@ -742,6 +859,9 @@ class GLPropertyEditor(gtk.Notebook):
             elif prop["type"]=="color":
                 update_dict[name] = widget.get_color()
 
+            elif prop["type"]=="enum_string":
+                update_dict[name] = widget.get_string()
+                
         self.gl_object.glo_update_properties(**update_dict)
 
 
@@ -1329,24 +1449,71 @@ class TLSSearchDialog(gtk.Dialog):
         self.connect("destroy", self.destroy_cb)
         self.connect("response", self.response_cb)
 
-        ##
+        ## Selection Table
+        frame = gtk.Frame("Rigid Body Search Criteria")
+        self.vbox.pack_start(frame, gtk.FALSE, gtk.FALSE, 0)
+        frame.set_border_width(5)
+        
+        table = gtk.Table(2, 7, gtk.FALSE)
+        frame.add(table)
+        table.set_border_width(5)
+        table.set_row_spacings(5)
+        table.set_col_spacings(10)
+        
+        self.include_side_chains = gtk.CheckButton("Include Side Chain Atoms")
+        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+        align.add(self.include_side_chains)
+        table.attach(align, 0, 2, 0, 1, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        self.include_side_chains.set_active(gtk.TRUE)
+
+        self.include_disordered = gtk.CheckButton("Include Disordered Atoms")
+        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+        align.add(self.include_disordered)
+        table.attach(align, 0, 2, 1, 2, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        self.include_disordered.set_active(gtk.FALSE)
+
+        self.include_single_bond = gtk.CheckButton(
+            "Include Atoms with One Bond")
+        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+        align.add(self.include_single_bond)
+        table.attach(align, 0, 2, 2, 3, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        self.include_single_bond.set_active(gtk.TRUE)
+        
+        label = gtk.Label("TLS Segment Residue Width")
+        align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
+        align.add(label)
+        table.attach(align, 0, 1, 3, 4, gtk.FILL, 0, 0, 0)
+        self.segment_width = gtk.Entry()
+        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+        align.add(self.segment_width)
+        table.attach(align, 1, 2, 3, 4, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+        self.segment_width.set_text("6")
+        
+        label = gtk.Label("Maximum dP2 Value")
+        align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
+        align.add(label)
+        table.attach(align, 0, 1, 4, 5, gtk.FILL, 0, 0, 0)
         self.dp2_entry = gtk.Entry()
-        self.vbox.add(self.dp2_entry)
+        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+        align.add(self.dp2_entry)
+        table.attach(align, 1, 2, 4, 5, gtk.EXPAND|gtk.FILL, 0, 0, 0)
         self.dp2_entry.set_text("0.03")
 
         self.run_button = gtk.Button("Run Analysis")
-        self.vbox.add(self.run_button)
+        align = gtk.Alignment(1.0, 0.5, 0.0, 0.0) 
+        align.add(self.run_button)
+        table.attach(align, 0, 2, 5, 6, gtk.FILL|gtk.EXPAND, 0, 0, 0)
         self.run_button.connect("clicked", self.run_tls_analysis, None)
         
         ## make the print box
         sw = gtk.ScrolledWindow()
-        self.vbox.add(sw)
+        self.vbox.pack_end(sw, gtk.TRUE, gtk.TRUE, 0)
         sw.set_border_width(5)
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
      
         self.treeview = DictListTreeView(
-            column_list=["Residue Range", "Atoms", "R", "<DP2>"])
+            column_list=["Residue Range", "Atoms", "R", "<DP2>", "sig<DP2>"])
         sw.add(self.treeview)
        
         self.show_all()
@@ -1369,13 +1536,37 @@ class TLSSearchDialog(gtk.Dialog):
     def run_tls_analysis(self, *args):
         """
         """
+        if self.include_side_chains.get_active()==gtk.TRUE:
+            use_side_chains = True
+        else:
+            use_side_chains = False
+
+        if self.include_disordered.get_active()==gtk.TRUE:
+            include_frac_occupancy = True
+        else:
+            include_frac_occupancy = False
+
+        if self.include_single_bond.get_active()==gtk.TRUE:
+            include_single_bond = True
+        else:
+            include_single_bond = False
+            
+        try:
+            residue_width = int(self.segment_width.get_text())
+        except ValueError:
+            residue_width = 6
+
         try:
             max_DP2 = float(self.dp2_entry.get_text())
         except ValueError:
             max_DP2 = 1.0
         
         tls_analysis = TLSStructureAnalysis(self.sc.struct)
-        stats_list   = tls_analysis.fit_TLS_segments()
+        stats_list   = tls_analysis.fit_TLS_segments(
+            residue_width          = residue_width,
+            use_side_chains        = use_side_chains,
+            include_frac_occupancy = include_frac_occupancy,
+            include_single_bond    = include_single_bond)
 
         self.tls_stats_list = []
         for stats in stats_list:
@@ -2137,19 +2328,12 @@ class MainWindow(object):
                     tab = tabx
                     break
 
-        self.gl_prop_browser.select_gl_object(gl_object)
+        tab["gl_prop_browser"].select_gl_object(gl_object)
 
     def gl_prop_browser_destroy(self, widget, tab):
         """Callback when the GLProeriesBrowser is destroyed.
         """
         del tab["gl_prop_browser"]
-
-
-
-
-
-
-
 
 
 class ViewerApp(object):

@@ -32,7 +32,8 @@ except ImportError:
 ##         mmCIFDictionary -> [mmCIFData] -> [mmCIFTable] -> [mmCIFRow]
 ##
 
-MAX_LINE = 80
+## mmCIF Maximum Line Length
+MAX_LINE = 2048
 
 
 class mmCIFError(Exception):

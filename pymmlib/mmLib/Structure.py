@@ -8,6 +8,7 @@ from __future__ import generators
 import fpformat
 import time
 from mmTypes import *
+from GeometryDict import *
 from AtomMath import *
 from Library import Library
 from UnitCell import UnitCell
@@ -416,6 +417,30 @@ class Structure(object):
                 site_ids.insert(0, site_id)
                 yield Site(self, site_id)
 
+    def add_bonds_from_distance(self):
+        """Builds a Structure's bonds by atomic distance distance.
+        """
+        min_bond_dist = 0.4
+        max_bond_dist = 1.9
+        
+        for model in self.iter_models():
+            gdict = GeometryDict(2.0)
+            
+            for atm in model.iter_all_atoms():
+                gdict.add(atm.position, atm)
+
+            for (p1,atm1),(p2,atm2),dist in gdict.iter_contact_distance(
+                max_bond_dist):
+                
+                if dist<min_bond_dist:
+                    continue
+
+                if (atm1.alt_loc=="" or atm2.alt_loc=="") or \
+                   (atm1.alt_loc==atm2.alt_loc):
+
+                    if atm1.get_bond(atm2)==None:
+                        atm1.create_bond(atom=atm2, standard_res_bond=False)
+        
     def add_bonds_from_library(self):
         """Builds bonds for all Fragments in the Structure from bond
         tables for monomers retrieved from the Library implementation
@@ -424,6 +449,8 @@ class Structure(object):
         for model in self.iter_models():
             for frag in self.iter_fragments():
                 frag.create_bonds()
+
+        self.add_bonds_from_distance()
 
 
 class Model(object):

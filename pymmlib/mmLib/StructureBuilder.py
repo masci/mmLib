@@ -1238,6 +1238,40 @@ class mmCIFStructureBuilder(StructureBuilder):
         ## maintain a map of atom_site.id -> atm
         self.atom_site_id_map = {}
 
+    def set_atom_site_auth(self):
+        """Read atom_site.auth_ labels for atom definitions.
+        """
+        self.atom_id = "auth_atom_id"
+        self.alt_id = "auth_alt_id"
+        self.comp_id = "auth_comp_id"
+        self.seq_id = "auth_seq_id"
+        self.asym_id = "auth_asym_id"
+        self.ptnr1_atom_id = "ptnr1_auth_atom_id"
+        self.ptnr1_comp_id = "ptnr1_auth_comp_id"
+        self.ptnr1_asym_id = "ptnr1_auth_asym_id"
+        self.ptnr1_seq_id = "ptnr1_auth_seq_id"
+        self.ptnr2_atom_id = "ptnr2_auth_atom_id"
+        self.ptnr2_comp_id = "ptnr2_auth_comp_id"
+        self.ptnr2_asym_id = "ptnr2_auth_asym_id"
+        self.ptnr2_seq_id = "ptnr2_auth_seq_id"
+        
+    def set_atom_site_label(self):
+        """Read atom_site.label_ items for atom definitions.
+        """
+        self.atom_id = "label_atom_id"
+        self.alt_id = "label_alt_id"
+        self.comp_id = "label_comp_id"
+        self.seq_id = "label_seq_id"
+        self.asym_id = "label_asym_id"
+        self.ptnr1_atom_id = "ptnr1_label_atom_id"
+        self.ptnr1_comp_id = "ptnr1_label_comp_id"
+        self.ptnr1_asym_id = "ptnr1_label_asym_id"
+        self.ptnr1_seq_id = "ptnr1_label_seq_id"
+        self.ptnr2_atom_id = "ptnr2_label_atom_id"
+        self.ptnr2_comp_id = "ptnr2_label_comp_id"
+        self.ptnr2_asym_id = "ptnr2_label_asym_id"
+        self.ptnr2_seq_id = "ptnr2_label_seq_id"
+
     def set_atom_site_data_columns(self):
         """Choose to use atom_site.auth_ labels, or atom_site.label_
         """
@@ -1246,47 +1280,28 @@ class mmCIFStructureBuilder(StructureBuilder):
         except KeyError:
             return
 
-        atom_site_auth = "auth_atom_id" in atom_site_table.columns and \
-                         "auth_alt_id"  in atom_site_table.columns and \
-                         "auth_comp_id" in atom_site_table.columns and \
-                         "auth_seq_id"  in atom_site_table.columns and \
-                         "auth_asym_id" in atom_site_table.columns
-        
-        atom_site_label= "label_atom_id" in atom_site_table.columns and \
-                         "label_alt_id"  in atom_site_table.columns and \
-                         "label_comp_id" in atom_site_table.columns and \
-                         "label_seq_id"  in atom_site_table.columns and \
-                         "label_asym_id" in atom_site_table.columns
-        
-        if atom_site_auth == True:
-            self.atom_id = "auth_atom_id"
-            self.alt_id = "auth_alt_id"
-            self.comp_id = "auth_comp_id"
-            self.seq_id = "auth_seq_id"
-            self.asym_id = "auth_asym_id"
-            self.ptnr1_atom_id = "ptnr1_auth_atom_id"
-            self.ptnr1_comp_id = "ptnr1_auth_comp_id"
-            self.ptnr1_asym_id = "ptnr1_auth_asym_id"
-            self.ptnr1_seq_id = "ptnr1_auth_seq_id"
-            self.ptnr2_atom_id = "ptnr2_auth_atom_id"
-            self.ptnr2_comp_id = "ptnr2_auth_comp_id"
-            self.ptnr2_asym_id = "ptnr2_auth_asym_id"
-            self.ptnr2_seq_id = "ptnr2_auth_seq_id"
+        ## count the number of columns which exist for the auth_ style
+        ## columns and label_ style columns
+        auth_cols  = ["auth_atom_id", "auth_comp_id", "auth_seq_id",
+                      "auth_asym_id"]
 
-        elif atom_site_label == True:
-            self.atom_id = "label_atom_id"
-            self.alt_id = "label_alt_id"
-            self.comp_id = "label_comp_id"
-            self.seq_id = "label_seq_id"
-            self.asym_id = "label_asym_id"
-            self.ptnr1_atom_id = "ptnr1_label_atom_id"
-            self.ptnr1_comp_id = "ptnr1_label_comp_id"
-            self.ptnr1_asym_id = "ptnr1_label_asym_id"
-            self.ptnr1_seq_id = "ptnr1_label_seq_id"
-            self.ptnr2_atom_id = "ptnr2_label_atom_id"
-            self.ptnr2_comp_id = "ptnr2_label_comp_id"
-            self.ptnr2_asym_id = "ptnr2_label_asym_id"
-            self.ptnr2_seq_id = "ptnr2_label_seq_id"
+        label_cols = ["label_atom_id", "label_comp_id", "label_seq_id",
+                      "label_asym_id"]
+        
+        auth_count = 0
+        for col in auth_cols:
+            if col in atom_site_table.columns:
+                auth_count += 1
+        
+        label_count = 0
+        for col in label_cols:
+            if col in atom_site_table.columns:
+                label_count += 1
+        
+        if auth_count>=label_count:
+            self.set_atom_site_auth()
+        else:
+            self.set_atom_site_label()
 
     def read_atoms(self):
         try:

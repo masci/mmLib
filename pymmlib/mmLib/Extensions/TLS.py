@@ -791,7 +791,9 @@ class TLSGroup(AtomList):
         return mean_S, math.sqrt(MSD)
         
     def calc_mean_DP2(self):
-        """Calculates the mean dP2 of U vs. Utls.
+        """Calculates the mean dP2 and standard deviation of U vs. Utls
+        for every atom in the TLS group.
+        Returns the 2-tuple. (mean DP2, rmsd)
         """
         num      = 0
         mean_DP2 = 0.0
@@ -1273,12 +1275,24 @@ class TLSStructureAnalysis(object):
 
         return stats_list
 
-    def join_tls_segments(self, stats_list):
+
+    def iter_splits(self, length, min_seg, segments):
         """
         """
         pass
 
+    def brute_fit(self, **args):
+        """
+        """
+        num_tls_segments = args.get("num_tls_segments", 2)
 
+    def join_tls_segments(self, stats_list):
+        """
+        Stage 1: fit with small segment length.
+        Stage 2: examine segments, combine segment runs
+        Stage 3: determine the longest segment run
+        """
+        pass
 
 
 ## <testing>
