@@ -2520,18 +2520,22 @@ class GLViewer(GLObject):
         draw_list.glo_remove()
         self.glv_redraw()
 
-    def calc_orientation(self, struct):
+    def glv_calc_struct_orientation(self, struct):
         """Orient the structure based on a moment-of-intertia like tensor
         centered at the centroid of the structure.
         """
         slop = 2.0
 
         def aa_atom_iter(struct):
-            for frag in struct.iter_amino_acids():
+            for frag in struct.iter_standard_residues():
                 for atm in frag.iter_atoms():
                     yield atm
 
-        centroid = calc_atom_centroid(aa_atom_iter(struct))
+        try:
+            centroid = calc_atom_centroid(aa_atom_iter(struct))
+        except OverflowError:
+            return None
+
         R = calc_inertia_tensor(aa_atom_iter(struct), centroid)
 
         ori = {}
@@ -2602,16 +2606,15 @@ class GLViewer(GLObject):
         gl_struct = GLStructure(struct=struct)
         self.glv_add_draw_list(gl_struct)
 
-        ori = self.calc_orientation(struct)
+        ori = self.glv_calc_struct_orientation(struct)
+        if ori!=None:
+            self.properties.update(
+                R         = ori["R"],
+                cor       = ori["centroid"],
+                zoom      = ori["hzoom"],
+                near      = ori["near"],
+                far       = ori["far"])
 
-        self.properties.update(
-            R         = ori["R"],
-            cor       = ori["centroid"],
-            zoom      = ori["hzoom"],
-            near      = ori["near"],
-            far       = ori["far"])
-
-        self.glv_redraw()
         return gl_struct
 
     def glv_redraw(self):

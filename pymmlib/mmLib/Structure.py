@@ -380,6 +380,20 @@ class Structure(object):
             n += chain.count_fragments()
         return n
     
+    def has_amino_acids(self):
+        """Returns True if there are AminoAcidResidue objects in the
+        default Model of the Structure.
+        """
+        raise FinishMe()
+                    
+    def count_amino_acids(self):
+        """Counts all AminoAcidResidue objects in the default Model.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_amino_acids()
+        return n
+    
     def iter_amino_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
@@ -395,9 +409,12 @@ class Structure(object):
             for chain in model.chain_list:
                 for frag in chain.iter_amino_acids():
                     yield frag
-                    
-    def count_amino_acids(self):
-        """Counts all AminoAcidResidue objects in the default Model.
+
+    def has_nucleic_acids(self):
+        raise FinishMe()
+                  
+    def count_nucleic_acids(self):
+        """Counts all NucleicAcidResidue objects in the default Model.
         """
         n = 0
         for chain in self.iter_chains():
@@ -419,14 +436,84 @@ class Structure(object):
             for chain in model.chain_list:
                 for frag in chain.iter_nucleic_acids():
                     yield frag
-                
-    def count_nucleic_acids(self):
-        """Counts all NucleicAcidResidue objects in the default Model.
+
+    def has_standard_residues(self):
+        """Returns True if the Structure contains standard residues as defined
+        by the PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
+        """
+        for frag in self.fragment_list:
+            if frag.is_standard_residue():
+                return True
+        return False
+
+    def count_standard_residues(self):
+        """Counts the number of stardard residues in the Structure.
+        Standard residues are AminoAcidResidue and NucliecAcidResiue
+        objects.
         """
         n = 0
-        for chain in self.iter_chains():
-            n += chain.count_amino_acids()
+        for na in self.iter_standard_residues():
+            n += 1
         return n
+    
+    def iter_standard_residues(self):
+        """Iterates over standard residues in the Model, as defined by the
+        PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_standard_residue():
+                yield frag
+
+    def has_non_standard_residues(self):
+        """Returns True if there are non-standard residues in the Structures.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                return True
+        return False
+
+    def count_non_standard_residues(self):
+        """Counts all non-standard residues in the Structure.
+        """
+        n = 0
+        for frag in self.iter_non_standard_residues():
+            n += 1
+        return n
+    
+    def iter_non_standard_residues(self):
+        """Iterates over non-standard residues in the Structure, as defined
+        by the PDB.  Non-standard residues are anything which is not a
+        amino or nucleic acid.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                yield frag
+
+    def has_waters(self):
+        """Returns True if there are waters in the Structure.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                return True
+        return False
+
+    def count_waters(self):
+        """Counts all waters in the Structure.
+        """
+        n = 0
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                n += 1
+        return n
+
+    def iter_waters(self):
+        """Iterate over all waters in the Structure.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                yield frag
 
     def add_atom(self, atom, delay_sort=False):
         """Adds a Atom object to the Structure.  If a collision occurs, a
@@ -806,6 +893,17 @@ class Model(object):
             n += chain.count_fragments()
         return n
 
+    def has_amino_acids(self):
+        raise FinishMe()
+
+    def count_amino_acids(self):
+        """Counts all AminoAcidResidue objects.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_amino_acids()
+        return n
+
     def iter_amino_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
@@ -814,12 +912,15 @@ class Model(object):
             for frag in chain.iter_amino_acids():
                 yield frag
 
-    def count_amino_acids(self):
-        """Counts all AminoAcidResidue objects.
+    def count_nucleic_acids(self):
+        raise FinishMe()
+
+    def count_nucleic_acids(self):
+        """Counts all NucleicAcidResidue objects.
         """
         n = 0
         for chain in self.iter_chains():
-            n += chain.count_amino_acids()
+            n += chain.count_nucleic_acids()
         return n
 
     def iter_nucleic_acids(self):
@@ -830,16 +931,85 @@ class Model(object):
             for frag in chain.iter_nucleic_acids():
                 yield frag
 
-    def count_nucleic_acids(self):
-        """Counts all NucleicAcidResidue objects.
+    def has_standard_residues(self):
+        """Returns True if the Model contains standard residues as defined
+        by the PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
+        """
+        for frag in self.fragment_list:
+            if frag.is_standard_residue():
+                return True
+        return False
+
+    def count_standard_residues(self):
+        """Counts the number of stardard residues in the Model.
+        Standard residues are AminoAcidResidue and NucliecAcidResiue objects.
         """
         n = 0
-        for chain in self.iter_chains():
-            n += chain.count_nucleic_acids()
+        for na in self.iter_standard_residues():
+            n += 1
         return n
 
+    def iter_standard_residues(self):
+        """Iterates over standard residues in the Model, as defined by the
+        PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_standard_residue():
+                yield frag
+
+    def count_non_standard_residues(self):
+        """Counts all non-standard residues in the Segment.
+        """
+        n = 0
+        for frag in self.iter_non_standard_residues():
+            n += 1
+        return n
+
+    def has_non_standard_residues(self):
+        """Returns True if there are non-standard residues in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                return True
+        return False
+
+    def iter_non_standard_residues(self):
+        """Iterates over non-standard residues in the segment, as defined
+        by the PDB.  Non-standard residues are anything which is not a
+        amino or nucleic acid.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                yield frag
+
+    def has_waters(self):
+        """Returns True if there are waters in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                return True
+        return False
+
+    def count_waters(self):
+        """Counts all waters in the Segment.
+        """
+        n = 0
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                n += 1
+        return n
+
+    def iter_waters(self):
+        """Iterate over all waters in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                yield frag
+
     def add_atom(self, atom, delay_sort=False):
-        """Finish Me.
+        """XXX: Finish Me.
         """
         assert isinstance(atom, Atom)
         assert atom.model_id==self.model_id
@@ -1209,6 +1379,7 @@ class Segment(object):
         """
         return len(self.fragment_list)
 
+
     def has_amino_acids(self):
         """Returns True if the Segment contains any AminoAcidResidue objects.
         """
@@ -1217,14 +1388,6 @@ class Segment(object):
                 return True
         return False
 
-    def iter_amino_acids(self):
-        """Same as iter_fragments(), but only iterates over AminoAcidResidue
-        objects.
-        """
-        for frag in self.fragment_list:
-            if isinstance(frag, AminoAcidResidue):
-                yield frag
-
     def count_amino_acids(self):
         """Counts the number of AminoAcidResidue objects.
         """
@@ -1232,6 +1395,14 @@ class Segment(object):
         for aa in self.iter_amino_acids():
             n += 1
         return n
+    
+    def iter_amino_acids(self):
+        """Same as iter_fragments(), but only iterates over AminoAcidResidue
+        objects.
+        """
+        for frag in self.fragment_list:
+            if isinstance(frag, AminoAcidResidue):
+                yield frag
 
     def has_nucleic_acids(self):
         """Returns True if the Segment contains any NucleicAcidResidue objects.
@@ -1241,14 +1412,6 @@ class Segment(object):
                 return True
         return False
 
-    def iter_nucleic_acids(self):
-        """Same as iter_fragments(), but only iterates over NucleicAcidResidue
-        objects.
-        """
-        for frag in self.fragment_list:
-            if isinstance(frag, NucleicAcidResidue):
-                yield frag
-
     def count_nucleic_acids(self):
         """Counts the number of NucleicAcidResidue objects.
         """
@@ -1256,6 +1419,14 @@ class Segment(object):
         for na in self.iter_nucleic_acids():
             n += 1
         return n
+
+    def iter_nucleic_acids(self):
+        """Same as iter_fragments(), but only iterates over NucleicAcidResidue
+        objects.
+        """
+        for frag in self.fragment_list:
+            if isinstance(frag, NucleicAcidResidue):
+                yield frag
 
     def has_standard_residues(self):
         """Returns True if the Segment contains standard residues as defined
@@ -1267,15 +1438,6 @@ class Segment(object):
                 return True
         return False
 
-    def iter_standard_residues(self):
-        """Iterates over standard residues in the Segment, as defined by the
-        PDB.  Standard residues are AminoAcidResidue and
-        NucliecAcidResiue objects.
-        """
-        for frag in self.fragment_list:
-            if frag.is_standard_residue():
-                yield frag
-
     def count_standard_residues(self):
         """Counts the number of stardard residues in the Segment objects.
         Standard residues are AminoAcidResidue and NucliecAcidResiue objects.
@@ -1285,6 +1447,15 @@ class Segment(object):
             n += 1
         return n
 
+    def iter_standard_residues(self):
+        """Iterates over standard residues in the Segment, as defined by the
+        PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
+        """
+        for frag in self.fragment_list:
+            if frag.is_standard_residue():
+                yield frag
+
     def has_non_standard_residues(self):
         """Returns True if there are non-standard residues in the Segment.
         """
@@ -1292,6 +1463,14 @@ class Segment(object):
             if not frag.is_standard_residue():
                 return True
         return False
+
+    def count_non_standard_residues(self):
+        """Counts all non-standard residues in the Segment.
+        """
+        n = 0
+        for frag in self.iter_non_standard_residues():
+            n += 1
+        return n
 
     def iter_non_standard_residues(self):
         """Iterates over non-standard residues in the segment, as defined
@@ -1302,14 +1481,6 @@ class Segment(object):
             if not frag.is_standard_residue():
                 yield frag
 
-    def count_non_standard_residues(self):
-        """Counts all non-standard residues in the Segment.
-        """
-        n = 0
-        for frag in self.iter_non_standard_residues():
-            n += 1
-        return n
-
     def has_waters(self):
         """Returns True if there are waters in the Segment.
         """
@@ -1317,13 +1488,6 @@ class Segment(object):
             if frag.is_water():
                 return True
         return False
-
-    def iter_waters(self):
-        """Iterate over all waters in the Segment.
-        """
-        for frag in self.fragment_list:
-            if frag.is_water():
-                yield frag
 
     def count_waters(self):
         """Counts all waters in the Segment.
@@ -1333,6 +1497,13 @@ class Segment(object):
             if frag.is_water():
                 n += 1
         return n
+
+    def iter_waters(self):
+        """Iterate over all waters in the Segment.
+        """
+        for frag in self.fragment_list:
+            if frag.is_water():
+                yield frag
 
     def add_atom(self, atom, delay_sort=False):
         """Adds a Atom.
@@ -1778,19 +1949,14 @@ class Fragment(object):
                     atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    if atomA.occupancy<1.0 and atom.occupancy<1.0:
-                        iA = self.atom_order_list.index(atomA)
+                    iA = self.atom_order_list.index(atomA)
 
-                        self.alt_loc_dict[name] = altloc = Altloc()
-                        self.atom_order_list[iA] = altloc
+                    self.alt_loc_dict[name] = altloc = Altloc()
+                    self.atom_order_list[iA] = altloc
 
-                        altloc.add_atom(atomA)
-                        altloc.add_atom(atom)
-                        self.set_default_alt_loc(self.default_alt_loc)
-
-                    else:
-                        raise AtomOverwrite(
-                            "overwrite %s with %s" % (atomA, atom))
+                    altloc.add_atom(atomA)
+                    altloc.add_atom(atom)
+                    self.set_default_alt_loc(self.default_alt_loc)
 
             else:
                 ## CASE:
