@@ -139,7 +139,8 @@ class GLAtomDrawList(GLDrawList, AtomList):
     """
     def __init__(self):
         GLDrawList.__init__(self)
-        list.__init__(self)
+        AtomList.__init__(self)
+
         self.atom_origin = Vector(0.0, 0.0, 0.0)
         self.draw_u = 0
 
