@@ -3,6 +3,7 @@
 
 import sys
 import time
+import copy
 import test_util
 from mmLib.FileLoader import LoadStructure, SaveStructure, decode_format
 from mmLib.Structure import *
@@ -13,12 +14,31 @@ class Stats(dict):
         self["chain_count"]    = 0
         self["fragment_count"] = 0
         self["atom_count"]     = 0
+        self["bond_count"]     = 0
 
     def print_stats(self):
         print "Number of Chains-----:",self["chain_count"]
         print "Number of Fragments--:",self["fragment_count"]
         print "Number of Atoms------:",self["atom_count"]
+        print "Number of Bonds------:",self["bond_count"]
 
+
+def bond_test(bond, atom, stats):
+    """Tests the mmLib.Structure.Bond object
+    """
+    stats["bond_count"] += 1
+    
+    assert isinstance(bond, Bond)
+    assert bond.atom1 != bond.atom2
+    assert bond.atom1 == atom or bond.atom2 == atom
+    assert bond.atom1.model_id == bond.atom2.model_id
+
+    assert bond.atom1.alt_loc == bond.atom2.alt_loc or \
+           (bond.atom1.alt_loc == "" and bond.atom2.alt_loc != "") or \
+           (bond.atom1.alt_loc != "" and bond.atom2.alt_loc == "")
+
+    assert bond.get_partner(bond.atom1) == bond.atom2
+    assert bond.get_partner(bond.atom2) == bond.atom1
 
 
 def atom_test(atom, stats):
@@ -48,23 +68,11 @@ def atom_test(atom, stats):
         assert atm.fragment_id == atom.fragment_id
         assert atm.chain_id == atom.chain_id
 
-    partner_names = []
-    for bond in atom.iter_bonds():
-        assert isinstance(bond, Bond)
-        assert bond.atom1 == atom or bond.atom2 == atom
-        assert bond.atom1.model_id == bond.atom2.model_id
-        assert bond.atom1.alt_loc == bond.atom2.alt_loc or \
-               (bond.atom1.alt_loc == "" and bond.atom2.alt_loc != "") or \
-               (bond.atom1.alt_loc != "" and bond.atom2.alt_loc == "")
+    atom.calc_anisotropy()
+    atom.calc_anisotropy3()
+    #atom.calc_CCuij(atom)
+    #atom.calc_Suij(atom)
 
-        partner_names.append(bond.get_partner(atom).name)
-
-    ## check all alternate versions of the atom are bonded the same way
-    for atmx in atom:
-        for atmp in atmx.iter_bonded_atoms():
-            assert atmp.name in partner_names
-
-    a = atom.calc_anisotropy()
 
 
 def fragment_test(frag, stats):
@@ -173,15 +181,18 @@ def struct_test(struct, stats):
     stats["testing"] = struct
 
     len(struct)
-    
+
+    ## get a lit of all alt_loc ids
     alt_loc_list = struct.alt_loc_list()
     print "alt_loc_list: ",alt_loc_list
 
+    ## make sure the default alt_loc was used when constructing the
+    ## structure
+    for atm in struct.iter_atoms():
+        assert atm.alt_loc == "" or atm.alt_loc == struct.default_alt_loc
 
     old_model = struct.model
     for model in struct.iter_models():
-        print model
-
         struct.set_model(model)
         assert model in struct
 
@@ -244,7 +255,20 @@ def run_structure_tests(struct, stats):
     for atm in struct.iter_all_atoms():
         atom_test(atm, stats)
 
+    bond_dict = {}
+    for atm in struct.iter_all_atoms():
+        for bond in atm.iter_bonds():
+            if not bond_dict.has_key(bond):
+                bond_dict[bond] = True
+                bond_test(bond, atm, stats)
 
+
+def copy_verify(struct, stats, struct_cp, stats_cp):
+    assert stats["chain_count"] == stats_cp["chain_count"]
+    assert stats["fragment_count"] == stats_cp["fragment_count"]
+    assert stats["atom_count"] == stats_cp["atom_count"]
+    assert stats["bond_count"] == stats_cp["bond_count"]
+    
 
 def file_verify(path, struct, stats):
     """Use some independent parsers to verify some simple stats between the
@@ -308,6 +332,7 @@ def main(walk_path, start_path):
 
         ## test the mmLib.Structure object API and
         ## with massive sanity checking
+        print "[loaded struct]"
         try:
             run_structure_tests(struct, stats)
         except AssertionError:
@@ -321,11 +346,34 @@ def main(walk_path, start_path):
 
         stats.print_stats()
 
+
+        ## copy the structure and re-run those tests
+        print "[copy struct]"
+        struct_cp = copy.deepcopy(struct)
+        stats_cp  = Stats()
+
+        try:
+            run_structure_tests(struct_cp, stats_cp)
+        except AssertionError:
+            print "*** AssertionError while testing: %s ***" % (
+                str(stats_cp["testing"]))
+            raise
+        except:
+            print "*** Error while testing: %s ***" % (
+                str(stats_cp["testing"]))
+            raise
+
+        stats_cp.print_stats()
+        copy_verify(struct, stats, struct_cp, stats_cp)
+        
+
         ## verify the number of atoms in the mmLib.Structure object
         ## matches the number of atoms in the source file 
+        print "[file verify]"
         file_verify(path, struct, stats)
 
         ## test file saving
+        print "[save verify]"
         save_verify(struct, stats)
 
         time2 = time.time()

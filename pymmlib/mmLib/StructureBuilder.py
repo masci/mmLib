@@ -327,11 +327,12 @@ class StructureBuilder(object):
                 warning("silly file defines self bonded atom")
                 continue
             
-            atm1.create_bonds(atm2,
-                              bond_type = bd_map.get("bond_type"),
-                              atm1_symop = bd_map.get("atm1_symop"),
-                              atm2_symop = bd_map.get("atm2_symop"),
-                              standard_res_bond = False)
+            atm1.create_bonds(
+                atom = atm2,
+                bond_type = bd_map.get("bond_type"),
+                atom1_symop = bd_map.get("atm1_symop"),
+                atom2_symop = bd_map.get("atm2_symop"),
+                standard_res_bond = False)
 
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.

@@ -76,6 +76,17 @@ class Structure(object):
     def __str__(self):
         return "Struct(%s)" % (self.cifdb.get_entry_id())
  
+    def __deepcopy__(self, memo):
+        structure = Structure(
+            library   = self.library,
+            cifdb     = copy.deepcopy(self.cifdb, memo),
+            unit_cell = copy.deepcopy(self.unit_cell, memo))
+
+        for model in self.iter_models():
+            structure.add_model(copy.deepcopy(model, memo))
+
+        return structure
+
     def __len__(self):
         """Returns the number of stored Chain objects.
         """
@@ -328,10 +339,6 @@ class Structure(object):
         for model in self.iter_models():
             for frag in model.iter_fragments():
                 for atm in frag.iter_all_atoms():
-
-                    #print len(self.model_list)
-                    #print atm
-
                     yield atm
 
     def iter_bonds(self):
@@ -429,6 +436,12 @@ class Model(object):
 
     def __str__(self):
         return "Model(model_id=%d)" % (self.model_id)
+
+    def __deepcopy__(self, memo):
+        model = Model(model_id = self.model_id)
+        for chain in self:
+            model.add_chain(copy.deepcopy(chain, memo))
+        return model
 
     def __lt__(self, other):
         assert isinstance(other, Model)
@@ -615,6 +628,13 @@ class Chain(object):
         except IndexError:
              return "Chain(%d:%s)" % (self.model_id, self.chain_id)
 
+    def __deepcopy__(self, memo):
+        chain = Chain(model_id = self.model_id,
+                      chain_id = self.chain_id)
+        for fragment in self:
+            chain.add_fragment(copy.deepcopy(fragment, memo))
+        return chain
+    
     def __lt__(self, other):
         assert isinstance(other, Chain)
         return self.chain_id < other.chain_id
@@ -864,6 +884,17 @@ class Fragment(object):
             self.fragment_id,
             self.chain_id)
     
+    def __deepcopy__(self, memo):
+        fragment = Fragment(
+            res_name    = self.res_name,
+            fragment_id = self.fragment_id,
+            chain_id    = self.chain_id)
+
+        for atom in self.iter_all_atoms():
+            fragment.add_atom(copy.deepcopy(atom, memo))
+
+        return fragment
+    
     def __lt__(self, other):
         assert isinstance(other, Fragment)
         return FragmentID(self.fragment_id) < FragmentID(other.fragment_id)
@@ -972,6 +1003,7 @@ class Fragment(object):
 
                         altloc.add_atom(atomA)
                         altloc.add_atom(atom)
+                        self.set_alt_loc(self.default_alt_loc)
 
                     else:
                         raise AtomOverwrite(
@@ -985,6 +1017,7 @@ class Fragment(object):
                 ##    set the atom.alt_loc to the next reasonable alt_loc
                 ##    and add it to the fragment
                 altloc.add_atom(atom)
+                self.set_alt_loc(self.default_alt_loc)
 
         else: ## alt_loc != ""
 
@@ -1041,13 +1074,16 @@ class Fragment(object):
                 ##     partner atoms in the fragment
                 altloc.add_atom(atom)
 
+            self.set_alt_loc(self.default_alt_loc)
+            
         atom.fragment = self
 
     def set_alt_loc(self, alt_loc):
         """Sets the default alt_loc of the Fragment.
         """
+        self.default_alt_loc = alt_loc
+
         ishift = 0
-        
         for i in range(len(self.atom_order_list)):
             atm = self.atom_order_list[i]
 
@@ -1186,7 +1222,7 @@ class Fragment(object):
             except KeyError:
                 continue
             else:
-                atm1.create_bonds(atm2, standard_res_bond = True)
+                atm1.create_bonds(atom = atm2, standard_res_bond = True)
 
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
@@ -1256,7 +1292,7 @@ class Residue(Fragment):
             except KeyError:
                 continue
             else:
-                atm1.create_bonds(atm2, standard_res_bond = True)
+                atm1.create_bonds(atom = atm2, standard_res_bond = True)
 
 
 class AminoAcidResidue(Residue):
@@ -1459,6 +1495,12 @@ class NucleicAcidResidue(Residue):
 class Altloc(dict):
     """
     """
+    def __deepcopy__(self, memo):
+        altloc = AltLoc()
+        for atom in self.values():
+            altloc.add_atom(copy.deepcopy(atom, memo))
+        return altloc
+    
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
@@ -1535,9 +1577,11 @@ class Atom(object):
         sig_occupancy   = None,
         charge          = None,
 
+        U   = None,
         u11 = None, u22 = None, u33 = None,
         u12 = None, u13 = None, u23 = None,
 
+        sig_U   = None,
         sig_u11 = None, sig_u22 = None, sig_u33 = None,
         sig_u12 = None, sig_u13 = None, sig_u23 = None,
 
@@ -1563,29 +1607,33 @@ class Atom(object):
         self.sig_occupancy   = sig_occupancy
         self.charge          = charge
         
-        if position != None:
+        if type(position) != NoneType:
             self.position = position
         elif x != None or y != None or z != None:
             self.position = Vector(x, y, z)
         else:
             self.position = None
         
-        if sig_position != None:
+        if type(sig_position) != NoneType:
             self.sig_position = sig_position
         elif sig_x != None or sig_y != None or sig_z != None:
             self.sig_position = Vector(sig_x, sig_y, sig_z)
         else:
             self.sig_position = None
 
-        if u11 != None:
+        if type(U) != NoneType:
+            self.U = U
+        elif u11 != None:
             self.U = array(
                 [ [u11, u12, u13],
                   [u12, u22, u23],
                   [u13, u23, u33] ])
         else:
             self.U = None
-            
-        if sig_u11 != None:
+
+        if type(sig_U) != NoneType:
+            self.sig_U = sig_U
+        elif sig_u11 != None:
             self.sig_U = array(
                 [ [sig_u11, sig_u12, sig_u13],
                   [sig_u12, sig_u22, sig_u23],
@@ -1599,6 +1647,36 @@ class Atom(object):
         return "Atom(%4s%2s%4s%2s%4s%2d)" % (
             self.name, self.alt_loc, self.res_name,
             self.chain_id, self.fragment_id, self.model_id)
+
+    def __deepcopy__(self, memo):
+        atom_cpy = Atom(
+            name            = self.name,
+            alt_loc         = self.alt_loc,
+            res_name        = self.res_name,
+            fragment_id     = self.fragment_id,
+            chain_id        = self.chain_id,
+            model_id        = self.model_id,
+            element         = self.element,
+            position        = self.position,
+            sig_position    = self.sig_position,
+            temp_factor     = self.temp_factor,
+            sig_temp_factor = self.sig_temp_factor,
+            occupancy       = self.occupancy,
+            sig_occupancy   = self.sig_occupancy,
+            charge          = self.charge,
+            U               = copy.deepcopy(self.U, memo),
+            sig_U           = copy.deepcopy(self.sig_U, memo))
+        
+        for bond in self.bond_list:
+            bond_cpy = copy.deepcopy(bond, memo)
+            atom_cpy.bond_list.append(bond_cpy)
+            
+            if bond_cpy.atom1 == None:
+                bond_cpy.atom1 = atom_cpy
+            elif bond_cpy.atom2 == None:
+                bond_cpy.atom2 = atom_cpy
+
+        return atom_cpy
 
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
@@ -1695,37 +1773,38 @@ class Atom(object):
         pass
 
     def create_bond(self,
-                    atom,
-                    bond_type = None,
-                    atm1_symop = None,
-                    atm2_symop = None,
+                    atom              = None,
+                    bond_type         = None,
+                    atom1_symop       = None,
+                    atom2_symop       = None,
                     standard_res_bond = False):
+
         """Creates a bond between this atom and the argumentatom.  The
-        arugment bond_type is a string, atm1_symop and atm2_symop are
+        arugment bond_type is a string, atom1_symop and atom2_symop are
         symmetry operations to be applied to self and the argument atom
         before distance calculations, and standard_res_bond is a flag
         used to indicate this bond is a standard bond.
         """
         assert isinstance(atom, Atom)
-        assert self.model_id == atom.model_id
         assert ((self.alt_loc == atom.alt_loc) or
                 (self.alt_loc == "" and atom.alt_loc != "") or
                 (self.alt_loc != "" and atom.alt_loc == ""))
-            
-        bond = Bond(self, atom,
-                    bond_type = bond_type,
-                    atm1_symop = atm1_symop,
-                    atm2_symop = atm2_symop,
+
+        bond = Bond(atom1             = self,
+                    atom2             = atom,
+                    bond_type         = bond_type,
+                    atom1_symop       = atom1_symop,
+                    atom2_symop       = atom2_symop,
                     standard_res_bond = standard_res_bond)
 
         self.bond_list.append(bond)
         atom.bond_list.append(bond)
 
     def create_bonds(self,
-                     atom,
-                     bond_type = None,
-                     atm1_symop = None,
-                     atm2_symop = None,
+                     atom              = None,
+                     bond_type         = None,
+                     atom1_symop       = None,
+                     atom2_symop       = None,
                      standard_res_bond = False):
         """Like create_bonds, but it bonds all alternate locations of this
         atom.
@@ -1740,19 +1819,19 @@ class Atom(object):
             except AttributeError:
                 ## case 1: self has no alt_loc, atom no alt_loc
                 self.create_bond(
-                    atom,
+                    atom = atom,
                     bond_type = bond_type,
-                    atm1_symop = atm1_symop,
-                    atm2_symop = atm2_symop,
+                    atom1_symop = atom1_symop,
+                    atom2_symop = atom2_symop,
                     standard_res_bond = standard_res_bond)
             else:
                 ## case 2: self.has no alt_loc, atom has alt_loc
                 for atmx in atom_altloc.values():
                     self.create_bond(
-                        atmx,
+                        atom = atmx,
                         bond_type = bond_type,
-                        atm1_symop = atm1_symop,
-                        atm2_symop = atm2_symop,
+                        atom1_symop = atom1_symop,
+                        atom2_symop = atom2_symop,
                         standard_res_bond = standard_res_bond)
         else:
             try:
@@ -1761,20 +1840,20 @@ class Atom(object):
                 ## case 3: self has alt_loc, atom has no alt_loc
                 for (alt_loc, atmx) in self_altloc.items():
                     atmx.create_bond(
-                        atom,
+                        atom = atom,
                         bond_type = bond_type,
-                        atm1_symop = atm1_symop,
-                        atm2_symop = atm2_symop,
+                        atom1_symop = atom1_symop,
+                        atom2_symop = atom2_symop,
                         standard_res_bond = standard_res_bond)
             else:
                 ## case 4: self has alt_loc, atom has alt_loc
                 for (alt_loc, atmx) in self_altloc.items():
                     try:
                         atmx.create_bond(
-                            atom_altloc[alt_loc],
+                            atom = atom_altloc[alt_loc],
                             bond_type = bond_type,
-                            atm1_symop = atm1_symop,
-                            atm2_symop = atm2_symop,
+                            atom1_symop = atom1_symop,
+                            atom2_symop = atom2_symop,
                             standard_res_bond = standard_res_bond)
                     except KeyError:
                         continue
@@ -1924,26 +2003,32 @@ class Atom(object):
 class Bond(object):
     """Indicates two atoms are bonded together.
     """
-    def __init__(self, atom1, atom2,
-                 bond_type = None,
-                 atm1_symop = None,
-                 atm2_symop = None,
-                 standard_res_bond = False):
-
-        assert isinstance(atom1, Atom)
-        assert isinstance(atom2, Atom)
-        assert atom1 != atom2
-
-        self.atom1 = atom1
-        self.atom2 = atom2
-        self.bond_type = bond_type
-        self.atm1_symop = atm1_symop
-        self.atm2_symop = atm2_symop
+    def __init__(
+        self,
+        atom1             = None,
+        atom2             = None,
+        bond_type         = None,
+        atom1_symop       = None,
+        atom2_symop       = None,
+        standard_res_bond = False):
+        
+        self.atom1             = atom1
+        self.atom2             = atom2
+        self.bond_type         = bond_type
+        self.atom1_symop       = atom1_symop
+        self.atom2_symop       = atom2_symop
         self.standard_res_bond = standard_res_bond
 
     def __str__(self):
-        return "Bond(%s...%s)" % (self.atom1, self.atom2)
+        return "Bond(%s %s)" % (self.atom1, self.atom2)
 
+    def __deepcopy__(self, memo):
+        return Bond(
+            bond_type         = self.bond_type,
+            atom1_symop       = self.atom1_symop,
+            atom2_symop       = self.atom2_symop,
+            standard_res_bond = self.standard_res_bond)
+    
     def get_partner(self, atm):
         """Returns the other atom involved in the bond.
         """
