@@ -224,7 +224,7 @@ class UnitCell(object):
         """Yields 3-tuple integer translations over a 3x3x3 cube used by
         other methods for searching nearby unit cells.
         """
-        cube = (-2.0, -1.0, 0.0, 1.0, 2.0)
+        cube = (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)
         
         for i in cube:
             for j in cube:
@@ -238,8 +238,8 @@ class UnitCell(object):
         n = 0
         cent = zeros(3, Float)
         for atm in struct.iter_all_atoms():
-            n += 1
-            cent = cent + atm.position
+            n    += 1
+            cent += atm.position
         centroid = cent / n
 
         ccell = self.calc_cell(self.calc_orth_to_frac(centroid))
@@ -251,7 +251,7 @@ class UnitCell(object):
         for atm in struct.iter_all_atoms():
             dist = length(atm.position - centroid)
             max_dist = max(max_dist, dist)
-        max_dist2 = 2.0 * max_dist
+        max_dist2 = 1.2 * max_dist
 
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():
@@ -263,7 +263,7 @@ class UnitCell(object):
                  xyz_symm  = symop_t(xyz)
                  centroid2 = self.calc_frac_to_orth(xyz_symm)
                  
-                 if length(centroid - centroid2)<max_dist2:
+                 if length(centroid - centroid2)<=max_dist2:
                      yield self.calc_orth_symop(symop_t)
 
 

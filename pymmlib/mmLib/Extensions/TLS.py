@@ -13,95 +13,121 @@ import fpformat
 from mmLib.mmTypes   import *
 from mmLib.AtomMath  import *
 from mmLib.Structure import *
+from mmLib.PDB       import *
 
 
-## regular expressions used for extracting the TLS groups from the REFMAC
-## TLS tensor file format
-refmac_tls_regex_dict = {
-    "group": re.compile(
-    "(?:^TLS\s*$)|(?:^TLS\s+(.*)$)"),
-    
-    "range": re.compile(
-    "^RANGE\s+[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s+"\
-    "[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s*(\w*).*$"),
-
-    "origin": re.compile(
-    "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-    
-    "T": re.compile(
-    "^T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-    
-    "L": re.compile(
-    "^L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-
-    "S": re.compile(
-    "^S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
-    }
+class TLSFileFormatError(Exception):
+    """Raised when a file format error is encountered while loading a
+    TLS group description file.
+    """
+    pass
 
 
-## regular expressions used for extracting the TLS groups from the REMARK
-## fields of the PDB file output by REFMAC
-refmac_pdb_regex_dict = {
-    "group": re.compile(
-    "\s*TLS GROUP :\s+(\d+)\s*$"),
-
-    "range": re.compile(
-    "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
-
-    "origin": re.compile(
-    "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
-
-    "t11_t22": re.compile(
-    "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
-
-    "t33_t12": re.compile(
-    "\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
-
-    "t13_t23": re.compile(
-    "\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
-
-    "l11_l22": re.compile(
-    "\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
-
-    "l33_l12": re.compile(
-    "\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
-
-    "l13_l23": re.compile(
-    "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
-
-    "s11_s12_s13": re.compile(
-    "\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
-
-    "s21_s22_s23": re.compile(
-    "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
-
-    "s31_s32_s33": re.compile(
-    "\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
-    }
-    
-
-class TLSInfo(object):
-    """Contains information on one TLS group
+class TLSGroupDesc(object):
+    """Description of one TLS Group.
     """
     def __init__(self):
         self.name       = ""     # text name (maybe numeric label?)
-        self.origin     = None   # (x, y, z)
+        self.origin     = None   # array(3)
         self.range_list = []     # (chain1, res1, chain2, res2, selection)
-        self.T          = None   # (t11, t22, t33, t12, t13, t23)
-        self.L          = None   # (l11, l22, l33, l12, l13, l23)
-        self.S          = None   # (s2211, s1133, s12, s13, s23, s21, s31, s32)
+        self.T          = None   # array(3,3)
+        self.L          = None   # array(3,3)
+        self.S          = None   # array(3,3)
 
-    def __str__(self):
-        return self.refmac_description()
+    def set_name(self, name):
+        """Sets the TLS group name.
+        """
+        self.name = name
+
+    def set_origin(self, x, y, z):
+        """Sets the TLS group origin of calculations.
+        """
+        self.origin = array((x, y, z), Float)
+
+    def add_range(self, chain_id1, frag_id1, chain_id2, frag_id2, selection):
+        """Adds a segment of residues to the TLS group.  Not too sure how to
+        handle segments which span chains, so assert on that condition.
+        """
+        assert chain_id1==chain_id2
+        self.range_list.append(
+            (chain_id1, frag_id1, chain_id2, frag_id2, selection))
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
-        self.T = (t11, t22, t33, t12, t13, t23)
+        """Sets the T tensor from the component arguments.  Units are in
+        square Angstroms.
+        """
+        self.T = array( [[t11, t12, t13],
+                         [t12, t22, t23],
+                         [t13, t23, t33]], Float)
 
     def set_L(self,  l11, l22, l33, l12, l13, l23):
-        self.L = (l11, l22, l33, l12, l13, l23)
+        """Sets the L tensor from the component arguments.  Units are in
+        square Radians.
+        """
+        self.L = array( [[l11, l12, l13],
+                         [l12, l22, l23],
+                         [l13, l23, l33]], Float)
+
+    def set_L_deg2(self,  l11, l22, l33, l12, l13, l23):
+        """Sets the L tensor from the component arguments.  Units are in
+        square Degrees.
+        """
+        self.set_L(l11*DEG2RAD2, l22*DEG2RAD2, l33*DEG2RAD2,
+                   l12*DEG2RAD2, l13*DEG2RAD2, l23*DEG2RAD2)
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
-        self.S = (s2211, s1133, s12, s13, s23, s21, s31, s32)
+        """Sets the S tensor from the component arguments.  Units are in
+        Radians*Angstroms.  The trace of S is set to 0.0.
+        """
+        s22 = 2.0*(s2211)/3.0 + s1133/3.0
+        s11 = s22 - s2211
+        s33 = s11 - s1133
+
+        self.S = array([[s11, s12, s13],
+                        [s21, s22, s23],
+                        [s31, s32, s33]])
+        
+    def set_S_deg(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
+        """Sets the S tensor from the component arguments.  Units are in
+        Degrees*Angstroms.  The trace of S is set to 0.0.
+        """
+        self.set_S(s2211*DEG2RAD, s1133*DEG2RAD, s12*DEG2RAD,
+                   s13*DEG2RAD,   s23*DEG2RAD,   s21*DEG2RAD,
+                   s31*DEG2RAD,   s32*DEG2RAD)
+
+    def set_tls_group(self, tls_group):
+        """Sets the TLSGroupDesc tensor values from the TLSGroup instance.
+        """
+        self.set_origin(
+            tls_group.origin[0],
+            tls_group.origin[1],
+            tls_group.origin[2])
+
+        self.set_T(
+            tls_group.T[0,0],
+            tls_group.T[1,1],
+            tls_group.T[2,2],
+            tls_group.T[0,1],
+            tls_group.T[0,2],
+            tls_group.T[1,2])
+            
+        self.set_L(
+            tls_group.L[0,0],
+            tls_group.L[1,1],
+            tls_group.L[2,2],
+            tls_group.L[0,1],
+            tls_group.L[0,2],
+            tls_group.L[1,2])
+
+        self.set_S(
+            tls_group.S[1,1] - tls_group.S[0,0],
+            tls_group.S[0,0] - tls_group.S[2,2],
+            tls_group.S[0,1],
+            tls_group.S[0,2],
+            tls_group.S[1,2],
+            tls_group.S[1,0],
+            tls_group.S[2,0],
+            tls_group.S[2,1])
 
     def is_null(self):
         """Returns True if the T,L,S tensors are not set, or are set
@@ -111,7 +137,7 @@ class TLSInfo(object):
             return True
         return False
 
-    def create_tls_name(self):
+    def calc_tls_name(self):
         """Creates a name for the TLS group using the selected
         residue ranges.
         """
@@ -120,216 +146,252 @@ class TLSInfo(object):
             listx.append("%s%s-%s%s %s" % (
                 chain_id1, frag_id1, chain_id2, frag_id2, sel))
         return string.join(listx,';')
-        
-    def refmac_description(self):
-        """Return a string describing the TLS group in REFMAC/CCP4 format.
-        """
-        def ft8(tx):
-            strx = ""
-            for x in tx:
-                strx += fpformat.fix(x, 4).rjust(8)
-            return strx
-        
-        listx = []
 
-        if self.name != "":
-            listx.append("TLS %s" % (self.name))
-        else:
-            listx.append("TLS")
-
-        for (c1, f1, c2, f2, sel) in self.range_list:
-            try:
-                if f1[-1] in string.digits: f1 += "."
-            except IndexError:
-                f1 = "."
-            try:
-                if f2[-1] in string.digits: f2 += "."
-            except IndexError:
-                f2 = "."
-            listx.append("RANGE  '%s%s' '%s%s' %s" % (
-                c1, f1.rjust(5), c2, f2.rjust(5), sel))
-
-        if self.origin != None:
-            listx.append("ORIGIN %8.4f %8.4f %8.4f" % (
-                self.origin[0], self.origin[1], self.origin[2]))
-
-        if self.T != None:
-            listx.append("T   %s" % ft8(self.T))
-
-        if self.L != None:
-            listx.append("L   %s" % ft8(self.L))
-
-        if self.S != None:
-            listx.append("S   %s" % ft8(self.S))
-
-        return string.join(listx, "\n")
-
-    def make_tls_group(self, struct):
+    def generate_tls_group(self, struct):
         """Returns a TLSGroup containing the appropriate atoms from the
         argument Structure object, and with the origin, T, L, S tensors
         set.
         """
-        tls = TLSGroup()
+        tls_group = TLSGroup()
 
         if self.name=="":
-            tls.name = self.create_tls_name()
+            tls_group.name = self.calc_tls_name()
         else:
-            tls.name = self.name
+            tls_group.name = self.name
 
         if self.origin!=None:
-            tls.set_origin(*self.origin)
+            tls_group.set_origin(self.origin[0], self.origin[1], self.origin[2])
 
         if self.T!=None:
-            tls.set_T(*self.T)
+            tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2],
+                            self.T[0,1], self.T[0,2], self.T[1,2])
 
         if self.L!=None:
-            tls.set_L(*self.L)
+            tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2],
+                            self.L[0,1], self.L[0,2], self.L[1,2])
 
         if self.S!=None:
-            tls.set_S(*self.S)
+            ## s2211, s1133, s12, s13, s23, s21, s31, s32)
+            tls_group.set_S(
+                self.S[1,1] - self.S[0,0],
+                self.S[0,0] - self.S[2,2],
+                self.S[0,1],
+                self.S[0,2],
+                self.S[1,2],
+                self.S[1,0],
+                self.S[2,0],
+                self.S[2,1])
         
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
 
             chain1 = struct.get_chain(chain_id1)
             if chain1 == None:
                 print "[ERROR] no chain id: %s" % (chain_id1)
-                sys.exit(1)
+                return None
 
             try:
                 seg = chain1[frag_id1:frag_id2]
             except KeyError:
                 print "[ERROR] unable to find segment: %s-%s" % (
                     frag_id1, frag_id2)
-                sys.exit(1)
+                return None
 
             for atm in seg.iter_atoms():
-                tls.append(atm)
+                tls_group.append(atm)
             
-        return tls
+        return tls_group
 
 
-class TLSInfoList(list):
-    """This class reads and writes TLS information stored in the same
-    format as REFMAC from CCP4 >= 4.1.0.  The TLS groups are stored as a list
-    of TLSInfo classes.
+class TLSFile(object):
+    """Read/Write a TLS files containing one or more TLSGroupDesc
+    objects.
     """
-    def __str__(self):
-        return self.refmac_description()
+    def __init__(self):
+        self.path          = None
+        self.tls_desc_list = []
+        self.file_format   = None
 
-    def refmac_description(self):
-        """Return a string describing the TLS groups in REFMAC/CCP4 format.
+    def set_file_format(self, file_format):
+        """Set a instance of a TLSFileFormat subclass to use for reading and
+        writing TLS description files.
         """
-        listx = ["REFMAC"]
-        for tls_info in self:
-            listx.append(str(tls_info))
-        return string.join(listx, "\n")
-        
-    def load_refmac_tlsout_file(self, fil):
-        """Read the TLS information from file object fil, and store that
-        inforamtion in the class instance variables.
+        self.file_format = file_format
+    
+    def load(self, fil, path=None):
+        """Load TLS description file using the current TLSFileFormat instance.
         """
-        tls_info = None
+        assert self.file_format!=None
+        self.path = path
+        self.tls_desc_list = self.file_format.load(fil)
         
-        for ln in fil.readlines():
-            ln = ln.rstrip()
+    def save(self, fil, path=None):
+        """Save TLS description file using the curent TLSFileFormat instance.
+        """
+        assert self.file_format!=None
+        self.path = path
+        self.file_format.save(fil, self.tls_desc_list)
 
-            ## search all regular expressions for a match
-            for (re_key, re_tls) in refmac_tls_regex_dict.items():
-                mx = re_tls.match(ln)
-                if mx != None:
-                    break
+    def generate_tls_group_list(self, struct):
+        """Returns a list of TLSGroup instances constructed from the Structure
+        instance argument and the TLSGroupDesc instances contained in this
+        class.
+        """
+        tls_group_list = []
 
-            ## no match was found for the line
-            if mx == None:
-                continue
+        for tls_desc in self.tls_desc_list:
+            tls_group = tls_desc.generate_tls_group(struct)
+            if tls_group!=None:
+                tls_group_list.append(tls_group)
+
+        return tls_group_list
+
+    
+class TLSFileFormat(object):
+    """Base class for TLS file types.
+    """
+    def load_supported(self):
+        """Returns True if file loading is supported, otherwise returns False.
+        """
+        return False
+
+    def save_supported(self):
+        """Return True if file saving is supported, otherwise returns False.
+        """
+        return False
+    
+    def load(self, fil):
+        """Returns a list containing one TLSGroupDesc object for each TLS group
+        description found in the file.
+        """
+        pass
+
+    def save(self, fil, tls_desc_list):
+        """Writes the list of TLSGroupDesc object to the given file.
+        """
+        pass
+
+
+class TLSFileFormatPDB(TLSFileFormat):
+    """Reads TLS descriptions from the REMARK records in PDB files.  These
+    records are only written by REFMAC5.
+    """
+    pdb_regex_dict = {
+        "group": re.compile(
+        "\s*TLS GROUP :\s+(\d+)\s*$"),
+
+        "range": re.compile(
+        "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
+
+        "origin": re.compile(
+        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
+
+        "t11_t22": re.compile(
+        "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
+
+        "t33_t12": re.compile(
+        "\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
+
+        "t13_t23": re.compile(
+        "\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
+
+        "l11_l22": re.compile(
+        "\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
+
+        "l33_l12": re.compile(
+        "\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
+
+        "l13_l23": re.compile(
+        "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
+
+        "s11_s12_s13": re.compile(
+        "\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
+
+        "s21_s22_s23": re.compile(
+        "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
+
+        "s31_s32_s33": re.compile(
+        "\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
+        }
+
+    def load_supported(self):
+        return True
+
+    def load(self, fil):
+        self.tls_desc      = None
+        self.tls_scrap     = {}
+        self.tls_desc_list = []
+       
+        pdb_file = PDBFile()
+        pdb_file.load_file(fil)
+        pdb_file.record_processor(self)
+
+        return self.tls_desc_list
+
+    def complete_T(self):
+        for key in ("t11","t22","t33","t12","t13","t23"):
+            if not self.tls_scrap.has_key(key):
+                return
+        try:
+            self.tls_desc.set_T(
+                self.tls_scrap["t11"],
+                self.tls_scrap["t22"],
+                self.tls_scrap["t33"],
+                self.tls_scrap["t12"],
+                self.tls_scrap["t13"],
+                self.tls_scrap["t23"])
+        except AttributeError:
+            raise TLSFileFormatError()
+
+    def complete_L(self):
+        for key in ("l11","l22","l33","l12","l13","l23"):
+            if not self.tls_scrap.has_key(key):
+                return
+        try:
+            self.tls_desc.set_L_deg2(
+                self.tls_scrap["l11"],
+                self.tls_scrap["l22"],
+                self.tls_scrap["l33"],
+                self.tls_scrap["l12"],
+                self.tls_scrap["l13"],
+                self.tls_scrap["l23"])
+        except AttributeError:
+            raise TLSFileFormatError()
+        
+    def complete_S(self):
+        for key in ("s11","s22","s33","s12","s13","s23","s21","s31","s32"):
+            if not self.tls_scrap.has_key(key):
+                return
             
-            ## do not allow a match if tls_info == None, because then
-            ## somehow we've missed the TLS group begin line
-            if tls_info == None and re_key != "group":
-                print "[ERROR] TLS group info without TLS group begin line"
-                sys.exit(1)
-
-            if re_key == "group":
-                tls_info = TLSInfo()
-                self.append(tls_info)
-                if mx.group(1) != None:
-                    tls_info.name = mx.group(1)
-
-            elif re_key == "origin":
-                (x, y, z) = mx.groups()
-                tls_info.origin = (float(x), float(y), float(z))
-
-            elif re_key == "range":
-                (c1, f1, c2, f2, sel) = mx.groups()
-
-                try:
-                    if f1[-1] == ".": f1 = f1[:-1]
-                except IndexError:
-                    pass
-                
-                try:
-                    if f2[-1] == ".": f2 = f2[:-1]
-                except IndexError:
-                    pass
-
-                tls_info.range_list.append((c1, f1, c2, f2, sel))
-
-            elif re_key == "T":
-                ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
-                (t11, t22, t33, t12, t13, t23) = mx.groups()
-                tls_info.T = (float(t11),
-                              float(t22),
-                              float(t33),
-                              float(t12),
-                              float(t13),
-                              float(t23))
-
-            elif re_key == "L":
-                ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
-                (l11, l22, l33, l12, l13, l23) = mx.groups()
-                tls_info.L = (float(l11),
-                              float(l22),
-                              float(l33),
-                              float(l12),
-                              float(l13),
-                              float(l23))
-
-            elif re_key == "S":
-                ## REFMAC ORDER:
-                ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
-                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
-                tls_info.S = (float(s2211),
-                              float(s1133),
-                              float(s12),
-                              float(s13),
-                              float(s23),
-                              float(s21),
-                              float(s31),
-                              float(s32))
-
+        ## s2211, s1133, s12, s13, s23, s21, s31, s32
+        try:
+            self.tls_desc.set_S_deg(
+                self.tls_scrap["s22"] - self.tls_scrap["s11"],
+                self.tls_scrap["s11"] - self.tls_scrap["s33"],
+                self.tls_scrap["s12"],
+                self.tls_scrap["s13"],
+                self.tls_scrap["s23"],
+                self.tls_scrap["s21"],
+                self.tls_scrap["s31"],
+                self.tls_scrap["s32"])
+        except AttributeError:
+            raise TLSFileFormatError()
+            
     def process_REMARK(self, rec):
         """Callback for the PDBFile parser for REMARK records.  If the
         REMARK records contain TLS group information, then it is
         extracted and added to the TLSGroups list.
         """
-        try:
-            if rec["remarkNum"] != 3:
-                return
-        except KeyError:
+        ## TLS REMARKs use remarkNum 3
+        if rec.get("remarkNum", 0)!=3:
             return
 
-        try:
-            text = rec["text"]
-        except KeyError:
+        ## no text == no tls info
+        if not rec.has_key("text"):
             return
-
-        try:
-            tls_info = self[-1]
-        except IndexError:
-            tls_info = None
 
         ## attempt to extract information from the text
-        for (re_key, re_tls) in refmac_pdb_regex_dict.items():
+        text = rec["text"]
+        for (re_key, re_tls) in self.pdb_regex_dict.items():
             mx = re_tls.match(text)
             if mx != None:
                 break
@@ -339,134 +401,313 @@ class TLSInfoList(list):
             return
 
         if re_key == "group":
-            tls_info = TLSInfo()
-            self.append(tls_info)
-
+            self.tls_desc = TLSGroupDesc()
+            self.tls_desc_list.append(self.tls_desc)
+            self.tls_scrap = {}
+        
         elif re_key == "origin":
             (x, y, z) = mx.groups()
-            tls_info.origin = (float(x), float(y), float(z))
+            
+            try:
+                self.tls_desc.set_origin(float(x), float(y), float(z))
+            except AttributeError:
+                raise TLSFileFormatError()
+            except ValueError:
+                raise TLSFileFormatError()
 
         elif re_key == "range":
-            (c1, f1, c2, f2) = mx.groups()
-            sel = ""
-            tls_info.range_list.append((c1, f1, c2, f2, sel))
+            (chain_id1, frag_id1, chain_id2, frag_id2) = mx.groups()
+            try:
+                self.tls_desc.add_range(
+                    chain_id1, frag_id1, chain_id2, frag_id2, "")
+            except AttributeError:
+                raise TLSFileFormatError()
 
         elif re_key == "t11_t22":
             (t11, t22) = mx.groups()
-            if tls_info.T == None:
-                T = (None, None, None, None, None, None)
-            else:
-                T = tls_info.T
-            tls_info.T = (float(t11), float(t22), T[2], T[3], T[4], T[5])
-
+            try:
+                self.tls_scrap["t11"] = float(t11)
+                self.tls_scrap["t22"] = float(t22)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_T()
+            
         elif re_key == "t33_t12":
             (t33, t12) = mx.groups()
-            if tls_info.T == None:
-                T = (None, None, None, None, None, None)
-            else:
-                T = tls_info.T
-            tls_info.T = (T[0], T[1], float(t33), float(t12), T[4], T[5])
+            try:
+                self.tls_scrap["t33"] = float(t33)
+                self.tls_scrap["t12"] = float(t12)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_T()
             
         elif re_key == "t13_t23":
             (t13, t23) = mx.groups()
-            if tls_info.T == None:
-                T = (None, None, None, None, None, None)
-            else:
-                T = tls_info.T
-            tls_info.T = (T[0], T[1], T[2], T[3], float(t13), float(t23))
+            try:
+                self.tls_scrap["t13"] = float(t13)
+                self.tls_scrap["t23"] = float(t23)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_T()
             
         elif re_key == "l11_l22":
             (l11, l22) = mx.groups()
-            if tls_info.L == None:
-                L = (None, None, None, None, None, None)
-            else:
-                L = tls_info.L
-            tls_info.L = (float(l11),
-                          float(l22),
-                          L[2], L[3], L[4], L[5])
+            try:
+                self.tls_scrap["l11"] = float(l11)
+                self.tls_scrap["l22"] = float(l22)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_L()
 
         elif re_key == "l33_l12":
             (l33, l12) = mx.groups()
-            if tls_info.L == None:
-                L = (None, None, None, None, None, None)
-            else:
-                L = tls_info.L
-            tls_info.L = (L[0], L[1],
-                          float(l33), float(l12),
-                          L[4], L[5])
+            try:
+                self.tls_scrap["l33"] = float(l33)
+                self.tls_scrap["l12"] = float(l12)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_L()
             
         elif re_key == "l13_l23":
             (l13, l23) = mx.groups()
-            if tls_info.L == None:
-                L = (None, None, None, None, None, None)
-            else:
-                L = tls_info.L
-            tls_info.L = (L[0], L[1], L[2], L[3],
-                          float(l13), float(l23))
+            try:
+                self.tls_scrap["l13"] = float(l13)
+                self.tls_scrap["l23"] = float(l23)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_L()
 
         elif re_key == "s11_s12_s13":
             (s11, s12, s13) = mx.groups()
-            if tls_info.S == None:
-                S = (None, None, None, None, None, None, None, None)
-            else:
-                S = tls_info.S
-                
-            #<S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>   
-
-            tls_info.s11 = float(s11)
-
-            if hasattr(tls_info, "s22"):
-                s2211 = tls_info.s22 - tls_info.s11
-            else:
-                s2211 = None
-
-            if hasattr(tls_info, "s33"):
-                s1133 = tls_info.s11 - tls_info.s33
-            else:
-                s1133 = None
-
-            tls_info.S = (
-                s2211, s1133,
-                float(s12), float(s13),
-                S[4], S[5], S[6], S[7])
+            try:
+                self.tls_scrap["s11"] = float(s11)
+                self.tls_scrap["s12"] = float(s12)
+                self.tls_scrap["s13"] = float(s13)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_S()
 
         elif re_key == "s21_s22_s23":
             (s21, s22, s23) = mx.groups()
-            if tls_info.S == None:
-                S = (None, None, None, None, None, None, None, None)
-            else:
-                S = tls_info.S
-                
-            tls_info.s22 = float(s22)
-
-            if hasattr(tls_info, "s11"):
-                s2211 = tls_info.s22 - tls_info.s11
-            else:
-                s2211 = None
-
-            tls_info.S = (
-                s2211, S[1], S[2], S[3],
-                float(s23), float(s21),
-                S[6], S[7])
+            try:
+                self.tls_scrap["s21"] = float(s21)
+                self.tls_scrap["s22"] = float(s22)
+                self.tls_scrap["s23"] = float(s23)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_S()
 
         elif re_key == "s31_s32_s33":
             (s31, s32, s33) = mx.groups()
-            if tls_info.S == None:
-                S = (None, None, None, None, None, None, None, None)
-            else:
-                S = tls_info.S
-                
-            tls_info.s33 = float(s33)
+            try:
+                self.tls_scrap["s31"] = float(s31)
+                self.tls_scrap["s32"] = float(s32)
+                self.tls_scrap["s33"] = float(s33)
+            except ValueError:
+                raise TLSFileFormatError()
+            self.complete_S()
 
-            if hasattr(tls_info, "s11"):
-                s1133 = tls_info.s11 - tls_info.s33
-            else:
-                s1133 = None
 
-            tls_info.S = (
-                S[0], s1133, S[2], S[3], S[4], S[5],
-                float(s31), float(s32))
+class TLSFileFormatTLSOUT(TLSFileFormat):
+    """Read/Write REFMAC5 TLSIN/TLSOUT files.
+    """
+    tlsout_regex_dict = {
+        "group": re.compile(
+        "(?:^TLS\s*$)|(?:^TLS\s+(.*)$)"),
+        
+        "range": re.compile(
+        "^RANGE\s+[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s+"\
+        "[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        
+        "origin": re.compile(
+        "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        
+        "T": re.compile(
+        "^T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        
+        "L": re.compile(
+        "^L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
 
+        "S": re.compile(
+        "^S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"\
+        "\s+(\S+)\s+(\S+).*$")
+        }
+
+    def convert_frag_id_load(self, frag_id):
+        """Converts the residue sequence code to a mmLib fragment_id.
+        """
+        if len(frag_id)==0:
+            return ""
+        if frag_id[-1] == ".":
+            frag_id = frag_id[:-1]
+        return frag_id
+
+    def convert_frag_id_save(self, frag_id):
+        """Converts a mmLib fragment_id to a TLSOUT fragment id.
+        """
+        if len(frag_id)==0:
+            return "."
+        if frag_id[-1] in string.digits:
+            frag_id += "."
+        return frag_id
+        
+    def load_supported(self):
+        return True
+    def save_supported(self):
+        return True
+
+    def load(self, fil):
+        tls_desc_list = []
+        tls_desc      = None
+        
+        for ln in fil.readlines():
+            ln = ln.rstrip()
+
+            ## search all regular expressions for a match
+            for (re_key, re_tls) in self.tlsout_regex_dict.items():
+                mx = re_tls.match(ln)
+                if mx != None:
+                    break
+
+            ## no match was found for the line
+            if mx==None:
+                continue
+            
+            ## do not allow a match if tls_info == None, because then
+            ## somehow we've missed the TLS group begin line
+            if tls_desc==None and re_key!="group":
+                raise TLSFileFormatError()
+
+            if re_key == "group":
+                tls_desc = TLSGroupDesc()
+                tls_desc_list.append(tls_desc)
+
+                if mx.group(1)!=None:
+                    tls_desc.set_name(mx.group(1))
+
+            elif re_key == "origin":
+                (x, y, z) = mx.groups()
+                try:
+                    tls_desc.set_origin(float(x), float(y), float(z))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "range":
+                (chain_id1, frag_id1, chain_id2, frag_id2, sel) = mx.groups()
+
+                frag_id1 = self.convert_frag_id_load(frag_id1)
+                frag_id2 = self.convert_frag_id_load(frag_id2)
+
+                tls_desc.add_range(
+                    chain_id1, frag_id1, chain_id2, frag_id2, sel)
+
+            elif re_key == "T":
+                ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
+                (t11, t22, t33, t12, t13, t23) = mx.groups()
+
+                try:
+                    tls_desc.set_T(float(t11), float(t22), float(t33),
+                                   float(t12), float(t13), float(t23))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "L":
+                ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
+                (l11, l22, l33, l12, l13, l23) = mx.groups()
+
+                try:
+                    tls_desc.set_L_deg2(float(l11), float(l22), float(l33),
+                                        float(l12), float(l13), float(l23))
+                except ValueError:
+                    raise TLSFileFormatError()
+                    
+            elif re_key == "S":
+                ## REFMAC ORDER:
+                ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
+                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
+
+                try:
+                    tls_desc.set_S_deg(float(s2211), float(s1133), float(s12),
+                                       float(s13),   float(s23),   float(s21),
+                                       float(s31),   float(s32))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+        return tls_desc_list
+
+    def ft8(self, *fx):
+        """Converts the fx float tuple to a TLSOUT tensor output string.
+        """
+        strx = ""
+        for x in fx:
+            strx += fpformat.fix(x, 4).rjust(8)
+        return strx
+
+    def tlsout_tls_desc(self, tls_desc):
+        """Converts TLSGroupDesc instance to a multi-line string format
+        ready to write to a TLSOUT file.
+        """        
+        listx = []
+
+        if tls_desc.name!="":
+            listx.append("TLS %s" % (tls_desc.name))
+        else:
+            listx.append("TLS")
+
+        for (chain_id1, frag_id1,
+             chain_id2, frag_id2, sel) in tls_desc.range_list:
+
+            frag_id1 = self.convert_frag_id_save(frag_id1)
+            frag_id2 = self.convert_frag_id_save(frag_id2)
+
+            listx.append("RANGE  '%s%s' '%s%s' %s" % (
+                chain_id1, frag_id1.rjust(5),
+                chain_id2, frag_id2.rjust(5), sel))
+
+        if tls_desc.origin!=None:
+            listx.append("ORIGIN %8.4f %8.4f %8.4f" % (
+                tls_desc.origin[0], tls_desc.origin[1], tls_desc.origin[2]))
+
+        if tls_desc.T!=None:
+            ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
+            x = self.ft8(tls_desc.T[0,0], tls_desc.T[1,1], tls_desc.T[2,2],
+                         tls_desc.T[0,1], tls_desc.T[0,2], tls_desc.T[1,2])
+            listx.append("T   %s" % (x))
+
+        if tls_desc.L!=None:
+            ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
+            x = self.ft8(
+                tls_desc.L[0,0] * RAD2DEG2,
+                tls_desc.L[1,1] * RAD2DEG2,
+                tls_desc.L[2,2] * RAD2DEG2,
+                tls_desc.L[0,1] * RAD2DEG2,
+                tls_desc.L[0,2] * RAD2DEG2,
+                tls_desc.L[1,2] * RAD2DEG2)
+
+            listx.append("L   %s" % (x))
+
+        if tls_desc.S!=None:
+            ## REFMAC ORDER:
+            ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
+            x = self.ft8(
+                (tls_desc.S[1,1] - tls_desc.S[0,0]) * RAD2DEG,
+                (tls_desc.S[0,0] - tls_desc.S[2,2]) * RAD2DEG,
+                tls_desc.S[0,1] * RAD2DEG,
+                tls_desc.S[0,2] * RAD2DEG,
+                tls_desc.S[1,2] * RAD2DEG,
+                tls_desc.S[1,0] * RAD2DEG,
+                tls_desc.S[2,0] * RAD2DEG,
+                tls_desc.S[2,1] * RAD2DEG)
+            
+            listx.append("S   %s" % (x))
+
+        return string.join(listx, "\n")
+
+    def save(self, fil, tls_desc_list):
+        for tls_desc in tls_desc_list:
+            tls_desc_str = self.tlsout_tls_desc(tls_desc)
+            fil.write(tls_desc_str + "\n")
+        
 
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
@@ -487,7 +728,7 @@ class TLSGroup(AtomList):
                                      [0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0]], Float)
 
-    def __str__(self):
+    def str_old(self):
         tstr  = "TLS %s\n" % (self.name)
 
         tstr += "ORIGIN  %f %f %f\n" % (
@@ -513,24 +754,25 @@ class TLSGroup(AtomList):
         self.origin = array([x, y, z])
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
-        """Sets the components of the symmetric T tensor.
+        """Sets the components of the symmetric T tensor.  Units in square
+        Angstroms.
         """
         self.T = array([[t11, t12, t13],
                         [t12, t22, t23],
                         [t13, t23, t33]])
 
     def set_L(self, l11, l22, l33, l12, l13, l23):
-        """Sets the components of the symmetric L tensor from values
-        assumed to be in degrees^2.
+        """Sets the components of the symmetric L tensor from arguments.
+        Units should be in square radians.
         """
         self.L = array([[l11, l12, l13],
                         [l12, l22, l23],
-                        [l13, l23, l33]]) * deg2rad2
+                        [l13, l23, l33]])
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the componets of the asymmetric S tenssor.  The trace
         of the S tensor is set with the standard convention of
-        the Trace(S) = 0.
+        the Trace(S) = 0.  Units in Radians*Angstroms.
         """
         s22 = 2.0*(s2211)/3.0 + s1133/3.0
         s11 = s22 - s2211
@@ -538,7 +780,7 @@ class TLSGroup(AtomList):
 
         self.S = array([[s11, s12, s13],
                         [s21, s22, s23],
-                        [s31, s32, s33]]) * deg2rad
+                        [s31, s32, s33]])
 
     def is_null(self):
         """Returns True if the T,L,S tensors are not set, or are set
@@ -1384,7 +1626,6 @@ class TLSStructureAnalysis(object):
                 stats_list.append(stats)
 
         return stats_list
-
 
     def fit_TLS_segments_and_cluster(self, **args):
         """Runs fit_TLS_segments, then merges TLS group runs along the Chain

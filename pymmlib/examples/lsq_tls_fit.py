@@ -37,27 +37,30 @@ def main(path, opt_dict):
             print "ERROR: TLSIN File not found %s" % (opt_dict["-t"])
             sys.exit(-1)
         
-        tilist = TLSInfoList()
-        tilist.load_refmac_tlsout_file(fil)
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file.load(fil)
         
-        for tls_info in tilist:
-            tls = tls_info.make_tls_group(struct)
-            tls.tls_info = tls_info
+        for tls_desc in tls_file.tls_desc_list:
+            tls = tls_desc.generate_tls_group(struct)
+            tls.tls_desc = tls_desc
             tls_group_list.append(tls)
 
     else:
         ## create one TLS group per chain by default
         for chain in struct.iter_chains():
-            tls = TLSGroup()
-            tls.tls_info  = TLSInfo()
-
-            tls.tls_info.range_list = [
-                (chain.chain_id, chain[0].fragment_id,
-                 chain.chain_id, chain[-1].fragment_id)]
-
-            for aa in chain.iter_amino_acids():
-                for atm in chain.iter_atoms():
-                    tls.append(atm)
+            try:
+                chain_id1 = chain.chain_id
+                frag_id1  = chain[0].fragment_id
+                frag_id2  = chain[-1].fragment_id
+            except IndexError:
+                continue
+            
+            tls_desc = TLSGroupDesc()
+            tls_desc.add_range(chain_id1, frag_id1, chain_id1, frag_id2, "")
+            tls = tls_desc.generate_tls_group(struct)
+            tls_group_list.append(tls)
+            tls.tls_desc = tls_desc
 
 
     ## fit TLS groups and write output
@@ -72,20 +75,15 @@ def main(path, opt_dict):
 
         tls.origin = tls.calc_centroid()
         tls.calc_TLS_least_squares_fit()
+        tls.shift_COR()
 
-        T = tls.T
-        L = tls.L * rad2deg2
-        S = tls.S * rad2deg
+        tls.tls_desc.set_tls_group(tls)
 
-        tls.tls_info.origin = tls.origin.copy()
-        tls.tls_info.T = (T[0,0], T[1,1], T[2,2], T[0,1], T[0,2], T[1,2])
-        tls.tls_info.L = (L[0,0], L[1,1], L[2,2], L[0,1], L[0,2], L[1,2])
-        tls.tls_info.S = (
-            S[1,1]-S[0,0], S[0,0]-S[2,2], S[0,1], S[0,2], S[1,2], S[1,0],
-            S[2,0], S[2,1])
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file.tls_desc_list.append(tls.tls_desc)
+        tls_file.save(sys.stdout)
 
-        print
-        print tls.tls_info.refmac_description()
 
     ## write out a PDB file with 0.0 tempature factors for all
     ## atoms in TLS groups

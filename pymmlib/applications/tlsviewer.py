@@ -265,21 +265,21 @@ class GLTLSAtomList(GLAtomList):
         self.glo_add_property(
             { "name":        "L1_rot",
               "desc":        "L1 Rotation", 
-              "catagory":    "Simulation State",
+              "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_rot",
               "desc":        "L2 Rotation", 
-              "catagory":    "Simulation State",
+              "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_rot",
               "desc":        "L3 Rotation", 
-              "catagory":    "Simulation State",
+              "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
@@ -302,6 +302,10 @@ class GLTLSAtomList(GLAtomList):
     def gldl_iter_multidraw_animate(self):
         """
         """
+        ## optimization: if a rotation of 0.0 degrees was already
+        ## drawn, then there is no need to draw it again
+        zero_rot = False
+        
         for Lx_axis, Lx_rho, Lx_pitch, Lx_rot, Lx_scale in (
             ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot", "L1_scale"),
             ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot", "L2_scale"),
@@ -322,6 +326,11 @@ class GLTLSAtomList(GLAtomList):
             pitch = self.properties[Lx_pitch]
             rot   = self.properties[Lx_rot] * self.properties[Lx_scale]
             screw = axis * (rot * pitch)
+
+            if allclose(rot, 0.0):
+                if zero_rot:
+                    continue
+                zero_rot = True
 
             glPushMatrix()
 
@@ -408,13 +417,12 @@ class GLTLSGroup(GLDrawList):
     """Top level visualization object for a TLS group.
     """
     def __init__(self, **args):
-        self.tls_group = args["tls_group"]
-        self.tls_info  = None
+        self.tls       = args["tls"]
+        self.tls_group = self.tls["tls_group"]
+        self.tls_info  = self.tls["info"]
 
         GLDrawList.__init__(self)
-
-        if self.tls_group.name:
-            self.glo_set_name("TLS Group: %s" % (self.tls_group.name))
+        self.glo_set_name(self.tls["name"])
 
         ## add a child GLTLSAtomList for the animated atoms
         self.gl_atom_list = GLTLSAtomList(
@@ -512,8 +520,6 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_update_callback(self.tls_update_cb)
 
         if not self.tls_group.is_null():
-            self.tls_info = self.tls_group.calc_tls_info()
-
             self.glo_init_properties(
                 COR          = self.tls_info["COR"],
 
@@ -541,7 +547,7 @@ class GLTLSGroup(GLDrawList):
         else:
             self.glo_init_properties(**args)
 
-    def set_tls_group(self, tls_group):
+    def set_tls_groupXXX(self, tls_group):
         """Set a new TLSGroup.
         """
         self.tls_group = tls_group
@@ -912,7 +918,7 @@ class GLTLSGroup(GLDrawList):
               "desc":       "Screw Axes Radius",
               "catagory":   "TLS",
               "type":       "float",
-              "default":    0.05,
+              "default":    0.4,
               "action":     "recompile_tensors" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
@@ -1021,8 +1027,8 @@ class GLTLSGroup(GLDrawList):
         if self.tls_group.is_null():
             return
 
-        pi2 = 2.0 * math.pi
-        sin_tm = math.sin(pi2 * 3.0 * self.properties["time"])
+        ## time should be in the range 0.0-0.1.0
+        sin_tm = math.sin(2.0 * math.pi * self.properties["time"])
 
         ## calculate L eignvalue displacements at the given
         ## probability levels
@@ -1031,16 +1037,19 @@ class GLTLSGroup(GLDrawList):
         try:
             L1_c = C * math.sqrt(self.properties["L1_eigen_val"])
         except ValueError:
+            L1_c = 0.0
             L1_peak = 0.0
 
         try:
             L2_c = C * math.sqrt(self.properties["L2_eigen_val"])
         except ValueError:
+            L2_c = 0.0
             L2_peak = 0.0
 
         try:
             L3_c = C * math.sqrt(self.properties["L3_eigen_val"])
         except ValueError:
+            L3_c = 0.0
             L3_peak = 0.0
 
         L1_rot  = L1_c * sin_tm
@@ -1484,11 +1493,18 @@ class GLTLSChain(GLDrawList):
               "default":    1.0,
               "action":     "" })
         self.glo_add_property(
+            { "name":       "L_axis_scale",
+              "desc":       "Scale Screw Axis Length",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    5.00,
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
             { "name":       "L_axis_radius",
               "desc":       "Screw Axes Radius",
               "catagory":   "TLS",
               "type":       "float",
-              "default":    0.05,
+              "default":    0.4,
               "action":     "" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
@@ -1567,6 +1583,8 @@ class GLTLSChain(GLDrawList):
             "adp_prob", child_id, "adp_prob")
         self.glo_link_child_property(
             "T_line_width", child_id, "T_line_width")
+        self.glo_link_child_property(
+            "L_axis_scale", child_id, "L_axis_scale")
         self.glo_link_child_property(
             "L_axis_radius", child_id, "L_axis_radius")
         self.glo_link_child_property(
@@ -2499,8 +2517,7 @@ class TLSDialog(gtk.Dialog):
     def __init__(self, **args):
         self.main_window = args["main_window"]
         self.sc = args["struct_context"]
-        self.sel_tls_group = None
-
+        self.selected_tls   = None
         self.animation_time = 0.0
         self.animation_list = []
 
@@ -2509,7 +2526,7 @@ class TLSDialog(gtk.Dialog):
         self.chn_colori     = {}
         self.gl_tls_chain   = {}
         ## master list of tls groups handled by the dialog
-        self.tls_group_list = []
+        self.tls_list       = []
 
         gtk.Dialog.__init__(
             self,
@@ -2545,6 +2562,7 @@ class TLSDialog(gtk.Dialog):
         treeview = gtk.TreeView(self.model)
         sw.add(treeview)
         treeview.connect("row-activated", self.row_activated_cb)
+        treeview.connect("button-release-event", self.button_release_event_cb)
         treeview.set_rules_hint(gtk.TRUE)
 
         cell_rend = gtk.CellRendererToggle()
@@ -2565,17 +2583,25 @@ class TLSDialog(gtk.Dialog):
         treeview.append_column(column)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("T(A^2)", cell_rend)
+        column = gtk.TreeViewColumn("", cell_rend)
+        column_label = gtk.Label("")
+        column_label.set_markup("trace(<b>T</b>) A<sup>2</sup>")
+        column_label.show()
+        column.set_widget(column_label)
         column.add_attribute(cell_rend, "markup", 3)
         treeview.append_column(column)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("L(deg^2)", cell_rend)
+        column = gtk.TreeViewColumn("", cell_rend)
         column.add_attribute(cell_rend, "markup", 4)
         treeview.append_column(column)
+        column_label = gtk.Label("")
+        column_label.set_markup("trace(<b>L</b>) DEG<sup>2</sup>")
+        column_label.show()
+        column.set_widget(column_label)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("S(A*deg)", cell_rend)
+        column = gtk.TreeViewColumn("Source", cell_rend)
         column.add_attribute(cell_rend, "markup", 5)
         treeview.append_column(column)
 
@@ -2584,6 +2610,9 @@ class TLSDialog(gtk.Dialog):
         gobject.timeout_add(200, self.timeout_cb)
 
         self.load_PDB(self.sc.struct.path)
+
+    def error_dialog(self, text):
+        self.main_window.error_dialog(text)
 
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
@@ -2602,13 +2631,12 @@ class TLSDialog(gtk.Dialog):
                     self.load_TLSOUT(path)
             file_sel.destroy()
             
-        elif response_code==101 and self.sel_tls_group!=None:
+        elif response_code==101 and self.selected_tls!=None:
             ## use the GLPropertyBrowserDialog associated with
             ## the application main window to present the
-            ## properties of the gl_tls object for modification
-            
+            ## properties of the gl_tls object for modification            
             self.main_window.autoselect_gl_prop_browser(
-                self.sel_tls_group.gl_tls)
+                self.selected_tls["GLTLSGroup"])
 
         elif response_code==102:
             self.load_TLS_fit()
@@ -2619,51 +2647,63 @@ class TLSDialog(gtk.Dialog):
         """
         self.clear_tls_groups()
 
-    def get_tls_group(self, path):
-        return self.tls_group_list[int(path)]
-
     def row_activated_cb(self, tree_view, path, column):
-        row = int(path[0])
-        self.sel_tls_group = self.tls_group_list[row]
+        index = int(path[0])
+        self.selected_tls = self.tls_list[index]
+
+    def button_release_event_cb(self, tree_view, bevent):
+        x = int(bevent.x)
+        y = int(bevent.y)
+
+        try:
+            (path, col, x, y) = tree_view.get_path_at_pos(x, y)
+        except TypeError:
+            return gtk.FALSE
+
+        self.row_activated_cb(tree_view, path, col)
+        return gtk.FALSE
 
     def view_toggled(self, cell, path):
         """Visible/Hidden TLS representation.
         """
-        ## why, oh why??
+        ## why, oh why?? (is this passed as a string)
         path = int(path)
 
-        # get toggled iter
+        ## get toggled iter
         miter = self.model.get_iter((path,))
 
         show_vis = self.model.get_value(miter, 0)
-        tls_group = self.tls_group_list[path]
+        tls = self.tls_list[path]
     
         # do something with the value
         if show_vis==gtk.TRUE:
-            tls_group.gl_tls.glo_update_properties(visible=False)
+            tls["GLTLSGroup"].glo_update_properties(visible=False)
         else:
-            tls_group.gl_tls.glo_update_properties(visible=True)
+            tls["GLTLSGroup"].glo_update_properties(visible=True)
 
     def animate_toggled(self, cell, path):
         """Start/Stop TLS Animation.
         """
-        path      = int(path)
-        tls_group = self.tls_group_list[path]
+        index = int(path)
+        tls   = self.tls_list[index]
 
-        miter      = self.model.get_iter((path,))
-        animate   = self.model.get_value(miter, 1)
+        miter   = self.model.get_iter((index,))
+        animate = self.model.get_value(miter, 1)
 
         if animate==gtk.FALSE:
             self.model.set(miter, 1, gtk.TRUE)
-            self.animation_list.append(tls_group)
+            self.animation_list.append(tls)
         elif animate==gtk.TRUE:
             self.model.set(miter, 1, gtk.FALSE)
-            self.animation_list.remove(tls_group)
+            self.animation_list.remove(tls)
 
-    def add_tls_group(self, tls_group):
+    def add_tls_group(self, tls):
         """Adds the TLS group and creates tls.gl_tls OpenGL
         renderer.
         """
+        self.tls_list.append(tls)
+        tls_group = tls["tls_group"]
+
         ## if no atoms were found in the tls_group,
         ## then do not add it
         try:
@@ -2671,48 +2711,51 @@ class TLSDialog(gtk.Dialog):
         except IndexError:
             return
 
+        ## figure out the TLS group chain_id
+        chain_id = atm0.chain_id
+        tls["chain_id"] = chain_id
+
         ## if the TLS group is NULL, then perform a LSQ fit of it
         if tls_group.is_null():
-           # tls_group.origin = tls_group.calc_centroid()
             tls_group.calc_TLS_least_squares_fit()
+            tls["lsq_fit"] = True
+        tls["info"] = tls_group.calc_tls_info()
 
         ## set the tls group color starting from color 2, unique
         ## for each chain
         try:
-            self.chn_colori[atm0.chain_id] += 1
-            colori = self.chn_colori[atm0.chain_id]
+            self.chn_colori[chain_id] += 1
+            colori = self.chn_colori[chain_id]
         except KeyError:
-            self.chn_colori[atm0.chain_id] = colori = 2
+            self.chn_colori[chain_id] = colori = 2
 
-        tls_group.color_name = COLOR_NAMES_CAPITALIZED[colori]
-
-        ## add the tls_group object
-        self.tls_group_list.append(tls_group)
+        ## calculate importent properties for the TLS group
+        tls["color_name"] = COLOR_NAMES_CAPITALIZED[colori]
 
         ## creat GLTLSGroup for the visualization component
-        tls_group.gl_tls = GLTLSGroup(
-            tls_group = tls_group,
-            tls_color = tls_group.color_name)
-
+        tls["GLTLSGroup"] = GLTLSGroup(
+            tls       = tls,
+            tls_color = tls["color_name"])
 
         ## get the GLTLSChain to add the GLTLSGroup to
         try:
-            gl_tls_chain = self.gl_tls_chain[atm0.chain_id]
+            gl_tls_chain = self.gl_tls_chain[chain_id]
         except KeyError:
-            gl_tls_chain = GLTLSChain(chain_id = atm0.chain_id)
+            gl_tls_chain = GLTLSChain(chain_id=chain_id)
             self.sc.gl_struct.glo_add_child(gl_tls_chain)
-            self.gl_tls_chain[atm0.chain_id] = gl_tls_chain
+            self.gl_tls_chain[chain_id] = gl_tls_chain
 
-        gl_tls_chain.add_gl_tls_group(tls_group.gl_tls)            
-        tls_group.gl_tls.glo_add_update_callback(self.update_cb)
+        tls["GLTLSChain"] = gl_tls_chain
+        gl_tls_chain.add_gl_tls_group(tls["GLTLSGroup"])
+        tls["GLTLSGroup"].glo_add_update_callback(self.update_cb)
+
+        ## redraw the treeview adds this tls group
+        self.redraw_treeview()
 
         ## rebuild GUI viewers
         tab = self.main_window.get_sc_tab(self.sc)
-
         if tab.has_key("gl_prop_browser"):
             tab["gl_prop_browser"].rebuild_gl_object_tree()
-
-        self.redraw_treeview()
 
     def clear_tls_groups(self):
         """Remove the current TLS groups, including destroying
@@ -2721,19 +2764,19 @@ class TLSDialog(gtk.Dialog):
         gl_viewer = self.sc.gl_struct.glo_get_root()
 
         ## remove the individual GLTLSGroup visualization objects
-        for tls_group in self.tls_group_list:
-            gl_viewer.glv_remove_draw_list(tls_group.gl_tls)
-            tls_group.gl_tls.glo_remove_update_callback(self.update_cb)
-            del tls_group.gl_tls
+        for tls in self.tls_list:
+            gl_viewer.glv_remove_draw_list(tls["GLTLSGroup"])
+            tls["GLTLSGroup"].glo_remove_update_callback(self.update_cb)
+            del tls["GLTLSGroup"]
 
         ## remove the GLTLSChain objects
         for gl_tls_chain in self.gl_tls_chain.values():
             gl_viewer.glv_remove_draw_list(gl_tls_chain)
-        self.gl_tls_chain = {}
 
         ## re-initalize
+        self.gl_tls_chain   = {}
         self.chn_colori     = {}
-        self.tls_group_list = []
+        self.tls_list       = []
         self.animation_list = []
 
         ## rebuild GUI viewers
@@ -2747,10 +2790,10 @@ class TLSDialog(gtk.Dialog):
         """Property change callback from the GLTLSGroups.
         """
         i = 0
-        for tls in self.tls_group_list:
+        for tls in self.tls_list:
             miter = self.model.get_iter((i,))
 
-            if tls.gl_tls.properties["visible"]==True:
+            if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)
             else:
                 self.model.set(miter, 0, gtk.FALSE)
@@ -2760,34 +2803,61 @@ class TLSDialog(gtk.Dialog):
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
         """
+
         self.clear_tls_groups()
         
-        tls_file = TLSInfoList()
-        pdb_file = PDBFile()
-        pdb_file.load_file(path)
-        pdb_file.record_processor(tls_file)
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatPDB())
 
-        for tls_info in tls_file:
-            tls_group = tls_info.make_tls_group(self.sc.struct)
-            tls_group.tls_info = tls_info
-            self.add_tls_group(tls_group)
+        try:
+            tls_file.load(open(path, "r"), path)
+        except IOError:
+            self.error_dialog("File Not Found: %s" % (path))
+            return
+        except TLSFileFormatError:
+            self.error_dialog("File Format Error: %s" % (path))
+            return
+
+        if len(tls_file.tls_desc_list)==0:
+            self.error_dialog("No TLS Groups Found: %s" % (path))
+            return
+        
+        for tls_desc in tls_file.tls_desc_list:
+            tls = {}
+            tls["pdb_path"]  = path
+            tls["tls_desc"]  = tls_desc
+            tls["tls_group"] = tls_desc.generate_tls_group(self.sc.struct)
+            tls["name"]      = self.markup_tls_name(tls_desc)
+            self.add_tls_group(tls)
             
     def load_TLSOUT(self, path):
         """Load TLS descriptions from a REMAC/CCP4 TLSOUT file.
         """
         self.clear_tls_groups()
+
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatTLSOUT())
+
         try:
-            fil = open(path, "r")
+            tls_file.load(open(path, "r"), path)
         except IOError:
+            self.error_dialog("File Not Found: %s" % (path))
+            return
+        except TLSFileFormatError:
+            self.error_dialog("File Format Error: %s" % (path))
             return
 
-        tls_file = TLSInfoList()
-        tls_file.load_refmac_tlsout_file(fil)
+        if len(tls_file.tls_desc_list)==0:
+            self.error_dialog("No TLS Groups Found: %s" % (path))
+            return
         
-        for tls_info in tls_file:
-            tls_group = tls_info.make_tls_group(self.sc.struct)
-            tls_group.tls_info = tls_info
-            self.add_tls_group(tls_group)
+        for tls_desc in tls_file.tls_desc_list:
+            tls = {}
+            tls["tlsout_path"] = path
+            tls["tls_desc"]    = tls_desc
+            tls["tls_group"]   = tls_desc.generate_tls_group(self.sc.struct)
+            tls["name"]        = self.markup_tls_name(tls_desc)
+            self.add_tls_group(tls)
 
     def load_TLS_fit(self):
         """Fit TLS groups to sequence segments
@@ -2801,15 +2871,20 @@ class TLSDialog(gtk.Dialog):
         dialog.run()
         dialog.destroy()
 
-        for stats in dialog.tls_stats_list:
-            self.add_tls_group(stats["tls"])
-        
-    def markup_tls_name(self, tls_info):
+        for tls_stats in dialog.tls_stats_list:
+            tls = {}
+            tls["tls_stats"] = tls_stats
+            tls["lsq_fit"]   = True
+            tls["tls_group"] = tls_stats["tls"]
+            tls["name"]      = tls["tls_group"].name
+            self.add_tls_group(tls)
+
+    def markup_tls_name(self, tls_desc):
         listx = []
-        for (chain_id1,frag_id1,chain_id2,frag_id2,sel) in tls_info.range_list:
+        for (chain_id1,frag_id1,chain_id2,frag_id2,sel) in tls_desc.range_list:
             listx.append("%s%s-%s%s %s" % (
                 chain_id1, frag_id1, chain_id2, frag_id2, sel))
-        return "<small>"+string.join(listx, "\n")+"</small>"
+        return string.join(listx, "\n")
 
     def markup_tensor(self, tensor):
         """Uses pango markup to make the presentation of the tenosr
@@ -2827,10 +2902,14 @@ class TLSDialog(gtk.Dialog):
         """
         self.model.clear()
 
-        for tls in self.tls_group_list:
+        for tls in self.tls_list:
             miter = self.model.append(None)
 
-            if tls.gl_tls.properties["visible"]==True:
+            info = tls["info"]
+            tr_rT = "%8.4f" % (trace(info["rT'"]))
+            tr_L  = "%8.4f" % (trace(info["L'"]*RAD2DEG2))
+
+            if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)
             else:
                 self.model.set(miter, 0, gtk.FALSE)
@@ -2840,24 +2919,34 @@ class TLSDialog(gtk.Dialog):
             else:
                 self.model.set(miter, 1, gtk.FALSE)
 
+            self.model.set(miter, 2, "<small>%s</small>" % (tls["name"]))
+            self.model.set(miter, 3, tr_rT)
+            self.model.set(miter, 4, tr_L)
 
-            if hasattr(tls, "tls_info"):
-                self.model.set(miter, 2, self.markup_tls_name(tls.tls_info))
-            elif hasattr(tls, "name"):
-                self.model.set(miter, 2, tls.name)
-            else:
-                self.model.set(miter, 2, "name here")
+            if tls.has_key("pdb_path"):
+                source = "PDB File"
+                
+            elif tls.has_key("tlsout_path"):
+                if tls.get("lsq_fit", False):
+                    source = "TLSIN/LSQ Fit"
+                else:
+                    source = "TLSOUT"
+                    
+            elif tls.has_key("tls_stats"):
+                source = "LSQ Fit"
 
-            self.model.set(miter, 3, self.markup_tensor(tls.T))
-            self.model.set(miter, 4, self.markup_tensor(tls.L*rad2deg2))
-            self.model.set(miter, 5, self.markup_tensor(tls.S*rad2deg))
+            self.model.set(miter, 5, source)
         
     def timeout_cb(self):
         """Timer which drives the TLS animation.
         """
-        self.animation_time += 0.005
-        for tls_group in self.animation_list:
-            tls_group.gl_tls.properties.update(time=self.animation_time)
+        slices = 20
+        slice  = 1.0 / slices 
+
+        self.animation_time = (self.animation_time + slice) % 1.0
+        
+        for tls in self.animation_list:
+            tls["GLTLSGroup"].properties.update(time=self.animation_time)
         return gtk.TRUE
 
 

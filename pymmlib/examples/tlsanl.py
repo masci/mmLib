@@ -149,26 +149,27 @@ def main(pdb_path, tls_out_path, calc_tls):
         print_TLSGroup(tls)
 
     else:
-        tls_groups = TLSInfoList()
+        tls_file = TLSFile()
 
         ## get TLS groups from REMARK statments in PDB file
         if tls_out_path == None:
-            pdb_file = PDBFile()
-            pdb_file.load_file(pdb_path)
-            pdb_file.record_processor(tls_groups)
-
+            tls_file.set_file_format(TLSFileFormatPDB())
+            try:
+                tls_file.load(open(pdb_path, "r"), pdb_path)
+            except IOError, e:
+                print "[Error] %s: %s" % (str(e), pdb_path)
+            
         ## or get TLS groups from REFMAC TLSOUT file
         else:
+            tls_file.set_file_format(TLSFileFormatTLSOUT())
             try:
-                fil = open(tls_out_path)
+                tls_file.load(open(tls_out_path, "r"), tls_out_path)
             except IOError, e:
                 print "[Error] %s: %s" % (str(e), tls_out_path)
-            tls_groups.load_refmac_tlsout_file(fil)
 
         ## print the TLS groups
-        for tls_info in tls_groups:
-            tls = tls_info.make_tls_group(struct)
-            print_TLSGroup(tls)
+        for tls_group in tls_file.generate_tls_group_list(struct):
+            print_TLSGroup(tls_group)
             print
         
 
