@@ -76,6 +76,9 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def get_gl_context(self):
         return gtk.gtkgl.DrawingArea.get_gl_context(self)
 
+    def gl_redraw(self):
+        self.queue_draw()
+
     def destroy(self, glarea):
         return gtk.TRUE
 
@@ -134,7 +137,6 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         """
         gl_struct = GLStructure(struct=struct)
         self.add_draw_list(gl_struct)
-        self.queue_draw()
         return gl_struct
 
     def remove_struct(self, struct):
@@ -247,11 +249,16 @@ class GLPropertyEditor(gtk.Frame):
         self.connect("destroy", self.destroy)
 
         self.gl_object = gl_object
-        self.gl_object.properties.add_update_callback(self.properties_update_cb)
+        self.gl_object.glo_add_update_callback(self.properties_update_cb)
         
         self.prop_widget_dict = {}
-        num_props = len(self.gl_object.properties.prop_list)
 
+        ## count the number of properties to be displayed
+        num_props = 0
+        for prop_desc in self.gl_object.glo_iter_property_desc():
+            if prop_desc.get("hidden", False)!=True:
+                num_props += 1
+        
         ## table
         table = gtk.Table(2, num_props, gtk.FALSE)
         self.add(table)
@@ -262,7 +269,7 @@ class GLPropertyEditor(gtk.Frame):
 
         ## boolean types first since the toggle widgets don't look good mixed
         ## with the entry widgets
-        for prop in self.gl_object.properties.prop_list:
+        for prop in self.gl_object.glo_iter_property_desc():
             if prop.get("hidden", False)==True:
                 continue
 
@@ -280,7 +287,7 @@ class GLPropertyEditor(gtk.Frame):
             table_row += 1
 
         ## create and layout the editing widgets
-        for prop in self.gl_object.properties.prop_list:
+        for prop in self.gl_object.glo_iter_property_desc():
             if prop.get("hidden", False)==True:
                 continue
             
@@ -303,7 +310,7 @@ class GLPropertyEditor(gtk.Frame):
         """Called after this widget is destroyed.  Make sure to remove the callback we installed
         to monitor property changes.
         """
-        self.gl_object.properties.remove_update_callback(self.properties_update_cb)
+        self.gl_object.glo_remove_update_callback(self.properties_update_cb)
 
     def new_property_label_widget(self, prop):
         """Returns the label widget for property editing.
@@ -336,8 +343,8 @@ class GLPropertyEditor(gtk.Frame):
     def properties_update_cb(self, updates={}, actions=[]):
         """Read the property values and update the widgets to display the values.
         """
-        for prop in self.gl_object.properties.prop_list:
-            name   = prop["name"]
+        for prop in self.gl_object.glo_iter_property_desc():
+            name = prop["name"]
 
             try:
                 widget = self.prop_widget_dict[name]
@@ -360,8 +367,8 @@ class GLPropertyEditor(gtk.Frame):
         """
         update_dict = {}
         
-        for prop in self.gl_object.properties.prop_list:
-            name   = prop["name"]
+        for prop in self.gl_object.glo_iter_property_desc():
+            name = prop["name"]
 
             try:
                 widget = self.prop_widget_dict[name]
@@ -390,7 +397,7 @@ class GLPropertyEditor(gtk.Frame):
                 else:
                     update_dict[name] = value
                     
-        self.gl_object.properties.update(**update_dict)
+        self.gl_object.glo_update_properties(**update_dict)
 
 
 class GLPropertyEditDialog(gtk.Dialog):
@@ -421,6 +428,7 @@ class TLSDialog(gtk.Dialog):
         self.main_window    = args["main_window"]
         self.struct_context = args["struct_context"]
         self.sel_tls_group  = None
+
         self.tls_group_list = []
 
         gtk.Dialog.__init__(
@@ -447,10 +455,11 @@ class TLSDialog(gtk.Dialog):
 
         self.model = gtk.TreeStore(
             gobject.TYPE_BOOLEAN,   #0
-            gobject.TYPE_STRING,    #1
+            gobject.TYPE_BOOLEAN,   #1
             gobject.TYPE_STRING,    #2
             gobject.TYPE_STRING,    #3
-            gobject.TYPE_STRING)    #4
+            gobject.TYPE_STRING,    #4
+            gobject.TYPE_STRING)    #5
      
         treeview = gtk.TreeView(self.model)
         sw.add(treeview)
@@ -463,24 +472,30 @@ class TLSDialog(gtk.Dialog):
         treeview.append_column(column)
         cell_rend.connect("toggled", self.view_toggled)
 
-        cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("TLS Group", cell_rend)
-        column.add_attribute(cell_rend, "markup", 1)
+        cell_rend = gtk.CellRendererToggle()
+        column = gtk.TreeViewColumn("Animate", cell_rend)
+        column.add_attribute(cell_rend, "active", 1)
         treeview.append_column(column)
+        cell_rend.connect("toggled", self.animate_toggled)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("T(A^2)", cell_rend)
+        column = gtk.TreeViewColumn("TLS Group", cell_rend)
         column.add_attribute(cell_rend, "markup", 2)
         treeview.append_column(column)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("L(deg^2)", cell_rend)
+        column = gtk.TreeViewColumn("T(A^2)", cell_rend)
         column.add_attribute(cell_rend, "markup", 3)
         treeview.append_column(column)
 
         cell_rend = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("S(A*deg)", cell_rend)
+        column = gtk.TreeViewColumn("L(deg^2)", cell_rend)
         column.add_attribute(cell_rend, "markup", 4)
+        treeview.append_column(column)
+
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("S(A*deg)", cell_rend)
+        column.add_attribute(cell_rend, "markup", 5)
         treeview.append_column(column)
 
         self.show_all()
@@ -513,13 +528,10 @@ class TLSDialog(gtk.Dialog):
         return self.tls_group_list[int(path)]
 
     def row_activated_cb(self, tree_view, path, column):
-        print "## row activated path = %s" % (str(path))
         row = int(path[0])
         self.sel_tls_group = self.tls_group_list[row]
 
     def view_toggled(self, cell, path):
-        print "## view_toggled path = %s" % (str(path))
-
         ## why, oh why??
         path = int(path)
 
@@ -531,11 +543,12 @@ class TLSDialog(gtk.Dialog):
     
         # do something with the value
         if show_vis==gtk.TRUE:
-            tls_group.gl_tls.properties.update(visible=False)
+            tls_group.gl_tls.glo_update_properties(visible=False)
         else:
-            tls_group.gl_tls.properties.update(visible=True)
+            tls_group.gl_tls.glo_update_properties(visible=True)
 
-        self.main_window.struct_gui.gtkglviewer.queue_draw()
+    def animate_toggled(self, cell, path):
+        pass
 
     def add_tls_group(self, tls_group):
         """Adds the TLS group and creates tls.gl_tls OpenGL
@@ -544,7 +557,7 @@ class TLSDialog(gtk.Dialog):
         self.tls_group_list.append(tls_group)
         
         tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
-        tls_group.gl_tls.properties.add_update_callback(self.update_cb)
+        tls_group.gl_tls.glo_add_update_callback(self.update_cb)
 
         gl_viewer = self.main_window.struct_gui.gtkglviewer
         gl_viewer.add_draw_list(tls_group.gl_tls)
@@ -564,7 +577,7 @@ class TLSDialog(gtk.Dialog):
 
         for tls_group in self.tls_group_list:
             gl_viewer.remove_draw_list(tls_group.gl_tls)
-            tls_group.gl_tls.properties.remove_update_callback(self.update_cb)
+            tls_group.gl_tls.glo_remove_update_callback(self.update_cb)
             del tls_group.gl_tls
         
         self.tls_group_list = []
@@ -630,14 +643,17 @@ class TLSDialog(gtk.Dialog):
             else:
                 self.model.set(iter, 0, gtk.FALSE)
 
-            self.model.set(iter, 1, self.markup_tls_name(tls.tls_info))
-            self.model.set(iter, 2, self.markup_tensor(tls.T))
-            self.model.set(iter, 3, self.markup_tensor(tls.L*rad2deg2))
-            self.model.set(iter, 4, self.markup_tensor(tls.S*rad2deg))
+            self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
+            self.model.set(iter, 3, self.markup_tensor(tls.T))
+            self.model.set(iter, 4, self.markup_tensor(tls.L*rad2deg2))
+            self.model.set(iter, 5, self.markup_tensor(tls.S*rad2deg))
         
-    def timeout_cb(self, tls):
-        tls.gl_tls.inc_time()
-        self.context.struct_gui.gtkglviewer.queue_draw()
+    def timeout_cb(self):
+        """Timer which drives the TLS animation.
+        """
+        self.animation_time += 0.01
+        for tls_group in self.tls_group_list:
+            tls_group.gl_tls.properties.update(time=self.animation_time)
         return gtk.TRUE
 
 
@@ -994,7 +1010,6 @@ class MainWindow(object):
         else:
             visible = False
         self.sel_struct_context.gl_struct.properties.update(**{property: visible})            
-        self.struct_gui.gtkglviewer.queue_draw()
 
     def color_menu_cb(self, callback_action, widget):
         """Callback for the Color menu.
@@ -1026,8 +1041,6 @@ class MainWindow(object):
                     colori += 1
                 
                 gl_chain.properties.update(color=color)
-
-        self.struct_gui.gtkglviewer.queue_draw()
 
     def set_title(self, title):
         self.window.set_title("Viewer: %s" % (title[:50]))
