@@ -121,7 +121,8 @@ class SymOp(tuple):
 
 
 class SpaceGroup(object):
-    """
+    """Contains the various names and symmetry operations for one space
+    group.
     """
     def __init__(self,
                  number                  = None,
