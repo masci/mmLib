@@ -798,11 +798,25 @@ class TLSGroup(AtomList):
             return True
         return False
 
-    def check_positive_eigenvalues(self):
-        """Returns True if the eigenvalues of the T and L tensors are all
-        positive, otherwise returns False.
+    def check_valid_model(self):
+        """Returns True if the TLS model is mathmatically valid.  This
+        requires the eigenvalues of the L and T tensor to be positive,
+        and the Utls calculated anisotropic ADPs must must also have
+        positive eigenvalues.
         """
-        return min(eigenvalues(self.L))>=0 and min(eigenvalues(self.T))>=0.0
+        small = 1e-10
+
+        if min(eigenvalues(self.L))<=small:
+            return False
+
+        if min(eigenvalues(self.T))<=small:
+            return False
+
+        for atm, Utls in self.iter_atm_Utls():
+            if min(eigenvalues(Utls))<=small:
+                return False
+
+        return True
 
     def calc_TLS_least_squares_fit(self):
         """Perform a least-squares fit of the atoms contained in self
@@ -1207,7 +1221,8 @@ class TLSGroup(AtomList):
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,
         goodness of fit, various parameter averages, center of reaction
-        tensors, etc...
+        tensors, etc...  If tls_info["valid_model"] is not None, then the TLS
+        group parameters are invalid.
         """
         tls_info = self.calc_COR()
 
@@ -1220,20 +1235,10 @@ class TLSGroup(AtomList):
         tls_info["exp_mean_temp_factor"] = self.calc_adv_temp_factor()
         tls_info["exp_mean_anisotropy"]  = self.calc_adv_anisotropy()
 
-        ## the rest is only calculated if the TLS group has group
-        ## has all positive eigenvalues
-        tls_info["negitive_eigen_values"] = False
-        
-        small = 0.0
-        if min(eigenvalues(tls_info["rT'"]))<=small:
-            tls_info["negitive_eigen_values"] = True
-        elif min(eigenvalues(tls_info["L'"]))<=small:
-            tls_info["negitive_eigen_values"] = True
-
-        if tls_info["negitive_eigen_values"]==True:
-            return tls_info
-
         ## TLS FIT
+        tls_info["valid_model"] = self.check_valid_model()
+        if not tls_info["valid_model"]:
+            return tls_info
 
         ## goodness of fit 
         tls_info["R"] = self.calc_R()
@@ -1251,8 +1256,8 @@ class TLSGroup(AtomList):
             n += 1
 
             evals  = eigenvalues(Utls)
-            max_ev = max(eigenvalues(Utls))
-            min_ev = min(eigenvalues(Utls))
+            max_ev = max(evals)
+            min_ev = min(evals)
 
             mean_max_tf += u2b * max_ev
             mean_tf     += u2b * trace(Utls) / 3.0
@@ -1299,15 +1304,10 @@ class TLSGroup(AtomList):
         S_dict = {}
         for atm, Utls in self.iter_atm_Utls():
             Uatm = atm.get_U()
-            
-            try:
-                atm_S = calc_Suij(Uatm, Utls)
-            except LinAlgError:
-                continue
-            else:
-                S_dict[atm] = atm_S
-                mean_S += atm_S
-                num += 1
+            atm_S = calc_Suij(Uatm, Utls)
+            S_dict[atm] = atm_S
+            mean_S += atm_S
+            num += 1
 
         mean_S = mean_S / float(num)
 
@@ -1362,18 +1362,6 @@ class TLSStructureAnalysis(object):
     """
     def __init__(self, struct):
         self.struct = struct
-
-    def check_positive_eigen(self, tls_info):
-        """Checks a TLS group for positive tensor eigen values.  
-        """
-        min_L  = min(eigenvalues(tls_info["L'"]))
-        min_rT =  min(eigenvalues(tls_info["rT'"]))
-        
-        if min_L<=0.0 or allclose(min_L, 0.0):
-            return False
-        if  min_rT<=0.0 or allclose(min_rT, 0.0):
-            return False
-        return True
 
     def iter_segments(self, chain, seg_len):
         """This iteratar yields a series of Segment objects of width
@@ -1430,7 +1418,6 @@ class TLSStructureAnalysis(object):
         origin                  = args.get("origin_of_calc")
         residue_width           = args.get("residue_width", 6)
         use_side_chains         = args.get("use_side_chains", True)
-        filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
         include_hydrogens       = args.get("include_hydrogens", False)
         include_frac_occupancy  = args.get("include_frac_occupancy", False)
         include_single_bond     = args.get("include_single_bond", True)
@@ -1442,7 +1429,7 @@ class TLSStructureAnalysis(object):
                 continue
 
             ## don't bother with non-biopolymers and small chains
-            if chain.count_amino_acids()<20:
+            if chain.count_amino_acids()<residue_width:
                 continue
             
             for segment in self.iter_segments(chain, residue_width):
@@ -1459,7 +1446,7 @@ class TLSStructureAnalysis(object):
                     if self.atom_filter(atm, **args):
                         tls_group.append(atm)
 
-                ## check for enough parameters
+                ## check for enough atoms(parameters) after atom filtering
                 if len(tls_group)<20:
                     continue
                 
@@ -1467,6 +1454,10 @@ class TLSStructureAnalysis(object):
                 tls_group.calc_TLS_least_squares_fit()
                 tls_group.shift_COR()
                 tls_info = tls_group.calc_tls_info()
+
+                ## check if the TLS model is valid
+                if not tls_info["valid_model"]:
+                    continue
 
                 ## add additional information
                 tls_info["name"]      = name
@@ -1476,12 +1467,6 @@ class TLSStructureAnalysis(object):
                 tls_info["tls_group"] = tls_group
                 tls_info["residues"]  = segment
                 tls_info["segment"]   = segment
-
-                ## negitive eigen values mean the TLS group cannot be
-                ## physically intrepreted
-                if filter_neg_eigen_values==True:
-                    if not self.check_positive_eigen(tls_info):
-                        continue
                     
                 ## this TLS group passes all our tests -- yield it
                 yield tls_info

@@ -57,7 +57,7 @@ def main(path, opt_dict):
                 continue
             
             tls_desc = TLSGroupDesc()
-            tls_desc.add_range(chain_id1, frag_id1, chain_id1, frag_id2, "")
+            tls_desc.add_range(chain_id1, frag_id1, chain_id1, frag_id2, "ALL")
             tls = tls_desc.generate_tls_group(struct)
             tls_group_list.append(tls)
             tls.tls_desc = tls_desc

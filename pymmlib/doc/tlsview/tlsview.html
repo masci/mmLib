@@ -431,7 +431,7 @@ The reduction of a given TLS model to three translational displacements and thre
  </tr>
 
  <tr><td colspan=2>
-   <b>Figure 3</b>: Four visualizations of the same TLS group along a alpha helix segment.  The structure is colored by temperature factor and the carbonyl atoms omitted for clarity.  Three additional copies of the structure colored in green show TLS screw displacement.  The visualizations of TLS screw axes and <var>T<sup>r</sup></var> thermal ellipse are also colored green.  (A) TLS calculated isoprobability thermal ellipsoids contoured at 85%.  (B) Three copies of the structure as displaced by each screw axes to a magnitude of 85% isoprobability.  (C) The trajectory surfaces of the screw displacements along the atom bond vectors. (D) A combination of B and C showing the screw displaced structure folling its trajectory surface.
+   <b>Figure 3</b>: Four visualizations of the same TLS group along a alpha helix segment.  One copy of the structure is located at the refined coordinates and colored by refined temperature factor.  The carbonyl atoms have been omitted for clarity.  The visualizations of TLS screw axes and <var>T<sup>r</sup></var> thermal ellipse are colored green.  Visualizations of TLS displaced atoms are also colored green.  (A) TLS calculated isoprobability thermal ellipsoids contoured at 85%.  (B) Three copies of the structure as displaced by each screw axes to a magnitude of 85% isoprobability.  (C) The trajectory surfaces of the screw displacements along the atom bond vectors. (D) A combination of B and C showing the screw displaced structure folling its trajectory surface.
  </td></tr>
 </table>
 </center>
@@ -454,7 +454,7 @@ The default TLS visualization used by TLSView assigns each TLS group a unique co
 </center>
 
 <p>
-One option for visualizing a TLS model is to use the TLS calculated individual anisotropic ADPs to draw thermal ellipsoids or thermal axes at every atom position(<b>Figure 3A</b>).  Atomic coordinates from a crystal structure are the mean position of all crystallographically equivalent atoms as measured over time and lattice position, and thermal ellipsoid's surface encloses a volume containing the positions of a user selected percentage of all atoms measured(within the Gaussian model).  Drawing thermal axes is a simplified visualization of the thermal ellipsoids where only the three primary axes of the ellipsoid are drawn(<b>Figure 4</b>).  The thermal ellipsoid/axes visualization can be used for the TLS translation tensor, but not the screw displacements.  TLSView introduces two new visualizations for the screw displacements: a surface tracing the trajectory of the TLS group atoms(<b>Figure 3C</b>), and oscillating computer animation of any of the supported visualizations(<b>Figure 3B</b>).  The magnitude of the rotation about each axis depends on the MSD rotational magnitude for the axis and the Gaussian isoprobability magnitude set by the user.  The maximum rotational displacement for the surface or animation will partition the user-selected percentage of the total rotational displacement population.  The default is 50%.  This visualization is conceptually similar to the thermal axes visualization since the displacement surfaces are drawn from the three primary screw displacement axes and no covariance is shown.  TLSView has one control per TLS group for selecting the Gaussian isoprobability magnitude so that all ellipsoids, surfaces, and animations will be drawn in proper relative proportions.
+One option for visualizing a TLS model is to use the TLS calculated individual anisotropic ADPs to draw thermal ellipsoids or thermal axes at every atom position(<b>Figure 3A</b>).  Atomic coordinates from a crystal structure are the mean position of all crystallographically equivalent atoms as measured over time and lattice position, and a thermal ellipsoid's surface encloses a volume containing the positions of a percentage of all equivalent atoms measured(within the Gaussian model).  Drawing thermal axes is a simplified visualization of the thermal ellipsoids where only the three primary axes of the ellipsoid are drawn(<b>Figure 4</b>).  Thermal axis length and the distance of the ellipsoid surface from the ellipsoid center both depend upon the user selected percentage of the Gaussian distribution to enclose, referred to here as isoprobability magnitude.  The TLSView default is 50%.  The thermal ellipsoid/axes visualization can be used for the TLS translation tensor too, but not the screw displacements.  TLSView introduces two new visualizations for the screw displacements: a surface tracing the screw trajectory of the TLS group atoms along bond lines(<b>Figure 3C</b>), and oscillating computer animation of any of the supported visualizations(<b>Figure 3B</b>) along the screw displacement paths.  The screw displacements are symmetric about the structure's mean position.  The screw animations use a harmonic animation function for illustration only, and in no way is meant to imply the group is acting as a harmonic oscillator.  The magnitude of the rotation about each axis depends on the MSD rotational magnitude for the axis and the Gaussian isoprobability magnitude set by the user.  The maximum rotational displacement for the surface or animation will partition the user-selected percentage of the total rotational displacement population.  The default is 50%.  This visualization is conceptually similar to the thermal axes visualization since the displacement surfaces are drawn from the three primary screw displacement axes and no covariance is shown.  TLSView has one control per TLS group for selecting the Gaussian isoprobability magnitude so that all ellipsoids, surfaces, and animations will be drawn in proper relative proportions.
 </p>
 
 <center>
@@ -473,7 +473,10 @@ One option for visualizing a TLS model is to use the TLS calculated individual a
 </center>
 
 <p>
-TLSView makes extensive use of thermal ellipsoid visualizations to provide the user with a visual comparison of the displacement contributions which make up the total calculated <var>U<sup>TLS</sup></var> ADP for a given atom(<b>Figure 1</b>).  When TLS parameters fit to refined isotropic or anisotropic ADPs, the ellipsoids from the refined model and TLS model may be superimposed to visually compare fit quality of the TLS model.  <b>Figure 5</b> shows this comparison for chain A of protein 1R75. The TLSView GUI provides controls for setting the opacity of ellipsoids which is useful if a small ellipsoid is completely obscured by a larger one.
+The thermal ellipsoid visualization in TLSView can be used to visually compare the displacement contributions of translational and screw TLS displacement in a TLS calculated ellipsoid.  The TLS calculated ellipsoid is rendered transparent, and a smaller ellipsoid calculated from the reduced translation tensor or the screw displacement is rendered opaque.  And example of this is shown in <b>Figure 1</b>.  TLSView uses the reduced translation ellipsoid for the opaque ellipsoid.
+</p>
+
+<p>When TLS parameters are fit to the refined isotropic or anisotropic ADPs, the thermal ellipsoids from the refined model and TLS model may be compared by drawing both ellipsoids.  <b>Figure 5</b> shows both experimental and TLS predicted ellipsoids for the backbone atoms of 1R75 chain A.  The refined isotropic ellipsoids are colored on a red to blue gradient by magnitude and the TLS predicted anisotropic ellipsoids are colored green, but rendered transparently.  The TLSView GUI supports transparency settings for most solid objects, and this is especially useful for an ellipsoid when a larger ellipsoid obscures a smaller one.  The isotropic ADPs from chain A ellipsoids are necessarily rendered as spheres, but a TLS model fit to them can predict anisotropic ellipsoids which show group displacement in a preferred direction.  
 </p>
 
 <!---------------------------------------------------------->
@@ -536,7 +539,7 @@ The user interface of TLSView is programed using the GTK+ user interface toolkit
  <tr>
   <td>Structures/*</td>
   <td>
-   Change the cureently selected structure.
+    Select the current structure.
   </td>
  </tr>
   
@@ -622,7 +625,10 @@ The hierarchical arrangement of graphics objects allows parent objects to contro
 </center>
 
 <p>
-One TLS Analysis Dialog can be opened for each structure.  It contains a listing of tls 
+TLS structure analysis is performed through the TLS Analysis Dialog.  The dialog lists each TLS group visualized for structure.  This list contains a control to show/hide the TLS group visualization, and to turn on and off the TLS screw animation for the TLS visualization.  
+
+
+with visualization controls    and TLS statistics  a show/hide control for the individual TLS visualization, a animation control to turn on and off TLS screw displacement animation, the trace of the <var>T<sup>cor</sup></var>, the trace of 
 </p>
 
 <hr>
