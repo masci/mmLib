@@ -1513,7 +1513,7 @@ class Chain(Segment):
                 break
 
             if mon_def.one_letter_code:
-                one_letter_code += mon.one_letter_code
+                one_letter_code += mon_def.one_letter_code
             else:
                 one_letter_code += "(%s)" % (res_name)
 
