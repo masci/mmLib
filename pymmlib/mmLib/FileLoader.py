@@ -2,14 +2,14 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """Load and save mmLib.Structure objects from/to mmLib supported formats.
-The mmCIF and PDB file formats are currently supported."""
-
+The mmCIF and PDB file formats are currently supported.
+"""
 import os
-from   mmTypes          import *
-from   StructureBuilder import PDBStructureBuilder, mmCIFStructureBuilder
-from   PDB              import StructurePDBFileBuilder
+from mmTypes import *
+from  StructureBuilder import PDBStructureBuilder, mmCIFStructureBuilder
+from mmCIF import mmCIFFile, mmCIFFileBuilder
+from PDB import PDBFile, PDBFileBuilder
 
 
 def decode_format(path, format):
@@ -30,36 +30,45 @@ def decode_format(path, format):
     return "PDB"
 
 
-def LoadStructure(fil,
-                  library          = None,
-                  format           = "",
-                  build_properties = ()):
-    """Loads a mmCIF file(.cif) or PDB file(.pdb) into a mmPython
+def LoadStructure(fil, library = None, format = "", build_properties = ()):
+    """Loads a mmCIF file(.cif) or PDB file(.pdb) into a 
     Structure class and returns it.  The first argument is either a
-    path string or a file object opened for reading."""
+    path string or a file object opened for reading.
+    """
     format = decode_format(fil, format)
-    if   format == "PDB":
+
+    if format == "PDB":
         return PDBStructureBuilder(
             fil              = fil,
             library          = library,
             build_properties = build_properties).structure
+
     elif format == "CIF":
         return mmCIFStructureBuilder(
             fil              = fil,
             library          = library,
             build_properties = build_properties).structure
+
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))
 
 
-def SaveStructure(fil,
-                  structure,
-                  format     = ""):
-    """Saves a mmPython Structure class into a supported file type."""
+def SaveStructure(fil, structure, format = ""):
+    """Saves a Structure object into a supported file type.
+    """
     format = decode_format(fil, format)
-    if   format == "PDB":
-        return StructurePDBFileBuilder(structure).pdb_file.save_file(fil)
+
+    if format == "PDB":
+        pdb_file = PDBFile()
+        PDBFileBuilder(structure, pdb_file)
+        pdb_file.save_file(fil)
+        return
+
     elif format == "CIF":
-        pass
+        cif_file = mmCIFFile()
+        mmCIFFileBuilder(structure, cif_file)
+        cif_file.save_file(fil)
+        return
+
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))
 
 

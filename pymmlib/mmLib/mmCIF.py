@@ -32,14 +32,7 @@ class mmCIFRow(dict):
     set of data found under a section.  The data can be accessed by using
     the column names as class attributes.
     """
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            raise AttributeError, attr
-
-    def __setattr__(self, attr, val):
-        self[attr] = val
+    pass
 
 
 class mmCIFTable(list):
@@ -47,6 +40,7 @@ class mmCIFTable(list):
     are stored as mmCIFRow classes.
     """
     def __init__(self, name, columns = None):
+        list.__init__(self)
         self.name = name
         self.columns = columns or []
 
@@ -62,16 +56,16 @@ class mmCIFTable(list):
         assert isinstance(row, mmCIFRow)
         list.insert(i, row)
 
-    def add_column(self, cname):
-        """Adds a column to the table.  In this case, a column is a
-        mmCIF subsection.
+    def autoset_columns(self):
+        """Iterates through all rows in self, and forms a list of all
+        unique column names, then sets the self.columns to that list.
         """
-        self.columns.append(cname)
-        
-    def column_index(self, cname):
-        """Returns the column index of from the column name.
-        """
-        return self.columns.index(cname)
+        self.columns = []
+        for row in self:
+            for col in row.keys():
+                if key not in columns:
+                    self.columns.append(key)
+        self.columns.sort()
 
     def select_row_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
@@ -114,6 +108,7 @@ class mmCIFData(list):
     their subsections as "Columns".  The data is stored in "Rows".
     """
     def __init__(self, name):
+        list.__init__(self)
         self.name = name
 
     def __getitem__(self, x):
@@ -154,11 +149,6 @@ class mmCIFData(list):
             return self[x]
         except KeyError:
             return default
-
-    def get_name(self):
-        """Returns the name given to the data section in the mmCIF file.
-        """
-        return self.name
 
     def get_table(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
@@ -434,7 +424,7 @@ class mmCIFFileParser:
                 self.syntax_error('redefined single column %s.%s' % (
                     tname, cname))
     
-        table.add_column(cname)
+        table.columns.append(cname)
         row = table[0]
 
         try:
@@ -748,26 +738,89 @@ class mmCIFFileWriter:
                 self.writeln()
 
 
-class mmCIFBuilder:
+class mmCIFFileBuilder:
     """Builds a mmCIF file from a Structure object.
     """
+    atom_site_columns = [
+        "group_PDB", "id", "type_symbol", "Cartn_x", "Cartn_y", "Cartn_z", 
+        "occupancy", "B_iso_or_equiv", "Cartn_x_esd", "Cartn_y_esd",
+        "Cartn_z_esd", "occupancy_esd", "B_iso_or_equiv_esd", "auth_seq_id",
+        "auth_comp_id", "auth_asym_id", "auth_atom_id"]
+
+    atom_site_anisotrop_columns = [
+        "id", "type_symbol", "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
+        "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd", "U[1][3]_esd",
+        "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd"]
 
     def __init__(self, struct, cif_file):
         self.struct = struct
-        self.cif_file = cif_file
         self.cif_data = mmCIFData("XXX")
-        self.cif
-        
-        
+        cif_file.append(self.cif_data)
+
         self.add_atom_site()
 
     def add_atom_site(self):
-        atom_site = mmCIFTable("atom_site")
+        try:
+            atom_site = self.cif_data["atom_site"]
+        except KeyError:
+            atom_site = mmCIFTable("atom_site", self.atom_site_columns[:])
+            self.cif_data.append(atom_site)
         
         for atm in self.struct.iter_atoms():
-            pass
+            asrow = mmCIFRow()
+            atom_site.append(asrow)
 
-                
+            asrow["id"] = atom_site.index(asrow) + 1
+            asrow["auth_atom_id"] = atm.name
+            asrow["auth_comp_id"] = atm.res_name
+            asrow["auth_seq_id"] = atm.fragment_id
+            asrow["auth_asym_id"] = atm.chain_id
+            asrow["type_symbol"] = atm.element
+            asrow["Cartn_x"] = atm.position[0]
+            asrow["Cartn_y"] = atm.position[1]
+            asrow["Cartn_z"] = atm.position[2]
+            asrow["occupancy"] = atm.occupancy
+            asrow["B_iso_or_equiv"] = atm.temp_factor
+
+            if atm.sig_position:
+                asrow["Cartn_x_esd"] = atm.sig_position[0]
+                asrow["Cartn_y_esd"] = atm.sig_position[1]
+                asrow["Cartn_z_esd"] = atm.sig_position[2]
+                asrow["occupancy_esd"] = atm.sig_occupancy
+                asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
+
+            if atm.U:
+                try:
+                    aniso = self.cif_data["atom_site_anisotrop"]
+                except KeyError:
+                    aniso = mmCIFTable("atom_site_anisotrop",
+                                       self.atom_site_anisotrop_columns[:])
+                    self.cif_data.append(aniso)
+
+                anrow = mmCIFRow()
+                aniso.append(anrow)
+
+                anrow["id"] = asrow["id"]
+                anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
+                anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
+                anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
+                anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
+                anrow["U[1][1]"] = atm.U[0,0]
+                anrow["U[2][2]"] = atm.U[1,1]
+                anrow["U[3][3]"] = atm.U[2,2]
+                anrow["U[1][2]"] = atm.U[0,1]
+                anrow["U[1][3]"] = atm.U[0,2]
+                anrow["U[2][3]"] = atm.U[1,2]
+
+                if atm.sig_U:
+                    anrow["U[1][1]_esd"] = atm.sig_U[0,0]
+                    anrow["U[2][2]_esd"] = atm.sig_U[1,1]
+                    anrow["U[3][3]_esd"] = atm.sig_U[2,2]
+                    anrow["U[1][2]_esd"] = atm.sig_U[0,1]
+                    anrow["U[1][3]_esd"] = atm.sig_U[0,2]
+                    anrow["U[2][3]_esd"] = atm.sig_U[1,2]
+
+
 ##
 ## <testing>
 ##

@@ -7,6 +7,7 @@ custom, and the code for those is here.  Inother cases the types are
 imported from other Python packages.
 """
 from __future__ import generators
+import os
 import sys
 import string
 import weakref
@@ -89,10 +90,10 @@ class FragmentID(object):
 
 
 def debug(x):
-    """If the -w option is used in any mmLib program, then print all the
-    debug messages.
+    """If the enviornemt variable "MMLIB_DEBUG" is set, then print debug
+    messages.
     """
-    if "-w" in sys.argv:
+    if os.environ.has_key("MMLIB_DEBUG"):
         print "DBG: ",x
 
 

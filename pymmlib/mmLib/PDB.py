@@ -1220,12 +1220,12 @@ class PDBFile:
         return chain_list
 
 
-class StructurePDBFileBuilder:
+class PDBFileBuilder:
     """Builds a PDBFile object from a Structure object.
     """
-    def __init__(self, struct):
+    def __init__(self, struct, pdb_file):
         self.struct = struct
-        self.pdb_file = PDBFile()
+        self.pdb_file = pdb_file
 
         self.atom_serial_num = 1
         self.atom_serial_map = {}
@@ -1337,22 +1337,22 @@ class StructurePDBFileBuilder:
             ar_list.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
             anisou_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
-            anisou_rec["u[2][2]"] = int(atm.U[1,1] * 10000.0)
-            anisou_rec["u[3][3]"] = int(atm.U[2,2] * 10000.0)
-            anisou_rec["u[1][2]"] = int(atm.U[0,1] * 10000.0)
-            anisou_rec["u[1][3]"] = int(atm.U[0,2] * 10000.0)
-            anisou_rec["u[2][3]"] = int(atm.U[1,2] * 10000.0)
+            anisou_rec["u[1][1]"] = int(atm.U[1,1] * 10000.0)
+            anisou_rec["u[2][2]"] = int(atm.U[2,2] * 10000.0)
+            anisou_rec["u[0][1]"] = int(atm.U[0,1] * 10000.0)
+            anisou_rec["u[0][2]"] = int(atm.U[0,2] * 10000.0)
+            anisou_rec["u[1][2]"] = int(atm.U[1,2] * 10000.0)
 
         if atm.sig_U:
             siguij_rec = siguij()
             arlist.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
             siguij_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
-            siguij_rec["u[2][2]"] = int(atm.U[1,1] * 10000.0)
-            siguij_rec["u[3][3]"] = int(atm.U[2,2] * 10000.0)
-            siguij_rec["u[1][2]"] = int(atm.U[0,1] * 10000.0)
-            siguij_rec["u[1][3]"] = int(atm.U[0,2] * 10000.0)
-            siguij_rec["u[2][3]"] = int(atm.U[1,2] * 10000.0)
+            siguij_rec["u[1][1]"] = int(atm.U[1,1] * 10000.0)
+            siguij_rec["u[2][2]"] = int(atm.U[2,2] * 10000.0)
+            siguij_rec["u[0][1]"] = int(atm.U[0,1] * 10000.0)
+            siguij_rec["u[0][2]"] = int(atm.U[0,2] * 10000.0)
+            siguij_rec["u[1][2]"] = int(atm.U[1,2] * 10000.0)
 
         return ar_list
 

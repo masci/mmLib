@@ -73,15 +73,18 @@ class StructureBuilder:
             return
         ## /XXX
 
+        ## <really, really, required>
         name = atm_map["name"]
-        alt_loc = atm_map["alt_loc"]
-        res_name = atm_map["res_name"]
         fragment_id = atm_map["fragment_id"]
         chain_id = atm_map["chain_id"]
+        ### </really, really, required>
+        
+        res_name = atm_map.get("res_name")
+        alt_loc = atm_map.get("alt_loc", "")
 
-        atm_id = (name, alt_loc, fragment_id, chain_id)
-
+        ## form the cache ID for the atom and
         ## allocate the atom cache if it does not exist
+        atm_id = (name, alt_loc, fragment_id, chain_id)
         if not hasattr(self, "atom_cache"):
             self.atom_cache = {}
 
@@ -107,14 +110,22 @@ class StructureBuilder:
                 if c in string.letters:
                     atm.element = c
                     break
-        
-        atm.position = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
-        atm.occupancy = atm_map["occupancy"]
-        atm.temp_factor = atm_map["temp_factor"]
+
+        try: atm.position = Vector(atm_map["x"],atm_map["y"],atm_map["z"])
+        except KeyError: pass
+
+        try: atm.occupancy = atm_map["occupancy"]
+        except KeyError: pass
+
+        try: atm.temp_factor = atm_map["temp_factor"]
+        except KeyError: pass
+
+        try: atm.charge  = atm_map["charge"]
+        except KeyError: pass
 
         try:
             atm.sig_position = Vector(
-                atm_map["sig_x"], atm_map["sig_y"], atm_map["sig_z"])
+                atm_map["sig_x"],atm_map["sig_y"],atm_map["sig_z"])
         except KeyError:
             pass
 
@@ -129,11 +140,6 @@ class StructureBuilder:
             atm.set_sig_U(atm_map["sig_U[1][1]"], atm_map["sig_U[2][2]"],
                           atm_map["sig_U[3][3]"], atm_map["sig_U[1][2]"],
                           atm_map["sig_U[1][3]"], atm_map["sig_U[2][3]"])
-        except KeyError:
-            pass
-
-        try:
-            atm.charge  = atm_map["charge"]
         except KeyError:
             pass
 
@@ -282,25 +288,58 @@ class StructureBuilder:
         """
         pass
 
+    def setmap(self, conv_func, smap, skey, dmap, dkey, default = None):
+        """The setmap methods are meant to help with the creation of the
+        maps passed into the load_* methods of this class.  The smap[skey]
+        is the data source, and dmap[dkey] is the data destination.  If
+        a default value is given, then the dmap[dkey] is set to that value
+        if the smap[skey] does not exist.  The conv_func is used to convert
+        the smap[skey] data before setting dmap[dkey].  The skey can also
+        be a list of keys to try instead of a single key.  Returns True
+        if dmap[dkey] is set, otherwise this method returns False.
+        """
+        src_key = None
 
-def setmap(func, map, key, row, default, *cols):
-    for col in cols:
-        if row.has_key(col):
-            map[key] = func(row[col])
+        if type(skey) == StringType:
+            if smap.has_key(skey):
+                src_key = skey
+
+        elif type(skey) == ListType:
+            for key in skey:
+                if smap.has_key(key):
+                    src_key = key
+                    break
+
+        if src_key != None:
+            data = smap[src_key]
+            try:
+                data = conv_func(data)
+            except ValueError:
+                debug("setmap() bad value for conv_func: %s" % (data))
+                return False
+            dmap[dkey] = data
             return True
-    if default != None:
-        map[key] = default
-        return True
-    return False
 
-def setmaps(map, key, row, default, *cols):
-    return setmap(str, map, key, row, default, *cols)
+        elif default != None:
+            dmap[dkey] = default
+            return True
 
-def setmapi(map, key, row, default, *cols):
-    return setmap(int, map, key, row, default, *cols)
+        return False
 
-def setmapf(map, key, row, default, *cols):
-    return setmap(float, map, key, row, default, *cols)
+    def setmaps(self, smap, skey, dmap, dkey, default = None):
+        """Calls setmap with a conv_func of str().
+        """
+        return self.setmap(str, smap, skey, dmap, dkey, default)
+
+    def setmapi(self, smap, skey, dmap, dkey, default = None):
+        """Calls setmap with a conv_func of int().
+        """
+        return self.setmap(int, smap, skey, dmap, dkey, default)
+
+    def setmapf(self, smap, skey, dmap, dkey, default = None):
+        """Calls setmap with a conv_func of float().
+        """
+        return self.setmap(float, smap, skey, dmap, dkey, default)
 
 
 class CopyStructureBuilder(StructureBuilder):
@@ -401,29 +440,29 @@ class PDBStructureBuilder(StructureBuilder):
             self.load_unit_cell(ucell_map)
 
     def process_ATOM(self, atm_map, rec):
-        setmaps(atm_map, "name", rec, None, "name")
-        setmaps(atm_map, "element", rec, None, "element")
-        setmaps(atm_map, "alt_loc", rec, None, "altLoc")
-        setmaps(atm_map, "res_name", rec, None, "resName")
-        setmaps(atm_map, "chain_id", rec, None, "chain_id")
+        self.setmaps(rec, "name", atm_map, "name")
+        self.setmaps(rec, "element", atm_map, "element")
+        self.setmaps(rec, "altLoc", atm_map, "alt_loc")
+        self.setmaps(rec, "resName", atm_map, "res_name")
+        self.setmaps(rec, "chainID", atm_map, "chain_id")
 
         fragment_id = self.get_fragment_id(rec)
         if fragment_id != None:
             atm_map["fragment_id"] = fragment_id
             
-        setmapf(atm_map, "x", rec, None, "x")
-        setmapf(atm_map, "x", rec, None, "x")
-        setmapf(atm_map, "x", rec, None, "x")
-        setmapf(atm_map, "occupancy", rec, None, "occupancy")
-        setmapf(atm_map, "temp_factor", rec, None, "tempFactor")
-        setmapf(atm_map, "charge", rec, None, "charge")
+        self.setmapf(rec, "x", atm_map, "x")
+        self.setmapf(rec, "y", atm_map, "y")
+        self.setmapf(rec, "z", atm_map, "z")
+        self.setmapf(rec, "occupancy", atm_map, "occupancy")
+        self.setmapf(rec, "tempFactor", atm_map, "temp_factor")
+        self.setmapf(rec, "charge", atm_map, "charge")
 
     def process_SIGATM(self, atm_map, rec):
-        setmapf(atm_map, "sig_x", rec, None, "sigX")
-        setmapf(atm_map, "sig_x", rec, None, "sigY")
-        setmapf(atm_map, "sig_x", rec, None, "sigZ")
-        setmapf(atm_map, "sig_occupancy", rec, None, "sigOccupancy")
-        setmapf(atm_map, "sig_temp_factor", rec, None, "sigTempFactor")
+        self.setmapf(rec, "sigX", atm_map, "sig_x")
+        self.setmapf(rec, "sigY", atm_map, "sig_y")
+        self.setmapf(rec, "sigZ", atm_map, "sig_z")
+        self.setmapf(rec, "sigOccupancy", atm_map, "sig_occupancy")
+        self.setmapf(rec, "sigTempFactor", atm_map, "sig_temp_factor")
 
     def process_ANISOU(self, atm_map, rec):
         atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
@@ -449,7 +488,7 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["beta"] = rec["beta"]
         ucell_map["gamma"] = rec["gamma"]
         ucell_map["sgroup"] = rec["sgroup"]
-        ucell_map["z"] = rec["z"]
+        ucell_map["z"] = rec.get("z", "")
 
     def process_SITE(self, site_map, rec):
         site_id = rec["siteID"]
@@ -476,8 +515,9 @@ class PDBStructureBuilder(StructureBuilder):
         bond_map["fragment_id1"] = self.get_fragment_id(rec,"seqNum1","iCode1")
         bond_map["chain_id2"] = rec["chainID2"]
         bond_map["fragment_id2"] = self.get_fragment_id(rec,"seqNum2","iCode2")
-        setmaps(bond_map, "symop1", rec, None, "sym1")
-        setmaps(bond_map, "symop2", rec, None, "sym2")
+
+        self.setmaps(rec, "sym1", bond_map, "symop1")
+        self.setmaps(rec, "sym2", bond_map, "symop2")
 
     def process_LINK(self, bond_map, rec):
         pass
@@ -496,6 +536,38 @@ class PDBStructureBuilder(StructureBuilder):
 class mmCIFStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file.
     """
+    def setmap(self, conv_func, smap, skey, dmap, dkey, default = None):
+        """mmCIF files have those annoying question marks which we want
+        to treat as no data.
+        """
+        src_key = None
+        
+        if type(skey) == StringType:
+            if smap.has_key(skey):
+                src_key = skey
+
+        elif type(skey) == ListType:
+            for key in skey:
+                if smap.has_key(key) and smap[key] != "?":
+                    src_key = key
+                    break
+
+        if src_key != None:
+            data = smap[src_key]
+            try:
+                data = conv_func(data)
+            except ValueError:
+                debug("setmap() bad value for conv_func: %s" % (data))
+                return False
+            dmap[dkey] = data
+            return True
+
+        elif default != None:
+            dmap[dkey] = default
+            return True
+
+        return False
+
     def read_start(self, fil):
         self.cif_file = mmCIF.mmCIFFile()
         self.cif_file.load_file(fil)
@@ -506,20 +578,38 @@ class mmCIFStructureBuilder(StructureBuilder):
     def read_atoms(self):
         for atom_site in self.cif_data["atom_site"]:
             atm_map = {}
-            setmaps(atm_map, "name", atom_site, None, "label_atom_id")
-            setmaps(atm_map, "alt_loc", atom_site, None, "label_alt_id")
-            setmaps(atm_map, "res_name", atom_site, None, "auth_comp_id",
-                   "label_comp_id")
-            setmaps(atm_map, "fragment_id", atom_site, None, "auth_seq_id",
-                   "label_seq_id")
-            setmaps(atm_map, "chain_id", atom_site, None, "auth_asym_id",
-                    "label_asym_id")
-            setmaps(atm_map, "element", atom_site, None, "type_symbol")
-            setmapf(atm_map, "x", atom_site, None, "Cartn_x") 
-            setmapf(atm_map, "y", atom_site, None, "Cartn_y") 
-            setmapf(atm_map, "z", atom_site, None, "Cartn_z")
-            setmapf(atm_map, "occupancy", atom_site, None, "occupancy")
-            setmapf(atm_map, "temp_factor", atom_site, None, "B_iso_or_equiv")
+            
+            self.setmaps(atom_site, ["auth_atom_id","label_atom_id"],
+                         atm_map, "name")
+
+            self.setmaps(atom_site, ["auth_alt_id","label_alt_id"],
+                         atm_map, "alt_loc")
+
+            self.setmaps(atom_site, ["auth_comp_id","label_comp_id"],
+                         atm_map, "res_name")
+
+            self.setmaps(atom_site, ["auth_seq_id","label_seq_id"],
+                         atm_map, "fragment_id")
+
+            self.setmaps(atom_site, ["auth_asym_id","label_asym_id"],
+                         atm_map, "chain_id")
+
+            self.setmaps(atom_site, "type_symbol", atm_map, "element")
+
+            self.setmapf(atom_site, "Cartn_x", atm_map, "x")
+            self.setmapf(atom_site, "Cartn_y", atm_map, "y")
+            self.setmapf(atom_site, "Cartn_z", atm_map, "z")
+            self.setmapf(atom_site, "occupancy", atm_map, "occupancy")
+            self.setmapf(atom_site, "B_iso_or_equiv", atm_map, "temp_factor")
+
+            self.setmapf(atom_site, "Cartn_x_esd", atm_map, "sig_x")
+            self.setmapf(atom_site, "Cartn_y_esd", atm_map, "sig_y")
+            self.setmapf(atom_site, "Cartn_z_esd", atm_map, "sig_z")
+            self.setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
+            self.setmapf(atom_site, "B_iso_or_equiv_esd",
+                         atm_map, "sig_temp_factor")
+            
+            self.setmapi(atom_site, "pdbx_PDB_model_num", atm_map, "model_num")
 
             if self.cif_data.has_key("atom_site_anisotrop"):
                 ctable = self.cif_data["atom_site_anisotrop"]
@@ -528,24 +618,23 @@ class mmCIFStructureBuilder(StructureBuilder):
                 except ValueError:
                     pass
                 else:
-                    setmapf(atm_map, "U[1][1]", atom_site, None, "U[1][1]")
-                    setmapf(atm_map, "U[2][2]", atom_site, None, "U[2][2]")
-                    setmapf(atm_map, "U[3][3]", atom_site, None, "U[3][3]")
-                    setmapf(atm_map, "U[1][2]", atom_site, None, "U[1][2]")
-                    setmapf(atm_map, "U[1][3]", atom_site, None, "U[1][3]")
-                    setmapf(atm_map, "U[2][3]", atom_site, None, "U[2][3]")
+                    self.setmapf(aniso, "U[1][1]", atm_map, "U[1][1]")
+                    self.setmapf(aniso, "U[2][2]", atm_map, "U[2][2]")
+                    self.setmapf(aniso, "U[3][3]", atm_map, "U[3][3]")
+                    self.setmapf(aniso, "U[1][2]", atm_map, "U[1][2]")
+                    self.setmapf(aniso, "U[1][3]", atm_map, "U[1][3]")
+                    self.setmapf(aniso, "U[2][3]", atm_map, "U[2][3]")
 
-            setmapi(atm_map, "model_num", atom_site, None,"pdbx_PDB_model_num")
+                    self.setmapf(aniso, "U[1][1]_esd", atm_map, "sig_U[1][1]")
+                    self.setmapf(aniso, "U[2][2]_esd", atm_map, "sig_U[2][2]")
+                    self.setmapf(aniso, "U[3][3]_esd", atm_map, "sig_U[3][3]")
+                    self.setmapf(aniso, "U[1][2]_esd", atm_map, "sig_U[1][2]")
+                    self.setmapf(aniso, "U[1][3]_esd", atm_map, "sig_U[1][3]")
+                    self.setmapf(aniso, "U[2][3]_esd", atm_map, "sig_U[2][3]")
 
             self.load_atom(atm_map)
 
     def read_metadata(self):
-        def cifattr(cif_row, attr, default = ""):
-            val = cif_row.get(attr, default)
-            if val == "?" or val == ".":
-                val = ""
-            return val
-
         ## PDB ENTRY ID
         try: entry_id = self.cif_data["entry"][0]["id"]
         except KeyError: debug("missing entry.id")
