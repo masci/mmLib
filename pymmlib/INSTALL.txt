@@ -187,7 +187,8 @@ PYTHONPATH environment variable.  For example, to unpack mmLib and run the
 example programs and applications:
 
 # tar xzf pymmlib-0.9.tar.gz
-# export PYTHONPATH=/home/jpaint/pymmlib-0.9
+# export PYTHONPATH=/home/jpaint/pymmlib-0.9:\
+                    /home/jpaint/pymmlib-0.9/build/lib.<your arch>/mmLib
 # cd pymmlib-0.9/tests
 # python mmlib_test.py /home/jpaint/myfile.[pdb|cif]
 
