@@ -681,7 +681,22 @@ class mmCIFFileParser(object):
         else:
             fil_size_bytes = 1304189
 
-        file_iter = iter(fil)
+        ## do we have fast Python, or slow Python?
+        try:
+            file_iter = iter(fil)
+        except TypeError:
+            class FileIter(object):
+                def __init__(self, fil):
+                    self.fil = fil
+                def next(self):
+                    ln = self.fil.readline()
+                    if ln=="":
+                        raise StopIteration
+                    else:
+                        return ln
+
+            file_iter = FileIter(fil)
+
         while 1:
             try:
                 ln = file_iter.next()

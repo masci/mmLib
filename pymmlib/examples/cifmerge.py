@@ -5,6 +5,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+from __future__ import generators
 import sys
 import getopt
 import copy
@@ -949,7 +950,7 @@ class UsageException(Exception):
 
 
 def usage():
-    print 'cifmerge.py - A utility for intelligent merging and manipuation of'
+    print 'cifmerge.py - A utility for intelligent merging and manipulation of'
     print '              mmCIF files by utilizing linked data definitions'
     print '              found in  mmCIF dictionaries.'
     print
