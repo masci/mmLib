@@ -206,9 +206,9 @@ class StructureBuilder(object):
                     self.struct[chain_id]
                 except KeyError:
                     return chain_id
-
-            print "NO MORE CHAIN NAMES"
-            sys.exit(1)
+                
+            warning("name_service: exhausted PDB-allowed chain ids")
+            return None
 
         ## cr = (chain_id, res_name)
         ##
@@ -270,6 +270,9 @@ class StructureBuilder(object):
         ## free self.name_service_list and other vars to save some memory
         del self.name_service_list
 
+        new_chain_id    = None
+        fragment_id_num = None
+
         for cr_key in cr_key_list:
             ### debug
             debug("name_service: chain_id / res_name keys")
@@ -279,7 +282,16 @@ class StructureBuilder(object):
 
             ## get the next chain ID, use the cfr group's
             ## loaded chain_id if possible
-            new_chain_id = next_chain_id(cr_key[0])
+            chain_id = next_chain_id(cr_key[0])
+
+            ## if we are not out of chain IDs, use the new chain ID and
+            ## reset the fragment_id
+            if chain_id != None:
+                new_chain_id = chain_id
+                fragment_id_num = 0
+            elif new_chain_id == None or fragment_id_num == None:
+                print "name_service: unable to assign any chain ids"
+                sys.exit(1)
 
             ## get model dictionary
             model_dict = cr_dict[cr_key]
@@ -305,7 +317,7 @@ class StructureBuilder(object):
             ## now iterate through the fragment lists in parallel and assign
             ## the new chain_id and fragment_id
             for i in range(max_frags):
-                new_fragment_id = str(i+1)
+                fragment_id_num += 1
                 
                 for frag_list in model_dict.values():
                     try:
@@ -317,7 +329,7 @@ class StructureBuilder(object):
                     ## atom in the structure
                     for atm in frag:
                         atm.chain_id = new_chain_id
-                        atm.fragment_id = new_fragment_id
+                        atm.fragment_id = str(fragment_id_num)
                         self.place_atom(atm)
 
     def read_atoms_finalize(self):
