@@ -36,27 +36,22 @@ class UnitCell(object):
             self.alpha = math.radians(alpha) 
             self.beta  = math.radians(beta)
             self.gamma = math.radians(gamma)
-
         elif angle_units == "rad":
             self.alpha = alpha
             self.beta  = beta
             self.gamma = gamma
 
-        self.space_group = GetSpaceGroup(space_group)
-
+        self.space_group  = GetSpaceGroup(space_group)
         self.orth_to_frac = self.calc_fractionalization_matrix()
         self.frac_to_orth = self.calc_orthogonalization_matrix()
 
+        ## check our math!
         assert allclose(self.orth_to_frac, inverse(self.frac_to_orth))
-        print self
-
-        print self.frac_to_orth
-
 
     def __str__(self):
-        alpha = self.alpha * rad2deg
-        beta = self.beta * rad2deg
-        gamma = self.gamma * rad2deg
+        alpha = math.degrees(self.alpha)
+        beta  = math.degrees(self.beta)
+        gamma = math.degrees(self.gamma)
 
         return "UnitCell(a=%f, b=%f, c=%f, alpha=%f, beta=%f, gamma=%f)" % (
             self.a, self.b, self.c, alpha, beta, gamma)
@@ -64,17 +59,17 @@ class UnitCell(object):
     def calc_alpha_deg(self):
         """Returns the alpha angle in degrees.
         """
-        return self.alpha * rad2deg
+        return math.degrees(self.alpha)
     
     def calc_beta_deg(self):
         """Returns the beta angle in degrees.
         """
-        return self.beta * rad2deg
+        return math.degrees(self.beta)
 
     def calc_gamma_deg(self):
         """Returns the gamma angle in degrees.
         """
-        return self.gamma * rad2deg
+        return math.degrees(self.gamma)
 
     def calc_v(self):
         """Calculates the volume of the rhombohedrial created by the
@@ -184,52 +179,25 @@ class UnitCell(object):
         """
         return matrixmultiply(self.frac_to_orth, v)
 
-    def calc_symop_RT_old(self, symop):
-        ## rotation matrix
-        x1 = self.calc_orth_to_frac(array([1.0, 0.0, 0.0]))
-        y1 = self.calc_orth_to_frac(array([0.0, 1.0, 0.0]))
-        z1 = self.calc_orth_to_frac(array([0.0, 0.0, 1.0]))
-
-        x2 = matrixmultiply(symop[0], x1)
-        y2 = matrixmultiply(symop[0], y1)
-        z2 = matrixmultiply(symop[0], z1)
-
-        x3 = self.calc_frac_to_orth(x2)
-        y3 = self.calc_frac_to_orth(y2)
-        z3 = self.calc_frac_to_orth(z2)
-
-        R = array([ [x3[0], y3[0], z3[0]],
-                    [x3[1], y3[1], z3[1]],
-                    [x3[2], y3[2], z3[2]] ])
-
-        ## translation matrix
-        T = self.calc_frac_to_orth(symop[1])
-
-        x  = "[%6.3f %6.3f %6.3f %6.3f]\n" % (
-            R[0,0], R[0,1], R[0,2], T[0])
-        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
-            R[1,0], R[1,1], R[1,2], T[1])
-        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
-            R[2,0], R[2,1], R[2,2], T[2])
-
-        return R, T
-
-    def calc_symop_RT(self, symop):
-        R = matrixmultiply(
-            self.frac_to_orth,
-            matrixmultiply(symop[0], self.orth_to_frac))
-
-        T = matrixmultiply(self.frac_to_orth, symop[1])
-
-        return R, T
-    
-    def calc_xyz_coords(self, atom_list, symop):
+    def calc_orth_symop(self, symop):
+        """Calculates the orthogonal space symmetry operation (return SymOp)
+        given a fractional space symmetry operation (argument SymOp).
         """
+        RF  = matrixmultiply(symop.R, self.orth_to_frac)
+        ORF = matrixmultiply(self.frac_to_orth, RF)
+        Ot  = matrixmultiply(self.frac_to_orth, symop.t)
+        return SymOp(ORF, Ot)
+
+    def calc_orth_symop2(self, symop):
+        """Calculates the orthogonal space symmetry operation (return SymOp)
+        given a fractional space symmetry operation (argument SymOp).
         """
-        xyz_dict = {}
-        for atm in atom_list:
-            xyz_dict[atm] = symop(self.calc_orth_to_frac(atm.position))
-        return xyz_dict
+        RF  = matrixmultiply(symop.R, self.orth_to_frac)
+        ORF = matrixmultiply(self.frac_to_orth, RF)
+        Rt  = matrixmultiply(symop.R, symop.t)
+        ORt = matrixmultiply(self.frac_to_orth, Rt)
+        
+        return SymOp(ORF, ORt)
 
     def calc_cell(self, xyz):
         """Returns the cell integer 3-Tuple where the xyz fractional
@@ -253,19 +221,20 @@ class UnitCell(object):
         return (cx, cy, cz)
 
     def cell_search_iter(self):
-         for i in (-1.0, 0.0, 1.0):
-                for j in (-1.0, 0.0, 1.0):
-                    for k in (-1.0, 0.0, 1.0):
-                        yield i, j, k
-
-    def iter_RT(self, struct):
+        """Yields 3-tuple integer translations over a 3x3x3 cube used by
+        other methods for searching nearby unit cells.
         """
+        for i in (-1.0, 0.0, 1.0):
+            for j in (-1.0, 0.0, 1.0):
+                for k in (-1.0, 0.0, 1.0):
+                    yield i, j, k
+
+    def iter_struct_orth_symops(self, struct):
+        """Given a structure, iterates over all orthogonal space symmetry
+        operations which fill out crystal unit cell 1,1,1 using the atoms
+        in the given Structure.
         """
-        print "===================================="
-
-        
-        atom_list = list(struct.iter_atoms())
-
+        atom_list = list(struct.iter_all_atoms())
         fill_cell = (1,1,1)
 
         for symop in self.space_group.iter_symops():
@@ -276,39 +245,53 @@ class UnitCell(object):
             for i, j, k in self.cell_search_iter():
                 cell_tra = array([i, j, k])
 
-                print "## shifting translation = %s" % (str(cell_tra))
-                s2 = SymOp((symop[0], symop[1] + cell_tra))
+                #print "## shifting translation = %s" % (str(cell_tra))
+
+                symop_t = SymOp(symop.R, symop.t + cell_tra)
 
                 in_target = False
 
                 for atm in atom_list:
-                    xyz       = s2(self.calc_orth_to_frac(atm.position))
-                    calc_cell = self.calc_cell(xyz)
+                    xyz       = self.calc_orth_to_frac(atm.position)
+                    xyz_symm  = symop_t(xyz)
+                    calc_cell = self.calc_cell(xyz_symm)
+
+                    orth_symop = self.calc_orth_symop(symop_t)
+
+                    assert allclose(
+                        self.calc_frac_to_orth(xyz_symm),
+                        orth_symop(atm.position))
 
                     if calc_cell==fill_cell:
                         in_target = True
+
+                        ## <debug>
+##                         print "## fill_cell=%s calc_cell=%s" % (
+##                             str(fill_cell), str(calc_cell))
                         
-                        print "## fill_cell=%s calc_cell=%s" % (str(fill_cell), str(calc_cell))
+##                         orth_symop = self.calc_orth_symop(symop_t)
+
+##                         print "## Orthogonal SymOp"
+##                         print orth_symop
+
+##                         symm_atm_pos = orth_symop(atm.position)
                         
-                        R, T  = self.calc_symop_RT(s2)
+##                         print "## pos=%s xyz=%s:%s sym=%s" % (
+##                             str(atm.position),
+##                             str(xyz),
+##                             str(self.calc_frac_to_orth(xyz)),
+##                             str(symm_atm_pos))
+                        ## </debug>
 
-                        print "## R,T"
-                        print strRT(R, T)
+                        #break
 
-                        atm_pos = matrixmultiply(R, atm.position) + T
-                        print "## pos=%s xyz=%s:%s sym=%s" % (
-                            str(atm.position),
-                            str(xyz),
-                            str(self.calc_frac_to_orth(xyz)),
-                            str(atm_pos))
-
-                        break
-
-                    
                 if in_target==True:
-                    yield self.calc_symop_RT(s2)
+                    yield self.calc_orth_symop(symop_t)
+
 
 def strRT(R, T):
+    """Returns a string for a rotation/translation pair in a readable form.
+    """
     x  = "[%6.3f %6.3f %6.3f %6.3f]\n" % (
         R[0,0], R[0,1], R[0,2], T[0])
     x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
@@ -317,7 +300,8 @@ def strRT(R, T):
         R[2,0], R[2,1], R[2,2], T[2])
     
     return x
-        
+
+
 ## <testing>
 def main():
     print "================================================="
@@ -373,30 +357,27 @@ def main():
     
     print "================================================="
 
+    print
 
-##     ## a more interesting space group
-##     unitx = UnitCell(a=64.950,
-##                      b=64.950,
-##                      c=68.670,
-##                      alpha=90.00,
-##                      beta=90.00,
-##                      gamma=120.00,
-##                      space_group="P 32 2 1")
+    print "================================================="
+    print "TEST CASE #3: Orthogonal space symmetry operations"
 
+    unitx = UnitCell(a           = 64.950,
+                     b           = 64.950,
+                     c           = 68.670,
+                     alpha       = 90.00,
+                     beta        = 90.00,
+                     gamma       = 120.00,
+                     space_group = "P 32 2 1")
+    print unitx
+    print
 
-##     print "================================================="
-##     print unitx
-##     print
-
-##     print unitx.frac_to_orth
-
-##     for symop in unitx.space_group.iter_symops():
-##         print "SYMOP:"
-##         print symop
-##         print "REAL:"
-##         print
-##         unitx.calc_rot_tra(symop)
-##         print
+    for symop in unitx.space_group.iter_symops():
+        print "Fractional Space SymOp:"
+        print symop
+        print "Orthogonal Space SymOp:"
+        print unitx.calc_orth_symop(symop)
+        print
 
 if __name__=="__main__":
     main()

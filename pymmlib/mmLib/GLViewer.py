@@ -14,6 +14,8 @@ from Structure   import *
 from Extensions.TLS import *
 
 
+## <hack>
+
 GL_MATERIALS = [
     { "name":         "emerald",
       "GL_AMBIENT":   (0.0215, 0.1745, 0.0215),
@@ -129,6 +131,7 @@ GL_MATERIALS_DICT = {}
 for gl_material in GL_MATERIALS:
     GL_MATERIALS_DICT[gl_material["name"]] = gl_material
     
+## </hack>
 
 
 class GLPropertyDict(dict):
@@ -399,9 +402,6 @@ class GLObject(object):
                 self.properties[name] = args[name]
             except KeyError:
                 pass
-           # else:
-           #     print "## glo_init_properties(%s) %s=%s" % (
-           #         str(self.__globject_properties_id), name, str(self.properties[name]))
 
             try:
                 linked_props = prop_desc["link"]
@@ -420,7 +420,6 @@ class GLObject(object):
                 for gl_object in self.glo_iter_preorder_traversal():
                     gl_object.glo_init_properties(**child_args)
 
-
     def glo_update_properties(self, **args):
         """Update property values and trigger update callbacks.
         """        
@@ -438,9 +437,6 @@ class GLObject(object):
                 continue
 
             if self.properties[name]!=old_value:
-                #print "## glo_update_properties(%s) %s=%s" % (
-                #    str(self.__globject_properties_id), name, str(self.properties[name]))
-                
                 updates[name] = self.properties[name]
                 if prop_desc["action"] not in actions:
                     actions.append(prop_desc["action"])
@@ -794,14 +790,17 @@ class GLUnitCell(GLDrawList):
         #self.draw_sphere()
 
 
-class GLAtomList(GLDrawList, AtomList):
+class GLAtomList(GLDrawList):
     """OpenGL renderer for a list of atoms.  Optional arguments iare:
     color, U, U_color.
     """
     def __init__(self, **args):
         GLDrawList.__init__(self, **args)
-        AtomList.__init__(self)
+
+        self.atom_list      = AtomList()
         self.el_color_cache = {}
+        self.symop          = None
+
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
@@ -830,6 +829,12 @@ class GLAtomList(GLDrawList, AtomList):
               "desc":       "Draw Atom Bond Lines",
               "type":       "boolean",
               "default":    True,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "trace",
+              "desc":       "Draw Backbone Trace",
+              "type":       "boolean",
+              "default":    False,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "cpk",
@@ -878,7 +883,7 @@ class GLAtomList(GLDrawList, AtomList):
               "type":      "boolean",
               "default":   True,
               "action":    "recompile" })
-        
+
     def gl_call_list(self):
         """Specialized draw list invokation to recycle the draw list for
         symmetry related copies.  Cartesian versions of the symmetry rotation
@@ -890,45 +895,63 @@ class GLAtomList(GLDrawList, AtomList):
             GLDrawList.gl_call_list(self)
             return
 
-        for (R, T) in gl_struct.iter_RT():
+        for symop in gl_struct.iter_orth_symops():
 
 ##             import random
-##             self.properties["color"] = (random.random(), random.random(), random.random())
+##             color = (random.random(), random.random(), random.random())
+##             if allclose(symop.R, identity(3)):
+##                 continue
 
-##             if allclose(R, identity(3)):
-##                 self.properties["color"] = (1.0, 1.0, 1.0)
+##             save = {}
+##             for atm in self.atom_list:
+##                 save[atm] = atm.position
+##                 atm.position = symop(atm.position)
 
+##             self.draw_trace(color)
 
-##             for atm in self:
-##                 save = atm.position
-##                 atm.position = matrixmultiply(R, atm.position) + T
-##                 self.draw_cross(atm)
-##                 atm.position = save
+##             for atm in self.atom_list:
+##                 atm.position = save[atm]
             
             glPushMatrix()
 
             if self.properties["atom_origin"]!=None:
-                glTranslatef(*T - self.properties["atom_origin"])
-            else:
-                glTranslatef(*T)
+                glTranslatef(* -self.properties["atom_origin"])
 
             glMultMatrixf(
-                (R[0,0], R[0,1], R[0,2], 0.0,
-                 R[1,0], R[1,1], R[1,2], 0.0,
-                 R[2,0], R[2,1], R[2,2], 0.0,
-                    0.0,    0.0,    0.0, 1.0 ) )
-            
+                (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
+                 symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
+                 symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
+                 symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
+
             if self.properties["atom_origin"]!=None:
                 glTranslatef(*self.properties["atom_origin"])
 
+            #self.draw_trace(color, 2.0)
             GLDrawList.gl_call_list(self)
 
             glPopMatrix()
 
-    def gl_draw(self):
+    def gl_draw_old(self):
         """Perform the OpenGL drawing operations to render this atom list
         with the current settings.
         """
+        if self.properties["symmetry"]==True:
+            gl_struct = self.glo_get_glstructure()
+
+            if gl_struct==None:
+                self.draw_all()
+            else:
+                for symop in gl_struct.iter_orth_symops():
+                    self.symop = symop
+                    self.draw_all()
+
+        else:
+            self.draw_all()
+
+    def gl_draw(self):
+        """Draw all selected representations.
+        """
+        ## per-atom draw functions
         draw_funcs = []
         
         if self.properties["lines"]==True:
@@ -938,9 +961,22 @@ class GLAtomList(GLDrawList, AtomList):
         if self.properties["U"]==True:
             draw_funcs.append(self.draw_U_axes)
 
-        for atm in self:
+        for atm in self.atom_list:
             for draw_func in draw_funcs:
                 draw_func(atm)
+
+        ## drawing functions requiring neighboring atoms
+        if self.properties["trace"]==True:
+            self.draw_trace()
+
+    def calc_position(self, pos):
+        """
+        """
+        if self.properties["atom_origin"]!=None:
+            pos = pos - self.properties["atom_origin"]
+        #if self.symop!=None:
+        #    pos = self.symop(pos)
+        return pos
                 
     def get_color(self, atm):
         """Sets the open-gl color for the atom.
@@ -970,7 +1006,6 @@ class GLAtomList(GLDrawList, AtomList):
                 self.el_color_cache[atm.element] = color
                 return color
 
-                
     def draw_cpk(self, atm):
         """Draw a atom as a CPK sphere.
         """
@@ -980,8 +1015,6 @@ class GLAtomList(GLDrawList, AtomList):
         else:
             radius = 2.0
 
-        glEnable(GL_LIGHTING)
-
         r, g, b = self.get_color(atm)
         a       = self.properties["cpk_opacity"]
 
@@ -989,93 +1022,102 @@ class GLAtomList(GLDrawList, AtomList):
         diffuse  = ambient
         specular = ambient * 1.25
         
+        sphere_quality = self.properties["sphere_quality"]
+
+        glEnable(GL_LIGHTING)
+        
 	glMaterial(GL_FRONT, GL_AMBIENT,   ambient)
 	glMaterial(GL_FRONT, GL_DIFFUSE,   diffuse)
 	glMaterial(GL_FRONT, GL_SPECULAR,  specular)
 	glMaterial(GL_FRONT, GL_SHININESS, 50.0)
         
         glPushMatrix()
-        if self.properties["atom_origin"]!=None:
-            glTranslatef(*atm.position - self.properties["atom_origin"])
-        else:
-            glTranslatef(*atm.position)
-
-        sphere_quality = self.properties["sphere_quality"]
+        glTranslatef(*self.calc_position(atm.position))
         glutSolidSphere(radius, sphere_quality, sphere_quality)
         glPopMatrix()
 
     def draw_lines(self, atm):
         """Draw a atom using bond lines only.
         """
-        glColor3f(*self.get_color(atm))
+        pos = self.calc_position(atm.position)
 
-        if self.properties["atom_origin"]!=None:
-            position = atm.position - self.properties["atom_origin"]
-        else:
-            position = atm.position
-        
-        glLineWidth(self.properties["line_width"])
         glDisable(GL_LIGHTING)
+        glColor3f(*self.get_color(atm))
+        glLineWidth(self.properties["line_width"])
         
         ## if there are bonds, then draw the lines 1/2 way to the
         ## bonded atoms
         if len(atm.bond_list) > 0:
+            glBegin(GL_LINES)
+            
             for bond in atm.iter_bonds():
                 atm2 = bond.get_partner(atm)
+                pos2 = self.calc_position(atm2.position)
 
-                start = position
-                end   = start + ((atm2.position - atm.position) / 2)
+                start = pos
+                end   = start + ((pos2 - pos) / 2)
 
-                glBegin(GL_LINES)
                 glVertex3f(*start)
                 glVertex3f(*end)
-                glEnd()
+
+            glEnd()
 
         ## if there are no bonds, draw a small cross-point 
         else:
             self.draw_cross(atm)
-            glEnable(GL_LIGHTING)
             self.draw_cpk(atm)
 
     def draw_cross(self, atm):
         """Draws atom with a cross of lines.
         """
-        glColor3f(*self.get_color(atm))
-        if self.properties["atom_origin"]!=None:
-            position = atm.position - self.properties["atom_origin"]
-        else:
-            position = atm.position
-        
-        glLineWidth(self.properties["line_width"])
+        position = self.calc_position(atm.position)
+
         glDisable(GL_LIGHTING)
+        glColor3f(*self.get_color(atm))        
+        glLineWidth(self.properties["line_width"])
 
         vx = array([0.25, 0.0,  0.0])
         vy = array([0.0,  0.25, 0.0])
         vz = array([0.0,  0.0,  0.25])
+
+        glBegin(GL_LINES)
         
         start = position - vx
         end   = position + vx
-        glBegin(GL_LINES)
         glVertex3f(*start)
         glVertex3f(*end)
-        glEnd()
         
         start = position - vy
         end   = position + vy
-        glBegin(GL_LINES)
         glVertex3f(*start)
         glVertex3f(*end)
-        glEnd()
         
         start = position - vz
         end   = position + vz
-        glBegin(GL_LINES)
         glVertex3f(*start)
         glVertex3f(*end)
+
+        glEnd()
+
+    def draw_trace(self, color=(1.0, 1.0, 1.0), line_width=5.0):
+        """Draws trace over all CA atoms.
+        """
+        glDisable(GL_LIGHTING)
+        glColor3f(*color)
+        glLineWidth(self.properties["line_width"])
+        glLineWidth(line_width)
+        
+        glBegin(GL_LINE_STRIP)
+
+        for atm in self.atom_list:
+            if atm.name in ["N", "CA", "C"]:
+                glVertex3f(*self.calc_position(atm.position))
+
         glEnd()
 
     def draw_U_axes(self, atm):
-        """Draw the anisotropic axies of the atom with root mean square
+        """Draw the anisotropic axies of the atom with R.M.S.*sqrt(2)
+        magnitude.
         """
         U = getattr(atm, self.properties["atm_U_attr"], None)
         if U==None:
@@ -1091,81 +1133,34 @@ class GLAtomList(GLDrawList, AtomList):
         v1 = eigen_vectors[1] * v1_peak
         v2 = eigen_vectors[2] * v2_peak
 
-        if self.properties["atom_origin"]:
-            position = atm.position - self.properties["atom_origin"]
-        else:
-            position = atm.position
+        position = self.calc_position(atm.position)
 
-        glColor3f(*self.properties["U_color"])
 
-        glLineWidth(1.0)
         glDisable(GL_LIGHTING)
+        glColor3f(*self.properties["U_color"])
+        glLineWidth(1.0)
         
         glBegin(GL_LINES)
+
         glVertex3f(*position - v0)
         glVertex3f(*position + v0)
-        glEnd()
-
-        glBegin(GL_LINES)
         glVertex3f(*position - v1)
         glVertex3f(*position + v1)
-        glEnd()
-
-        glBegin(GL_LINES)
         glVertex3f(*position - v2)
         glVertex3f(*position + v2)
+
         glEnd()
 
-        glEnable(GL_LIGHTING)
 
-    def draw_U_axes_debug(self, atm):
-        """Draw the anisotropic axies of the atom with root mean square
-        """
-        U = getattr(atm, self.properties["atm_U_attr"], None)
-        if U==None:
-            return
 
-        eigen_values, eigen_vectors = eigenvectors(U)
-        if min(eigen_values)<0:
-            color = (0.0, 1.0, 0.0)
-        else:
-            color = (0.0, 0.0, 1.0)
-
-        v0_peak = 10.0 * eigen_values[0]
-        v1_peak = 10.0 * eigen_values[1]
-        v2_peak = 10.0 * eigen_values[2]
-        
-        v0 = eigen_vectors[0] * v0_peak
-        v1 = eigen_vectors[1] * v1_peak
-        v2 = eigen_vectors[2] * v2_peak
-
-        if self.properties["atom_origin"]:
-            position = atm.position - self.properties["atom_origin"]
-        else:
-            position = atm.position
-
-        glColor3f(*color)
-
-        glLineWidth(1.0)
-        glDisable(GL_LIGHTING)
-        
-        glBegin(GL_LINES)
-        glVertex3f(*position)
-        glVertex3f(*position + v0)
-        glEnd()
-
-        glBegin(GL_LINES)
-        glVertex3f(*position)
-        glVertex3f(*position + v1)
-        glEnd()
-
-        glBegin(GL_LINES)
-        glVertex3f(*position)
-        glVertex3f(*position + v2)
-        glEnd()
-
-        glEnable(GL_LIGHTING)
-
+class GLSymmetry(GLDrawListContainer):
+    """
+    """
+    def gl_call_list(self):
+        gl_struct = self.glo_get_glstructure()
+        if gl_struct==None or self.properties["symmetry"]==False:
+            glPushMatrix()
+    
 
 class GLTLSAtomList(GLAtomList):
     """
@@ -1198,6 +1193,11 @@ class GLTLSAtomList(GLAtomList):
               "default":     0.0,
               "action":      "redraw" })
 
+    def update_cb(self, updates, actions):
+        GLAtomList.update_cb(self, updates, actions)
+        if "trace" in updates:
+            self.properties.update(lines=False)
+ 
     def gl_call_list(self):
         gl_struct = self.glo_get_glstructure()
         if gl_struct==None or self.properties["symmetry"]==False:
@@ -1212,19 +1212,17 @@ class GLTLSAtomList(GLAtomList):
             glPopMatrix()
             return
 
-        for (R, T) in gl_struct.iter_RT():
+        for symop in gl_struct.iter_orth_symops():
             glPushMatrix()
 
             if self.properties["atom_origin"]!=None:
-                glTranslatef(*T - self.properties["atom_origin"])
-            else:
-                glTranslatef(*T)
-                
+                glTranslatef(* -self.properties["atom_origin"])
+
             glMultMatrixf(
-                (R[0,0], R[0,1], R[0,2], 0.0,
-                 R[1,0], R[1,1], R[1,2], 0.0,
-                 R[2,0], R[2,1], R[2,2], 0.0,
-                    0.0,    0.0,    0.0, 1.0 ) )
+                (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
+                 symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
+                 symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
+                 symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
 
             if self.properties["atom_origin"]!=None:
                 glTranslatef(*self.properties["atom_origin"])
@@ -1237,7 +1235,7 @@ class GLTLSAtomList(GLAtomList):
             GLDrawList.gl_call_list(self)
 
             glPopMatrix()
-
+                
         
 class GLTLSGroup(GLDrawListContainer):
     """Draws TLS group
@@ -1277,7 +1275,7 @@ class GLTLSGroup(GLDrawListContainer):
 
         for atm, Utls in self.tls_group.iter_atm_Ucalc():
             atm.Utls = Utls
-            self.gl_atom_list.append(atm)
+            self.gl_atom_list.atom_list.append(atm)
 
         self.gl_atom_list.glo_set_properties_id("gl_atom_list")
         self.glo_add_child(self.gl_atom_list)
@@ -1300,7 +1298,9 @@ class GLTLSGroup(GLDrawListContainer):
             "U_color", "gl_atom_list", "U_color")
         self.glo_link_child_property(
             "symmetry", "gl_atom_list", "symmetry")
-
+        self.glo_link_child_property(
+            "trace", "gl_atom_list", "trace")
+ 
         ## initalize properties
         self.glo_add_update_callback(self.tls_update_cb)
         self.glo_init_properties(
@@ -1431,7 +1431,13 @@ class GLTLSGroup(GLDrawListContainer):
               "type":        "color",
               "default":     (0.0, 1.0, 0.0),
               "action":      "redraw" })
-        
+        self.glo_add_property(
+            { "name":        "trace",
+              "desc":        "CA Backbone Trace", 
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+         
     def tls_update_cb(self, updates, actions):
         if "time" in updates:
             self.update_time()
@@ -1451,17 +1457,17 @@ class GLTLSGroup(GLDrawListContainer):
             glPopMatrix()
             return
 
-        for (R, T) in gl_struct.iter_RT():
+        for symop in gl_struct.iter_orth_symops():
             glPushMatrix()
 
-            glTranslatef(*T - self.properties["origin"])
-            
-            glMultMatrixf(
-                (R[0,0], R[0,1], R[0,2], 0.0,
-                 R[1,0], R[1,1], R[1,2], 0.0,
-                 R[2,0], R[2,1], R[2,2], 0.0,
-                    0.0,    0.0,    0.0, 1.0 ) )
+            glTranslatef(*-self.properties["origin"])
 
+            glMultMatrixf(
+                (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
+                 symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
+                 symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
+                 symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
+            
             glTranslatef(*self.properties["origin"])
 
             axes = self.properties["L_eigen_vec"]
@@ -1636,23 +1642,23 @@ class GLChain(GLDrawListContainer):
             if isinstance(frag, AminoAcidResidue):
                 for atm in frag.iter_atoms():
                     if atm.name in ["C", "O", "CA", "N"]:
-                        self.aa_main_chain.append(atm)
+                        self.aa_main_chain.atom_list.append(atm)
                     else:
-                        self.aa_side_chain.append(atm)
+                        self.aa_side_chain.atom_list.append(atm)
 
             elif isinstance(frag, NucleicAcidResidue):
                 for atm in frag.iter_atoms():
-                    self.dna_main_chain.append(atm)
+                    self.dna_main_chain.atom_list.append(atm)
 
             elif frag.is_water():
                 for atm in frag.iter_atoms(): 
-                    self.water.append(atm)
+                    self.water.atom_list.append(atm)
 
             else:
                 for atm in frag.iter_atoms():
-                    self.hetatm.append(atm)
+                    self.hetatm.atom_list.append(atm)
 
-        if len(self.aa_main_chain)>0:
+        if len(self.aa_main_chain.atom_list)>0:
             self.aa_main_chain.glo_set_properties_id("aa_main_chain")
             self.glo_add_child(self.aa_main_chain)
             self.glo_link_child_property(
@@ -1660,7 +1666,7 @@ class GLChain(GLDrawListContainer):
         else:
             self.aa_main_chain = None
 
-        if len(self.aa_side_chain)>0:
+        if len(self.aa_side_chain.atom_list)>0:
             self.aa_side_chain.glo_set_properties_id("aa_side_chain")
             self.glo_add_child(self.aa_side_chain)
             self.glo_link_child_property(
@@ -1668,7 +1674,7 @@ class GLChain(GLDrawListContainer):
         else:
             self.aa_side_chain = None
 
-        if len(self.dna_main_chain)>0:
+        if len(self.dna_main_chain.atom_list)>0:
             self.dna_main_chain.glo_set_properties_id("dna_main_chain")
             self.glo_add_child(self.dna_main_chain)
             self.glo_link_child_property(
@@ -1676,7 +1682,7 @@ class GLChain(GLDrawListContainer):
         else:
             self.dna_main_chain = None
 
-        if len(self.dna_side_chain)>0:
+        if len(self.dna_side_chain.atom_list)>0:
             self.dna_side_chain.glo_set_properties_id("dna_side_chain")
             self.glo_add_child(self.dna_side_chain)
             self.glo_link_child_property(
@@ -1684,7 +1690,7 @@ class GLChain(GLDrawListContainer):
         else:
             self.dna_side_chain = None
 
-        if len(self.hetatm)>0:
+        if len(self.hetatm.atom_list)>0:
             self.hetatm.glo_set_properties_id("hetatm")
             self.glo_add_child(self.hetatm)
             self.glo_link_child_property(
@@ -1692,7 +1698,7 @@ class GLChain(GLDrawListContainer):
         else:
             self.hetatm = None
 
-        if len(self.water)>0:
+        if len(self.water.atom_list)>0:
             self.water.glo_set_properties_id("water")
             self.glo_add_child(self.water)
             self.glo_link_child_property(
@@ -1885,20 +1891,21 @@ class GLStructure(GLDrawListContainer):
         
         return chem_type_color_dict[mon.chem_type]
 
-
-    def iter_RT(self):
-        if hasattr(self, "symm_RT_cache"):
-            for R, T in self.symm_RT_cache:
-                yield R, T
-
+    def iter_orth_symops(self):
+        """Iterate orthogonal-space symmetry operations useful for
+        displaying symmetry-equivelant molecules without having to
+        calculate new draw lists.
+        """
+        if hasattr(self, "orth_symop_cache"):
+            for symop in self.orth_symop_cache:
+                yield symop
         else:
-            self.symm_RT_cache = []
-
+            self.orth_symop_cache = []
             uc = self.struct.unit_cell
 
-            for R, T in uc.iter_RT(self.struct):
-                self.symm_RT_cache.append((R, T))
-                yield R, T
+            for symop in uc.iter_struct_orth_symops(self.struct):
+                self.orth_symop_cache.append(symop)
+                yield symop
         
 
 class GLViewer(GLObject):
