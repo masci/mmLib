@@ -2,7 +2,7 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Builds a mmCIFFile object from a Structure object.
+"""Convert a Structure object into its mmCIFFile description.
 """
 from __future__ import generators
 import copy

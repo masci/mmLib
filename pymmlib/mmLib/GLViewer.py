@@ -18,7 +18,7 @@ class GLDrawList(object):
     def __init__(self):
         self.gl_name = None
         self.show    = True
-        self.origin  = Vector(0.0, 0.0, 0.0)
+        self.origin  = zeros(3, Float)
         self.axes    = identity(3)
         self.rotx    = 0.0
         self.roty    = 0.0
@@ -120,28 +120,34 @@ class GLDrawList(object):
 class GLAxes(GLDrawList):
     """Draw orthogonal axes in red = x, green = y, blue = z.
     """
-    def __init__(self):
+    def __init__(self, **args):
         GLDrawList.__init__(self)
-        self.axis_line_width = 10.0
+
+        self.line_length = args.get("line_length", 200.0)
+        self.line_width  = args.get("line_width", 10.0)
+        self.color_x     = args.get("color_x", (1.0, 0.0, 0.0))
+        self.color_y     = args.get("color_y", (0.0, 1.0, 0.0))
+        self.color_z     = args.get("color_z", (0.0, 1.0, 0.0))
 
     def gl_draw(self):
         glDisable(GL_LIGHTING)
+
+        glLineWidth(self.line_length)
         
-        def axis_line(v1, v2):
-            glLineWidth(self.axis_line_width)
+        def axis_line(u):
             glBegin(GL_LINES)
-            glVertex3f(*v1)
-            glVertex3f(*v2)
+            glVertex3f(0.0, 0.0, 0.0)
+            glVertex3f(*u)
             glEnd()
                     
-        glColor3f(1.0, 0.0, 0.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(200.0, 0.0, 0.0))
+        glColor3f(*self.color_x)
+        axis_line(array([self.line_length, 0.0, 0.0]))
 
-        glColor3f(0.0, 1.0, 0.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(1.0, 200.0, 0.0))
+        glColor3f(*self.color_y)
+        axis_line(array([0.0, self.line_length, 0.0]))
 
-        glColor3f(0.0, 0.0, 1.0)
-        axis_line(Vector(0.0, 0.0, 0.0), Vector(0.0, 0.0, 200.0))
+        glColor3f(*self.color_z)
+        axis_line(array([0.0, 0.0, self.line_length]))
 
         glEnable(GL_LIGHTING)
 
@@ -163,9 +169,9 @@ class GLUnitCell(GLDrawList):
         """
         assert x1 <= x2 and y1 <= y2 and z1 <= z2
 
-        a = self.unit_cell.calc_frac_to_orth(Vector(1.0, 0.0, 0.0))
-        b = self.unit_cell.calc_frac_to_orth(Vector(0.0, 1.0, 0.0))
-        c = self.unit_cell.calc_frac_to_orth(Vector(0.0, 0.0, 1.0))
+        a = self.unit_cell.calc_frac_to_orth(array([1.0, 0.0, 0.0]))
+        b = self.unit_cell.calc_frac_to_orth(array([0.0, 1.0, 0.0]))
+        c = self.unit_cell.calc_frac_to_orth(array([0.0, 0.0, 1.0]))
 
         glDisable(GL_LIGHTING)
         glLineWidth(self.cell_line_width)
@@ -206,7 +212,7 @@ class GLTLSGroup(GLDrawList):
 
         self.tls_group = args["tls_group"] 
         self.calcs     = self.tls_group.calc_COR()
-        self.origin    = Vector(self.calcs["COR"])
+        self.origin    = array(self.calcs["COR"])
 
         
         (eval, evec) = eigenvectors(self.tls_group.L)
@@ -274,7 +280,7 @@ class GLTLSGroup(GLDrawList):
         glLineWidth(1.0)
         
         for i in range(3):
-            v = scale * eval[i] * Vector(evec[i,0],evec[i,1],evec[i,2])
+            v = scale * eval[i] * array([evec[i,0],evec[i,1],evec[i,2]])
             glBegin(GL_LINES)
             glVertex3f(*-v)
             glVertex3f(*v)
@@ -313,7 +319,7 @@ class GLTLSGroup(GLDrawList):
 
         dS = zeros(3)
 
-        self.origin = Vector(self.calcs["COR"] + dS)
+        self.origin = array(self.calcs["COR"] + dS)
 
         self.rotx = Lx
         self.roty = Ly
@@ -443,9 +449,9 @@ class GLAtomList(GLDrawList, AtomList):
 
         ## if there are no bonds, draw a small cross-point 
         else:
-            vx = Vector(0.25, 0.0,  0.0)
-            vy = Vector(0.0,  0.25, 0.0)
-            vz = Vector(0.0,  0.0,  0.25)
+            vx = array([0.25, 0.0,  0.0])
+            vy = array([0.0,  0.25, 0.0])
+            vz = array([0.0,  0.0,  0.25])
 
             start = position - vx
             end   = position + vx
@@ -487,9 +493,9 @@ class GLAtomList(GLDrawList, AtomList):
         v1_peak = 1.414 * math.sqrt(eval[1])
         v2_peak = 1.414 * math.sqrt(eval[2])
         
-        v0 = Vector(evec[0] * v0_peak)
-        v1 = Vector(evec[1] * v1_peak)
-        v2 = Vector(evec[2] * v2_peak)
+        v0 = evec[0] * v0_peak
+        v1 = evec[1] * v1_peak
+        v2 = evec[2] * v2_peak
 
         if self.atom_origin:
             position = atm.position - self.atom_origin
@@ -542,7 +548,7 @@ class GLAtomList(GLDrawList, AtomList):
                 elif z >= 1.0: z -= 1.0
 
                 for (tx, ty, tz) in [(0,0,0), (0,-1,0), (-1,0,0),(-1,-1,0)]:
-                    v = Vector(x+tx, y+ty, z+tz)
+                    v = array([x+tx, y+ty, z+tz])
                     atm.position = uc.calc_frac_to_orth(v)
                     self.draw_atom(atm, False)
 
@@ -566,9 +572,8 @@ class GLStructure(GLDrawList):
         self.hetatm         = {}
 
         for chain in self.struct.iter_chains():
-            aa_main_chain  = GLAtomList(color=(0.50,0.50,0.50))
-            aa_side_chain  = GLAtomList(
-                color_func=self.color_by_residue_chem_type)
+            aa_main_chain  = GLAtomList(U=True)
+            aa_side_chain  = GLAtomList(U=True)
             dna_main_chain = GLAtomList()
             dna_side_chain = GLAtomList()
             water          = GLAtomList()

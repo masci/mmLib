@@ -13,7 +13,6 @@ import math
 import string
 import gzip
 from types import *
-from Scientific.Geometry  import Vector
 from Numeric import *
 from LinearAlgebra import *
 
@@ -23,6 +22,8 @@ deg2rad  = math.pi / 180.0
 rad2deg2 = rad2deg * rad2deg
 deg2rad2 = deg2rad * deg2rad
 
+## types, functions, things which are useful and difficult to
+## classify...
 
 def OpenFile(path, mode):
     """Right now this only supports opening GZip'ed files, in the future

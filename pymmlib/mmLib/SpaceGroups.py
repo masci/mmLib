@@ -7739,38 +7739,6 @@ def GetSpaceGroup(name):
 
 
 ### <testing>
-def make_xml():
-    for sg in SpaceGroupList:
-        print '<SpaceGroup number="%d" name="%s" short_name="%s">' % (
-            sg.number, sg.pdb_name, sg.short_name)
-
-        print '  <PointGroup name="%s"/>' % (sg.point_group_name)
-
-        if sg.crystal_system == "ORTHORHOMBIC":
-            print '  <OrthorhombicLattice/>'
-        elif sg.crystal_system == "MONOCLINIC":
-            print '  <MonoclinicLattice/>'
-        elif sg.crystal_system == "CUBIC":
-            print '  <CubicLattice/>'
-        elif sg.crystal_system == "TRICLINIC":
-            print '  <TriclinicLattice/>'
-            
-        print '  <SymmertyEquivalentPositions count="%d"/>' % (
-            sg.num_sym_equiv)
-        print '  <PrimitiveSymmertyEquivalentPositions count="%d"/>' % (
-            sg.num_primitive_sym_equiv)
-
-        print '</SpaceGroup>'
-        print
-
-
 if __name__ == "__main__":
-    make_xml()
-    
-##     vlist = [Vector(0.0, 0.0, 0.0),
-##              Vector(0.5, 0.5, 0.5),
-##              Vector(1.0, 1.0, 1.0)]
-
-##     for sg in sg_list:
-##         print sg
+    pass
 ### </testing>

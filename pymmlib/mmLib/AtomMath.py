@@ -7,50 +7,65 @@
 import math
 from mmTypes import *
 
-def calculateDistance(a1, a2):
+def length(u):
+    """Calculates the length of u.
+    """
+    return sqrt(dot(u, u))
+
+def cross(u, v):
+    """Cross product of u and v:
+    Cross[u,v] = {-u3 v2 + u2 v3, u3 v1 - u1 v3, -u2 v1 + u1 v2}
+    """
+    return array([ u[1]*v[2] - u[2]*v[1],
+                   u[2]*v[0] - u[0]*v[2],
+                   u[0]*v[1] - u[1]*v[0] ])
+
+def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.
     """
-    if not (a1 and a2):
+    if a1==None or a2==None:
         return None
-    a12 = a1.position - a2.position
-    distance = abs(a12.length())
-    return distance
+    return length(a1.position - a2.position)
 
-def calculateAngle(a1, a2, a3):
+def calc_angle(a1, a2, a3):
     """Return the angle between the three argument atoms.
     """
-    if not (a1 and a2 and a3):
+    if a1==None or a2==None or a3==None:
         return None
     a21 = a1.position - a2.position
-    a23 = a3.position - a2.position
-    return a21.angle(a23)
+    a21 = a21 / (length(a21))
 
-def calculateTorsionAngle(a1, a2, a3, a4):
+    a23 = a3.position - a2.position
+    a23 = a23 / (length(a23))
+
+    return arccos(dot(a21, a23))
+
+def calc_torsion_angle(a1, a2, a3, a4):
     """Calculates the torsion angle between the four argument atoms.
     """
-    if not (a1 and a2 and a3 and a4):
+    if a1==None or a2==None or a3==None or a4==None:
         return None
 
     a12 = a2.position - a1.position
     a23 = a3.position - a2.position
     a34 = a4.position - a3.position
 
-    n12 = a12.cross(a23)
-    n34 = a23.cross(a34)
+    n12 = cross(a12, a23)
+    n34 = cross(a23, a34)
 
-    n12 = n12.normal()
-    n34 = n34.normal()
+    n12 = n12 / length(n12)
+    n34 = n34 / length(n34)
 
-    cross_n12_n34 = n12.cross(n34)
-    direction = cross_n12_n34 * a23
-    scalar_product = n12 * n34
+    cross_n12_n34  = cross(n12, n34)
+    direction      = cross_n12_n34 * a23
+    scalar_product = dot(n12, n34)
 
     if scalar_product > 1.0:
         scalar_product = 1.0
     if scalar_product < -1.0:
         scalar_product = -1.0
 
-    angle = math.acos(scalar_product)
+    angle = arccos(scalar_product)
 
     if direction < 0.0:
         angle = -angle
@@ -99,20 +114,13 @@ def calc_DP2uij(U, V):
 if __name__ == "__main__":
     from Structure import *
 
-    struct = Structure()
-    
-    a1 = Atom(struct)
-    a1.position = Vector(0.0, -1.0, 0.0)
-    
-    a2 = Atom(struct)
-    a2.position = Vector(0.0, 0.0, 0.0)
+    a1 = Atom(x=0.0, y=-1.0, z=0.0)
+    a2 = Atom(x=0.0, y=0.0,  z=0.0)
+    a3 = Atom(x=1.0, y=0.0,  z=0.0)
+    a4 = Atom(x=1.0, y=1.0,  z=-1.0)
 
-    a3 = Atom(struct)
-    a3.position = Vector(1.0, 0.0, 0.0)
-
-    a4 = Atom(struct)
-    a4.position = Vector(1.0, 1.0, -1.0)
-
-    print calculateTorsionAngle(a1, a2, a3, a4)
+    print "a1:",a1.position
+    print "calc_angle:",calc_angle(a1, a2, a3)
+    print "calc_torsion_angle:",calc_torsion_angle(a1, a2, a3, a4)
 ### </TESTING>
 

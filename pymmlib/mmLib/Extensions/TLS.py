@@ -422,7 +422,7 @@ class TLSGroup(AtomList):
         AtomList.__init__(self)
 
         self.name           = "" 
-        self.origin         = Vector(0.0, 0.0, 0.0)
+        self.origin         = zeros(3, Float)
         self.T              = array([[0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0],
                                      [0.0, 0.0, 0.0]])
@@ -456,7 +456,7 @@ class TLSGroup(AtomList):
     def set_origin(self, x, y, z):
         """Sets the x, y, z components of the TLS origin vector.
         """
-        self.origin = Vector(x, y, z)
+        self.origin = array([x, y, z])
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
         """Sets the components of the symmetric T tensor.

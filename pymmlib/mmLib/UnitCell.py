@@ -151,15 +151,16 @@ class UnitCell(object):
         """Calculates and returns the fractional coordinate vector of
         orthogonal vector v.
         """
-        return Vector(matrixmultiply(self.orth_to_frac, v))
+        return matrixmultiply(self.orth_to_frac, v)
 
     def calc_frac_to_orth(self, v):
         """Calculates and returns the orthogonal coordinate vector of
         fractional vector v.
         """
-        return Vector(matrixmultiply(self.frac_to_orth, v))
+        return matrixmultiply(self.frac_to_orth, v)
 
 
+## <testing>
 if __name__ == "__main__":
     print "================================================="
     print "TEST CASE #1: Triclinic unit cell"
@@ -184,11 +185,11 @@ if __name__ == "__main__":
 
     print "calc_frac_to_orth"
     vlist = [
-        Vector(0.0, 0.0, 0.0),
-        Vector(0.5, 0.5, 0.5),
-        Vector(1.0, 1.0, 1.0),
-        Vector(-0.13614, 0.15714, -0.07165),
-        ]
+        array([0.0, 0.0, 0.0]),
+        array([0.5, 0.5, 0.5]),
+        array([1.0, 1.0, 1.0]),
+        array([-0.13614, 0.15714, -0.07165]) ]
+    
     for v in vlist:
         ov = uc.calc_frac_to_orth(v)
         v2 = uc.calc_orth_to_frac(ov)
@@ -213,3 +214,4 @@ if __name__ == "__main__":
     print "cell volume = ",ruc.calc_volume()
     
     print "================================================="
+## </testing>

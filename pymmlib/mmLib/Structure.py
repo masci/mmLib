@@ -1351,11 +1351,11 @@ class AminoAcidResidue(Residue):
         except AttributeError:
             naN = None
      
-        N_CA  = calculateDistance(aN, aCA)
-        CA_C  = calculateDistance(aCA, aC)
-        C_O   = calculateDistance(aC, aO)
-        C_nN  = calculateDistance(aC, naN)
-        CA_CB = calculateDistance(aCA, aCB)
+        N_CA  = calc_distance(aN, aCA)
+        CA_C  = calc_distance(aCA, aC)
+        C_O   = calc_distance(aC, aO)
+        C_nN  = calc_distance(aC, naN)
+        CA_CB = calc_distance(aCA, aCB)
         return (N_CA, CA_C, C_O, CA_CB, C_nN)
 
     def calc_mainchain_bond_angle(self):
@@ -1377,12 +1377,12 @@ class AminoAcidResidue(Residue):
             naN  = next_res.get_atom('N')
             naCA = next_res.get_atom('CA')
 
-        N_CA_C   = calculateAngle(aN, aCA, aC)
-        CA_C_O   = calculateAngle(aCA, aC, aO)
-        N_CA_CB  = calculateAngle(aN, aCA, aCB)
-        CB_CA_C  = calculateAngle(aCB, aCA, aC)
-        CA_C_nN  = calculateAngle(aCA, aC, naN)
-        C_nN_nCA = calculateAngle(aC, naN, naCA)
+        N_CA_C   = calc_angle(aN, aCA, aC)
+        CA_C_O   = calc_angle(aCA, aC, aO)
+        N_CA_CB  = calc_angle(aN, aCA, aCB)
+        CB_CA_C  = calc_angle(aCB, aCA, aC)
+        CA_C_nN  = calc_angle(aCA, aC, naN)
+        C_nN_nCA = calc_angle(aC, naN, naCA)
 
         return (N_CA_C, N_CA_CB, CB_CA_C, CA_C_O, CA_C_nN, C_nN_nCA) 
 
@@ -1399,7 +1399,7 @@ class AminoAcidResidue(Residue):
         aCA = self.get_atom('CA')
         aC  = self.get_atom('C')
         naN = next_res.get_atom('N')
-        return calculateTorsionAngle(aN, aCA, aC, naN)
+        return calc_torsion_angle(aN, aCA, aC, naN)
 
     def calc_torsion_phi(self):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
@@ -1414,7 +1414,7 @@ class AminoAcidResidue(Residue):
         aN  = self.get_atom('N')
         aCA = self.get_atom('CA')
         aC  = self.get_atom('C')
-        return calculateTorsionAngle(paC, aN, aCA, aC)
+        return calc_torsion_angle(paC, aN, aCA, aC)
 
     def calc_torsion_omega(self):
         """Calculates the Omega torsion angle of the amino acid. Raises a
@@ -1429,7 +1429,7 @@ class AminoAcidResidue(Residue):
         aC   = self.get_atom('C')
         naN  = next_res.get_atom('N')
         naCA = next_res.get_atom('CA')
-        return calculateTorsionAngle(aCA, aC, naN, naCA)
+        return calc_torsion_angle(aCA, aC, naN, naCA)
 
     def is_cis(self):
         """Returns True if this is a CIS amino acid, otherwise returns False.
@@ -1467,7 +1467,7 @@ class AminoAcidResidue(Residue):
         atom3 = self.get_atom(atom3_name)
         atom4 = self.get_atom(atom4_name)
         
-        return calculateTorsionAngle(atom1, atom2, atom3, atom4)
+        return calc_torsion_angle(atom1, atom2, atom3, atom4)
 
     def calc_torsion_chi1(self):
         return self.calc_torsion("chi1")
@@ -1563,7 +1563,7 @@ class Atom(object):
     Atom.icode       - the insertion code for the residue/fragment
     Atom.chain_id    - the chain ID of the chain containing this atom
     Atom.element     - symbol for the element
-    Atom.position    - a Vector (ScientificPython)
+    Atom.position    - a array[3] (Numeric Python)
     Atom.occupancy   - [1.0 - 0.0] float 
     Atom.temp_factor - float represting B-style temp factor
     Atom.U           - a 6-tuple of the anisotropic values
@@ -1625,14 +1625,14 @@ class Atom(object):
         if type(position) != NoneType:
             self.position = position
         elif x != None or y != None or z != None:
-            self.position = Vector(x, y, z)
+            self.position = array([x, y, z])
         else:
             self.position = None
         
         if type(sig_position) != NoneType:
             self.sig_position = sig_position
         elif sig_x != None or sig_y != None or sig_z != None:
-            self.sig_position = Vector(sig_x, sig_y, sig_z)
+            self.sig_position = array([sig_x, sig_y, sig_z])
         else:
             self.sig_position = None
 
@@ -2014,12 +2014,12 @@ class Atom(object):
 
         if max_distance:
             for atm in self.get_structure().iter_atoms():
-                d = calculateDistance(self, atm)
+                d = calc_distance(self, atm)
                 if d <= max_distance:
-                    listx.append((calculateDistance(self, atm), atm))
+                    listx.append((calc_distance(self, atm), atm))
         else:
             for atm in self.get_structure().iter_atoms():
-                listx.append((calculateDistance(self, atm), atm))
+                listx.append((calc_distance(self, atm), atm))
 
         listx.sort()
         return iter(listx)
@@ -2201,7 +2201,7 @@ class AtomList(list):
         returns a Vector to the centroid.
         """
         num      = 0
-        centroid = Vector(0.0, 0.0, 0.0)
+        centroid = zeros(3, Float)
 
         for atm in self:
             if type(atm.position) != NoneType:
