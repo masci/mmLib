@@ -3463,6 +3463,7 @@ class GLAtom(GLObject):
               "catagory":    "Atom",
               "type":        "string",
               "default":     None,
+
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "position",
@@ -3616,6 +3617,8 @@ class GLViewer(GLObject, OpenGLRenderMethods):
     rigid body.
     """
     def __init__(self):
+        self.quat = array((0.0, 0.0, 0.0, 1.0), Float)
+        
         GLObject.__init__(self)
         self.glo_add_update_callback(self.glv_update_cb)
         self.glo_init_properties()
@@ -3635,14 +3638,6 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         self.glo_add_property(
             { "name":      "cor",
               "desc":      "Center of Rotation",
-              "catagory":  "View",
-              "read_only": True,
-              "type":      "array(3)",
-              "default":   zeros(3, Float),
-              "action":    "redraw" })
-        self.glo_add_property(
-            { "name":      "t",
-              "desc":      "View Window Translation Vector",
               "catagory":  "View",
               "read_only": True,
               "type":      "array(3)",
@@ -3679,20 +3674,12 @@ class GLViewer(GLObject, OpenGLRenderMethods):
               "default":   1000.0,
               "action":    "redraw" })
         self.glo_add_property(
-            { "name":      "b",
-              "desc":      "B",
-              "catagory":  "View",
-              "type":      "float",
-              "default":   0.5,
-              "action":    "redraw" })
-        self.glo_add_property(
             { "name":      "zoom",
               "desc":      "Zoom",
               "catagory":  "View",
               "type":      "float",
               "default":   20.0,
               "action":    "redraw" })
-
                 
         ## OpenGL Lighting
         self.glo_add_property(
@@ -3802,6 +3789,10 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         """
         assert isinstance(struct, Structure)
 
+        ## add the structure
+        gl_struct = GLStructure(struct=struct)
+        self.glv_add_draw_list(gl_struct)
+        
         ## select the center of the new structure as the rotation center
         n        = 0
         centroid = zeros(3, Float)
@@ -3813,7 +3804,6 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         min_x = 0.0
         min_y = 0.0
         min_z = 0.0
-
 
         for atm in struct.iter_atoms():
             n        += 1
@@ -3834,22 +3824,14 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         zoom = m1 - m2
 
         near = - zoom / 2.0
-        far  = zoom / 2.0
+        far  =   zoom / 2.0
 
-        ## translate to centroid of structure
-        t = -centroid.copy()
-        
         self.properties.update(
-            t    = t,
             cor  = centroid,
             zoom = zoom,
             near = near,
             far  = far)
         
-
-        ## add the structure
-        gl_struct = GLStructure(struct=struct)
-        self.glv_add_draw_list(gl_struct)
         return gl_struct
 
     def glv_redraw(self):
@@ -3872,25 +3854,30 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         self.properties.update(width=width, height=height)
 
     def glv_clip(self, near, far):
-        """
+        """Adjust near/far clipping planes.
         """
         width  = self.properties["width"]
         zoom   = self.properties["zoom"]
 
         angstrom_per_pixel = zoom / float(width)
 
-        xA = angstrom_per_pixel * float(x)
-        yA = angstrom_per_pixel * float(y)
+        nearA = angstrom_per_pixel * float(near)
+        farA  = angstrom_per_pixel * float(far)
 
-        n = self.properties["near"] + near
-        f = self.properties["far"]  + far
+        n = self.properties["near"] + nearA
+        f = self.properties["far"]  + farA
         self.properties.update(near=n, far=f)
 
     def glv_zoom(self, z):
-        """Zoom in/out.
+        """Adjust zoom levels.
         """
+        width  = self.properties["width"]
+        zoom   = self.properties["zoom"]
+
+        angstrom_per_pixel = zoom / float(width)
+        
         zoom = self.properties["zoom"]
-        zoom += float(z)*0.25
+        zoom += angstrom_per_pixel * float(z)
         
         if zoom<1.0:
             zoom = 1.0
@@ -3911,165 +3898,94 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         xA = angstrom_per_pixel * float(x)
         yA = angstrom_per_pixel * float(y)
 
-        t     = self.properties["t"]
-        delta = array([xA, yA, 0.0], Float)
-        upt   = delta + t
-        
-        self.properties.update(t=upt)
+        ## XY translational shift
+        dt = array((xA, yA, 0.0), Float)
+
+        ## change the center of rotation
+        R = self.properties["R"]
+
+        ## shift in the XY plane by chainging the position of the
+        ## center of rotation
+        cor = self.properties["cor"] - matrixmultiply(transpose(R), dt)
+
+        self.properties.update(cor=cor)
 
     def glv_trackball(self, x1, y1, x2, y2):
         """Virtual Trackball
         """
+        def project_to_sphere(r, x, y):
+            d = math.sqrt(x*x + y*y)
+            if d<(r*0.707):
+                return math.sqrt(r*r - d*d)
+            else:
+                return (r/1.414)**2 / d
 
-    def glv_rotate(self, alpha, beta, gamma):
-        """Change the viewing position of the structure.  Changes to the
-        current viewport are given relative to the current view vector.
-        """
-        R = self.properties["R"]
-        t = self.properties["t"]
-
-        Rx = rmatrixu(
-            matrixmultiply(transpose(R), array([1.0, 0.0, 0.0])),
-            math.radians(alpha))
-
-        Ry = rmatrixu(
-            matrixmultiply(transpose(R), array([0.0, 1.0, 0.0])),
-            math.radians(beta))
-
-        Rz = rmatrixu(
-            matrixmultiply(transpose(R), array([0.0, 0.0, 1.0])),
-            math.radians(gamma))
-
-        Rxyz = matrixmultiply(Rz, matrixmultiply(Ry, Rx))
-        upR  = matrixmultiply(R, Rxyz)
-
-        self.properties.update(R=upR)
-        
-    def glv_render_per(self):
-        """Draw all GLDrawList objects onto the given glcontext/gldrawable.
-        If the GLDrawList objects are not yet compiled into OpenGL draw
-        lists, they will be compiled while they are drawn, since this is
-        a useful optimization.
-        """
-        ## setup vieweport
         width  = self.properties["width"]
         height = self.properties["height"]
-        glViewport(0, 0, width, height)
 
-        ## setup perspective matrix
-	glMatrixMode(GL_PROJECTION)
- 	glLoadIdentity()
+        ## determine the circle where the trackball is vs. the edges
+        ## which are z-rotation
+        square = min(width, height)
+        radius = int(square * 0.7)
 
-        b = self.properties["b"]
-        if width>height:
-            w = float(width)/float(height)
-            glFrustum(-w*b, w*b, -b, b,
-                      self.properties["near"], self.properties["far"])
- 	else:
-            h = float(height)/float(width)
-            glFrustum(-b, b, -h*b, h*b,
-                      self.properties["near"], self.properties["far"])
-        
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        
-        ## OpenGL Features
-        glEnable(GL_NORMALIZE)
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LESS)
-        
-        ## Enables Smooth Color Shading
-	#glShadeModel(GL_SMOOTH)
-        
-        ## inital orientation
+        x1c = x1 - width/2
+        y1c = y1 - width/2
+        d = math.sqrt(x1c*x1c + y1c*y1c)
+
+        ## Z rotation
+        if d>=radius:
+            x2c = x2 - width/2
+            y2c = y2 - width/2
+
+            p1 = normalize(array((x1c, y1c, 0.0), Float))
+            p2 = normalize(array((x2c, y2c, 0.0), Float))
+
+            c = cross(p2, p1)
+
+            a = normalize(c)
+            theta = length(c) * math.pi/2.0
+
+        ## XY trackball rotation
+        else:
+
+            x1 = (2.0*x1 - width)  / width
+            y1 = (height - 2.0*y1) / height
+            x2 = (2.0*x2 - width)  / width
+            y2 = (height - 2.0*y2) / height
+
+            tb_size = 1.0
+
+            ## check for zero rotation
+            if x1==x2 and y1==y2:
+                return
+
+            p1 = array((x1, y1, project_to_sphere(tb_size, x1, y1)), Float)
+            p2 = array((x2, y2, project_to_sphere(tb_size, x2, y2)), Float)
+
+            a = cross(p1, p2)
+            d = p1 - p2
+            t = length(d) / (2.0 * tb_size)
+
+            if t>1.0:
+                t - 1.0
+            if t<-1.0:
+                t = -1.0
+
+            theta = 2.0 * math.asin(t)
+
+        ## convert rotation axis a and rotation theta to a quaternion
         R = self.properties["R"]
-        t = self.properties["t"]
+        a = matrixmultiply(transpose(R), a)
+        q = rquaternionu(a, theta)
+
+        self.quat = addquaternion(q, self.quat)
+        R         = rmatrixquaternion(self.quat)
         
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        self.properties.update(R=R)
         
-        ## lighting
-        ambient  = (self.properties["GL_AMBIENT"],
-                    self.properties["GL_AMBIENT"],
-                    self.properties["GL_AMBIENT"],
-                    1.0)
-        diffuse  = (self.properties["GL_DIFFUSE"],
-                    self.properties["GL_DIFFUSE"],
-                    self.properties["GL_DIFFUSE"],
-                    1.0)
-        specular = (self.properties["GL_SPECULAR"],
-                    self.properties["GL_SPECULAR"],
-                    self.properties["GL_SPECULAR"],
-                    1.0)
-
-        ## use model abient light
-        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient)
-
-        ## light 0
-        glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
-        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 1.0, 0.0))
-
-        ## orientation
-        glMultMatrixf(
-            (R[0,0],           R[1,0],      R[2,0], 0.0,
-             R[0,1],           R[1,1],      R[2,1], 0.0,
-             R[0,2],           R[1,2],      R[2,2], 0.0,
-                0.0,              0.0,         0.0, 1.0) )
-
-        glTranslatef(t[0], t[1], t[2])
-
-        ## light 1
-        glDisable(GL_LIGHT1)
-        glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT1, GL_SPECULAR, specular)
-        glLightfv(GL_LIGHT1, GL_POSITION, (0.0, 0.0, 100.0, 0.0))
-
-
-        ## ANTI-ALIASING
-        if self.properties["GL_LINE_SMOOTH"]==True:
-            glEnable(GL_LINE_SMOOTH)
-        else:
-            glDisable(GL_LINE_SMOOTH)
-
-        if self.properties["GL_POINT_SMOOTH"]==True:
-            glEnable(GL_POINT_SMOOTH)
-        else:
-            glDisable(GL_POINT_SMOOTH)
-
-        if self.properties["GL_POLYGON_SMOOTH"]==True:
-            glEnable(GL_POLYGON_SMOOTH)
-        else:
-            glDisable(GL_POLYGON_SMOOTH)
-
-
-        ## ALPHA BLENDING
-        if self.properties["GL_BLEND"]==True:
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            
-            ## FOG
-            if self.properties["GL_FOG"]==True:
-                glEnable(GL_FOG)
-                glFogf(GL_FOG_MODE,    GL_LINEAR)
-                glFogf(GL_FOG_START,   self.properties["GL_FOG_START"])
-                glFogf(GL_FOG_END,     self.properties["GL_FOG_END"])
-            else:
-                glDisable(GL_FOG)
-            
-        else:
-            glDisable(GL_BLEND)
-
-        ## render solid objects
-        for draw_list in self.glo_iter_children():
-            draw_list.gldl_render()
-
-        ## render transparent objects
-        for draw_list in self.glo_iter_children():
-            draw_list.gldl_render(True) 
-
     def glv_pre_render(self):
-        
+        """Sets up lighting and OpenGL options before scene rendering.
+        """
         ## OpenGL Features
         glEnable(GL_NORMALIZE)
         glEnable(GL_DEPTH_TEST)
@@ -4175,23 +4091,18 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         
         ## inital orientation
         R   = self.properties["R"]
-        t   = self.properties["t"]
         cor = self.properties["cor"]
 
         ## sphere at 0,0,0
         self.glr_sphere((0.0, 0.0, 0.0), 1.0, 20)
-
-        glTranslatef(*t)
-
-        glTranslatef(*cor)
+        
         glMultMatrixf(
             (R[0,0],           R[1,0],      R[2,0], 0.0,
              R[0,1],           R[1,1],      R[2,1], 0.0,
              R[0,2],           R[1,2],      R[2,2], 0.0,
                 0.0,              0.0,         0.0, 1.0) )
-        glTranslatef(*-cor)
 
-        self.glr_sphere(cor, 0.5, 20)
+        glTranslatef(*-cor)
 
         ## render solid objects
         for draw_list in self.glo_iter_children():

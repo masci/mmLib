@@ -56,6 +56,59 @@ def rmatrixu(u, theta):
 
     return identity(3, Float)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
 
+def rquaternionu(u, theta):
+    """Returns a quaternion representing the right handed rotation of theta
+    radians about vector u.
+    Quaternions are typed as Numeric Python arrays of length 4.
+    """
+    u    = normalize(u)
+    q    = array((u[0], u[1], u[2], 0.0), Float) * math.sin(theta/2.0)
+    q[3] = math.cos(theta/2.0)
+    return q
+
+def addquaternion(q1, q2):
+    """Adds quaterions q1 and q2.
+    Quaternions are typed as Numeric Python arrays of length 4.
+    """
+    q13 = q1[:3]
+    q23 = q2[:3]
+    
+    t1  = q13 * q2[3]
+    t2  = q23 * q1[3]
+    t3  = cross(q23, q13)
+
+    tf = t1 + t2 + t3
+    tf.resize(4)
+
+    tf[3] = q1[3] * q2[3] - dot(q13, q23)
+
+    ## normalize quaternion
+    tf /= math.sqrt(dot(tf, tf))
+
+    return tf
+
+def rmatrixquaternion(q):
+    """Create a rotation matrix from q quaternion rotation.
+    Quaternions are typed as Numeric Python arrays of length 4.
+    """
+    q0, q1, q2, q3 = q
+
+    r = zeros((3,3), Float)
+
+    r[0,0] = 1.0 - (2.0 * (q1*q1 + q2*q2))
+    r[0,1] = 2.0 * (q0*q1 - q2*q3)
+    r[0,2] = 2.0 * (q2*q0 + q1*q3)
+
+    r[1,0] = 2.0 * (q0*q1 + q2*q3)
+    r[1,1] = 1.0 - (2.0 * (q2*q2 + q0*q0))
+    r[1,2] = 2.0 * (q1*q2 - q0*q3)
+
+    r[2,0] = 2.0 * (q2*q0 - q1*q3)
+    r[2,1] = 2.0 * (q1*q2 + q0*q3)
+    r[2,2] = 1.0 - (2.0 * (q1*q1 + q0*q0))
+
+    return r
+
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
     angles alpha, beta, and gamma.

@@ -236,21 +236,14 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         self.beginx  = 0
         self.beginy  = 0
 
-        print "Release"
-
     def gtk_glv_motion_notify_event(self, glarea, event):
         """
         """
         if not self.in_drag:
             return
         
-        width     = glarea.allocation.width
-        height    = glarea.allocation.height
-
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            roty = 360.0 * ((event.x - self.beginx) / float(width)) 
-            rotx = 360.0 * ((event.y - self.beginy) / float(height))
-            self.glv_rotate(rotx, roty, 0.0)
+            self.glv_trackball(self.beginx, self.beginy, event.x, event.y)
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
             dx = event.x - self.beginx
