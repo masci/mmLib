@@ -24,6 +24,18 @@ from mmLib.Extensions.TLS import *
 ##
 ## constants
 ##
+WELCOME = """\
+mmLIB TLSViewer: GLUT Version
+
+Structure Navigation:
+
+Terminal Commands:
+    [ESC]         press escape to show/hide terminal
+    load <path>   load a PDB or mmCIF structure file
+
+"""
+
+
 GL_DOUBLE_BUFFER = True
 
 CHAR_ASCENT = 119.05
@@ -53,24 +65,45 @@ class Terminal(object):
         self.visible = True
         self.width   = 0
         self.height  = 0
-        self.zplane  = 500.0
+        self.zplane  = 5000.0
 
-        self.term_alpha = 1.0
+        self.term_alpha = 0.75
 
         self.char_width = 80
         
         self.wind_border = 5.0
         self.term_border = 1.0
 
-        self.lines = ["# "]
+        self.prompt = "> "
+        self.lines = []
 
     def keypress(self, key):
-        if key=='\r':
-            self.lines.insert(0, "# ")
+        ascii = ord(key)
+        #info("keypress: %d" % (ascii))
+
+        ## enter
+        if ascii==13:
+            self.lines.insert(0, self.prompt)
+        ## backspace
+        elif ascii==8 or ascii==127:
+            ln = self.lines[0]
+            if len(ln)>len(self.prompt):
+                self.lines[0] = ln[:-1]
+        ## anything else
         else:
             self.lines[0] += key
 
+    def write(self, text):
+        """Writes text to the terminal.
+        """
+        for ln in text.split("\n"):
+            self.lines.insert(0, ln)
+        self.lines.insert(0, self.prompt)
+
     def opengl_render(self):
+        ## setup viewport
+        glViewport(0, 0, self.width, self.height)
+
         ## setup perspective matrix
 	glMatrixMode(GL_PROJECTION)
  	glLoadIdentity()
@@ -82,22 +115,12 @@ class Terminal(object):
         ratio = float(self.height) / float(self.width)
         glwidth  = 80.0
         glheight = ratio * glwidth
-
         glOrtho(0.0, glwidth, 0.0, glheight, -near, -far)
+
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        ## lighting
-        ambient_light = 0.5
-        diffuse_light = 1.0
-        specular_light = 1.0
-
-        ambient  = (ambient_light, ambient_light, ambient_light, 1.0)
-        diffuse  = (diffuse_light, diffuse_light, diffuse_light, 1.0)
-        specular = (specular_light, specular_light, specular_light, 1.0)
-
-        ## use model abient light
-        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient)
+        glClear(GL_DEPTH_BUFFER_BIT)
 
         ## OpenGL Features
         glEnable(GL_NORMALIZE)
@@ -111,10 +134,14 @@ class Terminal(object):
 
         ## light 0
         glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
-        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, -1.0, 0.0))
+        glLightfv(GL_LIGHT0, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))
+        glLightfv(GL_LIGHT0, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
+        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, zplane + 10.0, 0.0))
 
+        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.2, 0.2, 0.2, 1.0))
+
+        ## light 1 disable
         glDisable(GL_LIGHT1)
 
         ##
@@ -122,8 +149,28 @@ class Terminal(object):
         ##
         glEnable(GL_LIGHTING)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-        self.opengl_set_material_rgba(0.0, 1.0, 0.0, self.term_alpha)
 
+        glMaterialfv(
+            GL_FRONT,
+            GL_AMBIENT,
+            (0.0, 0.0, 0.0, self.term_alpha))
+        
+        glMaterialfv(
+            GL_FRONT,
+            GL_DIFFUSE,
+            (0.1, 0.1, 0.1, self.term_alpha))
+        
+	glMaterialfv(
+            GL_FRONT,
+            GL_SPECULAR,
+            (0.0, 0.1, 0.0, self.term_alpha))
+
+        glMaterialfv(
+            GL_FRONT,
+            GL_EMISSION,
+            (0.0, 0.1, 0.0, self.term_alpha))
+
+        glMaterialfv(GL_FRONT, GL_SHININESS, 128.0)
         
         glBegin(GL_QUADS)
 
@@ -155,8 +202,38 @@ class Terminal(object):
 
         glEnd()
 
+        ## outline the screen
+        glDisable(GL_LIGHTING)
+        glColor3f(0.0, 1.0, 0.0)
+        glLineWidth(1.0)
+
+        glBegin(GL_LINE_LOOP)
+
+        glVertex3f(
+            self.wind_border,
+            self.wind_border,
+            zplane + 0.1)
+
+        glVertex3f(
+            glwidth - self.wind_border,
+            self.wind_border,
+            zplane + 0.1)
+
+        glVertex3f(
+            glwidth - self.wind_border,
+            glheight - self.wind_border,
+            zplane + 0.1)
+
+        glVertex3f(
+            self.wind_border,
+            glheight - self.wind_border,
+            zplane + 0.1)
+
+        glEnd()
+
         ## draw text lines
         glDisable(GL_LIGHTING)
+        glColor3f(0.0, 1.0, 0.0)
         glLineWidth(1.0)
 
         ## compute a charactor scale which makes the height 1.0
@@ -184,20 +261,6 @@ class Terminal(object):
 
             i += 1
 
-    def opengl_set_material_rgba(self, r, g, b, a):
-        """Creates a stock rendering material colored according to the given
-        RGB values.
-        """
-        glColor3f(r, g, b)
-
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, (r, g, b, a))
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
-        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
-
-        if a<1.0:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 128.0)
-        else:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
 
 class GLUT_Viewer(GLViewer):
     """The main OpenGL Viewer using GLUT.
@@ -219,8 +282,10 @@ class GLUT_Viewer(GLViewer):
 
         ## terminal
         self.term = Terminal()
+        self.term.write(WELCOME)
 
         GLViewer.__init__(self)
+        #self.properties.update(bg_color="White")
         
     def load_struct(self, path):
         """Loads the requested structure.
@@ -239,7 +304,11 @@ class GLUT_Viewer(GLViewer):
         struct_desc["struct"] = struct
         struct_desc["path"] = path
 
-        self.glv_add_struct(struct)
+        glstruct = self.glv_add_struct(struct)
+        for glchain in glstruct.glo_iter_children():
+            glchain.properties.update(
+                ball_stick = True,
+                ellipse    = True)
 
     def glv_render(self):
         """
