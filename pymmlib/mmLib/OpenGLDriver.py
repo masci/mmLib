@@ -31,6 +31,7 @@ class OpenGLDriver(object):
     def __init__(self):
         self.gl_draw_list_id            = {}
         self.gl_draw_list_expiration_id = {}
+        self.gl_light_model_two_side    = False
 
     def glr_compile_supported(self):
         """Returns True if draw compiling is supported by the driver.
@@ -111,8 +112,6 @@ class OpenGLDriver(object):
         **args):
         """Sets up lighting and OpenGL options before scene rendering.
         """
-        
-        ## setup vieweport
         glViewport(0, 0, width, height)
 
         ## setup perspective matrix
@@ -122,6 +121,8 @@ class OpenGLDriver(object):
         zoom  = zoom / 2.0
         ratio = float(height) / float(width)
         glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, -near, -far)
+
+        ## reset MODELVIEW matrix
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         
@@ -144,20 +145,21 @@ class OpenGLDriver(object):
         diffuse  = (diffuse_light, diffuse_light, diffuse_light, 1.0)
         specular = (specular_light, specular_light, specular_light, 1.0)
 
+        ## light 0
+        glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT0, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
+        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
+        glLightfv(GL_LIGHT0, GL_POSITION, (50.0, 50.0, 1000.0, 0.0))
+
         ## use model abient light
         glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient)
 
-        ## light 0
-        glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse)
-        glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
-        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 10.0, 0.0))
+        ## begin rendering with lighing only one side of all poygons
+        self.glr_light_two_sides_disable()
         
         ## light 1
         glDisable(GL_LIGHT1)
-        #glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuse)
-        #glLightfv(GL_LIGHT1, GL_SPECULAR, specular)
-        #glLightfv(GL_LIGHT1, GL_POSITION, (0.0, 0.0, 100.0, 0.0))
 
         ## ANTI-ALIASING
         if gl_line_smooth:
@@ -316,11 +318,15 @@ class OpenGLDriver(object):
     def glr_light_two_sides_enable(self):
         """
         """
+        self.gl_light_model_two_side = True
+        glDisable(GL_CULL_FACE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
 
     def glr_light_two_sides_disable(self):
         """
         """
+        self.gl_light_model_two_side = False
+        glEnable(GL_CULL_FACE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
     
     def glr_set_material_rgb(self, r, g, b):
@@ -328,10 +334,22 @@ class OpenGLDriver(object):
         RGB values.
         """
         glColor3f(r, g, b)
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,(r, g, b, 1.0))
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
-        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+
+        ambient  = (r, g, b, 1.0)
+        diffuse  = (r, g, b, 1.0)
+        specular = (1.0, 1.0, 1.0, 1.0)
+        emission = (0.1*r, 0.1*g, 0.1*b, 1.0)
+
+        if self.gl_light_model_two_side==True:
+            side = GL_FRONT_AND_BACK
+        else:
+            side = GL_FRONT
+
+        glMaterialfv(side, GL_AMBIENT,   ambient)
+        glMaterialfv(side, GL_DIFFUSE,   diffuse)
+        glMaterialfv(side, GL_SPECULAR,  specular)
+        glMaterialfv(side, GL_EMISSION,  emission)
+        glMaterialfv(side, GL_SHININESS, 100.0)
 
     def glr_set_material_rgba(self, r, g, b, a):
         """Creates a stock rendering material colored according to the given
@@ -339,14 +357,21 @@ class OpenGLDriver(object):
         """
         glColor3f(r, g, b)
 
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, (r, g, b, a))
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
-        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
+        ambient  = (r, g, b, a)
+        diffuse  = (r, g, b, a)
+        specular = (1.0, 1.0, 1.0, a)
+        emission = (0.1*r, 0.1*g, 0.1*b, a)
 
-        if a<1.0:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 128.0)
+        if self.gl_light_model_two_side==True:
+            side = GL_FRONT_AND_BACK
         else:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+            side = GL_FRONT
+
+        glMaterialfv(side, GL_AMBIENT,   ambient)
+        glMaterialfv(side, GL_DIFFUSE,   diffuse)
+        glMaterialfv(side, GL_SPECULAR,  specular)
+        glMaterialfv(side, GL_EMISSION,  emission)
+        glMaterialfv(side, GL_SHININESS, 100.0)
 
     def glr_begin_lines(self):
         """

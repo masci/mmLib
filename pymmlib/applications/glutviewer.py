@@ -25,13 +25,20 @@ from mmLib.Extensions.TLS import *
 ## constants
 ##
 WELCOME = """\
-mmLIB TLSViewer: GLUT Version
+WARNING!!! This application is incomplete!
 
-Structure Navigation:
-
+===============================================================================
+                        mmLIB TLSViewer: GLUT Version
+-------------------------------------------------------------------------------
 Terminal Commands:
-    [ESC]         press escape to show/hide terminal
-    load <path>   load a PDB or mmCIF structure file
+    [ESC]                press escape to show/hide terminal
+    load <path>          load a PDB or mmCIF structure file
+
+Mouse Navigation:
+    Right Mouse Button   "trackball" style rotation of structure
+    Middle Mouse Button  x,y translation of structure
+    Left Mouse Button    zoom in/zoom out
+===============================================================================
 
 """
 
@@ -67,7 +74,7 @@ class Terminal(object):
         self.height  = 0
         self.zplane  = 5000.0
 
-        self.term_alpha = 0.5
+        self.term_alpha = 0.90
 
         self.char_width = 80
         
@@ -101,9 +108,8 @@ class Terminal(object):
         self.lines.insert(0, self.prompt)
 
     def opengl_render(self):
-        ## setup viewport
         glViewport(0, 0, self.width, self.height)
-
+        
         ## setup perspective matrix
 	glMatrixMode(GL_PROJECTION)
  	glLoadIdentity()
@@ -127,22 +133,27 @@ class Terminal(object):
         glShadeModel(GL_SMOOTH)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
+        glEnable(GL_CULL_FACE)
 
         ## alpha blending func
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        ## light 0
-        glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT0, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))
-        glLightfv(GL_LIGHT0, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
-        glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, zplane + 10.0, 0.0))
+        ## light 0 disable
+        glDisable(GL_LIGHT0)
+
+        ## light 1
+        glEnable(GL_LIGHT1)
+        glLightfv(GL_LIGHT1, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))
+        glLightfv(GL_LIGHT1, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
+
+        glLightfv(
+            GL_LIGHT1,
+            GL_POSITION,
+            (glwidth/2.0, glheight/2.0, zplane + 20.0, 0.0))
 
         glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.2, 0.2, 0.2, 1.0))
-
-        ## light 1 disable
-        glDisable(GL_LIGHT1)
 
         ##
         ## draw background
@@ -168,7 +179,7 @@ class Terminal(object):
         glMaterialfv(
             GL_FRONT,
             GL_EMISSION,
-            (0.0, 0.1, 0.0, self.term_alpha))
+            (0.0, 0.05, 0.0, self.term_alpha))
 
         glMaterialfv(GL_FRONT, GL_SHININESS, 128.0)
         
@@ -176,25 +187,21 @@ class Terminal(object):
 
         glNormal3f(0.0, 0.0, 1.0)
 
-        #glNormal3f(-0.5, -0.5, 1.0)
         glVertex3f(
             self.wind_border,
             self.wind_border,
             zplane)
 
-        #glNormal3f(0.5, -0.5, 1.0)
         glVertex3f(
             glwidth - self.wind_border,
             self.wind_border,
             zplane)
 
-        #glNormal3f(0.5, 0.5, 1.0)
         glVertex3f(
             glwidth - self.wind_border,
             glheight - self.wind_border,
             zplane)
 
-        #glNormal3f(-0.5, 0.5, 1.0)
         glVertex3f(
             self.wind_border,
             glheight - self.wind_border,
@@ -314,7 +321,6 @@ class GLUT_Viewer(GLViewer):
         """
         """
         self.glv_render_one(self.opengl_driver)
-
         if self.term.visible:
             self.term.opengl_render()
             
@@ -336,9 +342,9 @@ class GLUT_Viewer(GLViewer):
 
         ## initalize OpenGL display mode
         if GL_DOUBLE_BUFFER:
-            glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
+            glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
         else:
-            glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB)
+            glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH)
 
         glutInitWindowSize(self.width, self.height); 
         glutInitWindowPosition(100, 100)

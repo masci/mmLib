@@ -16,7 +16,7 @@ import gzip
 from types import *
 
 ## turn on debugging
-_DEBUG = True
+_DEBUG = False
 
 ## use old Numeric libraries, or the new Numarray
 _USE_NUMARRAY = False

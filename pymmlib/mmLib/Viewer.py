@@ -2847,7 +2847,10 @@ class GLViewer(GLObject):
             gl_fog_start       = self.properties["GL_FOG_START"],
             gl_fog_end         = self.properties["GL_FOG_END"])
 
-        driver.glr_mult_matrix_R(self.properties["R"])
+        R = self.properties["R"]
+        assert allclose(determinant(R), 1.0)
+
+        driver.glr_mult_matrix_R(R)
         driver.glr_translate(-self.properties["cor"])
 
         ## render solid objects
@@ -2859,3 +2862,4 @@ class GLViewer(GLObject):
             draw_list.gldl_render(driver, True) 
 
         driver.glr_render_end()
+        

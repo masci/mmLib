@@ -254,16 +254,6 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
             return gtk.FALSE
 
     def gtk_glv_button_press_event(self, glarea, event):
-        ## Ray-Trace
-        if event.type==gtk.gdk._2BUTTON_PRESS:
-            self.r3d_driver.glr_set_render_png_path("/tmp/raytrace.png")
-            self.glv_render_one(self.r3d_driver)
-            
-            dialog = R3DDialog("/tmp/raytrace.png")
-            dialog.run()
-            dialog.destroy()
-            return
-
         self.in_drag = True
         self.beginx  = event.x
         self.beginy  = event.y
@@ -305,6 +295,19 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
 
     def glv_redraw(self):
         self.queue_draw()
+
+    def gtk_glv_raytrace(self, path=None):
+        """Raytrace using Raster3D and display in modal dialog.
+        """
+        if path==None:
+            path = "/tmp/raytrace.png"
+
+        self.r3d_driver.glr_set_render_png_path(path)
+        self.glv_render_one(self.r3d_driver)
+        
+        dialog = R3DDialog(path)
+        dialog.run()
+        dialog.destroy()
 
 
 
@@ -2083,13 +2086,16 @@ class StructureContext(object):
     def suggest_struct_id(self):
         """Suggests a name for the display of the Structure.
         """
-        entry_id = self.struct.cifdb.get_entry_id()
+        entry_id = self.struct.structure_id
+
         if entry_id!=None and entry_id!="":
             return entry_id
+
         if hasattr(self.struct, "path"):
             path = getattr(self.struct, "path")
             dir, basename = os.path.split(path)
             return basename
+
         return "XXXX"
 
 
@@ -2105,6 +2111,7 @@ class MainWindow(object):
         ## dialog lists
         self.details_dialog_list = []
         self.tls_dialog_list     = []
+        self.tls_dialog_sc_dict  = {}
 
         ## Create the toplevel window
         self.window = gtk.Window()
@@ -2138,8 +2145,11 @@ class MainWindow(object):
             ('/Visualization/_Properties Browser...', None,
              self.visualization_properties_browser, 0, None),
 
-            ('/_TLS', None, None, 0, '<Branch>'),
-            ('/TLS/TLS Analysis...', None, self.tools_tls_analysis, 0, None),
+            ('/_Tools', None, None, 0, '<Branch>'),
+            ('/Tools/Raster3D Raytrace',
+             None, self.tools_raster3d_ray, 0, None),
+            ('/Tools/TLS Analysis...',
+             None, self.tools_tls_analysis, 0, None),
 
             ('/_Structures', None, None, 0, '<Branch>'),
 
@@ -2293,6 +2303,12 @@ class MainWindow(object):
         if tab!=None:
             self.present_gl_prop_browser(tab)
 
+    def tools_raster3d_ray(self, *args):
+        tab = self.get_current_tab()
+        if tab!=None:
+            gl_viewer = tab["gl_viewer"]
+            gl_viewer.gtk_glv_raytrace()
+
     def tools_tls_analysis(self, *args):
         """Tools->TLS Analysis
         Launches the TLS Analysis dialog on the currently selected
@@ -2300,12 +2316,18 @@ class MainWindow(object):
         """
         if self.selected_sc==None:
             return
+
+        sc = self.selected_sc
         
-        tls = TLSDialog(
-            main_window    = self,
-            struct_context = self.selected_sc)
+        if self.tls_dialog_sc_dict.has_key(sc):
+            dialog = self.tls_dialog_sc_dict[sc]
+        else:
+            dialog = TLSDialog(
+                main_window    = self,
+                struct_context = sc)
+            self.tls_dialog_sc_dict[sc] = dialog
         
-        tls.present()
+        dialog.present()
 
     def help_about(self, *args):
         """Help->About

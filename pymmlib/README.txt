@@ -1,4 +1,4 @@
-mmLib-0.9: Python Macromolecular Library (mmLib)
+mmLib-0.9.1: Python Macromolecular Library (mmLib)
 http://pymmlib.sourceforget.net/
 -------------------------------------------------------------------------------
 
