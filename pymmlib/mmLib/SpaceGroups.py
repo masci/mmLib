@@ -4,6 +4,7 @@
 ## included as part of this package.
 """Symmetry operations as functions on vectors or arrays.
 """
+from   __future__ import generators
 from mmTypes import *
 
 ## 64 unique rotation matricies
