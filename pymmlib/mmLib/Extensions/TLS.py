@@ -1793,7 +1793,7 @@ class GLTLSAtomList(GLAtomList):
             if Lx_axis=="L3_eigen_vec" and \
                self.properties["L3_animation_visible"]==False:
                 continue
-            
+
             for sign in (1.0, -1.0):
                 axis  = self.properties[Lx_axis]
                 rho   = self.properties[Lx_rho]
@@ -1812,9 +1812,9 @@ class GLTLSAtomList(GLAtomList):
                     
                 self.driver.glr_push_matrix()
 
-                self.driver.glr_translate(-rho)
+                self.driver.glr_translate(rho)
                 self.driver.glr_rotate_axis(rot, axis)
-                self.driver.glr_translate(rho + screw)
+                self.driver.glr_translate(-rho + screw)
                 yield True
             
                 self.driver.glr_pop_matrix()
@@ -2521,19 +2521,19 @@ class GLTLSGroup(GLDrawList):
         try:
             L1_c = C * math.sqrt(self.properties["L1_eigen_val"])
         except ValueError:
-            L1_c = 0.0
+            L1_c    = 0.0
             L1_peak = 0.0
 
         try:
             L2_c = C * math.sqrt(self.properties["L2_eigen_val"])
         except ValueError:
-            L2_c = 0.0
+            L2_c    = 0.0
             L2_peak = 0.0
 
         try:
             L3_c = C * math.sqrt(self.properties["L3_eigen_val"])
         except ValueError:
-            L3_c = 0.0
+            L3_c    = 0.0
             L3_peak = 0.0
 
         L1_rot  = L1_c * sin_tm
@@ -2754,9 +2754,9 @@ class GLTLSGroup(GLDrawList):
 
         r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["surface_opacity"]
-        gam     = 0.5
-        
+        gam     = 0.50
         self.driver.glr_set_material_rgba(r*gam, g*gam, b*gam, a)
+
 
         self.driver.glr_begin_quads()
 
@@ -2766,12 +2766,12 @@ class GLTLSGroup(GLDrawList):
         ##
 
         for step in range(steps):
-            step1 = rot_step * float(step)
-            step2 = step1 + rot_step
+            rot_start = rot_step * float(step)
+            rot_end   = rot_step * float(step + 1)
 
             for sign in (-1.0, 1.0):
-                rot1   = step1 * sign
-                rot2   = step2 * sign
+                rot1   = rot_start * sign
+                rot2   = rot_end   * sign
 
                 Rstep1 = rmatrixu(Lx_eigen_vec, rot1)
                 Rstep2 = rmatrixu(Lx_eigen_vec, rot2)
