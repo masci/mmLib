@@ -361,6 +361,16 @@ class Structure(object):
             for frag in chain.fragment_list:
                 yield frag
 
+    def iter_all_fragments(self):
+        """Iterates over all Fragment objects in all Models.
+        The iteration is performed in order according the the parent
+        Chain's chain_id, and the Fragment's positioin within the chain.
+        """
+        for model in self.model_list:
+            for chain in model.chain_list:
+                for frag in chain.fragment_list:
+                    yield frag
+                
     def count_fragments(self):
         """Counts all Fragment objects in the default Model.
         """
@@ -374,9 +384,17 @@ class Structure(object):
         subclass AminoAcidResidue.
         """
         for chain in self.iter_chains():
-            for aa in chain.iter_amino_acids():
-                yield aa
+            for frag in chain.iter_amino_acids():
+                yield frag
 
+    def iter_all_amino_acids(self):
+        """Iterates over all AminoAcidResidue objects in all Models.
+        """
+        for model in self.model_list:
+            for chain in model.chain_list:
+                for frag in chain.iter_amino_acids():
+                    yield frag
+                    
     def count_amino_acids(self):
         """Counts all AminoAcidResidue objects in the default Model.
         """
@@ -390,9 +408,17 @@ class Structure(object):
         subclas NucleicAcidResidue.
         """
         for chain in self.iter_chains():
-            for aa in chain.iter_nucleic_acids():
-                yield aa
+            for frag in chain.iter_nucleic_acids():
+                yield frag
 
+    def iter_all_nucleic_acids(self):
+        """Iterates over all NucleicAcidResidue objects in all Models.
+        """
+        for model in self.model_list:
+            for chain in model.chain_list:
+                for frag in chain.iter_nucleic_acids():
+                    yield frag
+                
     def count_nucleic_acids(self):
         """Counts all NucleicAcidResidue objects in the default Model.
         """
@@ -563,14 +589,11 @@ class Structure(object):
     def set_default_alt_loc(self, alt_loc):
         """Sets the default alt_loc for the Stucture.
         """
-        self.default_alt_loc = alt_loc
-        for frag in self.iter_fragments():
-            frag.set_alt_loc(alt_loc)
-            
-    def set_alt_loc(self, alt_loc):
-        """DEP: Sets the default alt_loc for the Stucture.
-        """
-        self.set_default_alt_loc(alt_loc)
+        assert type(alt_loc)==StringType
+
+        self.default_alt_loc = alt_loc        
+        for frag in self.iter_all_fragments():
+            frag.set_default_alt_loc(alt_loc)
 
     def add_bonds_from_covalent_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
@@ -1323,21 +1346,23 @@ class Segment(object):
             
             if library.is_amino_acid(atom.res_name):
                 fragment = AminoAcidResidue(
-                    res_name    = atom.res_name,
+                    model_id    = atom.model_id,
+                    chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
-                    chain_id    = atom.chain_id)
+                    res_name    = atom.res_name)
 
             elif library.is_nucleic_acid(atom.res_name):
                 fragment = NucleicAcidResidue(
-                    res_name    = atom.res_name,
+                  model_id    = atom.model_id,
+                    chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
-                    chain_id    = atom.chain_id)
-
+                    res_name    = atom.res_name)
             else:
                 fragment = Fragment(
-                    res_name    = atom.res_name,
+                    model_id    = atom.model_id,
+                    chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
-                    chain_id    = atom.chain_id)
+                    res_name    = atom.res_name)
 
             self.add_fragment(fragment, delay_sort)
 
@@ -1573,26 +1598,35 @@ class Fragment(object):
     Fragment.chain_id     - the ID of the chain containing this fragment
     """
     def __init__(self,
-                 res_name    = "",
-                 fragment_id = "",
+                 model_id    = 1,
                  chain_id    = "",
+                 fragment_id = "",
+                 res_name    = "",
                  **args):
 
+        assert type(model_id)    == IntType
         assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
         assert type(chain_id)    == StringType
 
         self.chain           = None
 
-        self.res_name        = res_name
-        self.fragment_id     = fragment_id
+        self.model_id        = model_id
         self.chain_id        = chain_id
+        self.fragment_id     = fragment_id        
+        self.res_name        = res_name
 
         self.default_alt_loc = "A"
 
+        ## Atom objects stored in the original order as
+        ## they were added to the Fragment
         self.atom_order_list = []
+
+        ## dictionary of atom name->Altloc objects
         self.alt_loc_dict    = {}
 
+        ## Atom object list/dict setup according to the current
+        ## default_alt_loc
         self.atom_list       = []
         self.atom_dict       = {}
 
@@ -1604,9 +1638,10 @@ class Fragment(object):
     
     def __deepcopy__(self, memo):
         fragment = Fragment(
-            res_name    = self.res_name,
+            model_id    = self.model_id,
+            chain_id    = self.chain_id,
             fragment_id = self.fragment_id,
-            chain_id    = self.chain_id)
+            res_name    = self.res_name)
 
         for atom in self.iter_all_atoms():
             fragment.add_atom(copy.deepcopy(atom, memo))
@@ -1708,11 +1743,6 @@ class Fragment(object):
                     except IndexError:
                         self.atom_list.append(atmx)
                     self.atom_dict[atmx.name] = atmx
-
-    def set_alt_loc(self, alt_loc):
-        """DEP: Sets the default alt_loc of the Fragment.
-        """
-        self.set_default_alt_loc(alt_loc)
         
     def add_atom(self, atom):
         """Adds a atom to the fragment, and sets the atom's atom.fragment
@@ -1757,7 +1787,7 @@ class Fragment(object):
 
                         altloc.add_atom(atomA)
                         altloc.add_atom(atom)
-                        self.set_alt_loc(self.default_alt_loc)
+                        self.set_default_alt_loc(self.default_alt_loc)
 
                     else:
                         raise AtomOverwrite(
@@ -1772,7 +1802,7 @@ class Fragment(object):
                 ##    and add it to the fragment
                 altloc = self.alt_loc_dict[name]
                 altloc.add_atom(atom)
-                self.set_alt_loc(self.default_alt_loc)
+                self.set_default_alt_loc(self.default_alt_loc)
 
                 
         else: ## alt_loc!=""
@@ -1827,7 +1857,7 @@ class Fragment(object):
                 altloc = self.alt_loc_dict[name]
                 altloc.add_atom(atom)
 
-            self.set_alt_loc(self.default_alt_loc)
+            self.set_default_alt_loc(self.default_alt_loc)
             
         atom.fragment = self
 
@@ -1837,13 +1867,21 @@ class Fragment(object):
         assert isinstance(atom, Atom)
         raise FinishMe()
 
-    def get_atom(self, name):
+    def get_atom(self, name, alt_loc=None):
         """Returns the matching Atom object contained in the Fragment.
-        Returns None if a match is not found.
+        Returns None if a match is not found. If alt_loc is not given,
+        then the default alt_loc is used.
         """
-        if not self.atom_dict.has_key(name):
+        if alt_loc:
+            if self.alt_loc_dict.has_key(name):
+                altloc = self.alt_loc_dict[name]
+                if altloc.has_key(alt_loc):
+                    return altloc[alt_loc]
             return None
-        return self.atom_dict[name]
+        else:
+            if not self.atom_dict.has_key(name):
+                return None
+            return self.atom_dict[name]
     
     def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment matching
@@ -1985,18 +2023,6 @@ class Fragment(object):
 class Residue(Fragment):
     """A subclass of Fragment representing one residue in a polymer chain.
     """
-    def __init__(self,
-                 res_name    = "",
-                 fragment_id = "",
-                 chain_id    = "",
-                 **args):
-
-        Fragment.__init__(self,
-                          res_name    = res_name,
-                          fragment_id = fragment_id,
-                          chain_id    = chain_id,
-                          **args)
-
     def __str__(self):
         return "Res(%s,%s,%s)" % (self.res_name,
                                   self.fragment_id,
@@ -2044,6 +2070,18 @@ class AminoAcidResidue(Residue):
     """A subclass of Residue representing one amino acid residue in a
     polypeptide chain.
     """
+    def __deepcopy__(self, memo):
+        fragment = AminoAcidResidue(
+            model_id    = self.model_id,
+            res_name    = self.res_name,
+            fragment_id = self.fragment_id,
+            chain_id    = self.chain_id)
+
+        for atom in self.iter_all_atoms():
+            fragment.add_atom(copy.deepcopy(atom, memo))
+
+        return fragment
+
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
         PDB defined standard residues.  PDB standard residues are amino
@@ -2231,6 +2269,18 @@ class NucleicAcidResidue(Residue):
     """A subclass of Residue representing one nuclic acid in a strand of
     DNA or RNA.
     """
+    def __deepcopy__(self, memo):
+        fragment = NucleicAcidResidue(
+            model_id    = self.model_id,
+            res_name    = self.res_name,
+            fragment_id = self.fragment_id,
+            chain_id    = self.chain_id)
+
+        for atom in self.iter_all_atoms():
+            fragment.add_atom(copy.deepcopy(atom, memo))
+
+        return fragment
+    
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
         PDB defined standard residues.  PDB standard residues are amino
@@ -2568,11 +2618,11 @@ class Atom(object):
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
-        try:
-            alt_locs = self.altloc.keys()
-        except AttributeError:
+        if not self.altloc:
             yield self
+
         else:
+            alt_locs = self.altloc.keys()
             alt_locs.sort()
             for alt_loc in alt_locs:
                 yield self.altloc[alt_loc]
@@ -3536,7 +3586,7 @@ if __name__ == "__main__":
     for ax in struct.iter_atoms():
         print "iter_atoms: ",ax
 
-    struct.set_alt_loc("C")
+    struct.set_default_alt_loc("C")
     for ax in struct.iter_atoms():
         print "iter_atoms: ",ax
 

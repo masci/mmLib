@@ -312,22 +312,33 @@ def struct_test(struct, stats):
     """
     stats["testing"] = struct
 
-    len(struct)
-
     ## get a lit of all alt_loc ids
     alt_loc_list = struct.alt_loc_list()
     print "alt_loc_list: ",alt_loc_list
+
+    ## iterate over all atoms
+    for atm in struct.iter_all_atoms():
+        assert isinstance(atm, Atom)
+        assert atm.get_structure()==struct
 
     ## make sure the default alt_loc was used when constructing the
     ## structure
     for atm in struct.iter_atoms():
         assert atm.alt_loc=="" or atm.alt_loc==struct.default_alt_loc
 
+    for frag in struct.iter_all_fragments():
+        assert isinstance(frag, Fragment)        
+
+    for frag in struct.iter_all_amino_acids():
+        assert isinstance(frag, AminoAcidResidue)
+
+    for frag in struct.iter_all_nucleic_acids():
+        assert isinstance(frag, NucleicAcidResidue)
+
     old_model = struct.get_default_model()
     
     for model in struct.iter_models():
-        struct.set_model(model)
-        assert model in struct
+        struct.set_default_model(model)
 
         for chain in struct.iter_chains():
             assert isinstance(chain, Chain)
@@ -361,12 +372,15 @@ def struct_test(struct, stats):
         for bond in struct.iter_bonds():
             assert isinstance(bond, Bond)
 
+        ## check default_alt_loc setting
         old_alt_loc  = struct.default_alt_loc
+
         for alt_loc in alt_loc_list:
-            struct.set_alt_loc(alt_loc)
+            struct.set_default_alt_loc(alt_loc)
             for atm in struct.iter_atoms():
                 assert atm.alt_loc == "" or atm.alt_loc == alt_loc
-        struct.set_alt_loc(old_alt_loc)
+
+        struct.set_default_alt_loc(old_alt_loc)
 
         struct.count_models()
         struct.count_chains()
@@ -390,10 +404,10 @@ def run_structure_tests(struct, stats):
     for model in struct.iter_models():
         model_test(model, stats)
 
-    for chain in struct.iter_chains():
+    for chain in struct.iter_all_chains():
         chain_test(chain, stats)
 
-    for frag in struct.iter_fragments():
+    for frag in struct.iter_all_fragments():
         fragment_test(frag, stats)
 
     for atm in struct.iter_all_atoms():
@@ -454,12 +468,10 @@ def cmp_struct(struct1, struct2):
         model2 = struct2.get_model(atm1.model_id)
         chain2 = model2.get_chain(atm1.chain_id)
         frag2  = chain2.get_fragment(atm1.fragment_id)
-        atmX2  = frag2.get_atom(atm1.name)
-        atm2   = atmX2.get_alt_loc(atm1.alt_loc)
+        atm2  = frag2.get_atom(atm1.name, atm1.alt_loc)
 
         try:
             cmp_atoms(atm1, atm2)
-
         except AssertionError:
             print
             print "ERROR: cmp_atom(%s, %s)" % (atm1, atm2)
@@ -467,7 +479,6 @@ def cmp_struct(struct1, struct2):
             print "atm1.position = %s" % (atm1.position)
             print "atm2.position = %s" % (atm2.position)
             print
-
             raise
     
 
@@ -494,13 +505,18 @@ def save_verify(struct, stats):
     ## pdb
     print "[temp.pdb]"
     SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
-    pdb_struct = LoadStructure(fil="temp.pdb")
+    pdb_struct = LoadStructure(
+        fil              = "temp.pdb",
+        build_properties = ("library_bonds",))
+
     cmp_struct(struct, pdb_struct)
     
     ## mmCIF
     print "[temp.cif]"
     SaveStructure(fil="temp.cif", struct=struct, format="CIF")
-    cif_struct = LoadStructure(fil="temp.cif")
+    cif_struct = LoadStructure(
+        fil              = "temp.cif",
+        build_properties = ("library_bonds",))
     cmp_struct(struct, cif_struct)
     
 
@@ -525,7 +541,9 @@ def main(walk_path, start_path):
         time1 = time.time()
 
         stats  = Stats()
-        struct = LoadStructure(fil = path)        
+        struct = LoadStructure(
+            fil              = path,
+            build_properties = ("library_bonds",))   
 
         ## track memory leaks
         sref = weakref.ref(struct, weakref_callback)
