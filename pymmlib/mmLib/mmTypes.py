@@ -33,7 +33,7 @@ def OpenFile(path, mode):
     if type(path) != StringType:
         return path
     (base, ext) = os.path.splitext(path)
-    if ext == ".gz" or ext == ".Z":
+    if ext == ".gz":
         return gzip.open(path, mode)
     return open(path, mode)
 
