@@ -798,7 +798,10 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         except ValueError:
             pass
         else:
-            return (r, g, b)
+            try:
+                return (float(r), float(g), float(b))
+            except ValueError:
+                return (1.0, 0.0, 0.0)
 
         raise TypeError, "gldl_property_color_rgbf: bad colorx %s" % (
             str(colorx))
@@ -1118,28 +1121,124 @@ class GLUnitCell(GLDrawList):
         self.unit_cell = args["unit_cell"]
 
         GLDrawList.__init__(self, **args)
-        self.glo_set_name("Unit Cell")        
-        self.glo_init_properties(**args)
+        self.glo_set_name("Unit Cell")
+        
+        self.glo_init_properties(
+            crystal_system  = self.unit_cell.space_group.crystal_system,
+            space_group     = self.unit_cell.space_group.pdb_name,
+
+            a = self.unit_cell.a,
+            b = self.unit_cell.b,
+            c = self.unit_cell.c,
+
+            alpha = self.unit_cell.calc_alpha_deg(),
+            beta  = self.unit_cell.calc_beta_deg(),
+            gamma = self.unit_cell.calc_gamma_deg(),
+
+            **args)
 
     def glo_install_properties(self):
         GLDrawList.glo_install_properties(self)
-        
+
         self.glo_add_property(
             { "name":       "radius",
               "desc":       "Radius",
               "catagory":   "Show/Hide",
               "type":       "float",
-              "spin":       PROP_LINE_RANGE,
               "default":    0.25,
               "action":     "recompile" })
+        
         self.glo_add_property(
-            { "name":       "rod_color",
-              "desc":       "Rod Color",
+            { "name":       "a_color",
+              "desc":       "a Cell Divider Color",
                "catagory":   "Show/Hide",
               "type":       "enum_string",
-              "default":    "White",
+              "default":    "Red",
               "enum_list":  self.gldl_color_list,
               "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "b_color",
+              "desc":       "b Cell Divider Color",
+               "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "Green",
+              "enum_list":  self.gldl_color_list,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "c_color",
+              "desc":       "c Cell Divider Color",
+               "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "Blue",
+              "enum_list":  self.gldl_color_list,
+              "action":     "recompile" })
+        
+        self.glo_add_property(
+            { "name":        "crystal_system",
+              "desc":        "Crystal System",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "string",
+              "default":     "",
+              "action":      "" })
+        self.glo_add_property(
+            { "name":        "space_group",
+              "desc":        "Spacegroup",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "string",
+              "default":     "",
+              "action":      "" })
+        
+        self.glo_add_property(
+            { "name":        "a",
+              "desc":        "a",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
+        self.glo_add_property(
+            { "name":        "b",
+              "desc":        "b",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
+        self.glo_add_property(
+            { "name":        "c",
+              "desc":        "c",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
+
+        self.glo_add_property(
+            { "name":        "alpha",
+              "desc":        "alpha",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
+        self.glo_add_property(
+            { "name":        "beta",
+              "desc":        "beta",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
+        self.glo_add_property(
+            { "name":        "gamma",
+              "desc":        "gamma",
+              "catagory":    "Show/Hide",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "" })
 
     def gldl_install_draw_methods(self):
         self.gldl_draw_method_install(
@@ -1163,21 +1262,24 @@ class GLUnitCell(GLDrawList):
 
         rad = self.properties["radius"]
 
-        rf, gf, bf = self.gldl_property_color_rgbf("rod_color")
+        rf, gf, bf = self.gldl_property_color_rgbf("a_color")
         self.glr_set_material_rgb(rf, gf, bf, 1.0)
-
         for k in range(z1, z2+2):
             for j in range(y1, y2+2):
                 p1 = x1*a + j*b + k*c
                 p2 = (x2+1)*a + j*b + k*c
                 self.glr_tube(p1, p2, rad)
 
+        rf, gf, bf = self.gldl_property_color_rgbf("b_color")
+        self.glr_set_material_rgb(rf, gf, bf, 1.0)
         for k in range(z1, z2+2):
             for i in range(x1, x2+2):
                 p1 = i*a + y1*b + k*c
                 p2 = i*a + (y2+1)*b + k*c
                 self.glr_tube(p1, p2, rad)
 
+        rf, gf, bf = self.gldl_property_color_rgbf("c_color")
+        self.glr_set_material_rgb(rf, gf, bf, 1.0)
         for j in range(y1, y2+2):
             for i in range(x1, x2+2):
                 p1 = i*a + j*b + z1*c
@@ -1709,37 +1811,60 @@ class GLAtomList(GLDrawList):
             frag = atm.get_fragment()
             
             if frag.is_amino_acid()==True:
-                if main_chain_visible==True and side_chain_visible==True:
+                if oatm_visible==False and atm.name=="O":
+                    yield atm, False                    
+                    continue
+                
+                elif main_chain_visible==True and side_chain_visible==True:
                     yield atm, True
+                    continue
+                
                 elif main_chain_visible==True and side_chain_visible==False:
                     if atm.name in aa_bb_atoms:
                         yield atm, True
+                        continue
+                    
                 elif main_chain_visible==False and side_chain_visible==True:
                     if atm.name not in aa_bb_atoms:
                         yield atm, True
+                        continue
+                    
                 yield atm, False
+                continue
 
             elif frag.is_nucleic_acid()==True:
                 if main_chain_visible==True and side_chain_visible==True:
                     yield atm, True
+                    continue
+                
                 elif main_chain_visible==True and side_chain_visible==False:
                     if atm.name in na_bb_atoms:
                         yield atm, True
+                        continue
+                    
                 elif main_chain_visible==False and side_chain_visible==True:
                     if atm.name not in na_bb_atoms:
                         yield atm, True
+                        continue
+                    
                 yield atm, False
+                continue
 
             elif frag.is_water()==True:
                 if water_visible==True:
                     yield atm, True
+                    continue
+                
                 yield atm, False
+                continue
 
             elif hetatm_visible==True:
                 yield atm, True
+                continue
 
             else:
                 yield atm, False
+                continue
 
     def glal_rebuild_atom_dicts(self):
         """When a atom selection setting or origin changes, the atom
@@ -1922,10 +2047,10 @@ class GLAtomList(GLDrawList):
     def draw_Uaxes(self):
         """Draw thermal axes at the given ADP probability level.
         """
-        rgb  = self.glal_calc_color_Uaxes()
         prob = self.properties["adp_prob"]
         
         for atm, pos in self.glal_iter_visible_atoms():
+            rgb = self.glal_calc_color_Uaxes(atm)
             U = self.glal_calc_U(atm)
             if U==None:
                 continue
@@ -2259,9 +2384,7 @@ class GLStructure(GLDrawList):
 
         ## GLChains 
         for chain in self.struct.iter_chains():
-            gl_chain = GLChain(chain=chain)
-            gl_chain.glo_set_properties_id(str(chain))
-            self.glo_add_child(gl_chain)
+            self.gls_add_chain(chain)
 
         ## init properties
         self.glo_init_properties(**args)
@@ -2283,10 +2406,84 @@ class GLStructure(GLDrawList):
               "type":     "boolean",
               "default":  True,
               "action":   "redraw" })        
-
+        self.glo_add_property(
+            { "name":        "symmetry",
+              "desc":        "Show Symmetry Equivelant",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":      "main_chain_visible",
+              "desc":      "Show Main Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "oatm_visible",
+              "desc":      "Show Main Chain Carbonyl Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "side_chain_visible",
+              "desc":      "Show Side Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hetatm_visible",
+              "desc":      "Show Hetrogen Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "water_visible",
+              "desc":      "Show Waters",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hydrogen_visible",
+              "desc":      "Show Hydrogens",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        
     def glo_name(self):
         return "%s" % (self.struct.cifdb.get_entry_id())
 
+    def gls_add_chain(self, chain):
+        """Adds a Chain object to the GLStructure.
+        """
+        gl_chain = GLChain(chain=chain)
+        gl_chain.glo_set_properties_id(str(chain))
+        self.glo_add_child(gl_chain)
+
+        chain_pid = gl_chain.glo_get_properties_id()
+
+        self.glo_link_child_property(
+            "symmetry", chain_pid, "symmetry")
+
+        self.glo_link_child_property(
+            "main_chain_visible", chain_pid, "main_chain_visible")
+        self.glo_link_child_property(
+            "oatm_visible", chain_pid, "oatm_visible")
+        self.glo_link_child_property(
+            "side_chain_visible", chain_pid, "side_chain_visible") 
+        self.glo_link_child_property(
+            "hetatm_visible", chain_pid, "hetatm_visible") 
+        self.glo_link_child_property(
+            "water_visible", chain_pid, "water_visible")        
+        self.glo_link_child_property(
+            "hydrogen_visible", chain_pid, "hydrogen_visible") 
+            
     def iter_orth_symops(self):
         """Iterate orthogonal-space symmetry operations useful for
         displaying symmetry-equivelant molecules without having to
