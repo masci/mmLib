@@ -1,2 +1,7 @@
+Project Lead
+------------
+Ethan Merritt <merritt@u.washington.edu>
+
+Programmer
+----------
 Jay Painter <jpaint@u.washington.edu>, programmer
-Ethan Merritt <merritt@u.washington.edu>, manager

@@ -2,28 +2,24 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 """Subclass of mmLib.Library providing a supplemental monomer library by
-dynamically reading CCP4's monomer library."""
-
+dynamically reading CCP4's monomer library.
+"""
 import os
 import sys
 import copy
-
-import mmCIF
-from   Library    import Monomer, Library
-
+import mmLib.mmCIF
+from mmLib.Library import Monomer, Library
 
 
 class CCP4MonomerFile:
     """The CCP4 monomer description files are wrappted with some HTML
     that needs to be ignored.  Here we construct a minimal file-like
     object to strip out the HTML so it can be passed to the mmCIF parser
-    and parsed like a normal mmCIF file."""
-
+    and parsed like a normal mmCIF file.
+    """
     def __init__(self, path, mode):
         self.fil = open(path, mode)
-
 
     def readline(self):
         while 1:
@@ -45,12 +41,8 @@ class CCP4MonomerFile:
 class CCP4Library(Library):
     def __init__(self, ccp4_root):
         Library.__init__(self)
-
-        self.mon_lib_path    = os.path.join(ccp4_root,
-                                            "lib",
-                                            "data",
-                                            "monomers")
-        self.monomer_cache   = {}
+        self.mon_lib_path = os.path.join(ccp4_root, "lib","data","monomers")
+        self.monomer_cache = {}
 
     def __getitem__(self, key):
         try:
@@ -72,7 +64,8 @@ class CCP4Library(Library):
     
     def load_monomer(self, name, mon):
         """Locates and reads the mmCIF monomer description found in the CCP4
-        monomer dictionary."""
+        monomer dictionary.
+        """
         path = os.path.join(self.mon_lib_path,
                             name[0].lower(),
                             "%s.cif" % (name))
@@ -110,12 +103,8 @@ class CCP4Library(Library):
         return mon
 
 
-##
 ## <testing>
-##
 if __name__ == "__main__":
     lib = CCP4Library("/home/jpaint/ccp4/ccp4-4.2.2")
     print lib["GLY"].get_polymer_bond_list(None, None)
-##
 ## </testing>
-##

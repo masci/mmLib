@@ -44,7 +44,7 @@ class GLDrawList:
     def gl_call_list(self):
         glPushMatrix()
 
-        apply(glTranslatef, self.origin)
+        glTranslatef(*self.origin)
 
 	glRotatef(self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
 	glRotatef(self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
@@ -75,8 +75,8 @@ class GLUnitCellDrawList(GLDrawList):
         def cell_line(v1, v2):
             glLineWidth(2.0)
             glBegin(GL_LINES)
-            apply(glVertex3f, v1)
-            apply(glVertex3f, v2)
+            glVertex3f(*v1)
+            glVertex3f(*v2)
             glEnd()
 
         m = self.unit_cell.calc_cartisian_unit_cell_axes()
@@ -98,8 +98,8 @@ class GLUnitCellDrawList(GLDrawList):
         def axis_line(v1, v2):
             glLineWidth(5.0)
             glBegin(GL_LINES)
-            apply(glVertex3f, v1)
-            apply(glVertex3f, v2)
+            glVertex3f(*v1)
+            glVertex3f(*v2)
             glEnd()
                     
         self.set_material(1.0, 0.0, 0.0, 1.0)
@@ -196,7 +196,7 @@ class GLAtomDrawList(GLDrawList, AtomList):
     def draw_atom(self, atm):
         glPushMatrix()
 
-        apply(glTranslatef, atm.position - self.atom_origin)
+        glTranslatef(*atm.position - self.atom_origin)
 
         (r, g, b, brightness) = self.select_atom_material(atm)
         self.set_material(r, g, b, brightness)
@@ -215,8 +215,8 @@ class GLAtomDrawList(GLDrawList, AtomList):
                 for i in range(3):
                     glLineWidth(1.0)
                     glBegin(GL_LINES)
-                    apply(glVertex3f,  evec[i])
-                    apply(glVertex3f, -evec[i])
+                    glVertex3f(*evec[i])
+                    glVertex3f(*-evec[i])
                     glEnd()
 
         glPopMatrix()
@@ -224,8 +224,8 @@ class GLAtomDrawList(GLDrawList, AtomList):
     def draw_bond(self, atm1, atm2):
         glLineWidth(5.0)
         glBegin(GL_LINES)
-        apply(glVertex3f, atm1.position - self.atom_origin)
-        apply(glVertex3f, atm2.position - self.atom_origin)
+        glVertex3f(*atm1.position - self.atom_origin)
+        glVertex3f(*atm2.position - self.atom_origin)
         glEnd()
 
     def gl_draw(self):

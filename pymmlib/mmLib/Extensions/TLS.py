@@ -2,13 +2,11 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-"""Utility classes for loading, manipulating, and analyzing TLS parameters."""
-
+"""Utility classes for loading, manipulating, and analyzing TLS parameters.
+"""
 import re
-
-from mmTypes   import *
-from Structure import *
+from mmLib.mmTypes import *
+from mmLib.Structure import *
 
 
 class RefmacTLSFile:

@@ -19,13 +19,13 @@ from distutils.core import setup
 
 
 def run_setup():
-    setup( name         = "PyMMLib",
-           version      = "0.2",
+    setup( name         = "pymmlib",
+           version      = "0.3",
            author       = "Jay Painter",
            author_email = "jpaint@u.washington.edu",
            url          = "http://pymmlib.sourceforge.net/",
            
-           packages     = ["mmLib", "mmLib/Data", "mmLib/Extensions"] )
+           packages     = ["mmLib", "mmLib/Extensions"] )
 
 
 def make_doc():
