@@ -758,30 +758,30 @@ pdb_read(PyObject *self, PyObject *args)
     
     /* strip newlines */
     ibuf = strnlen(in_buff, MAX_LINE) - 1;
-    while (in_buff[ibuf] == '\n') {
+    while (in_buff[ibuf] == '\n' && ibuf >= 0) {
       in_buff[ibuf] = '\0';
       ibuf--;
     }
-
+    if (ibuf < 0)
+      continue;
+    
     /* find the index in  */
     for (irec = 0; pdb_record_defs[irec].name != NULL; irec++) {      
       if (strncmp(pdb_record_defs[irec].name, in_buff, 6) == 0)
 	break;
     }
-
     if (pdb_record_defs[irec].name == NULL) {
       continue;
     }
-	
+
     /* create the new python dictionary for this record */
     py_rec_dict = PyDict_New();
     PyList_Append(py_pdb_list, py_rec_dict);
-      
+  
     /* set the record name */
-    PyDict_SetItemString(
-      py_rec_dict, 
-      "RECORD", 
-      PyString_FromString(pdb_record_defs[irec].name));
+    py_strx = PyString_FromString(pdb_record_defs[irec].name);
+    PyDict_SetItemString(py_rec_dict, "RECORD", py_strx);
+    Py_XDECREF(py_strx);
     
     for (ifie = 0;
 	 pdb_record_defs[irec].fields[ifie].name != NULL;
@@ -793,32 +793,38 @@ pdb_read(PyObject *self, PyObject *args)
       n = pdb_record_defs[irec].fields[ifie].iend   - i;
       
       /* stop reading at the end of the buffer */
-      if (i >= ibuf) break;
+      if (i > ibuf) 
+	break;
       
       /* reduce the length of the field if the field definition
        * extends beyond the end of the in_buff
        */
-      if (i+n > ibuf) n = ibuf - i; 
-	
+      if (i+n-1 > ibuf)
+	n = ibuf - i + 1;
+ 
       switch (pdb_record_defs[irec].fields[ifie].type) {
+
       case PDB_FIELD_TYPE_STRING:
 	strncpy(field, &in_buff[i], n);
 	field[n] = '\0';
 
 	/* strip right hand whitespace */
 	i = strnlen(field, MAX_LINE) - 1;
-	while (field[i] == ' ') {
+	while (field[i] == ' ' && i >= 0) {
 	  field[i] = '\0';
 	  i--;
 	}
 
-	if (i > 0) {
+	/* no blanks */
+	if (i >= 0) {
 	  py_strx = PyString_FromString(field);
 
 	  PyDict_SetItemString(
 	    py_rec_dict,
 	    pdb_record_defs[irec].fields[ifie].name,
 	    py_strx);
+
+	  Py_XDECREF(py_strx);
 	}
 	break;
 
@@ -832,6 +838,8 @@ pdb_read(PyObject *self, PyObject *args)
 	    py_rec_dict,
 	    pdb_record_defs[irec].fields[ifie].name,
 	    py_intx);
+
+	  Py_XDECREF(py_intx);
 	} else {
 	  PyErr_Clear();
 	}
@@ -844,21 +852,27 @@ pdb_read(PyObject *self, PyObject *args)
       case PDB_FIELD_TYPE_FLOAT_6:
 	py_strx   = PyString_FromStringAndSize(&in_buff[i], n);
 	py_floatx = PyFloat_FromString(py_strx, NULL);
+	Py_XDECREF(py_strx);
 
 	if (py_floatx != NULL) {
 	  PyDict_SetItemString(
 	    py_rec_dict,
 	    pdb_record_defs[irec].fields[ifie].name,
 	    py_floatx);
+
+	  Py_XDECREF(py_floatx);
 	} else {
 	  PyErr_Clear();
 	}
 	break;
       } /* switch */
-
     } /* for (fields) */
+
+    Py_XDECREF(py_rec_dict);
   } /* while (records) */
 
+  /* close file */
+  fclose(pdb_fil);
   return py_pdb_list;
 }
 
