@@ -79,7 +79,7 @@ class StructureBuilder(object):
         ## survey the atom and structure and determine if the atom requres
         ## being passed to the naming service
         ## absence of requred fields
-        if atm.fragment_id == "" or atm.chain_id == "":
+        if atm.fragment_id=="" or atm.chain_id=="":
             self.name_service_list.append(atm)
             return atm
 

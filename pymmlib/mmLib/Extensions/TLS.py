@@ -19,6 +19,7 @@ from mmLib.PDB       import *
 class TLSError(Exception):
     """Base exception class for TLS module exceptions.
     """
+    pass
 
 
 class TLSFileFormatError(TLSError):
@@ -32,7 +33,7 @@ class TLSGroupDesc(object):
     """Description of one TLS Group.
     """
     def __init__(self):
-        self.name       = ""     # text name (maybe numeric label?)
+        self.name       = ""     # text name
         self.origin     = None   # array(3)
         self.range_list = []     # (chain1, res1, chain2, res2, selection)
         self.T          = None   # array(3,3)
@@ -655,7 +656,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         """Converts TLSGroupDesc instance to a multi-line string format
         ready to write to a TLSOUT file.
         """        
-        listx = []
+        listx = ["", "REFMAC", ""]
 
         if tls_desc.name!="":
             listx.append("TLS %s" % (tls_desc.name))
@@ -1019,6 +1020,9 @@ class TLSGroup(AtomList):
         T',S',L': T,L,S tensors in origonal coordinate system
                   with the origin shifted to the center of reaction.
         """
+        ## small_L is the smallest magnitude of L before it is considered 0.0
+        small_L = 0.002 * DEG2RAD2
+
         tls_info = {}
 
         ## set the L tensor eigenvalues and eigenvectors
@@ -1062,23 +1066,21 @@ class TLSGroup(AtomList):
         tls_info["S^"] = cS
         
         ## ^rho: the origin-shift vector in the coordinate system of L
-        small = 0.002 * deg2rad2
-
         cL1122 = cL[1,1] + cL[2,2]
         cL2200 = cL[2,2] + cL[0,0]
         cL0011 = cL[0,0] + cL[1,1]
 
-        if cL1122>=small:
+        if cL1122>small_L:
             crho0 = (cS[1,2]-cS[2,1]) / cL1122
         else:
             crho0 = 0.0
 
-        if cL2200>=small:
+        if cL2200>small_L:
             crho1 = (cS[2,0]-cS[0,2]) / cL2200
         else:
             crho1 = 0.0
 
-        if cL0011>=small:
+        if cL0011>small_L:
             crho2 = (cS[0,1]-cS[1,0]) / cL0011
         else:
             crho2 = 0.0
@@ -1139,43 +1141,24 @@ class TLSGroup(AtomList):
         ## L' is just L
         tls_info["L'"] = self.L.copy()
 
-##         ### Verify that the the math we've just done is correct by
-##         ### comparing the original TLS calculated U tensors with the
-##         ### U tensors calculated from the COR
-##         T_cor = tls_info["T'"].copy()
-##         L_cor = tls_info["L'"].copy()
-##         S_cor = tls_info["S'"].copy()
-
-##         for atm in self:
-##             x  = atm.position - self.origin
-##             xp = atm.position - tls_info["COR"]
-
-##             Utls     = self.calc_Utls(self.T, self.L, self.S, x)
-##             Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
-
-##             assert allclose(Utls, Utls_cor)
-##         ###
-
         ## now calculate the TLS motion description using 3 non
         ## intersecting screw axes, with one
 
-        ## libration axis 1 shift in the L coordinate system
-        
-        if cL[0,0]>=small:
+        ## libration axis 1 shift in the L coordinate system        
+        if cL[0,0]>small_L:
             cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
         else:
             cL1rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
-        if cL[1,1]>=small:
+        if cL[1,1]>small_L:
             cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
         else:
             cL2rho = zeros(3, Float)
 
         ## libration axis 2 shift in the L coordinate system
-        if cL[2,2]>=small:
+        if cL[2,2]>small_L:
             cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
-            
         else:
             cL3rho = zeros(3, Float)
 
@@ -1186,17 +1169,17 @@ class TLSGroup(AtomList):
         tls_info["L3_rho"] = matrixmultiply(evec_L, cL3rho)
 
         ## calculate screw pitches (A*R / R*R) = (A/R)
-        if cL[0,0]>=small:
+        if cL[0,0]>small_L:
             tls_info["L1_pitch"] = cS[0,0]/cL[0,0]
         else:
             tls_info["L1_pitch"] = 0.0
             
-        if cL[1,1]>=small:
+        if cL[1,1]>small_L:
             tls_info["L2_pitch"] = cS[1,1]/cL[1,1]
         else:
             tls_info["L2_pitch"] = 0.0
 
-        if cL[2,2]>=small:
+        if cL[2,2]>small_L:
             tls_info["L3_pitch"] = cS[2,2]/cL[2,2]
         else:
             tls_info["L3_pitch"] = 0.0
@@ -1208,19 +1191,43 @@ class TLSGroup(AtomList):
             for k in (0, 1, 2):
                 if i==k:
                     continue
-                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
+                if cL[k,k]>small_L:
+                    cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
 
         for i in (0, 1, 2):
             for j in (0, 1, 2):
                 for k in (0, 1, 2):
                     if j==i:
                         continue
-                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
-                
+                    if cL[k,k]>small_L:
+                        cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
+
+        ## rotate the newly calculated reduced-T tensor from the carrot
+        ## coordinate system (coordinate system of L) back to the structure
+        ## coordinate system
         tls_info["rT'"] = matrixmultiply(
             transpose(evec_L), matrixmultiply(cTred, evec_L))
 
         return tls_info
+
+    def verify_equivalent_models(self):
+        """XXX: Fixme
+        """
+        ### Verify that the the math we've just done is correct by
+        ### comparing the original TLS calculated U tensors with the
+        ### U tensors calculated from the COR
+        T_cor = tls_info["T'"].copy()
+        L_cor = tls_info["L'"].copy()
+        S_cor = tls_info["S'"].copy()
+
+        for atm in self:
+            x  = atm.position - self.origin
+            xp = atm.position - tls_info["COR"]
+
+            Utls     = self.calc_Utls(self.T, self.L, self.S, x)
+            Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
+
+            assert allclose(Utls, Utls_cor)
 
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,

@@ -508,10 +508,10 @@ class Structure(object):
             xyzdict = XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
-                xyzdict.add(atm.position, atm)
+                if atm.position:
+                    xyzdict.add(atm.position, atm)
 
-            for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(
-                2.5):
+            for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(2.5):
 
                 if (atm1.alt_loc=="" or atm2.alt_loc=="") or \
                    (atm1.alt_loc==atm2.alt_loc):

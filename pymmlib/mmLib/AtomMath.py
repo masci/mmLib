@@ -230,7 +230,10 @@ def calc_DP2uij(U, V):
     Puv = math.sqrt( (det_invU * det_invV) /
                      (8.0 * pi3 * determinant(invU + invV)) )
 
-    return Pu2 + Pv2 - (2.0 * Puv)
+    dP2 = Pu2 + Pv2 - (2.0 * Puv)
+    dP  = math.sqrt(dP2)
+    
+    return dP2
 
 def calc_anisotropy(U):
     evals = eigenvalues(U)
