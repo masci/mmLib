@@ -621,7 +621,7 @@ class mmCIFFileWriter:
         self.fil.write(x+"\n")
 
     def write_mstring(self, mstring):
-        self.write(self.form_string(mstring))
+        self.write(self.form_mstring(mstring))
 
     def form_mstring(self, mstring):
         strx = ";"
