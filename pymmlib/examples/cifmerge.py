@@ -12,6 +12,232 @@ import copy
 
 from mmLib.mmCIF import *
 
+rcsb_mmcif = [
+    ## DEPOSITION INFO
+    ("_audit_contact_author",
+     ["name",
+      "email",
+      "address",
+      "phone",
+      "fax"]),
+
+    ("_ndb_database_status",
+     ["dep_release_code_coordinates", ## HOLD FOR PUBLICATION/RELEASE NOW
+      "dep_release_code_struct_fact",
+      "dep_release_code_sequence"),
+
+     ("_struct",
+      ["title",
+       "ndb_details"]),
+
+     ("_rcsb_database_related",
+      ["db_name",
+       "db_id",
+       "details"]),
+
+
+     ## AUTHORS
+     ("_citation_author",
+      ["citation_id",## citation_id should be primary
+       "name"]),
+     
+     ("_citation",
+      ["journal_abbrev",
+       "title",
+       "year",
+       "journal_volume",
+       "page_first",
+       "page_last"]),
+
+     
+     ## CHEMICAL/BIOLOGICAL FEATURES
+     ("_entity",
+      ["id",
+       "ndb_description"]),
+
+     ("_entity_keywords",
+      ["entity_id",
+       "ndb_fragment",
+       "ndb_mutation",
+       "ndb_ec"]),
+
+     ("_entity_poly",
+      ["ndb_seq_one_letter_code",
+       "ndb_chain_id"]), ## comma-seperated list of chain_ids
+
+     ## for genetically manipulated sources
+     ("_entity_src_gen",
+      ["ndb_gene_src_scientific_name", ## scientific name of organism
+       "ndb_gene_src_gene",            ## gene name
+       "ndb_host_org_scientific_name", ## expression organism
+       "ndb_host_org_strain",
+       "ndb_host_org_vector_type",
+       "plasmid_name",                 ## plasmid used in expression system
+       "gene_src_details"]),
+
+     ## for natural sources
+     ("_entity_src_nat",
+      ["ndb_organism_scientific",  ## name of natural source
+       "strain", ## organism strain
+       "details"]),
+
+     ## for sythetic sources
+     ("_rcsb_entity_src_syn",
+      ["details"]),
+
+
+     ## STRUCTURE FEATURES
+     ("_struct_keywords",
+      ["text"]),
+
+
+     ## CRYSTALIZATION
+     ## crystal groth conditions
+     ("_exptl_crystal_grow",
+      ["method",
+       "pH",
+       "temp",
+       "rcsb_details"]),  ## crystallization components here
+
+     ## crystal information
+     ("_exptl_crystal",
+      ["density_percent_sol",
+       "density_Matthews"]),
+
+
+     ## CRYSTAL DATA
+     ## unit cell
+     ("_cell",
+      ["length_a",
+       "length_b",
+       "length_c",
+       "angle_alpha",
+       "angle_beta",
+       "angle_gamma"]),
+     
+     ## space group
+     ("_symmetry",
+      ["space_group_name_H-M"]),
+
+
+     ## DATA COLLECTION
+     ("_exptl",
+      ["crystals_number"]), ## number of crystals used to measure datase
+
+     ## radiation source
+     ("_diffrn_source",
+      ["diffrn_id",
+       "source", ## SYNCHROTRON
+       "type", ## SSRL BEAMLINE 7-1
+       "rcsb_wavelength_list"]), ## comma separated list of wavelengths (A)
+
+     ## radiation detector
+     ("_diffrn_detector",
+      ["diffrn_id",
+       "detector",
+       "type",
+       "ndb_collection_date",
+       "details"]),
+
+     ## collection temperature
+     ("diffrn",
+      ["id",
+       "ambient_temp"]), ## K
+
+     ## collection protocol
+     ("_diffrn_radiation",
+      ["diffrn_id",
+       "rcsb_diffrn_protocol", ## SINGLE WAVELENGTH, LAUE, or MAD
+       "monochromator"]),
+
+     ## reflections
+     ("_reflns",
+      ["observed_criterion_sigma_F",
+       "observed_criterion_sigma_I",
+       "d_resolution_high",
+       "d_resolution_low",
+       "ndb_Rmerge_I_obs",
+       "ndb_Rsym_value",
+       "ndb_netI_over_av_sigmaI",
+       "B_iso_Wilson_estimate",
+       "ndb_redundancy"]),
+
+     ## reflection: high resolution shell
+     ("_reflns_shell",
+      ["d_res_high",
+       "d_res_low",
+       "percent_possible_all",
+       "Rmerge_I_obs",
+       "meanI_over_sigI_obs",
+       "ndb_Rsym_value",
+       "ndb_redundancy",
+       "number_unique_all"]),
+
+
+     ## REFINEMENT
+     ("_refine",
+      ["ls_d_res_high",
+       "ls_d_res_low",
+       "ndb_ls_sigma_F",
+       "ndb_ls_sigma_I",
+       "ls_number_reflns_all",
+       "ls_number_reflns_obs",
+       "ls_number_reflns_R_free",
+       "ls_R_factor_all",
+       "ls_R_factor_obs",
+       "ls_R_factor_R_work",
+       "ls_R_factor_R_free",
+       "ndb_method_to_determine_struct", ## MAD/MOLECULAR REPLACEMENT
+       "ndb_starting_model",
+       "ndb_ls_cross_valid_method",
+       "ndb_R_Free_selection_details",
+       "ndb_stereochemistry_target_values",
+       "ndb_isotropic_thermal_model",
+       "B_iso_mean",
+       "aniso_B[1][1]",
+       "aniso_B[1][2]",
+       "aniso_B[1][3]",
+       "aniso_B[2][2]",
+       "aniso_B[2][3]",
+       "aniso_B[3][3]",
+       "details"])
+
+     ## resolution shells
+     ("_refine_ls_shell",
+      ["d_res_high",
+       "d_res_low",
+       "number_reflns_obs",
+       "number_reflns_R_free",
+       "R_factor_R_work",
+       "R_factor_R_free",
+       "R_factor_R_free_error",
+       "percent_reflns_obs"]),
+
+     ## RMS deviations
+     ("_refine_ls_restr",
+      ["type",
+       "dev_ideal"]),
+     
+     ## coordinate error
+     ("_refine_analyze",
+      ["Luzzati_coordinate_error_obs",
+       "Luzzati_sigma_a_obs",
+       "Luzzati_d_res_low_obs",
+       "Luzzati_coordinate_error_free",
+       "Luzzati_sigma_a_free"]),
+
+
+     ## SOFTWARE
+     ("_computing",
+      ["data_collection",
+       "data_reduction",
+       "structure_solution",
+       "structure_refinement"])
+     ]
+
+
+
+
 struct_genomics_dep = {
     "entity": [
         "pdbx_description",

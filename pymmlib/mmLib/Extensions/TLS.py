@@ -892,17 +892,6 @@ def calc_Utls(T, L, S, position):
                   [u12, u22, u23],
                   [u13, u23, u33]], Float)
 
-def set_TLS_b(b, i, U, w):
-    """Sets the six rows of vector b with the experimental/target anisotropic
-    ADP values U starting at index b[i] and ending at b[i+6] with weight w.
-    """
-    b[i]   = w * U[0,0]
-    b[i+1] = w * U[1,1]
-    b[i+2] = w * U[2,2]
-    b[i+3] = w * U[0,1]
-    b[i+4] = w * U[0,2]
-    b[i+5] = w * U[1,2]
-
 def set_TLS_A(A, i, j, x, y, z, w):
     """Sets the six rows of matrix A starting at A[i,j] with the TLS
     coefficents for a atom located at position x,y,z with least-squares
@@ -980,16 +969,16 @@ def set_TLS_A(A, i, j, x, y, z, w):
     A[U23, S12]   = w *   y
     A[U23, S13]   = w *  -z
 
-def set_TLS_b(b, i, U, w):
+def set_TLS_b(b, i, u11, u22, u33, u12, u13, u23, w):
     """Sets the six rows of vector b with the experimental/target anisotropic
     ADP values U starting at index b[i] and ending at b[i+6] with weight w.
     """
-    b[i]   = w * U[0,0]
-    b[i+1] = w * U[1,1]
-    b[i+2] = w * U[2,2]
-    b[i+3] = w * U[0,1]
-    b[i+4] = w * U[0,2]
-    b[i+5] = w * U[1,2]
+    b[i]   = w * u11
+    b[i+1] = w * u22
+    b[i+2] = w * u33
+    b[i+3] = w * u12
+    b[i+4] = w * u13
+    b[i+5] = w * u23
 
 def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
@@ -1024,7 +1013,8 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
         U11 = i * 6
 
         ## set the b vector
-        set_TLS_b(b, U11, atm.get_U(), w)
+        U = atm.get_U()
+        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
         set_TLS_A(A, U11, 0, x, y, z, w)
@@ -1326,7 +1316,6 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     about the CA atom.  This model uses 20 TLS parameters and 6
     libration parameters per side chain.
     """
-    
     ## calculate the number of parameters in the model
     num_atoms = segment.count_atoms()
     num_frags = segment.count_fragments()
@@ -1355,13 +1344,14 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
             w = 1.0
 
         ## indecies of the components of U
-        u11 = i * 6
+        U11 = i * 6
 
         ## set the b vector
-        set_TLS_b(b, u11, atm.get_U(), w)
+        U = atm.get_U()
+        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
-        set_TLS_A(A, u11, 0, x, y, z, w)
+        set_TLS_A(A, U11, 0, x, y, z, w)
 
         ## independent side-chain Ls tensor
         frag = atm.get_fragment()
@@ -1455,17 +1445,18 @@ def calc_CA_pivot_TLS_least_squares_fit_2(segment, weight_dict=None):
             w = 1.0
 
         ## indecies of the components of U
-        u11 = i * 6
+        U11 = i * 6
 
         ## set the b vector
-        set_TLS_b(b, u11, atm.get_U(), w)
+        U = atm.get_U()
+        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
-        set_TLS_A(A, u11, 0, x, y, z, w)
+        set_TLS_A(A, U11, 0, x, y, z, w)
         if ifrag<mid_ifrag:
-            set_TLS_A(A, u11, 20, x, y, z, w)
+            set_TLS_A(A, U11, 20, x, y, z, w)
         else:
-            set_TLS_A(A, u11, 40, x, y, z, w)
+            set_TLS_A(A, U11, 40, x, y, z, w)
 
         ## independent side-chain Ls tensor
         frag = atm.get_fragment()

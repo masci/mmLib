@@ -6,6 +6,7 @@
 """
 from __future__ import generators
 import copy
+import string
 
 
 from mmTypes          import *
@@ -19,7 +20,7 @@ mmCIFStandardColumnsMap = {
 
     "entity": ["id",
                "type",
-               "details"],
+               "ndb_description"],
 
     "cell": ["entry_id",
              "length_a",
@@ -35,15 +36,9 @@ mmCIFStandardColumnsMap = {
                  "cell_setting",
                  "Int_Tables_number"],
 
-    "entity_poly_seq": ["entity_id",
-                        "num",
-                        "mon_id"],
-
     "entity_poly": ["entity_id",
-                    "type",
-                    "nstd_linkage",
-                    "nstd_monomer",
-                    "pdbx_seq_one_letter_code"],
+                    "ndb_chain_id",
+                    "ndb_seq_one_letter_code"],
 
     "audit_author": ["name"],
 
@@ -320,7 +315,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         except KeyError:
             pass
         else:
-            self.struct.load_structure_id(entry_id)
+            self.load_structure_id(entry_id)
 
     def read_unit_cell(self):
         """Load unit cell and symmetry tables.
@@ -486,8 +481,6 @@ class mmCIFStructureBuilder(StructureBuilder):
                 helix = {"helix_id":    row["id"],
                          "helix_class": row["conf_type_id"]}
 
-                           
-
 
 class mmCIFFileBuilder(object):
     """Builds a mmCIF file from a Structure object.
@@ -499,20 +492,18 @@ class mmCIFFileBuilder(object):
         self.cif_data = mmCIFData(self.entry_id)
         cif_file.append(self.cif_data)
 
-        ## maps Fragment -> entity_id number
-        self.entity_id_map = {}
-
-        ## tables which are not generated from the structure hierarchy
-        ## can be copied directly from the structure's cif database
-        for table in self.struct.cifdb:
-            if not mmCIFStandardColumnsMap.has_key(table.name):
-                new_table = copy.deepcopy(table)
-                new_table.autoset_columns()
-                self.cif_data.append(new_table)
+        ## entity handling
+        ## entity_desc list
+        self.entity_list          = []
+        ## Fragment -> entity_desc
+        self.entity_frag_dict     = {}
+        ## res_name -> entity_desc
+        self.entity_res_name_dict = {}
 
         ## these tables need to be formed from the atom structure
         self.add__entry()
         self.add__entity()
+        self.add__entity_poly()
         self.add__cell()
         self.add__symmetry()
         self.add__atom_site()
@@ -532,6 +523,19 @@ class mmCIFFileBuilder(object):
         self.cif_data.append(table)
         return table
 
+    def get_entity_desc_from_id(self, entity_id):
+        for entity_desc in self.entity_list:
+            if entity_desc["id"]==entity_id:
+                return entity_desc
+        return None
+
+    def get_entity_desc_from_sequence(self, sequence):
+        for entity_desc in self.entity_list:
+            if entity_desc.has_key("sequence") and \
+               entity_desc["sequence"]==sequence:
+                return entity_desc
+        return None
+
     def add__entry(self):
         """Add the _entry table.
         """
@@ -549,8 +553,9 @@ class mmCIFFileBuilder(object):
 
         ## ADD BIO-POLYMERS
         ## list of polymer entities (entity_id, sequence1)
-        poly_entity_list = []
-        
+
+        cur_entity_id = 1
+
         for chain in self.struct.iter_all_chains():
 
             ## if the chain is a bio-polymer, it is one entity; come up
@@ -561,16 +566,16 @@ class mmCIFFileBuilder(object):
 
             ## calculate sequence and compare the sequence to chains
             ## already added so we can re-use the entity ID
-            sequence  = chain.construct_sequence_list()
-            entity_id = None
-            for (entity_idx, sequencex) in poly_entity_list:
-                if sequencex==sequence:
-                    entity_id = entity_idx
-                    break
+            sequence = chain.sequence_one_letter_code()
+            entity_desc = self.get_entity_desc_from_sequence(sequence)
 
-            ## new entity!
-            if not entity_id:
-
+            ## ADD POLYMER TO CURRENT ENTITY
+            if entity_desc!=None:
+                entity_desc["chains"].append(chain)
+                entity_desc["chain_ids"].append(chain.chain_id)
+                    
+            ## NEW ENTITY
+            else:
                 ## figure out what type of biopolymer this is
                 if (chain.count_amino_acids()/len(chain))>0.5:
                     details   = "%d residue polypeptide" % (
@@ -585,65 +590,86 @@ class mmCIFFileBuilder(object):
                 else:
                     details   = "unknown polymer"
                     poly_type = "other"
-                
-                row = mmCIFRow()
-                entity.append(row)
 
-                entity_id = entity.index(row) + 1
-                poly_entity_list.append((entity_id, sequence))
+                ## new entity description
+                entity_desc = {
+                    "id":        cur_entity_id,
+                    "chains":    [chain],
+                    "chain_ids": [chain.chain_id],
+                    "polymer":   True,
+                    "poly_type": poly_type,
+                    "sequence":  sequence,
+                    "details":   details }
+                self.entity_list.append(entity_desc)
                 
-                row["id"]              = entity_id
+                row  = entity.new_row()
+                row["id"]              = entity_desc["id"]
                 row["type"]            = "polymer"
                 row["ndb_description"] = details
-                row["details"]         = details
 
-                ## add the new sequence to the entity_poly table
-                entity_poly = self.get_table("entity_poly")
-                row = mmCIFRow()
-                entity_poly.append(row)
-                row["entity_id"] = entity_id                
-                row["type"]      = poly_type
-                row["pdbx_seq_one_letter_code"] = \
-                    chain.sequence_one_letter_code()
+                ## incriment entity_id
+                cur_entity_id = cur_entity_id + 1
 
-            ## loop over all residues and map the Residues to their entity_id
+            ## loop over all residues and map the frag->entity_desc
             for frag in chain.iter_standard_residues():
-                self.entity_id_map[frag] = entity_id
+                self.entity_frag_dict[frag] = entity_desc
 
 
         ## ADD HET ATOMS (Water, metal)
-        er_map = {}
-
         for chain in self.struct.iter_all_chains():
             for frag in chain.iter_fragments():
 
                 ## any fragments already assigned to a entity by the
                 ## polymer section above should be skipped
-                if self.entity_id_map.has_key(frag):
+                if self.entity_frag_dict.has_key(frag):
                     continue
 
                 ## already assigned a entity_id for this fragment_id
-                if er_map.has_key(frag.res_name):
-                    self.entity_id_map[frag] = er_map[frag.res_name]
-
+                if self.entity_res_name_dict.has_key(frag.res_name):
+                    self.entity_frag_dict[frag] = \
+                        self.entity_res_name_dict[frag.res_name]
+                    continue
+                    
                 ## we need to assign a entity_id for this fragment_id
                 ## and add a row for it in the entity table
+                if frag.is_water():
+                    type = "water"
+                    details = ""
                 else:
-                    row = mmCIFRow()
-                    entity.append(row)
+                    type = "non-polymer"
+                    details = frag.res_name
 
-                    entity_id = row["id"] = entity.index(row) + 1
+                row = entity.new_row()
+                row["id"]              = cur_entity_id
+                row["type"]            = "non-polymer"
+                row["ndb_description"] = frag.res_name
 
-                    if frag.is_water():
-                        row["type"] = "water"
-                        row["details"] = ""
-                    else:
-                        row["type"] = "non-polymer"
-                        row["details"] = frag.res_name
+                entity_desc = {
+                    "id":       cur_entity_id,
+                    "polymer":  False,
+                    "res_name": frag.res_name }
+                
+                self.entity_res_name_dict[frag.res_name] = entity_desc
+                self.entity_frag_dict[frag] = entity_desc
 
-                    er_map[frag.res_name] = entity_id
-                    self.entity_id_map[frag] = entity_id
+                ## incriment entity_id
+                cur_entity_id = cur_entity_id + 1
 
+    def add__entity_poly(self):
+        """Adds the _entity_poly table.
+        """
+        entity_poly = self.get_table("entity_poly")
+
+        for entity_desc in self.entity_list:
+            if entity_desc["polymer"]==False:
+                continue
+
+            row = entity_poly.new_row()
+            
+            row["entity_id"] = entity_desc["id"]
+            row["ndb_chain_id"] = string.join(entity_desc["chain_ids"], ",")
+            row["ndb_seq_one_letter_code"] =  entity_desc["sequence"]
+        
     def add__cell(self):
         """Adds the _cell table.
         """
@@ -683,29 +709,40 @@ class mmCIFFileBuilder(object):
     def add__atom_site(self):
         """Adds the _atom_site table.
         """
-        atom_site = self.get_table("atom_site")        
+        atom_site = self.get_table("atom_site")
         atom_id = 0
 
-        for atm in self.struct.iter_all_atoms():
-            asrow = mmCIFRow()
-            atom_site.append(asrow)
+        for chain in self.struct.iter_all_chains():
+            label_seq_id = 0
 
-            atom_id += 1
-            asrow["id"] = atom_id
-            self.set_atom_site_row(asrow, atm)
+            for frag in chain.iter_fragments():
+                label_seq_id += 1
+                entity_desc = self.entity_frag_dict[frag]
 
-    def set_atom_site_row(self, asrow, atm):
-        if atm.get_fragment().is_standard_residue():
-            asrow["group_PDB"] = "ATOM"
+                for atm in frag.iter_all_atoms():
+                    atom_id += 1
+
+                    row = atom_site.new_row()
+                    row["id"] = atom_id
+                    
+                    self.set_atom_site_row(row, atm, entity_desc, label_seq_id)
+
+    def set_atom_site_row(self, asrow, atm, entity_desc, label_seq_id):
+        """Add atom_site coordinate row.
+        """
+        if entity_desc["polymer"]==True:
+            asrow["group_PDB"]     = "ATOM"
+            asrow["label_seq_id"]  = label_seq_id
+            asrow["label_asym_id"] = atm.chain_id
+
         else:
             asrow["group_PDB"] = "HETATM"
 
-        asrow["label_entity_id"]    = self.entity_id_map[atm.get_fragment()]
+        asrow["label_entity_id"]    = entity_desc["id"]
         asrow["label_atom_id"]      = atm.name
         asrow["label_alt_id"]       = atm.alt_loc
         asrow["label_comp_id"]      = atm.res_name
-        asrow["label_seq_id"]       = atm.fragment_id
-        asrow["label_asym_id"]      = atm.chain_id
+        asrow["label_seq_id"]       = label_seq_id
 
         asrow["auth_atom_id"]       = atm.name
         asrow["auth_alt_id"]        = atm.alt_loc

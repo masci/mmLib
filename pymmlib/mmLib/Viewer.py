@@ -1720,6 +1720,10 @@ class GLAtomList(GLDrawList):
     def glal_calc_color(self, atom):
         """Sets the open-gl color for the atom.
         """
+        ## individual atom colors
+        if hasattr(atom, "glal_color"):
+            return atom.glal_color
+
         setting = self.properties["color_setting"]
         if type(setting)==TupleType:
             return setting

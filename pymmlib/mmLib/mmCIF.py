@@ -220,6 +220,13 @@ class mmCIFTable(list):
 
         return None
 
+    def new_row(self):
+        """
+        """
+        cif_row = mmCIFRow()
+        self.append(cif_row)
+        return cif_row
+
     def iter_rows(self, *args):
         """This is the same as get_row, but it iterates over all matching
         rows in the table.
@@ -360,6 +367,13 @@ class mmCIFData(list):
             return None
         except IndexError:
             return None
+
+    def new_table(self, name):
+        """
+        """
+        cif_table = mmCIFTable(name)
+        self.append(cif_table)
+        return cif_table
 
     def split_tag(self, tag):
         cif_table_name, cif_column_name = tag[1:].split(".")
