@@ -2,1123 +2,705 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-"""This module provides all the classes for describing a biological
-macromolecule.  These classes are mostly subclassed from Composite.py.
-The classes representing amino acids, nucleic acids, atoms, etc., are
-also autfitted with methods to compute basic properties of the structure
-they are describing.  See the documentation for the individual classes
-for more detail."""
-
-
 from   __future__           import generators
 import fpformat
+import weakref
+
 from   mmTypes              import *
-from   Composite            import *
 from   AtomMath             import *
-from   Elements             import ElementNames, ElementMap
-from   AminoAcids           import AminoAcidNames, AminoAcidMap
-from   NucleicAcids         import NucleicAcidNames, NucleicAcidMap
+from   Library              import Library
+from   StructureAlgorithms  import *
 
 
 
-## exceptions
-MissingAtom  = "MissingAtom"
-MissingChain = "MissingChain"
+### <LISTS>
+class ChainList(OrderedList2):
+    def add(self, chain):
+        assert isinstance(chain, Chain)
+        self.list.append((chain.chain_id or "ZZZ", chain))
+        self.list.sort()
+
+    def get(self, chain_id):
+        for item in self.list:
+            if item[-1].chain_id == chain_id: return item[-1]
+        return None
 
 
-
-class AtomContainer(Composite):
-    """Any type of structure container sould be subclassed from AtomContainer.
-    This includes atoms."""
-
-    def __init__(self):
-        Composite.__init__(self)
-
-
-    def __str__(self):
-        return "AtomContainer"
-
-
-    def structureIterator(self):
-        """Iterates all Structure classes rooted at self."""
-        for x in self:
-            if isinstance(x, Structure): yield x
-
-
-    def conformationIterator(self):
-        """Iterates all Conformation classes rooted at self."""
-        for x in self:
-            if isinstance(x, Conformation): yield x
-
-
-    def moleculeIterator(self):
-        """Iterates all Molecule classes rooted at self."""
-        for x in self:
-            if isinstance(x, Molecule): yield x
-
-
-    def chainIterator(self):
-        """Iterates all Chain classes rooted at self."""
-        for x in self:
-            if isinstance(x, Chain): yield x
-
-
-    def polypeptideChainIterator(self):
-        """Iterates all PolyeptideChain classes rooted at self."""
-        for x in self:
-            if isinstance(x, PolypeptideChain): yield x
-
-                
-    def residueIterator(self):
-        """Iterates all Residue classes rooted at self."""
-        for x in self:
-            if isinstance(x, Residue): yield x
-
-                
-    def aminoAcidResidueIterator(self):
-        """Iterates all AminoAcideResidue classes rooted at self."""
-        for x in self:
-            if isinstance(x, AminoAcidResidue): yield x
-
-
-    def nucleicAcidResidueIterator(self):
-        """Iterates all NucleicAcideResidue classes rooted at self."""
-        for x in self:
-            if isinstance(x, NucleicAcidResidue): yield x
-
-
-    def atomIterator(self, conf_id = None):
-        """Iterates all Atom classes rooted at self."""
-        if conf_id:
-            def block_func(x):
-                if not isinstance(x, Conformation): return 0
-                x_conf_id = x.getID()
-                return x_conf_id != conf_id
-
-            for x in self.blockingIterator(block_func):
-                if isinstance(x, Atom): yield x
+class PolymerList(OrderedList2):
+    def add(self, poly):
+        assert isinstance(poly, Polymer)
+        self.list.append((poly.polymer_id, poly))
+        self.list.sort()
             
-        else:
-            for x in self:
-                if isinstance(x, Atom): yield x
-
-        
-    def bondIterator(self, conf_id = None):
-        """Special case of atomIterator which iterates all bonds in
-        atoms rooted at self."""
-        visited_bonds = []
-        for atm in self.atomIterator(conf_id):
-            for bond in atm.bond_list:
-                if bond in visited_bonds:
-                    continue
-                visited_bonds.append(bond)
-                yield bond
-
-
-    def getStructure(self):
-        """Returns self's closest parent of class System."""
-        for parent in self.getParentList():
-            if isinstance(parent, Structure):
-                return parent
-        return None
-
-
-    def getConformation(self):
-        """Returns self's closest parent of class System."""
-        for parent in self.getParentList():
-            if isinstance(parent, Conformation):
-                return parent
-        return None
-
-   
-    def getMolecule(self):
-        """Returns self's closest parent of class Molecule."""
-        for parent in self.getParentList():
-            if isinstance(parent, Molecule):
-                return parent
-        return None
-
-
-    def getChain(self):
-        """Returns self's closest parent of class Chain."""
-        for parent in self.getParentList():
-            if isinstance(parent, Chain):
-                return parent
-        return None
-
-
-    def getPolypeptideChain(self):
-        """Returns self's closest parent of class PolypeptideChain."""
-        for parent in self.getParentList():
-            if isinstance(parent, PolypeptideChain):
-                return parent
-        return None
-
-    
-    def getResidue(self):
-        """Returns self's closest parent of class Residue."""
-        for parent in self.getParentList():
-            if isinstance(parent, Residue):
-                return parent
-        return None
-    
-
-    def getAminoAcidResidue(self):
-        """Returns self's closest parent of class Residue."""
-        for parent in self.getParentList():
-            if isinstance(parent, AminoAcidResidue):
-                return parent
-        return None
-
-
-    def getNucleicAcidResidue(self):
-        """Returns self's closest parent of class NucleicAcidResidue."""
-        for parent in self.getParentList():
-            if isinstance(parent, NucleicAcidResidue):
-                return parent
-        return None
-
-
-    def getConformations(self):
-        """Iterates the tree starting at self and returns a sorted unique
-        list of all the conformation IDs."""
-        conf_list = []
-        for conf in self.conformationIterator():
-            conf_id = conf.getID()
-            if conf_id and conf_id not in conf_list:
-                conf_list.append(conf_id)
-        conf_list.sort()
-        return conf_list
-
-
-
-class Structure(AtomContainer):
-    """Container for a Structure of molecules."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.title                = ""
-        self.id                   = ""
-        self.key_words            = ""
-        self.orig_deposition_date = ""
-
-
-    def __str__(self):
-        return "Structure::%s" % (str(self.name))
-
-
-    def setTitle(self, title):
-        """Set the title of the structure."""
-        self.title = str(title)
-
-
-    def getTitle(self):
-        """Return the title of the structure."""
-        return self.title
-
-
-    def setID(self, id):
-        """Set the ID of the structure, comes from PDB::HEADER.id_code or
-        mmCIF::_entity.id."""
-        self.id = str(id)
-
-
-    def getID(self):
-        """Get the ID of the structure, comes from PDB::HEADER.id_code or
-        mmCIF::_entity.id."""
-        return self.id
-
-
-    def setKeywords(self, key_words):
-        self.key_words = str(key_words)
-
-
-    def getKeywords(self):
-        return self.key_words
-
-
-    def setOriginalDepositionDate(self, date):
-        self.orig_deposition_date = str(date)
-
-
-    def getOriginalDepositionDate(self):
-        return self.orig_deposition_date
-
-
-    def setAuthorList(self, list):
-        self.author_list = list
-
-
-    def getAuthorList(self):
-        return self.author_list
-
-
-    def setDescription(self, desc):
-        """Description from PDB::COMPND or mmCIF::entity.pdbx_description."""
-        self.description = str(desc)
-
-
-    def getDescription(self):
-        return self.description
-
-
-    def setExperimentalMethod(self, experimental_method):
-        self.experimental_method = str(experimental_method)
-
-    
-    def getExperimentalMethod(self):
-        return self.experimental_method
-
-
-
-class Molecule(AtomContainer):
-    """Container for a molecule."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.name          = ""
-        self.molecule_type = ""
-        self.polymer_type  = ""
-
-
-    def __str__(self):
-        tstr = "Molecule"
-
-        if self.molecule_type != None:
-            tstr += "::" + str(self.molecule_type)
-        
-        if self.name != None:
-            tstr += "::" + str(self.name)
-        
-        return tstr
-
-
-    def setName(self, name):
-        self.name = str(name)
-
-
-    def getName(self):
-        return self.name
-
-
-    def setType(self, mtype):
-        """Sets the type of molecule."""
-        self.molecule_type = str(mtype)
-
-
-    def getType(self):
-        """Returns the molecule type."""
-        return self.molecule_type
-
-
-    def setPolymerType(self, ptype):
-        """Sets the polymer type of the molecule."""
-        self.polymer_type = str(ptype)
-
-
-    def getPolymerType(self):
-        """Returns the polymer type of the molecule."""
-        return self.polymer_type
-
-
-    def isProtein(self):
-        """Returns true if the molecule is a protein, otherwise
-        returns false."""
-        protein_types = ["polypeptide", "polypeptide(L)"]
-
-        if self.molecule_type and self.molecule_type != "polymer":
-            return 0
-
-        if self.polymer_type:
-            return self.polymer_type in protein_types
-
-        ## simple algorithim to figure out if this is a protein
-        num_aa_residues = 0
-        for res in self.aminoAcidResidueIterator():
-            num_aa_residues += 1
-
-        if num_aa_residues > 0:
-            self.molecule_type = "polymer"
-            self.polymer_type  = "polypeptide"
-            return 1
-
-        return 0
-            
-
-
-class Solvent(AtomContainer):
-    """Container for solvent molecules."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-
-    def __str__(self):
-        return "Solvent"
-
-
-
-## NOTE: move the constructPeptide bonds here, rename it 
-##       constructLinkageBonds or somthing like that
-
-class Chain(AtomContainer):
-    """Conatiner for residues of the same type."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.chain_id = ""
-
-
-    def __str__(self):
-        return "Chain::%s" % (self.chain_id)
-
-
-    def setID(self, id):
-        """Set the chain ID.  This should be a 1-char string.  It is
-        converted to upper case set as lower case."""
-        self.chain_id = str(id).upper()
-
-
-    def getID(self):
-        """Returns the chain ID."""
-        return self.chain_id
-
-
-    def getResidueBySequenceNumber(self, seq_num):
-        """Returns the residue of the given sequence ID."""
-        for res in self.residueIterator():
-            if res.getSequenceNumber() == seq_num:
-                return res
-        return None
-
-
-
-class NucleicAcidChain(Chain):
-    """Subclass of Chain specificly for containing nucleic acid residues."""
-
-    def __init__(self):
-        Chain.__init__(self)
-
-
-    def __str__(self):
-        return "NucleicAcidChain::%s" % (self.chain_id)
-
-
-
-class PolypeptideChain(Chain):
-    """Subclass of Chain specificly for containing amino acid residues."""
-
-    def __init__(self):
-        Chain.__init__(self)
-
-
-    def __str__(self):
-        return "PolypeptideChain::%s" % (self.chain_id)
-
-
-    def constructPeptideBonds(self):
-        """Constructs all inter-residue bonds in the Polypeptide chain."""
-        for aa_res in self.aminoAcidResidueIterator():
-
-            next_aa_res = aa_res.getNextResidue()
-            if next_aa_res == None:
-                continue
-
-            ## make a unique list of the conformations found in both residues
-            conf_list = aa_res.getConformations()
-            for conf_id in next_aa_res.getConformations():
-                if conf_id not in conf_list:
-                    conf_list.append(conf_id)
-
-            if not conf_list:
-                conf_list.append(None)
-
-            ## iterate through the conformation list constructing bonds
-            for conf_id in conf_list:
-                try:
-                    aC = aa_res.getAtomByLabel("C", conf_id)
-                except MissingAtom, label:
-                    continue
-
-                try:
-                    naN = next_aa_res.getAtomByLabel("N", conf_id)
-                except MissingAtom, label:
-                    continue
-            
-                aC.createBond(naN)
-
-
-
-class Residue(AtomContainer):
-    """Abstract class representing a monomer residue."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.name         = ""
-        self.sequence_num = 0
-        self.sequence_id  = ""
-        self.icode        = ""
-
-
-    def __str__(self):
-        return "Residue::%s::%s" % (str(self.name), str(self.sequence_id))
-
-
-    def getName(self):
-        """Returns the name of the Residue."""
-        return self.name
-
-
-    def setName(self, name):
-        """Sets the name of the Residue."""
-        self.name = str(name).upper()
-
-
-    def setSequenceNumber(self, num):
-        self.sequence_num = int(num)
-
-
-    def getSequenceNumber(self):
-        return self.sequence_num
-
-
-    def getSequenceID(self):
-        """Returns the sequence ID of the Residue.  This is the (resSeq, iCdoe)
-        tuple."""
-        return self.sequence_id
-
-
-    def setSequenceID(self, seq_id):
-        """Sets the sequence ID of  the Residue.  This is the resSeq+iCode
-        string."""
-        self.sequence_id = str(seq_id)
-
-
-    def getAtomByLabel(self, label, conf_id = None):
-        """Searches for and returns the atom in the residue with the
-        argument label.  A ResidueError exception is raised if the atom
-        is not found."""
-        for atom in self.atomIterator(conf_id):
-            if atom.getAtomLabel() == label:
-                return atom
-        raise MissingAtom, label
-
-
-    def getAtom(self, label, conf_id = None):
-        """Searches for and returns the atom in the residue with the
-        argument label.  Returns None if the atom is not found."""
+    def get(self, polymer_id):
         try:
-            return self.getAtomByLabel(label, conf_id)
-        except MissingAtom:
-            return None
-
-
-    def getPrevResidue(self):
-        """Returns the previous Residue in the chain."""
-        prev_res = None
-
-        chain = self.getChain()
-        if not chain:
-            raise MissingChain, str(self)
-        
-        for res in chain.residueIterator():
-            if  res == self: return prev_res
-            prev_res = res
-
+            return self.list[polymer_id][-1]
+        except IndexError:
+            print "[ERROR] BAD polymer_id=",polymer_id
         return None
 
 
-    def getNextResidue(self):
-        """Returns the next Residue in the chain."""
-        nflag = 0
-        
-        chain = self.getChain()
-        if not chain:
-            raise MissingChain, str(self)
+class FragmentList(OrderedList2):
+    def __init__(self):
+        OrderedList2.__init__(self)
+        self.cache = {}
 
-        for res in chain.residueIterator():
-            if   res == self: nflag = 1
-            elif nflag:       return res
+    def add(self, frag):
+        assert isinstance(frag, Fragment)
+        self.list.append((frag.res_seq, frag.icode, frag))
+        self.cache[(frag.res_seq, frag.icode)] = frag
+        self.list.sort()
 
+    def get(self, res_seq, icode):
+        try:
+            return self.cache[(res_seq, icode)]
+        except KeyError:
+            print "[ERROR] BAD frag_id=",str(res_seq)+icode
         return None
 
+
+class AtomList(OrderedList):
+    def __iter__(self, alt_loc):
+        for atm in self.list:
+            if   not atm.alt_loc:        yield atm
+            elif atm.alt_loc == alt_loc: yield atm
+
+    def add(self, atom):
+        assert isinstance(atom, Atom)
+
+        self.list.append(atom)
+
+    def get(self, name, alt_loc):
+        for atm in self.list:
+            if atm.name == name and \
+               (not atm.alt_loc or atm.alt_loc == alt_loc):
+                return atm
+        return None
+
+
+class AltLocList(WeakrefList):
+    def add(self, atom):
+        assert isinstance(atom, Atom)
+
+        for i in range(len(self)):
+            if atom.alt_loc < self[i].alt_loc:
+                self.insert(i, atom)
+                return
+
+        self.append(atom)
+
+
+class BondList(OrderedList):
+    def add(self, bond):
+        assert isinstance(bond, Bond)
+
+        self.list.append(bond)
+### </LISTS>
+
+
+
+### <STRUCTURE>
+class Structure(object):
+    def __init__(self,
+                 library         = None,
+                 default_alt_loc = ""):
+
+        ## element & monomer library
+        self.library         = library
+
+        ## default alt_loc
+        self.default_alt_loc = default_alt_loc
+
+        ## chain list
+        self.chain_list = ChainList()
+
+    def __del__(self):
+        print "STRUCTURE DESTROYED"
+
+    def __str__(self):
+        return "Structure"
+
+    def __getitem__(self, key):
+        """Same as getChain, but raises KeyError if the requested chain_id
+        is not found."""
+        chain = self.getChain(key)
+        if not chain:
+            raise KeyError, key
+
+        return chain
+
+    def __iter__(self):
+        return self.iterChains()
+
+    def iterChains(self):
+        """Iterates over all Chain objects in alphabetical order according
+        to their chain_id."""
+        return iter(self.chain_list)
+
+    def getChain(self, chain_id):
+        """Returns the Chain object matching the chain_id charactor."""
+        return self.chain_list.get(chain_id)
+
+    def iterPolymers(self):
+        """Iterate over all Segment objects.  The iteration is preformed in
+        order according to the Fragment object ordering the Segment objects
+        span."""
+        for chain in self.iterChains():
+            for poly in chain.iterPolymers():
+                yield poly
+
+    def iterPolypeptides(self):
+        for chain in self.iterChains():
+            for poly in chain.iterPolypeptides():
+                yield poly
+ 
+    def iterDNA(self):
+        for chain in self.iterChains():
+            for dna in chain.iterDNA():
+                yield dna
+
+    def getFragment(self, chain_id, res_seq, icode = ""):
+        """Returns the PDB fragment uniquely identified by its chain_id,
+        res_seq, and icode."""
+        chain = self.getChain(chain_id)
+        if chain:
+            return chain.getFragment(res_seq, icode)
+        return None
+            
+    def iterFragments(self):
+        """Iterates over all Fragment objects.  The iteration is performed
+        in order according the the parent Chain's chain_id, and the
+        Fragment's positioin within the chain."""
+        for chain in self.iterChains():
+            for frag in chain.iterFragments():
+                yield frag
+
+    def iterAminoAcids(self):
+        """Same as iterFragments() but only iterates over Fragments of the
+        subclass AminoAcidResidue."""
+        for chain in self.iterChains():
+            for aa in chain.iterAminoAcids():
+                yield aa
+
+    def iterNucleicAcids(self):
+        """Same as iterFragments() but only iterates over Fragments of the
+        subclas NucleicAcidResidue."""
+        for chain in self.iterChains():
+            for aa in chain.iterNucleicAcids():
+                yield aa
+
+    def getAtom(self, chain_id, res_seq, icode, name, alt_loc):
+        """Returns the Atom object matching the given set of arguments."""
+        chain = self.getChain(chain_id)
+        if chain:
+            return chain.getAtom(res_seq, icode, name, alt_loc)
+        return None
+
+    def iterAtoms(self):
+        """Iterates over all Atom objects.  The iteration is preformed in
+        order according to the Chain and Fragment ordering rules the Atom
+        object is a part of."""
+        for chain in self.iterChains():
+            for atm in chain.iterAtoms():
+                yield atm
+
+    def iterBonds(self):
+        """Iterates over all Bond objects.  The iteration is preformed by
+        iterating over all Atom objects in the same order as iterAtoms(),
+        then iterating over each Atom's Bond objects."""
+        visited = []
+
+        for atm in self.iterAtoms():
+            for bond in atm.iterBonds():
+                if bond not in visited:
+                    yield bond
+                    visited.insert(0, bond)
+
+
+class StructureMember(object):
+    def __init__(self, structure):
+        assert isinstance(structure, Structure)
+        
+        self.structure = weakref.ref(structure)
+### </STRUCTURE>
+
+
+
+### <CHAIN>
+class Chain(StructureMember):
+
+    getitem_error         = "Key must be res_seq or (res_seq, icode)"
+
+    def __init__(self,
+                 structure,
+                 chain_id    = ""):
+        
+        StructureMember.__init__(self, structure)
+
+        self.chain_id      = chain_id
+        self.polymer_list  = PolymerList()
+        self.fragment_list = FragmentList()
+
+    def __str__(self):
+        return "Chain(%s, %s ... %s)" % (self.chain_id,
+                                         self.fragment_list[0],
+                                         self.fragment_list[-1])
+
+    def __iter__(self):
+        """Same as iterFragments()."""
+        return self.iterFragments()
+        
+    def __getitem__(self, key):
+        """Similar to getFragment(), but the key can either be a 2-tuple
+        of (res_seq, icode), or it can be a single integer of res_seq.  If
+        the matching Fragment object is not found, a KeyError exception
+        is raised.  If the form of the key is incorrect, a ValueError
+        exception is raised."""
+        ## inialize res_seq
+        ## initalize icode
+        res_seq  = ""
+        icode    = ""
+
+        if type(key) == TupleType:
+            try:
+                (res_seq, icode) = key
+            except ValueError:
+                raise ValueError, self.getitem_error
+
+        elif type(key) == IntType:
+            res_seq = key
+
+        else:
+            raise ValueError, self.getitem_error
+
+        frag = self.getFragment(res_seq, icode)
+        if not frag:
+            raise KeyError
+
+        return frag
+
+    def getPolymer(self, polymer_id):
+        """Returns the Polymer object matching the given polymer_id.  Returns
+        None if no match is found."""
+        return self.polymer_list.get(polymer_id)
+
+    def iterPolymers(self):
+        """Iterate over all Polymer objects with the Chain."""
+        return iter(self.polymer_list)
+
+    def iterPolypeptides(self):
+        """Iterates over all Polypeptide object within the Chain."""
+        for poly in self.iterPolymers():
+            if isinstance(poly, Polypeptide):
+                yield poly
+
+    def iterDNA(self):
+        """Iterates over all DNA objects within the Chain."""
+        for poly in self.iterPolymers():
+            if isinstance(poly, DNA):
+                yield poly
+
+    def getFragment(self, res_seq, icode = ""):
+        """Returns the PDB fragment uniquely identified by its chain_id,
+        res_seq, and icode."""
+        return self.fragment_list.get(res_seq, icode)
+
+    def iterFragments(self):
+        """Iterates over all Fragment objects.  The iteration is performed
+        in order according to the Fragment's position within the Chain
+        object."""
+        return iter(self.fragment_list)
+
+    def iterAminoAcids(self):
+        """Same as iterFragments(), but only iterates over AminoAcidResidue
+        objects."""
+        for frag in self.iterFragments():
+            if isinstance(frag, AminoAcidResidue):
+                yield frag
+
+    def iterNucleicAcids(self):
+        """Same as iterFragments(), but only iterates over NucleicAcidResidue
+        objects."""
+        for frag in self.iterFragments():
+            if isinstance(frag, NucleicAcidResidue):
+                yield frag
+
+    def iterAtoms(self):
+        """Iterates over all Atom objects within the Chain."""
+        for frag in self.iterFragments():
+            for atm in frag.iterAtoms():
+                yield atm
+                
+    def iterBonds(self):
+        """Iterates over all Bond objects attached to Atom objects within the
+        Chain"""
+        visited = []
+        for atm in self.iterAtoms():
+            for bond in atm.iterBonds():
+                if bond not in visited:
+                    yield bond
+                    visited.insert(0, bond)
+### </CHAIN>
+
+
+
+### <POLYMER>
+class Polymer(StructureMember):
+    """Abstract class for grouping a series of bonded Residue objects
+    into a Polymer."""
+
+    def __init__(self,
+                 structure,
+                 chain_id     = "",
+                 polymer_id   = 0):
+        
+        StructureMember.__init__(self, structure)
+        
+        self.chain_id      = chain_id
+        self.polymer_id    = polymer_id
+        self.fragment_list = FragmentList()
+
+    def __str__(self):
+        return "%s(%d, %s...%s)" % (self.__class__.__name__,
+                                    self.polymer_id,
+                                    self.fragment_list[0],
+                                    self.fragment_list[-1])
+    
+    def __iter__(self):
+        """Same as iterResidues()."""
+        return self.iterResidues()
+        
+    def __getitem__(self, key):
+        """Similar to getResidue(), but the key can either be a 2-tuple
+        of (res_seq, icode), or it can be a single integer of res_seq.  If
+        the matching Fragment object is not found, a KeyError exception
+        is raised.  If the form of the key is incorrect, a ValueError
+        exception is raised."""
+        ## inialize res_seq
+        ## initalize icode
+        res_seq  = ""
+        icode    = ""
+
+        if type(key) == TupleType:
+            try:
+                (res_seq, icode) = key
+            except ValueError:
+                raise ValueError, self.getitem_error
+
+        elif type(key) == IntType:
+            res_seq = key
+
+        else:
+            raise ValueError, self.getitem_error
+
+        frag = self.getResidue(res_seq, icode)
+        if not frag:
+            raise KeyError
+
+        return frag
+
+    def getFragment(self, res_seq, icode = ""):
+        """Returns the Residue object matching the argument res_seq and icode
+        within the Polymer.  Returns None if no match is found."""
+        return self.fragment_list.get(res_seq, icode)
+
+    def iterFragments(self):
+        """Iterates over all Residue objects within the Polymer."""
+        return iter(self.fragment_list)
+
+    def getResidue(self, res_seq, icode = ""):
+        """Returns the Residue object matching the argument res_seq and icode
+        within the Polymer.  Returns None if no match is found."""
+        return self.fragment_list.get(res_seq, icode)
+
+    def iterResidues(self):
+        """Iterates over all Residue objects within the Polymer."""
+        return iter(self.fragment_list)
+
+    def iterAtoms(self):
+        """Iterates over all Atom objects with the Polymer."""
+        for frag in self.iterFragments():
+            for atm in frag.iterAtoms():
+                yield atm
+
+    def iterBonds(self):
+        """Iterates over all Bond objects attached to Atom objects within the
+        Polymer."""
+        visited = []
+        for atm in self.iterAtoms():
+            for bond in atm.iterBonds():
+                if bond not in visited:
+                    yield bond
+                    visited.insert(0, bond)
+
+class Polypeptide(Polymer):
+    """Subclass of the Polymer object grouping a chain of
+    AminoAcidResidue objects into a polypeptide."""
+
+
+class DNA(Polymer):
+    """Subclass of the Polymer object grouping a chain of
+    NucleicAcidResidue object into DNA."""
+### </POLYMER>
+
+
+
+### <FRAGMENT>
+class Fragment(StructureMember):
+    """Fragments"""
+
+    getitem_error     = "Key must be atom name or (name,alt_loc)"
+
+    def __init__(self,
+                 structure,
+                 res_name    = "",
+                 res_seq     = 0,
+                 icode       = "",
+                 chain_id    = ""):
+        
+        StructureMember.__init__(self, structure)
+
+        self.res_name  = res_name
+        self.res_seq   = res_seq
+        self.icode     = icode
+        self.chain_id  = chain_id
+
+        self.atom_list = AtomList()
+
+    def __str__(self):
+        return "%s(%s,%d,%s,%s)" % (self.__class__.__name__,
+                                    self.res_name,
+                                    self.res_seq,
+                                    self.icode,
+                                    self.chain_id)
+
+    def __iter__(self):
+        """Same as iterAtoms() method."""
+        return self.iterAtoms()
+
+    def __getitem__(self, key):
+        """Return the atom of the name key in this fragment.  If the key is a
+        tuple, then the atom matching (name, alt_loc) is returned.  This
+        raises the KeyError exception if a match is not found."""
+
+        ## initalize name
+        ## initalize alt_loc to the Structure default
+        name    = ""
+        alt_loc = ""
+
+        if type(key) == StringType:
+            name = key
+
+        elif type(key) == TupleType:
+            if len(key) != 2: raise ValueError, self.getitem_error
+            (name, alt_loc) = key
+
+        else:
+            raise ValueError, self.getitem_error
+
+
+        atm = self.getAtom(name, alt_loc)
+        if not atm:
+            raise KeyError
+
+        return atm
+
+    def getAtom(self, name, alt_loc = ""):
+        """Returns the matching Atom object contained in the Fragment.
+        If alt_loc is not given, then the Structure's default_alt_loc
+        is used.  This method returns None if a match is not found."""
+        alt_loc = alt_loc or self.structure().default_alt_loc
+        return self.atom_list.get(name, alt_loc)
+    
+    def iterAtoms(self):
+        """Iterates over all Atom objects contained in the Fragment.
+        There is no defined order for the iteration."""
+        return self.atom_list.__iter__(self.structure().default_alt_loc)
+
+    def iterBonds(self):
+        """Iterates over all Bond objects.  The iteration is preformed by
+        iterating over all Atom objects in the same order as iterAtoms(),
+        then iterating over each Atom's Bond objects."""
+        visited = []
+
+        for atm in self.iterAtoms():
+            for bond in atm.iterBonds():
+                if bond not in visited:
+                    yield bond
+                    visited.insert(0, bond)
+
+    def getFragment(self, offset):
+        chain = self.structure().getChain(self.chain_id)
+        if not chain: return None
+
+        i = chain.fragment_list.index(self) + offset
+        if i < 0 or i >= len(chain.fragment_list): return None
+        return chain.fragment_list[i]
+
+
+class Residue(Fragment):
+    """A subclass of Fragment representing one residue in a polymer chain."""
+
+    polymer_class          = Polymer
+
+    def __init__(self,
+                 structure,
+                 res_name    = "",
+                 res_seq     = 0,
+                 icode       = "",
+                 chain_id    = "",
+                 polymer_id  = 0):
+
+        Fragment.__init__(self,
+                          structure,
+                          res_name    = res_name,
+                          res_seq     = res_seq,
+                          icode       = icode,
+                          chain_id    = chain_id)
+
+        self.polymer_id = polymer_id
+
+    def __str__(self):
+        return "%s(%s,%d,%s,%s,%d)" % (self.__class__.__name__,
+                                       self.res_name,
+                                       self.res_seq,
+                                       self.icode,
+                                       self.chain_id,
+                                       self.polymer_id)
+
+
+    def getResidue(self, offset):
+        chain = self.structure().getChain(self.chain_id)
+        if not chain: return None
+
+        poly = chain.getPolymer(self.polymer_id)
+        if not poly: return None
+
+        i = poly.fragment_list.index(self) + offset
+        if i < 0 or i >= len(poly.fragment_list): return None
+        return poly.fragment_list[i]
+
+
+
+class AminoAcidResidue(Residue, AminoAcidResidueAlgorithms):
+    """A subclass of Residue representing one amino acid residue in a
+    polypeptide chain."""
+
+    polymer_class          = Polypeptide
 
 
 class NucleicAcidResidue(Residue):
-    """Container and methods for nucleic acid residues."""
+    """A subclass of Residue representing one nuclic acid in a strand of
+    DNA or RNA."""
+
+    polymer_class          = DNA
+### </FRAGMENT>
+
+
+
+### <ATOM>
+class Bond(BondAlgorithms):
+    """Indicates two atoms are bonded together."""
+    def __init__(self, atom1, atom2):
+        assert isinstance(atom1, Atom)
+        assert isinstance(atom2, Atom)
+
+        assert atom1 != atom2
+
+        self.atom1 = weakref.ref(atom1)
+        self.atom2 = weakref.ref(atom2)
+
+        atom1.bond_list.add(self)
+        atom2.bond_list.add(self)
 
     def __str__(self):
-        return "NucleicAcidResidue::%s::%s" % (
-            str(self.name), str(self.sequence_id))
-
-
-
-class AminoAcidResidue(Residue):
-    """Container and methods for amino acid residues."""
-
-    def __init__(self):
-        Residue.__init__(self)
-        self.aa = None
-
-
-    def __str__(self):
-        return "AminoAcidResidue::%s::%s" % (
-            str(self.name), str(self.sequence_id))
-
-
-    def setName(self, name):
-        """Set the name of the amino acid residue.  The name is checked
-        aginst the names in the AminoAcids library and a ValueError exception
-        is raised if the name isn't defined."""
-        Residue.setName(self, name)
-        try:
-            self.aa = AminoAcidMap[self.name]
-        except KeyError:
-            print "unknown amino acid type=%s" % (self.name)
-            self.aa = AminoAcidMap["UNK"]
-
-
-    def isNTerminal(self):
-        """Returns true if the residue is the N-Terminal, otherwise
-        returns false."""
-        if self.sequence_num == 1:
-            return 1
-        return 0
-
-    
-    def isCTerminal(self):
-        """Returns true if the residue is the C-Terminal, otherwise
-        returns false."""
-        if not self.getNextResidue():
-            return 1
-        return 0
-
-
-    def constructBonds(self):
-        """Constructs all bonds defined in the AminoAcid.py dictionary
-        for this monomer."""
-        conf_list = self.getConformations()
-        if not conf_list:
-            conf_list.append(None)
-
-        for (label1, label2) in self.aa.bond_list:
-            for conf_id in conf_list:
-                atm1 = self.getAtom(label1, conf_id)
-                atm2 = self.getAtom(label2, conf_id)
-                if atm1 and atm2:
-                    atm1.createBond(atm2)
-
-
-    def calcMainchainBondLength(self, conf_id = None):
-        """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
-        CA-(next)N).  The result is returned as a 5-tuple in that order.  Bond
-        lengths involving missing atoms are returned as None in the tuple."""
-        aN = self.getAtom('N', conf_id)
-        aCA = self.getAtom('CA', conf_id)
-        aC = self.getAtom('C', conf_id)
-        aO = self.getAtom('O', conf_id)
-        aCB = self.getAtom('CB', conf_id)
-
-        naN = None
-        next_res = self.getNextResidue()
-        if next_res:
-            naN = next_res.getAtom('N', conf_id)
-     
-        N_CA_distance = calculateDistance(aN, aCA)
-        CA_C_distance = calculateDistance(aCA, aC)
-        C_O_distance = calculateDistance(aC, aO)
-        
-        if naN:
-            C_nN_distance = calculateDistance(aC, naN)
-        else:
-            C_nN_distance = None
-
-        if aCB:
-            CA_CB_distance = calculateDistance(aCA, aCB)
-        else:
-            CA_CB_distance = None
-
-        return (N_CA_distance, CA_C_distance, C_O_distance,
-                CA_CB_distance, C_nN_distance)
-
-
-    def calcMainchainBondAngle(self, conf_id = None):
-        """Calculates main chain bond angles (N-CA-C, N-CA-CB, CB-CA-C,
-        CA-C-O, CA-C-(next)N, C-(next residue)N-(next residue)CA) and
-        returnst the result as a 6-tuple in that order.  Angles involving
-        missing atoms are returned as None in the tuple."""
-        aN = self.getAtomByLabel('N', conf_id)
-        aCA = self.getAtomByLabel('CA', conf_id)
-        aC = self.getAtomByLabel('C', conf_id)
-        aO = self.getAtomByLabel('O', conf_id)
-        aCB = self.getAtom('CB', conf_id)
-
-        naN = None
-        naCA = None
-        next_res = self.getNextResidue()
-        if next_res:
-            naN = next_res.getAtomByLabel('N', conf_id)
-            naCA = next_res.getAtomByLabel('CA', conf_id)
-
-        N_CA_C_angle = calculateAngle(aN, aCA, aC)
-        CA_C_O_angle = calculateAngle(aCA, aC, aO)
-        
-        if aCB:
-            N_CA_CB_angle = calculateAngle(aN, aCA, aCB)
-            CB_CA_C_angle = calculateAngle(aCB, aCA, aC)
-        else:
-            N_CA_CB_angle = None
-            CB_CA_C_angle = None
-
-        if naN:
-            CA_C_nN_angle = calculateAngle(aCA, aC, naN)
-        else:
-            CA_C_nN_angle = None
-
-        if naCA:
-            C_nN_nCA_angle = calculateAngle(aC, naN, naCA)
-        else:
-            C_nN_nCA_angle = None
-
-        return (N_CA_C_angle, N_CA_CB_angle, CB_CA_C_angle,
-                CA_C_O_angle, CA_C_nN_angle, C_nN_nCA_angle) 
-
-        
-    def calcTorsionPsi(self, conf_id = None):
-        """Calculates the Psi torsion angle of the amino acid.  Raises a
-        CTerminal exception if called on a C-terminal residue which does
-        not have a Psi torsion angle."""
-        next_res = self.getNextResidue()
-        if not next_res:
-            return None
-
-        aN = self.getAtomByLabel('N', conf_id)
-        aCA = self.getAtomByLabel('CA', conf_id)
-        aC = self.getAtomByLabel('C', conf_id)
-        naN = next_res.getAtomByLabel('N', conf_id)
-        return calculateTorsionAngle(aN, aCA, aC, naN)
-
-
-    def calcTorsionPhi(self, conf_id = None):
-        """Calculates the Phi torsion angle of the amino acid.  Raises a
-        NTerminal exception if called on a N-terminal residue which does
-        not have a Phi torsion angle."""
-        prev_res = self.getPrevResidue()
-        if not prev_res:
-            return None
-
-        paC = prev_res.getAtomByLabel('C', conf_id)
-        aN = self.getAtomByLabel('N', conf_id)
-        aCA = self.getAtomByLabel('CA', conf_id)
-        aC = self.getAtomByLabel('C', conf_id)
-        return calculateTorsionAngle(paC, aN, aCA, aC)
-
-
-    def calcTorsionOmega(self, conf_id = None):
-        """Calculates the Omega torsion angle of the amino acid. Raises a
-        CTerminal exception if called on a C-terminal residue which does
-        not have a Omega torsion angle."""
-        next_res = self.getNextResidue()
-        if not next_res:
-            return None
-
-        aCA = self.getAtomByLabel('CA', conf_id)
-        aC = self.getAtomByLabel('C', conf_id)
-        naN = next_res.getAtomByLabel('N', conf_id)
-        naCA = next_res.getAtomByLabel('CA', conf_id)
-        return calculateTorsionAngle(aCA, aC, naN, naCA)
-
-
-    def isProline(self):
-        """Returns true if the amino acid is Proline, otherwise false.
-        This is for convience."""
-        return self.name == "PRO"
-
-    
-    def isCis(self, conf_id = None):
-        """Returns true if this is a CIS amino acid, otherwise returns false.
-        It uses calcTorsionOmega."""
-        omega = self.calcTorsionOmega(conf_id)
-        if abs(omega) > math.pi / 2.0:
-            return 1
-        return 0
-
-
-    def calcPuckerTorsion(self, conf_id = None):
-        """Calculates the Pucker torsion of a ring system.  Returns None
-        for Amino Acids which do not have Pucker torsion angles."""
-        if not self.aa.pucker_definition:
-            return None
-
-        a1 = self.getAtomByLabel(self.aa.pucker_definition[0], conf_id)
-        a2 = self.getAtomByLabel(self.aa.pucker_definition[1], conf_id)
-        a3 = self.getAtomByLabel(self.aa.pucker_definition[2], conf_id)
-        a4 = self.getAtomByLabel(self.aa.pucker_definition[3], conf_id)
-        return calculateTorsionAngle(a1, a2, a3, a4)
-
-
-    def calcTorsionChi1(self, conf_id = None):
-        if not self.aa.chi1_definition:
-            return None
-        
-        a1 = self.getAtomByLabel(self.aa.chi1_definition[0], conf_id)
-        a2 = self.getAtomByLabel(self.aa.chi1_definition[1], conf_id)
-        a3 = self.getAtomByLabel(self.aa.chi1_definition[2], conf_id)
-        a4 = self.getAtomByLabel(self.aa.chi1_definition[3], conf_id)
-        return calculateTorsionAngle(a1, a2, a3, a4)
-
-
-    def calcTorsionChi2(self, conf_id = None):
-        if not self.aa.chi2_definition:
-            return None
-        
-        a1 = self.getAtomByLabel(self.aa.chi2_definition[0], conf_id)
-        a2 = self.getAtomByLabel(self.aa.chi2_definition[1], conf_id)
-        a3 = self.getAtomByLabel(self.aa.chi2_definition[2], conf_id)
-        a4 = self.getAtomByLabel(self.aa.chi2_definition[3], conf_id)
-        return calculateTorsionAngle(a1, a2, a3, a4)
-
-
-    def calcTorsionChi3(self, conf_id = None):
-        if not self.aa.chi3_definition:
-            return None
-        
-        a1 = self.getAtomByLabel(self.aa.chi3_definition[0], conf_id)
-        a2 = self.getAtomByLabel(self.aa.chi3_definition[1], conf_id)
-        a3 = self.getAtomByLabel(self.aa.chi3_definition[2], conf_id)
-        a4 = self.getAtomByLabel(self.aa.chi3_definition[3], conf_id)
-        return calculateTorsionAngle(a1, a2, a3, a4)
-
-
-    def calcTorsionChi4(self, conf_id = None):
-        if not self.aa.chi4_definition:
-            return None
-        
-        a1 = self.getAtomByLabel(self.aa.chi4_definition[0], conf_id)
-        a2 = self.getAtomByLabel(self.aa.chi4_definition[1], conf_id)
-        a3 = self.getAtomByLabel(self.aa.chi4_definition[2], conf_id)
-        a4 = self.getAtomByLabel(self.aa.chi4_definition[3], conf_id)
-        return calculateTorsionAngle(a1, a2, a3, a4)
-
-
-    def calcTorsionChi(self, conf_id = None):
-        """Calculates CHI side-chain torsion angles according to the
-        amino acid specific definitions in the AminoAcids library.
-        Returns the 4-tuple (CHI1, CHI2, CHI3, CHI4).  Angles involving
-        missing atoms, or angles which do not exist for the amino acid
-        are returned as None in the tuple."""
-        try:
-            chi1 = self.calcTorsionChi1(conf_id)
-        except MissingAtom:
-            chi1 = None
-
-        try:
-            chi2 = self.calcTorsionChi2(conf_id)
-        except MissingAtom:
-            chi2 = None
-            
-        try:
-            chi3 = self.calcTorsionChi3(conf_id)
-        except MissingAtom:
-            chi3 = None
-            
-        try:
-            chi4 = self.calcTorsionChi4(conf_id)
-        except MissingAtom:
-            chi4 = None
-
-        return (chi1, chi2, chi3, chi4)
-
-
-
-class Conformation(AtomContainer):
-    """Container class descirbing multiple conformations of molecules,
-    atoms, and chains."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.conformation_id = ""
-
-
-    def __str__(self):
-        return "Conformation::%s" % (self.conformation_id)
-
-
-    def setID(self, cid):
-        """Sets the ID charactor of the conformation."""
-        self.conformation_id = str(cid)
-
-
-    def getID(self):
-        """Returns the ID charactor of the conformation."""
-        return self.conformation_id
-
-
-
-class Atom(AtomContainer):
-    """Individual atom and properties."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.element      = ""
-        self.el           = None
-        self.charge       = 0.0
-        self.position     = Vector(0.0, 0.0, 0.0)
-        self.occupancy    = 1.0
-        self.temp_factor  = 1.0
+        return "Bond(%s...%s)" % (self.atom1(), self.atom2())
+
+
+class Atom(StructureMember, AtomAlgorithms):
+    """Class representing a single atom."""
+    def __init__(self,
+                 structure,
+                 name        = "",
+                 alt_loc     = "",
+                 res_name    = "",
+                 res_seq     = 0,
+                 icode       = "",
+                 chain_id    = ""):
+
+        assert isinstance(structure, Structure)
+
+        StructureMember.__init__(self, structure)
+
+        self.name         = name
+        self.alt_loc      = alt_loc
+        self.res_name     = res_name
+        self.res_seq      = res_seq
+        self.icode        = icode
+        self.chain_id     = chain_id
+
+        self.position     = None
+        self.occupancy    = 0.0
+        self.temp_factor  = 0.0
         self.U            = None
-        self.radius       = 0.0
-        self.atom_label   = ""
-        self.velocity     = None
-        self.force        = None
-        self.bond_list    = []
-
+        self.charge       = 0.0
+        
+        self.alt_loc_list = None
+        self.bond_list    = BondList()
 
     def __str__(self):
-        return "Atom::%s" % (str(self.atom_label))
+        return "Atom(%s,%s,%s,%s,%s,%s)" % (self.name,
+                                            self.alt_loc,
+                                            self.res_name,
+                                            self.res_seq,
+                                            self.icode,
+                                            self.chain_id)
 
+    def __getitem__(self, key):
+        """Same as getAltLoc(key)."""
+        return self.getAltLoc(key)
 
-    def setElement(self, element):
-        try:
-            self.el = ElementMap[element]
-        except KeyError:
-            raise SystemExit, "Unknown element %s" % (element)
-        self.element = self.el.symbol
+    def __iter__(self):
+        """Same as iterAltLoc()."""
+        return self.iterAltLoc()
 
-        
-    def getElement(self):
-        return self.element
+    def getAltLoc(self, alt_loc):
+        """Returns the Atom object matching the alt_loc argument."""
+        if self.alt_loc_list:
+            alt_loc = alt_loc or self.structure().default_alt_loc
+            for atm in self.alt_loc_list:
+                if atm.alt_loc == alt_loc: return atm
+            return None
+        else:
+            return self
 
-    
-    def setCharge(self, charge):
-        self.charge = float(charge)
-
-
-    def getCharge(self):
-        return self.charge
-
-
-    def setOccupancy(self, occupancy):
-        self.occupancy = float(occupancy)
-
-
-    def getOccupancy(self):
-        return self.occupancy
-
-
-    def setTemperatureFactor(self, tf):
-        self.temp_factor = float(tf)
-
-
-    def getTemperatureFactor(self):
-        return self.temp_factor
-
-
-    def setU(self, U):
-        self.U = U
-
-
-    def getU(self):
-        return self.U
-
-
-    def setPosition(self, position):
-        self.position = position
-
-
-    def getPosition(self):
-        return self.position
-
-
-    def setRadius(self, radius):
-        self.radius = float(radius)
-
-
-    def setAtomLabel(self, atom_label):
-        self.atom_label = str(atom_label)
-
-
-    def getAtomLabel(self):
-        return str(self.atom_label).upper()
-
-
-    def setVelocity(self, velocity):
-        self.velocity = velocity
-
-
-    def setForce(self, force):
-        self.force = force
-
-
-    def getForce(self):
-        return self.force
-
-
-    def countBonds(self):
-        return len(self.bond_list)
-
-
-    def getBondList(self):
-        return self.bond_list
-
-
-    def getBond(self, atom):
-        """Returns the bond connection self to the argument atom."""
+    def iterAltLoc(self):
+        """Iterate over all alt_loc versions of this atom in the
+        alphabetical order of the alt_loc labels.  If there are no
+        alt_loc versions, do not iterate."""
+        if self.alt_loc_list:
+            for atm in self.alt_loc_list:
+                yield atm
+        else:
+            yield self
+            
+    def getBond(self, atm):
+        """Returns the Bond connecting self with the argument atom."""
         for bond in self.bond_list:
-            if bond.isBondOf(atom):
+            if atm == bond.atom1() or atm == bond.atom2():
                 return bond
         return None
 
-
-    def createBond(self, atom):
-        """Create a new bond between self and the argument atom."""
-        ## check if the bond already exists
-        bond = self.getBond(atom)
-        if bond:
-            return bond
-        
-        ## create new bond
-        bond = Bond()
-        bond.setFirstAtom(self)
-        bond.setSecondAtom(atom)
-        self.bond_list.append(bond)
-        atom.bond_list.append(bond)
-        return bond
-
-                              
-    def destroyBond(self, atom):
-        """Destroy bond to atom."""
-        bond = self.getBond(atom)
-        if bond:
-            self.bond_list.remove(bond)
-            atom.bond_list.remove(bond)
-            del bond
-
-
-    def destroyBonds(self):
-        """Destory all bonds."""
+    def iterBonds(self):
+        """Iterates over all the Bond edges connected to self."""
         for bond in self.bond_list:
-            self.bond_list.remove(bond)
-            del bond
+            yield bond
 
-
-    def hasBond(self, bond):
-        """Returns true if the atom is involved in the bond."""
-        return bond in self.bond_list
-
-
-    def isBound(self):
-        """Returns true if the atom is bound to any other atom."""
-        return len(self.bond_list) > 0
-
-
-    def calcAnisotropy(self):
-        """Calculates the ansitropy of that atom."""
-        ## no Anisotropic values, we have a spherical atom
-        if self.U == None:
-            return 1.0
-
-        ## build Numeric Python (NumPy) matrix
-        m = array([[ self.U[0], self.U[3], self.U[4] ],
-                   [ self.U[3], self.U[1], self.U[5] ],
-                   [ self.U[4], self.U[5], self.U[2] ]])
-
-        evals = eigenvalues(m)
-        ansotropy = min(evals) / max(evals)
-        return ansotropy
-        
-
-
-class Bond:
-    """Represents a bond between two atoms."""
-
-    def __init__(self):
-        self.first_atom   = None
-        self.second_atom  = None
-        self.bond_type    = "covalent"
-        self.distance     = 0.0
-        self.distance_esd = 0.0
-
-
-    def __str__(self):
-        a1 = "X"
-        a2 = "X"
-        conn = "-"
-
-        if self.first_atom: a1 = self.first_atom.getAtomLabel() or "X"
-        if self.second_atom: a2 = self.second_atom.getAtomLabel() or "X"
-
-        if self.distance and self.distance_esd:
-            d = fpformat.fix(self.distance, 3)
-            d_esd = fpformat.fix(self.distance_esd, 3)
-            conn = "-(%s, %s)-" % (d, d_esd)
-        
-        return a1 + conn + a2
-
-    
-    def setFirstAtom(self, atom):
-        self.first_atom = atom
-
-
-    def getFirstAtom(self):
-        return self.first_atom
-
-
-    def setSecondAtom(self, atom):
-        self.second_atom = atom
-
-
-    def getSecondAtom(self):
-        return self.second_atom
-
-
-    def getAtoms(self):
-        """Return a tuple of the atoms in the bond."""
-        return (self.first_atom, self.second_atom)
-
-
-    def setType(self, btype):
-        """Sets the type of the bond.  This must be one of the text
-        strings in Bond.TYPES."""
-        self.bond_type = btype  
-
-
-    def getType(self):
-        return self.bond_type
-
-
-    def getPartner(self, atom):
-        """Return the partner (bound) atom in the bond."""
-        if atom == self.first_atom:
-            return self.second_atom
-        elif atom == self.second_atom:
-            return self.first_atom
-        raise StructureError, 'Argument atom not in bond'
-
-
-    def isBondOf(self, atom):
-        """Return false if the atom is not a member of the bond."""
-        return atom == self.first_atom or atom == self.second_atom
-
-
-    def setDistance(self, dist, dist_esd):
-        """Set a distance for the bond."""
-        self.distance = float(dist)
-        self.distance_esd = float(dist_esd)
-
-
-    def getDistance(self):
-        return (self.distance, self.distance_esd)
-
-
-    def calcLength(self):
-        """Calculate the bond length bond length."""
-        return calculateDistance(self.first_atom, self.second_atom)
-    
+    def iterBondedAtoms(self):
+        """Iterates over all the Atoms bonded to self."""
+        for bond in self.iterBonds():
+            if self == bond.atom1():
+                yield bond.atom2()
+            else:
+                yield bond.atom1()
+### </ATOM>

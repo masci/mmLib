@@ -2,93 +2,57 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+from   __future__           import generators
 
 """This module provides a PDB v2.2 parser.  All records in the PDB v2.2
 specification have coorasponding classes defined here.  PDB files are
 loaded into a list of these cassed, and also can be constrcted/modified
 and written back out as PDB files."""
 
-
-
 import string
 import types
 import fpformat
 from   FileIO   import OpenFile
 
-
 PDBError = "PDB Error"
-
-
-
-## these are the fields in a ATOM/HETATM/ANISOU/etc... record that uniquely
-## identify a record; often passed into compareRecord when searching for
-## additional PDBRecord classes describing a ATOM
-AtomIDFields = ["name", "altLoc", "resName", "resSeq", "iCode", "chainID"]
-
-
-## these are the fields uniquely identifing a specic residue
-ResidueIDFields = ["resName", "resSeq", "iCode", "chainID"]
-
 
 
 class PDBRecord:
     """Base class for all PDB file records."""
-
     def __str__(self):
         return self.write()
 
-
-    def compareRecord(self, rec, field_list):
-        """Compares record rec to self for the fields listed in field_list."""
-        for field in field_list:
-            try:
-                val1 = getattr(self, field)
-            except AttributeError:
-                val1 = ""
-
-            try:
-                val2 = getattr(rec, field)
-            except AttributeError:
-                val2 = ""
-
-            if val1 != val2:
-                return 0
-
-        return 1
-
+    def __getattr__(self, attr):
+        for item in self._field_list:
+            if attr == item[0]: return None
+        raise AttributeError, "%s has not attribut %s" % (
+            self.__class__.__name__, attr)
 
     def write(self):
-        rec = self._name
+        ln = self._name
+        
         for (field, start, end, ftype, just) in self._field_list:
-            if len(rec) > start:
-                print "[ERROR] len(rec)=%d start=%d" % (i, start)
+            assert len(ln) <= (start - 1)
 
             ## add spaces to the end if necessary
-            rec = rec.ljust(start - 1)
+            ln = ln.ljust(start - 1)
                 
             ## access the namespace of this class to write the field
-            try:
-                s = getattr(self, field)
-            except AttributeError:
-                s = ""
+            s = getattr(self, field) or ""
 
             ## convert integer and float types
-            if ftype == "string":
-                pass
-                
+            if   ftype == "string":     pass
             elif ftype == "integer":
                 try:
                     s = str(s)
                 except ValueError:
                     raise PDBError, "field=%s %s not int" % (field, s)
-                
             elif ftype[:5] == "float":
                 d = int(ftype[6])
                 try:
                     s = fpformat.fix(s, d)
                 except ValueError:
                     raise PDBError, "field=%s %s not float" % (field, s)
-
             else:
                 raise PDBError, "INVALID TYPE: %s" % (ftype)
 
@@ -98,32 +62,22 @@ class PDBRecord:
                 raise PDBError, "field=%s value=%s len=%d > max=%d" % (
                     field, s, len(s), l)
 
-            if just == "ljust":
-                s = s.ljust(l)
-            else:
-                s = s.rjust(l)
+            if just == "ljust": ln += s.ljust(l)
+            else:               ln += s.rjust(l)
 
-            rec += s.upper()
-
-        return rec
-
+        return ln
 
     def read(self, rec):
         for (field, start, end, ftype, just) in self._field_list:
             ## adjust record reading indexes if the line doesn't contain
             ## all the fields
             if end > len(rec):
-                if start > len(rec):
-                    break
+                if start > len(rec): break
                 end = len(rec)
 
             s = rec[start-1:end].strip()
-            if not s:
-                continue
-
-            elif ftype == "string":
-                pass
-
+            if   not s:                continue
+            elif ftype == "string":    pass
             elif ftype == "integer":
                 try:
                     s = int(s)
@@ -133,7 +87,6 @@ class PDBRecord:
                     print "int('%s') failed" % (s)
                     print "========================================="
                     continue
-
             elif ftype[:5] == "float":
                 try:
                     s = float(s)
@@ -976,7 +929,7 @@ PDBRecordMap = {
 PDBRecordOrder = [
     (HEADER._name, HEADER, "mandatory"),
     (OBSLTE._name, OBSLTE, "optional"),
-    (TITLE._name, TITLE, "mandatory"),
+    (TITLE._name,  TITLE,  "mandatory"),
     (CAVEAT._name, CAVEAT, "optional"),
     (COMPND._name, COMPND, "mandatory"),
     (SOURCE._name, SOURCE, "mandatory"),
@@ -985,25 +938,25 @@ PDBRecordOrder = [
     (AUTHOR._name, AUTHOR, "mandatory"),
     (REVDAT._name, REVDAT, "mandatory"),
     (SPRSDE._name, SPRSDE, "optional"),
-    (JRNL._name, JRNL, "optional"),
+    (JRNL._name,   JRNL,   "optional"),
     (REMARK._name, REMARK, "optional"),
-    (DBREF._name, DBREF, "optional"),
+    (DBREF._name,  DBREF,  "optional"),
     (SEQADV._name, SEQADV, "optional"),
     (SEQRES._name, SEQRES, "optional"),
     (MODRES._name, MODRES, "optional"),
-    (HET._name, HET, "optional"),
+    (HET._name,    HET,    "optional"),
     (HETNAM._name, HETNAM, "optional"),
     (HETSYN._name, HETSYN, "optional"),
     (FORMUL._name, FORMUL, "optional"),
-    (HELIX._name, HELIX, "optional"),
-    (SHEET._name, SHEET, "optional"),
-    (TURN._name, TURN, "optional"),
+    (HELIX._name,  HELIX,  "optional"),
+    (SHEET._name,  SHEET,  "optional"),
+    (TURN._name,   TURN,   "optional"),
     (SSBOND._name, SSBOND, "optional"),
-    (LINK._name, LINK, "optional"),
+    (LINK._name,   LINK,   "optional"),
     (HYDBND._name, HYDBND, "optional"),
     (SLTBRG._name, SLTBRG, "optional"),
     (CISPEP._name, CISPEP, "optional"),
-    (SITE._name, SITE, "optional"),
+    (SITE._name,   SITE,   "optional"),
     (CRYST1._name, CRYST1, "mandatory"),
     (ORIGX1._name, ORIGX1, "mandatory"),
     (ORIGX2._name, ORIGX2, "mandatory"),
@@ -1014,44 +967,138 @@ PDBRecordOrder = [
     (MTRIX1._name, MTRIX1, "optional"),
     (MTRIX2._name, MTRIX2, "optional"),
     (MTRIX3._name, MTRIX3, "optional"),
-    (TVECT._name, TVECT, "optional"),
-    (MODEL._name, MODEL, "optional"),
-    (ATOM._name, ATOM, "optional"),
+    (TVECT._name,  TVECT,  "optional"),
+    (MODEL._name,  MODEL,  "optional"),
+    (ATOM._name,   ATOM,   "optional"),
     (SIGATM._name, SIGATM, "optional"),
     (ANISOU._name, ANISOU, "optional"),
     (SIGUIJ._name, SIGUIJ, "optional"),
-    (TER._name, TER, "optional"),
+    (TER._name,    TER,    "optional"),
     (HETATM._name, HETATM, "optional"),
     (ENDMDL._name, ENDMDL, "optional"),
     (CONECT._name, CONECT, "optional"),
     (MASTER._name, MASTER, "mandatory"),
-    (END._name, END, "mandatory")
+    (END._name, END,       "mandatory")
     ]
+
 
 ## END PDB RECORD DEFINITIONS
 ###############################################################################
 
 
+class PDBRecordList:
+    def __init__(self):
+        self.list = []
+        self.rec_order = {}
+        for i in range(len(PDBRecordOrder)):
+            self.rec_order[PDBRecordOrder[i][0]] = i
+    def __len__(self):
+        return len(self.list)
+    def __getitem__(self, i):
+        return self.list[i][-1]
+    def __delitem__(self, i):
+        assert type(i) == IntType
+        del self.list[i]
+    def __iter__(self):
+        for item in self.list: yield item[-1]
+    def __contains__(self, val):
+        for item in self.list:
+            if val == item[-1]: return True
+        return False
+    def count(self, val):
+        cnt = 0
+        for item in self.list:
+            if val == item[-1]: cnt += 1
+        return cnt
+    def index(self, val):
+        for item in self.list:
+            if val == item[-1]: return self.list.index(item)
+        raise ValueError, "list.index(x): x not in list"
+    def remove(self, val):
+        for item in self.list:
+            if val == item[-1]:
+                self.list.remove(item)
+                return
+            raise ValueError, "list.index(x): x not in list"
+    def add(self, rec):
+        assert isinstance(rec, PDBRecord)
+        rec_order = self.rec_order[rec._name]
+        if isinstance(rec, ATOM)    or \
+           isinstance(rec, SIGATM)  or \
+           isinstance(rec, ANISOU)  or \
+           isinstance(rec, SIGUIJ):
+            rel_order = rec_order - self.rec_order[ATOM._name]
+            val = (self.rec_order[ATOM._name],
+                   rec.chainID or "ZZZ",
+                   rec.resSeq,
+                   rec.iCode,
+                   rec.name,
+                   rec.altLoc,
+                   rel_order,
+                   rec)
+        else:
+            val = (rec_order, rec)
+        self.list.append(val)
+    def sort(self):
+        ## sort the records
+        self.list.sort()
+
+        ## reset the serial numbers
+        def has_serial(rec):
+            for field in rec._field_list:
+                if field[0] == "serial": return True
+            return False
+
+        def find_ATOM(i):
+            rec = self.list[i][-1]
+            j = 1
+            while j <= 3:
+                try:
+                    atom_rec = self.list[i-j][-1]
+                except IndexError:
+                    return None
+                j -= 1
+                if not isinstance(atom_rec, ATOM): continue
+                if rec.chainID == atom_rec.chainID      and \
+                   rec.resSeq  == atom_rec.resSeq       and \
+                   rec.iCode   == atom_rec.iCode        and \
+                   rec.name    == atom_rec.name         and \
+                   rec.altLoc == atom_rec.altLoc:
+                    return atom_rec
+            return None
+            
+        serial = 0
+        for i in range(len(self.list)):
+            rec = self.list[i][-1]
+            if has_serial(rec):
+                if isinstance(rec, SIGATM)  or \
+                   isinstance(rec, ANISOU)  or \
+                   isinstance(rec, SIGUIJ):
+                    ## find matching atom, use serial
+                    atm_rec = find_ATOM(i)
+                    if atm_rec: rec.serial = atm_rec.serial
+                    else:       rec.serial = ""
+                else:
+                    serial     += 1
+                    rec.serial =  serial
+
+
+
 class PDBFile:
     """Class for managing a PDB file.  Load, save, edit, and create PDB
     files with this class."""
-
     def __init__(self):
-        self.pdbrecord_list = []
-
+        self.pdb_list = PDBRecordList()
 
     def loadFile(self, fil):
+        """Loads a PDB file from File object fil."""
         fil = OpenFile(fil, "r")
         for ln in fil.readlines():
-            ## prep line by removing newline and upper-caseing line
-            ln = string.rstrip(ln)
-            ln = string.upper(ln)
             ## find the record data element for the given line
-            try:
-                rname = ln[:6]
-            except IndexError:
-                rname = ln[:6].ljust(6)
-
+            ln    = ln.rstrip()
+            rname = ln[:6]
+            rname.ljust(6)
+            
             try:
                 pdb_record_class = PDBRecordMap[rname]
             except KeyError:
@@ -1060,106 +1107,18 @@ class PDBFile:
 
             ## create/add/parse the record
             pdb_record = pdb_record_class()
-            self.pdbrecord_list.append(pdb_record)
             pdb_record.read(ln)
+            
+            self.pdb_list.add(pdb_record)
 
+        self.pdb_list.sort()
 
     def saveFile(self, fil):
+        """Saves the PDBFile object in PDB file format to File object fil."""
         fil = OpenFile(fil, "w")
-
-        ## this re-orders the PDB records with some basic grouping
-        ## rules in the PDB v2.2 specification, it doesn't
-        ## get it completely correct yet...
-        self.doctorUp()
-
-        for pdb_record in self.pdbrecord_list:
+        for pdb_record in self.pdb_list:
             fil.write(str(pdb_record) + "\n")
-        fil.close()
-
-
-    def doctorUp(self):
-        ## first sort the records
-        record_map = {}
-        for rec in self.pdbrecord_list:
-            try:
-                record_map[rec._name].append(rec)
-            except KeyError:
-                record_map[rec._name] = []
-                record_map[rec._name].append(rec)
-
-        ## create new list in correct order, adding mandatory records
-        serial_num = 1
-        pdbrecord_list = []
-        for (name, rec_class, requirement) in PDBRecordOrder:
-
-            ## skip some record types that require special sort/order
-            ## handling
-            if name in [SIGATM._name, ANISOU._name, SIGUIJ._name, TER._name]:
-                continue
-
-            ## ATOM and HETATM records break the normal ordering rules,
-            ## they have associated records SIGATM, ANISOU, and SIGUIJ
-            ## which should appear in that order after them
-            if name in [ATOM._name, HETATM._name]:
-
-                ## if there are no records, continue
-                if not record_map.has_key(name):
-                    continue
-
-                ## this function searches for other records describing
-                ## the atom given in atom_rec from the list of records
-                ## passed in rec_list
-                def get_rec(atom_rec, rec_list):
-                    retval = None
-                    
-                    for rec in rec_list:
-                        if atom_rec.compareRecord(rec, AtomIDFields):
-                            retval = rec
-                            break
-
-                    if retval:
-                        rec_list.remove(retval)
-
-                    return retval
-                
-
-                for atom_rec in record_map[name]:
-                    atom_rec.serial = serial_num
-                    
-                    pdbrecord_list.append(atom_rec)
-
-                    if record_map.has_key(SIGATM._name):
-                        rec = get_rec(atom_rec, record_map[SIGATM._name])
-                        if rec:
-                            rec.serial = serial_num
-                            pdbrecord_list.append(rec)
-
-                    if record_map.has_key(ANISOU._name):
-                        rec = get_rec(atom_rec, record_map[ANISOU._name])
-                        if rec:
-                            rec.serial = serial_num
-                            pdbrecord_list.append(rec)
-
-                    if record_map.has_key(SIGUIJ._name):
-                        rec = get_rec(atom_rec, record_map[SIGUIJ._name])
-                        if rec:
-                            rec.serial = serial_num
-                            pdbrecord_list.append(rec)
-
-                    serial_num += 1
-
-            elif requirement == "mandatory" and not record_map.has_key(name):
-                pdbrecord_list.append(rec_class())
-
-            elif record_map.has_key(name):
-                pdbrecord_list += record_map[name]
-
-        self.pdbrecord_list = pdbrecord_list
-
-
-    def getRecordList(self):
-        return self.pdbrecord_list
-
+        fil.flush()
 
     def selectRecordList(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the records in the
@@ -1172,7 +1131,7 @@ class PDBFile:
         (attr, val) = nvlist[0]
 
         rec_list = []
-        for rec in self.pdbrecord_list:
+        for rec in self.pdb_list:
             try:
                 if getattr(rec, attr) != val: continue
             except AttributeError:
@@ -1193,11 +1152,10 @@ class PDBFile:
 
         return rec_list
 
-
     def getChainList(self):
         """Returns a list of all the chain ids in the PDB file."""
         chain_list = []
-        for pdb_record in self.pdbrecord_list:
+        for pdb_record in self.pdb_list:
             try:
                 chain_id = getattr(pdb_record, "chainID")
             except AttributeError:
@@ -1208,11 +1166,46 @@ class PDBFile:
         return chain_list
 
 
+class StructurePDBFileBuilder:
+    def __init__(self, structure):
+        self.structure = structure
+        self.pdb_file  = PDBFile()
 
-##
-## <testing>
-##
-    
+        def add_records(atm):
+            atom_rec             = ATOM()
+            atom_rec.chainID     = atm.chain_id
+            atom_rec.resName     = atm.res_name
+            atom_rec.resSeq      = atm.res_seq
+            atom_rec.iCode       = atm.icode
+            atom_rec.name        = atm.name
+            atom_rec.altLoc      = atm.alt_loc
+            atom_rec.x           = atm.position[0]
+            atom_rec.y           = atm.position[1]
+            atom_rec.z           = atm.position[2]
+            atom_rec.occupancy   = atm.occupancy
+            atom_rec.tempFactor  = atm.temp_factor
+
+            self.pdb_file.pdb_list.add(atom_rec)
+
+            if atm.U:
+                anisou_rec             = ANISOU()
+                anisou_rec.chainID     = atom_rec.chainID
+                anisou_rec.resName     = atom_rec.resName
+                anisou_rec.resSeq      = atom_rec.resSeq
+                anisou_rec.iCode       = atom_rec.iCode
+                anisou_rec.name        = atom_rec.name
+                anisou_rec.altLoc      = atom_rec.altLoc
+
+                self.pdb_file.pdb_list.add(anisou_rec)
+
+        for atm in self.structure.iterAtoms():
+            for alt_atm in atm.iterAltLoc():
+                add_records(alt_atm)
+
+        self.pdb_file.pdb_list.sort()
+
+
+### <testing>
 if __name__ == "__main__":
     import sys
 
@@ -1225,7 +1218,5 @@ if __name__ == "__main__":
     pdbfil = PDBFile()
     pdbfil.loadFile(path)
     pdbfil.saveFile(sys.stdout)
+### </testing>
 
-##
-## </testing>
-##
