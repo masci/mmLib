@@ -90,17 +90,23 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         width     = glarea.allocation.width
         height    = glarea.allocation.height
 
+        x = 0.0
+        y = 0.0
+        z = 0.0
+        
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            self.roty = self.roty + (((event.x - self.beginx) / float(width)) * 360.0)
-            self.rotx = self.rotx + (((event.y - self.beginy) / float(height)) * 360.0)
+            self.roty += 360.0 * ((event.x - self.beginx) / float(width)) 
+            self.rotx += 360.0 * ((event.y - self.beginy) / float(height))
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
-            self.zpos = self.zpos + (((event.y - self.beginy) / float(height)) * 50.0)
-            self.zpos = max(self.zpos, -450.0)
-
+            z = 50.0 * ((event.y - self.beginy) / float(height))
+            #self.rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
+            
         elif (event.state & gtk.gdk.BUTTON3_MASK):
-            self.ypos = self.ypos - (((event.y - self.beginy) / float(height)) * 50.0)
-            self.xpos = self.xpos + (((event.x - self.beginx) / float(width)) * 50.0)
+            x = 50.0 * ((event.x - self.beginx) / float(height))
+            y = 50.0 * (-(event.y - self.beginy) / float(height))
+
+        self.gl_translate(x, y, z)
 
         self.beginx = event.x
         self.beginy = event.y
@@ -239,6 +245,75 @@ class StructDetailsDialog(gtk.Dialog):
                           struct_obj.calc_anisotropy())
 
 
+class ColorOptionMenu(gtk.OptionMenu):
+    def __init__(self):
+        gtk.OptionMenu.__init__(self)
+
+        self.color_name_list = [
+            "Default", "White", "Red", "Green", "Blue"]
+
+        self.color_dict = {
+            "Default": None,
+            "White":   (1.0, 1.0, 1.0),
+            "Red":     (1.0, 0.0, 0.0),
+            "Green":   (0.0, 1.0, 0.0),
+            "Blue":    (0.0, 0.0, 1.0) }
+
+        self.color_menu_item_dict = {}
+
+        self.menu = gtk.Menu()
+        for color_name in self.color_name_list:
+            menu_item = gtk.MenuItem(color_name)
+            menu_item.show()
+            self.color_menu_item_dict[color_name] = menu_item
+            gtk.MenuShell.append(self.menu, menu_item)
+
+        self.set_menu(self.menu)
+
+    def match_color_name(self, color):
+        for color_name, color_val in self.color_dict.items():
+            if color==color_val:
+                return color_name
+        return None
+
+    def set_color(self, color):
+        color_name = self.match_color_name(color)
+        if color_name!=None:
+            index = self.color_name_list.index(color_name)
+            self.set_history(index)
+        
+    def get_color(self):
+        index = self.get_history()
+        color_name = self.color_name_list[index]
+        menu_item = self.color_menu_item_dict[color_name]
+        
+        for color_name, mi in self.color_menu_item_dict.items():
+            if mi==menu_item:
+                return self.color_dict[color_name]
+
+
+class MaterialOptionMenu(gtk.OptionMenu):
+    def __init__(self):
+        gtk.OptionMenu.__init__(self)
+
+        self.material_name_list = GL_MATERIALS_DICT.keys()
+
+        self.menu = gtk.Menu()
+        for material_name in self.material_name_list:
+            menu_item = gtk.MenuItem(material_name.capitalize())
+            menu_item.show()
+            gtk.MenuShell.append(self.menu, menu_item)
+
+        self.set_menu(self.menu)
+
+    def set_material(self, material_name):
+        index = self.material_name_list.index(material_name)
+        self.set_history(index)
+        
+    def get_material(self):
+        index = self.get_history()
+        return self.material_name_list[index]
+    
 
 class GLPropertyEditor(gtk.Frame):
     """Gtk Widget which generates a customized editing widget for a
@@ -266,6 +341,8 @@ class GLPropertyEditor(gtk.Frame):
         table.set_row_spacings(5)
         table.set_col_spacings(10)
         table_row = 0
+
+        size_group = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)    
 
         ## boolean types first since the toggle widgets don't look good mixed
         ## with the entry widgets
@@ -301,10 +378,11 @@ class GLPropertyEditor(gtk.Frame):
             edit_widget = self.new_property_edit_widget(prop)
             self.prop_widget_dict[prop["name"]] = edit_widget 
 
+            size_group.add_widget(edit_widget)
             table.attach(edit_widget, 1, 2, table_row, table_row+1, 0, 0, 0, 0)
             table_row += 1
 
-        self.properties_update_cb()
+        self.properties_update_cb(self.gl_object.properties)
 
     def destroy(self, widget):
         """Called after this widget is destroyed.  Make sure to remove the callback we installed
@@ -334,6 +412,10 @@ class GLPropertyEditor(gtk.Frame):
         elif prop["type"]=="array(3,3)":
             widget = gtk.Label()
             widget.set_markup(markup_matrix3(self.gl_object.properties[prop["name"]]))
+        elif prop["type"]=="color":
+            widget = ColorOptionMenu()
+        elif prop["type"]=="material":
+            widget = MaterialOptionMenu()
         else:
             text = str(self.gl_object.properties[prop["name"]])
             widget = gtk.Label(text)
@@ -343,23 +425,29 @@ class GLPropertyEditor(gtk.Frame):
     def properties_update_cb(self, updates={}, actions=[]):
         """Read the property values and update the widgets to display the values.
         """
-        for prop in self.gl_object.glo_iter_property_desc():
-            name = prop["name"]
-
+        for name in updates:
             try:
                 widget = self.prop_widget_dict[name]
             except KeyError:
                 continue
 
-            if prop["type"]=="boolean":
+            prop_desc = self.gl_object.glo_get_property_desc(name)
+            
+            if prop_desc["type"]=="boolean":
                 if self.gl_object.properties[name]==True:
                     widget.set_active(gtk.TRUE)
                 else:
                     widget.set_active(gtk.FALSE)
 
-            elif prop["type"]=="float":
+            elif prop_desc["type"]=="float":
                 text = str(self.gl_object.properties[name])
                 widget.set_text(text)
+
+            elif prop_desc["type"]=="color":
+                widget.set_color(self.gl_object.properties[name])
+
+            elif prop_desc["type"]=="material":
+                widget.set_material(self.gl_object.properties[name])
 
     def update(self):
         """Read values from widgets and apply them to the gl_object
@@ -396,6 +484,12 @@ class GLPropertyEditor(gtk.Frame):
                     pass
                 else:
                     update_dict[name] = value
+
+            elif prop["type"]=="color":
+                update_dict[name] = widget.get_color()
+
+            elif prop["type"]=="material":
+                update_dict[name] = widget.get_material()
                     
         self.gl_object.glo_update_properties(**update_dict)
 
@@ -429,6 +523,8 @@ class TLSDialog(gtk.Dialog):
         self.struct_context = args["struct_context"]
         self.sel_tls_group  = None
 
+        self.animation_time = 0.0
+        self.animation_list = []
         self.tls_group_list = []
 
         gtk.Dialog.__init__(
@@ -500,6 +596,8 @@ class TLSDialog(gtk.Dialog):
 
         self.show_all()
 
+        gobject.timeout_add(50, self.timeout_cb)
+
         self.load_PDB(self.struct_context.struct.path)
 
     def response_cb(self, dialog, response_code):
@@ -548,7 +646,18 @@ class TLSDialog(gtk.Dialog):
             tls_group.gl_tls.glo_update_properties(visible=True)
 
     def animate_toggled(self, cell, path):
-        pass
+        path      = int(path)
+        tls_group = self.tls_group_list[path]
+
+        iter      = self.model.get_iter((path,))
+        animate   = self.model.get_value(iter, 1)
+
+        if animate==gtk.FALSE:
+            self.model.set(iter, 1, gtk.TRUE)
+            self.animation_list.append(tls_group)
+        elif animate==gtk.TRUE:
+            self.model.set(iter, 1, gtk.FALSE)
+            self.animation_list.remove(tls_group)
 
     def add_tls_group(self, tls_group):
         """Adds the TLS group and creates tls.gl_tls OpenGL
@@ -557,17 +666,24 @@ class TLSDialog(gtk.Dialog):
         self.tls_group_list.append(tls_group)
         
         tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
+        self.struct_context.gl_struct.glo_add_child(tls_group.gl_tls)
         tls_group.gl_tls.glo_add_update_callback(self.update_cb)
-
-        gl_viewer = self.main_window.struct_gui.gtkglviewer
-        gl_viewer.add_draw_list(tls_group.gl_tls)
 
         self.redraw_treeview()
 
     def update_cb(self, updates={}, actions=[]):
         """Property change callback from the GLTLSGroups.
         """
-        self.redraw_treeview()
+        i = 0
+        for tls in self.tls_group_list:
+            iter = self.model.get_iter((i,))
+
+            if tls.gl_tls.properties["visible"]==True:
+                self.model.set(iter, 0, gtk.TRUE)
+            else:
+                self.model.set(iter, 0, gtk.FALSE)
+
+            i += 1
 
     def clear_tls_groups(self):
         """Remove the current TLS groups, including destroying
@@ -581,6 +697,7 @@ class TLSDialog(gtk.Dialog):
             del tls_group.gl_tls
         
         self.tls_group_list = []
+        self.animation_list = []
         
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
@@ -633,7 +750,6 @@ class TLSDialog(gtk.Dialog):
         """Clear and redisplay the TLS group treeview list.
         """
         self.model.clear()
-        self.model.clear()
 
         for tls in self.tls_group_list:
             iter = self.model.append(None)
@@ -643,6 +759,11 @@ class TLSDialog(gtk.Dialog):
             else:
                 self.model.set(iter, 0, gtk.FALSE)
 
+            if tls in self.animation_list:
+                self.model.set(iter, 1, gtk.TRUE)
+            else:
+                self.model.set(iter, 1, gtk.FALSE)
+
             self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
             self.model.set(iter, 3, self.markup_tensor(tls.T))
             self.model.set(iter, 4, self.markup_tensor(tls.L*rad2deg2))
@@ -651,8 +772,8 @@ class TLSDialog(gtk.Dialog):
     def timeout_cb(self):
         """Timer which drives the TLS animation.
         """
-        self.animation_time += 0.01
-        for tls_group in self.tls_group_list:
+        self.animation_time += 0.005
+        for tls_group in self.animation_list:
             tls_group.gl_tls.properties.update(time=self.animation_time)
         return gtk.TRUE
 
@@ -982,11 +1103,11 @@ class MainWindow(object):
         print text
 
     def details_dialog_cb(self, *args):
-        if self.selected_struct_obj == None:
+        if self.sel_struct_obj == None:
             self.error_dialog("No Structure Selected.")
             return
         details = StructDetailsDialog(self)
-        details.set_struct_obj(self.selected_struct_obj)
+        details.set_struct_obj(self.sel_struct_obj)
         details.present()
 
     def tls_dialog_cb(self, *args):
@@ -1027,11 +1148,16 @@ class MainWindow(object):
             color_list = [(1.,0.,0.),(0.,1.,0.),(0.,0.,1.),(1.,1.,0.),(0.,1.,1.),(1.,0.,1.),(1.,1.,1.)]
             colori = 0
 
-            chain_ids = gl_struct.gl_chain_dict.keys()
+            chain_dict = {}
+            for gl_object in gl_struct.glo_iter_children():
+                if isinstance(gl_object, GLChain):
+                    chain_dict[gl_object.chain.chain_id] = gl_object
+
+            chain_ids = chain_dict.keys()
             chain_ids.sort()
             
             for chain_id in chain_ids:
-                gl_chain = gl_struct.gl_chain_dict[chain_id]
+                gl_chain = chain_dict[chain_id]
                 
                 try:
                     color = color_list[colori]

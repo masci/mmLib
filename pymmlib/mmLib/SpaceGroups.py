@@ -114,10 +114,34 @@ class SymOp(tuple):
     def __init__(self, op):
         tuple.__init__(self, op)
 
+    def __str__(self):
+        x  = "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            self[0][0,0], self[0][0,1], self[0][0,2], self[1][0])
+        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            self[0][1,0], self[0][1,1], self[0][1,2], self[1][1])
+        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            self[0][2,0], self[0][2,1], self[0][2,2], self[1][2])
+
+        return x
+
+    def __hash__(self):
+        return id(self)
+
     def __call__(self, vec):
         """Return the symmetry operation on argument vector and.
         """
         return matrixmultiply(self[0], vec) + self[1]
+
+    def __eq__(self, symop):
+        return allclose(self[0], symop[0]) and allclose(self[1], symop[1])
+
+    def is_identity(self):
+        """Returns True if this SymOp is a identity symmetry operation
+        (no rotation, no translation), otherwise returns False.
+        """
+        if allclose(self[0], identity(3, Float)) and \
+           allclose(self[1], zeros(3, Float)):
+            return True
 
 
 class SpaceGroup(object):
@@ -142,6 +166,11 @@ class SpaceGroup(object):
         self.crystal_system          = crystal_system
         self.pdb_name                = pdb_name
         self.symop_list              = symop_list
+
+    def iter_symops(self):
+        """Iterates over all SymOps in the SpaceGroup.
+        """
+        return iter(self.symop_list)
 
     def check_group_name(self, name):
         """Checks if the given name is a name for this space group,

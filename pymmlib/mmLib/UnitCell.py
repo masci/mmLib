@@ -7,7 +7,7 @@
 import math
 from mmTypes import *
 from AtomMath import *
-from SpaceGroups import GetSpaceGroup
+from SpaceGroups import GetSpaceGroup, SymOp
 
 
 class UnitCell(object):
@@ -33,9 +33,9 @@ class UnitCell(object):
         self.c = c
 
         if angle_units == "deg":
-            self.alpha = alpha * deg2rad
-            self.beta  = beta  * deg2rad
-            self.gamma = gamma * deg2rad
+            self.alpha = math.radians(alpha) 
+            self.beta  = math.radians(beta)
+            self.gamma = math.radians(gamma)
 
         elif angle_units == "rad":
             self.alpha = alpha
@@ -46,6 +46,12 @@ class UnitCell(object):
 
         self.orth_to_frac = self.calc_fractionalization_matrix()
         self.frac_to_orth = self.calc_orthogonalization_matrix()
+
+        assert allclose(self.orth_to_frac, inverse(self.frac_to_orth))
+        print self
+
+        print self.frac_to_orth
+
 
     def __str__(self):
         alpha = self.alpha * rad2deg
@@ -114,15 +120,33 @@ class UnitCell(object):
 
         return UnitCell(ra, rb, rc, ralpha, rbeta, rgamma)
 
-    def calc_fractionalization_matrix(self):
+    def calc_orthogonalization_matrix(self):
         """Cartesian to fractional coordinates.
         """
-        ## get B from orthogonalization matrix trranspose(B)
-        ## X = tr(B)x
-        B = transpose(self.calc_orthogonalization_matrix())
-        return transpose(inverse(B))
+        sin_alpha = math.sin(self.alpha)
+        sin_beta  = math.sin(self.beta)
+        sin_gamma = math.sin(self.gamma)
+
+        cos_alpha = math.cos(self.alpha)
+        cos_beta  = math.cos(self.beta)
+        cos_gamma = math.cos(self.gamma)
+
+        v = self.calc_v()
+
+        f11 = self.a
+        f12 = self.b * cos_gamma
+        f13 = self.c * cos_beta
+        f22 = self.b * sin_gamma
+        f23 = (self.c * (cos_alpha - cos_beta * cos_gamma)) / (sin_gamma)
+        f33 = (self.c * v) / sin_gamma
+
+        orth_to_frac = array([ [f11, f12, f13],
+                               [0.0, f22, f23],
+                               [0.0, 0.0, f33] ])
         
-    def calc_orthogonalization_matrix(self):
+        return orth_to_frac
+        
+    def calc_fractionalization_matrix(self):
         """Fractional to cartesian coordinates.
         """
         sin_alpha = math.sin(self.alpha)
@@ -133,19 +157,20 @@ class UnitCell(object):
         cos_beta  = math.cos(self.beta)
         cos_gamma = math.cos(self.gamma)
 
-        o11 = self.a
-        o12 = self.b * cos_gamma
-        o13 = self.c * cos_beta
-        o21 = 0.0
-        o22 = self.b * sin_gamma
-        o23 = (self.c * (cos_alpha - cos_beta*cos_gamma)) / sin_gamma
-        o31 = 0.0
-        o32 = 0.0
-        o33 = (self.c * self.calc_v()) / sin_gamma
+        v = self.calc_v()
 
-        return array([[o11, o12, o13],
-                      [o21, o22, o23],
-                      [o31, o32, o33]])
+        o11 = 1.0 / self.a
+        o12 = - cos_gamma / (self.a * sin_gamma)
+        o13 = (cos_gamma * cos_alpha - cos_beta) / (self.a * v * sin_gamma)
+        o22 = 1.0 / (self.b * sin_gamma)
+        o23 = (cos_gamma * cos_beta - cos_alpha) / (self.b * v * sin_gamma)
+        o33 = sin_gamma / (self.c * v)
+
+        frac_to_orth = array([ [o11, o12, o13],
+                               [0.0, o22, o23],
+                               [0.0, 0.0, o33] ])
+
+        return frac_to_orth
 
     def calc_orth_to_frac(self, v):
         """Calculates and returns the fractional coordinate vector of
@@ -159,9 +184,142 @@ class UnitCell(object):
         """
         return matrixmultiply(self.frac_to_orth, v)
 
+    def calc_symop_RT_old(self, symop):
+        ## rotation matrix
+        x1 = self.calc_orth_to_frac(array([1.0, 0.0, 0.0]))
+        y1 = self.calc_orth_to_frac(array([0.0, 1.0, 0.0]))
+        z1 = self.calc_orth_to_frac(array([0.0, 0.0, 1.0]))
 
+        x2 = matrixmultiply(symop[0], x1)
+        y2 = matrixmultiply(symop[0], y1)
+        z2 = matrixmultiply(symop[0], z1)
+
+        x3 = self.calc_frac_to_orth(x2)
+        y3 = self.calc_frac_to_orth(y2)
+        z3 = self.calc_frac_to_orth(z2)
+
+        R = array([ [x3[0], y3[0], z3[0]],
+                    [x3[1], y3[1], z3[1]],
+                    [x3[2], y3[2], z3[2]] ])
+
+        ## translation matrix
+        T = self.calc_frac_to_orth(symop[1])
+
+        x  = "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            R[0,0], R[0,1], R[0,2], T[0])
+        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            R[1,0], R[1,1], R[1,2], T[1])
+        x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+            R[2,0], R[2,1], R[2,2], T[2])
+
+        return R, T
+
+    def calc_symop_RT(self, symop):
+        R = matrixmultiply(
+            self.frac_to_orth,
+            matrixmultiply(symop[0], self.orth_to_frac))
+
+        T = matrixmultiply(self.frac_to_orth, symop[1])
+
+        return R, T
+    
+    def calc_xyz_coords(self, atom_list, symop):
+        """
+        """
+        xyz_dict = {}
+        for atm in atom_list:
+            xyz_dict[atm] = symop(self.calc_orth_to_frac(atm.position))
+        return xyz_dict
+
+    def calc_cell(self, xyz):
+        """Returns the cell integer 3-Tuple where the xyz fractional
+        coordinates are located.
+        """
+        if xyz[0]<0.0:
+            cx = int(xyz[0] - 1.0)
+        else:
+            cx = int(xyz[0] + 1.0)
+            
+        if xyz[1]<0.0:
+            cy = int(xyz[1] - 1.0)
+        else:
+            cy = int(xyz[1] + 1.0)
+
+        if xyz[2]<0.0:
+            cz = int(xyz[2] - 1.0)
+        else:
+            cz = int(xyz[2] + 1.0)
+            
+        return (cx, cy, cz)
+
+    def cell_search_iter(self):
+         for i in (-1.0, 0.0, 1.0):
+                for j in (-1.0, 0.0, 1.0):
+                    for k in (-1.0, 0.0, 1.0):
+                        yield i, j, k
+
+    def iter_RT(self, struct):
+        """
+        """
+        print "===================================="
+
+        
+        atom_list = list(struct.iter_atoms())
+
+        fill_cell = (1,1,1)
+
+        for symop in self.space_group.iter_symops():
+            
+            print "NEW SYMOP"
+            print symop
+
+            for i, j, k in self.cell_search_iter():
+                cell_tra = array([i, j, k])
+
+                print "## shifting translation = %s" % (str(cell_tra))
+                s2 = SymOp((symop[0], symop[1] + cell_tra))
+
+                in_target = False
+
+                for atm in atom_list:
+                    xyz       = s2(self.calc_orth_to_frac(atm.position))
+                    calc_cell = self.calc_cell(xyz)
+
+                    if calc_cell==fill_cell:
+                        in_target = True
+                        
+                        print "## fill_cell=%s calc_cell=%s" % (str(fill_cell), str(calc_cell))
+                        
+                        R, T  = self.calc_symop_RT(s2)
+
+                        print "## R,T"
+                        print strRT(R, T)
+
+                        atm_pos = matrixmultiply(R, atm.position) + T
+                        print "## pos=%s xyz=%s:%s sym=%s" % (
+                            str(atm.position),
+                            str(xyz),
+                            str(self.calc_frac_to_orth(xyz)),
+                            str(atm_pos))
+
+                        break
+
+                    
+                if in_target==True:
+                    yield self.calc_symop_RT(s2)
+
+def strRT(R, T):
+    x  = "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+        R[0,0], R[0,1], R[0,2], T[0])
+    x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+        R[1,0], R[1,1], R[1,2], T[1])
+    x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
+        R[2,0], R[2,1], R[2,2], T[2])
+    
+    return x
+        
 ## <testing>
-if __name__ == "__main__":
+def main():
     print "================================================="
     print "TEST CASE #1: Triclinic unit cell"
     print
@@ -214,4 +372,33 @@ if __name__ == "__main__":
     print "cell volume = ",ruc.calc_volume()
     
     print "================================================="
+
+
+##     ## a more interesting space group
+##     unitx = UnitCell(a=64.950,
+##                      b=64.950,
+##                      c=68.670,
+##                      alpha=90.00,
+##                      beta=90.00,
+##                      gamma=120.00,
+##                      space_group="P 32 2 1")
+
+
+##     print "================================================="
+##     print unitx
+##     print
+
+##     print unitx.frac_to_orth
+
+##     for symop in unitx.space_group.iter_symops():
+##         print "SYMOP:"
+##         print symop
+##         print "REAL:"
+##         print
+##         unitx.calc_rot_tra(symop)
+##         print
+
+if __name__=="__main__":
+    main()
+
 ## </testing>

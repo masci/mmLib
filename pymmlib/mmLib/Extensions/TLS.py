@@ -418,8 +418,8 @@ class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
     """
-    def __init__(self):
-        AtomList.__init__(self)
+    def __init__(self, *args):
+        AtomList.__init__(self, *args)
 
         self.name           = "" 
         self.origin         = zeros(3, Float)
