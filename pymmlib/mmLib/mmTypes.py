@@ -72,6 +72,60 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
+def setmaps(smap, skey, dmap, dkey, default = None):
+    """Sets the dmap/dkey with the string value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = str(smap[skey])
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default == None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
+def setmapi(smap, skey, dmap, dkey, default = None):
+    """Sets the dmap/dkey with the integer value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = int(smap[skey])
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default == None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
+def setmapf(smap, skey, dmap, dkey, default = None):
+    """Sets the dmap/dkey with the float value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = float(smap[skey])
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default == None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
 def warning(x):
     """Writes warnings out to the file given in the environment variable
     MMLIB_WARNING, or mmlib_warning.txt by default.

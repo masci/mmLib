@@ -656,8 +656,7 @@ class mmCIFFileWriter(object):
             return x, "token"
 
         if x == "":
-            x = "."
-            return x, "token"
+            return ".", "token"
 
         if x.find("\n") != -1:
             return x, "mstring"
@@ -730,7 +729,7 @@ class mmCIFFileWriter(object):
             if dtype == "token":
                 if len(x) > vmax:
                     strx += "\n"
-                strx += x + "\n"
+                strx += "%s\n" % (x)
                 self.write(strx)
 
             elif dtype == "qstring":
@@ -823,32 +822,35 @@ class mmCIFFileWriter(object):
             
         ## write out the data
         spacing = " " * self.SPACING
-        
         add_space = False
-
-        strx = ""
+        listx = []
 
         for row in cif_table:
             for (col, dtype, lenx) in wlist:
 
                 if col == None:
                     add_space = False
-                    strx += "\n"
+                    listx.append("\n")
                     continue
 
                 elif add_space == True:
                     add_space = False
-                    strx += spacing
+                    listx.append(spacing)
 
 
                 if dtype == "token":
                     try:
-                        x = self.fix(row[col])
+                        x = row[col]
                     except KeyError:
                         x = "?"
+                    else:
+                        if type(x) != StringType:
+                            x = str(x)
+                        if x == "":
+                            x = "."
 
                     x = x.ljust(lenx)
-                    strx += x
+                    listx.append(x)
                     add_space = True
 
                     
@@ -859,29 +861,29 @@ class mmCIFFileWriter(object):
                         x = "?".ljust(lenx)
 
                     x = x.ljust(lenx)
-                    strx += x
+                    listx.append(x)
                     add_space = True
 
 
                 elif dtype == "mstring":
                     try:
-                        strx += self.form_mstring(row[col])
+                        listx.append(self.form_mstring(row[col]))
                     except KeyError:
-                        strx += "?\n"
+                        listx.append("?\n")
                     add_space = False
 
 
             add_space = False
-            strx += "\n"
+            listx.append("\n")
 
             ## write out strx if it gets big to avoid using a lot of
             ## memory
-            if len(strx) > 80:
-                self.write(strx)
-                strx = ""
+            if len(listx) > 1024:
+                self.write("".join(listx))
+                listx = []
 
         ## write out the _loop section
-        self.write(strx)
+        self.write("".join(listx))
 
 
 mmCIFStandardColumnsMap = {

@@ -393,57 +393,6 @@ class StructureBuilder(object):
             for frag in self.struct.iter_fragments():
                 frag.create_bonds()
 
-    def setmaps(self, smap, skey, dmap, dkey, default = None):
-        """Sets the dmap/dkey with the string value from smap/skey or
-        default if not smap/skey value is found.
-        """
-        try:
-            dmap[dkey] = str(smap[skey])
-        except ValueError:
-            pass
-        except KeyError:
-            pass
-
-        if default == None:
-            return False
-
-        dmap[dkey] = default
-        return True
-
-    def setmapi(self, smap, skey, dmap, dkey, default = None):
-        """Sets the dmap/dkey with the integer value from smap/skey or
-        default if not smap/skey value is found.
-        """
-        try:
-            dmap[dkey] = int(smap[skey])
-        except ValueError:
-            pass
-        except KeyError:
-            pass
-
-        if default == None:
-            return False
-
-        dmap[dkey] = default
-        return True
-
-    def setmapf(self, smap, skey, dmap, dkey, default = None):
-        """Sets the dmap/dkey with the float value from smap/skey or
-        default if not smap/skey value is found.
-        """
-        try:
-            dmap[dkey] = float(smap[skey])
-        except ValueError:
-            pass
-        except KeyError:
-            pass
-
-        if default == None:
-            return False
-
-        dmap[dkey] = default
-        return True
-
 
 class PDBStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a PDB file.
@@ -544,21 +493,21 @@ class PDBStructureBuilder(StructureBuilder):
                 self.atm_map["element"] = element
 
         ## additional atom information
-        self.setmapi(rec, "serial", self.atm_map, "serial")
-        self.setmaps(rec, "altLoc", self.atm_map, "alt_loc")
-        self.setmaps(rec, "resName", self.atm_map, "res_name")
-        self.setmaps(rec, "chainID", self.atm_map, "chain_id")
+        setmapi(rec, "serial", self.atm_map, "serial")
+        setmaps(rec, "altLoc", self.atm_map, "alt_loc")
+        setmaps(rec, "resName", self.atm_map, "res_name")
+        setmaps(rec, "chainID", self.atm_map, "chain_id")
 
         fragment_id = self.get_fragment_id(rec)
         if fragment_id != None:
             self.atm_map["fragment_id"] = fragment_id
             
-        self.setmapf(rec, "x", self.atm_map, "x")
-        self.setmapf(rec, "y", self.atm_map, "y")
-        self.setmapf(rec, "z", self.atm_map, "z")
-        self.setmapf(rec, "occupancy", self.atm_map, "occupancy")
-        self.setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
-        self.setmaps(rec, "charge", self.atm_map, "charge")
+        setmapf(rec, "x", self.atm_map, "x")
+        setmapf(rec, "y", self.atm_map, "y")
+        setmapf(rec, "z", self.atm_map, "z")
+        setmapf(rec, "occupancy", self.atm_map, "occupancy")
+        setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
+        setmaps(rec, "charge", self.atm_map, "charge")
 
     def name2element(self, name0):
         ## set the space_flag to true if the name starts with a space
@@ -625,11 +574,11 @@ class PDBStructureBuilder(StructureBuilder):
         self.process_ATOM(rec)
 
     def process_SIGATM(self, rec):
-        self.setmapf(rec, "sigX", self.atm_map, "sig_x")
-        self.setmapf(rec, "sigY", self.atm_map, "sig_y")
-        self.setmapf(rec, "sigZ", self.atm_map, "sig_z")
-        self.setmapf(rec, "sigOccupancy", self.atm_map, "sig_occupancy")
-        self.setmapf(rec, "sigTempFactor", self.atm_map, "sig_temp_factor")
+        setmapf(rec, "sigX", self.atm_map, "sig_x")
+        setmapf(rec, "sigY", self.atm_map, "sig_y")
+        setmapf(rec, "sigZ", self.atm_map, "sig_z")
+        setmapf(rec, "sigOccupancy", self.atm_map, "sig_occupancy")
+        setmapf(rec, "sigTempFactor", self.atm_map, "sig_temp_factor")
 
     def process_ANISOU(self, rec):
         self.atm_map["U[1][1]"] = rec.get("u[0][0]", 0.0) / 10000.0
@@ -672,13 +621,13 @@ class PDBStructureBuilder(StructureBuilder):
             erow = mmCIFRow()
             ekrow = mmCIFRow()
 
-            self.setmaps(compnd, "MOLECULE", erow, "pdbx_description")
+            setmaps(compnd, "MOLECULE", erow, "pdbx_description")
             if erow:
                 entity.append(erow)
 
-            self.setmaps(compnd, "FRAGMENT", ekrow, "pdbx_fragment")
-            self.setmaps(compnd, "EC", ekrow, "pdbx_ec")
-            self.setmaps(compnd, "MUTATION", ekrow, "pdbx_mutation")
+            setmaps(compnd, "FRAGMENT", ekrow, "pdbx_fragment")
+            setmaps(compnd, "EC", ekrow, "pdbx_ec")
+            setmaps(compnd, "MUTATION", ekrow, "pdbx_mutation")
             if ekrow:
                 entity_keywords.append(ekrow)
 
@@ -690,78 +639,78 @@ class PDBStructureBuilder(StructureBuilder):
             nrow = mmCIFRow()
             grow = mmCIFRow()
 
-            self.setmaps(source, "FRAGMENT",
-                         grow, "pdbx_gene_src_fragment")
-            self.setmaps(source, "ORGANISM_SCIENTIFIC",
-                         grow, "pdbx_gene_src_scientific_name")
-            self.setmaps(source, "ORGANISM_COMMON",
-                         grow, "pdbx_gene_src_common_name")            
-            self.setmaps(source, "GENUS",
-                         grow, "pdbx_gene_src_genus")
-            self.setmaps(source, "GENUS",
-                         grow, "pdbx_gene_src_genus")
-            self.setmaps(source, "SPECIES",
-                         grow, "pdbx_gene_src_species")
-            self.setmaps(source, "STRAIN",
-                         grow, "pdbx_gene_src_strain")
-            self.setmaps(source, "VARIANT",
-                         grow, "pdbx_gene_src_variant")
-            self.setmaps(source, "CELL_LINE",
-                         grow, "pdbx_gene_src_cell_line")
-            self.setmaps(source, "ATCC",
-                         grow, "pdbx_gene_src_atcc")
-            self.setmaps(source, "ORGAN",
-                         grow, "pdbx_gene_src_organ")
-            self.setmaps(source, "TISSUE",
-                         grow, "pdbx_gene_src_tissue")
-            self.setmaps(source, "CELL",
-                         grow, "pdbx_gene_src_cell")
-            self.setmaps(source, "ORGANELLE",
-                         grow, "pdbx_gene_src_organelle")
-            self.setmaps(source, "SECRETION",
-                         nrow, "pdbx_secretion")
-            self.setmaps(source, "CELLULAR_LOCATION",
-                         grow, "pdbx_gene_src_cellular_location")
-            self.setmaps(source, "PLASMID",
-                         nrow, "pdbx_plasmid_name")
-            self.setmaps(source, "GENE",
-                         grow, "pdbx_gene_src_gene")
-            self.setmaps(source, "EXPRESSION_SYSTEM",
-                         grow, "pdbx_host_org_scientific_name")
-            self.setmaps(source, "EXPRESSION_SYSTEM_COMMON",
-                         grow, "pdbx_host_org_common_name")
-            self.setmaps(source, "EXPRESSION_SYSTEM_GENUS",
-                         grow, "pdbx_host_org_genus")
-            self.setmaps(source, "EXPRESSION_SYSTEM_SPECIES",
-                         grow, "pdbx_host_org_species")
-            self.setmaps(source, "EXPRESSION_SYSTEM_STRAIN",
-                         grow, "pdbx_host_org_strain")
-            self.setmaps(source, "EXPRESSION_SYSTEM_VARIANT",
-                         grow, "pdbx_host_org_variant")
-            self.setmaps(source, "EXPRESSION_SYSTEM_CELL_LINE",
-                         grow, "pdbx_host_org_cell_line")
-            self.setmaps(source, "EXPRESSION_SYSTEM_ATCC_NUMBER",
-                         grow, "pdbx_host_org_atcc")
-            self.setmaps(source, "EXPRESSION_SYSTEM_ORGAN",
-                         grow, "pdbx_host_org_organ")
-            self.setmaps(source, "EXPRESSION_SYSTEM_TISSUE",
-                         grow, "pdbx_host_org_tissue")
-            self.setmaps(source, "EXPRESSION_SYSTEM_CELL",
-                         grow, "pdbx_host_org_cell")
-            self.setmaps(source, "EXPRESSION_SYSTEM_ORGANELLE",
-                         grow, "pdbx_host_org_organelle")
-            self.setmaps(source, "EXPRESSION_SYSTEM_CELLULAR_LOCATION",
-                         grow, "pdbx_host_org_cellular_location")
-            self.setmaps(source, "EXPRESSION_SYSTEM_VECTOR_TYPE",
-                         grow, "pdbx_host_org_vector_type")
-            self.setmaps(source, "EXPRESSION_SYSTEM_VECTOR",
-                         grow, "pdbx_host_org_vector")
-            self.setmaps(source, "EXPRESSION_SYSTEM_PLASMID",
-                         grow, "plasmid")
-            self.setmaps(source, "EXPRESSION_SYSTEM_GENE",
-                         grow, "pdbx_host_org_gene")
-            self.setmaps(source, "OTHER_DETAILS",
-                         grow, "pdbx_description")
+            setmaps(source, "FRAGMENT",
+                    grow, "pdbx_gene_src_fragment")
+            setmaps(source, "ORGANISM_SCIENTIFIC",
+                    grow, "pdbx_gene_src_scientific_name")
+            setmaps(source, "ORGANISM_COMMON",
+                    grow, "pdbx_gene_src_common_name")            
+            setmaps(source, "GENUS",
+                    grow, "pdbx_gene_src_genus")
+            setmaps(source, "GENUS",
+                    grow, "pdbx_gene_src_genus")
+            setmaps(source, "SPECIES",
+                    grow, "pdbx_gene_src_species")
+            setmaps(source, "STRAIN",
+                    grow, "pdbx_gene_src_strain")
+            setmaps(source, "VARIANT",
+                    grow, "pdbx_gene_src_variant")
+            setmaps(source, "CELL_LINE",
+                    grow, "pdbx_gene_src_cell_line")
+            setmaps(source, "ATCC",
+                    grow, "pdbx_gene_src_atcc")
+            setmaps(source, "ORGAN",
+                    grow, "pdbx_gene_src_organ")
+            setmaps(source, "TISSUE",
+                    grow, "pdbx_gene_src_tissue")
+            setmaps(source, "CELL",
+                    grow, "pdbx_gene_src_cell")
+            setmaps(source, "ORGANELLE",
+                    grow, "pdbx_gene_src_organelle")
+            setmaps(source, "SECRETION",
+                    nrow, "pdbx_secretion")
+            setmaps(source, "CELLULAR_LOCATION",
+                    grow, "pdbx_gene_src_cellular_location")
+            setmaps(source, "PLASMID",
+                    nrow, "pdbx_plasmid_name")
+            setmaps(source, "GENE",
+                    grow, "pdbx_gene_src_gene")
+            setmaps(source, "EXPRESSION_SYSTEM",
+                    grow, "pdbx_host_org_scientific_name")
+            setmaps(source, "EXPRESSION_SYSTEM_COMMON",
+                    grow, "pdbx_host_org_common_name")
+            setmaps(source, "EXPRESSION_SYSTEM_GENUS",
+                    grow, "pdbx_host_org_genus")
+            setmaps(source, "EXPRESSION_SYSTEM_SPECIES",
+                    grow, "pdbx_host_org_species")
+            setmaps(source, "EXPRESSION_SYSTEM_STRAIN",
+                    grow, "pdbx_host_org_strain")
+            setmaps(source, "EXPRESSION_SYSTEM_VARIANT",
+                    grow, "pdbx_host_org_variant")
+            setmaps(source, "EXPRESSION_SYSTEM_CELL_LINE",
+                    grow, "pdbx_host_org_cell_line")
+            setmaps(source, "EXPRESSION_SYSTEM_ATCC_NUMBER",
+                    grow, "pdbx_host_org_atcc")
+            setmaps(source, "EXPRESSION_SYSTEM_ORGAN",
+                    grow, "pdbx_host_org_organ")
+            setmaps(source, "EXPRESSION_SYSTEM_TISSUE",
+                    grow, "pdbx_host_org_tissue")
+            setmaps(source, "EXPRESSION_SYSTEM_CELL",
+                    grow, "pdbx_host_org_cell")
+            setmaps(source, "EXPRESSION_SYSTEM_ORGANELLE",
+                    grow, "pdbx_host_org_organelle")
+            setmaps(source, "EXPRESSION_SYSTEM_CELLULAR_LOCATION",
+                    grow, "pdbx_host_org_cellular_location")
+            setmaps(source, "EXPRESSION_SYSTEM_VECTOR_TYPE",
+                    grow, "pdbx_host_org_vector_type")
+            setmaps(source, "EXPRESSION_SYSTEM_VECTOR",
+                    grow, "pdbx_host_org_vector")
+            setmaps(source, "EXPRESSION_SYSTEM_PLASMID",
+                    grow, "plasmid")
+            setmaps(source, "EXPRESSION_SYSTEM_GENE",
+                    grow, "pdbx_host_org_gene")
+            setmaps(source, "OTHER_DETAILS",
+                    grow, "pdbx_description")
 
             if nrow:
                 entity_src_nat.append(nrow)
@@ -789,15 +738,15 @@ class PDBStructureBuilder(StructureBuilder):
     def process_CRYST1(self, rec):
         ucell_map = {}
 
-        self.setmapf(rec, "a", ucell_map, "a")
-        self.setmapf(rec, "b", ucell_map, "b")
-        self.setmapf(rec, "c", ucell_map, "c")
-        self.setmapf(rec, "alpha", ucell_map, "alpha")
-        self.setmapf(rec, "beta", ucell_map, "beta")
-        self.setmapf(rec, "gamma", ucell_map, "gamma")
+        setmapf(rec, "a", ucell_map, "a")
+        setmapf(rec, "b", ucell_map, "b")
+        setmapf(rec, "c", ucell_map, "c")
+        setmapf(rec, "alpha", ucell_map, "alpha")
+        setmapf(rec, "beta", ucell_map, "beta")
+        setmapf(rec, "gamma", ucell_map, "gamma")
 
-        self.setmaps(rec, "sgroup", ucell_map, "space_group")
-        self.setmapi(rec, "z", ucell_map, "z")
+        setmaps(rec, "sgroup", ucell_map, "space_group")
+        setmapi(rec, "z", ucell_map, "z")
 
         self.load_unit_cell(ucell_map)
 
@@ -807,25 +756,25 @@ class PDBStructureBuilder(StructureBuilder):
         struct_conf.append(row)
 
         row["conf_type_id"] = "HELX_P"
-        self.setmapi(rec, "serNum", row, "id")
-        self.setmaps(rec, "helixID", row, "pdbx_PDB_helix_id")
-        self.setmaps(rec, "initResName", row, "beg_auth_comp_id")
-        self.setmaps(rec, "initChainID", row, "beg_auth_asym_id")
+        setmapi(rec, "serNum", row, "id")
+        setmaps(rec, "helixID", row, "pdbx_PDB_helix_id")
+        setmaps(rec, "initResName", row, "beg_auth_comp_id")
+        setmaps(rec, "initChainID", row, "beg_auth_asym_id")
         seq_id = self.get_fragment_id(rec, "initSeqNum", "initICode")
         if seq_id:
             row["beg_auth_seq_id"] = seq_id
-        self.setmaps(rec, "initICode", row, "pdbx_beg_PDB_ins_code")
+        setmaps(rec, "initICode", row, "pdbx_beg_PDB_ins_code")
 
-        self.setmaps(rec, "endResName", row, "end_auth_comp_id")
-        self.setmaps(rec, "endChainID", row, "end_auth_asym_id")
+        setmaps(rec, "endResName", row, "end_auth_comp_id")
+        setmaps(rec, "endChainID", row, "end_auth_asym_id")
         seq_id = self.get_fragment_id(rec, "endSeqNum", "endICode")
         if seq_id:
             row["end_auth_seq_id"] = seq_id
-        self.setmaps(rec, "endICode", row, "end_beg_PDB_ins_code")
+        setmaps(rec, "endICode", row, "end_beg_PDB_ins_code")
 
-        self.setmaps(rec, "helixClass", row, "pdbx_PDB_helix_class")
-        self.setmaps(rec, "comment", row, "details")
-        self.setmaps(rec, "length", row, "pdbx_PDB_helix_length")
+        setmaps(rec, "helixClass", row, "pdbx_PDB_helix_class")
+        setmaps(rec, "comment", row, "details")
+        setmaps(rec, "length", row, "pdbx_PDB_helix_length")
 
     def process_SITE(self, rec):
         struct_site_gen = self.struct.cifdb.confirm_table("struct_site_gen")
@@ -842,13 +791,13 @@ class PDBStructureBuilder(StructureBuilder):
             row = mmCIFRow()
             struct_site_gen.append(row)
 
-            self.setmaps(rec, "siteID", row, "site_id")
-            self.setmaps(rec, res_name, row, "auth_comp_id")
-            self.setmaps(rec, chain_key, row, "auth_asym_id")
+            setmaps(rec, "siteID", row, "site_id")
+            setmaps(rec, res_name, row, "auth_comp_id")
+            setmaps(rec, chain_key, row, "auth_asym_id")
             seq_id = self.get_fragment_id(rec, frag_key, icode_key)
             if seq_id:
                 row["auth_seq_id"] = seq_id
-            self.setmaps(rec, icode_key, row, "pdbx_auth_ins_code")
+            setmaps(rec, icode_key, row, "pdbx_auth_ins_code")
 
     def bond_processor(self, **args):
         """Complicated method.  Required arguments are:
@@ -1178,45 +1127,45 @@ class mmCIFStructureBuilder(StructureBuilder):
         for atom_site in self.cif_data.get("atom_site", []):
             atm_map = {}
 
-            self.setmaps(atom_site, self.atom_id, atm_map, "name")
-            self.setmaps(atom_site, self.alt_id, atm_map, "alt_loc")
-            self.setmaps(atom_site, self.comp_id, atm_map, "res_name")
-            self.setmaps(atom_site, self.seq_id, atm_map, "fragment_id")
-            self.setmaps(atom_site, self.asym_id, atm_map, "chain_id")
+            setmaps(atom_site, self.atom_id, atm_map, "name")
+            setmaps(atom_site, self.alt_id, atm_map, "alt_loc")
+            setmaps(atom_site, self.comp_id, atm_map, "res_name")
+            setmaps(atom_site, self.seq_id, atm_map, "fragment_id")
+            setmaps(atom_site, self.asym_id, atm_map, "chain_id")
 
-            self.setmaps(atom_site, "type_symbol", atm_map, "element")
-            self.setmapf(atom_site, "Cartn_x", atm_map, "x")
-            self.setmapf(atom_site, "Cartn_y", atm_map, "y")
-            self.setmapf(atom_site, "Cartn_z", atm_map, "z")
-            self.setmapf(atom_site, "occupancy", atm_map, "occupancy")
-            self.setmapf(atom_site, "B_iso_or_equiv", atm_map, "temp_factor")
-            self.setmapf(atom_site, "Cartn_x_esd", atm_map, "sig_x")
-            self.setmapf(atom_site, "Cartn_y_esd", atm_map, "sig_y")
-            self.setmapf(atom_site, "Cartn_z_esd", atm_map, "sig_z")
-            self.setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
+            setmaps(atom_site, "type_symbol", atm_map, "element")
+            setmapf(atom_site, "Cartn_x", atm_map, "x")
+            setmapf(atom_site, "Cartn_y", atm_map, "y")
+            setmapf(atom_site, "Cartn_z", atm_map, "z")
+            setmapf(atom_site, "occupancy", atm_map, "occupancy")
+            setmapf(atom_site, "B_iso_or_equiv", atm_map, "temp_factor")
+            setmapf(atom_site, "Cartn_x_esd", atm_map, "sig_x")
+            setmapf(atom_site, "Cartn_y_esd", atm_map, "sig_y")
+            setmapf(atom_site, "Cartn_z_esd", atm_map, "sig_z")
+            setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
 
-            self.setmapf(atom_site, "B_iso_or_equiv_esd",
+            setmapf(atom_site, "B_iso_or_equiv_esd",
                          atm_map,   "sig_temp_factor")
 
-            self.setmapi(atom_site, "pdbx_PDB_model_num",
+            setmapi(atom_site, "pdbx_PDB_model_num",
                          atm_map,   "model_num")
 
             if aniso_table != None:
                 aniso = aniso_table.get_row(("id", atom_site["id"]))
                 if aniso:
-                    self.setmapf(aniso, "U[1][1]", atm_map, "U[1][1]")
-                    self.setmapf(aniso, "U[2][2]", atm_map, "U[2][2]")
-                    self.setmapf(aniso, "U[3][3]", atm_map, "U[3][3]")
-                    self.setmapf(aniso, "U[1][2]", atm_map, "U[1][2]")
-                    self.setmapf(aniso, "U[1][3]", atm_map, "U[1][3]")
-                    self.setmapf(aniso, "U[2][3]", atm_map, "U[2][3]")
+                    setmapf(aniso, "U[1][1]", atm_map, "U[1][1]")
+                    setmapf(aniso, "U[2][2]", atm_map, "U[2][2]")
+                    setmapf(aniso, "U[3][3]", atm_map, "U[3][3]")
+                    setmapf(aniso, "U[1][2]", atm_map, "U[1][2]")
+                    setmapf(aniso, "U[1][3]", atm_map, "U[1][3]")
+                    setmapf(aniso, "U[2][3]", atm_map, "U[2][3]")
 
-                    self.setmapf(aniso, "U[1][1]_esd", atm_map, "sig_U[1][1]")
-                    self.setmapf(aniso, "U[2][2]_esd", atm_map, "sig_U[2][2]")
-                    self.setmapf(aniso, "U[3][3]_esd", atm_map, "sig_U[3][3]")
-                    self.setmapf(aniso, "U[1][2]_esd", atm_map, "sig_U[1][2]")
-                    self.setmapf(aniso, "U[1][3]_esd", atm_map, "sig_U[1][3]")
-                    self.setmapf(aniso, "U[2][3]_esd", atm_map, "sig_U[2][3]")
+                    setmapf(aniso, "U[1][1]_esd", atm_map, "sig_U[1][1]")
+                    setmapf(aniso, "U[2][2]_esd", atm_map, "sig_U[2][2]")
+                    setmapf(aniso, "U[3][3]_esd", atm_map, "sig_U[3][3]")
+                    setmapf(aniso, "U[1][2]_esd", atm_map, "sig_U[1][2]")
+                    setmapf(aniso, "U[1][3]_esd", atm_map, "sig_U[1][3]")
+                    setmapf(aniso, "U[2][3]_esd", atm_map, "sig_U[2][3]")
 
             atm = self.load_atom(atm_map)
             try:
@@ -1249,13 +1198,13 @@ class mmCIFStructureBuilder(StructureBuilder):
         except KeyError:
             pass
         else:
-            self.setmapf(cell, "length_a", ucell_map, "a")
-            self.setmapf(cell, "length_b", ucell_map, "b")
-            self.setmapf(cell, "length_c", ucell_map, "c")
-            self.setmapf(cell, "angle_alpha", ucell_map, "alpha")
-            self.setmapf(cell, "angle_beta", ucell_map, "beta")
-            self.setmapf(cell, "angle_gamma", ucell_map, "gamma")
-            self.setmapi(cell, "Z_PDB", ucell_map, "z")
+            setmapf(cell, "length_a", ucell_map, "a")
+            setmapf(cell, "length_b", ucell_map, "b")
+            setmapf(cell, "length_c", ucell_map, "c")
+            setmapf(cell, "angle_alpha", ucell_map, "alpha")
+            setmapf(cell, "angle_beta", ucell_map, "beta")
+            setmapf(cell, "angle_gamma", ucell_map, "gamma")
+            setmapi(cell, "Z_PDB", ucell_map, "z")
 
         try:
             symm = self.cif_data["symmetry"].get_row(
@@ -1263,7 +1212,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         except KeyError:
             pass
         else:
-            self.setmaps(symm, "space_group_name_H-M",
+            setmaps(symm, "space_group_name_H-M",
                          ucell_map, "space_group")
         
         self.load_unit_cell(ucell_map)
