@@ -54,9 +54,14 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         self.sphere_list = []
         self.line_list   = []
 
+        
     def destroy(self, glarea):
-        gtk.timeout_remove(self.tn)
+        if hasattr(self, "tn"):
+            gtk.timeout_remove(self.tn)
+            del self.tn
+
         return gtk.TRUE
+
 
     def timeout(self):
         if self.rot == "x":
@@ -73,18 +78,21 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         
         return gtk.TRUE
 
+
     def map(self, glarea):
         self.tn = gtk.timeout_add(80, self.timeout)
-        print "timeout: ", self.tn
+        #print "timeout: ", self.tn
         return gtk.TRUE
+
 
     def unmap(self, glarea):
         if hasattr(self, "tn"):
             gtk.timeout_remove(self.tn)
-            print "removing timeout ",self.tn
+            #print "removing timeout ",self.tn
         else:
             print "no self.tn"
         return gtk.TRUE
+
 
     def realize(self, glarea):
         # get GLContext and GLDrawable
@@ -116,6 +124,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         gldrawable.gl_end()
         return gtk.TRUE
 
+
     def configure_event(self, glarea, event):
 	# get GLContext and GLDrawable
 	glcontext = self.get_gl_context()
@@ -142,6 +151,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	gldrawable.gl_end()
 	
 	return gtk.TRUE
+
 
     def expose_event(self, glarea, event):
 	# get GLContext and GLDrawable
@@ -184,6 +194,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	gldrawable.gl_end()
 	
 	return gtk.TRUE
+
 
     def setAtomContainer(self, atom_container):
         self.rot  = "x"
@@ -259,9 +270,11 @@ class AtomContainerPanel(gtk.VBox):
         self.glviewer = GLViewer()
         self.add(self.glviewer)
 
+
     def printBox(self, key, value):
         iter = self.store.append()
         self.store.set(iter, 0, key, 1, str(value))
+
 
     def setAtomContainer(self, atom_container):
         self.atom_container = atom_container
@@ -333,67 +346,76 @@ class AtomContainerPanel(gtk.VBox):
         self.glviewer.setAtomContainer(self.atom_container)
 
 
+
 class StructureTreeModel(gtk.GenericTreeModel):
-    '''This class represents the model of a tree.  The iterators used
-    to represent positions are converted to python objects when passed
-    to the on_* methods.  This means you can use any python object to
-    represent a node in the tree.  The None object represents a NULL
-    iterator.
-
-    In this tree, we use simple tuples to represent nodes, which also
-    happen to be the tree paths for those nodes.  This model is a tree
-    of depth 3 with 5 nodes at each level of the tree.  The values in
-    the tree are just the string representations of the nodes.'''
-
     def __init__(self, structure):
-	'''constructor for the model.  Make sure you call
-	PyTreeModel.__init__'''
         self.structure = structure
 	gtk.GenericTreeModel.__init__(self)
+
 
     def get_iter_root(self):
         return self.structure
 
-    # the implementations for TreeModel methods are prefixed with on_
+
     def on_get_flags(self):
 	'''returns the GtkTreeModelFlags for this particular type of model'''
 	return 0
+
+
     def on_get_n_columns(self):
 	'''returns the number of columns in the model'''
 	return 1
+
+
     def on_get_column_type(self, index):
 	'''returns the type of a column in the model'''
 	return gobject.TYPE_STRING
+
+
     def on_get_path(self, node):
 	'''returns the tree path (a tuple of indices at the various
 	levels) for a particular node.'''
 	return node.getIndexPath()
+
+
     def on_get_iter(self, path):
         '''returns the node corresponding to the given path.'''
         node = self.structure
         for i in path:
             node = node.getChild(i)
         return node
+
+
     def on_get_value(self, node, column):
 	'''returns the value stored in a particular column for the node'''
 	return str(node)
+
+
     def on_iter_next(self, node):
 	'''returns the next node at this level of the tree'''
         try:
             return node.getSibling(1)
         except IndexError:
             return None
+
+
     def on_iter_children(self, node):
 	'''returns the first child of this node'''
         return node.getFirstChild()
+
+
     def on_iter_has_child(self, node):
 	'''returns true if this node has children'''
         if node.getDegree() > 0:
             return 1
         return 0
+
+
     def on_iter_n_children(self, node):
 	'''returns the number of children of this node'''
         return node.getDegree()
+
+
     def on_iter_nth_child(self, node, n):
 	'''returns the nth child of this node'''
         if node == None:
@@ -402,6 +424,8 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return node.getChild(n)
         except IndexError:
             return None
+
+
     def on_iter_parent(self, node):
 	'''returns the parent of this node'''
         return node.getParent()
@@ -442,7 +466,7 @@ class StructureGUI:
         self.structure = LoadStructure(path)
         
         try:
-            from mmLib.CCP4       import CCP4MonomerLibrary
+            from mmLib.CCP4 import CCP4MonomerLibrary
         except:
             pass
         else:
@@ -479,13 +503,19 @@ class MainWindow:
         ## Create the menubar
         menubar = gtk.MenuBar()
 
-        menuitem = gtk.MenuItem("File")
-        #menuitem.set_submenu(create_menu(2, 50))
-        menubar.add(menuitem)
-        
-        menuitem = gtk.MenuItem("Help")
-        #menuitem.set_submenu(create_menu(2))
-        menubar.add(menuitem)
+        file = gtk.MenuItem("File")
+        menu = gtk.Menu()
+
+        mi   = gtk.MenuItem("Open")
+        mi.connect("activate", self.open_cb)
+        menu.add(mi)
+
+        mi   = gtk.MenuItem("Quit")
+        mi.connect("activate", self.quit_notify_cb, self)
+        menu.add(mi)
+
+        file.set_submenu(menu)
+        menubar.add(file)
 
         table.attach(menubar,
                      # X direction              Y direction
@@ -504,52 +534,64 @@ class MainWindow:
 
 
         ## Create statusbar 
-        statusbar = gtk.Statusbar();
-        table.attach(statusbar,
+        self.statusbar = gtk.Statusbar();
+        table.attach(self.statusbar,
                      # X direction           Y direction
                      0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  0,
                      0,                      0)
 
-##         self.status_buffer = gtk.TextBuffer()
-##         self.status_buffer.connect('changed', self.update_statusbar, statusbar)
-##         self.status_buffer.connect('mark_set', self.mark_set_callback, statusbar)
-##         update_statusbar(self.status_buffer, statusbar)
-
         self.window.show_all()
- 
-
-    def fuck(self, widget):
-        print "fuck"
-
-    def menuitem_cb(self, widget):
-        pass
 
 
-    def toolbar_cb(self, widget):
-        pass
+    def open_cb(self, widget):
+        file_selector = gtk.FileSelection("Select file to view");
 
-    def update_statusbar_cb(self, widget):
-        pass
+        ok_button = file_selector.ok_button
+        ok_button.connect("clicked", self.open_ok_cb, file_selector)
 
-    def mark_set_callback(self, widget):
-        pass
+        cancel_button = file_selector.cancel_button
+        cancel_button.connect("clicked", self.open_cancel_cb, file_selector)
+        
+        file_selector.show()
+
+
+    def open_ok_cb(self, ok_button, file_selector):
+        path = file_selector.get_filename()
+        file_selector.destroy()
+        self.loadFile(path)
+        
+
+    def open_cancel_cb(self, cancel_button, file_selector):
+        file_selector.destroy()
+
 
     def setTitle(self, title):
         title = "mmView: " + title
         title = title[:50]
         self.window.set_title(title)
 
+
+    def setStatusBar(self, text):
+        self.statusbar.pop(0)
+        self.statusbar.push(0, text)
+
+
     def loadFile(self, path):
         self.setTitle(path)
-        self.window.set_sensitive(gtk.FALSE)
-        gtk.main_iteration(gtk.FALSE)
+        self.setStatusBar("Loading %s, please wait..." % (path))
+
+        while gtk.events_pending():
+            gtk.main_iteration(gtk.TRUE)
 
         self.structure_gui.loadStructure(path)
 
-        self.window.set_sensitive(gtk.TRUE)
+        self.setStatusBar("")
         return gtk.FALSE
     
+
+
+
     
 def main(path = None):
     main_window_list = []
@@ -558,15 +600,14 @@ def main(path = None):
         main_window_list.remove(mw)
         if len(main_window_list) < 1:
             gtk.main_quit()
-    
+
     mw = MainWindow(quit_notify_cb)
     main_window_list.append(mw)
 
     if path:
-        gtk.idle_add(mw.loadFile, path)
+        gobject.timeout_add(25.0, mw.loadFile, path)
 
     gtk.main()
-
 
 
 if __name__ == "__main__":
