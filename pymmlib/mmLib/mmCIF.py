@@ -46,15 +46,18 @@ class mmCIFTable(list):
 
     def __setitem__(self, i, row):
         assert isinstance(row, mmCIFRow)
+        row.table = self
         list.__setitem__(self, i, row)
 
     def append(self, row):
         assert isinstance(row, mmCIFRow)
+        row.table = self
         list.append(self, row)
 
     def insert(self, i, row):
         assert isinstance(row, mmCIFRow)
-        list.insert(i, row)
+        row.table = self
+        list.insert(self, i, row)
 
     def autoset_columns(self):
         """Iterates through all rows in self, and forms a list of all
@@ -142,14 +145,17 @@ class mmCIFData(list):
 
     def __setitem__(self, i, table):
         assert isinstance(table, mmCIFTable)
-        list.__setitem__(i, table)
+        table.data = self
+        list.__setitem__(self, i, table)
 
     def append(self, table):
         assert isinstance(table, mmCIFTable)
+        table.data = self
         list.append(self, table)
 
     def insert(self, i, table):
         assert isinstance(table, mmCIFTable)
+        table.data = self
         list.insert(self, i, table)
 
     def has_key(self, x):
@@ -183,6 +189,14 @@ class mmCIFData(list):
             ctable.debug()
 
 
+class mmCIFSave(mmCIFData):
+    """Class to store data from mmCIF dictionary save_ blocks.  I treat
+    them as non-nested sections along with data_ sections.  This may
+    not be correct.
+    """
+    pass
+
+
 class mmCIFFile(list):
     """Class representing a mmCIF files.
     """
@@ -203,14 +217,17 @@ class mmCIFFile(list):
 
     def __setitem__(self, i, cdata):
         assert isinstance(table, mmCIFData)
-        list.__setitem__(i, cdata)
+        cdata.file = self
+        list.__setitem__(self, i, cdata)
         
     def append(self, cdata):
         assert isinstance(cdata, mmCIFData)
+        cdata.file = self
         list.append(self, cdata)
 
     def insert(self, i, cdata):
         assert isinstance(cdata, mmCIFData)
+        cdata.file = self
         list.insert(self, i, cdata)
 
     def has_key(self, x):
@@ -254,18 +271,11 @@ class mmCIFDictionary(mmCIFFile):
     takes two arguments.  The first is the string path for the file, or
     alternativly a file object.
     """
-    def __init__(self, path_or_fil):
-        self._path = path_or_fil
-        self._data_list = []
+    def load_file(self, fil):
+        """Load the mmCIF dictionary into self.
+        """
+        mmCIFDictionaryParser().parse_file(OpenFile(fil, "r"), self)
 
-    def load(self):
-        if type(self._path) == types.StringType:
-            fil = OpenFile(self._path, "r")
-        else:
-            fil = self._path
-
-        for cif_data in mmCIFDictionaryParser().parse_file(fil):
-            self.append(cif_data)
 
 ##
 ## FILE PARSERS/WRITERS
@@ -300,7 +310,7 @@ class mmCIFElementFile:
         return not ((i - j) % 2)
 
     def split(self, line):
-        list = []
+        tok_list = []
         j = 0
         state = "whitespace"
 
@@ -320,7 +330,7 @@ class mmCIFElementFile:
                     tok = line[j:i]
                     if tok == ".":
                         tok = ""
-                    list.append((tok, "token"))
+                    tok_list.append((tok, "token"))
                 continue
 
             elif state == "quote":
@@ -331,19 +341,19 @@ class mmCIFElementFile:
                         pass
                     
                     state = "whitespace"
-                    list.append((line[j+1:i],"string")) ## strip quotes
+                    tok_list.append((line[j+1:i],"string")) ## strip quotes
                 continue
 
         if  state == "element":
             tok = line[j:]
             if tok == ".":
                 tok = ""
-            list.append((tok,"token"))
+            tok_list.append((tok,"token"))
 
         elif state == "quote":
-            list.append((line[j+1:-1],"string")) ## strip out the quotes
+            tok_list.append((line[j+1:-1],"string")) ## strip out the quotes
             
-        return list
+        return tok_list
  
     def read_elements(self):
         state = "read data"
@@ -528,22 +538,10 @@ class mmCIFDictionaryParser(mmCIFFileParser):
     syntax encountered in the dictionary files.  I wrote this quite a while
     ago, and now that I look at it again, I suspect it's not complete.
     """
-    def parse_file(self, fil):
+    def parse_file(self, fil, cif_file):
         self.done = 0
         self.cife = mmCIFElementFile(fil)
-        try:
-            (s,t) = self.cife.get_next_element()
-        except EOFError:
-            return None
 
-        if not s.startswith("data_"):
-            self.syntax_error('unexpected element=%s' % (s))
-            
-        return self.read_save_list(dict)
-
-    def read_save_list(self, dict):
-        save_list = []
-        
         while not self.done:
             try:
                 (s,t) = self.cife.get_next_element()
@@ -551,43 +549,15 @@ class mmCIFDictionaryParser(mmCIFFileParser):
                 self.done = 1
                 break
 
-            if s.startswith("_"):
-                self.read_single(data, s)
-
+            if s.startswith("data_"):
+                data = mmCIFData(s[5:])
             elif s.startswith("save_"):
-                save = self.read_save(mmCIFData(), s)
-                save_list.append(save)
-                
-            elif s.startswith("loop_"):
-                self.read_loop(s)
-
-            elif s.startswith("data_"):
-                self.syntax_error('two data_ subsections in dictionary')
-
+                data = mmCIFSave(s[5:])
             else:
-                self.syntax_error('bad element=%s' % (s))
+                self.syntax_error('unexpected element="%s"' % (s))
 
-        return save_list
-
-    def read_save(self, data, s):
-        if s.startswith("save__"):
-            name = s[6:]
-        else:
-            name = s[5:]
-
-        if not name:
-            self.syntax_error('expected opening save_ block')
-
-        self.read_data(data)
-        try:
-            (s,t) = self.cife.get_next_element()
-        except EOFError:
-            self.done = 1
-        else:
-            if s != 'save_':
-                self.sytax_error('expected closing save_ block')
-        
-        return data
+            cif_file.append(data)
+            self.read_data(data) 
 
     def read_data(self, data):
         while not self.done:
@@ -599,18 +569,15 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 
             if s.startswith("_"):
                 self.read_single(data, s)
-                
             elif s.startswith("loop_"):
                 self.read_loop(data, s)
-
             elif s.startswith("data_"):
-                self.syntax_error('two data_ subsections in dictionary')
+                self.syntax_error("two data_ subsections in dictionary")
                 break
-
             elif s.startswith("save_"):
-                self.cife.replace_element((s,t))
+                ## this should be the closing save_, so sanity check
+                assert s[5:] == ""
                 break
-            
             else:
                 self.syntax_error('bad element=%s' % (s))
 

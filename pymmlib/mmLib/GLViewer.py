@@ -194,6 +194,8 @@ class GLAtomDrawList(GLDrawList, AtomList):
         return (r, g, b, brightness)
 
     def draw_atom(self, atm):
+        quality = 16
+
         glPushMatrix()
 
         glTranslatef(*atm.position - self.atom_origin)
@@ -203,9 +205,9 @@ class GLAtomDrawList(GLDrawList, AtomList):
 
         el = atm.get_structure().library.get_element(atm.element)
         if el:
-            glutSolidSphere(el.van_der_waals_radius, 12, 12)
+            glutSolidSphere(el.van_der_waals_radius, quality, quality)
         else:
-            glutSolidSphere(2.0, 12, 12)
+            glutSolidSphere(2.0, quality, quality)
 
         ## U axes
         if atm.U:
