@@ -389,6 +389,13 @@ class StructureBuilder(object):
         values composed of the 3x3 rotation matrix and the 3x1 translation.
         """
         for ((atm1, atm2), bd_map) in bond_map.items():
+
+            ## check for files which, for some reason, define have a bond
+            ## entry bonding the atom to itself
+            if atm1 == atm2:
+                warning("silly file defines self bonded atom")
+                continue
+            
             atm1.create_bonds(atm2,
                               bond_type = bd_map.get("bond_type"),
                               atm1_symop = bd_map.get("atm1_symop"),
