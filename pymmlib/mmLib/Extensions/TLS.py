@@ -78,7 +78,7 @@ refmac_pdb_regex_dict = {
     }
 
 
-class TLSGroupInfo:
+class TLSInfo(object):
     """Contains information on one TLS group
     """
     def __init__(self):
@@ -88,8 +88,11 @@ class TLSGroupInfo:
         self.T          = None   # (t11, t22, t33, t12, t13, t23)
         self.L          = None   # (l11, l22, l33, l12, l13, l23)
         self.S          = None   # (s2211, s1133, s12, s13, s23, s21, s31, s32)
-        
+
     def __str__(self):
+        return self.refmac_description()
+        
+    def refmac_description(self):
         """Return a string describing the TLS group in REFMAC/CCP4 format.
         """
         def ft8(tx):
@@ -100,7 +103,7 @@ class TLSGroupInfo:
         
         listx = []
 
-        if len(self.name) > 0:
+        if self.name != "":
             listx.append("TLS %s" % (self.name))
         else:
             listx.append("TLS")
@@ -117,10 +120,14 @@ class TLSGroupInfo:
             listx.append("RANGE  '%s%s' '%s%s' %s" % (
                 c1, f1.rjust(5), c2, f2.rjust(5), sel))
 
-        listx.append("ORIGIN %s" % ft8(self.origin))
-        listx.append("T   %s" % ft8(self.T))
-        listx.append("L   %s" % ft8(self.L))
-        listx.append("S   %s" % ft8(self.S))
+        if self.origin != None:
+            listx.append("ORIGIN %s" % ft8(self.origin))
+        if self.T != None:
+            listx.append("T   %s" % ft8(self.T))
+        if self.L != None:
+            listx.append("L   %s" % ft8(self.L))
+        if self.S != None:
+            listx.append("S   %s" % ft8(self.S))
 
         return string.join(listx, "\n")
 
@@ -155,24 +162,21 @@ class TLSGroupInfo:
         return tls
 
 
-class TLSGroupFile:
+class TLSInfoList(list):
     """This class reads and writes TLS information stored in the same
     format as REFMAC from CCP4 >= 4.1.0.  The TLS groups are stored as a list
-    of TLSGroupInfo classes.
+    of TLSInfo classes.
     """
-    def __init__(self):
-        self.tls_info_list = []
-        self.state = {}
-
     def __str__(self):
+        return self.refmac_description()
+
+    def refmac_description(self):
         """Return a string describing the TLS groups in REFMAC/CCP4 format.
         """
-        listx = []
-        
-        for tls_info in self.tls_info_list:
+        listx = ["REFMAC"]
+        for tls_info in self:
             listx.append(str(tls_info))
-
-        return string.join(listx, "\n\n")
+        return string.join(listx, "\n")
         
     def load_refmac_tlsout_file(self, fil):
         """Read the TLS information from file object fil, and store that
@@ -200,8 +204,8 @@ class TLSGroupFile:
                 sys.exit(1)
 
             if re_key == "group":
-                tls_info = TLSGroupInfo()
-                self.tls_info_list.append(tls_info)
+                tls_info = TLSInfo()
+                self.append(tls_info)
                 if mx.group(1) != None:
                     tls_info.name = mx.group(1)
 
@@ -266,7 +270,7 @@ class TLSGroupFile:
             return
 
         try:
-            tls_info = self.tls_info_list[-1]
+            tls_info = self[-1]
         except IndexError:
             tls_info = None
 
@@ -281,8 +285,8 @@ class TLSGroupFile:
             return
 
         if re_key == "group":
-            tls_info = TLSGroupInfo()
-            self.tls_info_list.append(tls_info)
+            tls_info = TLSInfo()
+            self.append(tls_info)
 
         elif re_key == "origin":
             (x, y, z) = mx.groups()
