@@ -72,6 +72,40 @@ def info(text):
     sys.stderr.write("[VIEWER:INFO]  %s\n" % (text))
     sys.stderr.flush()
 
+def draw_panel(z, x1, y1, x2, y2, r, g, b, a):
+    """Draw transparent glass panel with outline.
+    """
+    ## transparent smoky glass
+    glEnable(GL_LIGHTING)
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT,  (0.0, 0.0, 0.0, a))
+    glMaterialfv(GL_FRONT, GL_DIFFUSE,  (0.1, 0.1, 0.1, a))
+    glMaterialfv(GL_FRONT, GL_SPECULAR, (0.1*r, 0.1*g, 0.1*b, a))
+    glMaterialfv(GL_FRONT, GL_EMISSION, (0.05*r, 0.05*g, 0.05*b, a))
+    glMaterialfv(GL_FRONT, GL_SHININESS, 128.0)
+
+    glNormal3f(0.0, 0.0, 1.0)
+
+    glBegin(GL_QUADS)
+    glVertex3f(x1, y1, z)
+    glVertex3f(x2, y1, z)
+    glVertex3f(x2, y2, z)
+    glVertex3f(x1, y2, z)
+    glEnd()
+
+    ## outline the screen
+    glDisable(GL_LIGHTING)
+    glColor3f(r, g, b)
+    glLineWidth(1.0)
+
+    glBegin(GL_LINE_LOOP)
+    glVertex3f(x1, y1, z + 0.01)
+    glVertex3f(x2, y1, z + 0.01)
+    glVertex3f(x2, y2, z + 0.01)
+    glVertex3f(x1, y2, z + 0.01)
+    glEnd()
+    
 
 ##
 ## OpenGL Terminal Hack
@@ -178,85 +212,10 @@ class Terminal(object):
         ##
         ## draw background
         ##
-        glEnable(GL_LIGHTING)
-        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-
-        glMaterialfv(
-            GL_FRONT,
-            GL_AMBIENT,
-            (0.0, 0.0, 0.0, self.term_alpha))
-        
-        glMaterialfv(
-            GL_FRONT,
-            GL_DIFFUSE,
-            (0.1, 0.1, 0.1, self.term_alpha))
-        
-	glMaterialfv(
-            GL_FRONT,
-            GL_SPECULAR,
-            (0.0, 0.1, 0.0, self.term_alpha))
-
-        glMaterialfv(
-            GL_FRONT,
-            GL_EMISSION,
-            (0.0, 0.05, 0.0, self.term_alpha))
-
-        glMaterialfv(GL_FRONT, GL_SHININESS, 128.0)
-        
-        glBegin(GL_QUADS)
-
-        glNormal3f(0.0, 0.0, 1.0)
-
-        glVertex3f(
-            self.wind_border,
-            self.wind_border,
-            zplane)
-
-        glVertex3f(
-            glwidth - self.wind_border,
-            self.wind_border,
-            zplane)
-
-        glVertex3f(
-            glwidth - self.wind_border,
-            glheight - self.wind_border,
-            zplane)
-
-        glVertex3f(
-            self.wind_border,
-            glheight - self.wind_border,
-            zplane)
-
-        glEnd()
-
-        ## outline the screen
-        glDisable(GL_LIGHTING)
-        glColor3f(0.0, 1.0, 0.0)
-        glLineWidth(1.0)
-
-        glBegin(GL_LINE_LOOP)
-
-        glVertex3f(
-            self.wind_border,
-            self.wind_border,
-            zplane + 0.1)
-
-        glVertex3f(
-            glwidth - self.wind_border,
-            self.wind_border,
-            zplane + 0.1)
-
-        glVertex3f(
-            glwidth - self.wind_border,
-            glheight - self.wind_border,
-            zplane + 0.1)
-
-        glVertex3f(
-            self.wind_border,
-            glheight - self.wind_border,
-            zplane + 0.1)
-
-        glEnd()
+        draw_panel(zplane,
+                   self.wind_border, self.wind_border,
+                   glwidth - self.wind_border, glheight - self.wind_border,
+                   0.0, 1.0, 0.0, 0.8)
 
         ## draw text lines
         glDisable(GL_LIGHTING)
@@ -271,7 +230,7 @@ class Terminal(object):
             ypos = self.wind_border + self.term_border + 1.0*i
             if ypos>(glheight - self.wind_border - self.term_border):
                 break
-
+ 
             glPushMatrix()
             glTranslatef(
                 self.wind_border + self.term_border,
@@ -280,12 +239,19 @@ class Terminal(object):
 
             ## scale the chara
             glScalef(char1_scale, char1_scale, char1_scale)
-            
+
             for c in ln:
                 glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, ord(c))
 
-            glPopMatrix()
+            ## draw a cursor on the first line
+            if i==0:
+                draw_panel(0.0,
+                           10.0, -CHAR_DECENT, 70.0, CHAR_ASCENT,
+                           1.0, 1.0, 1.0, 0.8)
+                
+                glColor3f(0.0, 1.0, 0.0)
 
+            glPopMatrix()
             i += 1
 
 

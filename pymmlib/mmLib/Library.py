@@ -25,7 +25,7 @@ RCSB_MONOMER_DATA_PATH  = os.path.join(MMLIB_PATH, "Data", "Monomers")
 ###############################################################################
 ## Caches
 ##
-
+ELEMENT_CIF_FILE       = None
 ELEMENT_CACHE          = {}
 MONOMER_RES_NAME_CACHE = {}
 
@@ -118,10 +118,15 @@ def library_get_element_desc(symbol):
     except KeyError:
         pass
 
-    cif_file = mmCIFFile()
-    cif_file.load_file(ELEMENT_DATA_PATH)
+    ## only load elements.cif once
+    global ELEMENT_CIF_FILE
+    if ELEMENT_CIF_FILE==None:
+        warning("loading %s" % (ELEMENT_DATA_PATH))
         
-    cif_data = cif_file.get_data(symbol)
+        ELEMENT_CIF_FILE = mmCIFFile()
+        ELEMENT_CIF_FILE.load_file(ELEMENT_DATA_PATH)
+
+    cif_data = ELEMENT_CIF_FILE.get_data(symbol)
     if cif_data==None:
         warning("element description not found for %s" % (symbol))
         return None
@@ -219,7 +224,6 @@ def library_get_monomer_desc(res_name):
             atom1 = cif_row["atom_id_1"]
             atom2 = cif_row["atom_id_2"]
             mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
-
 
     ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
     mmlib_cif_file = mmCIFFile()
