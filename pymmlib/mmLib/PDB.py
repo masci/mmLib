@@ -1543,7 +1543,11 @@ class PDBFileBuilder(object):
                 self.pdb_file.append(endmdl)
 
         else:
-            self.struct.default_model = model_list[0]
+            try:
+                self.struct.default_model = model_list[0]
+            except IndexError:
+                self.struct.default_model = 1
+                
             self.add_atom_records()
 
         self.struct.default_model = orig_model
