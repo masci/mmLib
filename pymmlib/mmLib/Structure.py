@@ -1201,7 +1201,7 @@ class Atom(object):
             except KeyError:
                 pass
 
-        print "[ERROR] get_default"
+        print "[ERROR] get_default model=%d alt_loc=%s" % (def_ml, def_al)
         for atm in self:
             print "    ",atm
 

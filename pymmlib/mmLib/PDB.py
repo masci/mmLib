@@ -259,6 +259,8 @@ class HEADER(PDBRecord):
     CAVEAT, COMPND, SOURCE, KEYWDS, EXPDTA, AUTHOR, REVDAT, SPRSDE, JRNL,
     and REMARK records.
     """
+    __slots__ = []
+    
     _name = "HEADER"
     _field_list = [
         ("classification", 11, 50, "string", "rjust", None),
@@ -272,6 +274,8 @@ class OBSLTE(PDBRecord):
     the withdrawn entry.  The format allows for the case of multiple new
     entries replacing one existing entry.
     """
+    __slots__ = []
+    
     _name = "OBSLTE"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -301,6 +305,8 @@ class TITLE(PDBRecord):
     represented in the entry. It should identify an entry in the PDB in the
     same way that a title identifies a paper.
     """
+    __slots__ = []
+    
     _name = "TITLE "
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -313,6 +319,8 @@ class CAVEAT(PDBRecord):
     """CAVEAT warns of severe errors in an entry. Use caution when using an
     entry containing this record.
     """
+    __slots__ = []
+    
     _name = "CAVEAT"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -359,6 +367,8 @@ class COMPND(PDBRecord):
     number assigned by the Enzyme Commission (EC), and other relevant details
     are specified.
     """ 
+    __slots__ = []
+    
     _name = "COMPND"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -374,6 +384,8 @@ class SOURCE(PDBRecord):
     cell-line for immortalized cells are given when they help to uniquely
     identify the biological entity studied.
     """
+    __slots__ = []
+    
     _name = "SOURCE"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -390,6 +402,8 @@ class KEYWDS(PDBRecord):
     provides the opportunity to add further annotation to the entry in a
     concise and computer-searchable fashion.
     """
+    __slots__ = []
+    
     _name = "KEYWDS"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -411,6 +425,8 @@ class EXPDTA(PDBRecord):
     THEORETICAL MODEL
     X-RAY DIFFRACTION
     """ 
+    __slots__ = []
+    
     _name = "EXPDTA"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -449,6 +465,8 @@ class AUTHOR(PDBRecord):
     """The AUTHOR record contains the names of the people responsible for the
     contents of the entry.
     """
+    __slots__ = []
+    
     _name = "AUTHOR"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -461,6 +479,8 @@ class REVDAT(PDBRecord):
     """REVDAT records contain a history of the modifications made to an entry
     since its release.
     """
+    __slots__ = []
+    
     _name = "REVDAT"
     _field_list = [
         ("modNum", 8, 10, "integer", "rjust", None),
@@ -485,7 +505,10 @@ class SPRSDE(PDBRecord):
     """The SPRSDE records contain a list of the ID codes of entries that were
     made obsolete by the given coordinate entry and withdrawn from the PDB
     release set. One entry may replace many. It is PDB policy that only the
-    principal investigator of a structure has the authority to withdraw it."""
+    principal investigator of a structure has the authority to withdraw it.
+    """
+    __slots__ = []
+    
     _name = "SPRSDE"
     _field_list = [
         ("continuation", 9, 10, "string", "rjust", None),
@@ -513,6 +536,8 @@ class JRNL(PDBRecord):
     most one JRNL reference per entry. If there is no primary reference, then
     there is no JRNL reference. Other references are given in REMARK 1.
     """
+    __slots__ = []
+    
     _name = "JRNL  "
     _field_list = [
         ("text", 13, 70, "string", "ljust", None)]
@@ -525,6 +550,8 @@ class REMARK(PDBRecord):
     facilitate searching and will assist in the conversion to a relational
     database.
     """
+    __slots__ = []
+    
     _name = "REMARK"
     _field_list = [
         ("remarkNum", 8, 10, "integer", "rjust", None),
@@ -539,6 +566,8 @@ class DBREF(PDBRecord):
     record pointing to the Nucleic Acid Database (NDB) is mandatory when
     the corresponding entry exists in NDB.
     """
+    __slots__ = []
+    
     _name = "DBREF "
     _field_list = [
         ("idCode", 8, 11, "string", "rjust", None),
@@ -564,6 +593,8 @@ class SEQADV(PDBRecord):
     the entry that reflect the depositor's view of which database has the
     correct sequence.
     """
+    __slots__ = []
+    
     _name = "SEQADV"
     _field_list = [
         ("idCode", 8, 11, "string", "rjust", None),
@@ -581,6 +612,8 @@ class SEQRES(PDBRecord):
     """The SEQRES records contain the amino acid or nucleic acid sequence of
     residues in each chain of the macromolecule that was studied.
     """
+    __slots__ = []
+    
     _name = "SEQRES"
     _field_list = [
         ("serNum", 9, 10, "integer", "rjust", None),
@@ -606,6 +639,8 @@ class MODRES(PDBRecord):
     Included are a mapping between residue names given in a PDB entry and
     standard residues.
     """
+    __slots__ = []
+    
     _name = "MODRES"
     _field_list = [
         ("idCode", 8, 11, "string", "rjust", None),
@@ -630,6 +665,8 @@ class HET(PDBRecord):
     Het records also describe heterogens for which the chemical identity
     is unknown, in which case the group is assigned the hetID UNK.
     """
+    __slots__ = []
+    
     _name = "HET   "
     _field_list = [
         ("hetID", 8, 10, "string", "rjust", None),
@@ -643,6 +680,8 @@ class HETNAM(PDBRecord):
     """This record gives the chemical name of the compound with the
     given hetID.
     """
+    __slots__ = []
+    
     _name = "HETNAM"
     _field_list = [
         ("continuation", 9, 10, "string", "ljust", None),
@@ -654,6 +693,8 @@ class HETSYN(PDBRecord):
     corresponding (i.e., same hetID) HETNAM record. This is to allow
     greater flexibility in searching for HET groups.
     """
+    __slots__ = []
+    
     _name = "HETSYN"
     _field_list = [
         ("continuation", 9, 10, "string", "ljust", None),
@@ -665,6 +706,8 @@ class FORMUL(PDBRecord):
     non-standard group. (The formulas for the standard residues are given
     in Appendix 5.)
     """
+    __slots__ = []
+    
     _name = "FORMUL"
     _field_list = [
         ("compNum", 9, 10, "integer", "rjust", None),
@@ -679,6 +722,8 @@ class HELIX(PDBRecord):
     molecule. Helices are both named and numbered. The residues where the
     helix begins and ends are noted, as well as the total length.
     """
+    __slots__ = []
+    
     _name = "HELIX "
     _field_list = [
         ("serNum", 8, 10, "integer", "rjust", None),
@@ -700,6 +745,8 @@ class SHEET(PDBRecord):
     molecule. Sheets are both named and numbered. The residues where the
     sheet begins and ends are noted.
     """
+    __slots__ = []
+    
     _name = "SHEET "
     _field_list = [
         ("strand", 8, 10, "integer", "rjust", None),
@@ -727,7 +774,10 @@ class SHEET(PDBRecord):
 
 class TURN(PDBRecord):
     """The TURN records identify turns and other short loop turns which
-    normally connect other secondary structure segments."""
+    normally connect other secondary structure segments.
+    """
+    __slots__ = []
+    
     _name = "TURN  "
     _field_list = [
         ("seq", 8, 10, "integer", "rjust", None),
@@ -748,6 +798,8 @@ class SSBOND(PDBRecord):
     polypeptide structures by identifying the two residues involved in the
     bond.
     """
+    __slots__ = []
+    
     _name = "SSBOND"
     _field_list = [
         ("serNum", 8, 10, "integer", "rjust", None),
@@ -768,6 +820,8 @@ class LINK(PDBRecord):
     the atom names. This record supplements information given in CONECT
     records and is provided here for convenience in searching.
     """
+    __slots__ = []
+    
     _name = "LINK  "
     _field_list = [
         ("name1", 13, 16, "string", "rjust", None),
@@ -788,6 +842,8 @@ class LINK(PDBRecord):
 class HYDBND(PDBRecord):
     """The HYDBND records specify hydrogen bonds in the entry.
     """
+    __slots__ = []
+    
     _name = "HYDBND"
     _field_list = [
         ("name1", 13, 16, "string", "rjust", None),
@@ -813,6 +869,8 @@ class HYDBND(PDBRecord):
 class SLTBRG(PDBRecord):
     """The SLTBRG records specify salt bridges in the entry.
     """
+    __slots__ = []
+    
     _name = "SLTBRG"
     _field_list = [
         ("name1", 13, 16, "string", "rjust", None),
@@ -835,6 +893,8 @@ class CISPEP(PDBRecord):
     in the cis conformation. This record replaces the use of footnote records
     to list cis peptides.
     """
+    __slots__ = []
+    
     _name = "CISPEP"
     _field_list = [
         ("serial", 8, 10, "integer", "rjust", None),
@@ -854,6 +914,8 @@ class SITE(PDBRecord):
     """The SITE records supply the identification of groups comprising
     important sites in the macromolecule.
     """
+    __slots__ = []
+    
     _name = "SITE  "
     _field_list = [
         ("seqNum", 8, 10, "integer", "rjust", None),
@@ -882,6 +944,8 @@ class CRYSTn(PDBRecord):
     group, and Z value. If the structure was not determined by crystallographic
     means, CRYSTn simply defines a unit cube.
     """
+    __slots__ = []
+    
     _field_list = [
         ("a", 7, 15, "float.3", "rjust", None),
         ("b", 16, 24, "float.3", "rjust", None),
@@ -893,12 +957,18 @@ class CRYSTn(PDBRecord):
         ("z", 67, 70, "integer", "rjust", None)]
 
 class CRYST1(CRYSTn):
+    __slots__ = []
+    
     _name = "CRYST1"
     
 class CRYST2(CRYSTn):
+    __slots__ = []
+    
     _name = "CRYST2"
 
 class CRYST3(CRYSTn):
+    __slots__ = []
+    
     _name = "CRYST3"
 
 class ORIGXn(PDBRecord):
@@ -906,6 +976,8 @@ class ORIGXn(PDBRecord):
     the orthogonal coordinates contained in the entry to the submitted
     coordinates.
     """
+    __slots__ = []
+    
     _field_list = [
         ("o[n][1]", 11, 20, "float.6", "rjust", None),
         ("o[n][2]", 21, 30, "float.6", "rjust", None),
@@ -913,12 +985,18 @@ class ORIGXn(PDBRecord):
         ("t[n]", 46, 55, "float.5", "rjust", None)]
 
 class ORIGX1(ORIGXn):
+    __slots__ = []
+    
     _name = "ORIGX1"
 
 class ORIGX2(ORIGXn):
+    __slots__ = []
+    
     _name = "ORIGX2"
 
 class ORIGX3(ORIGXn):
+    __slots__ = []
+    
     _name = "ORIGX3"
     
 class SCALEn(PDBRecord):
@@ -927,6 +1005,8 @@ class SCALEn(PDBRecord):
     crystallographic coordinates. Non-standard coordinate systems should
     be explained in the remarks.
     """
+    __slots__ = []
+    
     _field_list = [
         ("s[n][1]", 11, 20, "float.6", "rjust", None),
         ("s[n][2]", 21, 30, "float.6", "rjust", None),
@@ -934,18 +1014,26 @@ class SCALEn(PDBRecord):
         ("u[n]", 46, 55, "float.5", "rjust", None)]
     
 class SCALE1(SCALEn):
+    __slots__ = []
+    
     _name = "SCALE1"
         
 class SCALE2(SCALEn):
+    __slots__ = []
+    
     _name = "SCALE2"
 
 class SCALE3(SCALEn):
+    __slots__ = []
+    
     _name = "SCALE3"
 
 class MTRIXn(PDBRecord):
     """The MTRIXn (n = 1, 2, or 3) records present transformations expressing
     non-crystallographic symmetry.
     """
+    __slots__ = []
+    
     _field_list = [
         ("serial", 8, 10, "integer", "rjust", None),
         ("s[n][1]", 11, 20, "float.6", "rjust", None),
@@ -955,18 +1043,26 @@ class MTRIXn(PDBRecord):
         ("iGiven", 60, 60, "integer", "rjust", None)]
     
 class MTRIX1(MTRIXn):
+    __slots__ = []
+    
     _name = "MTRIX1"
 
 class MTRIX2(MTRIXn):
+    __slots__ = []
+    
     _name = "MTRIX2"
 
 class MTRIX3(MTRIXn):
+    __slots__ = []
+    
     _name = "MTRIX3"
 
 class TVECT(PDBRecord):
     """The TVECT records present the translation vector for infinite
     covalently connected structures.
     """
+    __slots__ = []
+    
     _name = "TVECT "
     _field_list = [
         ("serial", 8, 10, "integer", "rjust", None),
@@ -999,6 +1095,8 @@ class MODEL(PDBRecord):
     structures are presented in a single coordinate entry, as is often
     the case with structures determined by NMR.
     """
+    __slots__ = []
+    
     _name = "MODEL "
     _field_list = [
         ("serial", 11, 14, "integer", "rjust", None)]
@@ -1010,6 +1108,8 @@ class ATOM(PDBRecord):
     is always present on each ATOM record; segment identifier and charge
     are optional.
     """
+    __slots__ = []
+    
     _name = "ATOM  "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
@@ -1033,6 +1133,8 @@ class ANISOU(PDBRecord):
     Columns 7 - 27 and 73 - 80 are identical to the corresponding
     ATOM/HETATM record.
     """
+    __slots__ = []
+    
     _name = "ANISOU"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
@@ -1057,6 +1159,8 @@ class HETATM(ATOM):
     within "non-standard" groups. These records are used for water
     molecules and atoms presented in HET groups.
     """
+    __slots__ = []
+    
     _name = "HETATM"
 
 class SIGATM(PDBRecord):
@@ -1089,6 +1193,8 @@ class SIGUIJ(PDBRecord):
     Columns 7 - 27 and 73 - 80 are identical to the corresponding
     ATOM/HETATM record.
     """
+    __slots__ = []
+    
     _name = "SIGUIJ"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
@@ -1112,6 +1218,8 @@ class TER(PDBRecord):
     """The TER record indicates the end of a list of ATOM/HETATM records
     for a chain.
     """
+    __slots__ = []
+    
     _name = "TER   "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
@@ -1124,6 +1232,8 @@ class ENDMDL(PDBRecord):
     """The ENDMDL records are paired with MODEL records to group individual
     structures found in a coordinate entry.
     """
+    __slots__ = []
+    
     _name = "ENDMDL"
     _field_list = []
     
@@ -1137,6 +1247,8 @@ class CONECT(PDBRecord):
     atoms in standard residues (see Appendix 4 for the list of standard
     residues). These records are generated by the PDB.
     """
+    __slots__ = []
+    
     _name = "CONECT"
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),
@@ -1157,6 +1269,8 @@ class MASTER(PDBRecord):
     number of lines in the coordinate entry or file for selected record
     types.
     """
+    __slots__ = []
+    
     _name = "MASTER"
     _field_list = [
         ("numRemark", 11, 15, "integer", "rjust", None),
@@ -1175,6 +1289,8 @@ class MASTER(PDBRecord):
 class END(PDBRecord):
     """The END record marks the end of the PDB file.
     """
+    __slots__ = []
+    
     _name = "END   "
     _field_list = []
 
