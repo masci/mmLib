@@ -2539,14 +2539,25 @@ class GLViewer(GLObject):
             I[1,2] += - x[1]*x[2]
             I[2,1] += - x[1]*x[2]
 
-        evals, evecs = eigenvectors(I)
+        eval, evec = eigenvectors(I)
 
-        elist = [(evals[0], evecs[0]),
-                 (evals[1], evecs[1]),
-                 (evals[2], evecs[2])]
+	if eval[0]>=eval[1] and eval[0]>=eval[2]:
+            if eval[1]>=eval[2]:
+                R = array((evec[2], evec[1], evec[0]), Float)
+            else:
+                R = array((evec[1], evec[2], evec[0]), Float)
 
-        elist.sort()
-        R = array((elist[0][1], elist[1][1], elist[2][1]), Float)
+        elif eval[1]>=eval[0] and eval[1]>=eval[2]:
+            if eval[0]>=eval[2]:
+                R = array((evec[2], evec[0], evec[1]), Float)
+            else:
+                R = array((evec[0], evec[2], evec[1]), Float)
+
+        elif eval[2]>=eval[0] and eval[2]>=eval[1]:
+            if eval[0]>=eval[1]:
+                R = array((evec[1], evec[0], evec[2]), Float)
+            else:
+                R = array((evec[0], evec[1], evec[2]), Float)
 
         return R
 

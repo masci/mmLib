@@ -25,8 +25,13 @@ if _USE_NUMARRAY:
     from numarray import *
     from numarray.linear_algebra import *
 else:
-    from Numeric import *
-    from LinearAlgebra import *
+    try:
+      from Numeric import *
+      from LinearAlgebra import *
+    except ImportError:
+      from numarray import *
+      from numarray.linear_algebra import *
+
 
 ## useful constents
 PI       = math.pi
