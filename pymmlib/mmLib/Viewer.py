@@ -32,6 +32,8 @@ class GLPropertyDict(dict):
 
 
 class GLPropertyDefault(object):
+    """This value means a property should use its default value.
+    """
     pass
 
 
