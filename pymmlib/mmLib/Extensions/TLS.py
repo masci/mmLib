@@ -927,7 +927,7 @@ class TLSGroup(AtomList):
             A[u23, S12] = y
             A[u23, S13] = -z
 
-        (C, resids, rank, s) = linear_least_squares(A, b)
+        (C, lsq_residual, rank, s) = linear_least_squares(A, b)
 
         ## verify the trase of S is zero
         assert allclose(C[S11]+C[S22]+C[S33], 0.0)
@@ -943,6 +943,8 @@ class TLSGroup(AtomList):
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
                          [ C[S31], C[S32], C[S33] ] ], Float)
+
+        return lsq_residual
 
     def calc_Utls(self, T, L, S, vec):
         """Returns the calculated value for the anisotropic U tensor for

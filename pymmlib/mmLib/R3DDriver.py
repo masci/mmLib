@@ -17,7 +17,7 @@ from Structure      import *
 ## constants
 MARGIN          = 1.20
 BASE_LINE_WIDTH = 0.05
-RENDER_PATH     = "/usr/local/bin/render" 
+RENDER_PATH     = "render" 
 
 
 def matrixmultiply43(M, x):
