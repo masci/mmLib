@@ -42,19 +42,6 @@ def walk(path, start_path, *regex_args):
                 break
 
         if do_yield:
-
-            if pathx.endswith(".Z"):
-                x = "gunzip %s" % (pathx)
-                print "CMD: ",x
-                os.system(x)
-                
-                pathx = pathx[:-2]
-                x = "gzip %s" % (pathx)
-                print "CMD: ",x
-                os.system(x)
-
-                pathx = pathx + ".gz"
-
             yield pathx
 
 def walk_pdb(path, start_path = None):
@@ -141,5 +128,21 @@ def cif_stats(path):
 
 
 if __name__ == "__main__":
-    for x in walk("/mnt/cdrom", None, "pdb\w+\.gz"):
-        print x
+
+    for pathx in walk_pdb_cif("/home/jpaint/pdb"):
+
+        if pathx.endswith(".Z") or pathx.endswith(".gz"):
+            x = "gunzip %s" % (pathx)
+            print "CMD: ",x
+            os.system(x)
+            
+            if pathx.endswith(".Z"):
+                pathx = pathx[:-2]
+            else:
+                pathx = pathx[:-3]
+
+        (dir, filename) = os.path.split(pathx)
+
+        x = "cp %s %s" % (pathx, os.path.join("/home/jpaint/pdball", filename))
+        print "CMD: ",x
+        os.system(x)
