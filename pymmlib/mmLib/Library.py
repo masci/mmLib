@@ -247,8 +247,10 @@ class Monomer(MonomerInterface):
         represents one bond between the atom named mon1_name in mon1 and
         the atom named mon2_name in mon2.
         """
-        if self.type == "L-PEPTIDE LINKING":
+        if self.is_amino_acid()==True:
             return [("C", "N")]
+        elif self.is_nucleic_acid()==True:
+            return [("O3*", "P")]
         return []
 
 

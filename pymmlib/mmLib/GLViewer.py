@@ -590,6 +590,32 @@ class OpenGLRenderMethods(object):
 
         glPopMatrix()
 
+    def glr_rod(self, pos1, pos2, radius):
+        rod                = pos2 - pos1
+        rod_length         = length(rod)
+
+        glEnable(GL_LIGHTING)
+        quad = gluNewQuadric()
+	gluQuadricNormals(quad, GLU_SMOOTH)
+
+        glPushMatrix()
+
+        ## rotation matrix to align the current OpenGL coordinate
+        ## system such that the vector axis is along the z axis
+        R = inverse(rmatrixz(rod))
+        glMultMatrixf(
+            (R[0,0],           R[1,0],      R[2,0], 0.0,
+             R[0,1],           R[1,1],      R[2,1], 0.0,
+             R[0,2],           R[1,2],      R[2,2], 0.0,
+             pos1[0],         pos1[1],    pos1[2], 1.0) )
+
+        gluDisk(quad, 0.0, radius, 10, 5)
+	gluCylinder(quad, radius, radius, rod_length , 10, 1) 
+        glTranslatef(0.0, 0.0, rod_length)
+        gluDisk(quad, 0.0, radius, 10, 5)
+
+        glPopMatrix()
+
     def glr_cpk(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
         """
@@ -681,6 +707,7 @@ class OpenGLRenderMethods(object):
         
         def ellipse_surface_func(x):
             d = matrixmultiply(x, matrixmultiply(Ui, x))
+            
             try:
                 vec = math.sqrt(C2 / d) * x
                 return vec
@@ -1168,6 +1195,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":      "side_chain_visible",
               "desc":      "Show Side Chain Atoms",
+              "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
               "action":    "recompile" })
@@ -1201,6 +1229,29 @@ class GLAtomList(GLDrawList):
               "type":       "float",
               "spin":       PROP_LINE_RANGE,
               "default":    1.0,
+              "action":     "recompile" })
+
+        ## Ball/Stick
+        self.glo_add_property(
+            { "name":       "ball_stick",
+              "desc":       "Draw Ball/Sticks",
+              "catagory":   "Show/Hide",
+              "type":       "boolean",
+              "default":    False,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "ball_radius",
+              "desc":       "Atom (Ball) Radius",
+              "catagory":   "Ball/Stick",
+              "type":       "float",
+              "default":    0.1,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "stick_radius",
+              "desc":       "Bond (Stick) Radius",
+              "catagory":   "Ball/Stick",
+              "type":       "float",
+              "default":    0.1,
               "action":     "recompile" })
 
         ## cpk
@@ -1252,12 +1303,11 @@ class GLAtomList(GLDrawList):
               "default":    True,
               "action":     "recompile" })
         self.glo_add_property(
-            { "name":       "trace_line_width",
-              "desc":       "Backbone Trace Line Width",
+            { "name":       "trace_radius",
+              "desc":       "Trace Stick Radius",
               "catagory":   "Trace",
               "type":       "float",
-              "spin":       PROP_LINE_RANGE,
-              "default":    4.0,
+              "default":    0.1,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "trace_color",
@@ -1268,13 +1318,6 @@ class GLAtomList(GLDrawList):
               "action":     "recompile" })
 
         ## ADPs
-        self.glo_add_property(
-            { "name":      "atm_U_attr",
-              "type":      "string",
-              "hidden":    True,
-              "default":   "U",
-              "action":    "recompile" })
-
         self.glo_add_property(
             { "name":       "adp_prob",
               "desc":       "Contour Probability",
@@ -1425,8 +1468,11 @@ class GLAtomList(GLDrawList):
         if self.properties["lines"]==True:
             draw_funcs.append(self.draw_lines)
 
+        if self.properties["ball_stick"]==True:
+            draw_funcs.append(self.draw_ball_stick)
+
         if self.properties["U"]==True:
-            draw_funcs.append(self.draw_U_axes)
+            draw_funcs.append(self.draw_Uaxes)
 
         if self.properties["cpk"]==True and \
            self.properties["cpk_opacity"]>=1.0:
@@ -1434,11 +1480,11 @@ class GLAtomList(GLDrawList):
 
         if self.properties["ellipse"]==True and \
            self.properties["ellipse_opacity"]>=1.0:
-            draw_funcs.append(self.draw_ellipse)
+            draw_funcs.append(self.draw_Uellipse)
 
         if self.properties["rms"]==True and \
            self.properties["rms_opacity"]>=1.0:
-            draw_funcs.append(self.draw_rms)
+            draw_funcs.append(self.draw_Urms)
 
         ## execute draw functions for each atom
         for atm in self.glal_iter_atoms():
@@ -1456,11 +1502,11 @@ class GLAtomList(GLDrawList):
             
         if self.properties["ellipse"]==True and \
            self.properties["ellipse_opacity"]<1.0:
-            draw_funcs.append(self.draw_ellipse)
+            draw_funcs.append(self.draw_Uellipse)
 
         if self.properties["rms"]==True and \
            self.properties["rms_opacity"]<1.0:
-            draw_funcs.append(self.draw_rms)
+            draw_funcs.append(self.draw_Urms)
 
         for atm in self.glal_iter_atoms():
             for draw_func in draw_funcs:
@@ -1531,22 +1577,44 @@ class GLAtomList(GLDrawList):
                 self.properties["cpk_scale_radius"] * radius,
                 self.properties["sphere_quality"])
 
-    def draw_ellipse(self, atm):
+    def draw_Uaxes(self, atm):
+        """Draw thermal axes at the given ADP probability level.
+        """
+        U = atm.get_U()
+        if U==None:
+            return
+        
+        self.glr_Uaxes(
+            self.calc_position(atm.position),
+            U,
+            self.properties["adp_prob"],
+            self.properties["U_color"],
+            1.0)
+
+    def draw_Uellipse(self, atm):
         """Draw the ADP determined probability ellipseoid.
         """
-        r, g, b = self.get_color(atm)        
+        U = atm.get_U()
+        if U==None:
+            return
+        
+        r, g, b = self.get_color(atm) 
         self.glr_set_material_rgb(r, g, b, self.properties["ellipse_opacity"])
         self.glr_Uellipse(
             self.calc_position(atm.position),
-            atm.get_U(),
+            U,
             self.properties["adp_prob"])
 
-    def draw_rms(self, atm):
+    def draw_Urms(self, atm):
         """Draw the ADP determined RMS displacement surface.
         """
+        U = atm.get_U()
+        if U==None:
+            return
+        
         r, g, b = self.get_color(atm)        
         self.glr_set_material_rgb(r, g, b, self.properties["rms_opacity"])
-        self.glr_Urms(self.calc_position(atm.position), atm.get_U())
+        self.glr_Urms(self.calc_position(atm.position), U)
 
     def draw_lines(self, atm):
         """Draw a atom using bond lines only.
@@ -1578,6 +1646,31 @@ class GLAtomList(GLDrawList):
         else:
             self.draw_cross(atm)
 
+    def draw_ball_stick(self, atm):
+        """Draw atom with ball/stick model.
+        """
+        ball_radius  = self.properties["ball_radius"]
+        stick_radius = self.properties["stick_radius"]
+        
+        pos          = self.calc_position(atm.position)
+        r, g, b      = self.get_color(atm)
+        
+        self.glr_set_material_rgb(r, g, b, 1.0)
+        
+        ## if there are bonds, then draw the lines 1/2 way to the
+        ## bonded atoms
+        if len(atm.bond_list) > 0:
+            for bond in atm.iter_bonds():
+                atm2 = bond.get_partner(atm)
+                pos2 = self.calc_position(atm2.position)
+
+                start = pos
+                end   = start + ((pos2 - pos) / 2)
+                self.glr_rod(start, end, stick_radius)
+
+        ## draw ball
+        self.glr_cpk(pos, ball_radius, 10)
+            
     def draw_cross(self, atm):
         """Draws atom with a cross of lines.
         """
@@ -1586,46 +1679,44 @@ class GLAtomList(GLDrawList):
             self.get_color(atm),
             self.properties["line_width"])
 
-    def draw_trace(self, color=(1.0, 1.0, 1.0)):
-        """Draws trace over all protein backbone atoms.
+    def draw_trace(self):
+        """Draws trace over all polymer backbone atoms.
         """
-        glDisable(GL_LIGHTING)
-        glColor3f(*self.properties["trace_color"])
-        glLineWidth(self.properties["trace_line_width"])
+        trace_radius = self.properties["trace_radius"]
+        r, g, b      = self.properties["trace_color"]
+        
+        self.glr_set_material_rgb(r, g, b, 1.0)
 
         for chain in self.glal_iter_chains():
-            glBegin(GL_LINE_STRIP)
+
+            last_pos = None
 
             for frag in chain.iter_fragments():
-                ## PROTEIN
+
                 if frag.is_amino_acid()==True:
-                    for name in ("N", "CA", "C"):
-                        try:
-                            atm = frag[name]
-                        except KeyError:
-                            pass
-                        else:
-                            glVertex3f(*self.calc_position(atm.position))
-                ## DNA/RNA
+                    backbone_atoms = ("N", "CA", "C")
                 elif frag.is_nucleic_acid()==True:
-                    pass
+                    backbone_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
+                else:
+                    last_pos = None
+                    continue
 
-            glEnd()
+                for name in backbone_atoms:
+                    try:
+                        atm = frag[name]
+                    except KeyError:
+                        last_pos = None
+                    else:
+                        pos = self.calc_position(atm.position)
+                        if last_pos==None:
+                            last_pos = pos
+                        else:
+                            self.glr_cpk(last_pos, trace_radius, 10)
+                            self.glr_rod(last_pos, pos, trace_radius)
+                            last_pos = pos
 
-    def draw_U_axes(self, atm):
-        """Draw the anisotropic axies of the atom with R.M.S.
-        magnitude.
-        """
-        U = getattr(atm, self.properties["atm_U_attr"], None)
-        if U==None:
-            return
-        
-        self.glr_Uaxes(
-            self.calc_position(atm.position),
-            U,
-            self.properties["adp_prob"],
-            self.properties["U_color"],
-            1.0)
+            if last_pos!=None:
+                self.glr_cpk(last_pos, trace_radius, 10)
 
     def draw_symmetry_debug(self):
         """Draws crosses where all the symmetry equivalent atoms should be.
@@ -3156,9 +3247,12 @@ class GLChain(GLAtomList):
             for atm in frag.iter_all_atoms():
                 yield atm
 
-##     def glal_iter_fragments(self):
-##         for frag in self.chain.iter_fragments():
-##             yield frag
+    def glal_iter_fragments(self):
+        for frag in self.chain.iter_fragments():
+            yield frag
+
+    def glal_iter_chains(self):
+        yield self.chain
 
 
 class GLStructure(GLDrawList):

@@ -5,6 +5,7 @@
 ## included as part of this package.
 
 import math
+import random
 
 import pygtk
 pygtk.require("2.0")

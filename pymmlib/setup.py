@@ -14,7 +14,7 @@
 import os
 import sys
 
-from distutils.core import setup
+from distutils.core import setup, Extension
 from distutils.command.install_data import install_data
 
 class package_install_data(install_data):
@@ -49,6 +49,18 @@ def library_data():
             
     return inst_list
 
+def extension_list():
+    elist = [
+        ## PDB File Accelerator
+        Extension(
+            "pdbmodule", 
+            ["src/pdbmodule.c"],
+            include_dirs = [],
+            library_dirs = [],
+            libraries    = []),
+    ]
+    return elist
+
 def run_setup():
     s0 = setup(
         cmdclass = {'install_data': package_install_data},
@@ -59,6 +71,7 @@ def run_setup():
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
         packages     = ["mmLib", "mmLib/Extensions"],
+#        ext_modules  = extension_list(),
         data_files   = library_data()
         )
 
