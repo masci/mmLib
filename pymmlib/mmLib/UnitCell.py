@@ -5,12 +5,9 @@
 """Classes for handling unit cell transformation.
 """
 import math
+from mmTypes import *
 from AtomMath import *
 from SpaceGroups import GetSpaceGroup
-
-
-deg2rad = math.pi / 180.0
-rad2deg = 180.0 / math.pi
 
 
 class UnitCell(object):
@@ -42,7 +39,7 @@ class UnitCell(object):
 
         elif angle_units == "rad":
             self.alpha = alpha
-            self.beta = beta
+            self.beta  = beta
             self.gamma = gamma
 
         self.space_group = GetSpaceGroup(space_group)

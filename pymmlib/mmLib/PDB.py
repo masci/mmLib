@@ -1815,17 +1815,67 @@ class PDBFileBuilder(object):
 
 
 ### <testing>
+def mkc():
+
+    def prnt(field, i1, i2, ftype, just):
+        print '  {'                       + \
+              field.ljust(15)             + \
+              ('%d, '%(i1)).rjust(4)       + \
+              ('%d, '%(i2)).rjust(4)       + \
+              ('%s,'%(pftype)).ljust(24)  + \
+              pjust                       + \
+              '},'
+
+    for name in PDBRecordMap.keys():
+        print '  {' + \
+              ('"%s",'%(name)).ljust(10) + \
+              "%s_fields" % (name.strip().lower()) + \
+              '},'
+    
+    for name, rec in PDBRecordMap.items():
+        print "static struct PDBFieldDef %s_fields[] = {" % (
+            name.strip().lower())
+
+        for (field, i1, i2, ftype, just, junk) in rec._field_list:
+
+            if ftype   == "string":
+                pftype = "PDB_FIELD_TYPE_STRING"
+            elif ftype == "integer":
+                pftype = "PDB_FIELD_TYPE_INTEGER"
+            elif ftype == "float.2":
+                pftype = "PDB_FIELD_TYPE_FLOAT_2"
+            elif ftype == "float.3":
+                pftype = "PDB_FIELD_TYPE_FLOAT_3"
+            elif ftype == "float.4":
+                pftype = "PDB_FIELD_TYPE_FLOAT_4"
+            elif ftype == "float.5":
+                pftype = "PDB_FIELD_TYPE_FLOAT_5"
+            elif ftype == "float.6":
+                pftype = "PDB_FIELD_TYPE_FLOAT_6"
+
+            if just.count("ljust") > 0:
+                pjust = "PDB_FIELD_RJUST"
+            else:
+                pjust = "PDB_FIELD_LJUST"
+
+            prnt('"%s",'%(field), i1, i2, pftype, pjust)
+
+        prnt("NULL,", 0, 0, "PDB_FIELD_TYPE_STRING", "PDB_FIELD_RJUST")
+        print '};'
+        print
+
 if __name__ == "__main__":
-    import sys
+    mkc()
+    
+##     import sys
+##     try:
+##         path = sys.argv[1]
+##     except IndexError:
+##         print "usage: PDB.py <PDB file path>"
+##         sys.exit(1)
+##     pdbfil = PDBFile()
+##     pdbfil.load_file(path)
+##     pdbfil.save_file(sys.stdout)
 
-    try:
-        path = sys.argv[1]
-    except IndexError:
-        print "usage: PDB.py <PDB file path>"
-        sys.exit(1)
-
-    pdbfil = PDBFile()
-    pdbfil.load_file(path)
-    pdbfil.save_file(sys.stdout)
 ### </testing>
 
