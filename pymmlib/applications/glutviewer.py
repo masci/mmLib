@@ -31,7 +31,21 @@ CHAR_DECENT = 33.3
 CHAR_HEIGHT = CHAR_ASCENT + CHAR_DECENT
 
 
+##
+## console output
+##
+def error(text):
+    sys.stderr.write("[GV ERROR] %s\n" % (text))
+    sys.stderr.flush()
+    
+def info(text):
+    sys.stderr.write("[GV INFO]  %s\n" % (text))
+    sys.stderr.flush()
 
+
+##
+## OpenGL Terminal Hack
+##
 class Terminal(object):
     """Terminal window for controlling mmLib.Viewer options.
     """
@@ -208,25 +222,17 @@ class GLUT_Viewer(GLViewer):
 
         GLViewer.__init__(self)
         
-    def error(self, text):
-        sys.stderr.write("[GV ERROR] %s\n" % (text))
-        sys.stderr.flush()
-
-    def info(self, text):
-        sys.stderr.write("[GV INFO]  %s\n" % (text))
-        sys.stderr.flush()
-
     def load_struct(self, path):
         """Loads the requested structure.
         """
-        self.info("loading: %s" % (path))
+        info("loading: %s" % (path))
         
         try:
             struct = LoadStructure(
                 fil              = path,
                 build_properties = ("library_bonds","distance_bonds"))
         except IOError:
-            self.error("file not found: %s" % (path))
+            error("file not found: %s" % (path))
             return
 
         struct_desc = {}
@@ -236,6 +242,8 @@ class GLUT_Viewer(GLViewer):
         self.glv_add_struct(struct)
 
     def glv_render(self):
+        """
+        """
         self.glv_render_one(self.opengl_driver)
 
         if self.term.visible:
@@ -243,13 +251,18 @@ class GLUT_Viewer(GLViewer):
             
         if GL_DOUBLE_BUFFER:
             glutSwapBuffers()
+
         glFlush()
 
     def glv_redraw(self):
+        """
+        """
         if self.glut_init_done:
             glutPostRedisplay()
 
     def glut_init(self):
+        """
+        """
         glutInit(sys.argv)
 
         ## initalize OpenGL display mode

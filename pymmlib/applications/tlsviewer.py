@@ -220,8 +220,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         gl_drawable = gtk.gtkgl.DrawingArea.get_gl_drawable(self)
 	if gl_drawable.is_double_buffered():
             gl_drawable.swap_buffers()
-        glFlush()
-        
+        glFlush()        
         gl_drawable.gl_end()
 
     def gtk_glv_map(self, glarea):
@@ -236,25 +235,13 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def gtk_glv_realize(self, glarea):
         """
         """
-        if self.gl_begin()==True:
-            self.glv_init()
-            self.gl_end()
-            return gtk.TRUE
-        else:
-            return gtk.FALSE
+        pass
 
     def gtk_glv_configure_event(self, glarea, event):
         """
         """
         x, y, width, height = self.get_allocation()
-
-        if self.gl_begin()==True:
-            self.glv_resize(width, height)
-            self.gl_end()
-            self.queue_draw()
-            return gtk.TRUE
-        else:
-            return gtk.FALSE
+        self.glv_resize(width, height)
 
     def gtk_glv_expose_event(self, glarea, event):
         """
@@ -269,7 +256,6 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def gtk_glv_button_press_event(self, glarea, event):
         ## Ray-Trace
         if event.type==gtk.gdk._2BUTTON_PRESS:
-            #self.r3d_driver.glr_set_render_stdin(open("raytrace.r3d","w"))
             self.r3d_driver.glr_set_render_png_path("/tmp/raytrace.png")
             self.glv_render_one(self.r3d_driver)
             
@@ -313,20 +299,13 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         self.beginx = event.x
         self.beginy = event.y
 
-        self.queue_draw()
-
     def gtk_glv_destroy(self, glarea):
         ## XXX: delete all opengl draw lists
         return gtk.TRUE
 
     def glv_redraw(self):
-        #self.snapshot()
         self.queue_draw()
 
-    def snapshot(self):
-        print [x for x in dir(self) if x.count("pixbuf")]
-        
-        
 
 
 ###############################################################################
