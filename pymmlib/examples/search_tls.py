@@ -20,7 +20,7 @@ def prnt_header(args):
     print "## MAINCHAIN ONLY: %s" % (str(args["mainchain_only"]))
     print "## OMIT SINGLE BONDED ATOMS: %s" % (str(args["omit_single_bonded"]))
     print "## RES   NUM   Atoms    <B>     <A>   R      <DP2>   s<DP2>  "\
-          "<DP2N>  s<DP2N> <S>    s<S>   t(T)    t(L)"
+          "<S>    s<S>   t(rT)   t(L)"
 
 def prnt_stats(stats):
         ## print out results
@@ -28,7 +28,7 @@ def prnt_stats(stats):
 
         print str(stats["segment_num"]).ljust(5),
 
-        x = "%d" % (len(stats["tls"]))
+        x = "%d" % (stats["num_atoms"])
         print x.ljust(8),
 
         x = "%.3f" % (stats["mean_B"])
@@ -40,28 +40,22 @@ def prnt_stats(stats):
         x = "%.3f" % (stats["R"])
         print x.ljust(6),
 
-        x = "%.4f" % (stats["mean_DP2"])
+        x = "%.4f" % (stats["mean_dp2"])
         print x.ljust(7),
 
-        x = "%.4f" % (stats["sigma_DP2"])
+        x = "%.4f" % (stats["mean_dp2_sigma"])
         print x.ljust(7),
 
-        x = "%.4f" % (stats["mean_DP2N"])
-        print x.ljust(7),
-
-        x = "%.4f" % (stats["sigma_DP2N"])
-        print x.ljust(7),
-        
         x = "%5.3f" % (stats["mean_S"])
         print x.ljust(6),
 
-        x = "%5.3f" % (stats["sigma_S"])
+        x = "%5.3f" % (stats["mean_S_sigma"])
         print x.ljust(6),
 
-        x = "%6.4f" % (trace(stats["tls"].T))
+        x = "%6.4f" % (trace(stats["rT'"]))
         print x.ljust(7),
 
-        x = "%6.4f" % (trace(stats["tls"].L)*rad2deg2)
+        x = "%6.4f" % (trace(stats["L'"])*RAD2DEG2)
         print x.ljust(10),
 
         print
@@ -72,41 +66,35 @@ def main(**args):
     prnt_header(args)
 
 
-    struct = LoadStructure(fil = args["path"])
+    struct = LoadStructure(fil=args["path"])
     tls_analysis = TLSStructureAnalysis(struct)
 
-    if args["cluster"]==True:
-        stats_list = tls_analysis.fit_TLS_segments_and_cluster(
-            residue_width       = args["seg_len"],
-            use_side_chains     = not args["mainchain_only"],
-            include_single_bond = not args["omit_single_bonded"])
+    tls_num = 0
+    for tls_info in tls_analysis.iter_fit_TLS_segments(
+        residue_width       = args["seg_len"],
+        use_side_chains     = not args["mainchain_only"],
+        include_single_bond = not args["omit_single_bonded"]):
 
-    else:
-        stats_list = tls_analysis.fit_TLS_segments(
-            residue_width       = args["seg_len"],
-            use_side_chains     = not args["mainchain_only"],
-            include_single_bond = not args["omit_single_bonded"])
-
-    for stats in stats_list:
-        tls = stats["tls"]
-
-        stats["segment_num"] = stats_list.index(stats)
-
+        tls_num += 1
+        tls_info["segment_num"] = tls_num
+        
         ## calculate adverage temp factor and anisotropy
+        tls_group = tls_info["tls_group"]
+
         Umean = 0.0
         Amean = 0.0
-        for atm in tls:
+        for atm in tls_group:
             Umean += trace(atm.get_U())/3.0
             Amean += atm.calc_anisotropy()
 
-        Umean = Umean / len(tls)
-        Amean = Amean / len(tls)
+        Umean = Umean / len(tls_group)
+        Amean = Amean / len(tls_group)
 
-        stats["mean_U"] = Umean 
-        stats["mean_B"] = Umean * 8.0 * math.pi**2
-        stats["mean_A"] = Amean
+        tls_info["mean_U"] = Umean 
+        tls_info["mean_B"] = Umean * 8.0 * math.pi**2
+        tls_info["mean_A"] = Amean
 
-        prnt_stats(stats)
+        prnt_stats(tls_info)
 
 
 def usage():
@@ -132,7 +120,6 @@ def usage():
     print "    -n  Omit TLS groups with negitive L/T Eigenvalues"
     print "    -c <chain_id>"
     print "        Only search the given chain."
-    print "    -x  Use a basic clustering algorithm to combine TLS groups"
     print
 
 

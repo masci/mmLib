@@ -121,7 +121,7 @@ class Structure(object):
         self.site_list        = []
 
         self.default_alt_loc = "A"
-        self.model           = None
+        self.default_model   = None
         self.model_list      = []
         self.model_dict      = {}
 
@@ -143,7 +143,7 @@ class Structure(object):
         """Returns the number of stored Chain objects.
         """
         try:
-            return len(self.model)
+            return len(self.default_model)
         except TypeError:
             return 0
     
@@ -152,7 +152,7 @@ class Structure(object):
         is not found.
         """
         try:
-            return self.model[chain_idx]
+            return self.default_model[chain_idx]
         except TypeError:
             raise KeyError, chain_idx
 
@@ -161,7 +161,7 @@ class Structure(object):
         index in the Model.
         """
         try:
-            self.model.remove(self[chain_idx])
+            self.default_model.remove(self[chain_idx])
         except AttributeError:
             raise KeyError, chain_idx
             
@@ -169,7 +169,7 @@ class Structure(object):
         """Iterates the Chain objects in the Structure.
         """
         try:
-            return iter(self.model)
+            return iter(self.default_model)
         except TypeError:
             return iter([])
 
@@ -182,7 +182,7 @@ class Structure(object):
         elif isinstance(model_chain_idx, Chain) or \
              type(model_chain_idx) == StringType:
             try:
-                return self.model.__contains__(model_chain_idx)
+                return self.default_model.__contains__(model_chain_idx)
             except AttributeError:
                 raise KeyError, model_chain_idx
         raise TypeError, model_chain_idx
@@ -196,7 +196,7 @@ class Structure(object):
             return self.model_list.index(model_chain)
         elif isinstance(model_chain, Chain):
             try:
-                return self.model.index(model_chain)
+                return self.default_model.index(model_chain)
             except AttributeError:
                 raise ValueError, model_chain
         raise TypeError, model_chain
@@ -211,7 +211,7 @@ class Structure(object):
 
         elif isinstance(model_chain, Chain):
             try:
-                self.model.remove(model_chain)
+                self.default_model.remove(model_chain)
             except AttributeError:
                 raise ValueError, model_chain
 
@@ -237,8 +237,8 @@ class Structure(object):
             raise ModelOverwrite()
 
         ## set default model if not set
-        if self.model==None:
-            self.model = model
+        if self.default_model==None:
+            self.default_model = model
 
         self.model_list.append(model)
         self.model_dict[model.model_id] = model
@@ -269,7 +269,7 @@ class Structure(object):
         model.add_chain(chain)
 
         if not delay_sort:
-            self.model.chain_list.sort()
+            self.default_model.chain_list.sort()
 
     def remove_chain(self, chain):
         assert isinstance(chain, Chain)
@@ -354,7 +354,7 @@ class Structure(object):
         not exist in the Structure.
         """
         try:
-            self.model = self.model_dict[model_id]
+            self.default_model = self.model_dict[model_id]
         except KeyError:
             return False
         return False
@@ -371,21 +371,42 @@ class Structure(object):
         """
         return iter(self.model_list)
 
+    def count_models(self):
+        """Counts all Model objects in the Structure.
+        """
+        return len(self.model_list)
+    
     def iter_chains(self):
-        """Iterates over all Chain objects in the current Model, in
+        """Iterates over all Chain objects in the default Model, in
         alphabetical order according to their chain_id.
         """
         return iter(self)
 
+    def count_chains(self):
+        """Counts all Chain objects in the default Model.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += 1
+        return n
+
     def iter_fragments(self):
-        """Iterates over all Fragment objects.  The iteration is performed
-        in order according the the parent Chain's chain_id, and the
-        Fragment's positioin within the chain.
+        """Iterates over all Fragment objects in the current Model/Chain.
+        The iteration is performed in order according the the parent
+        Chain's chain_id, and the Fragment's positioin within the chain.
         """
         for chain in self.iter_chains():
             for frag in chain.iter_fragments():
                 yield frag
 
+    def count_fragments(self):
+        """Counts all Fragment objects in the current Model/Chain.
+        """
+        n = 0
+        for chain in self.iter_fragments():
+            n += 1
+        return n
+    
     def iter_amino_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
@@ -447,33 +468,33 @@ class Structure(object):
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix to the default Model object.
         """
-        self.model.add_alpha_helix(alpha_helix)
+        self.default_model.add_alpha_helix(alpha_helix)
 
     def iter_alpha_helicies(self):
         """Iterates over all child AlphaHelix objects in the default
         Model.
         """
-        return self.model.iter_alpha_helicies()
+        return self.default_model.iter_alpha_helicies()
 
     def add_beta_sheet(self, beta_sheet):
         """
         """
-        self.model.add_beta_sheet(beta_sheet)
+        self.default_model.add_beta_sheet(beta_sheet)
         
     def iter_beta_sheets(self):
         """Iterate over all beta sheets in the Structure.
         """
-        return self.model.iter_beta_sheets()
+        return self.default_model.iter_beta_sheets()
 
     def add_site(self, site):
         """
         """
-        self.model.add_site(site)
+        self.default_model.add_site(site)
 
     def iter_sites(self):
         """Iterate over all active/important sites defined in the Structure.
         """
-        return self.model.iter_sites()
+        return self.default_model.iter_sites()
 
     def add_bonds_from_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
@@ -1069,6 +1090,19 @@ class Segment(object):
         """
         return iter(self)
 
+    def count_fragments(self):
+        """Return the number of Fragment objects.
+        """
+        return len(self)
+
+    def has_amino_acids(self):
+        """Returns True if the Segment contains any AminoAcidResidue objects.
+        """
+        for frag in self.iter_fragments():
+            if isinstance(frag, AminoAcidResidue):
+                return True
+        return False
+
     def iter_amino_acids(self):
         """Same as iter_fragments(), but only iterates over AminoAcidResidue
         objects.
@@ -1076,6 +1110,22 @@ class Segment(object):
         for frag in self.iter_fragments():
             if isinstance(frag, AminoAcidResidue):
                 yield frag
+
+    def count_amino_acids(self):
+        """Counts the number of AminoAcidResidue objects.
+        """
+        n = 0
+        for aa in self.iter_amino_acids():
+            n += 1
+        return n
+
+    def has_nucleic_acids(self):
+        """Returns True if the Segment contains any NucleicAcidResidue objects.
+        """
+        for frag in self.iter_fragments():
+            if isinstance(frag, NucleicAcidResidue):
+                return True
+        return False
 
     def iter_nucleic_acids(self):
         """Same as iter_fragments(), but only iterates over NucleicAcidResidue
@@ -1085,9 +1135,18 @@ class Segment(object):
             if isinstance(frag, NucleicAcidResidue):
                 yield frag
 
+    def count_nucleic_acids(self):
+        """Counts the number of NucleicAcidResidue objects.
+        """
+        n = 0
+        for na in self.iter_nucleic_acids():
+            n += 1
+        return n
+
     def has_standard_residues(self):
-        """Returns True if the segment contains standard residues as defined
-        by the PDB.  Standard residues are amino and nucleic acid resiudes.
+        """Returns True if the Segment contains standard residues as defined
+        by the PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
         """
         for frag in self.iter_fragments():
             if frag.is_standard_residue():
@@ -1095,12 +1154,30 @@ class Segment(object):
         return False
 
     def iter_standard_residues(self):
-        """Iterates over standard residues in the segment, as defined by the
-        PDB.  Standard residues are amino and nucleic acid residues.
+        """Iterates over standard residues in the Segment, as defined by the
+        PDB.  Standard residues are AminoAcidResidue and
+        NucliecAcidResiue objects.
         """
         for frag in self.iter_fragments():
             if frag.is_standard_residue():
                 yield frag
+
+    def count_standard_residues(self):
+        """Counts the number of stardard residues in the Segment objects.
+        Standard residues are AminoAcidResidue and NucliecAcidResiue objects.
+        """
+        n = 0
+        for na in self.iter_standard_residues():
+            n += 1
+        return n
+
+    def has_non_standard_residues(self):
+        """Returns True if there are non-standard residues in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if not frag.is_standard_residue():
+                return True
+        return False
 
     def iter_non_standard_residues(self):
         """Iterates over non-standard residues in the segment, as defined
@@ -1110,6 +1187,38 @@ class Segment(object):
         for frag in self.iter_fragments():
             if not frag.is_standard_residue():
                 yield frag
+
+    def count_non_standard_residues(self):
+        """Counts all non-standard residues in the Segment.
+        """
+        n = 0
+        for frag in self.iter_non_standard_residues():
+            n += 1
+        return n
+
+    def has_waters(self):
+        """Returns True if there are waters in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                return True
+        return False
+
+    def iter_waters(self):
+        """Iterate over all waters in the Segment.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                yield frag
+
+    def count_waters(self):
+        """Counts all waters in the Segment.
+        """
+        n = 0
+        for frag in self.iter_fragments():
+            if frag.is_water():
+                n += 1
+        return n
 
     def iter_atoms(self):
         """Iterates over all Atom objects within the Segment using the

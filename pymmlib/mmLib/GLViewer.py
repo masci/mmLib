@@ -496,16 +496,15 @@ class OpenGLRenderMethods(object):
         else:
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
 
-    def glr_text(self, text):
+    def glr_text(self, text, scale):
         """Renders a text string.
         """
         glDisable(GL_LIGHTING)
-        glColor3f(1.0, 1.0, 1.0)
         glLineWidth(2.0)
 
         glPushMatrix()
         
-        s = 1.0 / 1000.0
+        s = scale / 1000.0
         glScalef(s, s, s)
 
         for c in text:
@@ -1419,14 +1418,21 @@ class GLAtomList(GLDrawList):
               "type":      "boolean",
               "default":   False,
               "action":    "recompile_labels" })
-
         self.glo_add_property(
-            { "name":       "auto_label_distance",
-              "desc":       "Label Auto-Show Distance",
+            { "name":       "label_size",
+              "desc":       "Label Size",
               "catagory":   "Labels",
               "type":       "float",
-              "default":    10.0,
-              "action":     "redraw" })
+              "default":    1.0,
+              "action":     "recompile_labels" })
+        self.glo_add_property(
+            { "name":       "label_color",
+              "desc":       "Label Color",
+              "catagory":   "Labels",
+              "type":       "enum_string",
+              "default":    "White",
+              "enum_list":  self.gldl_color_list,
+              "action":     "recompile_labels" })
 
         ## lines
         self.glo_add_property(
@@ -1957,6 +1963,11 @@ class GLAtomList(GLDrawList):
         raise ValueError, "glal_calc_color: bad color setting %s" % (
             str(setting))
 
+    def glal_calc_color_label(self):
+        """Returns the label color.
+        """
+        return self.gldl_property_color_rgbf("label_color")
+    
     def glal_calc_color_trace(self):
         """Returns the trace color.
         """
@@ -1985,14 +1996,14 @@ class GLAtomList(GLDrawList):
     def draw_labels(self):
         """Draws atom lables.
         """
-        auto_label_dist = self.properties["auto_label_distance"]
+        scale = self.properties["label_size"]
+
+        r, g, b = self.glal_calc_color_label()
+        self.glr_set_material_rgb(r, g, b, 1.0)
 
         viewer = self.gldl_get_glviewer()
-        R = viewer.properties["R"]
-        t = viewer.properties["t"]
-
+        R  = viewer.properties["R"]
         Ri = transpose(R)
-        tp = matrixmultiply(R, t)
 
         ## this vecor is needed to adjust for origin/atom_origin
         ## changes, but it does not account for object rotation yet
@@ -2003,23 +2014,50 @@ class GLAtomList(GLDrawList):
         ## shift back to the view window coordinate system so the
         ## labels can be drawn in the plane perpendicular to the viewer's
         ## z axis
-        self.glr_translate(-t)
         self.glr_mult_matrix(Ri)
 
         for atm, pos in self.glal_iter_visible_atoms():
-            relative_pos = matrixmultiply(R, pos + cv) + tp
+            relative_pos = matrixmultiply(R, pos + cv)
 
-            if atm.alt_loc=="":
-                text = "%s %s %s %s" % (
-                    atm.name, atm.res_name, atm.fragment_id, atm.chain_id)
+            if atm.get_fragment().is_amino_acid():
+                if atm.name in ("N", "CA", "C"):
+                    if atm.alt_loc=="":
+                        text = "%s %s %s %s" % (
+                            atm.name,
+                            atm.res_name,
+                            atm.fragment_id,
+                            atm.chain_id)
+                    else:
+                        text = "%s(%s) %s %s %s" % (
+                            atm.name,
+                            atm.alt_loc,
+                            atm.res_name,
+                            atm.fragment_id,
+                            atm.chain_id)
+                else:
+                    if atm.alt_loc=="":
+                        text = atm.name
+                    else:
+                        text = "%s(%s)" % (atm.name, atm.alt_loc)
+
             else:
-                text = "%s(%s) %s %s %s" % (
-                    atm.name, atm.alt_loc, atm.res_name, atm.fragment_id,
-                    atm.chain_id)
+                 if atm.alt_loc=="":
+                     text = "%s %s %s %s" % (
+                         atm.name,
+                         atm.res_name,
+                         atm.fragment_id,
+                         atm.chain_id)
+                 else:
+                     text = "%s(%s) %s %s %s" % (
+                         atm.name,
+                         atm.alt_loc,
+                         atm.res_name,
+                         atm.fragment_id,
+                         atm.chain_id)
 
             glPushMatrix()
             glTranslatef(*relative_pos + array([0.0, 0.0, 0.5]))
-            self.glr_text(text)
+            self.glr_text(text, scale)
             glPopMatrix()
 
         glPopMatrix()

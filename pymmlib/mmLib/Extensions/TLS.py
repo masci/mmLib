@@ -16,7 +16,12 @@ from mmLib.Structure import *
 from mmLib.PDB       import *
 
 
-class TLSFileFormatError(Exception):
+class TLSError(Exception):
+    """Base exception class for TLS module exceptions.
+    """
+
+
+class TLSFileFormatError(TLSError):
     """Raised when a file format error is encountered while loading a
     TLS group description file.
     """
@@ -283,7 +288,8 @@ class TLSFileFormatPDB(TLSFileFormat):
         "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
 
         "origin": re.compile(
-        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
+        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)"\
+        "\s+(\S+)\s+(\S+)\s*$"),
 
         "t11_t22": re.compile(
         "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
@@ -953,7 +959,7 @@ class TLSGroup(AtomList):
                       [u12, u22, u23],
                       [u13, u23, u33]])
 
-    def iter_atm_Utls(self, T = None, L = None, S = None, o = None):
+    def iter_atm_Utls(self, T=None, L=None, S=None, o=None):
         """Iterates all the atoms in the TLS object, returning the 2-tuple
         (atm, U) where U is the calcuated U value from the current values
         of the TLS object's T,L,S, tensors and origin.
@@ -1294,8 +1300,8 @@ class TLSGroup(AtomList):
             
             try:
                 atm_S = calc_Suij(Uatm, Utls)
-            except ValueError:
-                print "bad Suij"
+            except LinAlgError:
+                continue
             else:
                 S_dict[atm] = atm_S
                 mean_S += atm_S
@@ -1318,11 +1324,7 @@ class TLSGroup(AtomList):
         
         for atm, Utls in self.iter_atm_Utls():
             Uatm = atm.get_U()
-
-            try:
-                sum_DP2 += calc_DP2uij(Uatm, Utls)
-            except ValueError:
-                print "DP2() Calculation Error"
+            sum_DP2 += calc_DP2uij(Uatm, Utls)
 
         return sum_DP2
                 
@@ -1338,15 +1340,10 @@ class TLSGroup(AtomList):
         DP2_dict = {}
         for atm, Utls in self.iter_atm_Utls():
             Uatm = atm.get_U()
-
-            try:
-                atm_DP2 = calc_DP2uij(Uatm, Utls)
-            except ValueError:
-                print "bad DP2uij"
-            else:
-                DP2_dict[atm] = atm_DP2 
-                mean_DP2 += atm_DP2
-                num += 1
+            atm_DP2 = calc_DP2uij(Uatm, Utls)
+            DP2_dict[atm] = atm_DP2 
+            mean_DP2 += atm_DP2
+            num += 1
 
         mean_DP2 = mean_DP2 / float(num)
 
@@ -1356,113 +1353,6 @@ class TLSGroup(AtomList):
         MSD = MSD / float(num)
 
         return mean_DP2, math.sqrt(MSD)
-        
-    def calc_mean_DP2N(self):
-        """Calculates the mean DP2uij of the normalized U vs Utls.
-        """
-        B   = 10.0
-        
-        num       = 0
-        mean_DP2N = 0.0
-        MSD       = 0.0
-
-        DP2N_dict = {}
-        
-        for atm, Utls in self.iter_atm_Utls():
-
-            ## normalize the trace of Utls
-            eval_U, evec_U = eigenvectors(Utls)
-            evec_Ui        = inverse(evec_U)
-            
-            U2 = matrixmultiply(
-                evec_U,
-                matrixmultiply(Utls, transpose(evec_U)))
-            
-            U2    = U2 * U2B
-            scale = B / trace(U2)
-            U2    = scale * U2
-
-            assert allclose(trace(U2), B)
-
-            U2    = U2 * B2U
-            UNtls = matrixmultiply(
-                evec_Ui,
-                matrixmultiply(U2, transpose(evec_Ui)))
-            
-            ## normalize the trace of atm.U
-            U              = atm.get_U().copy()
-            eval_U, evec_U = eigenvectors(U)
-            evec_Ui        = inverse(evec_U)
-            
-            U2 = matrixmultiply(
-                evec_U,
-                matrixmultiply(U, transpose(evec_U)))
-
-            U2    = U2 * U2B
-            scale = B / trace(U2)
-            U2    = scale * U2
-
-            assert allclose(trace(U2), B)
-            
-            U2 = U2 * B2U
-            UN = matrixmultiply(
-                evec_Ui,
-                matrixmultiply(U2, transpose(evec_Ui)))
-
-            assert allclose(trace(UN), trace(UNtls))
-            
-            try:
-                atm_DP2N = calc_DP2uij(UN, UNtls)
-            except ValueError:
-                pass
-            else:
-                num       += 1
-                mean_DP2N += atm_DP2N
-                DP2N_dict[atm] = atm_DP2N
-
-        mean_DP2N = mean_DP2N / float(num)
-
-        for DP2N in DP2N_dict.values():
-            MSD += (mean_DP2N - DP2N)**2
-        
-        MSD = MSD / float(num)
-
-        return mean_DP2N, math.sqrt(MSD)
-
-    def write(self, out = sys.stdout):
-        """Write a nicely formatted tensor description.
-        """
-        ## the TLS tensors are in radians
-        ## convert from radians to degrees
-        T = self.T
-        L = self.L * rad2deg2
-        S = self.S * rad2deg
-
-        (eval_t, evec_t) = eigenvectors(T)
-        (eval_l, evec_l) = eigenvectors(L)
-        
-        listx = [
-            "Tensor: T(A)",
-            str(T),
-            "Eigenvectors",
-            str(evec_t),
-            "Eigenvalues",
-            str(eval_t),
-            "",
-            "Tensor: L(deg*deg)",
-            str(L),
-            "Eigenvectors",
-            str(evec_l),
-            "Eigenvalues",
-            str(eval_l),
-            "",
-            "Tensor: S(deg*A)",
-            str(S),
-            ""
-            ]
-
-        out.write(string.join(listx, "\n"))
-
 
 
 class TLSStructureAnalysis(object):
@@ -1471,43 +1361,15 @@ class TLSStructureAnalysis(object):
     def __init__(self, struct):
         self.struct = struct
 
-    def tls_fit_stats(self, tls, stats):
-        """Performs a least squares fit and adds statistics to the stats
-        dictionary
-        """
-        stats["tls"] = tls
-        
-        ## set the origin of the TLS group to the centroid, and also
-        ## save it under calc_origin because origin will be overwritten
-        ## using the COR after the least squares fit
-        stats["calc_origin"] = tls.origin
-
-        ## calculate tensors and print
-        tls.calc_TLS_least_squares_fit()
-
-        ## shift the TLSGroup tensors and origin to the Center of
-        ## Reaction
-        stats["calc"] = tls.shift_COR()
-
-        stats["R"]                              = tls.calc_R()
-        stats["mean_DP2"], stats["sigma_DP2"]   = tls.calc_mean_DP2()
-        stats["mean_DP2N"], stats["sigma_DP2N"] = tls.calc_mean_DP2N()
-        stats["mean_S"], stats["sigma_S"]       = tls.calc_mean_S()
-        stats["num_atoms"]                      = len(tls)
-
-        return stats
-
-    def check_positive_eigen(self, stats):
+    def check_positive_eigen(self, tls_info):
         """Checks a TLS group for positive tensor eigen values.  
         """
-        tls  = stats["tls"]
-        calc = stats["calc"]
-
-        if min(eigenvalues(tls.L))<=0.0:
+        min_L  = min(eigenvalues(tls_info["L'"]))
+        min_rT =  min(eigenvalues(tls_info["rT'"]))
+        
+        if min_L<=0.0 or allclose(min_L, 0.0):
             return False
-        if min(eigenvalues(tls.T))<=0.0:
-            return False
-        if  min(eigenvalues(calc["rT'"]))<=0.0:
+        if  min_rT<=0.0 or allclose(min_rT, 0.0):
             return False
         return True
 
@@ -1553,7 +1415,7 @@ class TLSStructureAnalysis(object):
                         
         return True
         
-    def fit_TLS_segments(self, **args):
+    def iter_fit_TLS_segments(self, **args):
         """Run the algorithm to fit TLS parameters to segments of the
         structure.  This method has many options, which are outlined in
         the source code for the method.  This returns a list of dictionaries
@@ -1562,6 +1424,7 @@ class TLSStructureAnalysis(object):
         """
         
         ## arguments
+        chain_ids               = args.get("chain_ids", None)
         origin                  = args.get("origin_of_calc")
         residue_width           = args.get("residue_width", 6)
         use_side_chains         = args.get("use_side_chains", True)
@@ -1570,182 +1433,62 @@ class TLSStructureAnalysis(object):
         include_frac_occupancy  = args.get("include_frac_occupancy", False)
         include_single_bond     = args.get("include_single_bond", True)
         
-        ## list of all TLS groups
-        stats_list = []
-
         for chain in self.struct.iter_chains():
 
-            ## don't bother with non-biopolymers
-            if not chain.has_standard_residues():
+            ## skip some chains
+            if chain_ids!=None and chain.chain_id not in chain_ids:
+                continue
+
+            ## don't bother with non-biopolymers and small chains
+            if chain.count_amino_acids()<20:
                 continue
             
             for segment in self.iter_segments(chain, residue_width):
+                frag_id1 = segment[0].fragment_id
+                frag_id2 = segment[-1].fragment_id
+                name     = "%s-%s" % (frag_id1, frag_id2)
 
-                stats             = {}
-                stats["tls"]      = TLSGroup()
-                stats["residues"] = segment
-                stats["segment"]  = segment
-                stats["name"]     = "%s-%s" % (segment[0].fragment_id,
-                                               segment[-1].fragment_id)
-
-                tls      = stats["tls"]
-                tls.name = stats["name"]
+                ## create the TLSGroup
+                tls_group = TLSGroup()
 
                 ## add atoms into the TLSGroup
                 ## filter the atoms going into the TLS group                
                 for atm in segment.iter_atoms():
                     if self.atom_filter(atm, **args):
-                        tls.append(atm)
+                        tls_group.append(atm)
 
-                ## skip if there are not enough atoms for the TLS parameters
-                ## the least squares fit of the TLS parameters requires at
-                ## least 21 paramters (6 per atom)
-                if len(tls)<4:
+                ## check for enough parameters
+                if len(tls_group)<20:
                     continue
+                
+                ## calculate tensors and print
+                tls_group.calc_TLS_least_squares_fit()
+                tls_group.shift_COR()
+                tls_info = tls_group.calc_tls_info()
 
-                ## set the origin of the TLS group to the centroid, and also
-                ## save it under calc_origin because origin will be overwritten
-                ## using the COR after the least squares fit
-                if origin!=None:
-                    tls.origin = origin.copy()
-                else:
-                    tls.origin = tls.calc_centroid()
-
-                ## do the fit, and fill out statistics in the stats
-                ## dictionary
-                self.tls_fit_stats(tls, stats)
+                ## add additional information
+                tls_info["name"]      = name 
+                tls_info["tls_group"] = tls_group
+                tls_info["residues"]  = segment
+                tls_info["segment"]   = segment
 
                 ## negitive eigen values mean the TLS group cannot be
                 ## physically intrepreted
                 if filter_neg_eigen_values==True:
-                    if not self.check_positive_eigen(stats):
+                    if not self.check_positive_eigen(tls_info):
                         continue
                     
-                ## this TLS group passes all our tests -- add it to the
-                ## stats list
-                stats_list.append(stats)
+                ## this TLS group passes all our tests -- yield it
+                yield tls_info
 
-        return stats_list
 
-    def fit_TLS_segments_and_cluster(self, **args):
-        """Runs fit_TLS_segments, then merges TLS group runs along the Chain
-        into a single TLS group.  The TLS segment width must be as least
-        2 residues so there is overlap.
+    def fit_TLS_segments(self, **args):
+        """Returns the list iterated by iter_fit_TLS_segments
         """
-
-        def merge_segments_tls(run_list):
-            assert len(run_list)>0
-            
-            chain = run_list[0]["segment"].get_chain()
-
-            res1 = run_list[0]["segment"][0]
-            res2 = run_list[-1]["segment"][-1]
-
-            print "  merge segment[%s:%s]" % (
-                res1.fragment_id, res2.fragment_id)
-            
-            segment = chain[res1.fragment_id:res2.fragment_id]
-            assert len(segment)>0
-
-            stats = {}
-            stats["tls"]      = TLSGroup()
-            stats["residues"] = segment
-            stats["segment"]  = segment
-            stats["name"]     = "%s-%s" % (
-                segment[0].fragment_id, segment[-1].fragment_id)
-            
-            tls      = stats["tls"]
-            tls.name = stats["name"]
-
-            for atm in segment.iter_atoms():
-                if self.atom_filter(atm, **args):
-                    tls.append(atm)
-
-            tls.origin = tls.calc_centroid()
-            stats["calc_origin"] = tls.origin
-
-            self.tls_fit_stats(tls, stats)
-
-            if not self.check_positive_eigen(stats):
-                print "  eek! negitive"
-                return None
-
-            return stats
-
-        def overlap(prev_stats, stats):
-            prev_segment = prev_stats1["segment"]
-            segment      = stats["segment"]
-
-            if segment.chain_id!=prev_segment.chain_id:
-                return False
-
-            prev_res1 = prev_segment[1]
-            res0      = segment[0]
-
-            return prev_res1==res0
-
-
-        ## stats_list1 is from fit_TLS_segments
-        stats_list1 = self.fit_TLS_segments(**args)
-
-        ## stats_list2 is what we are going to return
-        stats_list2 = []
-
-        ## the current good "run" of TLS groups fit by fit_TLS_segments
-        run_list  = []
-
-        for stats1 in stats_list1:
-            print "search: ",stats1["name"]
-
-            if len(run_list)>0:
-                print "  run: ",
-                for xxx in run_list:
-                    print xxx["name"]," ",
-                print
-
-            ## nothing in the run so far, this TLS group is the first
-            if len(run_list)==0:
-                run_list.append(stats1)
-                continue
-
-            ## compare previous res1 with current res0 to see if
-            ## the TLS groups are continuous
-            ## there is a break in the start/end residues of the previous
-            ## and current TLS groups 
-            prev_stats1 = run_list[-1]
-            if not overlap(prev_stats1, stats1):
-                print "  no overlap"
-                
-                stats2 = merge_segments_tls(run_list)
-                stats_list2.append(stats2)
-
-                run_list = [stats1]
-                continue
-                
-            ## the stats1 TLS group may belong in the current run, but
-            ## a TLS group must be fit to the proposed inclusion to make
-            ## sure it doesn't end up with negitive eigen values
-
-            check_run = run_list[:]
-            check_run.append(stats1)
-            
-            stats2 = merge_segments_tls(check_run)
-            if stats2==None:
-                stats2 = merge_segments_tls(run_list)
-                stats_list2.append(stats2)
-                
-                run_list = [stats1]
-                continue
-
-            ## alright, add stats1 to the run
-            run_list.append(stats1)
-
-        ## flush out whatever is left over in the run_list
-        if len(run_list)>0:
-            stats2 = merge_segments_tls(run_list)
-            stats_list2.append(stats2)
-
-        return stats_list2
+        tls_info_list = []
+        for tls_info in self.iter_fit_TLS_segments(**args):
+            tls_info_list.append(tls_info)
+        return tls_info_list
 
 
 ## <testing>

@@ -37,7 +37,22 @@ def print_U(tensor):
         tensor[1,0], tensor[1,1], tensor[1,2],
         tensor[2,0], tensor[2,1], tensor[2,2])
 
+###############################################################################
+### Useful color range function
+###
 
+def goodness_color(x):
+    """x in range 0.0->1.0
+    """
+    if x<=0.0:
+        return (0.0, 0.0, 0.0)
+
+    r = math.sqrt(x)
+    g = max(0.0, x**3)
+    b = max(0.0, math.sin(2.0 * math.pi * x))
+
+    return (r, g, b)
+    
 ###############################################################################
 ### GLViewer Rendering components for TLS Groups
 ###
@@ -419,7 +434,7 @@ class GLTLSGroup(GLDrawList):
     def __init__(self, **args):
         self.tls       = args["tls"]
         self.tls_group = self.tls["tls_group"]
-        self.tls_info  = self.tls["info"]
+        self.tls_info  = self.tls["tls_info"]
 
         GLDrawList.__init__(self)
         self.glo_set_name(self.tls["name"])
@@ -1530,6 +1545,23 @@ class GLTLSChain(GLDrawList):
               "range":      PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "" })
+
+##         ## color methods
+##         self.glo_add_property(
+##             { "name":        "color_method",
+##               "desc":        "TLS Group Coloring Scheme",
+##               "catagory":    "Color Methods",
+##               "type":        "enum_string",
+##               "default":     "Color by Group",
+##               "enum_list":   ["Color By Group", "Color By Goodness of Fit"],
+##               "action":      "" })
+
+
+##     def color_by_group(self):
+##         """Color TLS Groups by 
+##         """
+##         for gl_tls_group in self.glo_iter_children():
+##             pass
 
     def add_gl_tls_group(self, gl_tls_group):
         self.glo_add_child(gl_tls_group)
@@ -2719,23 +2751,33 @@ class TLSDialog(gtk.Dialog):
         if tls_group.is_null():
             tls_group.calc_TLS_least_squares_fit()
             tls["lsq_fit"] = True
-        tls["info"] = tls_group.calc_tls_info()
+        tls["tls_info"] = tls_group.calc_tls_info()
 
-        ## set the tls group color starting from color 2, unique
-        ## for each chain
-        try:
-            self.chn_colori[chain_id] += 1
-            colori = self.chn_colori[chain_id]
-        except KeyError:
-            self.chn_colori[chain_id] = colori = 2
+        ## select color for the TLS group
+        if tls.has_key("color_rgbf"):
+            tls["color_name"] = "%f,%f,%f" % tls["color_rgbf"]
+        else:
+            ## set the tls group color starting from color 2, unique
+            ## for each chain
+            try:
+                self.chn_colori[chain_id] += 1
+                colori = self.chn_colori[chain_id]
+            except KeyError:
+                self.chn_colori[chain_id] = colori = 2
 
-        ## calculate importent properties for the TLS group
-        tls["color_name"] = COLOR_NAMES_CAPITALIZED[colori]
+            ## calculate importent properties for the TLS group
+            tls["color_name"] = COLOR_NAMES_CAPITALIZED[colori]
 
         ## creat GLTLSGroup for the visualization component
         tls["GLTLSGroup"] = GLTLSGroup(
             tls       = tls,
             tls_color = tls["color_name"])
+
+        ## XXX: hack
+        if tls.has_key("goodness"):
+            trad = tls["GLTLSGroup"].gl_atom_list.properties["trace_radius"]
+            trad += tls["goodness"] * 0.1
+            tls["GLTLSGroup"].gl_atom_list.properties.update(trace_radius=trad)
 
         ## get the GLTLSChain to add the GLTLSGroup to
         try:
@@ -2803,7 +2845,6 @@ class TLSDialog(gtk.Dialog):
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
         """
-
         self.clear_tls_groups()
         
         tls_file = TLSFile()
@@ -2871,12 +2912,44 @@ class TLSDialog(gtk.Dialog):
         dialog.run()
         dialog.destroy()
 
-        for tls_stats in dialog.tls_stats_list:
+        ## no groups!
+        if len(dialog.tls_info_list)==0:
+            return
+
+        ## create a tls_list containing the tls description
+        ## dictionaries for all fit TLS segments
+        min_dp2 = None
+        max_dp2 = None
+
+        tls_list = []
+        
+        for tls_info in dialog.tls_info_list:
             tls = {}
-            tls["tls_stats"] = tls_stats
+            tls["tls_group"] = tls_info["tls_group"]
+            tls["tls_info"]  = tls_info
+            tls["name"]      = tls_info["name"]
+            tls["TLS_fit"]   = True
             tls["lsq_fit"]   = True
-            tls["tls_group"] = tls_stats["tls"]
-            tls["name"]      = tls["tls_group"].name
+
+            tls_list.append(tls)
+
+            ## find min/max dp2 for coloring
+            if min_dp2==None:
+                min_dp2 = max_dp2 = tls_info["mean_dp2"]
+            else:
+                min_dp2 = min(min_dp2, tls_info["mean_dp2"])
+                max_dp2 = max(max_dp2, tls_info["mean_dp2"])
+
+        ## color tls groups according to dp2 goodness of fit
+        rng = max_dp2 - min_dp2
+        for tls in tls_list:
+            dp2 = tls["tls_info"]["mean_dp2"]
+            gof   = 1.0 - (dp2 - min_dp2)/rng
+            tls["goodness"]   = gof
+            tls["color_rgbf"] = goodness_color(gof)
+            #print x, tls["color_rgbf"]
+
+        for tls in tls_list:
             self.add_tls_group(tls)
 
     def markup_tls_name(self, tls_desc):
@@ -2905,9 +2978,9 @@ class TLSDialog(gtk.Dialog):
         for tls in self.tls_list:
             miter = self.model.append(None)
 
-            info = tls["info"]
-            tr_rT = "%8.4f" % (trace(info["rT'"]))
-            tr_L  = "%8.4f" % (trace(info["L'"]*RAD2DEG2))
+            tls_info = tls["tls_info"]
+            tr_rT = "%8.4f" % (trace(tls_info["rT'"]))
+            tr_L  = "%8.4f" % (trace(tls_info["L'"]*RAD2DEG2))
 
             if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)
@@ -2932,7 +3005,7 @@ class TLSDialog(gtk.Dialog):
                 else:
                     source = "TLSOUT"
                     
-            elif tls.has_key("tls_stats"):
+            elif tls.has_key("TLS_fit"):
                 source = "LSQ Fit"
 
             self.model.set(miter, 5, source)
@@ -2955,10 +3028,9 @@ class TLSSearchDialog(gtk.Dialog):
     """    
     def __init__(self, **args):
         self.main_window    = args["main_window"]
-        self.sc = args["struct_context"]
+        self.sc             = args["struct_context"]
         self.sel_tls_group  = None
-
-        self.tls_stats_list = []
+        self.tls_info_list  = []
 
         gtk.Dialog.__init__(
             self,
@@ -2974,60 +3046,92 @@ class TLSSearchDialog(gtk.Dialog):
         self.connect("destroy", self.destroy_cb)
         self.connect("response", self.response_cb)
 
+        self.build_gui()
+
+    def build_gui(self):
         ## Selection Table
         frame = gtk.Frame("Rigid Body Search Criteria")
         self.vbox.pack_start(frame, gtk.FALSE, gtk.FALSE, 0)
         frame.set_border_width(5)
+
+        ## compute grid size of the table
+        table_rows = self.sc.struct.count_chains() + 6
         
-        table = gtk.Table(2, 7, gtk.FALSE)
+        table = gtk.Table(2, table_rows, gtk.FALSE)
         frame.add(table)
         table.set_border_width(5)
         table.set_row_spacings(5)
         table.set_col_spacings(10)
+
+        current_row = 0
+        def attach1(_widget, _cr):
+            table.attach(_widget, 0, 2, _cr, _cr+1,
+                         gtk.FILL|gtk.EXPAND, 0, 0, 0)
         
+        ## Chain Checkbuttons
+        self.chain_checks = {}
+
+        for chain in self.sc.struct.iter_chains():
+            chain_check = gtk.CheckButton(
+                "Include Chain %s" % (chain.chain_id))
+            self.chain_checks[chain.chain_id] = chain_check
+
+            if chain.count_amino_acids()>10:
+                chain_check.set_active(gtk.TRUE)
+            else:
+                chain_check.set_active(gtk.FALSE)
+
+            align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
+            align.add(chain_check)
+            attach1(align, current_row)
+            current_row += 1
+            
+        ##
         self.include_side_chains = gtk.CheckButton("Include Side Chain Atoms")
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.include_side_chains)
-        table.attach(align, 0, 2, 0, 1, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        attach1(align, current_row)
+        current_row += 1
         self.include_side_chains.set_active(gtk.TRUE)
 
+        ##
         self.include_disordered = gtk.CheckButton("Include Disordered Atoms")
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.include_disordered)
-        table.attach(align, 0, 2, 1, 2, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        attach1(align, current_row)
+        current_row += 1
         self.include_disordered.set_active(gtk.FALSE)
 
+        ##
         self.include_single_bond = gtk.CheckButton(
             "Include Atoms with One Bond")
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.include_single_bond)
-        table.attach(align, 0, 2, 2, 3, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        attach1(align, current_row)
+        current_row += 1
         self.include_single_bond.set_active(gtk.TRUE)
-        
+
+        ##
         label = gtk.Label("TLS Segment Residue Width")
         align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
         align.add(label)
-        table.attach(align, 0, 1, 3, 4, gtk.FILL, 0, 0, 0)
+        table.attach(align, 0, 1, current_row, current_row + 1,
+                     gtk.FILL, 0, 0, 0)
+        
         self.segment_width = gtk.Entry()
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.segment_width)
-        table.attach(align, 1, 2, 3, 4, gtk.EXPAND|gtk.FILL, 0, 0, 0)
+        table.attach(align, 1, 2, current_row, current_row + 1,
+                     gtk.EXPAND|gtk.FILL, 0, 0, 0)
+        current_row += 1
         self.segment_width.set_text("6")
-        
-        label = gtk.Label("Maximum dP2 Value")
-        align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
-        align.add(label)
-        table.attach(align, 0, 1, 4, 5, gtk.FILL, 0, 0, 0)
-        self.dp2_entry = gtk.Entry()
-        align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
-        align.add(self.dp2_entry)
-        table.attach(align, 1, 2, 4, 5, gtk.EXPAND|gtk.FILL, 0, 0, 0)
-        self.dp2_entry.set_text("0.03")
 
+        ##
         self.run_button = gtk.Button("Run Analysis")
         align = gtk.Alignment(1.0, 0.5, 0.0, 0.0) 
         align.add(self.run_button)
-        table.attach(align, 0, 2, 5, 6, gtk.FILL|gtk.EXPAND, 0, 0, 0)
+        table.attach(align, 0, 2, current_row, current_row + 1,
+                     gtk.FILL|gtk.EXPAND, 0, 0, 0)
         self.run_button.connect("clicked", self.run_tls_analysis, None)
         
         ## make the print box
@@ -3038,7 +3142,7 @@ class TLSSearchDialog(gtk.Dialog):
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
      
         self.treeview = DictListTreeView(
-            column_list=["Residue Range", "Atoms", "R", "<DP2>", "sig<DP2>"])
+            column_list=["Residue Range", "Atoms", "R", "<DP2>"])
         sw.add(self.treeview)
        
         self.show_all()
@@ -3061,6 +3165,12 @@ class TLSSearchDialog(gtk.Dialog):
     def run_tls_analysis(self, *args):
         """
         """
+        ## get the list of chain_ids to fit
+        chain_ids = []
+        for chain_id, chain_check in self.chain_checks.items():
+            if chain_check.get_active()==gtk.TRUE:
+                chain_ids.append(chain_id)
+        
         if self.include_side_chains.get_active()==gtk.TRUE:
             use_side_chains = True
         else:
@@ -3080,34 +3190,38 @@ class TLSSearchDialog(gtk.Dialog):
             residue_width = int(self.segment_width.get_text())
         except ValueError:
             residue_width = 6
-
-        try:
-            max_DP2 = float(self.dp2_entry.get_text())
-        except ValueError:
-            max_DP2 = 1.0
         
         tls_analysis = TLSStructureAnalysis(self.sc.struct)
+
+        self.tls_info_list = []
+
+        self.set_sensitive(gtk.FALSE)
         
-        stats_list = tls_analysis.fit_TLS_segments_and_cluster(
+        for tls_info in tls_analysis.iter_fit_TLS_segments(
+            chain_ids              = chain_ids,
             residue_width          = residue_width,
             use_side_chains        = use_side_chains,
             include_frac_occupancy = include_frac_occupancy,
-            include_single_bond    = include_single_bond)
+            include_single_bond    = include_single_bond):
 
-        self.tls_stats_list = []
-        for stats in stats_list:
+            self.tls_info_list.append(tls_info)
 
-            if stats["mean_DP2"]>max_DP2:
-                continue
+            ## set some dict values just for the treeview user interface
+            ##"Residue Range", "Atoms", "R", "<DP2>", "sig<DP2>"
 
-            stats["Residue Range"] = stats["name"]
-            stats["R"]             = "%.3f" % (stats["R"])
-            stats["<DP2>"]         = "%.4f" % (stats["mean_DP2"])
-            stats["Atoms"]         = str(stats["num_atoms"])
+            tls_info["Residue Range"] = tls_info["name"]
+            tls_info["R"]             = "%.3f" % (tls_info["R"])
+            tls_info["<DP2>"]         = "%.4f" % (tls_info["mean_dp2"])
+            tls_info["Atoms"]         = str(tls_info["num_atoms"])
+            
+            self.treeview.set_dict_list(self.tls_info_list)
+            
+            ## this takes a long time so process some events
+            while gtk.events_pending():
+                gtk.main_iteration(gtk.TRUE)
 
-            self.tls_stats_list.append(stats)
-
-        self.treeview.set_dict_list(self.tls_stats_list)
+        self.set_sensitive(gtk.TRUE)
+        
 
 
 ###############################################################################
