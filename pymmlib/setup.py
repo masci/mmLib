@@ -20,7 +20,7 @@ from distutils.core import setup
 
 def run_setup():
     setup( name         = "pymmlib",
-           version      = "0.3",
+           version      = "0.3pre1",
            author       = "Jay Painter",
            author_email = "jpaint@u.washington.edu",
            url          = "http://pymmlib.sourceforge.net/",

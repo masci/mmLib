@@ -18,6 +18,8 @@ from mmLib.mmCIF import *
 
 
 ## constants
+__version__ = "0.99.0"
+
 CIF_EDITOR_CONF = "cif_editor.conf"
 LARGE_DIALOG_SIZE = (400, 300)
 
@@ -113,13 +115,14 @@ class FileControlEditDialog(gtk.Dialog):
                             msg,
                             self.context.mw,
                             gtk.DIALOG_DESTROY_WITH_PARENT|gtk.DIALOG_MODAL)
-        self.set_border_width(10)
+
         self.add_button(gtk.STOCK_OK, gtk.RESPONSE_OK)
         self.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
         self.connect("response", self.response_cb)
 
         self.hbox = gtk.HBox()
         self.vbox.pack_start(self.hbox, gtk.TRUE, gtk.TRUE, 0)
+        self.hbox.set_border_width(5)
         
         label = gtk.Label("Name:")
         self.hbox.pack_start(label, gtk.FALSE, gtk.FALSE, 0)
@@ -800,7 +803,7 @@ class FileTreeControl(gtk.TreeView):
                 elif ins_cif == None:
                     self.context.cif_file_insert_data(
                         self.context.cif_file, -1, self.new_cif_data()) 
-        
+
         elif isinstance(cif, mmCIFData):
             if ins_cif == None:
                 ins_cif = self.new_cif_table()
@@ -810,7 +813,7 @@ class FileTreeControl(gtk.TreeView):
 
         elif isinstance(cif, mmCIFTable):
             if ins_cif == None:
-                self.context.cif_table_column_insert(cif, -1, "New_Column")
+                self.context.cif_table_column_insert(cif, -1, "New_Subsection")
             else:
                 (col_name, col_val_list) = ins_cif
                 self.context.cif_table_column_insert(
@@ -1677,33 +1680,32 @@ class mmCIFEditorWindowContext(mmCIFEditor):
 
 ## <APPLICATION GLOABAL WINDOWS>
 
-class AboutWindow(gtk.Window):
+class AboutWindow(gtk.Dialog):
     def __init__(self):
-        gtk.Window.__init__(self)
-        self.connect("delete_event", self.delete_notify_cb)
-        self.set_title("About mmCIF Editor")
-        self.set_border_width(5)
+        gtk.Dialog.__init__(self, "About mmCIF Editor", None, 0)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("delete-event", self.delete_event_cb)
+        self.connect("response", self.delete_event_cb)
 
         self.label = gtk.Label()
-        self.add(self.label)
+        self.vbox.add(self.label)
 
-        self.label.set_text(
-            """\
-            mmCIF Editor v1.0
-            (c)2003 PyMMLib Development Group
-            http://pymmlib.sourceforge.net/
-            
-            University of Washington
-            Jay Painter
-            Ethan Merrit""")
+        self.label.set_markup(
+            '<span size="large">mmCIF Editor v%s</span>\n' % (__version__) +
+            "(c)2003 PyMMLib Development Group\n"
+            "http://pymmlib.sourceforge.net/\n"
+            "\n"
+            "University of Washington\n"
+            "Jay Painter\n"
+            "Ethan Merrit")
 
-    def delete_notify_cb(self, *args):
+    def delete_event_cb(self, *args):
         self.hide()
         return gtk.TRUE
 
     def present(self):
         self.show_all()
-        gtk.Window.present(self)
+        gtk.Dialog.present(self)
 
 
 class HelpWindow(gtk.Window):

@@ -1,9 +1,9 @@
-PyMMLib-0.1.0: Python Macromolecular Library
+PyMMLib-0.3pre1: Macromolecular Library (mmLib)
 http://pymmlib.sourceforget.net/
---------------------------------------------
+-------------------------------------------------------------------------------
 
 Requirements:
-  * Python              2.2   (the iterators use yield)
+  * Python              2.2.1 (the iterators use yield, True/False)
   * Numerical Python    22.0  (seems to work fine on 20.0)
   * Scientific Python   2.4.1 (only used for the Vector class)
 
