@@ -2019,6 +2019,8 @@ class GLAtomList(GLDrawList):
     def glal_draw_ball_stick(self):
         """Draw atom with ball/stick model.
         """
+        debug("glal_draw_ball_stick()")
+
         ## driver optimization
         glr_set_material_rgb = self.driver.glr_set_material_rgb
         glr_tube             = self.driver.glr_tube
@@ -2528,11 +2530,15 @@ class GLViewer(GLObject):
         """
         slop = 2.0
 
-        def aa_atom_iter(struct):
-            for frag in struct.iter_standard_residues():
-                for atm in frag.iter_atoms():
+        def aa_atom_iter(structx):
+            if structx.count_standard_residues()>0:
+                for frag in structx.iter_standard_residues():
+                    for atm in frag.iter_atoms():
+                        yield atm
+            else:
+                for atm in structx.iter_atoms():
                     yield atm
-
+                    
         try:
             centroid = calc_atom_centroid(aa_atom_iter(struct))
         except OverflowError:

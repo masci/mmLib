@@ -208,9 +208,9 @@ def quaternionrmatrix(R):
         if R[0,0]>R[1,1] and R[0,0]>R[2,2]: 
             S = math.sqrt(1.0 + R[0,0] - R[1,1] - R[2,2]) * 2.0
             x = 0.25 * S
-            y = (R[0,1] + R[1,0] ) / S 
-            z = (R[0,2] + R[2,0] ) / S 
-            w = (R[1,2] - R[2,1] ) / S
+            y = (R[0,1] + R[1,0]) / S 
+            z = (R[0,2] + R[2,0]) / S 
+            w = (R[1,2] - R[2,1]) / S
         elif R[1,1]>R[2,2]: 
             S = sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0; 
             x = (R[0,1] + R[1,0]) / S; 
@@ -354,6 +354,7 @@ def calc_atom_centroid(atom_iter):
         if atm.position!=None:
             centroid += atm.position
             num += 1
+    
     return centroid / num
 
 def calc_atom_mean_temp_factor(atom_iter):

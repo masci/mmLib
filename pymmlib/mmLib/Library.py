@@ -304,6 +304,10 @@ class Library(LibraryInterface):
             element = Element(cif_data=cif_data, symbol=symbol)
             
         self.element_dict[symbol] = element
+
+        if element==None:
+            warning("element library: element not found %s" % (symbol))
+
         return element
 
     def get_monomer(self, res_name):
@@ -348,6 +352,10 @@ class Library(LibraryInterface):
             mon = None
 
         self.monomer_dict[res_name] = mon
+
+        if mon==None:
+            warning("monomer library: monomer not found %s" % (res_name))
+        
         return mon
         
     def is_amino_acid(self, res_name):

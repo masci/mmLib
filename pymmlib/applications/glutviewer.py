@@ -376,9 +376,8 @@ class GLUT_Viewer(GLViewer):
 
             for glstruct in self.glo_iter_children():
                 if glstruct.struct.structure_id==dir:
-
                     return (True, dir)
-        
+
     def load_struct(self, path):
         """Loads the requested structure.
         """
@@ -397,11 +396,6 @@ class GLUT_Viewer(GLViewer):
         struct_desc["path"] = path
 
         glstruct = self.glv_add_struct(struct)
-        for glchain in glstruct.glo_iter_children():
-            glchain.properties.update(
-                lines      = False,
-                ball_stick = True)
-
         return struct
 
     def glv_render(self):

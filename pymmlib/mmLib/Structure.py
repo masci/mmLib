@@ -2100,7 +2100,7 @@ class Fragment(object):
         PDB defined standard residues.  PDB standard residues are amino
         and nucleic acid residues.
         """
-        return 
+        return False
 
     def is_amino_acid(self):
         """Returns True if the Fragment is a Amino Acid residue.
