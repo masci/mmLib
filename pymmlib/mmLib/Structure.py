@@ -2681,8 +2681,11 @@ class AlphaHelix(object):
 
         ## reset AlphaHelix description with the description derived
         ## from the new Segment
-        frag1 = segment[0]
-        frag2 = segment[-1]
+        try:
+            frag1 = segment[0]
+            frag2 = segment[-1]
+        except IndexError:
+            return
         
         self.chain_id1    = frag1.chain_id
         self.fragment_id1 = frag1.fragment_id
@@ -2834,8 +2837,11 @@ class Strand(object):
 
         ## reset Strand description with the description derived
         ## from the new Segment
-        frag1 = segment[0]
-        frag2 = segment[-1]
+        try:
+            frag1 = segment[0]
+            frag2 = segment[-1]
+        except IndexError:
+            return
         
         self.chain_id1    = frag1.chain_id
         self.fragment_id1 = frag1.fragment_id

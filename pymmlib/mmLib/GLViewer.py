@@ -2613,8 +2613,6 @@ class GLTLSAtomList(GLAtomList):
         self.glr_set_material_rgb(r, g, b, a)
         
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
-        glEnable(GL_NORMALIZE) ## let OpenGL normalize the normals
-
         glBegin(GL_TRIANGLE_FAN)
 
         v1 = None
@@ -2642,7 +2640,6 @@ class GLTLSAtomList(GLAtomList):
         glEnd()
 
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-        glDisable(GL_NORMALIZE)
 
 
 class GLTLSGroup(GLDrawList):
@@ -3384,7 +3381,6 @@ class GLTLSGroup(GLDrawList):
 
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
         glEnable(GL_LIGHTING)
-        glEnable(GL_NORMALIZE)
 
         glBegin(GL_QUADS)
 
@@ -3445,7 +3441,6 @@ class GLTLSGroup(GLDrawList):
 
         glEnd()
 
-        glDisable(GL_NORMALIZE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
 
             
@@ -3628,21 +3623,61 @@ class GLViewer(GLObject):
     def glo_install_properties(self):
         GLObject.glo_install_properties(self)
 
+        ## View
         self.glo_add_property(
-            { "name":     "R",
-              "desc":     "View Window Rotation Matrix",
-              "read_only":True,
-              "type":     "array(3,3)",
-              "default":  identity(3, Float),
-              "action":   "redraw" })
+            { "name":      "R",
+              "desc":      "View Window Rotation Matrix",
+              "catagory":  "View",
+              "read_only": True,
+              "type":      "array(3,3)",
+              "default":   identity(3, Float),
+              "action":    "redraw" })
         self.glo_add_property(
-            { "name":     "t",
-              "desc":     "View Window Translation Vector",
-              "read_only":True,
-              "type":     "array(3)",
-              "default":  array([0.0, 0.0, -50]),
-              "action":   "redraw" })
-
+            { "name":      "t",
+              "desc":      "View Window Translation Vector",
+              "catagory":  "View",
+              "read_only": True,
+              "type":      "array(3)",
+              "default":   array([0.0, 0.0, -50]),
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "width",
+              "desc":      "Window Width",
+              "catagory":  "View",
+              "read_only": True,
+              "type":      "integer",
+              "default":   1,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "height",
+              "desc":      "Window Height",
+              "catagory":  "View",
+              "read_only": True,
+              "type":      "integer",
+              "default":   1,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "near",
+              "desc":      "Near Clipping Plane",
+              "catagory":  "View",
+              "type":      "float",
+              "default":   3.0,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "far",
+              "desc":      "Far Clipping Plane",
+              "catagory":  "View",
+              "type":      "float",
+              "default":   500.0,
+              "action":    "redraw" })
+        self.glo_add_property(
+            { "name":      "b",
+              "desc":      "B",
+              "catagory":  "View",
+              "type":      "float",
+              "default":   0.5,
+              "action":    "redraw" })
+        
         ## OpenGL Lighting
         self.glo_add_property(
             { "name":      "GL_AMBIENT",
@@ -3772,18 +3807,7 @@ class GLViewer(GLObject):
         """Called to set the size of the OpenGL window this class is
         drawing on.
         """
-	glViewport(0, 0, width, height)
-	glMatrixMode(GL_PROJECTION)
-	glLoadIdentity()
-        
-	if width > height:
-            w = float(width) / float(height)
-            glFrustum(-w, w, -1.0, 1.0, 3.0, 5000.0)
-	else:
-            h = float(height) / float(width)
-            glFrustum(-1.0, 1.0, -h, h, 3.0, 5000.0)
-	
-	glMatrixMode(GL_MODELVIEW)
+        self.properties.update(width=width, height=height)
 
     def glv_translate(self, x, y, z):
         """Translate the current view by vector (x,y,z).
@@ -3825,7 +3849,30 @@ class GLViewer(GLObject):
         lists, they will be compiled while they are drawn, since this is
         a useful optimization.
         """
+        ## setup vieweport
+        width  = self.properties["width"]
+        height = self.properties["height"]
+        glViewport(0, 0, width, height)
+
+        ## setup perspective matrix
+	glMatrixMode(GL_PROJECTION)
+ 	glLoadIdentity()
+
+        b = self.properties["b"]
+        if width>height:
+            w = float(width)/float(height)
+            glFrustum(-w*b, w*b, -b, b,
+                      self.properties["near"], self.properties["far"])
+ 	else:
+            h = float(height)/float(width)
+            glFrustum(-b, b, -h*b, h*b,
+                      self.properties["near"], self.properties["far"])
+        
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        
         ## OpenGL Features
+        glEnable(GL_NORMALIZE)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
         
@@ -3837,7 +3884,6 @@ class GLViewer(GLObject):
         t = self.properties["t"]
         
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-	glLoadIdentity()
         
         ## lighting
         ambient  = (self.properties["GL_AMBIENT"],

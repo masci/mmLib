@@ -93,6 +93,15 @@ class TLSInfo(object):
     def __str__(self):
         return self.refmac_description()
 
+    def set_T(self, t11, t22, t33, t12, t13, t23):
+        self.T = (t11, t22, t33, t12, t13, t23)
+
+    def set_L(self,  l11, l22, l33, l12, l13, l23):
+        self.L = (l11, l22, l33, l12, l13, l23)
+
+    def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
+        self.S = (s2211, s1133, s12, s13, s23, s21, s31, s32)
+        
     def create_tls_name(self):
         """Creates a name for the TLS group using the selected
         residue ranges.
@@ -746,7 +755,23 @@ class TLSGroup(AtomList):
         MSD = MSD / float(num)
 
         return mean_S, math.sqrt(MSD)
+
+    def calc_sum_DP2(self):
+        """Calculates the sum of DP2(U,Utls) for all Atoms in the
+        TLSGroup.
+        """
+        sum_DP2 = 0.0
         
+        for atm, Utls in self.iter_atm_Utls():
+            Uatm = atm.get_U()
+
+            try:
+                sum_DP2 += calc_DP2uij(Uatm, Utls)
+            except ValueError:
+                print "DP2() Calculation Error"
+
+        return sum_DP2
+                
     def calc_mean_DP2(self):
         """Calculates the mean dP2 and standard deviation of U vs. Utls
         for every atom in the TLS group.
@@ -908,7 +933,7 @@ class TLSGroup(AtomList):
         calcs["S^"] = cS
         
         ## ^rho: the origin-shift vector in the coordinate system of L
-        small = 0.2 * deg2rad2
+        small = 0.002 * deg2rad2
 
         cL1122 = cL[1,1] + cL[2,2]
         cL2200 = cL[2,2] + cL[0,0]
@@ -1179,7 +1204,6 @@ class TLSStructureAnalysis(object):
 
     def atom_filter(self, atm, **args):
         use_side_chains         = args.get("use_side_chains", True)
-        filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
         include_hydrogens       = args.get("include_hydrogens", False)
         include_frac_occupancy  = args.get("include_frac_occupancy", False)
         include_single_bond     = args.get("include_single_bond", True)
@@ -1432,7 +1456,7 @@ class TLSStructureAnalysis(object):
         use_side_chains         = args.get("use_side_chains", True)
         filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
         include_hydrogens       = args.get("include_hydrogens", False)
-        include_frac_occupancy  = args.get("include_frac_occupancy", False)
+        include_frac_occupancy  = args.get("include_frac_occupancy", True)
         include_single_bond     = args.get("include_single_bond", True)
 
         def tls_fit_segment(segment):
@@ -1444,11 +1468,16 @@ class TLSStructureAnalysis(object):
 
             ## add atoms into the TLSGroup
             ## filter the atoms going into the TLS group
-            for atm in segment.iter_atoms():
-                if self.atom_filter(atm, **args):
-                    tls.append(atm)
+##             for atm in segment.iter_atoms():
+##                 if self.atom_filter(atm, **args):
+##                     tls.append(atm)
 
-            tls.origin = tls.calc_centroid()
+            for atm in segment.iter_atoms():
+                if atm.occupancy<1.0:
+                    continue
+                tls.append(atm)
+
+            tls.origin = zeros(3, Float)
             stats["calc_origin"] = tls.origin
 
             self.tls_fit_stats(tls, stats)
