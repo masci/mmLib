@@ -918,7 +918,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
         self.connect("response", self.response_cb)
-        self.set_default_size(450, 400)
+        self.set_default_size(500, 400)
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
 
@@ -930,6 +930,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         ## property tree control
         self.sw1 = gtk.ScrolledWindow()
         self.hpaned.add1(self.sw1)
+        self.sw1.set_size_request(150, -1)
         
         self.gl_tree_ctrl = GLPropertyTreeControl(
             gl_object_root,
@@ -1567,6 +1568,47 @@ class StructDetailsDialog(gtk.Dialog):
                           struct_obj.calc_anisotropy())
 
 
+
+
+###############################################################################
+### About Dialog
+### 
+###
+
+
+class AboutDialog(gtk.Dialog):
+    """About Information...
+    """
+    def __init__(self, parent):
+        gtk.Dialog.__init__(
+            self,
+            "About mmLib Viewer",
+            parent,
+            gtk.DIALOG_DESTROY_WITH_PARENT)
+        
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self.response)
+        self.set_resizable(gtk.FALSE)
+
+        frame = gtk.Frame()
+        self.vbox.pack_start(frame, gtk.TRUE, gtk.TRUE, 0)
+        frame.set_border_width(10)
+
+        label = gtk.Label()
+        frame.add(label)
+        
+        label.set_markup(
+            '<span size="large">mmLib Viewer</span>\n'\
+            'Ethan Merritt and Jay Painter\n'\
+            'http://pymmlib.sourceforge.net/')
+
+        self.show_all()
+
+
+    def response(self, *args):
+        self.destroy()
+        
+
 ###############################################################################
 ### Application Window and Multi-Document tabs
 ### 
@@ -1626,8 +1668,6 @@ class MainWindow(object):
             ('/File/sep1', None, None, 0,'<Separator>'),
             ('/File/_Open', None, self.file_open,
              0,'<StockItem>', gtk.STOCK_OPEN),
-            ('/File/_Open In New Tab', None, self.file_open_in_new_tab,
-             0,'<StockItem>',gtk.STOCK_OPEN),
             ('/File/sep2', None, None, 0, '<Separator>'),
             ('/File/_Close Structure', None, self.file_close_struct,
              0,'<StockItem>',gtk.STOCK_CLOSE),
@@ -1647,7 +1687,7 @@ class MainWindow(object):
             ('/_Structures', None, None, 0, '<Branch>'),
 
             ('/_Help',       None, None, 0, '<Branch>'),
-            ('/Help/_About', None, None, 0, None) ]
+            ('/Help/_About', None, self.help_about, 0, None) ]
 
         self.accel_group = gtk.AccelGroup()
         self.window.add_accel_group(self.accel_group)
@@ -1736,11 +1776,6 @@ class MainWindow(object):
         cancel_button.connect("clicked", self.open_cancel_cb, None)        
 
         self.file_selector.present()
-
-    def file_open_in_new_tab(self, *args):
-        """File->Open In New Tab
-        """
-        pass
     
     def destroy_file_selector(self):
         """
@@ -1772,6 +1807,8 @@ class MainWindow(object):
         Closes the current viewable tab.
         """
         tab = self.get_current_tab()
+        if tab==None:
+            return
 
         ## remove all structures 
         for sc in tab["sc_list"]:
@@ -1812,6 +1849,11 @@ class MainWindow(object):
             struct_context = self.selected_sc)
         
         tls.present()
+
+    def help_about(self, *args):
+        """Help->About
+        """
+        AboutDialog(self.window)
 
     def set_statusbar(self, text):
         """Sets the text in the status bar of the window.

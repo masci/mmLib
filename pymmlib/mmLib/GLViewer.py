@@ -545,6 +545,8 @@ class OpenGLRenderMethods(object):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
+        glColor3f(r, g, b)
+
 	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, (r, g, b, a))
 	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
         glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
@@ -579,6 +581,8 @@ class OpenGLRenderMethods(object):
                 radius)
 
         except NameError:
+            glDisable(GL_LIGHTING)
+            glLineWidth(1.0)
             glBegin(GL_LINES)
             glVertex3f(*position)
             glVertex3f(*end)
@@ -587,15 +591,29 @@ class OpenGLRenderMethods(object):
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
         """
-        glaccel.tube(
-            pos1[0], pos1[1], pos1[2],
-            pos2[0], pos2[1], pos2[2],
-            radius)
+        try:
+            glaccel.tube(
+                pos1[0], pos1[1], pos1[2],
+                pos2[0], pos2[1], pos2[2],
+                radius)
+
+        except NameError:
+            glDisable(GL_LIGHTING)
+            glLineWidth(1.0)
+            glBegin(GL_LINES)
+            glVertex3f(*pos1)
+            glVertex3f(*pos2)
+            glEnd()
 
     def glr_sphere(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
         """
-        glaccel.sphere(position[0], position[1], position[2], radius, quality)
+        try:
+            glaccel.sphere(position[0], position[1], position[2],
+                           radius, quality)
+
+        except NameError:
+            pass
 
     def glr_cross(self, position, color, line_width):
         """Draws atom with a cross of lines.
@@ -673,20 +691,28 @@ class OpenGLRenderMethods(object):
         given the gaussian variance-covariance matrix U at the given position.
         C=1.8724 = 68%
         """
-        glaccel.Uellipse(
-            position[0], position[1], position[2],
-            U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-            GAUSS3C[prob], 3)
+        try:
+            glaccel.Uellipse(
+                position[0], position[1], position[2],
+                U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
+                GAUSS3C[prob], 3)
+
+        except NameError:
+            pass
 
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of the
         gaussian variance-covariance matrix U at the given position.  This
         is a peanut-shaped surface. (Note: reference the peanut paper!)
         """
-        glaccel.Upeanut(
-            position[0], position[1], position[2],
-            U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-            3)
+        try:
+            glaccel.Upeanut(
+                position[0], position[1], position[2],
+                U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
+                3)
+
+        except NameError:
+            pass
 
 
 class GLDrawList(GLObject, OpenGLRenderMethods):
@@ -1072,7 +1098,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Draw Atom Bond Lines",
               "catagory":   "Show/Hide",
               "type":       "boolean",
-              "default":    False,
+              "default":    True,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "line_width",
@@ -1089,7 +1115,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Draw Ball/Sticks",
               "catagory":   "Show/Hide",
               "type":       "boolean",
-              "default":    True,
+              "default":    False,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "ball_radius",
@@ -3161,15 +3187,11 @@ class GLTLSGroup(GLDrawList):
             L_screw_dis = L_eigen_vec * L_rot * L_pitch
 
             self.glr_axis(
-                L_rho + (0.5 * L_screw_dis),
+                L_rho - (0.5 * L_screw_dis),
                 L_screw_dis,
                 1.5 * self.properties["L_axis_radius"])
-            
-            self.glr_axis(
-                L_rho - (0.5 * L_screw_dis),
-                -L_screw_dis,
-                1.5 * self.properties["L_axis_radius"])
 
+            
 class GLAtom(GLObject):
     def __init__(self, **args):
         GLObject.__init__(self, **args)

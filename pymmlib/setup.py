@@ -108,8 +108,9 @@ def library_data():
     """
     ## start with the mmLib data files
     inst_list = [
+        (os.path.join("mmLib", "Data"), [
         os.path.join(os.curdir, "mmLib", "Data", "elements.cif"),
-        os.path.join(os.curdir, "mmLib", "Data", "monomers.cif")
+        os.path.join(os.curdir, "mmLib", "Data", "monomers.cif") ])
     ]
   
     ## add all the monomer mmCIF files 
