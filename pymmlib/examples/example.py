@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
-## its license.  Please see the LICENSE file that should have been
-## included as part of this package.
+## This example loads a mmCIF or PDB file, then changes the temperature factor
+## of all Lysine atoms to 50.0, all others are set to 1.0.  The result is
+## written to standard output as a PDB file.
 
 import sys
-
 from mmLib.FileLoader import LoadStructure, SaveStructure
 
 

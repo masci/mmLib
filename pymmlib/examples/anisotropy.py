@@ -1,10 +1,20 @@
 #!/usr/bin/env python
 
+## This example program calculates the distribution of ansotropy
+## for a protein structure
+
 import sys
 from mmLib.FileLoader import LoadStructure, SaveStructure
 
+try:
+    path = sys.argv[1]
+except IndexError:
+    print "usage: ansotropy.py <PDB/mmCIF file>"
+    
+
 ## load structure
-structure = LoadStructure(sys.argv[1])
+print "Loading ",path
+structure = LoadStructure(path)
 
 ## list of anisotropic values
 anisou_list = []
@@ -31,5 +41,5 @@ bin_size = 0.05
 amax = bin_size
 while amax <= 1.001:
     amin = amax - bin_size
-    print "(%f,%f) " % (amin, amax), count(amin, amax)
+    print "Ansotropy Range (%f,%f): %d atoms " % (amin, amax, count(amin, amax))
     amax += bin_size
