@@ -121,32 +121,14 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         object so it can be manipulated.
         """
         gl_struct = GLStructure(struct)
-        gl_struct.show_axes(True)
-        gl_struct.show_unit_cell(True)
-
-        alist = gl_struct.get_atom_list("a")
-
-        for atm in struct.iter_atoms():
-            if atm.name in ["CA", "C", "N"]:
-                alist.append(atm)
-
         self.glviewer.append(gl_struct)
-
-        #gobject.timeout_add(25, self.timeout_cb, alist)
-        
         self.queue_draw()
-
         return gl_struct
 
     def remove_struct(self, struct):
         """Removes structure from the viewer.
         """
         pass
-
-    def timeout_cb(self, atom_list):
-        atom_list.rotx += 1
-        self.queue_draw()
-        return gtk.TRUE
 
 
 class StructDetailsDialog(gtk.Dialog):
@@ -275,6 +257,8 @@ class TLSDialog(gtk.Dialog):
         self.store = gtk.ListStore(gobject.TYPE_STRING,
                                    gobject.TYPE_STRING,
                                    gobject.TYPE_STRING,
+                                   gobject.TYPE_STRING,
+                                   gobject.TYPE_STRING,
                                    gobject.TYPE_STRING)
      
         treeview = gtk.TreeView(self.store)
@@ -287,23 +271,29 @@ class TLSDialog(gtk.Dialog):
             gtk.CellRendererText(),
             text=0)
         treeview.append_column(column)
-    
+
         column = gtk.TreeViewColumn(
-            "Center of Reaction",
+            "R Factor",
             gtk.CellRendererText(),
             text=1)
         treeview.append_column(column)
-
+    
         column = gtk.TreeViewColumn(
-            "Mean Translation (A^2)",
+            "Center of Reaction",
             gtk.CellRendererText(),
             text=2)
         treeview.append_column(column)
 
         column = gtk.TreeViewColumn(
-            "Mean Libration (deg^2)",
+            "Mean Translation (A^2)",
             gtk.CellRendererText(),
             text=3)
+        treeview.append_column(column)
+
+        column = gtk.TreeViewColumn(
+            "Mean Libration (deg^2)",
+            gtk.CellRendererText(),
+            text=4)
         treeview.append_column(column)
 
         self.show_all()
@@ -327,12 +317,14 @@ class TLSDialog(gtk.Dialog):
             trT = trace(tls.T)/3.0
             trL = trace(tls.L * rad2deg2)/3.0
             cor = calcs["COR"]
+            R   = tls.calc_R()
 
             self.store.set(iter,
                            0, tls.name,
-                           1, "%.3f, %.3f, %.3f" % (cor[0], cor[1], cor[2]),
-                           2, "%.3f" % (trT),
-                           3, "%.3f" % (trL))
+                           1, "%.3f" % (R),
+                           2, "%.3f, %.3f, %.3f" % (cor[0], cor[1], cor[2]),
+                           3, "%.3f" % (trT),
+                           4, "%.3f" % (trL))
 
     def segment_list(self, chain, seg_len):
         segment = None
@@ -364,9 +356,8 @@ class TLSDialog(gtk.Dialog):
             segment = segment[1:]
 
         return segment_list
-        
 
-    def make_tls_group_segments(self, seg_len = 5):
+    def make_tls_group_segments(self, seg_len = 20):
         """
         """
         self.tls_group_list = []
@@ -398,7 +389,13 @@ class TLSDialog(gtk.Dialog):
     def show_tls_group(self, tls):
         tls.gl_tls = GLTLSGroup(tls_group = tls)
         self.context.struct_gui.gtkglviewer.glviewer.append(tls.gl_tls)
-        
+        gobject.timeout_add(25, self.timeout_cb, tls)
+                
+    def timeout_cb(self, tls):
+        tls.gl_tls.inc_time()
+        self.context.struct_gui.gtkglviewer.queue_draw()
+        return gtk.TRUE
+
 
 class StructureTreeControl(gtk.TreeView):
     def __init__(self, context):
@@ -616,23 +613,82 @@ class MainWindow:
             gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
             None,
             "Axis",
-            "Show/Hode Carteasion Axis",
+            "Show/Hide Carteasion Axis",
             "",
             None, #widget/icon
-            self.axes_tb_cb,
-            None)
+            self.toolbar_tb_cb,
+            "show_axes")
 
         self.unit_cell_tb = self.toolbar1.append_element(
             gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
             None,
             "Unit Cell",
-            "Show/Hode Unit Cell",
+            "Show/Hide Unit Cell",
             "",
             None, #widget/icon
-            self.unit_cell_tb_cb,
-            None)
-
+            self.toolbar_tb_cb,
+            "show_unit_cell")
         
+        self.aa_main_chain_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "AA Main Chain",
+            "Show/Hide Amino Acid Main Chain Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_aa_main_chain")
+
+        self.aa_side_chain_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "AA Side Chain",
+            "Show/Hide Amino Acid Side Chain Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_aa_side_chain")
+
+        self.dna_main_chain_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "DNA Main Chain",
+            "Show/Hide Nucleic Acid Main Chain Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_dna_main_chain")
+
+        self.dna_side_chain_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "DNA Side Chain",
+            "Show/Hide Nucleic Acid Side Chain Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_dna_side_chain")
+
+        self.hetatm_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "HET Atoms",
+            "Show/Hide HET Group Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_hetatm")
+        
+        self.water_tb = self.toolbar1.append_element(
+            gtk.TOOLBAR_CHILD_TOGGLEBUTTON,
+            None,
+            "Water",
+            "Show/Hide Water Atoms",
+            "",
+            None, #widget/icon
+            self.toolbar_tb_cb,
+            "show_water")
+
         ## Second toolbar
         self.hbox1 = gtk.HBox()
         table.attach(self.hbox1,
@@ -734,28 +790,19 @@ class MainWindow:
         tls = TLSDialog(context = self, struct = struct, title = str(struct))
         tls.present()
 
-    def axes_tb_cb(self, *args):
-        """Show/Hide axes toggle button.
+    def toolbar_tb_cb(self, tbutton, show_func_name):
+        """Toolbar toggle button helper function
         """
         struct = self.get_selected_struct()
         if struct == None:
             return
-        if self.axes_tb.get_active() == gtk.TRUE:
-            self.struct_dict[struct].show_axes(True)
-        else:
-            self.struct_dict[struct].show_axes(False)
-        self.struct_gui.gtkglviewer.queue_draw()
 
-    def unit_cell_tb_cb(self, *args):
-        """Show/Hide unit cell.
-        """
-        struct = self.get_selected_struct()
-        if struct == None:
-            return
-        if self.unit_cell_tb.get_active() == gtk.TRUE:
-            self.struct_dict[struct].show_unit_cell(True)
+        show_func = getattr(self.struct_dict[struct], show_func_name)
+        
+        if tbutton.get_active() == gtk.TRUE:
+            show_func(True)
         else:
-            self.struct_dict[struct].show_unit_cell(False)
+            show_func(False)
         self.struct_gui.gtkglviewer.queue_draw()
 
     def set_title(self, title):
@@ -814,15 +861,20 @@ class MainWindow:
         self.select_label.set_text(str(self.selected_struct_obj))
         gl_struct = self.struct_dict[struct]
 
-        if gl_struct.gl_axes == None:
-            self.axes_tb.set_active(gtk.FALSE)
-        else:
-            self.axes_tb.set_active(gtk.TRUE)
-
-        if gl_struct.gl_unit_cell == None:
-            self.unit_cell_tb.set_active(gtk.FALSE)
-        else:
-            self.unit_cell_tb.set_active(gtk.TRUE)
+        def set_tbutton(tbutton, show_func):
+            if show_func() == False:
+                tbutton.set_active(gtk.FALSE)
+            else:
+                tbutton.set_active(gtk.TRUE)
+            
+        set_tbutton(self.axes_tb, gl_struct.show_axes)
+        set_tbutton(self.unit_cell_tb, gl_struct.show_unit_cell)
+        set_tbutton(self.aa_main_chain_tb, gl_struct.show_aa_main_chain)
+        set_tbutton(self.aa_side_chain_tb, gl_struct.show_aa_side_chain)
+        set_tbutton(self.dna_main_chain_tb, gl_struct.show_dna_main_chain)
+        set_tbutton(self.dna_side_chain_tb, gl_struct.show_dna_side_chain)
+        set_tbutton(self.water_tb, gl_struct.show_water)
+        set_tbutton(self.hetatm_tb, gl_struct.show_hetatm)
 
     def get_selected_struct(self):
         """Returns the structure object of the selected item.

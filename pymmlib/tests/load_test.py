@@ -5,12 +5,13 @@
 
 import sys
 import test_util
-from mmLib.FileLoader import LoadStructure
+from mmLib.FileLoader import LoadStructure,SaveStructure
 
 
 def main(path):
     print "mmLib.LoadStructure(fil=%s)" % (path)
-    LoadStructure(fil=path)
+    struct = LoadStructure(fil=path)
+    SaveStructure(fil=sys.stdout, struct=struct)
 
 if __name__ == "__main__":
     import os

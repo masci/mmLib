@@ -509,13 +509,10 @@ class TLSGroup(AtomList):
         origin given by self.origin.
         """
         A = zeros((len(self)*6, 21), Float)
-        b = zeros((len(self)*6, 1),  Float)
+        b = zeros(len(self) * 6,  Float)
 
         i = -1
         for atm in self:
-            if atm.U == None:
-                continue
-
             i += 1
 
             ## set x, y, z as the vector components from the TLS origin
@@ -529,13 +526,18 @@ class TLSGroup(AtomList):
             u13 = u11 + 4
             u23 = u11 + 5
 
-            ## set the U vector
-            b[u11, 0] = atm.U[0,0]
-            b[u22, 0] = atm.U[1,1]
-            b[u33, 0] = atm.U[2,2]
-            b[u12, 0] = atm.U[0,1]
-            b[u13, 0] = atm.U[0,2]
-            b[u23, 0] = atm.U[1,2]
+            ## set the B vector
+            if atm.U == None:
+                b[u11] = atm.temp_factor / (24.0 * math.pi * math.pi)
+                b[u22] = b[u11]
+                b[u33] = b[u11]
+            else:
+                b[u11] = atm.U[0,0]
+                b[u22] = atm.U[1,1]
+                b[u33] = atm.U[2,2]
+                b[u12] = atm.U[0,1]
+                b[u13] = atm.U[0,2]
+                b[u23] = atm.U[1,2]
 
             ## C Matrix
             xx = x*x
@@ -599,17 +601,17 @@ class TLSGroup(AtomList):
 
         (C, resids, rank, s) = linear_least_squares(A, b)
 
-        self.T = array([ [ C[ 0,0], C[ 1,0], C[ 3,0] ],
-                         [ C[ 1,0], C[ 2,0], C[ 4,0] ],
-                         [ C[ 3,0], C[ 4,0], C[ 5,0] ] ])
+        self.T = array([ [ C[ 0], C[ 1], C[ 3] ],
+                         [ C[ 1], C[ 2], C[ 4] ],
+                         [ C[ 3], C[ 4], C[ 5] ] ])
 
-        self.L = array([ [ C[ 9,0], C[13,0], C[18,0] ],
-                         [ C[13,0], C[14,0], C[19,0] ],
-                         [ C[18,0], C[19,0], C[20,0] ] ])
+        self.L = array([ [ C[ 9], C[13], C[18] ],
+                         [ C[13], C[14], C[19] ],
+                         [ C[18], C[19], C[20] ] ])
 
-        self.S = array([ [ C[ 6,0], C[ 7,0], C[ 8,0] ],
-                         [ C[10,0], C[11,0], C[12,0] ],
-                         [ C[15,0], C[16,0], C[17,0] ] ])
+        self.S = array([ [ C[ 6], C[ 7], C[ 8] ],
+                         [ C[10], C[11], C[12] ],
+                         [ C[15], C[16], C[17] ] ])
 
     def iter_atm_Ucalc(self):
         """Iterates all the atoms in the TLS object, returning the 2-tuple
@@ -731,7 +733,7 @@ class TLSGroup(AtomList):
 
         calcs["T^"] = cT
 
-        ## carrot-S tensor (S tensor WRT principal axes of S)
+        ## carrot-S tensor (S tensor WRT principal axes of L)
         cS = matrixmultiply(
             matrixmultiply(transpose(evec_L), self.S), evec_L)
 
@@ -741,7 +743,7 @@ class TLSGroup(AtomList):
             cS = -cS
 
         calcs["S^"] = cS
-            
+        
         ## ^rho: the origin-shift vector in the coordinate system of L
         crho = array([ (cS[1,2] - cS[2,1]) / (cL[1,1] + cL[2,2]),
                        (cS[2,0] - cS[0,2]) / (cL[2,2] + cL[0,0]),
@@ -753,7 +755,7 @@ class TLSGroup(AtomList):
         rho = matrixmultiply(evec_L, crho)
         
         calcs["RHO"] = rho
-        calcs["COR"] = array(self.origin)+rho
+        calcs["COR"] = array(self.origin) + rho
 
         ## set up the origin shift matrix PRHO WRT orthogonal axes
         PRHO = array([ [    0.0,  rho[2], -rho[1]],
@@ -782,22 +784,26 @@ class TLSGroup(AtomList):
               matrixmultiply(cSt, cPRHOt) + \
               matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
         calcs["T'^"] = cTp
-        
-        
+
+        ## transpose of PRHO and S
+        PRHOt = transpose(PRHO)
+        St = transpose(self.S)
+
+        ## calculate S' = S + L*PRHOt
+        Sp = self.S + matrixmultiply(self.L, PRHOt)
+        calcs["S'"] = Sp
+
+        # calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+        Tp = self.T + \
+             matrixmultiply(PRHO, self.S) + \
+             matrixmultiply(St, PRHOt) + \
+             matrixmultiply(matrixmultiply(PRHO, self.L), PRHOt)
+        calcs["T'"] = Tp
+
+        ## L' is just L
+        calcs["L'"] = self.L
+
         return calcs
-
-        print "^T"
-        print cT
-        print "^L"
-        print cL
-        print "^S"
-        print cS
-
-        print "^rho", crho
-        print "rho", rho
-        print "Center of reaction: ", array(self.origin)+rho
-
-
 
     def write(self, out = sys.stdout):
         """Write a nicely formatted tensor description.
