@@ -232,6 +232,10 @@ def calc_DP2uij(U, V):
 
     return Pu2 + Pv2 - (2.0 * Puv)
 
+def calc_anisotropy(U):
+    evals = eigenvalues(U)
+    return min(evals) / max(evals)
+
 
 ### <TESTING>
 if __name__ == "__main__":

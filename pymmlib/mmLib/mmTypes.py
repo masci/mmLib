@@ -12,8 +12,9 @@ import sys
 import math
 import string
 import gzip
-from types import *
-from Numeric import *
+
+from types         import *
+from Numeric       import *
 from LinearAlgebra import *
 
 ## useful constents
@@ -21,6 +22,20 @@ rad2deg  = 180.0 / math.pi
 deg2rad  = math.pi / 180.0
 rad2deg2 = rad2deg * rad2deg
 deg2rad2 = deg2rad * deg2rad
+
+RAD2DEG  = 180.0 / math.pi
+DEG2RAD  = math.pi / 180.0
+RAD2DEG2 = RAD2DEG * RAD2DEG
+DEG2RAD2 = DEG2RAD * DEG2RAD
+
+## converting between U (angstrom^2) temp factor
+## values and B temp factor values
+b2u = 8.0 * math.pi * math.pi
+u2b = 1.0 / b2u
+
+B2U = 8.0 * math.pi * math.pi
+U2B = 1.0 / B2U
+
 
 ## types, functions, things which are useful and difficult to
 ## classify...

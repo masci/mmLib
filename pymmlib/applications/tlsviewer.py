@@ -39,6 +39,1530 @@ def print_U(tensor):
 
 
 ###############################################################################
+### GLViewer Rendering components for TLS Groups
+###
+        
+class GLTLSAtomList(GLAtomList):
+    """OpenGL visualizations of TLS group atoms.
+    """
+    def __init__(self, **args):
+        self.tls_group = args["tls_group"]        
+        GLAtomList.__init__(self, **args)
+        self.glo_init_properties(**args)
+    
+    def glo_install_properties(self):
+        GLAtomList.glo_install_properties(self)
+
+        ## Show/Hide
+        self.glo_add_property(
+            { "name":        "fan_visible",
+              "desc":        "Show Fans from COR to Backbone",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+
+        self.glo_add_property(
+            { "name":        "L1_animation_visible",
+              "desc":        "Show L1 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_animation_visible",
+              "desc":        "Show L2 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_animation_visible",
+              "desc":        "Show L3 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
+
+        ## TLS
+        self.glo_add_property(
+            { "name":        "tls_color",
+              "desc":        "Color for TLS Group",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.5, 1.0, 0.5),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "fan_opacity",
+              "desc":        "COR/Backbone Fan Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_fan" })
+        self.glo_add_property(
+            { "name":        "L1_scale",
+              "desc":        "Scale L1 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_scale",
+              "desc":        "Scale L2 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_scale",
+              "desc":        "Scale L3 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+
+        ## TLS Analysis
+        self.glo_add_property(
+            { "name":        "COR",
+              "desc":        "TLS Center of Reaction", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "T",
+              "desc":        "Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "rT",
+              "desc":        "Reduced Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L",
+              "desc":        "Libration Tensor (DEG*DEG)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "S",
+              "desc":        "Skew Tensor (A*DEG)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_eigen_vec",
+              "desc":        "L1 Eigen Vector", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_eigen_vec",
+              "desc":        "L2 Eigen Vector", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_eigen_vec",
+              "desc":        "L3 Eigen Vector", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_eigen_val",
+              "desc":        "L1 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_eigen_val",
+              "desc":        "L2 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_eigen_val",
+              "desc":        "L3 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_rho",
+              "desc":        "L1 translation from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_rho",
+              "desc":        "L2 translation from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_rho",
+              "desc":        "L3 translation from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_pitch",
+              "desc":        "L1 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_pitch",
+              "desc":        "L2 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_pitch",
+              "desc":        "L3 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+
+        ## Simulation State
+        self.glo_add_property(
+            { "name":        "L1_rot",
+              "desc":        "L1 Rotation", 
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_rot",
+              "desc":        "L2 Rotation", 
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_rot",
+              "desc":        "L3 Rotation", 
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+
+    def gldl_install_draw_methods(self):
+        GLAtomList.gldl_install_draw_methods(self)
+        
+        self.gldl_draw_method_install(
+            { "name":                "fan",
+              "func":                self.draw_fan,
+              "visible_property":    "fan_visible",
+              "opacity_property":    "fan_opacity",
+              "recompile_action":    "recompile_fan" })
+
+    def gldl_iter_multidraw_self(self):
+        for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
+            for draw_flag2 in self.gldl_iter_multidraw_animate():
+                yield True
+            
+    def gldl_iter_multidraw_animate(self):
+        """
+        """
+        for Lx_axis, Lx_rho, Lx_pitch, Lx_rot, Lx_scale in (
+            ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot", "L1_scale"),
+            ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot", "L2_scale"),
+            ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot", "L3_scale") ):
+
+            if Lx_axis=="L1_eigen_vec" and \
+               self.properties["L1_animation_visible"]==False:
+                continue
+            if Lx_axis=="L2_eigen_vec" and \
+               self.properties["L2_animation_visible"]==False:
+                continue
+            if Lx_axis=="L3_eigen_vec" and \
+               self.properties["L3_animation_visible"]==False:
+                continue
+
+            axis  = self.properties[Lx_axis]
+            rho   = self.properties[Lx_rho]
+            pitch = self.properties[Lx_pitch]
+            rot   = self.properties[Lx_rot] * self.properties[Lx_scale]
+            screw = axis * (rot * pitch)
+
+            glPushMatrix()
+
+            glTranslatef(* -rho)
+            glRotatef(rot, *axis)
+            glTranslatef(* rho + screw)
+            yield True
+            
+            glPopMatrix()
+
+    def glal_iter_atoms(self):
+        """
+        """
+        for atm in self.tls_group:
+            yield atm
+
+    def glal_calc_color(self, atom):
+        """Overrides the GLAtomList coloring behavior and just
+        colors using the tls_color.
+        """
+        r, g, b = self.properties["tls_color"] 
+        dim     = 0.9
+        return (r*dim, g*dim, b*dim)
+
+    def glal_calc_color_trace(self):
+        return self.properties["tls_color"]
+
+    def glal_calc_U(self, atom):
+        """Always return the reduced T tensor.
+        """
+        return self.properties["rT"]
+
+    def draw_fan(self):
+        """Draws a fan from the TLS group center of reaction to the
+        TLS group backbone atoms.
+        """
+        glEnable(GL_LIGHTING)
+
+        COR     = self.properties["COR"]
+        r, g, b = self.properties["tls_color"]
+        a       = self.properties["fan_opacity"]
+
+        self.glr_set_material_rgb(r, g, b, a)
+        
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        glBegin(GL_TRIANGLE_FAN)
+
+        v1 = None
+        v2 = None
+
+        for atm in self.tls_group:
+            if atm.name not in ("N", "CA", "C"):
+                continue
+
+            if v1==None:
+                v1 = atm.position - COR
+                continue
+            elif v2==None:
+                v2 = atm.position - COR
+                glNormal3f(*cross(v1, v2))
+                glVertex3f(0.0, 0.0, 0.0)                
+            else:
+                v1 = v2
+                v2 = atm.position - COR
+
+            glNormal3f(*cross(v1, v2))    
+            glVertex3f(*v1)
+            glVertex3f(*v2)
+
+        glEnd()
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+
+
+class GLTLSGroup(GLDrawList):
+    """Top level visualization object for a TLS group.
+    """
+    def __init__(self, **args):
+        GLDrawList.__init__(self)
+
+        self.tls_group = args["tls_group"]
+        self.tls_info = self.tls_group.calc_tls_info()
+        
+        if self.tls_group.name!="":
+            self.glo_set_name("TLS Group: %s" % (self.tls_group.name))
+
+        ## add a child GLTLSAtomList for the animated atoms
+        self.gl_atom_list = GLTLSAtomList(
+            tls_group        = self.tls_group,
+            tls_info         = self.tls_info,
+            trace            = True,
+            lines            = False,
+            fan_visible      = False)
+
+        self.gl_atom_list.glo_set_name("TLS Atom Animation")
+        self.gl_atom_list.glo_set_properties_id("gl_atom_list")
+        self.glo_add_child(self.gl_atom_list)
+
+        self.glo_link_child_property(
+            "symmetry", "gl_atom_list", "symmetry")
+
+        self.glo_link_child_property(
+            "main_chain_visible", "gl_atom_list", "main_chain_visible")        
+        self.glo_link_child_property(
+            "side_chain_visible", "gl_atom_list", "side_chain_visible") 
+        self.glo_link_child_property(
+            "hetatm_visible", "gl_atom_list", "hetatm_visible") 
+        self.glo_link_child_property(
+            "water_visible", "gl_atom_list", "water_visible")        
+        self.glo_link_child_property(
+            "hydrogen_visible", "gl_atom_list", "hydrogen_visible") 
+
+        self.glo_link_child_property(
+            "tls_color", "gl_atom_list", "tls_color")        
+
+        self.glo_link_child_property(
+            "fan_visible", "gl_atom_list", "fan_visible")
+        self.glo_link_child_property(
+            "axes_rT", "gl_atom_list", "U")
+        self.glo_link_child_property(
+            "ellipse_rT", "gl_atom_list", "ellipse")
+        self.glo_link_child_property(
+            "rms_rT", "gl_atom_list", "rms")
+
+        self.glo_link_child_property(
+            "adp_prob", "gl_atom_list", "adp_prob")
+
+        self.glo_link_child_property(
+            "COR", "gl_atom_list", "origin")
+        self.glo_link_child_property(
+            "COR", "gl_atom_list", "atom_origin")
+        self.glo_link_child_property(
+            "COR", "gl_atom_list", "COR")
+        self.glo_link_child_property(
+            "T", "gl_atom_list", "T")
+        self.glo_link_child_property(
+            "rT", "gl_atom_list", "rT")
+        self.glo_link_child_property(
+            "L", "gl_atom_list", "L")
+        self.glo_link_child_property(
+            "S", "gl_atom_list", "S")
+
+        self.glo_link_child_property(
+            "L1_eigen_vec", "gl_atom_list", "L1_eigen_vec")
+        self.glo_link_child_property(
+            "L2_eigen_vec", "gl_atom_list", "L2_eigen_vec")
+        self.glo_link_child_property(
+            "L3_eigen_vec", "gl_atom_list", "L3_eigen_vec")
+        
+        self.glo_link_child_property(
+            "L1_eigen_val", "gl_atom_list", "L1_eigen_val")
+        self.glo_link_child_property(
+            "L2_eigen_val", "gl_atom_list", "L2_eigen_val")
+        self.glo_link_child_property(
+            "L3_eigen_val", "gl_atom_list", "L3_eigen_val")
+
+        self.glo_link_child_property(
+            "L1_rho", "gl_atom_list", "L1_rho")
+        self.glo_link_child_property(
+            "L2_rho", "gl_atom_list", "L2_rho")
+        self.glo_link_child_property(
+            "L3_rho", "gl_atom_list", "L3_rho")
+
+        self.glo_link_child_property(
+            "L1_pitch", "gl_atom_list", "L1_pitch")
+        self.glo_link_child_property(
+            "L2_pitch", "gl_atom_list", "L2_pitch")
+        self.glo_link_child_property(
+            "L3_pitch", "gl_atom_list", "L3_pitch")
+
+        self.glo_link_child_property(
+            "L1_rot", "gl_atom_list", "L1_rot")
+        self.glo_link_child_property(
+            "L2_rot", "gl_atom_list", "L2_rot")
+        self.glo_link_child_property(
+            "L3_rot", "gl_atom_list", "L3_rot")
+ 
+        ## initalize properties
+        self.glo_add_update_callback(self.tls_update_cb)
+
+        self.glo_init_properties(
+            COR          = self.tls_info["COR"],
+
+            T            = self.tls_info["T'"],
+            rT           = self.tls_info["rT'"],
+            L            = self.tls_info["L'"] * RAD2DEG2,
+            S            = self.tls_info["S'"] * RAD2DEG,
+
+            L1_eigen_vec = self.tls_info["L1_eigen_vec"],
+            L2_eigen_vec = self.tls_info["L2_eigen_vec"],
+            L3_eigen_vec = self.tls_info["L3_eigen_vec"],
+
+            L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
+            L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
+            L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+
+            L1_rho       = self.tls_info["L1_rho"],
+            L2_rho       = self.tls_info["L2_rho"],
+            L3_rho       = self.tls_info["L3_rho"],
+            
+            L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
+            L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
+            L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG),
+            **args)
+
+    def set_tls_group(self, tls_group):
+        """Set a new TLSGroup.
+        """
+        self.tls_group = tls_group
+        self.tls_info = self.tls_group.calc_tls_info()
+        
+        self.properties.update(
+            COR          = self.tls_info["COR"],
+            T            = self.tls_info["T'"],
+            Tr           = self.tls_info["rT'"],
+            L            = self.tls_info["L'"] * RAD2DEG2,
+            S            = self.tls_info["S'"] * RAD2DEG,
+
+            L1_eigen_vec = self.tls_info["L1_eigen_vec"],
+            L2_eigen_vec = self.tls_info["L2_eigen_vec"],
+            L3_eigen_vec = self.tls_info["L3_eigen_vec"],
+
+            L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
+            L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
+            L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+
+            L1_rho       = self.tls_info["L1_rho"],
+            L2_rho       = self.tls_info["L2_rho"],
+            L3_rho       = self.tls_info["L3_rho"],
+
+            L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
+            L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
+            L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG) )
+
+    def glo_install_properties(self):
+        GLDrawList.glo_install_properties(self)
+
+        ## TLS Analysis
+        self.glo_add_property(
+            { "name":        "COR",
+              "desc":        "TLS Center of Reaction",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "T",
+              "desc":        "Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "rT",
+              "desc":        "Reduced Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L",
+              "desc":        "Libration Tensor (DEG*DEG)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "S",
+              "desc":        "Skew Tensor (A*DEG)",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3,3)",
+              "default":     zeros((3,3), Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_eigen_vec",
+              "desc":        "L1 Eigen Vector",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_eigen_vec",
+              "desc":        "L2 Eigen Vector",
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_eigen_vec",
+              "desc":        "L3 Eigen Vector", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_eigen_val",
+              "desc":        "L1 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_eigen_val",
+              "desc":        "L2 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_eigen_val",
+              "desc":        "L3 Eigen Value", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_rho",
+              "desc":        "L1 Translation Vector from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_rho",
+              "desc":        "L2 Translation Vector from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_rho",
+              "desc":        "L3 Translation Vector from COR", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "array(3)",
+              "default":     zeros(3, Float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_pitch",
+              "desc":        "L1 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L2_pitch",
+              "desc":        "L2 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L3_pitch",
+              "desc":        "L3 screw pitch (A/DEG)", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_rot",
+              "desc":        "L1 Axis Viewing Libration (DEG)",
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_rot",
+              "desc":        "L2 Axis Viewing Libration (DEG)", 
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_rot",
+              "desc":        "L2 Axis Viewing Libration (DEG)",
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })        
+        self.glo_add_property(
+            { "name":        "time",
+              "desc":        "Simulation Time",
+              "catagory":    "Simulation State",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+
+        ## Show/Hide
+        self.glo_add_property(
+            { "name":        "symmetry",
+              "desc":        "Show Symmetry Equivelant",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":      "main_chain_visible",
+              "desc":      "Show Main Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "side_chain_visible",
+              "desc":      "Show Side Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hetatm_visible",
+              "desc":      "Show Hetrogen Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "water_visible",
+              "desc":      "Show Waters",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hydrogen_visible",
+              "desc":      "Show Hydrogens",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":        "fan_visible",
+              "desc":        "Show Fans from COR to Backbone",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "TLS_visible",
+              "desc":        "Show TLS Tensors",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "Utls_U_diff",
+              "desc":        "Show Utls vs. Experimental U Diff",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "U",
+              "desc":        "Show TLS Thermal Axes",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_axes" })
+        self.glo_add_property(
+            { "name":        "ellipse",
+              "desc":        "Show TLS Thermal Ellipsoids",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "rms",
+              "desc":        "Show TLS Thermal Peanuts",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_rms" })
+
+        self.glo_add_property(
+            { "name":        "axes_rT",
+              "desc":        "Show Reduced Translation Thermal Axes", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "ellipse_rT",
+              "desc":        "Show Reduced Translation Thermal Ellipsoids", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "rms_rT",
+              "desc":        "Show Reduced Translation Thermal Peanuts",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_rms" })
+                
+        self.glo_add_property(
+            { "name":        "L1_visible",
+              "desc":        "Show Screw L1 Displacement Surface", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "L2_visible",
+              "desc":        "Show Screw L1 Displacement Surface", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "L3_visible",
+              "desc":        "Show Screw L1 Displacement Surface",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        
+        ## TLS
+        self.glo_add_property(
+            { "name":        "tls_color",
+              "desc":        "TLS Group Visualization Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.10, 0.75, 0.35),
+              "action":      ["recompile_Utls_axes",
+                              "recompile_Utls_ellipse",
+                              "recompile_Utls_rms"] })
+
+        self.glo_add_property(
+            { "name":        "add_biso",
+              "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
+              "catagory":    "TLS",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":       "adp_prob",
+              "desc":       "Contour Probability",
+              "catagory":   "TLS",
+              "type":       "integer",
+              "range":      PROP_PROBABILTY_RANGE,
+              "default":    50,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "T_line_width",
+              "desc":       "T Axes Line Width",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    1.0,
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "T_color",
+              "desc":        "T Axes Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.5, 0.5, 1.0),
+              "action":      "recompile_tensors" })
+        self.glo_add_property(
+            { "name":       "L_axis_radius",
+              "desc":       "Screw Axes Radius",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    0.05,
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":       "L_color",
+              "desc":       "Screw Axes Color",
+              "catagory":   "TLS",
+              "type":       "color",
+              "default":    (1.0, 0.5, 0.5),
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "U_color",
+              "desc":        "Thermal Atom U Color for Diff Mode",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (1.0, 1.0, 1.0),
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "ellipse_opacity",
+              "desc":        "TLS Thermal Ellipseoid Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "rms_opacity",
+              "desc":        "TLS Thermal Peanut Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_Utls_rms" })
+        self.glo_add_property(
+            { "name":        "surface_opacity",
+              "desc":        "Screw Surface Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":      PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_surface" })
+
+    def gldl_install_draw_methods(self):
+        self.gldl_draw_method_install(
+            { "name":                "tls_tensors",
+              "func":                self.draw_tensors,
+              "transparent":         False,
+              "visible_property":    "TLS_visible",
+              "recompile_action":    "recompile_tensors" })
+        self.gldl_draw_method_install(
+            { "name":                "Utls_axes",
+              "func":                self.draw_Utls_axes,
+              "transparent":         False,
+              "visible_property":    "U",
+              "recompile_action":    "recompile_Utls_axes" })
+        self.gldl_draw_method_install(
+            { "name":                "Utls_ellipse",
+              "func":                self.draw_Utls_ellipse,
+              "visible_property":    "ellipse",
+              "opacity_property":    "ellipse_opacity",
+              "recompile_action":    "recompile_Utls_ellipse" })
+        self.gldl_draw_method_install(
+            { "name":                "Utls_rms",
+              "func":                self.draw_Utls_rms,
+              "visible_property":    "rms",
+              "opacity_property":    "rms_opacity",
+              "recompile_action":    "recompile_Utls_rms" })
+        self.gldl_draw_method_install(
+            { "name":                "L1_surface",
+              "func":                self.draw_L1_surface,
+              "visible_property":    "L1_visible",
+              "opacity_property":    "surface_opacity",
+              "recompile_action":    "recompile_surface" })
+        self.gldl_draw_method_install(
+            { "name":                "L2_surface",
+              "func":                self.draw_L2_surface,
+              "visible_property":    "L2_visible",
+              "opacity_property":    "surface_opacity",
+              "recompile_action":    "recompile_surface" })
+        self.gldl_draw_method_install(
+            { "name":                "L3_surface",
+              "func":                self.draw_L3_surface,
+              "visible_property":    "L3_visible",
+              "opacity_property":    "surface_opacity",
+              "recompile_action":    "recompile_surface" })
+         
+    def tls_update_cb(self, updates, actions):
+        if "time" in updates:
+            self.update_time()
+
+    def update_time(self):
+        """Changes the time of the TLS group simulating harmonic motion.
+        """
+        pi2 = 2.0 * math.pi
+        sin_tm = math.sin(pi2 * 3.0 * self.properties["time"])
+
+        ## calculate L eignvalue displacements at the given
+        ## probability levels
+        C = GAUSS3C[self.properties["adp_prob"]]
+
+        try:
+            L1_c = C * math.sqrt(self.properties["L1_eigen_val"])
+        except ValueError:
+            L1_peak = 0.0
+
+        try:
+            L2_c = C * math.sqrt(self.properties["L2_eigen_val"])
+        except ValueError:
+            L2_peak = 0.0
+
+        try:
+            L3_c = C * math.sqrt(self.properties["L3_eigen_val"])
+        except ValueError:
+            L3_peak = 0.0
+
+        L1_rot  = L1_c * sin_tm
+        L2_rot  = L2_c * sin_tm
+        L3_rot  = L3_c * sin_tm
+
+        self.glo_update_properties(L1_rot=L1_rot, L2_rot=L2_rot, L3_rot=L3_rot)
+
+    def gldl_iter_multidraw_self(self):
+        """Specialized draw list invokation to recycle the draw list for
+        symmetry related copies.  Cartesian versions of the symmetry rotation
+        and translation operators are generated by GLStructure/UnitCell
+        classes.
+        """
+        if self.properties["symmetry"]==False:
+            yield True
+            
+        else:
+
+            gl_struct = self.glo_get_glstructure()
+            if gl_struct==None:
+                yield True
+
+            else:
+                for symop in gl_struct.iter_orth_symops():
+                    glPushMatrix()
+
+                    glMultMatrixf(
+                        (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
+                         symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
+                         symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
+                         symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
+
+                    yield True
+                    glPopMatrix()
+
+    def gltls_iter_atoms(self):
+        """Special atom iterator for the TLS drawing functions yields:
+        atm, Utls
+        """
+        T = self.tls_group.T
+        L = self.tls_group.L
+        S = self.tls_group.S
+        o = self.tls_group.origin
+        
+        for atm, visible in self.gl_atom_list.glal_iter_atoms_filtered():
+            if not visible:
+                continue
+
+            Utls = self.tls_group.calc_Utls(T, L, S, atm.position - o)
+
+            if self.properties["add_biso"]==True:
+                Utls = Utls + (B2U * atm.temp_factor * identity(3, Float))
+            
+            yield atm, Utls
+    
+    def draw_tensors(self):
+        """Draw tensor axis.
+        """
+        glPushMatrix()
+        glTranslatef(*self.properties["COR"])
+
+        ## T: units (A^2)
+        r, g, b = self.properties["T_color"]
+        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_Uellipse((0.0, 0.0, 0.0),
+                          self.properties["rT"],
+                          self.properties["adp_prob"])
+
+        ## L: units (DEG^2)
+        for Lx_eigen_val, Lx_eigen_vec, Lx_rho, Lx_pitch in [
+            ("L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
+            ("L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
+            ("L3_eigen_val", "L3_eigen_vec", "L3_rho", "L3_pitch")]:
+
+            L_eigen_vec = self.properties[Lx_eigen_vec]
+            L_eigen_val = self.properties[Lx_eigen_val]
+            L_rho       = self.properties[Lx_rho]
+            L_pitch     = self.properties[Lx_pitch]
+            
+            if L_eigen_val<=0.0:
+                continue
+
+            C = GAUSS3C[self.properties["adp_prob"]]
+            
+            L_rot = C * math.sqrt(L_eigen_val)
+            L_v   = L_eigen_vec * L_rot
+
+            ## line from COR to center of screw/rotation axis
+            glColor3f(*self.properties["L_color"])
+
+            ## draw lines from COR to the axis
+            glDisable(GL_LIGHTING)
+            glBegin(GL_LINES)
+            glVertex3f(0.0, 0.0, 0.0)
+            glVertex3f(*L_rho)
+            glEnd()
+
+            ## draw axis
+            r, g, b = self.properties["L_color"]
+            self.glr_set_material_rgb(r, g, b, 1.0)
+            self.glr_axis(L_rho - (0.5 * L_v), L_v,
+                          self.properties["L_axis_radius"])
+
+            ## draw disks with translational displacement
+            L_screw_dis = L_eigen_vec * L_rot * L_pitch
+
+            self.glr_axis(
+                L_rho - (0.5 * L_screw_dis),
+                L_screw_dis,
+                1.5 * self.properties["L_axis_radius"])
+
+        glPopMatrix()
+
+    def draw_Utls_axes(self):
+        """Render the anisotropic thremal axes calculated from the TLS
+        model.
+        """
+        prob  = self.properties["adp_prob"]
+        color = self.properties["tls_color"]
+
+        for atm, Utls in self.gltls_iter_atoms():
+            self.glr_Uaxes(atm.position, Utls, prob, color, 1.0)
+
+    def draw_Utls_ellipse(self):
+        """Render the anisotropic thremal ellipseoids at the given probability
+        contour calculated from the TLS model.
+        """
+        prob    = self.properties["adp_prob"]
+        r, g, b = self.properties["tls_color"]
+        a       = self.properties["ellipse_opacity"]
+
+        for atm, Utls in self.gltls_iter_atoms():
+            self.glr_set_material_rgb(r, g, b, a)
+            self.glr_Uellipse(atm.position, Utls, prob)
+
+    def draw_Utls_rms(self):
+        """Render the anisotropic thremal peanuts calculated from the TLS
+        model.
+        """
+        r, g, b = self.properties["tls_color"]
+        a       = self.properties["rms_opacity"]
+        self.glr_set_material_rgb(r, g, b, a)
+
+        for atm, Utls in self.gltls_iter_atoms():
+            self.glr_Urms(atm.position, Utls)
+
+    def draw_L1_surface(self):
+         self.draw_tls_surface(
+             self.properties["L1_eigen_vec"],
+             self.properties["L1_eigen_val"],
+             self.properties["L1_rho"],
+             self.properties["L1_pitch"])
+
+    def draw_L2_surface(self):
+         self.draw_tls_surface(
+             self.properties["L2_eigen_vec"],
+             self.properties["L2_eigen_val"],
+             self.properties["L2_rho"],
+             self.properties["L2_pitch"])
+
+    def draw_L3_surface(self):
+         self.draw_tls_surface(
+             self.properties["L3_eigen_vec"],
+             self.properties["L3_eigen_val"],
+             self.properties["L3_rho"],
+             self.properties["L3_pitch"])
+
+    def draw_tls_surface(self, Lx_eigen_vec, Lx_eigen_val, Lx_rho, Lx_pitch):
+        """Draws the TLS probability surface for a single non-intersecting
+        screw axis.  Lx_eigen_val is the vaiance (mean square deviation MSD)
+        of the rotation about the Lx_eigen_vec axis.
+        """
+        ## create a unique list of bonds which will be used to
+        ## render the TLS surface; this list may be passed in a argument
+        ## to avoid multiple calculations for each screw-rotation axis
+        bond_list = []
+        in_dict   = {}
+
+        for atm, Utls in self.gltls_iter_atoms():
+            in_dict[atm] = True
+
+        for atm, Utls in self.gltls_iter_atoms():
+            for bond in atm.iter_bonds():
+                if in_dict.has_key(bond.get_partner(atm)):
+                    bond_list.append(bond)
+        
+        ## this just won't work...
+        if Lx_eigen_val==0.0:
+            return
+
+        C = GAUSS3C[self.properties["adp_prob"]]
+        try:
+            Lx_s = C * math.sqrt(Lx_eigen_val * DEG2RAD2)
+        except ValueError:
+            return
+
+        Lx_pitch      = Lx_pitch * (1.0/DEG2RAD)
+        COR           = self.properties["COR"]
+        Lx_origin     = COR + Lx_rho
+        steps         = 3
+        rot_step      = Lx_s / float(steps)
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        glEnable(GL_LIGHTING)
+        glEnable(GL_NORMALIZE)
+
+        r, g, b = self.properties["tls_color"]
+        a       = self.properties["surface_opacity"]
+        
+        self.glr_set_material_rgb(r, g, b, a)
+        
+        glBegin(GL_QUADS)
+        for step in range(steps):
+            step1 = rot_step * float(step)
+            step2 = step1 + rot_step
+
+            for sign in (-1.0, 1.0):
+                rot1   = step1 * sign
+                rot2   = step2 * sign
+
+                Rstep1 = rmatrixu(Lx_eigen_vec, rot1)
+                Rstep2 = rmatrixu(Lx_eigen_vec, rot2)
+
+                screw1 = Lx_eigen_vec * (rot1 * Lx_pitch)
+                screw2 = Lx_eigen_vec * (rot2 * Lx_pitch)
+
+                for bond in bond_list:
+
+                    pos1 = bond.atom1.position - Lx_origin
+                    pos2 = bond.atom2.position - Lx_origin
+
+                    v1 = matrixmultiply(Rstep1, pos1) + screw1
+                    v2 = matrixmultiply(Rstep2, pos1) + screw2
+                    
+                    v3 = matrixmultiply(Rstep2, pos2) + screw2
+                    v4 = matrixmultiply(Rstep1, pos2) + screw1
+                    
+                    v14 = v1 + (0.5 * (v4 - v1))
+                    v23 = v2 + (0.5 * (v3 - v2))
+
+                    glNormal3f(*cross(v2-v1,v3-v1))
+
+                    glVertex3f(*v1  + Lx_origin)
+                    glVertex3f(*v2  + Lx_origin)
+                    glVertex3f(*v23 + Lx_origin)
+                    glVertex3f(*v14 + Lx_origin)
+
+                    glVertex3f(*v3  + Lx_origin)
+                    glVertex3f(*v4  + Lx_origin)
+                    glVertex3f(*v14 + Lx_origin)
+                    glVertex3f(*v23 + Lx_origin)
+
+        glEnd()
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+
+
+class GLTLSChain(GLDrawList):
+    """Collects a list of GLTLSGroup instances which are all in the
+    same chain.
+    """
+    def __init__(self, **args):
+        GLDrawList.__init__(self)
+        self.glo_set_name("TLS Chain %s" % (args["chain_id"]))
+        self.glo_init_properties(**args)
+
+    def glo_install_properties(self):
+        GLDrawList.glo_install_properties(self)
+
+        ## show/hide
+        self.glo_add_property(
+            { "name":        "symmetry",
+              "desc":        "Show Symmetry Equivelant",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":      "main_chain_visible",
+              "desc":      "Show Main Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "side_chain_visible",
+              "desc":      "Show Side Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hetatm_visible",
+              "desc":      "Show Hetrogen Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "water_visible",
+              "desc":      "Show Waters",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "hydrogen_visible",
+              "desc":      "Show Hydrogens",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   False,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":        "fan_visible",
+              "desc":        "Show Fans from COR to Backbone",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "TLS_visible",
+              "desc":        "Show TLS Tensors",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "Utls_U_diff",
+              "desc":        "Show Utls vs. Experimental U Diff",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "U",
+              "desc":        "Show TLS Thermal Axes",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_axes" })
+        self.glo_add_property(
+            { "name":        "ellipse",
+              "desc":        "Show TLS Thermal Ellipsoids",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "rms",
+              "desc":        "Show TLS Thermal Peanuts",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_rms" })
+
+        self.glo_add_property(
+            { "name":        "axes_rT",
+              "desc":        "Show Reduced Translation Thermal Axes", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "ellipse_rT",
+              "desc":        "Show Reduced Translation Thermal Ellipsoids", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "rms_rT",
+              "desc":        "Show Reduced Translation Thermal Peanuts",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_Utls_rms" })
+
+        self.glo_add_property(
+            { "name":        "L1_visible",
+              "desc":        "Show Screw L1 Displacement Surface", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "L2_visible",
+              "desc":        "Show Screw L1 Displacement Surface", 
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "L3_visible",
+              "desc":        "Show Screw L1 Displacement Surface",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile_surface" })
+        
+        ## TLS
+        self.glo_add_property(
+            { "name":        "tls_color",
+              "desc":        "TLS Group Visualization Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.10, 0.75, 0.35),
+              "action":      ["recompile_Utls_axes",
+                              "recompile_Utls_ellipse",
+                              "recompile_Utls_rms"] })
+        self.glo_add_property(
+            { "name":        "add_biso",
+              "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
+              "catagory":    "TLS",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":       "adp_prob",
+              "desc":       "Contour Probability",
+              "catagory":   "TLS",
+              "type":       "integer",
+              "range":      PROP_PROBABILTY_RANGE,
+              "default":    50,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "T_line_width",
+              "desc":       "T Axes Line Width",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    1.0,
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "T_color",
+              "desc":        "T Axes Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.5, 0.5, 1.0),
+              "action":      "recompile_tensors" })
+        self.glo_add_property(
+            { "name":       "L_axis_radius",
+              "desc":       "Screw Axes Radius",
+              "catagory":   "TLS",
+              "type":       "float",
+              "default":    0.05,
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":       "L_color",
+              "desc":       "Screw Axes Color",
+              "catagory":   "TLS",
+              "type":       "color",
+              "default":    (1.0, 0.5, 0.5),
+              "action":     "recompile_tensors" })
+        self.glo_add_property(
+            { "name":        "U_color",
+              "desc":        "Thermal Atom U Color for Diff Mode",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (1.0, 1.0, 1.0),
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "ellipse_opacity",
+              "desc":        "TLS Thermal Ellipseoid Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_Utls_ellipse" })
+        self.glo_add_property(
+            { "name":        "rms_opacity",
+              "desc":        "TLS Thermal Peanut Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_Utls_rms" })
+        self.glo_add_property(
+            { "name":        "surface_opacity",
+              "desc":        "Screw Surface Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":      PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_surface" })
+
+    def add_gl_tls_group(self, gl_tls_group):
+        self.glo_add_child(gl_tls_group)
+        
+        child_id = gl_tls_group.glo_get_properties_id()
+
+        self.glo_link_child_property(
+            "symmetry", child_id, "symmetry")        
+
+        self.glo_link_child_property(
+            "main_chain_visible", child_id, "main_chain_visible")        
+        self.glo_link_child_property(
+            "side_chain_visible", child_id, "side_chain_visible") 
+        self.glo_link_child_property(
+            "hetatm_visible", child_id, "hetatm_visible") 
+        self.glo_link_child_property(
+            "water_visible", child_id, "water_visible")        
+        self.glo_link_child_property(
+            "hydrogen_visible", child_id, "hydrogen_visible") 
+
+        self.glo_link_child_property(
+            "fan_visible", child_id, "fan_visible")
+        self.glo_link_child_property(
+            "TLS_visible", child_id, "TLS_visible")
+        self.glo_link_child_property(
+            "Utls_U_diff", child_id, "Utls_U_diff")
+
+        self.glo_link_child_property(
+            "U", child_id, "U")
+        self.glo_link_child_property(
+            "ellipse", child_id, "ellipse")
+        self.glo_link_child_property(
+            "rms", child_id, "rms")
+
+        self.glo_link_child_property(
+            "axes_rT", child_id, "axes_rT")
+        self.glo_link_child_property(
+            "ellipse_rT", child_id, "ellipse_rT")
+        self.glo_link_child_property(
+            "rms_rT", child_id, "rms_rT")
+
+        self.glo_link_child_property(
+            "L1_visible", child_id, "L1_visible")
+        self.glo_link_child_property(
+            "L2_visible", child_id, "L2_visible")
+        self.glo_link_child_property(
+            "L3_visible", child_id, "L3_visible")
+        self.glo_link_child_property(
+            "add_biso", child_id, "add_biso")
+        self.glo_link_child_property(
+            "adp_prob", child_id, "adp_prob")
+        self.glo_link_child_property(
+            "T_line_width", child_id, "T_line_width")
+        self.glo_link_child_property(
+            "T_color", child_id, "T_color")
+        self.glo_link_child_property(
+            "L_axis_radius", child_id, "L_axis_radius")
+        self.glo_link_child_property(
+            "U_color", child_id, "U_color")
+        self.glo_link_child_property(
+            "ellipse_opacity", child_id, "ellipse_opacity")
+        self.glo_link_child_property(
+            "rms_opacity", child_id, "rms_opacity")
+        self.glo_link_child_property(
+            "surface_opacity", child_id, "surface_opacity")
+
+        
+###############################################################################
 ### Utility Widgets
 ###
 
@@ -1036,7 +2560,6 @@ class TLSDialog(gtk.Dialog):
     can either be extracted from PDB REMARK statements, or loaded from a
     CCP4/REFMAC TLSIN file.
     """    
-
     def __init__(self, **args):
         self.main_window = args["main_window"]
         self.sc = args["struct_context"]
@@ -1044,6 +2567,12 @@ class TLSDialog(gtk.Dialog):
 
         self.animation_time = 0.0
         self.animation_list = []
+
+        ## map chain_id -> color index so each tls group in a chain
+        ## gets its own color
+        self.chn_colori     = {}
+        self.gl_tls_chain   = {}
+        ## master list of tls groups handled by the dialog
         self.tls_group_list = []
 
         gtk.Dialog.__init__(
@@ -1199,10 +2728,41 @@ class TLSDialog(gtk.Dialog):
         """Adds the TLS group and creates tls.gl_tls OpenGL
         renderer.
         """
+        ## if no atoms were found in the tls_group,
+        ## then do not add it
+        try:
+            atm0 = tls_group[0]
+        except IndexError:
+            return
+
+        ## set the tls group color starting from color 2, unique
+        ## for each chain
+        try:
+            self.chn_colori[atm0.chain_id] += 1
+            colori = self.chn_colori[atm0.chain_id]
+        except KeyError:
+            self.chn_colori[atm0.chain_id] = colori = 2
+
+        tls_group.color = COLORS[colori]
+
+        ## add the tls_group object
         self.tls_group_list.append(tls_group)
-        
-        tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
-        self.sc.gl_struct.glo_add_child(tls_group.gl_tls)
+
+        ## creat GLTLSGroup for the visualization component
+        tls_group.gl_tls = GLTLSGroup(
+            tls_group = tls_group,
+            tls_color = tls_group.color[1])
+
+
+        ## get the GLTLSChain to add the GLTLSGroup to
+        try:
+            gl_tls_chain = self.gl_tls_chain[atm0.chain_id]
+        except KeyError:
+            gl_tls_chain = GLTLSChain(chain_id = atm0.chain_id)
+            self.sc.gl_struct.glo_add_child(gl_tls_chain)
+            self.gl_tls_chain[atm0.chain_id] = gl_tls_chain
+
+        gl_tls_chain.add_gl_tls_group(tls_group.gl_tls)            
         tls_group.gl_tls.glo_add_update_callback(self.update_cb)
 
         ## rebuild GUI viewers
@@ -1217,6 +2777,9 @@ class TLSDialog(gtk.Dialog):
         """Remove the current TLS groups, including destroying
         the tls.gl_tls OpenGL renderer
         """
+        ## reset
+        self.chn_colori = {}
+        
         gl_viewer = self.sc.gl_struct.glo_get_root()
 
         for tls_group in self.tls_group_list:

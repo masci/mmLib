@@ -11,6 +11,7 @@ import string
 import fpformat
 
 from mmLib.mmTypes   import *
+from mmLib.AtomMath  import *
 from mmLib.Structure import *
 
 
@@ -101,7 +102,15 @@ class TLSInfo(object):
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         self.S = (s2211, s1133, s12, s13, s23, s21, s31, s32)
-        
+
+    def is_null(self):
+        """Returns True if the T,L,S tensors are not set, or are set
+        with values of zero.
+        """
+        if self.T==None or self.L==None or self.S==None:
+            return True
+        return False
+
     def create_tls_name(self):
         """Creates a name for the TLS group using the selected
         residue ranges.
@@ -497,7 +506,7 @@ class TLSGroup(AtomList):
             self.S[0,2], self.S[1,2], self.S[1,0], self.S[2,0], self.S[2,1])
 
         return tstr
-
+    
     def set_origin(self, x, y, z):
         """Sets the x, y, z components of the TLS origin vector.
         """
@@ -530,6 +539,20 @@ class TLSGroup(AtomList):
         self.S = array([[s11, s12, s13],
                         [s21, s22, s23],
                         [s31, s32, s33]]) * deg2rad
+
+    def is_null(self):
+        """Returns True if the T,L,S tensors are not set, or are set
+        with values of zero.
+        """
+        if allclose(trace(self.T), 0.0) or allclose(trace(self.L), 0.0):
+            return True
+        return False
+
+    def check_positive_eigenvalues(self):
+        """Returns True if the eigenvalues of the T and L tensors are all
+        positive, otherwise returns False.
+        """
+        return min(eigenvalues(self.L))>=0 and min(eigenvalues(self.T))>=0.0
 
     def calc_TLS_least_squares_fit(self):
         """Perform a least-squares fit of the atoms contained in self
@@ -702,6 +725,295 @@ class TLSGroup(AtomList):
             Utls = self.calc_Utls(T, L, S, atm.position - origin)
             yield atm, Utls
 
+    def shift_COR(self):
+        """Shift the TLS group to the center of reaction.
+        """
+        calcs       = self.calc_COR()
+        
+        self.origin = calcs["COR"].copy()
+        self.T      = calcs["T'"].copy()
+        self.L      = calcs["L'"].copy()
+        self.S      = calcs["S'"].copy()
+
+        return calcs
+        
+    def calc_COR(self):
+        """Calculate new tensors based on the center for reaction.
+        This method returns a dictionary of the calculations:
+
+        T^: T tensor in the coordinate system of L
+        L^: L tensor in the coordinate system of L
+        S^: S tensor in the coordinate system of L
+
+        COR: Center of Reaction
+
+        T',S',L': T,L,S tensors in origonal coordinate system
+                  with the origin shifted to the center of reaction.
+        """
+        tls_info = {}
+
+        ## set the L tensor eigenvalues and eigenvectors
+        (eval_L, evec_L) = eigenvectors(self.L)
+
+        tls_info["L1_eigen_val"] = eval_L[0]
+        tls_info["L2_eigen_val"] = eval_L[1]
+        tls_info["L3_eigen_val"] = eval_L[2]
+        
+        tls_info["L1_eigen_vec"] = evec_L[0]
+        tls_info["L2_eigen_vec"] = evec_L[1]
+        tls_info["L3_eigen_vec"] = evec_L[2]
+
+        ## transpose the original the evec_L so it can be used
+        ## to rotate the other tensors
+        evec_L = transpose(evec_L)
+        
+        ## carrot-L tensor (tensor WRT principal axes of L)
+        cL      = zeros([3,3], Float)
+        cL[0,0] = eval_L[0]
+        cL[1,1] = eval_L[1]
+        cL[2,2] = eval_L[2]
+
+        tls_info["L^"] = cL
+
+        ## carrot-T tensor (T tensor WRT principal axes of L)
+        cT = matrixmultiply(
+            matrixmultiply(transpose(evec_L), self.T), evec_L)
+
+        tls_info["T^"] = cT
+
+        ## carrot-S tensor (S tensor WRT principal axes of L)
+        cS = matrixmultiply(
+            matrixmultiply(transpose(evec_L), self.S), evec_L)
+
+        ## correct for left-handed libration eigenvectors
+        det = determinant(evec_L)
+        if int(det) != 1:
+            cS = -cS
+
+        tls_info["S^"] = cS
+        
+        ## ^rho: the origin-shift vector in the coordinate system of L
+        small = 0.002 * deg2rad2
+
+        cL1122 = cL[1,1] + cL[2,2]
+        cL2200 = cL[2,2] + cL[0,0]
+        cL0011 = cL[0,0] + cL[1,1]
+
+        if cL1122>=small:
+            crho0 = (cS[1,2]-cS[2,1]) / cL1122
+        else:
+            crho0 = 0.0
+
+        if cL2200>=small:
+            crho1 = (cS[2,0]-cS[0,2]) / cL2200
+        else:
+            crho1 = 0.0
+
+        if cL0011>=small:
+            crho2 = (cS[0,1]-cS[1,0]) / cL0011
+        else:
+            crho2 = 0.0
+
+        crho = array([crho0, crho1, crho2], Float)
+
+        tls_info["RHO^"] = crho
+        
+        ## rho: the origin-shift vector in orthogonal coordinates
+        rho = matrixmultiply(evec_L, crho)
+        
+        tls_info["RHO"] = rho
+        tls_info["COR"] = array(self.origin, Float) + rho
+
+        ## set up the origin shift matrix PRHO WRT orthogonal axes
+        PRHO = array([ [    0.0,  rho[2], -rho[1]],
+                       [-rho[2],     0.0,  rho[0]],
+                       [ rho[1], -rho[0],     0.0] ], Float)
+
+        ## set up the origin shift matrix cPRHO WRT libration axes
+        cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+                        [-crho[2],     0.0,  crho[0]],
+                        [ crho[1], -crho[0],     0.0] ], Float)
+
+        ## calculate tranpose of cPRHO, ans cS
+        cSt = transpose(cS)
+        cPRHOt = transpose(cPRHO)
+
+        ## calculate S'^ = S^ + L^*pRHOt
+        cSp = cS + matrixmultiply(cL, cPRHOt)
+        tls_info["S'^"] = cSp
+
+        ## L'^ = L^ = cL
+        tls_info["L'^"] = cL
+
+        ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
+        cTp = cT + \
+              matrixmultiply(cPRHO, cS) + \
+              matrixmultiply(cSt, cPRHOt) + \
+              matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+        tls_info["T'^"] = cTp
+
+        ## transpose of PRHO and S
+        PRHOt = transpose(PRHO)
+        St = transpose(self.S)
+
+        ## calculate S' = S + L*PRHOt
+        Sp = self.S + matrixmultiply(self.L, PRHOt)
+        tls_info["S'"] = Sp
+
+        ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+        Tp = self.T + \
+             matrixmultiply(PRHO, self.S) + \
+             matrixmultiply(St, PRHOt) + \
+             matrixmultiply(matrixmultiply(PRHO, self.L), PRHOt)
+        tls_info["T'"] = Tp
+
+        ## L' is just L
+        tls_info["L'"] = self.L.copy()
+
+##         ### Verify that the the math we've just done is correct by
+##         ### comparing the original TLS calculated U tensors with the
+##         ### U tensors calculated from the COR
+##         T_cor = tls_info["T'"].copy()
+##         L_cor = tls_info["L'"].copy()
+##         S_cor = tls_info["S'"].copy()
+
+##         for atm in self:
+##             x  = atm.position - self.origin
+##             xp = atm.position - tls_info["COR"]
+
+##             Utls     = self.calc_Utls(self.T, self.L, self.S, x)
+##             Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
+
+##             assert allclose(Utls, Utls_cor)
+##         ###
+
+        ## now calculate the TLS motion description using 3 non
+        ## intersecting screw axes, with one
+
+        ## libration axis 1 shift in the L coordinate system
+        
+        if cL[0,0]>=small:
+            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
+        else:
+            cL1rho = zeros(3, Float)
+
+        ## libration axis 2 shift in the L coordinate system
+        if cL[1,1]>=small:
+            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
+        else:
+            cL2rho = zeros(3, Float)
+
+        ## libration axis 2 shift in the L coordinate system
+        if cL[2,2]>=small:
+            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
+            
+        else:
+            cL3rho = zeros(3, Float)
+
+        ## libration axes shifts in the origional orthogonal
+        ## coordinate system
+        tls_info["L1_rho"] = matrixmultiply(evec_L, cL1rho)
+        tls_info["L2_rho"] = matrixmultiply(evec_L, cL2rho)
+        tls_info["L3_rho"] = matrixmultiply(evec_L, cL3rho)
+
+        ## calculate screw pitches (A*R / R*R) = (A/R)
+        if cL[0,0]>=small:
+            tls_info["L1_pitch"] = cS[0,0]/cL[0,0]
+        else:
+            tls_info["L1_pitch"] = 0.0
+            
+        if cL[1,1]>=small:
+            tls_info["L2_pitch"] = cS[1,1]/cL[1,1]
+        else:
+            tls_info["L2_pitch"] = 0.0
+
+        if cL[2,2]>=small:
+            tls_info["L3_pitch"] = cS[2,2]/cL[2,2]
+        else:
+            tls_info["L3_pitch"] = 0.0
+
+        ## now calculate the reduction in T for the screw rotation axes
+        cTred = cT.copy()
+
+        for i in range(3):
+            for k in range(3):
+                if i==k:
+                    continue
+                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
+
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    if j==i:
+                        continue
+                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
+                
+
+        tls_info["rT'"] = matrixmultiply(transpose(evec_L),
+                                         matrixmultiply(cTred, evec_L))
+
+        return tls_info
+
+    def calc_tls_info(self):
+        """Calculates a number of statistics about the TLS group tensors,
+        goodness of fit, various parameter averages, center of reaction
+        tensors, etc...
+        """
+        tls_info = self.calc_COR()
+
+        ## EXPERIMENTAL DATA
+
+        ## number of atoms
+        tls_info["num_atoms"] = len(self)
+
+        ## mean temp_factor/anisotropy from experimental data (PDB file)
+        tls_info["exp_mean_temp_factor"] = self.calc_adv_temp_factor()
+        tls_info["exp_mean_anisotropy"]  = self.calc_adv_anisotropy()
+
+        ## the rest is only calculated if the TLS group has group
+        ## has all positive eigenvalues
+        tls_info["negitive_eigen_values"] = False
+        
+        small = 0.0
+        if min(eigenvalues(tls_info["rT'"]))<=small:
+            tls_info["negitive_eigen_values"] = True
+        elif min(eigenvalues(tls_info["L'"]))<=small:
+            tls_info["negitive_eigen_values"] = True
+
+        if tls_info["negitive_eigen_values"]==True:
+            return tls_info
+
+        ## TLS FIT
+
+        ## goodness of fit 
+        tls_info["R"] = self.calc_R()
+        tls_info["mean_S"], tls_info["mean_S_sigma"] = self.calc_mean_S()
+        tls_info["mean_dp2"], tls_info["mean_dp2_sigma"] = self.calc_mean_DP2()
+        tls_info["sum_dp2"] = self.calc_sum_DP2()
+        
+        ## model temp factors
+        n = 0
+        mean_max_tf = 0.0
+        mean_tf     = 0.0
+        mean_aniso  = 0.0
+
+        for atm, Utls in self.iter_atm_Utls():
+            n += 1
+
+            evals  = eigenvalues(Utls)
+            max_ev = max(eigenvalues(Utls))
+            min_ev = min(eigenvalues(Utls))
+
+            mean_max_tf += u2b * max_ev
+            mean_tf     += u2b * trace(Utls) / 3.0
+            mean_aniso  += calc_anisotropy(Utls)
+
+        tls_info["tls_mean_max_tf"] = mean_max_tf / float(n)
+        tls_info["tls_mean_tf"]     = mean_tf     / float(n)
+        tls_info["tls_mean_aniso"]  = mean_aniso  / float(n)        
+
+        return tls_info
+
     def calc_R(self):
         """Calculate the R factor of U vs. Utls.
         """
@@ -807,8 +1119,6 @@ class TLSGroup(AtomList):
         """Calculates the mean DP2uij of the normalized U vs Utls.
         """
         B   = 10.0
-        U2B = 8.0*math.pi*math.pi
-        B2U = 1.0/U2B
         
         num       = 0
         mean_DP2N = 0.0
@@ -876,231 +1186,6 @@ class TLSGroup(AtomList):
         MSD = MSD / float(num)
 
         return mean_DP2N, math.sqrt(MSD)
-
-    def shift_COR(self):
-        """Shift the TLS group to the center of reaction.
-        """
-        calcs       = self.calc_COR()
-        
-        self.origin = calcs["COR"].copy()
-        self.T      = calcs["T'"].copy()
-        self.L      = calcs["L'"].copy()
-        self.S      = calcs["S'"].copy()
-
-        return calcs
-        
-    def calc_COR(self):
-        """Calculate new tensors based on the center for reaction.
-        This method returns a dictionary of the calculations:
-
-        T^: T tensor in the coordinate system of L
-        L^: L tensor in the coordinate system of L
-        S^: S tensor in the coordinate system of L
-
-        COR: Center of Reaction
-
-        T',S',L': T,L,S tensors in origonal coordinate system
-                  with the origin shifted to the center of reaction.
-        """
-        calcs = {}
-
-        (eval_L, evec_L) = eigenvectors(self.L)
-        evec_L = transpose(evec_L)
-        
-        ## carrot-L tensor (tensor WRT principal axes of L)
-        cL      = zeros([3,3], Float)
-        cL[0,0] = eval_L[0]
-        cL[1,1] = eval_L[1]
-        cL[2,2] = eval_L[2]
-
-        calcs["L^"] = cL
-
-        ## carrot-T tensor (T tensor WRT principal axes of L)
-        cT = matrixmultiply(
-            matrixmultiply(transpose(evec_L), self.T), evec_L)
-
-        calcs["T^"] = cT
-
-        ## carrot-S tensor (S tensor WRT principal axes of L)
-        cS = matrixmultiply(
-            matrixmultiply(transpose(evec_L), self.S), evec_L)
-
-        ## correct for left-handed libration eigenvectors
-        det = determinant(evec_L)
-        if int(det) != 1:
-            cS = -cS
-
-        calcs["S^"] = cS
-        
-        ## ^rho: the origin-shift vector in the coordinate system of L
-        small = 0.002 * deg2rad2
-
-        cL1122 = cL[1,1] + cL[2,2]
-        cL2200 = cL[2,2] + cL[0,0]
-        cL0011 = cL[0,0] + cL[1,1]
-
-        if cL1122>=small:
-            crho0 = (cS[1,2]-cS[2,1]) / cL1122
-        else:
-            crho0 = 0.0
-
-        if cL2200>=small:
-            crho1 = (cS[2,0]-cS[0,2]) / cL2200
-        else:
-            crho1 = 0.0
-
-        if cL0011>=small:
-            crho2 = (cS[0,1]-cS[1,0]) / cL0011
-        else:
-            crho2 = 0.0
-
-        crho = array([crho0, crho1, crho2], Float)
-
-        calcs["RHO^"] = crho
-        
-        ## rho: the origin-shift vector in orthogonal coordinates
-        rho = matrixmultiply(evec_L, crho)
-        
-        calcs["RHO"] = rho
-        calcs["COR"] = array(self.origin, Float) + rho
-
-        ## set up the origin shift matrix PRHO WRT orthogonal axes
-        PRHO = array([ [    0.0,  rho[2], -rho[1]],
-                       [-rho[2],     0.0,  rho[0]],
-                       [ rho[1], -rho[0],     0.0] ], Float)
-
-        ## set up the origin shift matrix cPRHO WRT libration axes
-        cPRHO = array([ [    0.0,  crho[2], -crho[1]],
-                        [-crho[2],     0.0,  crho[0]],
-                        [ crho[1], -crho[0],     0.0] ], Float)
-
-        ## calculate tranpose of cPRHO, ans cS
-        cSt = transpose(cS)
-        cPRHOt = transpose(cPRHO)
-
-        ## calculate S'^ = S^ + L^*pRHOt
-        cSp = cS + matrixmultiply(cL, cPRHOt)
-        calcs["S'^"] = cSp
-
-        ## L'^ = L^ = cL
-        calcs["L'^"] = cL
-
-        ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-        cTp = cT + \
-              matrixmultiply(cPRHO, cS) + \
-              matrixmultiply(cSt, cPRHOt) + \
-              matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
-        calcs["T'^"] = cTp
-
-        ## transpose of PRHO and S
-        PRHOt = transpose(PRHO)
-        St = transpose(self.S)
-
-        ## calculate S' = S + L*PRHOt
-        Sp = self.S + matrixmultiply(self.L, PRHOt)
-        calcs["S'"] = Sp
-
-        ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-        Tp = self.T + \
-             matrixmultiply(PRHO, self.S) + \
-             matrixmultiply(St, PRHOt) + \
-             matrixmultiply(matrixmultiply(PRHO, self.L), PRHOt)
-        calcs["T'"] = Tp
-
-        ## L' is just L
-        calcs["L'"] = self.L.copy()
-
-
-        ### Verify that the the math we've just done is correct by
-        ### comparing the original TLS calculated U tensors with the
-        ### U tensors calculated from the COR
-        T_cor = calcs["T'"].copy()
-        L_cor = calcs["L'"].copy()
-        S_cor = calcs["S'"].copy()
-
-        for atm in self:
-            x  = atm.position - self.origin
-            xp = atm.position - calcs["COR"]
-
-            Utls     = self.calc_Utls(self.T, self.L, self.S, x)
-            Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
-
-            assert allclose(Utls, Utls_cor)
-        ###
-
-
-        ## now calculate the TLS motion description using 3 non
-        ## intersecting screw axes, with one
-
-        ## libration axis 1 shift in the L coordinate system
-        
-        if cL[0,0]>=small:
-            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
-        else:
-            cL1rho = zeros(3, Float)
-
-        ## libration axis 2 shift in the L coordinate system
-        if cL[1,1]>=small:
-            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
-        else:
-            cL2rho = zeros(3, Float)
-
-        ## libration axis 2 shift in the L coordinate system
-        if cL[2,2]>=small:
-            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
-            
-        else:
-            cL3rho = zeros(3, Float)
-
-        ## libration axes shifts in the origional orthogonal
-        ## coordinate system
-        calcs["L1_rho"] = matrixmultiply(evec_L, cL1rho)
-        calcs["L2_rho"] = matrixmultiply(evec_L, cL2rho)
-        calcs["L3_rho"] = matrixmultiply(evec_L, cL3rho)
-
-        ## calculate screw pitches (A*R / R*R) = (A/R)
-        if cL[0,0]>=small:
-            calcs["L1_pitch"] = cS[0,0]/cL[0,0]
-        else:
-            calcs["L1_pitch"] = 0.0
-            
-        if cL[1,1]>=small:
-            calcs["L2_pitch"] = cS[1,1]/cL[1,1]
-        else:
-            calcs["L2_pitch"] = 0.0
-
-        if cL[2,2]>=small:
-            calcs["L3_pitch"] = cS[2,2]/cL[2,2]
-        else:
-            calcs["L3_pitch"] = 0.0
-
-        ## now calculate the reduction in T for the screw rotation axes
-        cTred = cT.copy()
-
-        for i in range(3):
-            for k in range(3):
-                if i==k:
-                    continue
-                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
-
-        for i in range(3):
-            for j in range(3):
-                for k in range(3):
-                    if j==i:
-                        continue
-                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
-                
-
-        calcs["rT'"] = matrixmultiply(transpose(evec_L),
-                                      matrixmultiply(cTred, evec_L))
-
-        return calcs
-
-    def check_positive_eigenvalues(self):
-        """Returns True if the eigenvalues of the T and L tensors are all
-        positive, otherwise returns False.
-        """
-        return min(eigenvalues(self.L))>=0 and min(eigenvalues(self.T))>=0.0
 
     def write(self, out = sys.stdout):
         """Write a nicely formatted tensor description.
@@ -1345,7 +1430,6 @@ class TLSStructureAnalysis(object):
                 return None
 
             return stats
-
 
         def overlap(prev_stats, stats):
             prev_segment = prev_stats1["segment"]
