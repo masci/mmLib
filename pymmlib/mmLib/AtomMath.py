@@ -42,12 +42,50 @@ def rmatrix(alpha, beta, gamma):
          [cosB*sinG, cosA*cosG+sinA*sinB*sinG, cosA*sinB*sinG-cosG*sinA ],
          [-sinB,     cosB*sinA,                cosA*cosB ]])
 
+def rmatrixu(u, theta):
+    """Return a rotation matrix caused by a right hand rotation of theta
+    radians around vector u.
+    """
+    u    = normalize(u)
+    U    = array([ [   0.0, -u[2],  u[1] ],
+                   [  u[2],   0.0, -u[0] ],
+                   [ -u[1],  u[0],   0.0 ] ])
+        
+    cosT = math.cos(theta)
+    sinT = math.sin(theta)
+
+    return identity(3)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
+
 def dmatrix(alpha, beta, gamma):
     """Returns the displacment matrix based on rotation about Euler
     angles alpha, beta, and gamma.
     """
     return rmatrix(alpha, beta, gamma) - identity(3)
 
+def dmatrixu(u, theta):
+    """Return a displacement matrix caused by a right hand rotation of theta
+    radians around vector u.
+    """
+    return rmatrixu(u, theta) - identity(3)
+
+def rmatrixz(u):
+    """Return a rotation matrix which transforms the coordinate system
+    such that the vector u is aligned along the z axis.
+    """
+    u, v, w = normalize(u)
+
+    d = math.sqrt(u*u + v*v)
+    
+    Rxz = array([ [  u/d, v/d,  0.0 ],
+                  [ -v/d, u/d,  0.0 ],
+                  [  0.0, 0.0,  1.0 ] ])
+
+    Rxz2z = array([ [   w, 0.0,    -d],
+                    [ 0.0, 1.0,   0.0],
+                    [   d, 0.0,     w] ])
+
+    return matrixmultiply(Rxz2z, Rxz)
+	 
 def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.
     """
