@@ -186,17 +186,13 @@ class mmCIFFile:
 
 
     def loadFile(self, fil):
-        if type(fil) == types.StringType:
-            fil = OpenFile(fil, "r")
-
+        fil = OpenFile(fil, "r")
         for cif_data in mmCIFFileParser().parseFile(fil):
             self.addData(cif_data)
 
 
     def saveFile(self, fil):
-        if type(fil) == types.StringType:
-            fil = OpenFile(fil, "r")
-
+        fil = OpenFile(fil, "w")
         mmCIFFileWriter().writeFile(fil, self._data_list)
 
 

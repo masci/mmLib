@@ -17,11 +17,49 @@ from Structure           import *
 FileLoaderError = "FileLoaderError"
 
 
-
+## various codes used in PDB/mmCIF files
 InsertionCodes    = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ChainIDs          = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ConformationsIDs  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+
+## columns used for writing the atom_site table in mmCIF
+AtomSiteColumns = [
+    "group_PDB",
+    "id",
+    "type_symbol",
+    "label_atom_id",
+    "label_alt_id",
+    "label_comp_id",
+    "label_asym_id",
+    "label_entity_id", 
+    "label_seq_id",
+    "pdbx_PDB_ins_code",
+    "Cartn_x",
+    "Cartn_y",
+    "Cartn_z",
+    "occupancy",
+    "B_iso_or_equiv",
+    "Cartn_x_esd",
+    "Cartn_y_esd",
+    "Cartn_z_esd",
+    "occupancy_esd",
+    "B_iso_or_equiv_esd",
+    "auth_seq_id",
+    "auth_comp_id",
+    "auth_asym_id",
+    "auth_atom_id",
+    "pdbx_PDB_model_num"]
+
+
+AtomSiteAnisotropColumns = [
+    "id",
+    "U[1][1]",
+    "U[2][2]",
+    "U[3][3]",
+    "U[1][2]",
+    "U[1][3]",
+    "U[2][3]"]
 
 
 def SortChainIDList(list):
@@ -679,8 +717,160 @@ class PDBToStructureLoader:
 
 class StructureTommCIFSaver:
     """Converts Structure to mmCIFFile class and saves it to the given path."""
+
     def save(self, path, structure):
-        pass
+        self.cif_file = mmCIF.mmCIFFile()
+        self.structure = structure
+
+        ## waters shall always be in chain S
+        self.water_chain = "S"
+        self.water_res_seq = 1
+
+        ## list of chain ID's available for use
+        ## "S" should not be in the list -- it's the default solvent chain
+        self.available_chain_ids = ChainIDs
+
+        ## first step removes the chainID's in use
+        for chain in self.structure.chainIterator():
+            if chain.getID() in self.available_chain_ids:
+                i = self.available_chain_ids.index(chain.getID())
+                self.available_chain_ids = self.available_chain_ids[i+1:]
+
+        ## create the mmCIF data block and mmCIF tables we need
+        data = mmCIFData("mol")
+        data.addTable(atom_site)
+        self.cif_file.addData(data)
+                
+        table = mmCIFTable("atom_site", AtomSiteColumns)
+        data.addTable(table)
+        
+        table = mmCIFTable("atom_site_anisotrop", AtomSiteAnisotropColumns)
+        data.addTable(table)
+
+        ## write out the structure
+        for mol in self.structure.moleculeIterator():
+            if mol.getType() == "polymer":
+                self.molecule_polymer(mol)
+
+            elif mol.getType() == "non-polymer":
+                self.molecule_non_polymer(mol)
+
+            elif mol.getType() == "water":
+                self.molecule_water(mol)
+                
+        self.cif_file.saveFile(fil)
+    
+
+    def molecule_polymer(self, mol):
+        for chain in mol.chainIterator():
+            label_seq_id = 1
+            
+            for aa_res in chain.aminoAcidResidueIterator():
+
+                for atm in aa_res.atomIterator():
+                    label_comp_id = aa_res.getName()
+                    label_asym_id = chain.getID()
+                    auth_seq_id   = aa_res.getSequenceID()
+                    
+                    label_alt_id  = ""
+                    conf = atm.getConformation()
+                    if conf: label_alt_id = conf.getID()
+
+                    self.add_atom(atm, label_comp_id, label_asym_id,
+                                  label_seq_id, label_alt_id, auth_seq_id)
+
+                label_seq_id += 1
+
+
+    def molecule_non_polymer(self, mol):
+        ## get a chain ID for the molecule
+        label_asym_id = ""
+        if len(self.available_chain_ids):
+            label_asym_id = self.available_chain_ids[0]
+            self.available_chain_ids = self.available_chain_ids[1:]
+
+        for atm in mol.atomIterator():
+            label_comp_id = mol.getName() or "UNK"
+            label_seq_id  = 1
+            auth_seq_id   = 1
+
+            label_alt_id  = ""
+            conf = atm.getConformation()
+            if conf: label_alt_id = conf.getID()
+
+            self.add_hetatm(atm, label_comp_id, label_asym_id,
+                            label_seq_id, label_alt_id, auth_seq_id)
+
+
+    def molecule_water(self, mol):
+        for atm in mol.atomIterator():
+            label_alt_id  = ""
+            conf = atm.getConformation()
+            if conf: label_alt_id = conf.getID()
+
+            self.add_hetatm(atm, "HOH", self.water_chain,
+                            self.water_res_seq, label_alt_id,
+                            self.water_res_seq)
+
+        self.water_res_seq += 1
+
+
+    def add_hetatm(self, atm, resName, chainID, resSeq, iCode, altLoc):
+        self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
+                       PDB.HETATM())
+
+
+    def add_atom(self, atm, resName, chainID, resSeq, iCode, altLoc):
+        self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
+                       PDB.ATOM())
+        
+
+    def add_atom2(self, atm, resName, chainID, resSeq, iCode, altLoc,
+                  pdb_atom):
+        
+        self.pdb_file.pdbrecord_list.append(pdb_atom)
+
+        pdb_atom.name = atm.getAtomLabel()
+        pdb_atom.resName = resName
+        pdb_atom.altLoc = altLoc
+        pdb_atom.chainID = chainID
+        pdb_atom.resSeq = resSeq
+        pdb_atom.iCode = iCode
+        
+        vec = atm.getPosition()
+        pdb_atom.x = vec[0]
+        pdb_atom.y = vec[1]
+        pdb_atom.z = vec[2]
+        
+        pdb_atom.occupancy = atm.getOccupancy()
+        pdb_atom.tempFactor = atm.getTemperatureFactor()
+        pdb_atom.element = atm.getElement()
+        
+        if atm.getU() != None:
+            pdb_anisou = PDB.ANISOU()
+            self.pdb_file.pdbrecord_list.append(pdb_anisou)
+
+            pdb_anisou.name = pdb_atom.name
+            pdb_anisou.resName = pdb_atom.resName
+            pdb_anisou.chainID = pdb_atom.chainID
+            pdb_anisou.resSeq = pdb_atom.resSeq
+            pdb_anisou.iCode = pdb_atom.iCode
+            pdb_anisou.element = pdb_atom.element
+
+            (u00, u11, u22, u01, u02, u12) = atm.getU()
+            u00 = int(u00 * 10000.0)
+            u11 = int(u11 * 10000.0)
+            u22 = int(u22 * 10000.0)
+            u01 = int(u01 * 10000.0)
+            u02 = int(u02 * 10000.0)
+            u12 = int(u12 * 10000.0)
+
+            setattr(pdb_anisou, "u[0][0]", u00)
+            setattr(pdb_anisou, "u[1][1]", u11)
+            setattr(pdb_anisou, "u[2][2]", u22)
+            setattr(pdb_anisou, "u[0][1]", u01)
+            setattr(pdb_anisou, "u[0][2]", u02)
+            setattr(pdb_anisou, "u[1][2]", u12)
 
 
 
@@ -743,8 +933,7 @@ class StructureToPDBSaver:
         chainID = ""
         if len(self.available_chain_ids):
             chainID = self.available_chain_ids[0]
-            
-        self.available_chain_ids = self.available_chain_ids[1:]
+            self.available_chain_ids = self.available_chain_ids[1:]
 
         for atm in mol.atomIterator():
             resName = mol.getName() or "UNK"

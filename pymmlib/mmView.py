@@ -32,44 +32,29 @@ except gtk.gdkgl.NoMatches:
 
 
 
-class GLViewer:
-    def __init__(self, atom_container):
-        self.atom_container = atom_container
-        self.calcObjects()
+class GLViewer(gtk.gtkgl.DrawingArea):
+    def __init__(self):
+        gtk.gtkgl.DrawingArea.__init__(self)
+        gtk.gtkgl.widget_set_gl_capability(self, glconfig)
         
-        self.rot  = "x"
-        self.rotx = 0
-        self.roty = 0
-        self.is_solid = gtk.TRUE
+        self.set_size_request(300, 300)
 
-        ## GL Widget
-        self.glarea = gtk.gtkgl.DrawingArea()
-        self.glarea.set_size_request(300, 300)
+        self.connect('realize', self.realize)
+        self.connect('map', self.map)
+        self.connect('unmap', self.unmap)
+        self.connect('configure_event', self.configure_event)
+        self.connect('expose_event', self.expose_event)
+        self.connect('destroy', self.destroy)
 
-        gtk.gtkgl.widget_set_gl_capability(self.glarea, glconfig)
+        self.rot         = "x"
+        self.rotx        = 0
+        self.roty        = 0
+        self.is_solid    = gtk.TRUE
+        self.sphere_list = []
+        self.line_list   = []
 
-        self.glarea.connect('realize', self.realize)
-        self.glarea.connect('map', self.map)
-        self.glarea.connect('unmap', self.unmap)
-        self.glarea.connect('configure_event', self.configure_event)
-        self.glarea.connect('expose_event', self.expose_event)
-        self.glarea.connect('destroy', self.glarea_destroy)
-        self.glarea.show()
-
-        ## put the OpenGL widget in a pretty frame
-        self.frame = gtk.Frame()
-        self.frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
-        self.frame.add(self.glarea)
-        self.frame.connect('destroy', self.destroy)
-
-    def getWidget(self):
-        return self.frame
-
-    def destroy(self, frame):
+    def destroy(self, glarea):
         gtk.timeout_remove(self.tn)
-        return gtk.TRUE
-
-    def glarea_destroy(self, glarea):
         return gtk.TRUE
 
     def timeout(self):
@@ -83,7 +68,7 @@ class GLViewer:
             if self.roty > 360:
                 self.roty = 0
                 self.rot = "x"
-        self.glarea.queue_draw()
+        self.queue_draw()
         
         return gtk.TRUE
 
@@ -102,8 +87,8 @@ class GLViewer:
 
     def realize(self, glarea):
         # get GLContext and GLDrawable
-	glcontext = self.glarea.get_gl_context()
-	gldrawable = self.glarea.get_gl_drawable()
+	glcontext = self.get_gl_context()
+	gldrawable = self.get_gl_drawable()
 	
 	# GL calls
 	if not gldrawable.gl_begin(glcontext):
@@ -132,8 +117,8 @@ class GLViewer:
 
     def configure_event(self, glarea, event):
 	# get GLContext and GLDrawable
-	glcontext = self.glarea.get_gl_context()
-	gldrawable = self.glarea.get_gl_drawable()
+	glcontext = self.get_gl_context()
+	gldrawable = self.get_gl_drawable()
 	
 	# GL calls
 	if not gldrawable.gl_begin(glcontext):
@@ -159,8 +144,8 @@ class GLViewer:
 
     def expose_event(self, glarea, event):
 	# get GLContext and GLDrawable
-	glcontext = self.glarea.get_gl_context()
-	gldrawable = self.glarea.get_gl_drawable()
+	glcontext = self.get_gl_context()
+	gldrawable = self.get_gl_drawable()
 	
 	# GL calls
 	if not gldrawable.gl_begin(glcontext):
@@ -199,25 +184,29 @@ class GLViewer:
 	
 	return gtk.TRUE
 
-    def calcObjects(self):
+    def setAtomContainer(self, atom_container):
+        self.rot  = "x"
+        self.rotx = 0
+        self.roty = 0
+        
         self.sphere_list = []
         self.line_list = []
         
         ## compute the centroid
         centroid = Vector(0.0, 0.0, 0.0)
         n = 0
-        for atm in self.atom_container.atomIterator():
+        for atm in atom_container.atomIterator():
             n += 1
             centroid += atm.getPosition()
         centroid = centroid / n        
 
         ## atom spheres
-        for atm in self.atom_container.atomIterator():
+        for atm in atom_container.atomIterator():
             pos = atm.getPosition() - centroid
             size = atm.el.atomic_number / 10.0
             self.sphere_list.append( ((pos[0], pos[1], pos[2]), size) )
 
-        for bond in self.atom_container.bondIterator():
+        for bond in atom_container.bondIterator():
             ## calculate line width based on the number of standard deviations
             ## from ideal
             (dist, dist_esd) = bond.getDistance()
@@ -235,63 +224,110 @@ class GLViewer:
             self.line_list.append(
                ( (v1[0], v1[1], v1[2]), (v2[0], v2[1], v2[2]), lwidth) )
 
-
-
-class DefaultDisplay:
-    def __init__(self, chain):
-        self.chain = chain
-
-        ## create the GLViewer
-        glviewer = GLViewer(chain)
-
-        ## create the frame
-        self.frame = gtk.Frame()
-        self.frame.set_border_width(3)
-        self.frame.add(glviewer.getWidget())
-        
-    def getWidget(self):
-        return self.frame
+        self.queue_draw()
 
 
 
-class AAResidueDisplay:
-    def __init__(self, aa_res):
-        self.aa_res = aa_res
+class AtomContainerPanel(gtk.VBox):
+    def __init__(self):
+        gtk.VBox.__init__(self, spacing=3)
+        self.set_border_width(3)
 
-        ## create the text box
-        vbox = gtk.VBox()
+        ## make the print box
+        sw = gtk.ScrolledWindow()
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.pack_start(sw)
 
-        def add_string(s):
-            label = gtk.Label(s)
-            vbox.add(label)
+        self.store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+     
+        treeview = gtk.TreeView(self.store)
+        sw.add(treeview)
+        treeview.set_rules_hint(gtk.TRUE)
+        treeview.set_search_column(0)
 
-        add_string("Residue Name: %s" % (self.aa_res.getName()))
-        add_string("Sequence ID: %s" % (self.aa_res.getSequenceID()))
-
-        psi = self.aa_res.calcTorsionPsi()
-        if psi:
-            add_string("PSI Torsion: %f" % (psi))
-
-        phi = self.aa_res.calcTorsionPhi()
-        if phi:
-            add_string("PHI Torsion: %f" % (phi))
-
-
-        frame = gtk.Frame()
-        frame.set_border_width(3)
-        frame.add(vbox)
+        column = gtk.TreeViewColumn("Property", gtk.CellRendererText(), text=0)
+        treeview.append_column(column)
+    
+        column = gtk.TreeViewColumn("Value", gtk.CellRendererText(), text=1)
+        treeview.append_column(column)
 
         ## create the GLViewer
-        glviewer = GLViewer(aa_res)
+        self.glviewer = GLViewer()
+        self.add(self.glviewer)
 
-        ## stuff the text box and glviewer in a vbox
-        self.vbox = gtk.VBox()
-        self.vbox.add(frame)
-        self.vbox.add(glviewer.getWidget())
-        
-    def getWidget(self):
-        return self.vbox
+    def printBox(self, key, value):
+        iter = self.store.append()
+        self.store.set(iter, 0, key, 1, str(value))
 
+    def setAtomContainer(self, atom_container):
+        self.atom_container = atom_container
+        self.store.clear()
+
+        if isinstance(atom_container, Molecule):
+            mol = atom_container
+            self.printBox("Molecule.getName()",
+                          mol.getName())
+            self.printBox("Molecule.getType()",
+                          mol.getType())
+            self.printBox("Molecule.getPolymerType()",
+                          mol.getPolymerType())
+            self.printBox("Molecule.isProtein()",
+                          mol.isProtein())
+            
+        if isinstance(atom_container, Residue):
+            res = atom_container
+            self.printBox("Residue.getName()",
+                          res.getName())
+            self.printBox("Residue.getSequenceID()",
+                          res.getSequenceID())
+            self.printBox("Residue.getPrevResidue()",
+                          res.getPrevResidue())
+            self.printBox("Residue.getNextResidue()",
+                          res.getNextResidue())
+
+        if isinstance(atom_container, AminoAcidResidue):
+            aa_res = atom_container
+            self.printBox("AminoAcidResidue.calcMainchainBondLength()",
+                          aa_res.calcMainchainBondLength())
+            self.printBox("AminoAcidResidue.calcMainchainBondAngle()",
+                          aa_res.calcMainchainBondAngle())
+            self.printBox("AminoAcidResidue.calcTorsionPsi()",
+                          aa_res.calcTorsionPsi())
+            self.printBox("AminoAcidResidue.calcTorsionPhi()",
+                          aa_res.calcTorsionPhi())
+            self.printBox("AminoAcidResidue.calcTorsionOmega()",
+                          aa_res.calcTorsionOmega())
+            self.printBox("AminoAcidResidue.calcTorsionChi()",
+                          aa_res.calcTorsionChi())
+
+        if isinstance(atom_container, Conformation):
+            conf = atom_container
+            self.printBox("Conformation.getID()",
+                          conf.getID())
+
+        if isinstance(atom_container, Atom):
+            atm = atom_container
+            self.printBox("Atom.getElement()",
+                          atm.getElement())
+            self.printBox("Atom.getAtomLabel()",
+                          atm.getAtomLabel())
+            self.printBox("Atom.getCharge()",
+                          atm.getCharge())
+            self.printBox("Atom.getOccupancy()",
+                          atm.getOccupancy())
+            self.printBox("Atom.getTemperatureFactor()",
+                          atm.getTemperatureFactor())
+            self.printBox("Atom.getU()",
+                          atm.getU())
+            self.printBox("Atom.getPosition()",
+                          atm.getPosition())
+            self.printBox("Atom.countBonds()",
+                          atm.countBonds())
+            self.printBox("Atom.calcAnisotropy()",
+                          atm.calcAnisotropy())
+
+        self.glviewer.setAtomContainer(self.atom_container)
 
 
 class StructureTreeModel(gtk.GenericTreeModel):
@@ -390,13 +426,10 @@ class StructureGUI:
     
         self.struct_tree_view.connect("row_activated", self.row_activated)
 
-
         ## RIGHT HALF
-        self.frame = gtk.Frame()
-        self.hpaned.add2(self.frame)
-        
-        self.data_widget = None
-        
+        self.ac_panel = AtomContainerPanel()
+        self.hpaned.add2(self.ac_panel)
+
 
     def getWidget(self):
         return self.hpaned
@@ -419,28 +452,11 @@ class StructureGUI:
 
 
     def row_activated(self, tree_view, path, column):
-        ## remove old child
-        if self.data_widget:
-            self.data_widget.destroy()
-            self.data_widget = None
-        
         ## find selected node
         node = self.structure
         for i in path:
             node = node.getChild(i)
-
-        ## select display widget
-        dis = None
-        if isinstance(node, AminoAcidResidue):
-            dis = AAResidueDisplay(node)
-        else:
-            dis = DefaultDisplay(node)
-            
-        ## add new child, and show
-        if dis:
-            self.data_widget = dis.getWidget()
-            self.frame.add(self.data_widget)
-            self.data_widget.show_all()
+        self.ac_panel.setAtomContainer(node)
 
 
 

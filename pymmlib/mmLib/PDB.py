@@ -1028,12 +1028,8 @@ class PDBFile:
 
 
     def loadFile(self, fil):
-        ## self.path can be a string, or a file object
-        if type(fil) == types.StringType:
-            fil = OpenFile(fil, "r")
-
+        fil = OpenFile(fil, "r")
         for ln in fil.readlines():
-            
             ## prep line by removing newline and upper-caseing line
             ln = string.rstrip(ln)
             ln = string.upper(ln)
@@ -1056,9 +1052,7 @@ class PDBFile:
 
 
     def saveFile(self, fil):
-        ## self.path can be a string, or a file object
-        if type(fil) == types.StringType:
-            fil = OpenFile(fil, "w")
+        fil = OpenFile(fil, "w")
 
         ## this re-orders the PDB records with some basic grouping
         ## rules in the PDB v2.2 specification, it doesn't

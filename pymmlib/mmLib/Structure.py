@@ -190,31 +190,6 @@ class AtomContainer(Composite):
 
 
 
-class Conformation(AtomContainer):
-    """Container class descirbing multiple conformations of molecules,
-    atoms, and chains."""
-
-    def __init__(self):
-        AtomContainer.__init__(self)
-
-        self.conformation_id = ""
-
-
-    def __str__(self):
-        return "Conformation::%s" % (self.conformation_id)
-
-
-    def setID(self, cid):
-        """Sets the ID charactor of the conformation."""
-        self.conformation_id = str(cid)
-
-
-    def getID(self):
-        """Returns the ID charactor of the conformation."""
-        return self.conformation_id
-
-
-
 class Structure(AtomContainer):
     """Container for a Structure of molecules."""
 
@@ -807,7 +782,7 @@ class AminoAcidResidue(Residue):
 
 
     def calcTorsionChi3(self, conf_id = None):
-        if not self.aa.chi1_definition:
+        if not self.aa.chi3_definition:
             return None
         
         a1 = self.getAtomByLabel(self.aa.chi3_definition[0], conf_id)
@@ -818,7 +793,7 @@ class AminoAcidResidue(Residue):
 
 
     def calcTorsionChi4(self, conf_id = None):
-        if not self.aa.chi1_definition:
+        if not self.aa.chi4_definition:
             return None
         
         a1 = self.getAtomByLabel(self.aa.chi4_definition[0], conf_id)
@@ -855,6 +830,31 @@ class AminoAcidResidue(Residue):
             chi4 = None
 
         return (chi1, chi2, chi3, chi4)
+
+
+
+class Conformation(AtomContainer):
+    """Container class descirbing multiple conformations of molecules,
+    atoms, and chains."""
+
+    def __init__(self):
+        AtomContainer.__init__(self)
+
+        self.conformation_id = ""
+
+
+    def __str__(self):
+        return "Conformation::%s" % (self.conformation_id)
+
+
+    def setID(self, cid):
+        """Sets the ID charactor of the conformation."""
+        self.conformation_id = str(cid)
+
+
+    def getID(self):
+        """Returns the ID charactor of the conformation."""
+        return self.conformation_id
 
 
 
