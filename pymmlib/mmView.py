@@ -16,10 +16,8 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
 from Scientific.Geometry import Vector
-
-from mmLib.Structure  import *
-from mmLib.FileLoader import LoadStructure, SaveStructure
-from mmLib.CCP4       import CCP4MonomerLibrary
+from mmLib.Structure     import *
+from mmLib.FileLoader    import LoadStructure, SaveStructure
 
 
 try:
@@ -64,11 +62,6 @@ class GLViewer:
         self.frame.add(self.glarea)
         self.frame.connect('destroy', self.destroy)
 
-        
-    def __del__(self):
-        print "GLViewer Destroyed"
-
-
     def getWidget(self):
         return self.frame
 
@@ -77,11 +70,9 @@ class GLViewer:
         return gtk.TRUE
 
     def glarea_destroy(self, glarea):
-        print "glarea_destroy"
         return gtk.TRUE
 
     def timeout(self):
-        print "timeout"
         if self.rot == "x":
             self.rotx += 1
             if self.rotx > 360:
@@ -412,10 +403,16 @@ class StructureGUI:
 
 
     def loadStructure(self):
-        monomer_lib = CCP4MonomerLibrary()
         self.structure = LoadStructure(sys.argv[1])
-        for aa_res in self.structure.aminoAcidResidueIterator():
-            monomer_lib.setResidueInfo(aa_res)
+        
+        try:
+            from mmLib.CCP4       import CCP4MonomerLibrary
+        except:
+            pass
+        else:
+            monomer_lib = CCP4MonomerLibrary()
+            for aa_res in self.structure.aminoAcidResidueIterator():
+                monomer_lib.setResidueInfo(aa_res)
         
         model = StructureTreeModel(self.structure)
         self.struct_tree_view.set_model(model)
