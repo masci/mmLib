@@ -1292,15 +1292,24 @@ class PDBFileBuilder(object):
             atom_rec["charge"] = atm.charge
 
         def atom_common(arec1, arec2):
-            arec2["serial"]  = arec1["serial"]
-            arec2["chainID"] = arec1["chainID"]
-            arec2["resName"] = arec1["resName"]
-            arec2["resSeq"]  = arec1["resSeq"]
-            arec2["iCode"]   = arec1["iCode"]
-            arec2["name"]    = arec1["name"]
-            arec2["altLoc"]  = arec1["altLoc"]
-            arec2["element"] = arec1["element"]
-            arec2["charge"]  = arec1["charge"]
+            if arec1.has_key("serial"):
+                arec2["serial"] = arec1["serial"]
+            if arec1.has_key("chainID"):
+                arec2["chainID"] = arec1["chainID"]
+            if arec1.has_key("resName"):
+                arec2["resName"] = arec1["resName"]
+            if arec1.has_key("resSeq"):
+                arec2["resSeq"] = arec1["resSeq"]
+            if arec1.has_key("iCode"):
+                arec2["iCode"] = arec1["iCode"]
+            if arec1.has_key("name"):
+                arec2["name"] = arec1["name"]
+            if arec1.has_key("altLoc"):
+                arec2["altLoc"] = arec1["altLoc"]
+            if arec1.has_key("element"):
+                arec2["element"] = arec1["element"]
+            if arec1.has_key("charge"):
+                arec2["charge"] = arec1["charge"]
 
         if atm.sig_position!=None:
             sigatm_rec = SIGATM()
