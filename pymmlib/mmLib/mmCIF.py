@@ -124,28 +124,26 @@ class mmCIFTable(list):
     def get_row(self, *args):
         """Returns the first row found matching the argument list.
         """
-        def chk(row):
-            for (key, val) in args:
-                if row[key] != val:
-                    return False
-            return True
-        
         for row in self:
-            if chk(row):
+            match = True
+            for (key, val) in args:
+                if row.get(key) != val:
+                    match = False
+                    break
+            if match:
                 return row
         return None
 
     def iter_rows(self, *args):
         """Iterate over all rows matching the argument list.
         """
-        def chk(row):
-            for (key, val) in args:
-                if row[key] != val:
-                    return False
-            return True
-
         for row in self:
-            if chk(row):
+            match = True
+            for (key, val) in args:
+                if row.get(key) != val:
+                    match = False
+                    break
+            if match:
                 yield row
 
     def select_row_list(self, *nvlist):

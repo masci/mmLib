@@ -110,16 +110,18 @@ class PDBRecord(dict):
                 try:
                     s = int(s)
                 except ValueError:
-                    warning("PDB parser: int(%s) failed on record" % (s))
-                    warning(str(line))
+                    if s.strip() != "":
+                        warning("PDB parser: int(%s) failed on record" % (s))
+                        warning(str(line))
                     continue
 
             elif ftype.startswith("float"):
                 try:
                     s = float(s)
                 except ValueError:
-                    warning("PDB parser: float(%s) failed on record" % (s))
-                    warning(str(line))
+                    if s.strip() != "":
+                        warning("PDB parser: float(%s) failed on record" % (s))
+                        warning(str(line))
                     continue
 
             self[field] = s

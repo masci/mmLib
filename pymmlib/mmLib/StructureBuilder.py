@@ -190,15 +190,6 @@ class StructureBuilder(object):
         if len(self.name_service_list) == 0:
             return
 
-        ## checks for a matching atom in the list
-        def chk_matching_atom(atm, atm_list):
-            for atmx in atm_list:
-                if atm.name == atmx.name and \
-                   atm.model == atmx.model and \
-                   atm.alt_loc == atmx.alt_loc:
-                    return True
-            return False
-
         ## returns the next available chain_id in self.struct
         ## XXX: it's possible to run out of chain IDs!
         def next_chain_id(suggest_chain_id):
@@ -216,81 +207,117 @@ class StructureBuilder(object):
 
             print "NO MORE CHAIN NAMES"
             sys.exit(1)
-                
-        frag = []
-        frag_list = [frag]
+
+        ## cr = (chain_id, res_name)
+        ##
+        ## cr_dict[cr_key] = model_dict
+        ##
+        ## model_dict[model] = frag_list
+        ##
+        ## frag_list = [ frag1, frag2, frag3, ...]
+        ##
+        ## frag = [atm1, atm2, atm3, ...]
+
+        cr_dict      = {}
+        cr_key_list  = []
+        
+        frag_id   = None
+        frag      = None
+        name_dict = None
 
         ## split atoms into fragments
         for atm in self.name_service_list:
-            try:
-                atm0 = frag[0]
-            except IndexError:
-                frag.append(atm)
-                continue
+            atm_id      = (atm.name, atm.alt_loc)
+            atm_frag_id = (atm.model,
+                           atm.chain_id,
+                           atm.fragment_id,
+                           atm.res_name)
 
-            if atm.chain_id == atm0.chain_id and \
-               atm.res_name == atm0.res_name and \
-               atm.fragment_id == atm0.fragment_id and \
-               not chk_matching_atom(atm, frag):
+            if atm_frag_id == frag_id and not name_dict.has_key(atm_id):
                 frag.append(atm)
+                name_dict[atm_id] = True
 
             else:
-                frag = [atm]
+                cr_key = (atm.chain_id, atm.res_name)
+                
+                ### debug
+                if frag:
+                    debug("name_service: fragment detected in cr=%s" % (
+                        str(cr_key)))
+                    for a in frag:
+                        debug("  " + str(a))
+                ### /debug
+                
+                try:
+                    model_dict = cr_dict[cr_key]
+                except KeyError:
+                    model_dict = cr_dict[cr_key] = {}
+                    cr_key_list.append(cr_key)
+
+                try:
+                    frag_list = model_dict[atm.model]
+                except KeyError:
+                    frag_list = model_dict[atm.model] = []
+
+                name_dict = {atm_id: True}
+
+                frag_id  = atm_frag_id
+                frag     = [atm]
                 frag_list.append(frag)
 
-        ## compares two fragments and returns True if the fragments
-        ## are alternate models of eachother
-        def alt_model(frag1, frag2):
-            retval = False
-            
-            for atm1 in frag1:
-                for atm2 in frag2:
-                    if atm1.chain_id    == atm2.chain_id and \
-                       atm1.fragment_id == atm2.fragment_id and \
-                       atm1.res_name    == atm2.res_name and \
-                       atm1.name        == atm2.name and \
-                       atm1.alt_loc     == atm2.alt_loc:
+        ## free self.name_service_list and other vars to save some memory
+        del self.name_service_list
 
-                        if atm1.model == atm2.model:
-                            return False
-                        else:
-                            retval = True
-            return retval
+        for cr_key in cr_key_list:
+            ### debug
+            debug("name_service: chain_id / res_name keys")
+            debug("  cr_key: chain_id='%s' res_name='%s'" % (
+                cr_key[0],cr_key[1]))
+            ### /debug
 
-        combined_frag_list = []
-        for frag in frag_list:
-            add = True
+            ## get the next chain ID, use the cfr group's
+            ## loaded chain_id if possible
+            new_chain_id = next_chain_id(cr_key[0])
 
-            for fragc in combined_frag_list:
-                if alt_model(frag, fragc):
-                    #print "Combine"
-                    #print "[1]",[str(x) for x in fragc]
-                    #print "[2]",[str(x) for x in frag]
-                    fragc += frag
-                    add = False
-                    break
+            ## get model dictionary
+            model_dict = cr_dict[cr_key]
 
-            if add:
-                combined_frag_list.append(frag)
+            ## inspect the model dictionary to determine the number
+            ## of fragments in each model -- they should be the same
+            ## and have a 1:1 cooraspondance; if not, match up the
+            ## fragments as much as possible
+            max_frags = -1
+            for (model, frag_list) in model_dict.items():
+                frag_list_len = len(frag_list)
 
-        ## form chains from
-        res_map = {}
-        for frag in combined_frag_list:
-            atm0 = frag[0]
-            
-            try:
-                ilist = res_map[atm0.res_name]
-            except KeyError:
-                res_map[atm0.res_name] = ilist = [
-                    next_chain_id(atm0.chain_id), 1]
-            else:
-                ilist[1] += 1
-            
-            for atm in frag:
-                atm.chain_id = ilist[0]
-                atm.fragment_id = str(ilist[1])
-                self.place_atom(atm)
+                if max_frags == -1:
+                    max_frags = frag_list_len
+                    continue
+
+                if max_frags != frag_list_len:
+                    strx = "name_service: model fragments not identical"
+                    debug(strx)
+                    warning(strx)
+                    max_frags = max(max_frags, frag_list_len)
+
+            ## now iterate through the fragment lists in parallel and assign
+            ## the new chain_id and fragment_id
+            for i in range(max_frags):
+                new_fragment_id = str(i+1)
                 
+                for frag_list in model_dict.values():
+                    try:
+                        frag = frag_list[i]
+                    except KeyError:
+                        continue
+
+                    ## assign new chain_id and fragment_id, than place the
+                    ## atom in the structure
+                    for atm in frag:
+                        atm.chain_id = new_chain_id
+                        atm.fragment_id = new_fragment_id
+                        self.place_atom(atm)
+
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to
         build the structure.
@@ -1118,22 +1145,29 @@ class mmCIFStructureBuilder(StructureBuilder):
         ## contains the structure
         self.cif_data = self.cif_file[0]
 
-    def read_atoms(self):
         ## maintain a map of atom_site.id -> atm
         self.atom_site_id_map = {}
+        
+
+    def read_atoms(self):
+        try:
+            atom_site_table = self.cif_data["atom_site"]
+        except KeyError:
+            warning("read_atoms: atom_site table not found")
+            return
 
         aniso_table = self.cif_data.get("atom_site_anisotrop")
         
-        for atom_site in self.cif_data.get("atom_site", []):
+        for atom_site in atom_site_table:
             atm_map = {}
 
-            setmaps(atom_site, self.atom_id, atm_map, "name")
-            setmaps(atom_site, self.alt_id, atm_map, "alt_loc")
-            setmaps(atom_site, self.comp_id, atm_map, "res_name")
-            setmaps(atom_site, self.seq_id, atm_map, "fragment_id")
-            setmaps(atom_site, self.asym_id, atm_map, "chain_id")
+            self.setmaps(atom_site, self.atom_id, atm_map, "name")
+            self.setmaps(atom_site, self.alt_id, atm_map, "alt_loc")
+            self.setmaps(atom_site, self.comp_id, atm_map, "res_name")
+            self.setmaps(atom_site, self.seq_id, atm_map, "fragment_id")
+            self.setmaps(atom_site, self.asym_id, atm_map, "chain_id")
 
-            setmaps(atom_site, "type_symbol", atm_map, "element")
+            self.setmaps(atom_site, "type_symbol", atm_map, "element")
             setmapf(atom_site, "Cartn_x", atm_map, "x")
             setmapf(atom_site, "Cartn_y", atm_map, "y")
             setmapf(atom_site, "Cartn_z", atm_map, "z")
@@ -1192,28 +1226,37 @@ class mmCIFStructureBuilder(StructureBuilder):
         """Load unit cell and symmetry tables.
         """
         ucell_map = {}
+        
         try:
-            cell = self.cif_data["cell"].get_row(
-                ("entry_id", self.cif_data["entry"]["id"]))
+            entry_id = self.cif_data["entry"]["id"]
         except KeyError:
-            pass
-        else:
-            setmapf(cell, "length_a", ucell_map, "a")
-            setmapf(cell, "length_b", ucell_map, "b")
-            setmapf(cell, "length_c", ucell_map, "c")
-            setmapf(cell, "angle_alpha", ucell_map, "alpha")
-            setmapf(cell, "angle_beta", ucell_map, "beta")
-            setmapf(cell, "angle_gamma", ucell_map, "gamma")
-            setmapi(cell, "Z_PDB", ucell_map, "z")
+            warning("read_unit_cell: entry id not found")
+            return
 
         try:
-            symm = self.cif_data["symmetry"].get_row(
-                ("entry_id",self.cif_data["entry"]["id"]))
+            cell_table = self.cif_data["cell"]
         except KeyError:
-            pass
+            warning("read_unit_cell: cell table not found")
         else:
-            setmaps(symm, "space_group_name_H-M",
-                         ucell_map, "space_group")
+            cell = cell_table.get_row(("entry_id", entry_id))
+            if cell != None:
+                setmapf(cell, "length_a", ucell_map, "a")
+                setmapf(cell, "length_b", ucell_map, "b")
+                setmapf(cell, "length_c", ucell_map, "c")
+                setmapf(cell, "angle_alpha", ucell_map, "alpha")
+                setmapf(cell, "angle_beta", ucell_map, "beta")
+                setmapf(cell, "angle_gamma", ucell_map, "gamma")
+                setmapi(cell, "Z_PDB", ucell_map, "z")
+
+        try:
+            symmetry_table = self.cif_data["symmetry"]
+        except KeyError:
+            warning("read_unit_cell: symmetry table not found")
+        else:
+            symm = symmetry_table.get_row(("entry_id", entry_id))
+            if symm != None:
+                self.setmaps(symm, "space_group_name_H-M",
+                             ucell_map, "space_group")
         
         self.load_unit_cell(ucell_map)
 
@@ -1221,49 +1264,83 @@ class mmCIFStructureBuilder(StructureBuilder):
         """Read bond information form the struct_conn and struct_conn_type
         sections.
         """
+        ## only read these types of bonds for now
+        bond_type_list = [
+            "disulf", "covale",
+            ]
+
+        try:
+            atom_site = self.cif_data["atom_site"]
+        except KeyError:
+            warning("read_struct_conn: atom_site table not found")
+            return
+
+        try:
+            struct_conn_table = self.cif_data["struct_conn"]
+        except KeyError:
+            warning("read_struct_conn: struct_conn table not found")
+            return
+
         bond_map = {}
 
-        for row in self.cif_data.get("struct_conn", []):
+        for row in struct_conn_table:
+            conn_type = row.get("conn_type_id")
+            if conn_type not in bond_type_list:
+                continue
             
             asym_id1 = row.get(self.ptnr1_asym_id)
-            seq_id1 = row.get(self.ptnr1_seq_id)
+            seq_id1  = row.get(self.ptnr1_seq_id)
             comp_id1 = row.get(self.ptnr1_comp_id)
             atom_id1 = row.get(self.ptnr1_atom_id)
-            symm1 = row.get("ptnr1_symmetry")
+            symm1    = row.get("ptnr1_symmetry")
 
             asym_id2 = row.get(self.ptnr2_asym_id)
-            seq_id2 = row.get(self.ptnr2_seq_id)
+            seq_id2  = row.get(self.ptnr2_seq_id)
             comp_id2 = row.get(self.ptnr2_comp_id)
             atom_id2 = row.get(self.ptnr2_atom_id)
-            symm2 = row.get("ptnr2_symmetry")
-
-            conn_type = row.get("conn_type_id")
+            symm2    = row.get("ptnr2_symmetry")
 
             ## check for these special mmCIF tokens
             if conn_type == "disulf":
                 atom_id1 = atom_id2 = "SG"
 
-            as1 = self.cif_data["atom_site"].get_row(
+            as1 = atom_site.get_row(
                 (self.asym_id, asym_id1),
-                (self.seq_id, seq_id1),
+                (self.seq_id,  seq_id1),
                 (self.comp_id, comp_id1),
                 (self.atom_id, atom_id1))
 
-            as2 = self.cif_data["atom_site"].get_row(
+            as2 = atom_site.get_row(
                 (self.asym_id, asym_id2),
-                (self.seq_id, seq_id2),
+                (self.seq_id,  seq_id2),
                 (self.comp_id, comp_id2),
                 (self.atom_id, atom_id2))
 
             if not as1 or not as2:
-                debug("read_struct_conn: ignoring: " + conn_type)
+                warning("read_struct_conn: atom not found id: " + \
+                        row.get("id","[No ID]"))
+                
+                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id1, seq_id1, comp_id1, atom_id1, symm1))
+                
+                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id2, seq_id2, comp_id2, atom_id2, symm2))
+
                 continue
 
             try:
                 atm1 = self.atom_site_id_map[as1["id"]]
                 atm2 = self.atom_site_id_map[as2["id"]]
             except KeyError:
-                debug("read_struct_conn: atm not found: " + conn_type)
+                warning("read_struct_conn: atom_site_id_map incorrect id: " + \
+                        row.get("id", "[No ID]"))
+
+                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id1, seq_id1, comp_id1, atom_id1, symm1))
+                
+                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                    asym_id2, seq_id2, comp_id2, atom_id2, symm2))
+
                 continue
 
             if id(atm1) < id(atm2):
@@ -1280,6 +1357,9 @@ class mmCIFStructureBuilder(StructureBuilder):
                 bond_map[bnd]["symop1"] = symm1
             if symm2:
                 bond_map[bnd]["symop2"] = symm2
+
+            print "Bond[%s,%s] = %s" % (atm1, atm2, conn_type)
+
 
         ## load the bonds
         self.load_bonds(bond_map)
