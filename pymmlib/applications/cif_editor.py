@@ -13,12 +13,26 @@ import gtk
 from mmLib.mmCIF import *
 
 
-class RowTreeModel(gtk.ListStore):
+class TableTreeModel(gtk.ListStore):
     def __init__(self, ctable):
-        self.init
+       gtk.ListStore.__init__(self,*[gobject.TYPE_STRING]*len(ctable.columns))
+       self.ctable = ctable
+
+       rl = []
+       for i in range(len(self.ctable.columns)):
+           rl += [i, self.ctable.columns[i]]
+
+       for row in self.ctable:
+           srl = rl[:]
+
+           for i in range(len(srl)/2):
+               srl[(i*2)+1] = row[srl[(i*2)+1]]
+
+           iter = self.append()
+           self.set(iter, *srl)
 
 
-class TableTreeModel(gtk.GenericTreeModel):
+class FileTreeModel(gtk.GenericTreeModel):
     def __init__(self, cif_file):
         gtk.GenericTreeModel.__init__(self)
         self.cif_file = cif_file
@@ -33,7 +47,7 @@ class TableTreeModel(gtk.GenericTreeModel):
     def on_get_n_columns(self):
 	"""returns the number of columns in the model"""
 	return 1
-
+    
     def on_get_column_type(self, index):
 	"""returns the type of a column in the model"""
 	return gobject.TYPE_STRING
@@ -144,21 +158,22 @@ class CIFPanel(gtk.HPaned):
         self.tv1.set_model(gtk.GenericTreeModel())
 
         cell = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("Tables", cell, text=0)
+        column = gtk.TreeViewColumn("data", cell, text=0)
         self.tv1.append_column(column)
-
+        
         ## RIGHT HALF
         self.sw2 = gtk.ScrolledWindow()
         self.sw2.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.add2(self.sw2)
         
         self.tv2 = gtk.TreeView()
+        self.tv2.set_rules_hint(gtk.TRUE)
         self.sw2.add(self.tv2)
         self.tv2.connect("row_activated", self.rview_row_activated)
 
     def set_cif_file(self, cif_file):
         self.cif_file = cif_file
-        model = TableTreeModel(self.cif_file)
+        model = FileTreeModel(self.cif_file)
         self.tv1.set_model(model)
 
     def tview_row_activated(self, tree_view, path, column):
@@ -167,8 +182,18 @@ class CIFPanel(gtk.HPaned):
         node = model.on_get_iter(path)
         
         if isinstance(node, mmCIFTable):
-            model = RowTreeModel(ctable)
-            self.tv2.set_cif_table(ctable)
+            model = TableTreeModel(node)
+            self.tv2.set_model(model)
+
+            for c in self.tv2.get_columns():
+                self.tv2.remove_column(c)
+
+            for cn in node.columns:
+                cell = gtk.CellRendererText()
+                column = gtk.TreeViewColumn(
+                    cn.replace("_","__"), cell, text=node.columns.index(cn))
+                self.tv2.append_column(column)
+
 
     def rview_row_activated(self, tree_view, path, column):
         pass

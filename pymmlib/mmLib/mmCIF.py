@@ -11,6 +11,7 @@ mmCIF parser.
 from __future__ import generators
 import string
 import types
+import weakref
 from mmTypes import *
 
 ##
@@ -108,6 +109,7 @@ class mmCIFData(list):
     """
     def __init__(self, name):
         list.__init__(self)
+        self.cache = {}
         self.name = name
 
     def __getitem__(self, x):
@@ -115,9 +117,22 @@ class mmCIFData(list):
             return list.__getitem__(self, x)
 
         elif type(x) == StringType:
-            for ctable in self:
-                if ctable.name == x:
+            ## try to retrieve from cache
+            if self.cache.has_key(x):
+                ctable = self.cache[x]()
+
+                ## make sure the cache is valid
+                if ctable and ctable.name == x:
                     return ctable
+                else:
+                    del self.cache[x]
+
+            ## lookup table and set cache
+            for ctable in self:
+                if x == ctable.name:
+                    self.cache[x] = weakref.ref(ctable)
+                    return ctable
+                
             raise KeyError, x
 
         raise TypeError, x
@@ -138,10 +153,12 @@ class mmCIFData(list):
         list.insert(self, i, table)
 
     def has_key(self, x):
-        for ctable in self:
-            if ctable.name == x:
-                return True
-        return False
+        try:
+            self[x]
+        except KeyError:
+            return False
+        else:
+            return True
 
     def get(self, x, default = None):
         try:
@@ -196,6 +213,18 @@ class mmCIFFile(list):
         assert isinstance(cdata, mmCIFData)
         list.insert(self, i, cdata)
 
+    def has_key(self, x):
+        for cdata in self:
+            if cdata.name == x:
+                return True
+        return False
+
+    def get(self, x, default = None):
+        try:
+            return self[x]
+        except KeyError:
+            return default
+        
     def load_file(self, fil):
         """Load and append the mmCIF data from file object fil into self.
         """
