@@ -634,9 +634,7 @@ class mmCIFFileParser(object):
                         self.syntax_error(
                             "unexpected reserved word: %s" % (rword))
 
-                    if tokx == ".":
-                        cif_row[colx] = ""
-                    else:
+                    if tokx!=".":
                         cif_row[colx] = tokx
 
                 elif strx != None:
@@ -712,9 +710,7 @@ class mmCIFFileParser(object):
 
                     for col in cif_table.columns:
                         if tokx != None:
-                            if tokx == ".":
-                                cif_row[col] = ""
-                            else:
+                            if tokx!=".":
                                 cif_row[col] = tokx
                         elif strx != None:
                             cif_row[col] = strx

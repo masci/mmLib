@@ -173,39 +173,60 @@ class PDBStructureBuilder(StructureBuilder):
             self.load_atom(self.atm_map)
             self.atm_map = {}
 
+        ## optimization
+        atm_map = self.atm_map
+
         ## name and element
         try:
             name = rec["name"]
         except KeyError:
-            self.atm_map["name"] = ""
+            atm_map["name"] = ""
         else:
             (name, element) = self.guess_element_from_name(
                 name, rec.get("resName", ""))
-            if name != None:
-                self.atm_map["name"] = name
-            if element != None:
-                self.atm_map["element"] = element
+
+            if name!=None:
+                atm_map["name"] = name
+
+            if element!=None:
+                atm_map["element"] = element
 
         ## additional atom information
-        setmapi(rec, "serial", self.atm_map, "serial")
-        setmaps(rec, "altLoc", self.atm_map, "alt_loc")
-        setmaps(rec, "resName", self.atm_map, "res_name")
-        setmaps(rec, "chainID", self.atm_map, "chain_id")
+        if rec.has_key("serial"):
+            atm_map["serial"] = rec["serial"]
 
-        fragment_id = self.get_fragment_id(rec)
-        if fragment_id != None:
-            self.atm_map["fragment_id"] = fragment_id
+        if rec.has_key("altLoc"):
+            atm_map["alt_loc"] = rec["altLoc"]
 
+        if rec.has_key("resName"):
+            atm_map["res_name"] = rec["resName"]
+
+        if rec.has_key("chainID"):
+            atm_map["chain_id"] = rec["chainID"]
+
+        ## construct fragment_id
+        if rec.has_key("resSeq"):
+            if rec.has_key("iCode"):
+                atm_map["fragment_id"] = "%d%s" % (rec["resSeq"],rec["iCode"])
+            else:
+                atm_map["fragment_id"] = "%d" % (rec["resSeq"])
+                
         ## add the model number for the atom
         if self.model_num!=None:
-            self.atm_map["model_id"] = self.model_num
-            
-        setmapf(rec, "x", self.atm_map, "x")
-        setmapf(rec, "y", self.atm_map, "y")
-        setmapf(rec, "z", self.atm_map, "z")
-        setmapf(rec, "occupancy", self.atm_map, "occupancy")
-        setmapf(rec, "tempFactor", self.atm_map, "temp_factor")
-        #setmaps(rec, "charge", self.atm_map, "charge")
+            atm_map["model_id"] = self.model_num
+
+        ## position
+        if rec.has_key("x"):
+            atm_map["x"] = rec["x"]
+        if rec.has_key("y"):
+            atm_map["y"] = rec["y"]
+        if rec.has_key("z"):
+            atm_map["z"] = rec["z"]
+
+        if rec.has_key("occupancy"):
+            atm_map["occupancy"] = rec["occupancy"]
+        if rec.has_key("tempFactor"):
+            atm_map["temp_factor"] = rec["tempFactor"]
 
     def guess_element_from_name(self, name0, res_name):
         """Try everything I can possibly think of to extract the element
@@ -1254,13 +1275,21 @@ class PDBFileBuilder(object):
         atom_rec["altLoc"]      = atm.alt_loc
 
         if atm.position!=None:
-            atom_rec["x"] = atm.position[0]
-            atom_rec["y"] = atm.position[1]
-            atom_rec["z"] = atm.position[2]
-        
-        atom_rec["occupancy"]   = atm.occupancy
-        atom_rec["tempFactor"]  = atm.temp_factor
-        atom_rec["charge"]      = atm.charge
+            if atm.position[0]!=None:
+                atom_rec["x"] = atm.position[0]
+            if atm.position[1]!=None:
+                atom_rec["y"] = atm.position[1]
+            if atm.position[2]!=None:
+                atom_rec["z"] = atm.position[2]
+
+        if atm.occupancy!=None:
+            atom_rec["occupancy"] = atm.occupancy
+
+        if atm.temp_factor!=None:
+            atom_rec["tempFactor"] = atm.temp_factor
+
+        if atm.charge!=None:
+            atom_rec["charge"] = atm.charge
 
         def atom_common(arec1, arec2):
             arec2["serial"]  = arec1["serial"]
@@ -1277,31 +1306,51 @@ class PDBFileBuilder(object):
             sigatm_rec = SIGATM()
             self.pdb_file.append(sigatm_rec)
             atom_common(atom_rec, sigatm_rec)
-            sigatm_rec["sigX"] = atm.sig_position[0]
-            sigatm_rec["sigY"] = atm.sig_position[1]
-            sigatm_rec["sigZ"] = atm.sig_position[2]
-            sigatm_rec["sigOccupancy"] = atm.sig_temp_factor
-            sigatm_rec["sigTempFactor"] = atm.sig_occupancy
+
+            if atm.sig_position[0]!=None:
+                sigatm_rec["sigX"] = atm.sig_position[0]
+            if atm.sig_position[1]!=None:
+                sigatm_rec["sigY"] = atm.sig_position[1]
+            if atm.sig_position[2]!=None:
+                sigatm_rec["sigZ"] = atm.sig_position[2]
+            if atm.sig_temp_factor!=None:
+                sigatm_rec["sigTempFactor"] = atm.sig_temp_factor
+            if atm.sig_occupancy!=None:
+                sigatm_rec["sigOccupancy"] = atm.sig_occupancy
 
         if atm.U!=None:
             anisou_rec = ANISOU()
             self.pdb_file.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
-            anisou_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
-            anisou_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
-            anisou_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
-            anisou_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
-            anisou_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
-            anisou_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
+
+            if atm.U[0,0]!=None:
+                anisou_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
+            if atm.U[1,1]!=None:
+                anisou_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
+            if atm.U[2,2]!=None:
+                anisou_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
+            if atm.U[0,1]!=None:
+                anisou_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
+            if atm.U[0,2]!=None:
+                anisou_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
+            if atm.U[1,2]!=None:
+                anisou_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
 
         if atm.sig_U!=None:
             siguij_rec = SIGUIJ()
             self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
-            siguij_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
-            siguij_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
-            siguij_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
-            siguij_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
-            siguij_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
-            siguij_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
+
+            if atm.U[0,0]!=None:
+                siguij_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
+            if atm.U[1,1]!=None:
+                siguij_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
+            if atm.U[2,2]!=None:
+                siguij_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
+            if atm.U[0,1]!=None:
+                siguij_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
+            if atm.U[0,2]!=None:
+                siguij_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
+            if atm.U[1,2]!=None:
+                siguij_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
 

@@ -92,6 +92,15 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
+def setmap(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the value from smap/skey/
+    """
+    if smap.has_key(skey):
+        dmap[dkey] = str(smap[skey])
+        return True
+    return False
+
+
 def setmaps(smap, skey, dmap, dkey):
     """Sets the dmap/dkey with the string value from smap/skey/
     """
@@ -108,7 +117,7 @@ def setmaps(smap, skey, dmap, dkey):
 def setmapi(smap, skey, dmap, dkey):
     """Sets the dmap/dkey with the integer value from smap/skey.
     """
-    if smap.has_key(skey) and smap[skey]:
+    if smap.has_key(skey) and smap[skey]!="":
         try:
             dmap[dkey] = int(smap[skey])
         except ValueError:
@@ -122,7 +131,7 @@ def setmapf(smap, skey, dmap, dkey):
     """Sets the dmap/dkey with the float value from smap/skey or
     default if not smap/skey value is found.
     """
-    if smap.has_key(skey) and smap[skey]:
+    if smap.has_key(skey) and smap[skey]!="":
         try:
             dmap[dkey] = float(smap[skey])
         except ValueError:

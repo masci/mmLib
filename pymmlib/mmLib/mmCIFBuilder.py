@@ -96,22 +96,50 @@ mmCIFStandardColumnsMap = {
 
 
 def setmaps_cif(smap, skey, dmap, dkey):
-    """For string converisons, treat question marks as blank.
+    """For string converisons, treat [?.] as blank.
     """
-    try:
-        dmap[dkey] = str(smap[skey])
-    except ValueError:
-        print "setmaps_cif(): ValueError",smap[skey]
-        return False
-    except KeyError:
-        print "KeyError"
-        return False
+    if smap.has_key(skey):
+        x = smap[skey]
+        if x=="?" or x=="." or x=="":
+            return False
+        try:
+            dmap[dkey] = str(x)
+        except ValueError:
+            print "setmaps_cif(): ValueError",smap[skey]
+            return False
+        return True
+    return False
 
-    if dmap[dkey]=="?":
-        del dmap[dkey]
-        return False
+def setmapi_cif(smap, skey, dmap, dkey):
+    """For integer converisons, treat [?.] as blank.
+    """
+    if smap.has_key(skey):
+        x = smap[skey]
+        if x=="?" or x=="." or x=="":
+            return False
+        try:
+            dmap[dkey] = int(x)
+        except ValueError:
+            print "setmapi_cif(): ValueError",smap[skey]
+            return False
+        return True
+    return False
 
-    return True
+def setmapf_cif(smap, skey, dmap, dkey):
+    """For float converisons, treat [?.] as blank.
+    """
+    if smap.has_key(skey):
+        x = smap[skey]
+        if x=="?" or x=="." or x=="":
+            return False
+        try:
+            dmap[dkey] = float(x)
+        except ValueError:
+            print "setmapf_cif(): ValueError %s:%s:%s" % (
+                skey, smap[skey], dkey)
+            return False
+        return True
+    return False
 
 
 class mmCIFStructureBuilder(StructureBuilder):
@@ -232,21 +260,21 @@ class mmCIFStructureBuilder(StructureBuilder):
             setmaps_cif(atom_site, self.asym_id, atm_map, "chain_id")
 
             setmaps_cif(atom_site, "type_symbol", atm_map, "element")
-            setmapf(atom_site, "cartn_x", atm_map, "x")
-            setmapf(atom_site, "cartn_y", atm_map, "y")
-            setmapf(atom_site, "cartn_z", atm_map, "z")
-            setmapf(atom_site, "occupancy", atm_map, "occupancy")
-            setmapf(atom_site, "b_iso_or_equiv", atm_map, "temp_factor")
-            setmapf(atom_site, "cartn_x_esd", atm_map, "sig_x")
-            setmapf(atom_site, "cartn_y_esd", atm_map, "sig_y")
-            setmapf(atom_site, "cartn_z_esd", atm_map, "sig_z")
-            setmapf(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
+            setmapf_cif(atom_site, "cartn_x", atm_map, "x")
+            setmapf_cif(atom_site, "cartn_y", atm_map, "y")
+            setmapf_cif(atom_site, "cartn_z", atm_map, "z")
+            setmapf_cif(atom_site, "occupancy", atm_map, "occupancy")
+            setmapf_cif(atom_site, "b_iso_or_equiv", atm_map, "temp_factor")
+            setmapf_cif(atom_site, "cartn_x_esd", atm_map, "sig_x")
+            setmapf_cif(atom_site, "cartn_y_esd", atm_map, "sig_y")
+            setmapf_cif(atom_site, "cartn_z_esd", atm_map, "sig_z")
+            setmapf_cif(atom_site, "occupancy_esd", atm_map, "sig_occupancy")
 
-            setmapf(atom_site, "b_iso_or_equiv_esd",
-                    atm_map,   "sig_temp_factor")
+            setmapf_cif(atom_site, "b_iso_or_equiv_esd",
+                        atm_map,   "sig_temp_factor")
 
-            setmapi(atom_site, "pdbx_pdb_model_num",
-                    atm_map,   "model_id")
+            setmapi_cif(atom_site, "pdbx_pdb_model_num",
+                        atm_map,   "model_id")
 
             if aniso_table!=None:
                 try:
@@ -254,19 +282,19 @@ class mmCIFStructureBuilder(StructureBuilder):
                 except KeyError:
                     warning("unable to find aniso row for atom")
                 else:
-                    setmapf(aniso, "u[1][1]", atm_map, "u11")
-                    setmapf(aniso, "u[2][2]", atm_map, "u22")
-                    setmapf(aniso, "u[3][3]", atm_map, "u33")
-                    setmapf(aniso, "u[1][2]", atm_map, "u12")
-                    setmapf(aniso, "u[1][3]", atm_map, "u13")
-                    setmapf(aniso, "u[2][3]", atm_map, "u23")
+                    setmapf_cif(aniso, "u[1][1]", atm_map, "u11")
+                    setmapf_cif(aniso, "u[2][2]", atm_map, "u22")
+                    setmapf_cif(aniso, "u[3][3]", atm_map, "u33")
+                    setmapf_cif(aniso, "u[1][2]", atm_map, "u12")
+                    setmapf_cif(aniso, "u[1][3]", atm_map, "u13")
+                    setmapf_cif(aniso, "u[2][3]", atm_map, "u23")
 
-                    setmapf(aniso, "u[1][1]_esd", atm_map, "sig_u12")
-                    setmapf(aniso, "u[2][2]_esd", atm_map, "sig_u22")
-                    setmapf(aniso, "u[3][3]_esd", atm_map, "sig_u33")
-                    setmapf(aniso, "u[1][2]_esd", atm_map, "sig_u12")
-                    setmapf(aniso, "u[1][3]_esd", atm_map, "sig_u13")
-                    setmapf(aniso, "u[2][3]_esd", atm_map, "sig_u23")
+                    setmapf_cif(aniso, "u[1][1]_esd", atm_map, "sig_u12")
+                    setmapf_cif(aniso, "u[2][2]_esd", atm_map, "sig_u22")
+                    setmapf_cif(aniso, "u[3][3]_esd", atm_map, "sig_u33")
+                    setmapf_cif(aniso, "u[1][2]_esd", atm_map, "sig_u12")
+                    setmapf_cif(aniso, "u[1][3]_esd", atm_map, "sig_u13")
+                    setmapf_cif(aniso, "u[2][3]_esd", atm_map, "sig_u23")
 
             atm = self.load_atom(atm_map)
             self.atom_site_id_map[atom_site_id] = atm
@@ -304,13 +332,13 @@ class mmCIFStructureBuilder(StructureBuilder):
         else:
             cell = cell_table.get_row(("entry_id", entry_id))
             if cell != None:
-                setmapf(cell, "length_a", ucell_map, "a")
-                setmapf(cell, "length_b", ucell_map, "b")
-                setmapf(cell, "length_c", ucell_map, "c")
-                setmapf(cell, "angle_alpha", ucell_map, "alpha")
-                setmapf(cell, "angle_beta", ucell_map, "beta")
-                setmapf(cell, "angle_gamma", ucell_map, "gamma")
-                setmapi(cell, "z_pdb", ucell_map, "z")
+                setmapf_cif(cell, "length_a", ucell_map, "a")
+                setmapf_cif(cell, "length_b", ucell_map, "b")
+                setmapf_cif(cell, "length_c", ucell_map, "c")
+                setmapf_cif(cell, "angle_alpha", ucell_map, "alpha")
+                setmapf_cif(cell, "angle_beta", ucell_map, "beta")
+                setmapf_cif(cell, "angle_gamma", ucell_map, "gamma")
+                setmapi_cif(cell, "z_pdb", ucell_map, "z")
 
         try:
             symmetry_table = self.cif_data["symmetry"]

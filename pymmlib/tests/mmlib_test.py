@@ -472,13 +472,15 @@ def cmp_struct(struct1, struct2):
 
         try:
             cmp_atoms(atm1, atm2)
-        except AssertionError:
+        except (AssertionError, TypeError):
             print
             print "ERROR: cmp_atom(%s, %s)" % (atm1, atm2)
             print
             print "atm1.position = %s" % (atm1.position)
             print "atm2.position = %s" % (atm2.position)
             print
+            print "atm1.temp_factor = %s" % (atm1.temp_factor)
+            print "atm2.temp_factor = %s" % (atm2.temp_factor)
             raise
     
 
