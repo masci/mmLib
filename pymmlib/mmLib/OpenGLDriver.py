@@ -45,6 +45,11 @@ class OpenGLDriver(object):
         self.gl_draw_list_expiration_id = {}
         self.gl_light_model_two_side    = False
 
+        self.material_r = 1.0
+        self.material_g = 1.0
+        self.material_b = 1.0
+        self.material_a = 1.0
+
     def glr_compile_supported(self):
         """Returns True if draw compiling is supported by the driver.
         """
@@ -333,6 +338,11 @@ class OpenGLDriver(object):
         self.gl_light_model_two_side = True
         glDisable(GL_CULL_FACE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        self.glr_set_material_rgba(
+            self.material_r,
+            self.material_g,
+            self.material_b,
+            self.material_a)
 
     def glr_light_two_sides_disable(self):
         """
@@ -340,11 +350,21 @@ class OpenGLDriver(object):
         self.gl_light_model_two_side = False
         glEnable(GL_CULL_FACE)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-    
+        self.glr_set_material_rgba(
+            self.material_r,
+            self.material_g,
+            self.material_b,
+            self.material_a)
+            
     def glr_set_material_rgb(self, r, g, b):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
+        self.material_r = r
+        self.material_g = g
+        self.material_b = b
+        self.material_a = 1.0
+        
         glColor3f(r, g, b)
 
         ambient  = (r, g, b, 1.0)
@@ -367,6 +387,11 @@ class OpenGLDriver(object):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
+        self.material_r = r
+        self.material_g = g
+        self.material_b = b
+        self.material_a = a
+
         glColor3f(r, g, b)
 
         ambient  = (r, g, b, a)

@@ -156,7 +156,7 @@ class Terminal(object):
     def write(self, text):
         """Writes text to the terminal.
         """
-        if len(text)>0:
+        if text!=None and len(text)>0:
             for ln in text.split("\n"):
                 self.lines.insert(0, ln)
         self.lines.insert(0, self.prompt)
@@ -292,8 +292,14 @@ class GLUT_Viewer(GLViewer):
         elif cmd.startswith("ls"):
             return self.command_ls(cmd)
 
+        elif cmd.startswith("cd"):
+            return self.command_cd(cmd)
+
         elif cmd.startswith("bg_color"):
             return self.command_bg_color(cmd)
+
+        elif cmd.startswith("exit") or cmd.startswith("quit"):
+            return self.command_exit(cmd)
 
         if len(cmd.strip())==0:
             return ""
@@ -323,6 +329,9 @@ class GLUT_Viewer(GLViewer):
             for glstruct in self.glo_iter_children():
                 x += "%s\n" % (glstruct.struct.structure_id)
             return x
+
+    def command_exit(self, cmd):
+        sys.exit(0)
 
     def command_cd(self, cmd):
         path = cmd[3:].strip()

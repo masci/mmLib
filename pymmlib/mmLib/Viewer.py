@@ -321,6 +321,20 @@ class GLObject(object):
                 return gl_object
         return None
 
+    def glo_get_child_path(self, glo_id_path):
+        """Returns the object at the given path, or None if the object does
+        not exist.
+        """
+        child = self
+
+        for glo_id in glo_id_path.split("/"):
+            parent = child
+            child = parent.glo_get_child(glo_id)
+            if child==None:
+                return False
+            
+        return child
+
     def glo_init_properties(self, **args):
         """This is a special form of update which propagates all linked
         values, not just the changed ones.
@@ -446,18 +460,13 @@ class GLObject(object):
     def glo_update_properties_path(self, glo_id_path, **args):
         """
         """
-        child = self
+        child = self.glo_get_child_path(glo_id_path)
+        if child==None:
+            return False
 
-        for glo_id in glo_id_path.split("/"):
-            parent = child
-
-            child = parent.glo_get_child(glo_id)
-            if child==None:
-                return False
-            
         child.glo_update_properties(**args)
         return True
-    
+
     def glo_add_update_callback(self, func):
         """Adds a function which is called whenever property values change.
         The function is called with two arguments: a updates dictionary

@@ -17,6 +17,11 @@ from mmLib.PDB       import *
 from mmLib.Viewer    import *
 
 ###############################################################################
+## CONSTANTS
+##
+SQRT2 = math.sqrt(2.0)
+
+###############################################################################
 ## EXCEPTION BASE CLASS
 ##
 
@@ -940,6 +945,8 @@ def set_TLS_A(A, i, j, x, y, z, w):
     A[U33, L12] = w * -2.0 * xy
     A[U33, S23] = w * -2.0 *  x
     A[U33, S13] = w *  2.0 *  y
+
+    w = w * SQRT2
     
     A[U12, T12]   = w * 1.0
     A[U12, L33]   = w * -xy
@@ -976,6 +983,9 @@ def set_TLS_b(b, i, u11, u22, u33, u12, u13, u23, w):
     b[i]   = w * u11
     b[i+1] = w * u22
     b[i+2] = w * u33
+
+    w = w * SQRT2
+
     b[i+3] = w * u12
     b[i+4] = w * u13
     b[i+5] = w * u23
@@ -989,11 +999,6 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     ## calculate the number of parameters in the model
     num_atoms = len(atom_list)
     params = 20
-
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     A = zeros((num_atoms * 6, params), Float)
     b = zeros(num_atoms * 6,  Float)
@@ -1023,6 +1028,11 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
 
     ## solve by SVD
     C = solve_TLS_Ab(A, b)
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = array([ [ C[T11], C[T12], C[T13] ],
                 [ C[T12], C[T22], C[T23] ],
@@ -1252,13 +1262,28 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
 ## NESTED VIBRATIONAL MODELS
 ##
 
-pivot_side_chain_dict = {
-    "TYR": "CB",
+CB_PIVOT_ATOMS = {
+    "GLY": None,
+    "ALA": None,
+    "VAL": "CB",
+    "LEU": "CB",
+    "ILE": "CB",
+    "PRO": None,
     "PHE": "CB",
+    "TYR": "CB",
     "TRP": "CB",
+    "MET": "CB",
+    "CYS": "CB",
+    "SER": "CB",
+    "THR": "CB",
+    "ASP": "CB",
+    "GLU": "CB",
     "HIS": "CB",
-    "ARG": "CA" }
-
+    "LYS": "CB",
+    "ARG": "CB",
+    "ASN": "CB",
+    "GLN": "CB" }
+ 
 def set_L_A(A, i, j, x, y, z, w):
     """Sets coefficents of a L tensor in matrix A for a atom at position
     x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
@@ -1296,6 +1321,8 @@ def set_L_A(A, i, j, x, y, z, w):
     A[U33, L22] = w * xx
     A[U33, L12] = w * -2.0 * xy
 
+    w = w * SQRT2
+
     A[U12, L33] = w * -xy
     A[U12, L23] = w * xz
     A[U12, L13] = w * yz
@@ -1311,7 +1338,7 @@ def set_L_A(A, i, j, x, y, z, w):
     A[U23, L13] = w * xy
     A[U23, L12] = w * xz
 
-def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
+def calc_CB_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
     the TLS model with amino acid side chains which can pivot
     about the CA atom.  This model uses 20 TLS parameters and 6
@@ -1323,11 +1350,6 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
 
     params = (6 * num_frags) + 20
 
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
     A = zeros((num_atoms * 6, params), Float)
     b = zeros(num_atoms * 6,  Float)
 
@@ -1338,31 +1360,34 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
         ## set x, y, z as the vector components from the TLS origin
         x, y, z = atm.position
 
-        ## is this fit weighted?
-        if weight_dict!=None:
-            w = math.sqrt(weight_dict[atm])
-        else:
-            w = 1.0
-
         ## indecies of the components of U
         U11 = i * 6
 
         ## set the b vector
         U = atm.get_U()
-        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
+        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], 1.0)
 
         ## set the A matrix
-        set_TLS_A(A, U11, 0, x, y, z, w)
+        set_TLS_A(A, U11, 0, x, y, z, 1.0)
 
         ## independent side-chain Ls tensor
         frag = atm.get_fragment()
+
+        assert frag.is_amino_acid()
+
         if frag.is_amino_acid():
             if atm.name not in ["N", "CA", "C", "O"]:
-                atm_CA = frag.get_atom("CA")                
-                if atm_CA!=None:
+
+                ## get the name of the pivot atom for this resiude
+                patom_name = CB_PIVOT_ATOMS.get(frag.res_name)
+                if patom_name!=None:
+
+                    patm = frag.get_atom(patom_name)
+                    assert patm!=None
+
                     L11 = 20 + (segment.index(frag) * 6)
-                    xs, ys, zs = atm.position - atm_CA.position
-                    set_L_A(A, U11, L11, xs, ys, zs, w)
+                    xs, ys, zs = atm.position - patm.position
+                    set_L_A(A, U11, L11, xs, ys, zs, 1.0)
 
     ## solve by SVD
     C = solve_TLS_Ab(A, b)
@@ -1373,6 +1398,12 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     lsq_residual = dot(xw, xw)
 
     ## create the T,L,S tensors
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
     T = array([ [ C[T11], C[T12], C[T13] ],
                 [ C[T12], C[T22], C[T23] ],
                 [ C[T13], C[T23], C[T33] ] ], Float)
@@ -1387,6 +1418,30 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
                 [ C[S21],    s22, C[S23] ],
                 [ C[S31], C[S32],    s33 ] ], Float)
 
+
+    ## extract the CB-pivot L tensors
+    frag_L_dict = {}
+    iL11 = 20
+    for frag in segment.iter_fragments():
+        x = C[iL11:iL11+6]
+
+        if not allclose(x, zeros(6, Float)):
+            CB_L = array([ [ C[iL11],   C[iL11+3], C[iL11+4] ],
+                           [ C[iL11+3], C[iL11+1], C[iL11+5] ],
+                           [ C[iL11+4], C[iL11+5], C[iL11+2] ] ], Float)
+
+            frag_L_dict[frag] = CB_L
+            ev = eigenvalues(CB_L) * RAD2DEG2
+
+            print "%s %s: %6.2f %6.2f %6.2f" % (
+                frag.fragment_id, frag.res_name,
+                ev[0],ev[1],ev[2])
+        else:
+            print "%s %s" % (
+                frag.fragment_id, frag.res_name)
+
+        iL11 += 6
+    
 
     ## caclculate the center of reaction for the group and
     cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
@@ -1403,125 +1458,6 @@ def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     ret_dict["params"] = params
 
     return ret_dict
-
-
-## this one splits the segment in half and uses a overall TLS group
-## and a TLS group for both halves, and pivots side chains at the CA atom
-def calc_CA_pivot_TLS_least_squares_fit_2(segment, weight_dict=None):
-    """Perform a LSQ-TLS fit on the given Segment object using
-    the TLS model with amino acid side chains which can pivot
-    about the CA atom.  This model uses 20 TLS parameters and 6
-    libration parameters per side chain.
-    """
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-    
-    ## calculate the number of parameters in the model
-    num_atoms = segment.count_atoms()
-    num_frags = segment.count_fragments()
-    mid_ifrag  = num_frags / 2
-
-    params = (6 * num_frags) + 60
-
-    A = zeros((num_atoms*6, params), Float)
-    b = zeros(num_atoms*6,  Float)
-
-    i = -1
-    for atm in segment.iter_atoms():
-        i += 1
-
-        ## fragment index the atom is in
-        frag  = atm.get_fragment()
-        ifrag = segment.index(frag)
-        
-        ## set x, y, z as the vector components from the TLS origin
-        x, y, z = atm.position
-
-        ## is this fit weighted?
-        if weight_dict!=None:
-            w = math.sqrt(weight_dict[atm])
-        else:
-            w = 1.0
-
-        ## indecies of the components of U
-        U11 = i * 6
-
-        ## set the b vector
-        U = atm.get_U()
-        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
-
-        ## set the A matrix
-        set_TLS_A(A, U11, 0, x, y, z, w)
-        if ifrag<mid_ifrag:
-            set_TLS_A(A, U11, 20, x, y, z, w)
-        else:
-            set_TLS_A(A, U11, 40, x, y, z, w)
-
-        ## independent side-chain Ls tensor
-        frag = atm.get_fragment()
-        if frag.is_amino_acid():
-            if atm.name not in ["N", "CA", "C", "O"]:
-                atm_CA = frag.get_atom("CA")                
-                if atm_CA!=None:
-                    l11 = 60 + (ifrag * 6)
-                    xs, ys, zs = atm.position - atm_CA.position
-                    set_L_A(A, u11, l11, xs, ys, zs, w)
-
-    ## solve by SVD
-    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
-
-    ## make W
-    dim_W = len(S)
-    W = zeros((dim_W, dim_W), Float)
-
-    for i in range(dim_W):
-        if S[i]>1e-5:
-            W[i,i] = 1.0 / S[i]
-        else:
-            W[i,i] = 0.0
-
-    M1 = matrixmultiply(transpose(Vt), W)
-    M2 = matrixmultiply(M1, transpose(U))
-    C  = matrixmultiply(M2, b)
-
-    T = array([ [ C[T11], C[T12], C[T13] ],
-                [ C[T12], C[T22], C[T23] ],
-                [ C[T13], C[T23], C[T33] ] ], Float)
-
-    L = array([ [ C[L11], C[L12], C[L13] ],
-                [ C[L12], C[L22], C[L23] ],
-                [ C[L13], C[L23], C[L33] ] ], Float)
-
-    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
-
-    S = array([ [    s11, C[S12], C[S13] ],
-                [ C[S21],    s22, C[S23] ],
-                [ C[S31], C[S32],    s33 ] ], Float)
-
-
-    ## calculate the lsq residual since silly Numeric Python won't
-    ## do it for us
-    utlsw = matrixmultiply(A, C)
-    xw = utlsw - b
-    lsq_residual = dot(xw, xw)
-
-    ## caclculate the center of reaction for the group and
-    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
-
-    ret_dict = {}
-
-    ret_dict["T"] = cor_info["T'"]
-    ret_dict["L"] = cor_info["L'"]
-    ret_dict["S"] = cor_info["S'"]
-
-    ret_dict["lsq_residual"] = lsq_residual
-
-    ret_dict["num_atoms"] = num_atoms
-
-    return ret_dict
-
 
 
 ###############################################################################
@@ -1983,7 +1919,7 @@ class TLSStructureAnalysis(object):
 
                 ## calculate using CA-pivot TLS model for side chains
                 if calc_pivot_model==True:
-                    rdict = calc_CA_pivot_TLS_least_squares_fit(pv_seg)
+                    rdict = calc_CB_pivot_TLS_least_squares_fit(pv_seg)
                     tls_info["ca_pivot"] = rdict
 
                 ## check if the TLS model is valid

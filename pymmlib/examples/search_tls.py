@@ -170,6 +170,7 @@ def main(**args):
 
         if tls_info.has_key("error"):
             print "# [ERROR:%s] %s" % (tls_info["name"], tls_info["error"])
+            continue
             stats = tls_info
 
             row = {
