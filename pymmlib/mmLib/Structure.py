@@ -164,10 +164,7 @@ class Structure(object):
     def __iter__(self):
         """Iterates the Chain objects in the Structure.
         """
-        try:
-            return iter(self.default_model)
-        except TypeError:
-            return iter([])
+        return self.iter_chains()
 
     def __contains__(self, model_chain_idx):
         """Returns True if item is a Model in the Structure, or a
@@ -350,7 +347,7 @@ class Structure(object):
         """
         return self.default_model
     
-    def set_model(self, model_id):
+    def set_default_model(self, model_id):
         """Sets the default Model for the Structure to model_id.  Returns
         False if a Model with the proper model_id does
         not exist in the Structure.
@@ -361,17 +358,29 @@ class Structure(object):
             return False
         return False
 
+    def set_model(self, model_id):
+        """DEP: Sets the default Model for the Structure to model_id.  Returns
+        False if a Model with the proper model_id does
+        not exist in the Structure.
+        """
+        self.set_default_model(model_id)
+        
     def get_default_alt_loc(self):
         """Returns the default alt_loc string.
         """
         return self.default_alt_loc
 
-    def set_alt_loc(self, alt_loc):
+    def set_default_alt_loc(self, alt_loc):
         """Sets the default alt_loc for the Stucture.
         """
         self.default_alt_loc = alt_loc
         for frag in self.iter_fragments():
             frag.set_alt_loc(alt_loc)
+            
+    def set_alt_loc(self, alt_loc):
+        """DEP: Sets the default alt_loc for the Stucture.
+        """
+        self.set_default_alt_loc(alt_loc)
 
     def iter_models(self):
         """Iterates over all Model objects.
@@ -387,15 +396,16 @@ class Structure(object):
         """Iterates over all Chain objects in the default Model, in
         alphabetical order according to their chain_id.
         """
-        return iter(self)
+        if self.default_model:
+            return self.default_model.iter_chains()
+        return iter([])
 
     def count_chains(self):
         """Counts all Chain objects in the default Model.
         """
-        n = 0
-        for chain in self.iter_chains():
-            n += 1
-        return n
+        if self.default_model:
+            return self.default_model.count_chains()
+        return 0
 
     def iter_fragments(self):
         """Iterates over all Fragment objects in the default Model.
@@ -410,8 +420,8 @@ class Structure(object):
         """Counts all Fragment objects in the default Model.
         """
         n = 0
-        for chain in self.iter_fragments():
-            n += 1
+        for chain in self.iter_chains():
+            n += chain.count_fragments()
         return n
     
     def iter_amino_acids(self):
@@ -426,8 +436,8 @@ class Structure(object):
         """Counts all AminoAcidResidue objects in the default Model.
         """
         n = 0
-        for aa in self.iter_amino_acids():
-            n += 1
+        for chain in self.iter_chains():
+            n += chain.count_amino_acids()
         return n
     
     def iter_nucleic_acids(self):
@@ -442,8 +452,8 @@ class Structure(object):
         """Counts all NucleicAcidResidue objects in the default Model.
         """
         n = 0
-        for aa in self.iter_nucleic_acids():
-            n += 1
+        for chain in self.iter_chains():
+            n += chain.count_amino_acids()
         return n
 
     def iter_atoms(self):
@@ -460,26 +470,25 @@ class Structure(object):
         default alt_loc.
         """
         n = 0
-        for atm in self.iter_atoms():
-            n += 1
+        for chain in self.iter_chains():
+            n += chain.count_atoms()
         return n
                 
     def iter_all_atoms(self):
         """Iterates over all Atom objects in the Structure.  The iteration
         is performed according to common PDB ordering rules, over all Models
-        and all Altlocs.
+        and all alternate conformations.
         """
         for model in self.iter_models():
-            for frag in model.iter_fragments():
-                for atm in frag.iter_all_atoms():
-                    yield atm
+            for atm in model.iter_all_atoms():
+                yield atm
 
     def count_all_atoms(self):
         """Counts all atoms in the default Model using the default alt_loc.
         """
         n = 0
-        for atm in self.iter_all_atoms():
-            n += 1
+        for model in self.iter_models():
+            n += model.count_all_atoms()
         return n
 
     def iter_bonds(self):
@@ -500,7 +509,7 @@ class Structure(object):
         alt_loc.
         """
         n = 0
-        for atm in self.iter_bonds():
+        for bond in self.iter_bonds():
             n += 1
         return n
 
@@ -526,7 +535,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_alpha_helicies()
-        raise StopIteration
+        return iter([])
 
     def add_beta_sheet(self, beta_sheet):
         """Adds a BetaSheet to the default Model object.
@@ -539,7 +548,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_beta_sheets()
-        raise StopIteration
+        return iter([])
 
     def add_site(self, site):
         """Adds a Site object to the default Model.
@@ -552,7 +561,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_sites()
-        raise StopIteration
+        return iter([])
 
     def add_bonds_from_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
@@ -666,7 +675,7 @@ class Model(object):
     def __iter__(self):
         """Iterates the Chain objects in the Model.
         """
-        return iter(self.chain_list)
+        return self.iter_chains()
 
     def __contains__(self, chain_idx):
         """Returns True if the argument Chain or chain_id is in the Model.
@@ -718,21 +727,131 @@ class Model(object):
         del self.chain_dict[chain.chain_id]
         chain.model = None
 
+    def get_chain(self, chain_id):
+        """Returns the Chain object matching the chain_id charactor.
+        """
+        try:
+            return self[chain_id]
+        except KeyError:
+            return None
+
+    def iter_chains(self):
+        """Iterates over all Chain objects in alphabetical order according
+        to their chain_id.
+        """
+        return iter(self.chain_list)
+
+    def count_chains(self):
+        """Counts all Chain objects.
+        """
+        return len(self.chain_list)
+
     def add_fragment(self, fragment):
+        """Finish Me.
+        """
         assert isinstance(fragment, Fragment)
         raise FinishMe()
 
     def remove_fragment(self, fragment):
+        """Finish Me.
+        """
         assert isinstance(fragment, Fragment)
         raise FinishMe()
 
+    def iter_fragments(self):
+        """Iterates over all Fragment objects.  The iteration is performed
+        in order according the the parent Chain's chain_id, and the
+        Fragment's positioin within the chain.
+        """
+        for chain in self.iter_chains():
+            for frag in chain.iter_fragments():
+                yield frag
+
+    def count_fragments(self):
+        """Counts all Fragment objects.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_fragments()
+        return n
+
+    def iter_amino_acids(self):
+        """Same as iter_fragments() but only iterates over Fragments of the
+        subclass AminoAcidResidue.
+        """
+        for chain in self.iter_chains():
+            for frag in chain.iter_amino_acids():
+                yield frag
+
+    def count_amino_acids(self):
+        """Counts all AminoAcidResidue objects.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_amino_acids()
+        return n
+
+    def iter_nucleic_acids(self):
+        """Same as iter_fragments() but only iterates over Fragments of the
+        subclas NucleicAcidResidue.
+        """
+        for chain in self.iter_chains():
+            for frag in chain.iter_nucleic_acids():
+                yield frag
+
+    def count_nucleic_acids(self):
+        """Counts all NucleicAcidResidue objects.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_nucleic_acids()
+        return n
+
     def add_atom(self, atom):
+        """Finish Me.
+        """
         assert isinstance(atom, Atom)
         raise FinishMe()
 
     def remove_atom(self, atom):
+        """Finish Me.
+        """
         assert isinstance(atom, Atom)
         raise FinishMe()
+
+
+    def iter_atoms(self):
+        """Iterates over all Atom objects according to the Structure
+        defaults.
+        """
+        for chain in self.iter_chains():
+            for atm in chain.iter_atoms():
+                yield atm
+
+    def count_atoms(self):
+        """Counts all Atom objects in according to the Structure defaults.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_atoms()
+        return n
+
+    def iter_all_atoms(self):
+        """Iterates over all Atom objects including all atoms in multiple
+        conformations.
+        """
+        for chain in self.iter_chains():
+            for atm in chain.iter_all_atoms():
+                yield atm
+
+    def count_all_atoms(self):
+        """Counts all Atom objects including all atoms in multiple
+        conformations.
+        """
+        n = 0
+        for chain in self.iter_chains():
+            n += chain.count_all_atoms()
+        return n
 
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix object to the Model.
@@ -795,107 +914,6 @@ class Model(object):
         """Returns the parent Structure.
         """
         return self.structure
-        
-    def get_chain(self, chain_id):
-        """Returns the Chain object matching the chain_id charactor.
-        """
-        try:
-            return self[chain_id]
-        except KeyError:
-            return None
-
-    def iter_chains(self):
-        """Iterates over all Chain objects in alphabetical order according
-        to their chain_id.
-        """
-        return iter(self)
-
-    def count_chains(self):
-        """Counts all Chain objects.
-        """
-        return len(self.chain_list)
-
-    def iter_fragments(self):
-        """Iterates over all Fragment objects.  The iteration is performed
-        in order according the the parent Chain's chain_id, and the
-        Fragment's positioin within the chain.
-        """
-        for chain in self.iter_chains():
-            for frag in chain.iter_fragments():
-                yield frag
-
-    def count_fragments(self):
-        """Counts all Fragment objects.
-        """
-        n = 0
-        for frag in self.iter_fragments():
-            n += 1
-        return n
-
-    def iter_amino_acids(self):
-        """Same as iter_fragments() but only iterates over Fragments of the
-        subclass AminoAcidResidue.
-        """
-        for chain in self.iter_chains():
-            for aa in chain.iter_amino_acids():
-                yield aa
-
-    def count_amino_acids(self):
-        """Counts all AminoAcidResidue objects.
-        """
-        n = 0
-        for frag in self.iter_amino_acids():
-            n += 1
-        return n
-
-    def iter_nucleic_acids(self):
-        """Same as iter_fragments() but only iterates over Fragments of the
-        subclas NucleicAcidResidue.
-        """
-        for chain in self.iter_chains():
-            for aa in chain.iter_nucleic_acids():
-                yield aa
-
-    def count_nucleic_acids(self):
-        """Counts all NucleicAcidResidue objects.
-        """
-        n = 0
-        for frag in self.iter_nucleic_acids():
-            n += 1
-        return n
-
-    def iter_atoms(self):
-        """Iterates over all Atom objects according to the Structure
-        defaults.
-        """
-        for chain in self.iter_chains():
-            for atm in chain.iter_atoms():
-                yield atm
-
-    def count_atoms(self):
-        """Counts all Atom objects in according to the Structure defaults.
-        """
-        n = 0
-        for atm in self.iter_atoms():
-            n += 1
-        return n
-
-    def iter_all_atoms(self):
-        """Iterates over all Atom objects including all atoms in multiple
-        conformations.
-        """
-        for chain in self.iter_chains():
-            for atm in chain.iter_all_atoms():
-                yield atm
-
-    def count_all_atoms(self):
-        """Counts all Atom objects including all atoms in multiple
-        conformations.
-        """
-        n = 0
-        for atm in self.iter_all_atoms():
-            n += 1
-        return n
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -1164,29 +1182,6 @@ class Segment(object):
         self.fragment_list.remove(fragment)
         del self.fragment_dict[fragment.fragment_id]
 
-    def add_atom(self, atom):
-        assert isinstance(atom, Atom)
-        raise FinishMe()
-
-    def remove_atom(self, atom):
-        assert isinstance(atom, Atom)
-        raise FinishMe()
-
-    def get_chain(self):
-        """Returns the Chain object this Segment is part of.
-        """
-        return self.chain
-
-    def get_model(self):
-        """Returns the parent Model object.
-        """
-        return self.model
-            
-    def get_structure(self):
-        """Returns the parent Structure object.
-        """
-        return self.model.structure
-
     def get_fragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its fragment_id.
         """
@@ -1200,12 +1195,12 @@ class Segment(object):
         in order according to the Fragment's position within the Segment
         object.
         """
-        return iter(self)
+        return iter(self.fragment_list)
 
     def count_fragments(self):
         """Return the number of Fragment objects.
         """
-        return len(self)
+        return len(self.fragment_list)
 
     def has_amino_acids(self):
         """Returns True if the Segment contains any AminoAcidResidue objects.
@@ -1332,6 +1327,18 @@ class Segment(object):
                 n += 1
         return n
 
+    def add_atom(self, atom):
+        """Finish Me.
+        """
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
+    def remove_atom(self, atom):
+        """Finish Me.
+        """
+        assert isinstance(atom, Atom)
+        raise FinishMe()
+
     def iter_atoms(self):
         """Iterates over all Atom objects within the Segment using the
         default conformation set in the parent Structure.
@@ -1339,6 +1346,12 @@ class Segment(object):
         for frag in self.iter_fragments():
             for atm in frag.iter_atoms():
                 yield atm
+
+    def count_atoms(self):
+        n = 0
+        for frag in self.iter_fragments():
+            n += frag.count_atoms()
+        return n
     
     def iter_all_atoms(self):
         """Performs a in-order iteration of all atoms in the Segment,
@@ -1347,6 +1360,12 @@ class Segment(object):
         for frag in self.iter_fragments():
             for atm in frag.iter_all_atoms():
                 yield atm
+
+    def count_all_atoms(self):
+        n = 0
+        for frag in self.iter_fragments():
+            n += frag.count_all_atoms()
+        return n
                 
     def iter_bonds(self):
         """Iterates over all Bond objects attached to Atom objects within the
@@ -1382,6 +1401,21 @@ class Segment(object):
             sequence.append(frag.res_name)
 
         return sequence
+
+    def get_chain(self):
+        """Returns the Chain object this Segment is part of.
+        """
+        return self.chain
+
+    def get_model(self):
+        """Returns the parent Model object.
+        """
+        return self.model
+            
+    def get_structure(self):
+        """Returns the parent Structure object.
+        """
+        return self.model.structure
 
     
 class Chain(Segment):
@@ -1564,7 +1598,7 @@ class Fragment(object):
         atoms in alternate conformations, only the atoms with the structure's
         default_alt_loc are iterated.
         """
-        return iter(self.atom_list)
+        return self.iter_atoms()
 
     def __contains__(self, atom_idx):
         """Return True if the Atom object is contained in the fragment.
@@ -1580,6 +1614,54 @@ class Fragment(object):
         """
         return self.atom_list.index(atom)
 
+    def set_default_alt_loc(self, alt_loc):
+        """Sets the default alt_loc of the Fragment.
+        """
+        self.default_alt_loc = alt_loc
+
+        ishift = 0
+        for i in range(len(self.atom_order_list)):
+            atm = self.atom_order_list[i]
+
+            if isinstance(atm, Atom):
+                ## case 1: atom has no alt_locs
+                try:
+                    self.atom_list[i-ishift] = atm
+                except IndexError:
+                    self.atom_list.append(atm)
+                self.atom_dict[atm.name] = atm
+
+            else:
+                try:
+                    atmx = atm[alt_loc]
+                except KeyError:
+                    ## case 2: atom has alt_loc partners, but not one
+                    ##         for this given alt_loc
+                    try:
+                        del self.atom_list[i-ishift]
+                    except IndexError:
+                        pass
+                    for atmx in atm.values():
+                        try:
+                            del self.atom_dict[atmx.name]
+                        except KeyError:
+                            pass
+                        break
+                    ishift += 1
+                else:
+                    ## case 3: atom has alt_loc partners, and one for
+                    ##         this alt_loc too
+                    try:
+                        self.atom_list[i-ishift] = atmx
+                    except IndexError:
+                        self.atom_list.append(atmx)
+                    self.atom_dict[atmx.name] = atmx
+
+    def set_alt_loc(self, alt_loc):
+        """DEP: Sets the default alt_loc of the Fragment.
+        """
+        self.set_default_alt_loc(alt_loc)
+        
     def add_atom(self, atom):
         """Adds a atom to the fragment, and sets the atom's atom.fragment
         attribute to the fragment.
@@ -1697,48 +1779,12 @@ class Fragment(object):
             
         atom.fragment = self
 
-    def set_alt_loc(self, alt_loc):
-        """Sets the default alt_loc of the Fragment.
+
+    def remove_atom(self, atom):
+        """Finish Me
         """
-        self.default_alt_loc = alt_loc
-
-        ishift = 0
-        for i in range(len(self.atom_order_list)):
-            atm = self.atom_order_list[i]
-
-            if isinstance(atm, Atom):
-                ## case 1: atom has no alt_locs
-                try:
-                    self.atom_list[i-ishift] = atm
-                except IndexError:
-                    self.atom_list.append(atm)
-                self.atom_dict[atm.name] = atm
-
-            else:
-                try:
-                    atmx = atm[alt_loc]
-                except KeyError:
-                    ## case 2: atom has alt_loc partners, but not one
-                    ##         for this given alt_loc
-                    try:
-                        del self.atom_list[i-ishift]
-                    except IndexError:
-                        pass
-                    for atmx in atm.values():
-                        try:
-                            del self.atom_dict[atmx.name]
-                        except KeyError:
-                            pass
-                        break
-                    ishift += 1
-                else:
-                    ## case 3: atom has alt_loc partners, and one for
-                    ##         this alt_loc too
-                    try:
-                        self.atom_list[i-ishift] = atmx
-                    except IndexError:
-                        self.atom_list.append(atmx)
-                    self.atom_dict[atmx.name] = atmx
+        assert isinstance(atom, Atom)
+        raise FinishMe()
 
     def get_atom(self, name):
         """Returns the matching Atom object contained in the Fragment.
@@ -1753,7 +1799,12 @@ class Fragment(object):
         """Iterates over all Atom objects contained in the Fragment matching
         the current model and default alt_loc.
         """
-        return iter(self)
+        return iter(self.atom_list)
+
+    def count_atoms(self):
+        """
+        """
+        return len(self.atom_list)
 
     def iter_all_atoms(self):
         """Iterates of all Atoms in the Fragment includeing Altlocs.
@@ -1764,6 +1815,17 @@ class Fragment(object):
             else:
                 for atmx in atm:
                     yield atmx
+
+    def count_all_atoms(self):
+        """
+        """
+        n = 0
+        for atm in self.atom_order_list:
+            if isinstance(atm, Atom):
+                n += 1
+            else:
+                n += len(atm)
+        return n
 
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
@@ -1823,7 +1885,7 @@ class Fragment(object):
         self.fragment_id = fragment_id
 
         ## set the chain_id in all the fragment and atom children
-        for atm in self:
+        for atm in self.iter_all_atoms():
             atm.fragment_id = fragment_id
 
         ## resort the parent chain
