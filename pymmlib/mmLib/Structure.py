@@ -546,7 +546,7 @@ class Model(object):
         try:
             return self[chain_id]
         except KeyError:
-            return NOne
+            return None
 
     def iter_chains(self):
         """Iterates over all Chain objects in alphabetical order according
@@ -613,7 +613,7 @@ class Chain(object):
         self.chain_id = chain_id
 
         ## the sequence list contains a list 3-letter residue names
-        self.sequence = []
+        self.sequence = None
 
         ## fragments are contained in the list and also cached in
         ## a dictionary for fast random-access lookup
@@ -833,37 +833,53 @@ class Chain(object):
         sequence of the same bio-residue, and that's the sequence.  Returns
         a list of 3-letter residues codes of the calculated sequence.
         """
+        structure = self.get_structure()
+        if structure != None:
+            sequence = Sequence(library = structure.library)
+        else:
+            sequence = Sequence()
+
         residue_class = None
-        sequence_list = []
         for frag in self.iter_standard_residues():
             if residue_class:
                 if not isinstance(frag, residue_class):
                     break
             else:
                 residue_class = frag.__class__
+            sequence.append(frag.res_name)
 
-            sequence_list.append(frag.res_name)
+        return sequence
 
-        return sequence_list
 
-    def calc_sequence1(self):
-        """Calculates the 1-letter sequence of the Chain.
+class Sequence(list):
+    """A polymer sequence 
+    """
+    def __init__(self, **args):
+        self.library  = args.get("library")       or Library()
+        sequence_list = args.get("sequence_list") or []
+        list.__init__(self, sequence_list)
+
+    def __str__(self):
+        return self.sequence_one_letter_code()
+
+    def sequence_one_letter_code(self):
+        """Return the one letter code representation of the sequence as
+        a string.
         """
-        sequence1 = ""
-        lib = self.get_structure().library
+        one_letter_code = ""
         
-        for frag in self.iter_fragments():
-            mon = lib.get_monomer(frag.res_name)
+        for res_name in self:
+            mon = self.library.get_monomer(res_name)
 
             if mon == None or not mon.is_standard_residue():
                 break
 
             if mon.one_letter_code == "":
-                sequence1 += "(%s)" % (frag.res_name)
+                one_letter_code += "(%s)" % (res_name)
             else:
-                sequence1 += mon.one_letter_code
+                one_letter_code += mon.one_letter_code
 
-        return sequence1
+        return one_letter_code
 
 
 class Fragment(object):
@@ -1433,63 +1449,37 @@ class AminoAcidResidue(Residue):
 
         return False
 
-    def calc_pucker_torsion(self, conf_id = None):
-        """Calculates the Pucker torsion of a ring system.  Returns None
-        for Amino Acids which do not have Pucker torsion angles.
+    def calc_torsion(self, torsion_angle_name):
+        """Calculates the given torsion angle for the monomer.  The torsion
+        angles are defined by name in monomers.cif.
         """
         mon = self.chain.structure.library.get_monomer(self.res_name)
-        if not mon or not mon.pucker_definition:
+        try:
+            (atom1_name,
+             atom2_name,
+             atom3_name,
+             atom4_name) = mon.torsion_angle_dict[torsion_angle_name]
+        except KeyError:
             return None
 
-        a1 = self.get_atom(mon.pucker_definition[0])
-        a2 = self.get_atom(mon.pucker_definition[1])
-        a3 = self.get_atom(mon.pucker_definition[2])
-        a4 = self.get_atom(mon.pucker_definition[3])
-        return calculateTorsionAngle(a1, a2, a3, a4)
+        atom1 = self.get_atom(atom1_name)
+        atom2 = self.get_atom(atom2_name)
+        atom3 = self.get_atom(atom3_name)
+        atom4 = self.get_atom(atom4_name)
+        
+        return calculateTorsionAngle(atom1, atom2, atom3, atom4)
 
     def calc_torsion_chi1(self):
-        mon = self.chain.structure.library.get_monomer(self.res_name)
-        if mon.chi1_definition == None:
-            return None
-        
-        a1 = self.get_atom(mon.chi1_definition[0])
-        a2 = self.get_atom(mon.chi1_definition[1])
-        a3 = self.get_atom(mon.chi1_definition[2])
-        a4 = self.get_atom(mon.chi1_definition[3])
-        return calculateTorsionAngle(a1, a2, a3, a4)
+        return self.calc_torsion("chi1")
 
     def calc_torsion_chi2(self):
-        mon = self.chain.structure.library.get_monomer(self.res_name)
-        if mon.chi2_definition == None:
-            return None
-        
-        a1 = self.get_atom(mon.chi2_definition[0])
-        a2 = self.get_atom(mon.chi2_definition[1])
-        a3 = self.get_atom(mon.chi2_definition[2])
-        a4 = self.get_atom(mon.chi2_definition[3])
-        return calculateTorsionAngle(a1, a2, a3, a4)
+        return self.calc_torsion("chi2")
 
     def calc_torsion_chi3(self):
-        mon = self.chain.structure.library.get_monomer(self.res_name)
-        if mon.chi3_definition == None:
-            return None
-        
-        a1 = self.get_atom(mon.chi3_definition[0])
-        a2 = self.get_atom(mon.chi3_definition[1])
-        a3 = self.get_atom(mon.chi3_definition[2])
-        a4 = self.get_atom(mon.chi3_definition[3])
-        return calculateTorsionAngle(a1, a2, a3, a4)
+        return self.calc_torsion("chi3")
 
     def calc_torsion_chi4(self):
-        mon = self.chain.structure.library.get_monomer(self.res_name)
-        if mon.chi4_definition == None:
-            return None
-        
-        a1 = self.get_atom(mon.chi4_definition[0])
-        a2 = self.get_atom(mon.chi4_definition[1])
-        a3 = self.get_atom(mon.chi4_definition[2])
-        a4 = self.get_atom(mon.chi4_definition[3])
-        return calculateTorsionAngle(a1, a2, a3, a4)
+        return self.calc_torsion("chi4")
 
     def calc_torsion_chi(self):
         """Calculates CHI side-chain torsion angles according to the
@@ -1498,13 +1488,18 @@ class AminoAcidResidue(Residue):
         missing atoms, or angles which do not exist for the amino acid
         are returned as None in the tuple.
         """
-        chi1 = self.calc_torsion_chi1()
-        chi2 = self.calc_torsion_chi2()
-        chi3 = self.calc_torsion_chi3()
-        chi4 = self.calc_torsion_chi4()
-        return (chi1, chi2, chi3, chi4)
+        return (self.calc_torsion("chi1"),
+                self.calc_torsion("chi2"),
+                self.calc_torsion("chi3"),
+                self.calc_torsion("chi4"))
+        
+    def calc_pucker_torsion(self):
+        """Calculates the Pucker torsion of a ring system.  Returns None
+        for Amino Acids which do not have Pucker torsion angles.
+        """
+        return self.calc_torsion("pucker")
 
-
+    
 class NucleicAcidResidue(Residue):
     """A subclass of Residue representing one nuclic acid in a strand of
     DNA or RNA.

@@ -334,6 +334,26 @@ class StructureBuilder(object):
                 atom2_symop = bd_map.get("atm2_symop"),
                 standard_res_bond = False)
 
+    def load_sequence(self, sequence_map):
+        """The sequence map contains the following keys: chain_id: the
+        chain ID fo the sequence; num_res: the number of residues in the
+        sequence; sequence_list: a list of 3-letter codes of the residues
+        in the sequence.
+        """
+        try:
+            chain_id = sequence_map["chain_id"]
+            sequence_list = sequence_map["sequence_list"]
+        except KeyError:
+            return
+
+        ## add a copy of the sequence to each equivalent chain in
+        ## all models of the structure
+        for model in self.struct.iter_models():
+            chain = model.get_chain(chain_id)
+            if chain != None:
+                chain.sequence = Sequence(library = self.struct.library,
+                                          sequence_list = sequence_list[:])
+
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
@@ -723,8 +743,8 @@ class PDBStructureBuilder(StructureBuilder):
                 row["details"] = details
             exptl.append(row)
 
-    def process_SEQRES(self, rec):
-        pass
+    def preprocess_SEQRES(self, seqres):
+        self.load_sequence(seqres)
 
     def process_CRYST1(self, rec):
         ucell_map = {}

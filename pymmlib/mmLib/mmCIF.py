@@ -345,6 +345,28 @@ class mmCIFData(list):
         except IndexError:
             return None
 
+    def split_tag(self, tag):
+        cif_table_name, cif_column_name = tag[1:].split(".")
+        return cif_table_name.lower(), cif_column_name.lower()
+
+    def join_tag(self, cif_table_name, cif_column_name):
+        return "_%s.%s" % (cif_table_name, cif_column_name)
+
+    def get_tag(self, tag):
+        """Get.
+        """
+        table_name, column = self.split_tag(tag)
+        try:
+            return self[table_name][column]
+        except KeyError:
+            return None
+
+    def set_tag(self, tag, value):
+        """Set.x
+        """
+        table_name, column = self.split_tag(tag)
+        self[table_name][column] = value
+        
     def debug(self):
         print "mmCIFData::%s" % (self._name)
         for ctable in self:

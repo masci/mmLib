@@ -13,65 +13,87 @@ from mmCIF import *
 mmCIFStandardColumnsMap = {
     "entry": ["id"],
 
-    "entity": ["id", "type", "details"],
+    "entity": ["id",
+               "type",
+               "details"],
 
-    "cell": ["entry_id", "length_a", "length_b", "length_c",
-             "angle_alpha", "angle_beta", "angle_gamma", "PDB_Z"],
+    "cell": ["entry_id",
+             "length_a",
+             "length_b",
+             "length_c",
+             "angle_alpha",
+             "angle_beta",
+             "angle_gamma",
+             "PDB_Z"],
 
-    "symmetry": ["entry_id", "space_group_name_H-M", "cell_setting",
+    "symmetry": ["entry_id",
+                 "space_group_name_H-M",
+                 "cell_setting",
                  "Int_Tables_number"],
 
-    "entity_poly_seq": ["entity_id", "num", "mon_id"],
+    "entity_poly_seq": ["entity_id",
+                        "num",
+                        "mon_id"],
 
-    "entity_poly": ["entity_id", "type", "nstd_linkage",
-                    "nstd_monomer", "pdbx_seq_one_letter_code"],
+    "entity_poly": ["entity_id",
+                    "type",
+                    "nstd_linkage",
+                    "nstd_monomer",
+                    "pdbx_seq_one_letter_code"],
 
     "audit_author": ["name"],
 
-    "atom_site":    ["group_PDB",
-                     "id",
-                     "type_symbol",
-                     "label_entity_id",
-                     "Cartn_x",
-                     "Cartn_y",
-                     "Cartn_z", 
-                     "occupancy",
-                     "B_iso_or_equiv",
-                     "Cartn_x_esd",
-                     "Cartn_y_esd",
-                     "Cartn_z_esd",
-                     "occupancy_esd",
-                     "B_iso_or_equiv_esd",
-                     "auth_asym_id",
-                     "auth_seq_id",
-                     "auth_comp_id",
-                     "auth_alt_id",
-                     "auth_atom_id",
-                     "pdbx_PDB_model_num"],
+    "atom_site": ["group_PDB",
+                  "id",
+                  "type_symbol",
+                  "label_entity_id",
+                  "label_asym_id",
+                  "label_seq_id",
+                  "label_comp_id",
+                  "label_alt_id",
+                  "label_atom_id",
+                  "Cartn_x",
+                  "Cartn_y",
+                  "Cartn_z", 
+                  "occupancy",
+                  "B_iso_or_equiv",
+                  "Cartn_x_esd",
+                  "Cartn_y_esd",
+                  "Cartn_z_esd",
+                  "occupancy_esd",
+                  "B_iso_or_equiv_esd",
+                  "auth_asym_id",
+                  "auth_seq_id",
+                  "auth_comp_id",
+                  "auth_alt_id",
+                  "auth_atom_id",
+                  "pdbx_PDB_model_num"],
 
-    "atom_site_anisotrop": [
-                     "id", "type_symbol", "label_entity_id",
-                     "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
-                     "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd",
-                     "U[1][3]_esd", "U[2][2]_esd", "U[2][3]_esd",
-                     "U[3][3]_esd", "pdbx_auth_seq_id",
-                     "pdbx_auth_comp_id", "pdbx_auth_asym_id",
-                     "pdbx_auth_atom_id"]
+    "atom_site_anisotrop": ["id",
+                            "type_symbol",
+                            "label_entity_id",
+                            "U[1][1]",
+                            "U[1][2]",
+                            "U[1][3]",
+                            "U[2][2]",
+                            "U[2][3]",
+                            "U[3][3]",
+                            "U[1][1]_esd",
+                            "U[1][2]_esd",
+                            "U[1][3]_esd",
+                            "U[2][2]_esd",
+                            "U[2][3]_esd",
+                            "U[3][3]_esd",
+                            "pdbx_auth_seq_id",
+                            "pdbx_auth_comp_id",
+                            "pdbx_auth_asym_id",
+                            "pdbx_auth_atom_id"]
     }
 
 
 class mmCIFFileBuilder(object):
     """Builds a mmCIF file from a Structure object.
     """
-    
-    cifdb_omit_list = [
-        "entry",
-        "entity",
-        "cell",
-        "symmetry",
-        "atom_site",
-        "atom_site_anisotrop"]
-
     def __init__(self, struct, cif_file):
         self.struct = struct
 
@@ -89,7 +111,7 @@ class mmCIFFileBuilder(object):
         ## tables which are not generated from the structure hierarchy
         ## can be copied directly from the structure's cif database
         for table in self.struct.cifdb:
-            if table.name not in self.cifdb_omit_list:
+            if not mmCIFStandardColumnsMap.has_key(table.name):
                 new_table = copy.deepcopy(table)
                 new_table.autoset_columns()
                 self.cif_data.append(new_table)
@@ -151,8 +173,11 @@ class mmCIFFileBuilder(object):
             ## calculate sequence and compare the sequence to chains
             ## already added so we can re-use the entity ID
             entity_id = None
-            sequence  = chain.calc_sequence()
-            sequence1 = chain.calc_sequence1()
+
+            if chain.sequence == None:
+                sequence = chain.calc_sequence()
+            else:
+                sequence = chain.sequence
 
             for (eid, seq1) in poly_entity_list:
                 if seq1 == sequence:
@@ -185,15 +210,15 @@ class mmCIFFileBuilder(object):
                 row["type"]    = "polymer"
                 row["details"] = details
 
-                ## add the new sequence to the entity_poly_seq table
-                entity_poly_seq = self.get_table("entity_poly_seq")
-                for i in range(len(sequence)):
-                    row = mmCIFRow()
-                    entity_poly_seq.append(row)
+##                 ## add the new sequence to the entity_poly_seq table
+##                 entity_poly_seq = self.get_table("entity_poly_seq")
+##                 for i in range(len(sequence)):
+##                     row = mmCIFRow()
+##                     entity_poly_seq.append(row)
 
-                    row["entity_id"] = entity_id
-                    row["num"]       = i + 1
-                    row["mon_id"]    = sequence[i]
+##                     row["entity_id"] = entity_id
+##                     row["num"]       = i + 1
+##                     row["mon_id"]    = sequence[i]
 
                 ## add the new sequence to the entity_poly table
                 entity_poly = self.get_table("entity_poly")
@@ -201,7 +226,8 @@ class mmCIFFileBuilder(object):
                 entity_poly.append(row)
                 row["entity_id"]                = entity_id                
                 row["type"]                     = poly_type
-                #row["pdbx_seq_one_letter_code"] = sequence1
+                row["pdbx_seq_one_letter_code"] = \
+                    sequence.sequence_one_letter_code()
 
 
             ## loop over all residues and map the Residues to their entity_id
@@ -294,11 +320,18 @@ class mmCIFFileBuilder(object):
             asrow["group_PDB"] = "HETATM"
 
         asrow["label_entity_id"]    = self.entity_id_map[atm.get_fragment()]
+        asrow["label_atom_id"]      = atm.name
+        asrow["label_alt_id"]       = atm.alt_loc
+        asrow["label_comp_id"]      = atm.res_name
+        asrow["label_seq_id"]       = atm.fragment_id
+        asrow["label_asym_id"]      = atm.chain_id
+
         asrow["auth_atom_id"]       = atm.name
         asrow["auth_alt_id"]        = atm.alt_loc
         asrow["auth_comp_id"]       = atm.res_name
         asrow["auth_seq_id"]        = atm.fragment_id
         asrow["auth_asym_id"]       = atm.chain_id
+
         asrow["type_symbol"]        = atm.element
         asrow["Cartn_x"]            = atm.position[0]
         asrow["Cartn_y"]            = atm.position[1]

@@ -28,7 +28,7 @@ class PDBFileBuilder(object):
         self.add_secondary_structure_section()
         self.add_connectivity_annotation_section()
         self.add_miscellaneous_fatures_section()
-        self.add_crystallographic_oordinate_transformation_section()
+        self.add_crystallographic_coordinate_transformation_section()
         self.add_coordinate_section()
         self.add_connectivity_section()
         self.bookkeeping_section()
@@ -62,6 +62,7 @@ class PDBFileBuilder(object):
     def add_title_section(self):
         """ HEADER, TITLE, EXPDTA, AUTHOR
         """
+        ## add HEADER records
         header = HEADER()
         self.pdb_file.append(header)
         self.set_from_cifdb(header, "idCode",
@@ -70,16 +71,88 @@ class PDBFileBuilder(object):
                             "database_pdb_rev", "date_original")
         self.set_from_cifdb(header, "classification",
                             "struct_keywords", "pdbx_keywords")
+
+        ## add TITLE records
+        try:
+            struct_title = self.struct.cifdb["struct"]["title"]
+        except KeyError:
+            pass
+        else:
+            cont = 0
+            while len(struct_title):
+                stx = struct_title[:60]
+                struct_title = struct_title[60:]
         
-        title = TITLE()
-        self.pdb_file.append(title)
-        self.set_from_cifdb(title, "title", "struct", "title")
+                title = TITLE()
+                self.pdb_file.append(title)
+
+                cont += 1
+                if cont > 1:
+                    title["continuation"] = cont
+
+                title["title"] = stx
+
+        ## add EXPDTA records
+        try:
+            exptl_method = self.struct.cifdb["exptl"]["method"]
+        except KeyError:
+            pass
+        else:
+            expdta = EXPDTA()
+            self.pdb_file.append(expdta)
+            expdta["technique"] = exptl_method
+
+        ## add AUTHOR records
+        ## XXX: need to write a function to fix author names to PDB format
+        try:
+            audit_author = self.struct.cifdb["audit_author"]
+        except KeyError:
+            pass
+        else:
+            name_list = []
+            for cif_row in audit_author:
+                try:
+                    name_list.append(cif_row["name"])
+                except KeyError:
+                    pass
+
+            author = AUTHOR()
+            self.pdb_file.append(author)
+            author["authorList"] = string.join(name_list, ",")
 
     def add_primary_structure_section(self):
         """DBREF,SEQADV,SEQRES,MODRES
         """
-        pass
-    
+        for chain in self.struct.iter_chains():
+            if chain.sequence == None:
+                sequence = chain.calc_sequence()
+            else:
+                sequence = chain.sequence
+
+            sernum = 0
+            numres = len(sequence)
+            
+            seq_index = 0
+            while seq_index < len(sequence):
+                
+                seqres = SEQRES()
+                self.pdb_file.append(seqres)
+
+                sernum += 1
+                seqres["serNum"]  = sernum
+                seqres["chainID"] = chain.chain_id
+                seqres["numRes"]  = numres
+                
+                for field in ["resName1","resName2","resName3","resName4",
+                              "resName5","resName6","resName7","resName8",
+                              "resName9","resName10","resName11","resName12",
+                              "resName13"]:
+                    try:
+                        seqres[field] = sequence[seq_index]
+                    except IndexError:
+                        break
+                    seq_index += 1
+
     def add_heterogen_section(self):
         """HET,HETNAM,HETSYN,FORMUL
         """
@@ -100,7 +173,7 @@ class PDBFileBuilder(object):
         """
         pass
 
-    def add_crystallographic_oordinate_transformation_section(self):
+    def add_crystallographic_coordinate_transformation_section(self):
         """CRYST1,ORIGXn,SCALEn,MTRIXn,TVECT
         """
         cryst1 = CRYST1()

@@ -5,10 +5,8 @@
 """Monomer and element library data classes.  The Library classes are used
 for the identification and construction of biopolymers and ligands.
 """
-
 import os
 import sys
-import xml.dom.minidom
 from mmTypes import *
 from mmCIF import mmCIFFile
 
@@ -48,16 +46,13 @@ class MonomerInterface(object):
         self.pdbx_type         = args.get("pdbx_type", "")
         self.formula           = args.get("formula", "")
         self.rcsb_class_1      = args.get("rcsb_class_1", "")
+        self.chem_type         = args.get("chem_type", "")
         
         self.atom_list         = args.get("atom_list", [])
         self.atom_dict         = args.get("atom_dict", {})
         self.bond_list         = args.get("bond_list", [])
-        self.chi1_definition   = args.get("chi1_definition", None)
-        self.chi2_definition   = args.get("chi2_definition", None)
-        self.chi3_definition   = args.get("chi3_definition", None)
-        self.chi4_definition   = args.get("chi4_definition", None)
-        self.pucker_definition = args.get("pucker_definition", None)
-
+        self.torsion_angle_dict= args.get("torsion_angle_dict", {})
+        
     def is_amino_acid(self):
         """Returns True if the Monomer is a amino acid, otherwise
         returns False.
@@ -140,36 +135,17 @@ class Element(ElementInterface):
     def __init__(self, **args):
         ElementInterface.__init__(self, **args)
 
-        self.doc = args["xml_doc"]
-        self.elm = None
+        self.cif_data = args["cif_data"]
+        element = self.cif_data["element"]
+        self.name = element["name"]
+        self.number = int(element["number"])
+        self.atomic_weight = float(element["atomic_weight"])
+        self.van_der_waals_radius = float(element["van_der_walls_radius"])
 
-        ## find xml document element for this element and
-        ## store it in self.elm
-        self.symbol = self.symbol.capitalize()
-
-        for elx in self.doc.documentElement.getElementsByTagName("Element"):
-            if elx.getAttribute("symbol") == self.symbol:
-                self.elm = elx
-
-        ## unable to find element description
-        if self.elm == None:
-            #print "Unable to find element: %s" % (self.symbol)
-            return
-
-        self.name   = self.elm.getAttribute("name")
-        self.number = int(self.elm.getAttribute("number"))
-        
-        for elx in self.elm.getElementsByTagName("AtomicWeight"):
-            self.atomic_weight = elx.getAttribute("value")
-
-        for elx in self.elm.getElementsByTagName("VanderWallRadius"):
-            self.van_der_waals_radius = elx.getAttribute("value")
-
-        for elx in self.elm.getElementsByTagName("Color"):
-            rgb        = elx.getAttribute("rgb")
-            self.color = (int(rgb[1:3], 16) / 255.0,
-                          int(rgb[3:5], 16) / 255.0,
-                          int(rgb[5:7], 16) / 255.0)
+        rgb = element["color_rgb"]
+        self.color = (int(rgb[1:3], 16) / 255.0,
+                      int(rgb[3:5], 16) / 255.0,
+                      int(rgb[5:7], 16) / 255.0)
 
 
 class Monomer(MonomerInterface):
@@ -180,6 +156,7 @@ class Monomer(MonomerInterface):
 
         cif_file = mmCIFFile()
         cif_file.load_file(open(args["path"], "r"))
+
         cif_data = cif_file[0]
 
         chem_comp = cif_data["chem_comp"][0]
@@ -217,13 +194,35 @@ class Monomer(MonomerInterface):
         ## mmcif file which supplements the RCSB's component
         ## dictionary
         mon1_lib = args["mon1_lib"]
+
         try:
-            chem_comp2 = mon1_lib[self.res_name]["chem_comp"]
+            self.mon_cif_data = mon1_lib[self.res_name]
         except KeyError:
             pass
         else:
-            self.one_letter_code = chem_comp2["one_letter_code"]
-            self.chem_type = chem_comp2["chem_type"]
+
+            ## get additional chemical information on amino acids
+            try:
+                chem_comp2 = self.mon_cif_data["chem_comp"]
+            except KeyError:
+                pass
+            else:
+                self.one_letter_code = chem_comp2["one_letter_code"]
+                self.chem_type = chem_comp2["chem_type"]
+
+            ## get torsion angle definitions
+            try:
+                torsion_angles = self.mon_cif_data["torsion_angles"]
+            except KeyError:
+                pass
+            else:
+                for cif_row in torsion_angles:
+                    self.torsion_angle_dict[cif_row["name"]] = (
+                        cif_row["atom1"],
+                        cif_row["atom2"],
+                        cif_row["atom3"],
+                        cif_row["atom4"])              
+
 
     def is_amino_acid(self):
         """Returns True if the Monomer is a amino acid, otherwise
@@ -268,13 +267,14 @@ class Library(LibraryInterface):
         (path, x) = os.path.split(__file__)
         
         ## set elements.xml path
-        self.elm_lib_path  = os.path.join(path, "Data", "elements.xml")
+        self.elm_lib_path  = os.path.join(path, "Data", "elements.cif")
         self.mon1_lib_path = os.path.join(path, "Data", "monomers.cif")
         self.mon_lib_path  = os.path.join(path, "Data", "Monomers") 
 
         ## doms to be loaded as needed
-        self.elm_doc  = xml.dom.minidom.parse(open(self.elm_lib_path, "r"))
-
+        self.elm_cif_file = mmCIFFile()
+        self.elm_cif_file.load_file(self.elm_lib_path)
+        
         ## open mmlib's monomer suppliment library
         self.mon1_lib = mmCIFFile()
         self.mon1_lib.load_file(self.mon1_lib_path)
@@ -290,11 +290,14 @@ class Library(LibraryInterface):
             return self.element_dict[symbol]
         except KeyError:
             pass
-        
-        element = Element(xml_doc = self.elm_doc, symbol = symbol)
-        if element.elm == None:
+
+        try:
+            cif_data = self.elm_cif_file[symbol]
+        except KeyError:
             element = None
-        
+        else:
+            element = Element(cif_data=cif_data, symbol=symbol)
+            
         self.element_dict[symbol] = element
         return element
 

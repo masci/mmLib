@@ -44,14 +44,18 @@ class PDBRecord(dict):
         
         for (field, start, end, ftype, just, get_func) in self._field_list:
 
+            try:
+                assert len(ln) <= (start - 1)
+            except AssertionError:
+                print "[ASSERT] "+ln
+                raise
+            
             ## add spaces to the end if necessary
-            assert len(ln) <= (start - 1)
             ln = ln.ljust(start - 1)
 
             ## used later
             field_char_len = end - start + 1
             
-
             ## access the namespace of this class to write the field
             ## if a class has a special function defined for retrieveing
             ## this record, it should use it
@@ -107,7 +111,7 @@ class PDBRecord(dict):
             s = line[start-1:end]
 
             ## ignore blank fields
-            if s.isspace():
+            if s == "" or s.isspace():
                 continue
 
             elif ftype.startswith("string"):
@@ -259,9 +263,7 @@ class PDBRecord(dict):
 
         return listx    
 
-        
 
-    
 ###############################################################################
 ## BEGIN PDB RECORD DEFINITIONS
 
@@ -290,8 +292,9 @@ class OBSLTE(PDBRecord):
     __slots__ = []
     
     _name = "OBSLTE"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("repDate", 12, 20, "string", "rjust", None),
         ("idCode", 22, 25, "string", "rjust", None),
         ("rIdCode1", 32, 35, "string", "rjust", None),
@@ -321,8 +324,9 @@ class TITLE(PDBRecord):
     __slots__ = []
     
     _name = "TITLE "
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("title", 11, 70, "string", "ljust", None)]
 
     def process(self, recs):
@@ -335,8 +339,9 @@ class CAVEAT(PDBRecord):
     __slots__ = []
     
     _name = "CAVEAT"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("idCode", 12, 15, "string", "rjust", None),
         ("comment", 20, 70, "string", "ljust", None)]
 
@@ -383,8 +388,9 @@ class COMPND(PDBRecord):
     __slots__ = []
     
     _name = "COMPND"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("compound", 11, 70, "string", "ljust", None)]
 
     def process(self, recs):
@@ -400,8 +406,9 @@ class SOURCE(PDBRecord):
     __slots__ = []
     
     _name = "SOURCE"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("srcName", 11, 70, "string", "ljust", None)]
 
     def process(self, recs):
@@ -418,8 +425,9 @@ class KEYWDS(PDBRecord):
     __slots__ = []
     
     _name = "KEYWDS"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("keywds", 11, 70, "string", "ljust", None)]
 
     def process(self, recs):
@@ -441,8 +449,9 @@ class EXPDTA(PDBRecord):
     __slots__ = []
     
     _name = "EXPDTA"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("technique", 11, 70, "string", "ljust", None)]
     _technique_list = [
         "ELECTRON DIFFRACTION",
@@ -481,8 +490,9 @@ class AUTHOR(PDBRecord):
     __slots__ = []
     
     _name = "AUTHOR"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("authorList", 11, 70, "string", "ljust", None)]
 
     def process(self, recs):
@@ -495,9 +505,10 @@ class REVDAT(PDBRecord):
     __slots__ = []
     
     _name = "REVDAT"
+    _multi_record = "continuation"
     _field_list = [
         ("modNum", 8, 10, "integer", "rjust", None),
-        ("continuation", 11, 12, "string", "rjust", None),
+        ("continuation", 11, 12, "integer", "rjust", None),
         ("modDate", 14, 22, "string", "rjust", None),
         ("modID", 24, 28, "string", "rjust", None),
         ("modType", 32, 32, "integer", "rjust", None),
@@ -523,8 +534,9 @@ class SPRSDE(PDBRecord):
     __slots__ = []
     
     _name = "SPRSDE"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "rjust", None),
+        ("continuation", 9, 10, "integer", "rjust", None),
         ("sprsdeDate", 12, 20, "string", "rjust", None),
         ("idCode", 22, 25, "string", "rjust", None),
         ("sIdCode1", 32, 35, "string", "rjust", None),
@@ -619,7 +631,7 @@ class SEQADV(PDBRecord):
         ("dbIDCode", 30, 38, "string", "ljust", None),
         ("dbRes", 40, 42, "string", "rjust", None),
         ("dbSeq", 44, 48, "integer", "rjust", None),
-        ("convlict", 40, 70, "string", "ljust", None)]
+        ("convlict", 50, 70, "string", "ljust", None)]
     
 class SEQRES(PDBRecord):
     """The SEQRES records contain the amino acid or nucleic acid sequence of
@@ -628,6 +640,7 @@ class SEQRES(PDBRecord):
     __slots__ = []
     
     _name = "SEQRES"
+    _multi_record = "serNum"
     _field_list = [
         ("serNum", 9, 10, "integer", "rjust", None),
         ("chainID", 12, 12, "string", "rjust", None),
@@ -647,30 +660,29 @@ class SEQRES(PDBRecord):
         ("resName13", 68, 70, "string", "rjust", None)]
 
     def process(self, recs):
-        """Returns a list of 3-tuples (chain_id, num_res, sequence_list).
+        """Returns a dictionary with attributes chain_id, num_res, and
+        sequence_list
         """
-        seq_dict = {}
-        seq_list = []
+        seqres = {}
 
         for rec in recs:
-            chain_id = rec.get("chainID", "")
-
-            try:
-                seq = seq_dict[chain_id]
-            except KeyError:
-                seq_dict[chain_id] = seq = (chain_id, rec.get("numRes", 0), [])
-                seq_list.append(seq)
+            seqres["chain_id"] = rec.get("chainID", "")
+            seqres["num_res"]  = rec.get("numRes", 0)
 
             for field in ["resName1","resName2","resName3","resName4",
                           "resName5","resName6","resName7","resName8",
                           "resName9","resName10","resName11","resName12",
                           "resName13"]:
                 try:
-                    seq[2].append(rec[field])
+                    value = rec[field]
                 except KeyError:
-                    pass
+                    continue
+                try:
+                    seqres["sequence_list"].append(value)
+                except KeyError:
+                    seqres["sequence_list"] = [value]
 
-        return seq_list
+        return seqres
 
 class MODRES(PDBRecord):
     """The MODRES record provides descriptions of modifications (e.g.,
@@ -722,8 +734,9 @@ class HETNAM(PDBRecord):
     __slots__ = []
     
     _name = "HETNAM"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "ljust", None),
+        ("continuation", 9, 10, "integer", "ljust", None),
         ("hetID", 12, 14, "string", "rjust", None),
         ("text", 16, 70, "string", "ljust", None)]
     
@@ -735,8 +748,9 @@ class HETSYN(PDBRecord):
     __slots__ = []
     
     _name = "HETSYN"
+    _multi_record = "continuation"
     _field_list = [
-        ("continuation", 9, 10, "string", "ljust", None),
+        ("continuation", 9, 10, "integer", "ljust", None),
         ("hetID", 12, 14, "string", "rjust", None),
         ("hetSynonyms", 16, 70, "string", "ljust", None)]
 
@@ -748,6 +762,7 @@ class FORMUL(PDBRecord):
     __slots__ = []
     
     _name = "FORMUL"
+    _multi_record = "continuation"
     _field_list = [
         ("compNum", 9, 10, "integer", "rjust", None),
         ("hetID", 13, 15, "string", "rjust", None),
@@ -1531,137 +1546,154 @@ class PDBFile(list):
         methods in the processor object for reading the objects.  There
         are several choices for methods names for the processor objects.
         """
-        def call_processor(recs):
-            if type(recs) == ListType:
-                rec = recs[0]
+        RecordProcessor(self, processor, filter_func)
+
+
+class RecordProcessor(object):
+    """Implements the PDBFile's record_processor algorithm.
+    """
+    def __init__(self, pdb_file, processor, filter_func = None):
+        self.pdb_file = pdb_file
+        self.processor = processor
+        self.filter_func = filter_func
+
+        self.process()
+
+    def call_processor(self, recs):
+        """Invoke callbacks on self.processor for the given record list (recs).
+        """
+        if type(recs) == ListType:
+            rec = recs[0]
+        else:
+            rec = recs
+
+        ## check filter function, if given, to determine if the record
+        ## should be processed
+        if self.filter_func != None and not self.filter_func(rec):
+            return
+
+        ## form method names to search for
+        name = rec._name.strip()
+        process = "process_%s" % (name)
+        preprocess = "preprocess_%s" % (name)
+
+        ## call process handler for records
+        if hasattr(self.processor, process):
+            getattr(self.processor, process)(recs)
+        elif hasattr(self.processor, "process_default"):
+            getattr(self.processor, "process_default")(recs)
+
+        ## call preprocessor and processor for records
+        if hasattr(rec, "process"):
+            pfunc = getattr(rec, "process")
+            if hasattr(self.processor, preprocess):
+                pfunc_cb = getattr(self.processor, preprocess)
+                pfunc_cb(pfunc(recs))
+            elif hasattr(self.processor, "preprocess_default"):
+                pfunc_cb = getattr(self.processor, "preprocess_default")
+                pfunc_cb(name, pfunc(recs))
+
+    def is_sucsessive_record(self, prev_rec, rec):
+        """Returns True if the current record looks like it is the sucessive
+        PDB record in a list of records.  Filds like continuation and serNum
+        are checked, as well as record name.
+        """
+        ## check record names
+        if rec._name != prev_rec._name:
+            return False
+        
+        ## NOTE: perhaps record type specific handlers could be put
+        ##       here to catch common mistakes which are found in PDB
+        ##       files
+
+        ## check for "continuation" field continous records
+        if prev_rec.has_key("continuation") or rec.has_key("continuation"):
+            prev_continuation = prev_rec.get("continuation", 1)
+            continuation      = rec.get("continuation", 1)
+
+            if (prev_continuation + 1) == continuation:
+                return True
             else:
-                rec = recs
+                return False
 
-            ## check filter function, if given, to determine if the record
-            ## should be processed
-            if filter_func and not filter_func(rec):
-                return
+        ## check for "serNum" continuations
+        if prev_rec.has_key("serNum") or rec.has_key("serNum"):
+            prev_serial = prev_rec.get("serNum", 0)
+            serial      = rec.get("serNum", 0)
 
-            ## form method names to search for
-            name = rec._name.strip()
-            process = "process_%s" % (name)
-            preprocess = "preprocess_%s" % (name)
-
-            ## call process handler for records
-            if hasattr(processor, process):
-                getattr(processor, process)(recs)
-            elif hasattr(processor, "process_default"):
-                getattr(processor, "process_default")(recs)
-
-            ## call preprocessor and processor for records
-            if hasattr(rec, "process"):
-                pfunc = getattr(rec, "process")
-                if hasattr(processor, preprocess):
-                    pfunc_cb = getattr(processor, preprocess)
-                    pfunc_cb(pfunc(recs))
-                elif hasattr(processor, "preprocess_default"):
-                    pfunc_cb = getattr(processor, "preprocess_default")
-                    pfunc_cb(name, pfunc(recs))
-
-        cont_list = []
-
-        for i in range(len(self)):
-            ## current record
-            rec = self[i]
-
-            ## next record
-            try:
-                nrec = self[i+1]
-            except IndexError:
-                nrec = None
-
-            ## check next record for continuation
-            if nrec and rec._name == nrec._name:
-                if nrec.has_key("continuation"):
-                    cont_list.append(rec)
-                else:
-                    if cont_list:
-                        call_processor(cont_list)
-                        cont_list = []
-                    call_processor(rec)
+            if (prev_serial + 1) == serial:
+                return True
             else:
-                if cont_list:
-                    if rec._name == cont_list[0]._name:
-                        cont_list.append(rec)
-                        call_processor(cont_list)
-                    else:
-                        call_processor(cont_list)
-                        call_processor(rec)
-                    cont_list = []
+                return False
+
+        return False
+
+    def is_multi_record(self, rec):
+        """Returns True if the record is a type supporting continuations
+        or multiple records.
+        """
+        return hasattr(rec, "_multi_record")
+    
+    def process(self):
+        """Iterates the PDB records in self, and searches for handling
+        methods in the processor object for reading the objects.  There
+        are several choices for methods names for the processor objects.
+        """
+        record_list = []
+        prev_rec    = None
+
+        for i in range(len(self.pdb_file)):
+            ## get current record
+            rec = self.pdb_file[i]
+
+            ## case 1: no previous record, this record is the beginning
+            ##         of a new record list
+            if prev_rec == None:
+                if self.is_multi_record(rec) == True:
+                    record_list.append(rec)
+                    prev_rec = rec                    
                 else:
-                    call_processor(rec)
-                
-        if cont_list:
-            call_processor(cont_list)
+                    self.call_processor(rec)
+
+            ## case 2: there is a previous record, and the current
+            ##         record is a continuation of it
+            elif self.is_sucsessive_record(prev_rec, rec) == True:
+                record_list.append(rec)
+                prev_rec = rec
+
+            ## case 3: the current record is not a continuation of the
+            ##         previous record, so call the processor on the
+            ##         current record list and begin a new record list
+            else:
+                if len(record_list) > 0:
+                    self.call_processor(record_list)
+
+                ## if the current record cannot be a multi-record entry
+                ## process it right away
+                if self.is_multi_record(rec) == True:
+                    record_list = [rec]
+                    prev_rec    = rec
+                else:
+                    self.call_processor(rec)
+                    record_list = []
+                    prev_rec    = None
+
+        if len(record_list) > 0:
+            self.call_processor(record_list)
 
 
 ### <testing>
-def mkc():
-
-    def prnt(field, i1, i2, ftype, just):
-        print '  {'                       + \
-              field.ljust(15)             + \
-              ('%d, '%(i1)).rjust(4)       + \
-              ('%d, '%(i2)).rjust(4)       + \
-              ('%s,'%(pftype)).ljust(24)  + \
-              pjust                       + \
-              '},'
-
-    for name in PDBRecordMap.keys():
-        print '  {' + \
-              ('"%s",'%(name)).ljust(10) + \
-              "%s_fields" % (name.strip().lower()) + \
-              '},'
-    
-    for name, rec in PDBRecordMap.items():
-        print "static struct PDBFieldDef %s_fields[] = {" % (
-            name.strip().lower())
-
-        for (field, i1, i2, ftype, just, junk) in rec._field_list:
-
-            if ftype   == "string":
-                pftype = "PDB_FIELD_TYPE_STRING"
-            elif ftype == "integer":
-                pftype = "PDB_FIELD_TYPE_INTEGER"
-            elif ftype == "float.2":
-                pftype = "PDB_FIELD_TYPE_FLOAT_2"
-            elif ftype == "float.3":
-                pftype = "PDB_FIELD_TYPE_FLOAT_3"
-            elif ftype == "float.4":
-                pftype = "PDB_FIELD_TYPE_FLOAT_4"
-            elif ftype == "float.5":
-                pftype = "PDB_FIELD_TYPE_FLOAT_5"
-            elif ftype == "float.6":
-                pftype = "PDB_FIELD_TYPE_FLOAT_6"
-
-            if just.count("ljust") > 0:
-                pjust = "PDB_FIELD_RJUST"
-            else:
-                pjust = "PDB_FIELD_LJUST"
-
-            prnt('"%s",'%(field), i1, i2, pftype, pjust)
-
-        prnt("NULL,", 0, 0, "PDB_FIELD_TYPE_STRING", "PDB_FIELD_RJUST")
-        print '};'
-        print
-
 if __name__ == "__main__":
-    mkc()
-    
-##     import sys
-##     try:
-##         path = sys.argv[1]
-##     except IndexError:
-##         print "usage: PDB.py <PDB file path>"
-##         sys.exit(1)
-##     pdbfil = PDBFile()
-##     pdbfil.load_file(path)
-##     pdbfil.save_file(sys.stdout)
+    import sys
 
+    try:
+        path = sys.argv[1]
+    except IndexError:
+        print "usage: PDB.py <PDB file path>"
+        sys.exit(1)
+        
+    pdbfil = PDBFile()
+    pdbfil.load_file(path)
+    pdbfil.save_file(sys.stdout)
 ### </testing>
 

@@ -368,17 +368,43 @@ class GLAtomList(GLDrawList, AtomList):
             for atm in self:
                 self.draw_U_axes(atm)
 
+    def set_color(self, atm):
+        """Sets the open-gl color for the atom.
+        """
+        ## case 1: set color by color callback function
+        if self.args.has_key("color_func"):
+            color_func = self.args["color_func"]
+            color = color_func(atm)
+            glColor3f(*color)
+
+        ## case 2: set color by solid color
+        elif self.args.has_key("color"):
+            color = self.args["color"]
+            glColor3f(*color)
+
+        ## case 3: set color by atom type
+        else:
+            try:
+                glColor3f(*self.el_color_cache[atm.element])
+            except KeyError:
+                elem = atm.get_structure().library.get_element(atm.element)
+                if elem!=None:
+                    self.el_color_cache[atm.element] = elem.color
+                    glColor3f(*elem.color)
+                else:
+                    self.el_color_cache[atm.element] = (1.0, 1.0, 1.0)
+                    glColor3f(1.0, 1.0, 1.0)
+
     def draw_cpk(self, atm, symop = None):
         """Draw a atom as a CPK sphere.
         """
-        el = atm.get_structure().library.get_element(atm.element)
-        if el:
-            (r, g, b) = el.color
-            self.set_material(r, g, b, 1.0)
-            radius = el.van_der_waals_radius
+        elem = atm.get_structure().library.get_element(atm.element)
+        if elem:
+            radius = elem.van_der_waals_radius
         else:
-            self.set_material(*self.material)
             radius = 2.0
+
+        self.set_color(atm)
 
         glPushMatrix()
         if self.atom_origin:
@@ -391,21 +417,7 @@ class GLAtomList(GLDrawList, AtomList):
     def draw_lines(self, atm, symop = None):
         """Draw a atom using bond lines only.
         """
-        try:
-            glColor3f(*self.el_color_cache[atm.element])
-        except KeyError:
-            if self.args.has_key("color"):
-                cx = self.args["color"]
-                self.el_color_cache[atm.element] = cx
-                glColor3f(*cx)
-            else:
-                el = atm.get_structure().library.get_element(atm.element)
-                if el != None:
-                    self.el_color_cache[atm.element] = el.color
-                    glColor3f(*el.color)
-                else:
-                    self.el_color_cache[atm.element] = (1.0, 1.0, 1.0)
-                    glColor3f(1.0, 1.0, 1.0)
+        self.set_color(atm)
 
         if self.atom_origin:
             position = atm.position - self.atom_origin
@@ -539,10 +551,11 @@ class GLAtomList(GLDrawList, AtomList):
         
 
 class GLStructure(GLDrawList):
-    def __init__(self, struct):
+    def __init__(self, **args):
         GLDrawList.__init__(self)
 
-        self.struct         = struct
+        self.args           = args
+        self.struct         = args["struct"]
         self.gl_axes        = GLAxes()
         self.gl_unit_cell   = GLUnitCell(self.struct.unit_cell)
         self.aa_main_chain  = {}
@@ -553,8 +566,9 @@ class GLStructure(GLDrawList):
         self.hetatm         = {}
 
         for chain in self.struct.iter_chains():
-            aa_main_chain  = GLAtomList(U = True)
-            aa_side_chain  = GLAtomList(U = True)
+            aa_main_chain  = GLAtomList(color=(0.50,0.50,0.50))
+            aa_side_chain  = GLAtomList(
+                color_func=self.color_by_residue_chem_type)
             dna_main_chain = GLAtomList()
             dna_side_chain = GLAtomList()
             water          = GLAtomList()
@@ -705,6 +719,26 @@ class GLStructure(GLDrawList):
         of chain_id.
         """
         return self.show_chain_dict(self.hetatm, show, chain_id)
+
+    def color_by_residue_chem_type(self, atm):
+        """GLAtomList color callback for coloring a structure by
+        residue chical type: aliphatic, aromatic, sulfer-containing,
+        alchols, acids, bases, amides.
+        """
+        mon = self.struct.library.get_monomer(atm.res_name)
+        if mon.is_amino_acid()==False or mon.chem_type=="":
+            return (1.0, 1.0, 1.0)
+
+        chem_type_color_dict = {
+            "aliphatic":         (0.50, 0.50, 0.50),
+            "aromatic":          (0.75, 0.75, 0.75),
+            "sulfer-containing": (0.00, 1.00, 0.00),
+            "alchols":           (0.75, 0.75, 1.00),
+            "acids":             (1.00, 0.00, 0.00),
+            "bases":             (0.00, 0.00, 1.00),
+            "amides":            (1.00, 0.75, 0.75)}
+        
+        return chem_type_color_dict[mon.chem_type]
 
 
 class GLViewer(list):

@@ -120,7 +120,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         """Adds a structure to this viewer, and returns the GLStructure
         object so it can be manipulated.
         """
-        gl_struct = GLStructure(struct)
+        gl_struct = GLStructure(struct=struct)
         self.glviewer.append(gl_struct)
         self.queue_draw()
         return gl_struct
@@ -226,8 +226,7 @@ class StructDetailsDialog(gtk.Dialog):
 
 class TLSDialog(gtk.Dialog):
     """Dialog for TLS analysis of a structure.
-    """
-
+    """    
     def __init__(self, **args):
         self.context        = args["context"]
         self.struct         = args["struct"]
@@ -244,8 +243,8 @@ class TLSDialog(gtk.Dialog):
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.set_default_size(400, 400)
         
-        self.connect("destroy", self.response_cb)
-        self.connect("response", self.response_cb)
+        self.connect("destroy", self.destroy_cb)
+        self.connect("response", self.destroy_cb)
 
         ## make the print box
         sw = gtk.ScrolledWindow()
@@ -273,13 +272,13 @@ class TLSDialog(gtk.Dialog):
         treeview.append_column(column)
 
         column = gtk.TreeViewColumn(
-            "R Factor",
+            "<markup>T(A<sup>2</sup>)</markup>",
             gtk.CellRendererText(),
             text=1)
         treeview.append_column(column)
     
         column = gtk.TreeViewColumn(
-            "Center of Reaction",
+            "<markup>L(Deg<sup>2</sup></markup>",
             gtk.CellRendererText(),
             text=2)
         treeview.append_column(column)
@@ -298,14 +297,16 @@ class TLSDialog(gtk.Dialog):
 
         self.show_all()
 
-        self.make_tls_group_segments()
-        self.redraw()
-
-    def response_cb(self, *args):
+    def destroy_cb(self, *args):
         self.destroy()
+
+    def load_tlsin(self):
+        """Load a TLS description from a REMAC/CCP4 TLSIN file.
+        """
+        pass
     
-    def redraw(self):
-        """Clear and redisplay TLS groups
+    def redraw_treeview(self):
+        """Clear and redisplay the TLS group treeview list.
         """
         self.store.clear()
 
@@ -318,78 +319,18 @@ class TLSDialog(gtk.Dialog):
             trL = trace(tls.L * rad2deg2)/3.0
             cor = calcs["COR"]
             R   = tls.calc_R()
+            DP2 = tls.calc_adv_DP2uij()
 
             self.store.set(iter,
                            0, tls.name,
-                           1, "%.3f" % (R),
+                           1, "%.3f/%.3f" % (R, DP2),
                            2, "%.3f, %.3f, %.3f" % (cor[0], cor[1], cor[2]),
                            3, "%.3f" % (trT),
                            4, "%.3f" % (trL))
 
-    def segment_list(self, chain, seg_len):
-        segment = None
-        segment_list = []
-
-        for res in chain.iter_amino_acids():
-            if segment == None:
-                segment = [res]
-                segment_list.append(segment)
-            elif len(segment) >= seg_len:
-                segment = [res]
-                segment_list.append(segment)
-            else:
-                segment.append(res)
-
-        return segment_list
-
-    def running_segment_list(self, chain, seg_len):
-        segment = []
-        segment_list = []
-
-        for res in chain.iter_amino_acids():
-            segment.append(res)
-
-            if len(segment) < seg_len:
-                continue
-
-            segment_list.append(segment)
-            segment = segment[1:]
-
-        return segment_list
-
-    def make_tls_group_segments(self, seg_len = 6):
+    def show_tls_group_animation(self, tls):
+        """Show the TLS
         """
-        """
-        self.tls_group_list = []
-        
-        for chain in self.struct.iter_chains():    
-            for seg in self.running_segment_list(chain, seg_len):
-
-                ## new tls group for segment
-                tls = TLSGroup()
-                self.tls_group_list.append(tls)
-                tls.name = "%s-%s" % (seg[0], seg[-1])
-
-                ## add segment atoms
-                for res in seg:
-                    for atm in res.iter_atoms():
-                        if atm.name in ["N", "CA", "C", "O"]: 
-                            tls.append(atm)
-
-                ## avoid small groups
-                if len(tls) < 4:
-                    self.tls_group_list.remove(tls)
-                    continue
-
-                ## calculate tensors and print
-                tls.origin = tls.calc_centroid()
-                tls.calc_tls_tensors()
-
-                if tls.check_positive_eigenvalues() and \
-                  (tls.calc_R() <= 0.10 or tls.calc_adv_Suij() >= 1.10):
-                    self.show_tls_group(tls)
-
-    def show_tls_group(self, tls):
         tls.gl_tls = GLTLSGroup(tls_group = tls)
         self.context.struct_gui.gtkglviewer.glviewer.append(tls.gl_tls)
         gobject.timeout_add(25, self.timeout_cb, tls)
@@ -809,7 +750,7 @@ class MainWindow:
         self.struct_gui.gtkglviewer.queue_draw()
 
     def set_title(self, title):
-        title = "mmView: " + title
+        title = "Viewer: " + title
         title = title[:50]
         self.window.set_title(title)
 

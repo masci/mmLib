@@ -3,6 +3,7 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+import os
 import sys
 import math
 import string
@@ -20,7 +21,7 @@ from mmLib.mmCIF import *
 ## constants
 __version__ = "0.99.0"
 
-CIF_EDITOR_CONF = "cif_editor.conf"
+CIF_EDITOR_CONF = ".cif_editor"
 LARGE_DIALOG_SIZE = (400, 300)
 
 ## /constants
@@ -1259,6 +1260,8 @@ class mmCIFEditor:
     def cif_row_set_value(self, cif_row, col_name, value, save_undo = True):
         """Sets the value of the cif_row[col_name] to the given value.
         """
+        assert isinstance(cif_row, mmCIFRow)
+        
         if save_undo:
             undo = (self.cif_row_set_value_undo,
                     cif_row, col_name, cif_row.get(col_name))
@@ -1268,6 +1271,7 @@ class mmCIFEditor:
         self.cif_row_set_value_notify(cif_row, col_name)
 
     def cif_row_set_value_undo(self, cif_row, col_name, value):
+        assert isinstance(cif_row, mmCIFRow)
         self.cif_row_set_value(cif_row, col_name, value, save_undo = False)
 
     def cif_row_set_value_notify(self, cif_row, col_name):
@@ -1276,6 +1280,8 @@ class mmCIFEditor:
     def cif_row_remove(self, cif_row, save_undo = True):
         """Removes the cif_row from self.cif_fil.
         """
+        assert isinstance(cif_row, mmCIFRow)
+        
         if save_undo:
             undo = (self.cif_row_remove_undo,
                     cif_row.table.index(cif_row),
@@ -1292,11 +1298,15 @@ class mmCIFEditor:
         pass
 
     def cif_row_remove_undo(self, i, cif_row):
+        assert isinstance(cif_row, mmCIFRow)
         self.cif_table_insert_row(cif_row.table, i, cif_row, save_undo = False)
         
     def cif_table_insert_row(self, cif_table, i, cif_row, save_undo = True):
         """Inserts a new cif_row into cif_table at position i.
         """
+        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_row, mmCIFRow)
+        
         if save_undo:
             undo = (self.cif_table_insert_row_undo, cif_row)
             self.undo_list.append(undo)
@@ -1308,6 +1318,7 @@ class mmCIFEditor:
         self.cif_table_insert_row_notify(cif_row)
 
     def cif_table_insert_row_undo(self, cif_row):
+        assert isinstance(cif_row, mmCIFRow)
         self.cif_row_remove(cif_row, save_undo = False)
 
     def cif_table_insert_row_notify(self, cif_row):
@@ -1316,6 +1327,9 @@ class mmCIFEditor:
     def cif_data_insert_table(self, cif_data, i, cif_table, save_undo = True):
         """Inserts a new cif_table into cif_data at position i.
         """
+        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_table, mmCIFTable)
+        
         if cif_data.has_key(cif_table.name):
             self.error("Insert Error: Table names must be unique.")
             return
@@ -1331,6 +1345,7 @@ class mmCIFEditor:
         self.cif_data_insert_table_notify(cif_table)
 
     def cif_data_insert_table_undo(self, cif_table):
+        assert isinstance(cif_table, mmCIFTable)
         self.cif_table_remove(cif_table, save_undo = False)
 
     def cif_data_insert_table_notify(self, cif_table):
@@ -1339,6 +1354,8 @@ class mmCIFEditor:
     def cif_table_set_name(self, cif_table, name, save_undo = True):
         """Sets the name of a cif_table.
         """
+        assert isinstance(cif_table, mmCIFTable)
+        
         if cif_table.data.has_key(name):
             self.error(
                 "Name Change Error: Table names must be unique.")
@@ -1354,6 +1371,10 @@ class mmCIFEditor:
     def cif_table_remove(self, cif_table, save_undo = True):
         """Removes the cif_table from the cif_file.
         """
+        assert isinstance(cif_table, mmCIFTable)
+
+        print "\n\n## cif_table: ",dir(cif_table),"\n\n"
+        
         if save_undo:
             undo = (self.cif_table_remove_undo,
                     cif_table.data.index(cif_table),
@@ -1370,10 +1391,13 @@ class mmCIFEditor:
         pass
 
     def cif_table_remove_undo(self, i, cif_table):
+        assert isinstance(cif_table, mmCIFTable)
+        
         self.cif_data_insert_table(
             cif_table.data, i, cif_table, save_undo = False)
 
     def cif_table_set_name_undo(self, cif_table, old_name):
+        assert isinstance(cif_table, mmCIFTable)
         self.cif_table_set_name(cif_table, old_name, save_undo = False)
 
     def cif_table_set_name_notify(self, cif_table):
@@ -1383,6 +1407,8 @@ class mmCIFEditor:
         self, cif_table, i, col_name, save_undo = True):
         """Sets the cif_table.columns[i] = col_name
         """
+        assert isinstance(cif_table, mmCIFTable)
+        
         ## do not allow duplicate column names
         for j in range(len(cif_table.columns)):
             if i != j and cif_table.columns[j] == col_name:
@@ -1408,6 +1434,7 @@ class mmCIFEditor:
         self.cif_table_column_set_name_notify(cif_table, col_name)
             
     def cif_table_column_set_name_undo(self, cif_table, i, old_name):
+        assert isinstance(cif_table, mmCIFTable)
         self.cif_table_column_set_name(
             cif_table, i, old_name, save_undo = False)
 
@@ -1418,6 +1445,8 @@ class mmCIFEditor:
         self, cif_table, i, col_name, col_val_list = None, save_undo = True):
         """Calls cif_table.insert(i, col_name)
         """
+        assert isinstance(cif_table, mmCIFTable)
+
         ## do not allow duplicate column names
         if col_name in cif_table.columns:
             self.error("Insert Error: Column names must be unique.")
@@ -1439,6 +1468,7 @@ class mmCIFEditor:
         self.cif_table_column_insert_notify(cif_table, col_name)
 
     def cif_table_column_insert_undo(self, cif_table, col_name):
+        assert isinstance(cif_table, mmCIFTable)
         self.cif_table_column_remove(cif_table, col_name, save_undo = False)
 
     def cif_table_column_insert_notify(self, cif_table, col_name):
@@ -1447,6 +1477,8 @@ class mmCIFEditor:
     def cif_table_column_remove(self, cif_table, col_name, save_undo = True):
         """Removes a column from the cif_table.
         """
+        assert isinstance(cif_table, mmCIFTable)
+        
         if save_undo:
             rebuild_list = []
             for cif_row in cif_table:
@@ -1474,6 +1506,7 @@ class mmCIFEditor:
 
     def cif_table_column_remove_undo(
         self, cif_table, i, col_name, rebuild_list):
+        assert isinstance(cif_table, mmCIFTable)
         self.cif_table_column_insert(cif_table, i, col_name, save_undo = False)
         for i in range(len(cif_table)):
             cif_table[i][col_name] = rebuild_list[i]
@@ -1481,6 +1514,9 @@ class mmCIFEditor:
     def cif_file_insert_data(self, cif_file, i, cif_data, save_undo = True):
         """Inserts a new cif_data into cif_file at position i.
         """
+        assert isinstance(cif_file, mmCIFFile)
+        assert isinstance(cif_data, mmCIFData)
+        
         if cif_file.has_key(cif_data.name):
             self.error(
                 "Insert Error: Data block names must be unique.")
@@ -1497,6 +1533,7 @@ class mmCIFEditor:
         self.cif_file_insert_data_notify(cif_data)
 
     def cif_file_insert_data_undo(self, cif_data):
+        assert isinstance(cif_data, mmCIFData)
         self.cif_data_remove(cif_data, save_undo = False)
 
     def cif_file_insert_data_notify(self, cif_data):
@@ -1505,6 +1542,7 @@ class mmCIFEditor:
     def cif_data_remove(self, cif_data, save_undo = True):
         """Removes the cif_row from self.cif_fil.
         """
+        assert isinstance(cif_data, mmCIFData)
         if save_undo:
             undo = (self.cif_data_remove_undo,
                     cif_data.file.index(cif_data),
@@ -1521,12 +1559,14 @@ class mmCIFEditor:
         pass
 
     def cif_data_remove_undo(self, i, cif_data):
+        assert isinstance(cif_data, mmCIFData)
         self.cif_file_insert_data(
             cif_data.file, i, cif_data, save_undo = False)
 
     def cif_data_set_name(self, cif_data, name, save_undo = True):
         """Sets the name of a cif_data
         """
+        assert isinstance(cif_data, mmCIFData)
         if cif_data.file.has_key(name):
             self.error(
                 "Name Change Error: Data block names must be unique.")
@@ -1540,6 +1580,7 @@ class mmCIFEditor:
         self.cif_data_set_name_notify(cif_data)
 
     def cif_data_set_name_undo(self, cif_data, old_name):
+        assert isinstance(cif_data, mmCIFData)
         self.cif_data_set_name(cif_data, old_name, save_undo = False)
 
     def cif_data_set_name_notify(self, cif_data):
@@ -2202,11 +2243,16 @@ class CIFEditorApplication(list):
         self.about_window = AboutWindow()
         self.dict_manager_window = DictionaryManagerWindow(self.dict_manager)
 
+    def user_conf_path(self):
+        """Generate the configuration file path.
+        """
+        return os.path.expanduser(os.path.join("~", CIF_EDITOR_CONF))
+
     def load_preferences(self):
         """Loads the preferences file.
         """
         try:
-            self.pref = cPickle.load(open(CIF_EDITOR_CONF, "r"))
+            self.pref = cPickle.load(open(self.user_conf_path(), "r"))
         except:
             self.pref = {}
 
@@ -2214,7 +2260,7 @@ class CIFEditorApplication(list):
         """Save all the preferences.
         """
         try:
-            cPickle.dump(self.pref, open(CIF_EDITOR_CONF, "w"))
+            cPickle.dump(self.pref, open(self.user_conf_path(), "w"))
         except IOError:
             ##XXX: model dialog warning
             pass

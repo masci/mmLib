@@ -27,9 +27,13 @@ class package_install_data(install_data):
 def library_data():
     """Install mmLib/Data/Monomer library.
     """
-
-    inst_list = []
-    
+    ## start with the mmLib data files
+    inst_list = [
+        os.path.join(os.curdir, "mmLib", "Data", "elements.cif"),
+        os.path.join(os.curdir, "mmLib", "Data", "monomers.cif")
+    ]
+  
+    ## add all the monomer mmCIF files 
     mon_dir = os.path.join(os.curdir, "mmLib", "Data", "Monomers")
     
     for dir1 in os.listdir(mon_dir):
