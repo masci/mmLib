@@ -1436,15 +1436,11 @@ class TLSStructureAnalysis(object):
         include_single_bond     = args.get("include_single_bond", True)
 
         def tls_fit_segment(segment):
-            stats             = {}
-            stats["tls"]      = TLSGroup()
-            stats["residues"] = segment
-            stats["segment"]  = segment
-            stats["name"]     = "%s-%s" % (
+            stats = {}
+            stats["name"] = "%s-%s" % (
                 segment[0].fragment_id, segment[-1].fragment_id)
 
-            tls      = stats["tls"]
-            tls.name = stats["name"]
+            tls = TLSGroup()
 
             ## add atoms into the TLSGroup
             ## filter the atoms going into the TLS group

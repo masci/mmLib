@@ -3285,26 +3285,27 @@ class GLTLSGroup(GLDrawList):
         r, g, b = self.properties["Utls_color"]
         a       = self.properties["ellipse_opacity"]
 
-        dp2_mean, dp2_sig = self.tls_group.calc_mean_DP2()
+        #dp2_mean, dp2_sig = self.tls_group.calc_mean_DP2()
 
         for atm, Utls in self.gltls_iter_atoms():
 
             if self.properties["add_biso"]==True:
-                Uiso = identity(3, Float)*(atm.temp_factor / (24.0*math.pi**2))
+                Uiso = identity(3, Float)*(atm.temp_factor / (8.0*math.pi**2))
                 Utls = Utls + Uiso
 
-            dp2 = calc_DP2uij(atm.get_U(), Utls)
+##            dp2 = calc_DP2uij(atm.get_U(), Utls)
 
-            if dp2<=dp2_mean:
-                dp2_scale = 1.0
-            elif dp2<=dp2_mean+dp2_sig:
-                dp2_scale = 0.5
-            else:
-                dp2_scale = 0.1
+##             if dp2<=dp2_mean:
+##                 dp2_scale = 1.0
+##             elif dp2<=dp2_mean+dp2_sig:
+##                 dp2_scale = 0.5
+##             else:
+##                 dp2_scale = 0.1
             
-            self.glr_set_material_rgb(
-                r * dp2_scale,  g * dp2_scale,  b * dp2_scale, a)
+##             self.glr_set_material_rgb(
+##                 r * dp2_scale,  g * dp2_scale,  b * dp2_scale, a)
 
+            self.glr_set_material_rgb(r, g, b, a)
             self.glr_Uellipse(atm.position, Utls, prob)
 
             if self.properties["Utls_U_diff"]:
