@@ -146,12 +146,33 @@ def segment_list(chain, seg_len):
     return segment_list
 
 
-def main(path):
-    print """
-    Calculating TLS parameters for a single rigid body group composed of
-    all the amino acids
+def iter_segments(chain, seg_len):
     """
-    print "# <group num> <num atoms> <Badv> <R> <R/Uadv> <trT> <trL> <trS>"
+    """
+    segment = []
+    for res in chain.iter_amino_acids():
+        segment.append(res)
+
+        if len(segment)<seg_len:
+            continue
+        
+        if len(segment)>seg_len:
+            segment = segment[1:]
+
+        atom_list = AtomList()
+        for rx in segment:
+            for atm in rx.iter_atoms():
+                atom_list.append(atm)
+
+        yield atom_list
+
+
+def main(path):
+    print """\
+    ## Calculating TLS parameters for a single rigid body group composed of
+    ## all the amino acids
+    """
+    print "## <group num> <num atoms> <Badv> <R> <R/Uadv> <trT> <trL> <trS>"
 
     struct = LoadStructure(fil = path)
 
@@ -159,30 +180,23 @@ def main(path):
     tls_list = []
 
     for chain in struct.iter_chains():
-        for seg in iter_mainchain2(chain, 3*6):
+        for seg_atom_list in iter_segments(chain, 4):
 
-            atm0 = seg[0]
-            atmX = seg[-1]
-
-            name = str(atm0.fragment) + atm0.name + \
-                   str(atmX.fragment) + atmX.name 
+            atm0 = seg_atom_list[0]
+            atmX = seg_atom_list[-1]
+            name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
 
             ## new tls group for segment
-            tls = TLSGroup()
+            tls = TLSGroup(seg_atom_list)
             tls_list.append(tls)
-
-            tls.seg = seg            
-
-            ## add segment atoms
-            for atm in seg:
-                tls.append(atm)
 
             tls.origin = tls.calc_centroid()
 
             ## calculate tensors and print
-            tls.calc_tls_tensors()
+            tls.calc_TLS_least_squares_fit()
 
             Rfact = tls.calc_R()
+            dP2   = tls.calc_adv_DP2uij()
             calcs = tls.calc_COR()
 
             trT   = trace(calcs["T'"])/3.0
@@ -199,7 +213,7 @@ def main(path):
             Uadv = Uadv / float(len(tls))
 
             ## print out results
-            #print str(name).ljust(35),
+            print str(name).ljust(8),
 
             print str(tls_list.index(tls)).ljust(5),
 
@@ -212,7 +226,7 @@ def main(path):
             x = "%.3f" % (Rfact)
             print x.ljust(8),
 
-            x = "%.3f" % (Rfact/Uadv)
+            x = "%.3f" % (dP2 * 8.0)
             print x.ljust(10),
             
             x = "%.3f" % (trT)

@@ -15,7 +15,7 @@ def length(u):
 def normalize(u):
     """Returns the normalized vector along u.
     """
-    return u.copy()/length(u)
+    return u/sqrt(dot(u, u))
 
 def cross(u, v):
     """Cross product of u and v:

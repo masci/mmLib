@@ -38,6 +38,133 @@ except gtk.gdkgl.NoMatches:
 
 
 
+
+###############################################################################
+### TLS Search Algorithm
+###
+
+
+def iter_segments(chain, seg_len):
+    """
+    """
+    segment = []
+    for res in chain.iter_amino_acids():
+        segment.append(res)
+
+        if len(segment)<seg_len:
+            continue
+        
+        if len(segment)>seg_len:
+            segment = segment[1:]
+
+        atom_list = AtomList()
+        for rx in segment:
+            for atm in rx.iter_atoms():
+                atom_list.append(atm)
+
+        yield atom_list
+
+
+def all_tls_segments(struct):
+    print """\
+    ## Calculating TLS parameters for a single rigid body group composed of
+    ## all the amino acids
+    """
+    print "## <group num> <num atoms> <Badv> <R> <dP2>"
+
+    ## list of all TLS groups
+    tls_list = []
+
+    segments = []
+    cur_segment = []
+
+    for chain in struct.iter_chains():
+        for seg_atom_list in iter_segments(chain, 12):
+
+            atm0 = seg_atom_list[0]
+            atmX = seg_atom_list[-1]
+            name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
+
+            ## new tls group for segment
+            tls = TLSGroup(seg_atom_list)
+            tls_list.append(tls)
+
+            tls.origin = tls.calc_centroid()
+
+            ## calculate tensors and print
+            tls.calc_TLS_least_squares_fit()
+
+            Rfact = tls.calc_R()
+            dP2   = tls.calc_adv_DP2uij()
+
+            Uadv = 0.0
+            for atm in tls:
+                if atm.U != None:
+                    Uadv += trace(atm.U)/3.0
+
+            Uadv = Uadv / float(len(tls))
+
+            ## print out results
+            print str(name).ljust(8),
+
+            print str(tls_list.index(tls)).ljust(5),
+
+            x = "%d" % (len(tls))
+            print x.ljust(8),
+
+            x = "%.3f" % (Uadv * 8 * math.pi * math.pi)
+            print x.ljust(10),
+
+            x = "%.3f" % (Rfact)
+            print x.ljust(8),
+
+            x = "%.3f" % (dP2)
+            print x.ljust(10),
+
+
+            if min(eigenvalues(tls.T))<0.0 or min(eigenvalues(tls.L))<0.0:
+                   tls_list.remove(tls)
+                   print "removed",
+                   continue
+            
+            if dP2>=0.010:
+                tls_list.remove(tls)
+                print "removed",
+
+                cur_segment = []
+            else:
+                if len(cur_segment)==0:
+                    segments.append(cur_segment)
+                cur_segment.append(tls)
+
+            print
+
+
+    ## now just grab the best segment from the group
+    best_tls_list = []
+    for seg in segments:
+        best_tls = None
+        min_dP2  = None
+
+        for tls in seg:
+            dP2 = tls.calc_adv_DP2uij()
+
+            if min_dP2==None:
+                best_tls = tls
+                continue
+            
+            if min_dP2>dP2:
+                min_dP2  = dP2
+                best_tls = tls
+
+        best_tls_list.append(tls)
+
+
+    return tls_list
+
+###############################################################################
+    
+
 ###############################################################################
 ### GTK OpenGL Viewer Widget Using GtkGlExt/PyGtkGLExt
 ###
@@ -282,56 +409,81 @@ def markup_matrix3(tensor):
                tensor[2,0], tensor[2,1], tensor[2,2])
 
 
-class ColorOptionMenu(gtk.OptionMenu):
-    """Specialized option menu for choosing colors.  This is quite
-    primitive right now, and needs more colors and a custom color
-    selection dialog.
-    """
-    
+class ColorSelection(gtk.Combo):
     def __init__(self):
-        gtk.OptionMenu.__init__(self)
+        gtk.Combo.__init__(self)
 
-        self.color_name_list = [
-            "Default", "White", "Red", "Green", "Blue"]
+        self.color = None
 
         self.color_dict = {
-            "Default": None,
-            "White":   (1.0, 1.0, 1.0),
-            "Red":     (1.0, 0.0, 0.0),
-            "Green":   (0.0, 1.0, 0.0),
-            "Blue":    (0.0, 0.0, 1.0) }
+            "white":   (1.0, 1.0, 1.0),
+            "red":     (1.0, 0.0, 0.0),
+            "green":   (0.0, 1.0, 0.0),
+            "blue":    (0.0, 0.0, 1.0) }
+        
+        self.set_popdown_strings(
+            ["Random",
+             "Color By Atom",
+             "White",
+             "Red",
+             "Green",
+             "Blue" ])
 
-        self.color_menu_item_dict = {}
+        self.entry.connect("activate", self.activate, None)
 
-        self.menu = gtk.Menu()
-        for color_name in self.color_name_list:
-            menu_item = gtk.MenuItem(color_name)
-            menu_item.show()
-            self.color_menu_item_dict[color_name] = menu_item
-            gtk.MenuShell.append(self.menu, menu_item)
+    def activate(self, entry, junk):
+        txt = self.entry.get_text()
 
-        self.set_menu(self.menu)
+        ## color format: r, g, b
+        try:
+            r, g, b = txt.split(",")
+            color = (float(r), float(g), float(b))
+        except ValueError:
+            pass
+        else:
+            self.set_color(color)
+            return
+
+        ## color format: Random
+        if txt=="Random":
+            color = (random.random(),
+                     random.random(),
+                     random.random())
+            self.set_color(color)
+            return
+
+        ## color format: keywords
+        if txt=="Color By Atom":
+            self.set_color(None)
+            return
+
+        ## color fomat: match color name
+        try:
+            color = self.color_dict[txt.lower()]
+        except KeyError:
+            pass
+        else:
+            self.set_color(color)
+            return
 
     def match_color_name(self, color):
+        if color==None:
+            return "Color By Atom"
+
         for color_name, color_val in self.color_dict.items():
             if color==color_val:
                 return color_name
-        return None
 
+        return "%3.2f,%3.2f,%3.2f" % (color[0], color[1], color[2])
+    
     def set_color(self, color):
-        color_name = self.match_color_name(color)
-        if color_name!=None:
-            index = self.color_name_list.index(color_name)
-            self.set_history(index)
-        
+        self.color = color
+        name       = self.match_color_name(color)
+        self.entry.set_text(name)
+
     def get_color(self):
-        index = self.get_history()
-        color_name = self.color_name_list[index]
-        menu_item = self.color_menu_item_dict[color_name]
-        
-        for color_name, mi in self.color_menu_item_dict.items():
-            if mi==menu_item:
-                return self.color_dict[color_name]
+        self.activate(self.entry, None)
+        return self.color
 
 
 class MaterialOptionMenu(gtk.OptionMenu):
@@ -478,7 +630,7 @@ class GLPropertyEditor(gtk.Notebook):
             widget = gtk.Label()
             widget.set_markup(markup_matrix3(self.gl_object.properties[prop["name"]]))
         elif prop["type"]=="color":
-            widget = ColorOptionMenu()
+            widget = ColorSelection()
         elif prop["type"]=="material":
             widget = MaterialOptionMenu()
         else:
@@ -743,11 +895,14 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         self.hpaned.set_border_width(2)
 
         ## property tree control
+        self.sw1 = gtk.ScrolledWindow()
+        self.hpaned.add1(self.sw1)
+        
         self.gl_tree_ctrl = GLPropertyTreeControl(
             gl_object_root,
             self.gl_tree_ctrl_selected)
 
-        self.hpaned.add1(self.gl_tree_ctrl)
+        self.sw1.add(self.gl_tree_ctrl)
 
         ## always start with the root selected
         self.gl_prop_editor = None
@@ -882,7 +1037,8 @@ class TLSDialog(gtk.Dialog):
 
         gobject.timeout_add(100, self.timeout_cb)
 
-        self.load_PDB(self.struct_context.struct.path)
+        #self.load_PDB(self.struct_context.struct.path)
+        self.load_all()
 
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
@@ -1032,6 +1188,12 @@ class TLSDialog(gtk.Dialog):
             tls_group.tls_info = tls_info
             self.add_tls_group(tls_group)
 
+    def load_all(self):
+        self.clear_tls_groups()
+
+        for tls_group in all_tls_segments(self.struct_context.struct):
+            self.add_tls_group(tls_group)
+        
     def markup_tls_name(self, tls_info):
         listx = []
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_info.range_list:
@@ -1067,7 +1229,8 @@ class TLSDialog(gtk.Dialog):
             else:
                 self.model.set(iter, 1, gtk.FALSE)
 
-            self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
+            #self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
+            self.model.set(iter, 2, "name here")
             self.model.set(iter, 3, self.markup_tensor(tls.T))
             self.model.set(iter, 4, self.markup_tensor(tls.L*rad2deg2))
             self.model.set(iter, 5, self.markup_tensor(tls.S*rad2deg))
