@@ -3957,7 +3957,7 @@ class MainWindow(object):
             struct = LoadStructure(
                 fil              = path,
                 update_cb        = self.update_cb,
-                build_properties = ("sequence","bonds"))
+                build_properties = ("library_bonds","distance_bonds"))
 
         except IOError:
             self.set_statusbar("")

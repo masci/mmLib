@@ -137,18 +137,18 @@ class Element(ElementInterface):
     def __init__(self, **args):
         ElementInterface.__init__(self, **args)
 
-        self.cif_data = args["cif_data"]
-        element = self.cif_data["element"]
-        self.name = element["name"]
-        self.number = int(element["number"])
-        self.atomic_weight = float(element["atomic_weight"])
+        self.cif_data             = args["cif_data"]
+        element                   = self.cif_data["element"]
+        self.name                 = element["name"]
+        self.number               = int(element["number"])
+        self.atomic_weight        = float(element["atomic_weight"])
         self.van_der_waals_radius = float(element["van_der_walls_radius"])
-        self.covalent_radius = float(element.get("covalent_radius", 0.0))
+        self.covalent_radius      = float(element.get("covalent_radius", 0.0))
 
-        rgb = element["color_rgb"]
-        self.color = (int(rgb[1:3], 16) / 255.0,
-                      int(rgb[3:5], 16) / 255.0,
-                      int(rgb[5:7], 16) / 255.0)
+        rgb                       = element["color_rgb"]
+        self.color                = (int(rgb[1:3], 16) / 255.0,
+                                     int(rgb[3:5], 16) / 255.0,
+                                     int(rgb[5:7], 16) / 255.0)
 
 
 class Monomer(MonomerInterface):

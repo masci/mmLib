@@ -92,17 +92,13 @@ class PDBStructureBuilder(StructureBuilder):
     def load_atom(self, atm_map):
         """Override load_atom to maintain a serial_num->atm map.
         """
-        if self.model_num != None:
-            atm_map["model_id"] = self.model_num
-
         atm = StructureBuilder.load_atom(self, atm_map)
 
+        ## map PDB atom serial number -> Atom object
         try:
-            serial = atm_map["serial"]
+            self.atom_serial_map[atm_map["serial"]] = atm
         except KeyError:
             pass
-        else:
-            self.atom_serial_map[serial] = atm
 
     def read_atoms(self):
         ## map PDB atom serial numbers to the structure atom classes
@@ -129,6 +125,9 @@ class PDBStructureBuilder(StructureBuilder):
         ## load last atom read
         if self.atm_map:
             self.load_atom(self.atm_map)
+
+        ## cleanup
+        del self.model_num
         del self.atm_map
         
     def read_metadata(self):
@@ -196,6 +195,10 @@ class PDBStructureBuilder(StructureBuilder):
         fragment_id = self.get_fragment_id(rec)
         if fragment_id != None:
             self.atm_map["fragment_id"] = fragment_id
+
+        ## add the model number for the atom
+        if self.model_num!=None:
+            self.atm_map["model_id"] = self.model_num
             
         setmapf(rec, "x", self.atm_map, "x")
         setmapf(rec, "y", self.atm_map, "y")
@@ -981,11 +984,7 @@ class PDBFileBuilder(object):
         """DBREF,SEQADV,SEQRES,MODRES
         """
         for chain in self.struct.iter_chains():
-            if chain.sequence == None:
-                sequence = chain.calc_sequence()
-            else:
-                sequence = chain.sequence
-
+            sequence = chain.construct_sequence_list()
             sernum = 0
             numres = len(sequence)
             

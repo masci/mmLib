@@ -219,13 +219,31 @@ class Structure(object):
             self.model_list.sort()
 
     def remove_model(self, model):
-        """Removes a child Model object.
+        """Removes a child Model object.  If the Model object is the default
+        Model, then choose the Model with the lowest model_id as the
+        new default Model, or None if there are no more Models.
         """
         assert isinstance(model, Model)
         
         self.model_list.remove(model)
         del self.model_dict[model.model_id]
         model.structure = None
+
+        ## if the default model is being removed, choose a new default model
+        ## if possible
+        if model==self.default_model:
+            if len(self.model_list)>0:
+                self.default_model = self.model_list[0]
+            else:
+                self.default_model = None
+
+    def get_model(self, model_id):
+        """Return the Model object with the argument model_id, or None if
+        not found.
+        """
+        if self.model_dict.has_key(model_id):
+            return self.model_dict[model_id]
+        return None
 
     def get_default_model(self):
         """Returns the default Model object.
@@ -244,7 +262,8 @@ class Structure(object):
         return False
 
     def set_model(self, model_id):
-        """DEP: Sets the default Model for the Structure to model_id.  Returns
+        """DEP: Use set_default_model()
+        Sets the default Model for the Structure to model_id.  Returns
         False if a Model with the proper model_id does
         not exist in the Structure.
         """
@@ -296,6 +315,13 @@ class Structure(object):
         if self.default_model:
             return iter(self.default_model.chain_list)
         return iter([])
+
+    def iter_all_chains(self):
+        """Iterates over all Chain objects in all Model objects.
+        """
+        for model in self.model_list:
+            for chain in model.chain_list:
+                yield chain
 
     def count_chains(self):
         """Counts all Chain objects in the default Model.
@@ -546,7 +572,7 @@ class Structure(object):
         """
         self.set_default_alt_loc(alt_loc)
 
-    def add_bonds_from_distance(self):
+    def add_bonds_from_covalent_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
         the covalent radii in element.cif.  A bond is built if the the
         distance between them is less than or equal to the sum of their
@@ -579,7 +605,7 @@ class Structure(object):
                     if dist>bond_dist:
                         continue
 
-                    if atm1.get_bond(atm2)==None:
+                    if not atm1.get_bond(atm2):
                         atm1.create_bond(atom=atm2, standard_res_bond=False)
         
     def add_bonds_from_library(self):
@@ -589,8 +615,7 @@ class Structure(object):
         """
         for frag in self.iter_fragments():
             frag.create_bonds()
-
-        self.add_bonds_from_distance()
+        #self.add_bonds_from_distance()
 
 
 class Model(object):
@@ -932,37 +957,6 @@ class Model(object):
         return n
 
 
-class Sequence(list):
-    """A list containing a polymer sequence.
-    """
-    def __init__(self, **args):
-        self.library  = args.get("library")       or Library()
-        sequence_list = args.get("sequence_list") or []
-        list.__init__(self, sequence_list)
-
-    def __str__(self):
-        return self.sequence_one_letter_code()
-
-    def sequence_one_letter_code(self):
-        """Return the one letter code representation of the sequence as
-        a string.
-        """
-        one_letter_code = ""
-        
-        for res_name in self:
-            mon = self.library.get_monomer(res_name)
-
-            if mon == None or not mon.is_standard_residue():
-                break
-
-            if mon.one_letter_code == "":
-                one_letter_code += "(%s)" % (res_name)
-            else:
-                one_letter_code += mon.one_letter_code
-
-        return one_letter_code
-
-
 class Segment(object):
     """Segment objects are a container for Fragment objects, but are
     disaccociated with the Structure object hierarch.  Chain objects are
@@ -1036,54 +1030,6 @@ class Segment(object):
         """
         return len(self.fragment_list)
 
-    def __segment_slice__(self):
-        """Returns a Segment to be used in a slice.
-        """
-        segment = Segment(model_id=self.model_id, chain_id=self.chain_id)
-        segment.chain = self.chain
-        segment.model = self.model
-        return segment
-
-    def __index_slice__(self, start, stop):
-        """Used by __getitem__ to slice a Segment based on Indexes
-        """
-        segment = self.__segment_slice__()
-
-        for frag in self.fragment_list[start:stop]:
-            segment.add_fragment(frag, True)
-        
-        return segment
-
-    def __frag_id_slice__(self, start_frag_id, stop_frag_id):
-        """Used by __getitem__ to slice a Segment between start and end
-        fragment ids.  Returns the sliced Segment.
-        """
-        segment = self.__segment_slice__()
-
-        ## if the start fragment_id is not given, then start adding
-        ## from the beginning of the Segment
-        if start_frag_id==None:
-            addflag = True
-        else:
-            addflag = False
-
-        for frag in self:
-            ## loop until the start_frag_id Fragment is found
-            if not addflag:
-                if fragment_id_ge(frag.fragment_id, start_frag_id):
-                    addflag = True
-                else:
-                    continue
-
-            ## stop when the stop_frag_id is found
-            if stop_frag_id!=None:
-                if fragment_id_gt(frag.fragment_id, stop_frag_id):
-                    break
-
-            segment.add_fragment(frag, True)
-
-        return segment
-
     def __getitem__(self, fragment_idx):
         """Retrieve a Fragment within the Segment.  This can take a integer
         index of the Fragment's position within the segment, the fragment_id
@@ -1111,13 +1057,18 @@ class Segment(object):
                (start==None and type(stop)==IntType) or \
                (stop==None  and type(start)==IntType) or \
                (type(start)==IntType and type(stop)==IntType):
-                return self.__index_slice__(start, stop)
+
+                segment = self.construct_segment()
+                for frag in self.fragment_list[start:stop]:
+                    segment.add_fragment(frag, True)
+                return segment
             
             ## check for fragment_id slicing
             if (start==None and type(stop)==StringType) or \
                (stop==None  and type(start)==StringType) or \
                (type(start)==StringType and type(stop)==StringType):
-                return self.__frag_id_slice__(start, stop)
+
+                return self.construct_sub_segment(start, stop)
 
         raise TypeError, fragment_idx
 
@@ -1127,6 +1078,8 @@ class Segment(object):
         return iter(self.fragment_list)
 
     def __contains__(self, fragment_idx):
+        """Checks for Fragment objects, or the fragment_id string.
+        """
         if isinstance(fragment_idx, Fragment):
             return self.fragment_list.__contains__(fragment_idx)
         elif type(fragment_idx) == StringType:
@@ -1142,7 +1095,53 @@ class Segment(object):
         """Sort the Fragments in the Segment into proper order.
         """
         self.fragment_list.sort()
-        
+
+    def construct_segment(self):
+        """Constructs a new Segment object so that it has a valid .chain
+        reference.
+        """
+        segment = Segment(
+            model_id = self.model_id,
+            chain_id = self.chain_id)
+
+        segment.chain = self.chain
+        segment.model = self.model
+
+        return segment
+
+    def construct_sub_segment(self, start_frag_id, stop_frag_id):
+        """Construct and return a sub-Segment between start_frag_id 
+        and stop_frag_id.  If start_frag_id is None, then the slice
+        is taken from the beginning of this Segment, and if stop_frag_id
+        is None it is taken to the end of this Segment.
+        """
+        ## construct return segment
+        segment = self.construct_segment()
+
+        ## if the start fragment_id is not given, then start adding
+        ## from the beginning of the Segment
+        if not start_frag_id:
+            addflag = True
+        else:
+            addflag = False
+
+        for frag in self:
+            ## loop until the start_frag_id Fragment is found
+            if not addflag:
+                if fragment_id_ge(frag.fragment_id, start_frag_id):
+                    addflag = True
+                else:
+                    continue
+
+            ## stop when the stop_frag_id is found
+            if stop_frag_id:
+                if fragment_id_gt(frag.fragment_id, stop_frag_id):
+                    break
+
+            segment.add_fragment(frag, True)
+
+        return segment
+
     def add_fragment(self, fragment, delay_sort=False):
         """Adds a Fragment instance to the Segment.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
@@ -1401,22 +1400,10 @@ class Segment(object):
         sequence of the same bio-residue, and that's the sequence.  Returns
         a list of 3-letter residues codes of the calculated sequence.
         """
-        structure = self.get_structure()
-        if structure != None:
-            sequence = Sequence(library = structure.library)
-        else:
-            sequence = Sequence()
-
-        residue_class = None
-        for frag in self.iter_standard_residues():
-            if residue_class:
-                if not isinstance(frag, residue_class):
-                    break
-            else:
-                residue_class = frag.__class__
-            sequence.append(frag.res_name)
-
-        return sequence
+        sequence_list = []
+        for frag in self.iter_fragments():
+            sequence_list.append(frag.res_name)
+        return sequence_list
 
     def get_chain(self):
         """Returns the Chain object this Segment is part of.
@@ -1447,7 +1434,8 @@ class Chain(Segment):
 
         Segment.__init__(self, **args)
 
-        self.model = None
+        self.model                  = None
+        self.sequence_fragment_list = []
 
         ## the sequence list contains a list 3-letter residue names
         self.sequence = None
@@ -1470,14 +1458,67 @@ class Chain(Segment):
             chain.add_fragment(copy.deepcopy(fragment, memo), True)
         return chain
         
-    def __segment_slice__(self):
-        """Returns a Segment to be used in a slice, but when a Chain is
-        sliced, the Segment.chain attribute gets set.
+    def construct_segment(self):
+        """Constructs a new Segment object so that it has a valid .chain
+        reference.
         """
-        segment = Segment.__segment_slice__(self)
+        segment = Segment(
+            model_id = self.model_id,
+            chain_id = self.chain_id)
+
         segment.chain = self
+        segment.model = self.model
+
         return segment
-    
+
+    def set_sequence(self, sequence_list):
+        """The sequence_list is a list of 3-letter residue name codes which
+        define the polymer sequence for the chain.  Setting the sequence
+        attempts to map the sequence codes to Fragment objects.
+        """
+        self.sequence_fragment_list = []
+        for res_name in sequence_list:
+            self.sequence_fragment_list.append((res_name, None))
+
+    def remove_sequence(self):
+        """Removes the current sequence mapping.
+        """
+        self.sequence_fragment_list = []
+
+    def iter_sequence(self):
+        """Iterates over all 3-letter residue codes for the polymer sequence.
+        """
+        for res_name, fragment in self.sequence_fragment_list:
+            yield res_name
+
+    def construct_sequence_list(self):
+        """Constructs and returns a list with the 3-letter residue codes
+        for the polymer sequence.
+        """
+        return list(self.iter_sequence())
+
+    def get_fragment_sequence_index(self, seq_index):
+        return self.sequence_fragment_list[seq_index][1]
+
+    def sequence_one_letter_code(self):
+        """Return the one letter code representation of the sequence as
+        a string.
+        """
+        library         = self.get_structure().library
+        one_letter_code = ""
+        
+        for res_name, fragment in self.sequence_fragment_list:
+            mon_def = library.get_monomer(res_name)
+            if not mon_def or not mon_def.is_standard_residue():
+                break
+
+            if mon_def.one_letter_code:
+                one_letter_code += mon.one_letter_code
+            else:
+                one_letter_code += "(%s)" % (res_name)
+
+        return one_letter_code
+
     def add_fragment(self, fragment, delay_sort=False):
         """Adds a Fragment instance to the Chain.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
@@ -1851,7 +1892,7 @@ class Fragment(object):
         """Returns the fragment in the same chain at integer offset from
         self.  Returns None if no fragment is found.
         """
-        assert type(offset) == IntType
+        assert type(offset)==IntType
 
         i = self.chain.index(self) + offset
         if i < 0:
@@ -2365,6 +2406,10 @@ class Atom(object):
         self.bond_list = []
 
     def __str__(self):
+        return "Atom(n=%s alt=%s res=%s chn=%s frag=%s mdl=%d)" % (
+            self.name, self.alt_loc, self.res_name,
+            self.chain_id, self.fragment_id, self.model_id)
+        
         return "Atom(%4s%2s%4s%2s%4s%2d)" % (
             self.name, self.alt_loc, self.res_name,
             self.chain_id, self.fragment_id, self.model_id)
@@ -2502,9 +2547,9 @@ class Atom(object):
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
         """
-        if self.altloc==None:
-            return 0
-        return len(self.altloc)
+        if self.altloc:
+            return len(self.altloc)
+        return 0
 
     def __getitem__(self, alt_loc):
         """This is a alternative to calling get_alt_loc, but a KeyError
@@ -2983,8 +3028,8 @@ class AlphaHelix(object):
 
         self.helix_length = len(segment)
 
-    def generate_segment(self):
-        """Generates the child Segment object from the Chain object found in
+    def construct_segment(self):
+        """Constructs the child Segment object from the Chain object found in
         the parent Structure object by the AlphaHelix chain_id/fragment_id
         information.  Returns True if the Segment was created, or False if
         it was not.  The Segment is not created when the fragment range
@@ -3137,8 +3182,8 @@ class Strand(object):
         self.fragment_id2 = frag2.fragment_id
         self.res_name2    = frag2.res_name
 
-    def generate_segment(self):
-        """Generates the child Segment object from the Chain object found in
+    def construct_segment(self):
+        """Constructs the child Segment object from the Chain object found in
         the parent Structure object by the BetaSheet chain_id/fragment_id
         information.  Returns True if the Segment was created, or False if
         it was not.  The Segment is not created when the fragment range
@@ -3235,11 +3280,11 @@ class BetaSheet(object):
         self.strand_list.append(strand)
         strand.beta_sheet = self
 
-    def generate_segments(self):
-        """Calls Strand.generate_segment() on all child Strand objects.
+    def construct_segments(self):
+        """Calls Strand.construct_segment() on all child Strand objects.
         """
         for strand in self.strand_list:
-            strand.generate_segment()
+            strand.construct_segment()
 
     def get_model(self):
         """REturns the parent Model object.
@@ -3315,7 +3360,7 @@ class Site(object):
             if fragment_dict.has_key("fragment"):
                 del fragment_dict["fragment"]
 
-    def generate_fragments(self):
+    def construct_fragments(self):
         """Using the site fragment descriptions, finds the Fragment objects
         in the parent Model.
         """
@@ -3369,30 +3414,16 @@ class AtomList(list):
     Atom instances.  It also provides class methods for performing some
     useful calculations on the list of atoms.
     """
-    def __setitem__(self, i, atom):
-        assert isinstance(atom, Atom)
-        list.__setitem__(self, i, atom)
-
-    def append(self, atom):
-        assert isinstance(atom, Atom)
-        list.append(self, atom)
-
-    def insert(self, i, atom):
-        assert isinstance(atom, Atom)
-        list.insert(self, i, atom)
-    
     def calc_centroid(self):
         """Calculates the centroid of all contained Atom instances and
         returns a Vector to the centroid.
         """
         num      = 0
         centroid = zeros(3, Float)
-
         for atm in self:
-            if type(atm.position) != NoneType:
+            if atm.position:
                 centroid += atm.position
                 num += 1
-
         return centroid / num
         
     def calc_adv_temp_factor(self):
@@ -3403,7 +3434,7 @@ class AtomList(list):
         adv_tf = 0.0
 
         for atm in self:
-            if atm.temp_factor != None:
+            if atm.temp_factor:
                 adv_tf += atm.temp_factor
                 num_tf += 1
 

@@ -274,8 +274,8 @@ def make_doc():
     """This is a special function to generate the documentation with
     Epidoc.  It once used happydoc.
     """
-    #os.system("happydoc -d doc -t 'PyMMLib Documentation' --no-comments "\
-    #          "--no-private-names mmLib")
+    #os.system("happydoc -d doc/happy -t 'PyMMLib Documentation' --no-comments --no-private-names mmLib")
+
     os.system(
         'epydoc --html --output doc/api_reference '\
         '--name "mmLib Documentation" mmLib mmLib/Extensions') 

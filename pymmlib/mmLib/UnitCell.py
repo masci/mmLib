@@ -232,7 +232,8 @@ class UnitCell(object):
                     yield i, j, k
 
     def iter_struct_orth_symops(self, struct):
-        """
+        """Iterate over the orthogonal-space symmetry operations which will
+        place a symmetry related structure near the argument struct.
         """
         ## compute the centroid of the structure
         n = 0
@@ -252,7 +253,7 @@ class UnitCell(object):
             for atm in frag.iter_atoms():
                 dist = length(atm.position - centroid)
                 max_dist = max(max_dist, dist)
-        max_dist2 = max_dist + 5.0
+        max_dist2 = 2.0 * max_dist + 5.0
 
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():

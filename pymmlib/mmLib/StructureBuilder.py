@@ -10,6 +10,16 @@ from mmTypes   import *
 from Library   import *
 from Structure import *
 
+class StructureBuilderError(Exception):
+    """Base class of errors raised by Structure objects.
+    """
+    def __init__(self, message):
+        Exception.__init__(self)
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
 
 class StructureBuilder(object):
     """Builder class for the mmLib.Structure object hierarchy.
@@ -79,17 +89,19 @@ class StructureBuilder(object):
         ## survey the atom and structure and determine if the atom requres
         ## being passed to the naming service
         ## absence of requred fields
-        if atm.fragment_id=="" or atm.chain_id=="":
+        if not atm.fragment_id or not atm.chain_id:
             self.name_service_list.append(atm)
             return atm
 
         try:
             self.struct.add_atom(atm, True)
+
         except FragmentOverwrite:
             print "FragmentOverwrite: ",atm
             self.name_service_list.append(atm)
+
         except AtomOverwrite, err:
-            print err
+            print "AtomOverwrite: ",err
             self.name_service_list.append(atm)
 
         return atm
@@ -115,8 +127,7 @@ class StructureBuilder(object):
                 if not chain:
                     return chain_id
                 
-            warning("name_service: exhausted PDB-allowed chain ids")
-            return None
+            raise StructureBuilderError("name_service exhausted new chain_ids")
         
 
         ## NAME SERVICE FOR POLYMER ATOMS
@@ -473,7 +484,7 @@ class StructureBuilder(object):
         in the sequence.
         """
         try:
-            chain_id = sequence_map["chain_id"]
+            chain_id      = sequence_map["chain_id"]
             sequence_list = sequence_map["sequence_list"]
         except KeyError:
             return
@@ -482,9 +493,9 @@ class StructureBuilder(object):
         ## all models of the structure
         for model in self.struct.iter_models():
             chain = model.get_chain(chain_id)
-            if chain != None:
-                chain.sequence = Sequence(library = self.struct.library,
-                                          sequence_list = sequence_list[:])
+            if chain:
+                chain.set_sequence(sequence_list)
+
 
     def load_alpha_helicies(self, helix_list):
         """The argument helix_list is a list of Python dictionaries with
@@ -513,7 +524,7 @@ class StructureBuilder(object):
             for model in self.struct.iter_models():
                 alpha_helix = AlphaHelix(model_id=model.model_id, **helix)
                 model.add_alpha_helix(alpha_helix)
-                alpha_helix.generate_segment()
+                alpha_helix.construct_segment()
 
     def load_beta_sheets(self, beta_sheet_list):
         """The argument beta_sheet_list is a list of Python dictionaries with
@@ -565,7 +576,7 @@ class StructureBuilder(object):
                     beta_sheet.add_strand(beta_strand)
 
                 model.add_beta_sheet(beta_sheet)
-                beta_sheet.generate_segments()
+                beta_sheet.construct_segments()
 
     def load_sites(self, site_list):
         """The argument site_list is a list of Python dictionaries with
@@ -582,7 +593,7 @@ class StructureBuilder(object):
             for model in self.struct.iter_models():
                 site = Site(**site)
                 model.add_site(site)
-                site.generate_fragments()
+                site.construct_fragments()
         
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
@@ -606,8 +617,11 @@ class StructureBuilder(object):
             for chain in self.struct.iter_chains():
                 chain.calc_sequence()
 
-        ## build bonds within structure
-        if not "no_bonds" in self.build_properties:
+        ## build bonds as defined in the monomer library
+        if "library_bonds" in self.build_properties:
             self.struct.add_bonds_from_library()
 
-
+        ## build bonds by covalent distance calculations
+        if "distance_bonds" in self.build_properties:
+            self.struct.add_bonds_from_covalent_distance()
+            

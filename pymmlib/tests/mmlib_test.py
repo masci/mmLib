@@ -382,7 +382,6 @@ def struct_test(struct, stats):
     stats["testing"] = None
 
 
-
 def run_structure_tests(struct, stats):
     """Run basic API tests on the mmLib.Structure object and print statistics.
     """
@@ -408,11 +407,68 @@ def run_structure_tests(struct, stats):
                 bond_test(bond, atm, stats)
 
 
-def copy_verify(struct, stats, struct_cp, stats_cp):
-    assert stats["chain_count"] == stats_cp["chain_count"]
-    assert stats["fragment_count"] == stats_cp["fragment_count"]
-    assert stats["atom_count"] == stats_cp["atom_count"]
-    assert stats["bond_count"] == stats_cp["bond_count"]
+def cmp_struct(struct1, struct2):
+    """Compare two Structure objects.
+    """
+    assert struct1.count_models()    == struct2.count_models()
+    assert struct1.count_chains()    == struct2.count_chains()
+    assert struct1.count_fragments() == struct2.count_fragments()
+    assert struct1.count_atoms()     == struct2.count_atoms()
+    assert struct1.count_all_atoms() == struct2.count_all_atoms()
+    
+    def cmp_atoms(atm1, atm2):
+        assert atm1.element       == atm2.element
+        assert atm1.name          == atm2.name
+        assert atm1.fragment_id   == atm2.fragment_id
+        assert atm1.res_name      == atm2.res_name
+        assert atm1.chain_id      == atm2.chain_id
+        assert atm1.model_id      == atm2.model_id
+        assert atm1.alt_loc       == atm2.alt_loc
+
+        assert atm1.position==atm2.position or \
+               allclose(atm1.position, atm2.position)
+
+        assert atm1.sig_position==atm2.sig_position or \
+               allclose(atm1.sig_position, atm2.sig_position)
+        
+        assert atm1.occupancy==atm2.occupancy or \
+               allclose(atm1.occupancy, atm2.occupancy)
+
+        assert atm1.sig_occupancy==atm2.sig_occupancy or \
+               allclose(atm1.sig_occupancy, atm2.sig_occupancy)
+
+        assert atm1.temp_factor==atm2.temp_factor or \
+               allclose(atm1.temp_factor, atm2.temp_factor)
+
+        assert atm1.sig_temp_factor==atm2.sig_temp_factor or \
+               allclose(atm1.sig_temp_factor, atm2.sig_temp_factor)
+
+        assert atm1.charge==atm2.charge or \
+               allclose(atm1.charge, atm2.charge)
+        
+        U1 = atm1.get_U()
+        U2 = atm2.get_U()
+        assert U1==U2 or allclose(U1, U2)
+
+    for atm1 in struct1.iter_all_atoms():
+        model2 = struct2.get_model(atm1.model_id)
+        chain2 = model2.get_chain(atm1.chain_id)
+        frag2  = chain2.get_fragment(atm1.fragment_id)
+        atmX2  = frag2.get_atom(atm1.name)
+        atm2   = atmX2.get_alt_loc(atm1.alt_loc)
+
+        try:
+            cmp_atoms(atm1, atm2)
+
+        except AssertionError:
+            print
+            print "ERROR: cmp_atom(%s, %s)" % (atm1, atm2)
+            print
+            print "atm1.position = %s" % (atm1.position)
+            print "atm2.position = %s" % (atm2.position)
+            print
+
+            raise
     
 
 def file_verify(path, struct, stats):
@@ -431,7 +487,6 @@ def file_verify(path, struct, stats):
     assert fil_stats["atoms"] == stats["atom_count"]
 
 
-
 def save_verify(struct, stats):
     """Save structure in all supported formats, then reload it and
     compare structures.
@@ -439,24 +494,14 @@ def save_verify(struct, stats):
     ## pdb
     print "[temp.pdb]"
     SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
-    fil_stats = test_util.pdb_stats("temp.pdb")
-
-    struct_stats = Stats()
     pdb_struct = LoadStructure(fil="temp.pdb")
-    run_structure_tests(pdb_struct, struct_stats)
-
-    struct_stats.print_stats()
+    cmp_struct(struct, pdb_struct)
     
     ## mmCIF
     print "[temp.cif]"
     SaveStructure(fil="temp.cif", struct=struct, format="CIF")
-    fil_stats = test_util.cif_stats("temp.cif")
-
-    struct_stats = Stats()
     cif_struct = LoadStructure(fil="temp.cif")
-    run_structure_tests(cif_struct, struct_stats)
-
-    struct_stats.print_stats()
+    cmp_struct(struct, cif_struct)
     
 
 WEAKREF_LIST = []
@@ -501,29 +546,12 @@ def main(walk_path, start_path):
             print "*** Error while testing: %s ***" % (
                 str(stats["testing"]))
             raise
-
         stats.print_stats()
-
 
         ## copy the structure and re-run those tests
         print "[copy struct]"
         struct_cp = copy.deepcopy(struct)
-        stats_cp  = Stats()
-
-        try:
-            run_structure_tests(struct_cp, stats_cp)
-        except AssertionError:
-            print "*** AssertionError while testing: %s ***" % (
-                str(stats_cp["testing"]))
-            raise
-        except:
-            print "*** Error while testing: %s ***" % (
-                str(stats_cp["testing"]))
-            raise
-
-        stats_cp.print_stats()
-        copy_verify(struct, stats, struct_cp, stats_cp)
-        
+        cmp_struct(struct, struct_cp)
 
         ## verify the number of atoms in the mmLib.Structure object
         ## matches the number of atoms in the source file 

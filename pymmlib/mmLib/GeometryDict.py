@@ -22,19 +22,26 @@ class XYZDict(object):
     def calc_geom_key(self, position):
         """Calculates the cube key for the given position.
         """
-        return ( int(position[0]/self.resolution),
-                 int(position[1]/self.resolution),
-                 int(position[2]/self.resolution) )
+        res = self.resolution
+        
+        return ( int(position[0] / res),
+                 int(position[1] / res),
+                 int(position[2] / res) )
         
     def add(self, position, item):
         """Add a item.
         """
-        geom_key   = self.calc_geom_key(position)
+        res = self.resolution
+        
+        geom_key = ( int(position[0] / res),
+                     int(position[1] / res),
+                     int(position[2] / res) )
+
         geom_tuple = (position, item)
 
-        try:
+        if self.geom_dict.has_key(geom_key):
             self.geom_dict[geom_key].append(geom_tuple)
-        except KeyError:
+        else:
             self.geom_dict[geom_key] = [geom_tuple]
 
     def remove(self, position, item):
