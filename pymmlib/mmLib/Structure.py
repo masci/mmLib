@@ -47,7 +47,7 @@ class Structure(object):
         self.chain_list      = []
 
     def __str__(self):
-        tstr = "Structure(id=%s, meth=)" % (self.cifdb.get_entry_id())
+        tstr = "Struct(id=%s, meth=)" % (self.cifdb.get_entry_id())
         return tstr
  
     def __len__(self):
@@ -117,6 +117,11 @@ class Structure(object):
         if delay_sort == False:
             self.chain_list.sort()
         return True
+
+    def get_structure(self):
+        """Returns self.
+        """
+        return self
 
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
@@ -544,10 +549,9 @@ class Fragment(object):
         self.atom_dict = {}
 
     def __str__(self):
-        return "%s(%s,%s,%s)" % (self.__class__.__name__,
-                                 self.res_name,
-                                 self.fragment_id,
-                                 self.chain_id)
+        return "Frag(%s,%s,%s)" % (self.res_name,
+                                   self.fragment_id,
+                                   self.chain_id)
 
     def __lt__(self, other):
         assert isinstance(other, Fragment)
@@ -780,10 +784,9 @@ class Residue(Fragment):
                           chain_id    = chain_id)
 
     def __str__(self):
-        return "%s(%s,%s,%s)" % (self.__class__.__name__,
-                                 self.res_name,
-                                 self.fragment_id,
-                                 self.chain_id)
+        return "Res(%s,%s,%s)" % (self.res_name,
+                                  self.fragment_id,
+                                  self.chain_id)
 
     def get_offset_residue(self, offset):
         """Returns the residue along the chain at the given integer offset

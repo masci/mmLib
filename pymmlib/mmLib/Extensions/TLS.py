@@ -12,6 +12,403 @@ from mmLib.mmTypes import *
 from mmLib.Structure import *
 
 
+## regular expressions used for extracting the TLS groups from the REFMAC
+## TLS tensor file format
+refmac_tls_regex_dict = {
+    "group": re.compile(
+    "(?:^TLS\s*$)|(?:^TLS\s+(.*)$)"),
+    
+    "range": re.compile(
+    "^RANGE\s+[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s+"\
+    "[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+
+    "origin": re.compile(
+    "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+    
+    "T": re.compile(
+    "^T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+    
+    "L": re.compile(
+    "^L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+
+    "S": re.compile(
+    "^S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
+    }
+
+
+## regular expressions used for extracting the TLS groups from the REMARK
+## fields of the PDB file output by REFMAC
+refmac_pdb_regex_dict = {
+    "group": re.compile(
+    "\s*TLS GROUP :\s+(\d+)\s*$"),
+
+    "range": re.compile(
+    "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
+
+    "origin": re.compile(
+    "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
+
+    "t11_t22": re.compile(
+    "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
+
+    "t33_t12": re.compile(
+    "\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
+
+    "t13_t23": re.compile(
+    "\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
+
+    "l11_l22": re.compile(
+    "\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
+
+    "l33_l12": re.compile(
+    "\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
+
+    "l13_l23": re.compile(
+    "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
+
+    "s11_s12_s13": re.compile(
+    "\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
+
+    "s21_s22_s23": re.compile(
+    "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
+
+    "s31_s32_s33": re.compile(
+    "\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
+    }
+
+
+class TLSGroupInfo:
+    """Contains information on one TLS group
+    """
+    def __init__(self):
+        self.name       = ""     # text name (maybe numeric label?)
+        self.origin     = None   # (x, y, z)
+        self.range_list = []     # (chain1, res1, chain2, res2, selection)
+        self.T          = None   # (t11, t22, t33, t12, t13, t23)
+        self.L          = None   # (l11, l22, l33, l12, l13, l23)
+        self.S          = None   # (s2211, s1133, s12, s13, s23, s21, s31, s32)
+        
+    def __str__(self):
+        """Return a string describing the TLS group in REFMAC/CCP4 format.
+        """
+        def ft8(tx):
+            strx = ""
+            for x in tx:
+                strx += fpformat.fix(x, 4).rjust(8)
+            return strx
+        
+        listx = []
+
+        if len(self.name) > 0:
+            listx.append("TLS %s" % (self.name))
+        else:
+            listx.append("TLS")
+
+        for (c1, f1, c2, f2, sel) in self.range_list:
+            try:
+                if f1[-1] in string.digits: f1 += "."
+            except IndexError:
+                f1 = "."
+            try:
+                if f2[-1] in string.digits: f2 += "."
+            except IndexError:
+                f2 = "."
+            listx.append("RANGE  '%s%s' '%s%s' %s" % (
+                c1, f1.rjust(5), c2, f2.rjust(5), sel))
+
+        listx.append("ORIGIN %s" % ft8(self.origin))
+        listx.append("T   %s" % ft8(self.T))
+        listx.append("L   %s" % ft8(self.L))
+        listx.append("S   %s" % ft8(self.S))
+
+        return string.join(listx, "\n")
+
+    def make_tls_group(self, struct):
+        """Returns a TLSGroup containing the appropriate atoms from the
+        argument Structure object, and with the origin, T, L, S tensors
+        set.
+        """
+        tls = TLSGroup()
+        tls.set_origin(*self.origin)
+        tls.set_T(*self.T)
+        tls.set_L(*self.L)
+        tls.set_S(*self.S)
+
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
+
+            chain1 = struct.get_chain(chain_id1)
+            if chain1 == None:
+                print "[ERROR] no chain id: %s" % (chain_id1)
+                sys.exit(1)
+
+            try:
+                seg = chain1[frag_id1:frag_id2]
+            except KeyError:
+                print "[ERROR] unable to find segment: %s-%s" % (
+                    frag_id1, frag_id2)
+                sys.exit(1)
+
+            for atm in seg.iter_atoms():
+                tls.append(atm)
+            
+        return tls
+
+
+class TLSGroupFile:
+    """This class reads and writes TLS information stored in the same
+    format as REFMAC from CCP4 >= 4.1.0.  The TLS groups are stored as a list
+    of TLSGroupInfo classes.
+    """
+    def __init__(self):
+        self.tls_info_list = []
+        self.state = {}
+
+    def __str__(self):
+        """Return a string describing the TLS groups in REFMAC/CCP4 format.
+        """
+        listx = []
+        
+        for tls_info in self.tls_info_list:
+            listx.append(str(tls_info))
+
+        return string.join(listx, "\n\n")
+        
+    def load_refmac_tlsout_file(self, fil):
+        """Read the TLS information from file object fil, and store that
+        inforamtion in the class instance variables.
+        """
+        tls_info = None
+        
+        for ln in fil.readlines():
+            ln = ln.rstrip()
+
+            ## search all regular expressions for a match
+            for (re_key, re_tls) in refmac_tls_regex_dict.items():
+                mx = re_tls.match(ln)
+                if mx != None:
+                    break
+
+            ## no match was found for the line
+            if mx == None:
+                continue
+            
+            ## do not allow a match if tls_info == None, because then
+            ## somehow we've missed the TLS group begin line
+            if tls_info == None and re_key != "group":
+                print "[ERROR] TLS group info without TLS group begin line"
+                sys.exit(1)
+
+            if re_key == "group":
+                tls_info = TLSGroupInfo()
+                self.tls_info_list.append(tls_info)
+                if mx.group(1) != None:
+                    tls_info.name = mx.group(1)
+
+            elif re_key == "origin":
+                (x, y, z) = mx.groups()
+                tls_info.origin = (float(x), float(y), float(z))
+
+            elif re_key == "range":
+                (c1, f1, c2, f2, sel) = mx.groups()
+
+                try:
+                    if f1[-1] == ".": f1 = f1[:-1]
+                except IndexError:
+                    pass
+                
+                try:
+                    if f2[-1] == ".": f2 = f2[:-1]
+                except IndexError:
+                    pass
+
+                tls_info.range_list.append((c1, f1, c2, f2, sel))
+
+            elif re_key == "T":
+                (t11, t22, t33, t12, t13, t23) = mx.groups()
+                tls_info.T = (float(t11), float(t22), float(t33),
+                              float(t12), float(t13), float(t23))
+
+            elif re_key == "L":
+                (l11, l22, l33, l12, l13, l23) = mx.groups()
+                tls_info.L = (float(l11),
+                              float(l22),
+                              float(l33),
+                              float(l12),
+                              float(l13),
+                              float(l23))
+
+            elif re_key == "S":
+                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
+                tls_info.S = (float(s2211),
+                              float(s1133),
+                              float(s12),
+                              float(s13),
+                              float(s23),
+                              float(s21),
+                              float(s31),
+                              float(s32))
+
+    def process_REMARK(self, rec):
+        """Callback for the PDBFile parser for REMARK records.  If the
+        REMARK records contain TLS group information, then it is
+        extracted and added to the TLSGroups list.
+        """
+        try:
+            if rec["remarkNum"] != 3:
+                return
+        except KeyError:
+            return
+
+        try:
+            text = rec["text"]
+        except KeyError:
+            return
+
+        try:
+            tls_info = self.tls_info_list[-1]
+        except IndexError:
+            tls_info = None
+
+        ## attempt to extract information from the text
+        for (re_key, re_tls) in refmac_pdb_regex_dict.items():
+            mx = re_tls.match(text)
+            if mx != None:
+                break
+
+        ## no match
+        if mx == None:
+            return
+
+        if re_key == "group":
+            tls_info = TLSGroupInfo()
+            self.tls_info_list.append(tls_info)
+
+        elif re_key == "origin":
+            (x, y, z) = mx.groups()
+            tls_info.origin = (float(x), float(y), float(z))
+
+        elif re_key == "range":
+            (c1, f1, c2, f2) = mx.groups()
+            sel = ""
+            tls_info.range_list.append((c1, f1, c2, f2, sel))
+
+        elif re_key == "t11_t22":
+            (t11, t22) = mx.groups()
+            if tls_info.T == None:
+                T = (None, None, None, None, None, None)
+            else:
+                T = tls_info.T
+            tls_info.T = (float(t11), float(t22), T[2], T[3], T[4], T[5])
+
+        elif re_key == "t33_t12":
+            (t33, t12) = mx.groups()
+            if tls_info.T == None:
+                T = (None, None, None, None, None, None)
+            else:
+                T = tls_info.T
+            tls_info.T = (T[0], T[1], float(t33), float(t12), T[4], T[5])
+            
+        elif re_key == "t13_t23":
+            (t13, t23) = mx.groups()
+            if tls_info.T == None:
+                T = (None, None, None, None, None, None)
+            else:
+                T = tls_info.T
+            tls_info.T = (T[0], T[1], T[2], T[3], float(t13), float(t23))
+            
+        elif re_key == "l11_l22":
+            (l11, l22) = mx.groups()
+            if tls_info.L == None:
+                L = (None, None, None, None, None, None)
+            else:
+                L = tls_info.L
+            tls_info.L = (float(l11),
+                          float(l22),
+                          L[2], L[3], L[4], L[5])
+
+        elif re_key == "l33_l12":
+            (l33, l12) = mx.groups()
+            if tls_info.L == None:
+                L = (None, None, None, None, None, None)
+            else:
+                L = tls_info.L
+            tls_info.L = (L[0], L[1],
+                          float(l33), float(l12),
+                          L[4], L[5])
+            
+        elif re_key == "l13_l23":
+            (l13, l23) = mx.groups()
+            if tls_info.L == None:
+                L = (None, None, None, None, None, None)
+            else:
+                L = tls_info.L
+            tls_info.L = (L[0], L[1], L[2], L[3],
+                          float(l13), float(l23))
+
+        elif re_key == "s11_s12_s13":
+            (s11, s12, s13) = mx.groups()
+            if tls_info.S == None:
+                S = (None, None, None, None, None, None, None, None)
+            else:
+                S = tls_info.S
+                
+            #<S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>   
+
+            tls_info.s11 = float(s11)
+
+            if hasattr(tls_info, "s22"):
+                s2211 = tls_info.s22 - tls_info.s11
+            else:
+                s2211 = None
+
+            if hasattr(tls_info, "s33"):
+                s1133 = tls_info.s11 - tls_info.s33
+            else:
+                s1133 = None
+
+            tls_info.S = (
+                s2211, s1133,
+                float(s12), float(s13),
+                S[4], S[5], S[6], S[7])
+
+        elif re_key == "s21_s22_s23":
+            (s21, s22, s23) = mx.groups()
+            if tls_info.S == None:
+                S = (None, None, None, None, None, None, None, None)
+            else:
+                S = tls_info.S
+                
+            tls_info.s22 = float(s22)
+
+            if hasattr(tls_info, "s11"):
+                s2211 = tls_info.s22 - tls_info.s11
+            else:
+                s2211 = None
+
+            tls_info.S = (
+                s2211, S[1], S[2], S[3],
+                float(s23), float(s21),
+                S[6], S[7])
+
+        elif re_key == "s31_s32_s33":
+            (s31, s32, s33) = mx.groups()
+            if tls_info.S == None:
+                S = (None, None, None, None, None, None, None, None)
+            else:
+                S = tls_info.S
+                
+            tls_info.s33 = float(s33)
+
+            if hasattr(tls_info, "s11"):
+                s1133 = tls_info.s11 - tls_info.s33
+            else:
+                s1133 = None
+
+            tls_info.S = (
+                S[0], s1133, S[2], S[3], S[4], S[5],
+                float(s31), float(s32))
+
+
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
@@ -70,9 +467,10 @@ class TLSGroup(AtomList):
         self.T[2,1] = t23
 
     def set_L(self, l11, l22, l33, l12, l13, l23):
-        """Sets the components of the symmetric L tensor.
+        """Sets the components of the symmetric L tensor from values
+        assumed to be in degrees^2.
         """
-        self.L[0,0] = l11
+        self.L[0,0] = l11 
         self.L[1,1] = l22
         self.L[2,2] = l33
         self.L[0,1] = l12
@@ -81,6 +479,8 @@ class TLSGroup(AtomList):
         self.L[2,0] = l13
         self.L[1,2] = l23
         self.L[2,1] = l23
+
+        self.L = self.L * deg2rad2
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the componets of the asymmetric S tenssor.  The trace
@@ -100,6 +500,8 @@ class TLSGroup(AtomList):
         self.S[1,2] = s23
         self.S[2,0] = s31
         self.S[2,1] = s32
+
+        self.S = self.S * deg2rad
 
     def calc_tls_tensors(self):
         """Perform a least-squares fit of the atoms contained in self
@@ -300,6 +702,102 @@ class TLSGroup(AtomList):
                     Rd += abs(atm.U[i,j])
 
         return Rn / Rd
+
+    def calc_COR(self):
+        """Calculate new tensors based on the center for reaction.
+        This method returns a dictionary of the calculations:
+
+        T^: T tensor in the coordinate system of L
+        L^: L tensor in the coordinate system of L
+        S^: S tensor in the coordinate system of L
+        
+        """
+        calcs = {}
+
+        (eval_L, evec_L) = eigenvectors(self.L)
+        evec_L = transpose(evec_L)
+        
+        ## carrot-L tensor (tensor WRT principal axes of L)
+        cL      = zeros([3,3], Float)
+        cL[0,0] = eval_L[0]
+        cL[1,1] = eval_L[1]
+        cL[2,2] = eval_L[2]
+
+        calcs["L^"] = cL
+
+        ## carrot-T tensor (T tensor WRT principal axes of L)
+        cT = matrixmultiply(
+            matrixmultiply(transpose(evec_L), self.T), evec_L)
+
+        calcs["T^"] = cT
+
+        ## carrot-S tensor (S tensor WRT principal axes of S)
+        cS = matrixmultiply(
+            matrixmultiply(transpose(evec_L), self.S), evec_L)
+
+        ## correct for left-handed libration eigenvectors
+        det = determinant(evec_L)
+        if int(det) != 1:
+            cS = -cS
+
+        calcs["S^"] = cS
+            
+        ## ^rho: the origin-shift vector in the coordinate system of L
+        crho = array([ (cS[1,2] - cS[2,1]) / (cL[1,1] + cL[2,2]),
+                       (cS[2,0] - cS[0,2]) / (cL[2,2] + cL[0,0]),
+                       (cS[0,1] - cS[1,0]) / (cL[0,0] + cL[1,1]) ])
+
+        calcs["RHO^"] = crho
+        
+        ## rho: the origin-shift vector in orthogonal coordinates
+        rho = matrixmultiply(evec_L, crho)
+        
+        calcs["RHO"] = rho
+        calcs["COR"] = array(self.origin)+rho
+
+        ## set up the origin shift matrix PRHO WRT orthogonal axes
+        PRHO = array([ [    0.0,  rho[2], -rho[1]],
+                       [-rho[2],     0.0,  rho[0]],
+                       [ rho[1], -rho[0],     0.0] ])
+
+        ## set up the origin shift matrix cPRHO WRT libration axes
+        cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+                        [-crho[2],     0.0,  crho[0]],
+                        [ crho[1], -crho[0],     0.0] ])
+
+        ## calculate tranpose of cPRHO, ans cS
+        cSt = transpose(cS)
+        cPRHOt = transpose(cPRHO)
+
+        ## calculate S'^ = S^ + L^*pRHOt
+        cSp = cS + matrixmultiply(cL, cPRHOt) 
+        calcs["S'^"] = cSp
+
+        ## L'^ = L^ = cL
+        calcs["L'^"] = cL
+
+        ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
+        cTp = cT + \
+              matrixmultiply(cPRHO, cS) + \
+              matrixmultiply(cSt, cPRHOt) + \
+              matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+        calcs["T'^"] = cTp
+        
+        
+        return calcs
+
+        print "^T"
+        print cT
+        print "^L"
+        print cL
+        print "^S"
+        print cS
+
+        print "^rho", crho
+        print "rho", rho
+        print "Center of reaction: ", array(self.origin)+rho
+
+
 
     def write(self, out = sys.stdout):
         """Write a nicely formatted tensor description.
