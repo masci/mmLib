@@ -5,6 +5,8 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+import math
+
 import pygtk
 pygtk.require("2.0")
 
@@ -48,12 +50,14 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         self.connect('expose_event',        self.expose_event)
         self.connect('destroy',             self.destroy)
 
-        self.rot         = "x"
         self.rotx        = 0
         self.roty        = 0
-        self.is_solid    = gtk.TRUE
-        self.sphere_list = []
-        self.line_list   = []
+
+        self.xpos        = 0
+        self.ypos        = 0
+        self.zpos        = -50
+
+        self.draw_list   = []
         
     def destroy(self, glarea):
         return gtk.TRUE
@@ -63,11 +67,26 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         self.beginy = event.y
 
     def motion_notify_event(self, glarea, event):
+        width     = glarea.allocation.width
+        height    = glarea.allocation.height
+
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            width     = glarea.allocation.width
-            height    = glarea.allocation.height
-            self.rotx = self.rotx + ((event.y-self.beginy)/width)*360.0
-            self.roty = self.roty + ((event.x-self.beginx)/height)*360.0
+            self.roty = self.roty + \
+                        (((event.x - self.beginx) / float(width)) * 360.0)
+            self.rotx = self.rotx + \
+                        (((event.y - self.beginy) / float(height)) * 360.0)
+
+        elif (event.state & gtk.gdk.BUTTON2_MASK):
+            self.zpos = self.zpos + \
+                        (((event.y - self.beginy) / float(height)) * 50.0)
+
+            self.zpos = max(self.zpos, -250)
+
+        elif (event.state & gtk.gdk.BUTTON3_MASK):
+            self.ypos = self.ypos - \
+                        (((event.y - self.beginy) / float(height)) * 50.0)
+            self.xpos = self.xpos + \
+                        (((event.x - self.beginx) / float(width)) * 50.0)
 
         self.beginx = event.x
         self.beginy = event.y
@@ -84,6 +103,16 @@ class GLViewer(gtk.gtkgl.DrawingArea):
     def unmap(self, glarea):
         return gtk.TRUE
 
+    def set_material(self, r, g, b, bright = 1.0):
+	glMaterial(GL_FRONT, GL_AMBIENT,
+                   [0.2*r*bright, 0.2*g*bright, 0.2*b*bright, 1.0])
+	glMaterial(GL_FRONT, GL_DIFFUSE,
+                   [0.8*bright, 0.8*bright, 0.8*bright, 1.0])
+	glMaterial(GL_FRONT, GL_SPECULAR,
+                   [1.0*bright, 1.0*bright, 1.0, 1.0])
+        
+	glMaterial(GL_FRONT, GL_SHININESS, 50.0*bright)
+
     def realize(self, glarea):
         # get GLContext and GLDrawable
 	glcontext = self.get_gl_context()
@@ -92,21 +121,18 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	# GL calls
 	if not gldrawable.gl_begin(glcontext):
             return gtk.FALSE
+
+        self.set_material(1.0, 1.0, 1.0)
 	
-	glMaterial(GL_FRONT, GL_AMBIENT,   [0.2, 0.2, 0.2, 1.0])
-	glMaterial(GL_FRONT, GL_DIFFUSE,   [0.8, 0.8, 0.8, 1.0])
-	glMaterial(GL_FRONT, GL_SPECULAR,  [1.0, 0.0, 1.0, 1.0])
-	glMaterial(GL_FRONT, GL_SHININESS, 50.0)
-	
-	glLight(GL_LIGHT0, GL_AMBIENT,  [0.0, 1.0, 0.0, 1.0])
+	glLight(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
 	glLight(GL_LIGHT0, GL_DIFFUSE,  [1.0, 1.0, 1.0, 1.0])
 	glLight(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
 	glLight(GL_LIGHT0, GL_POSITION, [1.0, 1.0, 1.0, 0.0])
 	
 	glLightModel(GL_LIGHT_MODEL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-	
-	glEnable(GL_LIGHTING)
-	glEnable(GL_LIGHT0)
+
+ 	glEnable(GL_LIGHTING)
+ 	glEnable(GL_LIGHT0)
 	
 	glDepthFunc(GL_LESS)
 	glEnable(GL_DEPTH_TEST)
@@ -154,25 +180,14 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	
 	glLoadIdentity()
 
-	glTranslate(0, 0, -50)
+	glTranslate(self.xpos, self.ypos, self.zpos)
 	
 	glRotate(self.rotx, 1, 0, 0)
 	glRotate(self.roty, 0, 1, 0)
 
-        ## draw the atoms
-        for (coords, size) in self.sphere_list:
-            glPushMatrix()
-            apply(glTranslatef, coords)
-            glutSolidSphere(size, 16, 16)
-            glPopMatrix()
-
-        ## draw the bonds between the atoms
-        for (c1, c2, lwidth) in self.line_list:
-            glLineWidth(lwidth)
-            glBegin(GL_LINES)
-            apply(glVertex3f, c1)
-            apply(glVertex3f, c2)
-            glEnd()
+        ## <DRAW>
+        for i in self.draw_list: glCallList(i)
+        ## </DRAW>
             
 	if gldrawable.is_double_buffered():
             gldrawable.swap_buffers()
@@ -201,26 +216,53 @@ class GLViewer(gtk.gtkgl.DrawingArea):
             max_tf = max(max_tf, atm.temp_factor)
         centroid = centroid / n        
 
+        ## Temp Factor
+        max_tf = math.log10(max_tf)
+
         ## atom spheres
         visited_bonds = []
 
+        glNewList(1, GL_COMPILE)
+        if not self.draw_list: self.draw_list.append(1)
+
         for atm in atom_container.iterAtoms():
             pos  = atm.position - centroid
-            size = 0.5 * (atm.temp_factor / max_tf)
 
-            self.sphere_list.append( ((pos[0], pos[1], pos[2]), size) )
+            tf = math.log10(atm.temp_factor) / max_tf
+
+            br   = 0.8
+            size = 1.0 * tf
+
+            glPushMatrix()
+            glTranslatef(pos[0], pos[1], pos[2])
+
+            if   atm.element == "C": self.set_material(1.0, 1.0, 0.0, br)
+            elif atm.element == "N": self.set_material(0.0, 0.0, 1.0, br)
+            elif atm.element == "O": self.set_material(1.0, 0.0, 0.0, br)
+            elif atm.element == "S": self.set_material(0.0, 1.0, 0.0, br)
+            else:                    self.set_material(1.0, 1.0, 1.0, 1.0)
+
+            glutSolidSphere(size, 12, 12)
+            glPopMatrix()
+
+            ## bonds
+            glLineWidth(5.0)
+            self.set_material(1.0, 1.0, 1.0, 0.5)
 
             for bond in atm.iterBonds():
-                if bond in visited_bonds:
-                    continue
-                else:
-                    visited_bonds.insert(0, bond)
+                if bond in visited_bonds: continue
+                else:                     visited_bonds.insert(0, bond)
 
                 atm2 = bond.getPartner(atm)
                 v1   = atm.position - centroid
                 v2   = atm2.position - centroid
-                self.line_list.append(
-                    ( (v1[0], v1[1], v1[2]), (v2[0], v2[1], v2[2]), 5.0) )
+
+                glBegin(GL_LINES)
+                glVertex3f(v1[0], v1[1], v1[2])
+                glVertex3f(v2[0], v2[1], v2[2])
+                glEnd()
+                
+        glEndList()
 
         self.queue_draw()
 
