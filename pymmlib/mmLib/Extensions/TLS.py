@@ -1038,8 +1038,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
                 [ C[S21],    s22, C[S23] ],
                 [ C[S31], C[S32],    s33 ] ], Float)
 
-    ## calculate the lsq residual since silly Numeric Python won't
-    ## do it for us
+    ## calculate the lsq residual
     utlsw = matrixmultiply(A, C)
     xw = utlsw - b
     lsq_residual = dot(xw, xw)
@@ -1621,21 +1620,19 @@ class TLSGroup(AtomList):
         and the Utls calculated anisotropic ADPs must must also have
         positive eigenvalues.
         """
-        small = 1e-10
+        for atm, Utls in self.iter_atm_Utls():
+            if min(eigenvalues(Utls))<0.0:
+                debug("check_valid_model(): negative Utls eigenvalue")
+                return False
 
-        if min(eigenvalues(self.L))<=small:
-            return False
-
-        if min(eigenvalues(self.T))<=small:
+        if min(eigenvalues(self.L))<0.0:
+            debug("check_valid_model(): negative L eigenvalue")
             return False
 
         T_red = self.calc_COR()["rT'"]
-        if min(eigenvalues(T_red))<=small:
+        if min(eigenvalues(T_red))<0.0:
+            debug("check_valid_model(): negative Tr eigenvalue")
             return False
-
-        for atm, Utls in self.iter_atm_Utls():
-            if min(eigenvalues(Utls))<=small:
-                return False
 
         return True
 
@@ -1654,8 +1651,8 @@ class TLSGroup(AtomList):
         return lsq_residual
 
     def debug_TLS_least_squares_fit_rotation(self):
-        """Incrimentally rotates the TLS group atoms and fits TLS tensors to them
-        to check for coordinate system bias.
+        """Incrimentally rotates the TLS group atoms and fits TLS tensors
+        to them to check for coordinate system bias.
         """
         ## <double-check>
         a = 0.0
@@ -1718,13 +1715,13 @@ class TLSGroup(AtomList):
     def shift_COR(self):
         """Shift the TLS group to the center of reaction.
         """
-        calcs       = self.calc_COR()
-        self.T      = calcs["T'"].copy()
-        self.L      = calcs["L'"].copy()
-        self.S      = calcs["S'"].copy()
-        self.origin = calcs["COR"].copy()
+        cor_desc    = self.calc_COR()
+        self.T      = cor_desc["T'"].copy()
+        self.L      = cor_desc["L'"].copy()
+        self.S      = cor_desc["S'"].copy()
+        self.origin = cor_desc["COR"].copy()
 
-        return calcs
+        return cor_desc
         
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,
@@ -1963,18 +1960,20 @@ class TLSStructureAnalysis(object):
                 ## check for enough atoms(parameters) after atom filtering
                 if len(tls_group)<20:
                     tls_info = {
-                        "name":     name,
-                        "chain_id": chain.chain_id,
-                        "frag_id1": frag_id1,
-                        "frag_id2": frag_id2,
+                        "name":         name,
+                        "chain_id":     chain.chain_id,
+                        "frag_id1":     frag_id1,
+                        "frag_id2":     frag_id2,
                         "frag_id_cntr": frag_id_cntr,
-                        "error":    "Not Enough Atoms"}
+                        "error":        "Not Enough Atoms"}
                     yield tls_info
                     continue
                 
                 ## calculate tensors and print
-                warning("calculating fit: %s...%s" % (frag_id1, frag_id2))
-                lsq_residual = tls_group.calc_TLS_least_squares_fit()
+                debug("calculating TLS fit: %s...%s" % (frag_id1, frag_id2))
+
+                tls_group.origin = tls_group.calc_centroid()
+                lsq_residual     = tls_group.calc_TLS_least_squares_fit()
                 tls_group.shift_COR()
                 tls_info = tls_group.calc_tls_info()
                 tls_info["lsq_residual"] = lsq_residual

@@ -41,6 +41,8 @@ class Terminal(object):
         self.height  = 0
         self.zplane  = 500.0
 
+        self.term_alpha = 1.0
+
         self.char_width = 80
         
         self.wind_border = 5.0
@@ -64,7 +66,7 @@ class Terminal(object):
         far    = self.zplane - 1.0
 
         ratio = float(self.height) / float(self.width)
-        glwidth = 80.0
+        glwidth  = 80.0
         glheight = ratio * glwidth
 
         glOrtho(0.0, glwidth, 0.0, glheight, -near, -far)
@@ -88,7 +90,6 @@ class Terminal(object):
         glShadeModel(GL_SMOOTH)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-        glEnable(GL_LIGHTING)
 
         ## alpha blending func
         glEnable(GL_BLEND)
@@ -100,26 +101,43 @@ class Terminal(object):
         glLightfv(GL_LIGHT0, GL_SPECULAR, specular)
         glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, -1.0, 0.0))
 
+        glDisable(GL_LIGHT1)
+
+        ##
         ## draw background
-        self.opengl_set_material_rgba(0.0, 1.0, 0.0, 0.5)
-
+        ##
+        glEnable(GL_LIGHTING)
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+        self.opengl_set_material_rgba(0.0, 1.0, 0.0, self.term_alpha)
 
-        #glNormal3f(0.0, 0.0, 1.0)
         
         glBegin(GL_QUADS)
 
+        glNormal3f(0.0, 0.0, 1.0)
+
         #glNormal3f(-0.5, -0.5, 1.0)
-        glVertex3f(self.wind_border, self.wind_border, zplane)
+        glVertex3f(
+            self.wind_border,
+            self.wind_border,
+            zplane)
 
         #glNormal3f(0.5, -0.5, 1.0)
-        glVertex3f(glwidth-self.wind_border, self.wind_border, zplane)
+        glVertex3f(
+            glwidth - self.wind_border,
+            self.wind_border,
+            zplane)
 
         #glNormal3f(0.5, 0.5, 1.0)
-        glVertex3f(glwidth-self.wind_border, glheight-self.wind_border, zplane)
+        glVertex3f(
+            glwidth - self.wind_border,
+            glheight - self.wind_border,
+            zplane)
 
         #glNormal3f(-0.5, 0.5, 1.0)
-        glVertex3f(self.wind_border, glheight-self.wind_border, zplane)
+        glVertex3f(
+            self.wind_border,
+            glheight - self.wind_border,
+            zplane)
 
         glEnd()
 
@@ -225,8 +243,7 @@ class GLUT_Viewer(GLViewer):
             
         if GL_DOUBLE_BUFFER:
             glutSwapBuffers()
-        else:
-            glFlush()
+        glFlush()
 
     def glv_redraw(self):
         if self.glut_init_done:

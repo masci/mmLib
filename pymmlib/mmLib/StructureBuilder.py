@@ -157,7 +157,7 @@ class StructureBuilder(object):
 
         ## what if we are given a list of atoms with res_name, frag_id,
         ## and model_id where the frag_id are sequental?  they can be
-        ## sequental sever ways using insertion codes, but large breaks
+        ## sequental several ways using insertion codes, but large breaks
         ## often denote chain breaks
 
         ## I need to handle the special case of a list of polymer residues

@@ -16,7 +16,7 @@ import gzip
 from types import *
 
 ## turn on debugging
-_DEBUG = False
+_DEBUG = True
 
 ## use old Numeric libraries, or the new Numarray
 _USE_NUMARRAY = False
@@ -41,7 +41,7 @@ DEG2RAD2 = DEG2RAD**2
 ## converting between U (angstrom^2) temp factor
 ## values and B temp factor values
 U2B = 8.0 * PI2
-B2U = 1.0 / U2B
+B2U = 1.0 / (8.0 * PI2)
 
 
 ## types, functions, things which are useful and difficult to

@@ -147,7 +147,8 @@ class R3DDialog(gtk.Dialog):
     """
     def __init__(self, png_path):
         gtk.Dialog.__init__(self, "Raster3D Raytrace", None, 0)
-        self.set_resizable(gtk.FALSE)
+
+        self.set_resizable(gtk.TRUE)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         
         self.image = gtk.Image()
@@ -195,6 +196,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
 
     def glv_render(self):
         self.glv_render_one(self.opengl_driver)
+        glFlush()
 
     def gl_begin(self):
         """Sets up the OpenGL drawing context for drawing.  If
@@ -218,8 +220,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         gl_drawable = gtk.gtkgl.DrawingArea.get_gl_drawable(self)
 	if gl_drawable.is_double_buffered():
             gl_drawable.swap_buffers()
-	else:
-            glFlush()
+        glFlush()
         
         gl_drawable.gl_end()
 
@@ -266,7 +267,6 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
             return gtk.FALSE
 
     def gtk_glv_button_press_event(self, glarea, event):
-
         ## Ray-Trace
         if event.type==gtk.gdk._2BUTTON_PRESS:
             #self.r3d_driver.glr_set_render_stdin(open("raytrace.r3d","w"))
@@ -886,18 +886,13 @@ class GLPropertyTreeControl(gtk.TreeView):
         self.glo_select_cb(self.gl_object_root)
 
 
-class GLPropertyEditDialog(gtk.Dialog):
+class GLPropertyEditDialog(gtk.Window):
     """Open a dialog for editing a single GLObject properties.
     """
 
-    def __init__(self, parent_window, gl_object):
+    def __init__(self,  gl_object):
         title = "Edit GLProperties: %s" % (gl_object.glo_name())
-
-        gtk.Dialog.__init__(
-            self,
-            title,
-            parent_window,
-            gtk.DIALOG_DESTROY_WITH_PARENT)
+        gtk.Window.__init__(self, title, None)
 
         self.set_resizable(gtk.FALSE)
         self.connect("response", self.response_cb)
@@ -921,6 +916,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
     """Dialog for manipulating the properties of a GLViewer.
     """
     def __init__(self, **args):
+        gtk
 
         parent_window  = args["parent_window"]
         gl_object_root = args["glo_root"]
@@ -931,10 +927,9 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         title = "Visualization Properties: %s" % (title)
 
         gtk.Dialog.__init__(
-            self,
-            title,
-            parent_window,
-            gtk.DIALOG_DESTROY_WITH_PARENT)
+            self, title, parent_window, gtk.DIALOG_DESTROY_WITH_PARENT)
+        self.set_transient_for(None)
+        self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
         self.connect("response", self.response_cb)
         self.set_default_size(500, 400)
@@ -1050,6 +1045,8 @@ class TLSDialog(gtk.Dialog):
             "TLS Analysis: %s" % (str(self.sc.struct)),
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
+        self.set_transient_for(None)
+        self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
         self.add_button("Open TLSOUT", 100)
         self.add_button("Save TLSOUT", 101)
@@ -1582,7 +1579,8 @@ class TLSSearchDialog(gtk.Dialog):
             "TLS Search: %s" % (str(self.sc.struct)),
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
-
+        self.set_transient_for(None)
+        self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
         self.cancel  = gtk.Button(stock=gtk.STOCK_CANCEL)
         self.back    = gtk.Button(stock=gtk.STOCK_GO_BACK)
@@ -1812,11 +1810,24 @@ class TLSSearchDialog(gtk.Dialog):
             include_frac_occupancy = include_frac_occupancy,
             include_single_bond    = include_single_bond):
 
+            ## give GTK some time to update the GUI
+            while gtk.events_pending():
+                gtk.main_iteration(gtk.TRUE)
+
             ## calculations are canceled
             if self.cancel_flag==True:
                 break
 
+            ## handle error condition
             if tls_info.has_key("error"):
+                text = "ERROR: %s...%s %s" % (
+                    tls_info["frag_id1"], tls_info["frag_id2"],
+                    tls_info["error"])
+                self.page2_label.set_text(text)
+
+                while gtk.events_pending():
+                    gtk.main_iteration(gtk.TRUE)
+
                 continue
 
             self.tls_info_list.append(tls_info)

@@ -423,16 +423,17 @@ class GLObject(object):
                         if prop_action not in actions:
                             actions.append(prop_action)
 
-            ## propagate updates for linked properties
-            try:
-                linked_props = prop_desc["link"]
-            except KeyError:
-                pass
-            else:
-                for linked_prop in linked_props:
-                    child = self.glo_get_child(linked_prop["gl_object"])
-                    child_name = linked_prop["name"]                    
-                    child.glo_update_properties(
+            if do_update==True:
+                ## propagate updates for linked properties
+                try:
+                    linked_props = prop_desc["link"]
+                except KeyError:
+                    pass
+                else:
+                    for linked_prop in linked_props:
+                        child = self.glo_get_child(linked_prop["gl_object"])
+                        child_name = linked_prop["name"]                    
+                        child.glo_update_properties(
                         **{ child_name: self.properties[name] })
 
         if len(updates)>0:
@@ -1217,7 +1218,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Label Size",
               "catagory":   "Labels",
               "type":       "float",
-              "default":    1.0,
+              "default":    5.0,
               "action":     "recompile_labels" })
         self.glo_add_property(
             { "name":       "label_color",
@@ -1227,7 +1228,15 @@ class GLAtomList(GLDrawList):
               "default":    "White",
               "enum_list":  self.gldl_color_list,
               "action":     "recompile_labels" })
-
+        self.glo_add_property(
+            { "name":       "label_style",
+              "desc":       "Label Style",
+              "catagory":   "Labels",
+              "type":       "enum_string",
+              "default":    "Residue",
+              "enum_list":  ["Residue", "All Atoms", "CA Atoms"],
+              "action":     "recompile_labels" })
+        
         ## lines
         self.glo_add_property(
             { "name":       "lines",
@@ -1794,6 +1803,7 @@ class GLAtomList(GLDrawList):
         glr_text           = self.driver.glr_text
         ##
         
+        style = self.properties["label_style"].lower()
         scale = self.properties["label_size"]
         self.driver.glr_set_material_rgb(*self.glal_calc_color_label())
 
@@ -1812,10 +1822,37 @@ class GLAtomList(GLDrawList):
         glr_mult_matrix_R(Ri)
 
         for atm, pos in self.glal_iter_visible_atoms():
-            relative_pos = matrixmultiply(R, pos + cv)
 
+            ## amino acid residues
             if atm.get_fragment().is_amino_acid():
-                if atm.name in ("N", "CA", "C"):
+
+                ## just label chain/residue
+                if style=="residue":
+                    if atm.name!="CA":
+                        continue
+                    text = "%s%s" % (atm.chain_id, atm.fragment_id)
+
+                ## full lables for CA atoms only
+                elif style=="ca atoms":
+                    if atm.name!="CA":
+                        continue
+
+                    if atm.alt_loc=="":
+                        text = "%s %s %s %s" % (
+                            atm.name,
+                            atm.res_name,
+                            atm.fragment_id,
+                            atm.chain_id)
+                    else:
+                        text = "%s(%s) %s %s %s" % (
+                            atm.name,
+                            atm.alt_loc,
+                            atm.res_name,
+                            atm.fragment_id,
+                            atm.chain_id)
+
+                ## labels for all atoms
+                elif atm.name=="CA":
                     if atm.alt_loc=="":
                         text = "%s %s %s %s" % (
                             atm.name,
@@ -1835,6 +1872,7 @@ class GLAtomList(GLDrawList):
                     else:
                         text = "%s(%s)" % (atm.name, atm.alt_loc)
 
+            ## all other residues
             else:
                  if atm.alt_loc=="":
                      text = "%s %s %s %s" % (
@@ -1850,8 +1888,9 @@ class GLAtomList(GLDrawList):
                          atm.fragment_id,
                          atm.chain_id)
 
+            relative_pos = matrixmultiply(R, pos + cv)
             glr_push_matrix()
-            glr_translate(relative_pos + array([0.0, 0.0, 0.5]))
+            glr_translate(relative_pos + array([0.0, 0.0, 2.0]))
             glr_text(text, scale)
             glr_pop_matrix()
 
