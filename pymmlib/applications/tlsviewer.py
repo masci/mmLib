@@ -23,6 +23,7 @@ from mmLib.Structure      import *
 from mmLib.FileLoader     import *
 from mmLib.Viewer         import *
 from mmLib.R3DDriver      import Raster3DDriver
+from mmLib.OpenGLDriver   import OpenGLDriver
 from mmLib.Extensions.TLS import *
 
 
@@ -134,7 +135,8 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         gtk.gtkgl.DrawingArea.__init__(self)
         GLViewer.__init__(self)
 
-        self.r3d_driver = Raster3DDriver()
+        self.opengl_driver = OpenGLDriver()
+        self.r3d_driver    = Raster3DDriver()
 
         try:
             glconfig = gtk.gdkgl.Config(
@@ -159,6 +161,9 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         self.connect('configure_event',      self.gtk_glv_configure_event)
         self.connect('expose_event',         self.gtk_glv_expose_event)
         self.connect('destroy',              self.gtk_glv_destroy)
+
+    def glv_render(self):
+        self.glv_render_one(self.opengl_driver)
 
     def gl_begin(self):
         """Sets up the OpenGL drawing context for drawing.  If

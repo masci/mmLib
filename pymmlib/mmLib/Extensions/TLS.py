@@ -1805,14 +1805,17 @@ class GLTLSAtomList(GLAtomList):
                     continue
                 zero_rot = True
 
-            self.driver.glr_push_matrix()
+            for sign in (1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75, -1.0):
+                rot2 = rot * sign
 
-            self.driver.glr_translate(-rho)
-            self.driver.glr_rotate_axis(rot, axis)
-            self.driver.glr_translate(rho + screw)
-            yield True
+                self.driver.glr_push_matrix()
+
+                self.driver.glr_translate(-rho)
+                self.driver.glr_rotate_axis(rot2, axis)
+                self.driver.glr_translate(rho + screw)
+                yield True
             
-            self.driver.glr_pop_matrix()
+                self.driver.glr_pop_matrix()
 
     def glal_iter_atoms(self):
         """
@@ -2555,13 +2558,7 @@ class GLTLSGroup(GLDrawList):
             else:
                 for symop in gl_struct.iter_orth_symops():
                     self.driver.glr_push_matrix()
-
-                    glMultMatrixf(
-                        (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
-                         symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
-                         symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
-                         symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
-
+                    self.glr_mult_matrix_Rt(symop.R, symop.t)
                     yield True
                     self.driver.glr_pop_matrix()
 
