@@ -373,7 +373,8 @@ class TLSDialog(gtk.Dialog):
                 ## add segment atoms
                 for res in seg:
                     for atm in res.iter_atoms():
-                        tls.append(atm)
+                        if atm.name in ["N", "CA", "C", "O"]: 
+                            tls.append(atm)
 
                 ## avoid small groups
                 if len(tls) < 4:
@@ -384,7 +385,8 @@ class TLSDialog(gtk.Dialog):
                 tls.origin = tls.calc_centroid()
                 tls.calc_tls_tensors()
 
-                self.show_tls_group(tls)
+                if tls.check_positive_eigenvalues() and tls.calc_R() <= 0.15:
+                    self.show_tls_group(tls)
 
     def show_tls_group(self, tls):
         tls.gl_tls = GLTLSGroup(tls_group = tls)

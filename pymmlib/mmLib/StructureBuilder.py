@@ -403,6 +403,7 @@ class PDBStructureBuilder(StructureBuilder):
 
         def filter_func(rec):
             if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.SIGATM) or \
                isinstance(rec, PDB.ANISOU) or \
                isinstance(rec, PDB.SIGUIJ) or \
                isinstance(rec, PDB.TER) or \
@@ -425,6 +426,7 @@ class PDBStructureBuilder(StructureBuilder):
 
         def filter_func(rec):
             if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.SIGATM) or \
                isinstance(rec, PDB.ANISOU) or \
                isinstance(rec, PDB.SIGUIJ) or \
                isinstance(rec, PDB.TER) or \

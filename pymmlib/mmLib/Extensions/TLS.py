@@ -694,15 +694,15 @@ class TLSGroup(AtomList):
         Rd = 0.0
 
         for (atm, Ucalc) in self.iter_atm_Ucalc():
-
             if atm.U == None:
-                continue
+                Uobs = identity(3) * (atm.temp_factor/(24.0*math.pi*math.pi))
+            else:
+                Uobs = atm.U
 
             for i in range(3):
                 for j in range(3):
-
-                    Rn += abs(atm.U[i,j] - Ucalc[i,j])
-                    Rd += abs(atm.U[i,j])
+                    Rn += abs(Uobs[i,j] - Ucalc[i,j])
+                    Rd += abs(Uobs[i,j])
 
         return Rn / Rd
 
@@ -805,6 +805,12 @@ class TLSGroup(AtomList):
         calcs["L'"] = self.L
 
         return calcs
+
+    def check_positive_eigenvalues(self):
+        """Returns True if the eigenvalues of the T and L tensors are all
+        positive, otherwise returns False.
+        """
+        return min(eigenvalues(self.L))>=0 and min(eigenvalues(self.T))>=0.0
 
     def write(self, out = sys.stdout):
         """Write a nicely formatted tensor description.

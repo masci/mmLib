@@ -1846,6 +1846,23 @@ class Atom(object):
         ansotropy = min(evals) / max(evals)
         return ansotropy
 
+    def calc_anisotropy3(self):
+        """Calculates the eigenvalues of the U matrix and returns the
+        3-tuple of the eigenvalue ratios: (e1/e2, e1/e3, e2/e3)
+        """
+        ## no Anisotropic values, we have a spherical atom
+        if self.U == None:
+            return (1.0, 1.0, 1.0)
+
+        e1, e2, e3 = eigenvalues(self.U)
+        elist = [e1, e2, e3]
+        elist.sort()
+        e1, e2, e3 = elist
+        
+        return (min(e1, e2) / max(e1, e2),
+                min(e1, e3) / max(e1, e3),
+                min(e2, e3) / max(e2, e3))
+
     def calc_ccuij(self, atm):
         """
         """
@@ -2040,41 +2057,89 @@ class AtomList(list):
         """Calculates the centroid of all contained Atom instances and
         returns a Vector to the centroid.
         """
+        num      = 0
         centroid = Vector(0.0, 0.0, 0.0)
+
         for atm in self:
-            centroid += atm.position
-        return centroid / len(self)
+            if type(atm.position) != NoneType:
+                centroid += atm.position
+                num += 1
+
+        return centroid / num
         
     def calc_adv_temp_factor(self):
         """Calculates the adverage temperature factor of all contained
         Atom instances and returns the adverage temperature factor.
         """
+        num_tf = 0
         adv_tf = 0.0
+
         for atm in self:
-            adv_tf += atm.temp_factor
-        return adv_tf / len(self)
+            if atm.temp_factor != None:
+                adv_tf += atm.temp_factor
+                num_tf += 1
+
+        return adv_tf / num_tf
 
     def calc_adv_U(self):
         """Calculates the adverage U matrix of all contained Atom
         instances and returns the 3x3 symmetric U matrix of that
         adverage.
         """
-        adv_U = array([[0.0,0.0,0.0],
-                       [0.0,0.0,0.0],
-                       [0.0,0.0,0.0]])
+        num_U = 0
+        adv_U = zeros((3,3), Float)
 
         for atm in self:
             ## use the atom's U matrix if it exists, otherwise use the
             ## temperature factor
-            if atm.U:
+
+            if atm.U != None:
                 adv_U += atm.U
+                num_U += 1
+
+        return adv_U / num_U
+
+    def calc_adv_anisotropy(self):
+        """Calculates the adverage anisotropy for all Atoms in the AtomList.
+        """
+        num_atoms = 0
+        adv_aniso = 0.0
+
+        for atm in self:
+            try:
+                adv_aniso += atm.calc_anisotropy()
+            except ZeroDivisionError:
+                pass
             else:
-                adv_U[0,0] += atm.temp_factor
-                adv_U[1,1] += atm.temp_factor
-                adv_U[2,2] += atm.temp_factor
-        return adv_U / len(self)
+                num_atoms += 1
 
+        return adv_aniso / num_atoms
+        
+    def calc_adv_anisotropy3(self):
+        """Calculates the adverage anisotropy 3-tuple for all Atoms
+        in the AtomList.
+        """
+        num_atoms  = 0
+        adv_aniso1 = 0.0
+        adv_aniso2 = 0.0
+        adv_aniso3 = 0.0
 
+        for atm in self:
+            try:
+                a1, a2, a3 = atm.calc_anisotropy3()
+            except ZeroDivisionError:
+                pass
+            else:
+                adv_aniso1 += a1
+                adv_aniso2 += a2
+                adv_aniso3 += a3
+                num_atoms  += 1
+
+        return (adv_aniso1 / num_atoms,
+                adv_aniso2 / num_atoms,
+                adv_aniso3 / num_atoms)
+
+    
 ### <testing>
 if __name__ == "__main__":
     struct = Structure()

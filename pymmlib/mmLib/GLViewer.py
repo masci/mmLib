@@ -215,7 +215,10 @@ class GLTLSGroup(GLDrawList):
         self.tm      = 0.0
 
         ## set up the atom list too
-        self.gl_atom_list             = GLAtomList()
+        self.gl_atom_list             = GLAtomList(U       = "Ucalc",
+                                                   U_color = (0.,1.,0.),
+                                                   color   = (1.,1.,1.),
+                                                   line_width = 10.)
         self.gl_atom_list.origin      = self.origin
         self.axes                     = evec
         self.gl_atom_list.atom_origin = self.origin
@@ -264,6 +267,7 @@ class GLTLSGroup(GLDrawList):
         (eval, evec) = eigenvectors(ten)
 
         glDisable(GL_LIGHTING)
+        glLineWidth(1.0)
         
         for i in range(3):
             v = scale * eval[i] * Vector(evec[i,0],evec[i,1],evec[i,2])
@@ -277,29 +281,35 @@ class GLTLSGroup(GLDrawList):
     def inc_time(self):
         """val cycles every 2pi
         """
+        return
+        
+        if self.gl_name == None:
+            return
+        
         self.tm += math.pi / 50.0
 
         try:
-            xlib = math.sqrt(self.evalL[0]*rad2deg2) * math.sin(self.tm) * 0.5
-            ylib = math.sqrt(self.evalL[1]*rad2deg2) * math.sin(self.tm) * 0.5
-            zlib = math.sqrt(self.evalL[2]*rad2deg2) * math.sin(self.tm) * 0.5
-        except ValueError:
+            Lx = self.evalL[0] * rad2deg2 * math.sin(self.tm) 
+            Ly = self.evalL[1] * rad2deg2 * math.sin(self.tm)
+            Lz = self.evalL[2] * rad2deg2 * math.sin(self.tm)
+        except ValueError, err:
+            print "inc_time: ",err
             return
 
-        Spc = self.calcs["S'^"] * rad2deg
+##         Spc = self.calcs["S'^"] * rad2deg
 
-        dSp = array(
-            [ (xlib * Spc[0,0]) + (ylib * Spc[1,0]) + (zlib * Spc[2,0]),
-              (xlib * Spc[0,1]) + (ylib * Spc[1,1]) + (zlib * Spc[2,1]),
-              (xlib * Spc[0,2]) + (ylib * Spc[1,2]) + (zlib * Spc[2,2]) ])
+##         dSp = array(
+##             [ (Lx * Spc[0,0]) + (Ly * Spc[1,0]) + (Lz * Spc[2,0]),
+##               (Lx * Spc[0,1]) + (Ly * Spc[1,1]) + (Lz * Spc[2,1]),
+##               (Lx * Spc[0,2]) + (Ly * Spc[1,2]) + (Lz * Spc[2,2]) ])
 
-        dS = matrixmultiply(transpose(self.axes), dSp)
+##         dS = matrixmultiply(transpose(self.axes), dSp)
 
-        self.origin = Vector(self.calcs["COR"] + dS)
-        
-        self.rotx = xlib
-        self.roty = ylib
-        self.rotz = zlib
+##         self.origin = Vector(self.calcs["COR"] + dS)
+
+        self.rotx = Lx
+        self.roty = Ly
+        self.rotz = Lz
 
         self.gl_atom_list.origin = self.origin
         
@@ -309,9 +319,17 @@ class GLTLSGroup(GLDrawList):
 
 
 class GLAtomList(GLDrawList, AtomList):
-    """OpenGL renderer for a list of atoms.
+    """OpenGL renderer for a list of atoms.  Optional arguments iare:
+    color, U, U_color.
     """
-    def __init__(self, **args):
+    def __init__(
+        self,
+        sphere_quality = 12,
+        line_width     = 3.0,
+        atom_origin    = None,
+
+        **args):
+
         GLDrawList.__init__(self)
         AtomList.__init__(self)
 
@@ -321,9 +339,10 @@ class GLAtomList(GLDrawList, AtomList):
             self.args["lines"] = True
 
         ## defaults
-        self.sphere_quality = 12
-        self.line_width     = 3.0
-        self.atom_origin    = None
+        self.sphere_quality = sphere_quality
+        self.line_width     = line_width
+        self.atom_origin    = atom_origin
+        self.el_color_cache = {}
 
     def gl_draw(self):
         """Perform the OpenGL drawing operations to render this atom list
@@ -364,11 +383,21 @@ class GLAtomList(GLDrawList, AtomList):
     def draw_lines(self, atm, symop = None):
         """Draw a atom using bond lines only.
         """
-        el = atm.get_structure().library.get_element(atm.element)
-        if el:
-            glColor3f(*el.color)
-        else:
-            glColor3f(1.0, 1.0, 1.0)
+        try:
+            glColor3f(*self.el_color_cache[atm.element])
+        except KeyError:
+            if self.args.has_key("color"):
+                cx = self.args["color"]
+                self.el_color_cache[atm.element] = cx
+                glColor3f(*cx)
+            else:
+                el = atm.get_structure().library.get_element(atm.element)
+                if el != None:
+                    self.el_color_cache[atm.element] = el.color
+                    glColor3f(*el.color)
+                else:
+                    self.el_color_cache[atm.element] = (1.0, 1.0, 1.0)
+                    glColor3f(1.0, 1.0, 1.0)
 
         if self.atom_origin:
             position = atm.position - self.atom_origin
@@ -443,8 +472,12 @@ class GLAtomList(GLDrawList, AtomList):
         else:
             position = atm.position
 
-        glColor3f(1.0, 1.0, 1.0)
-        glLineWidth(self.line_width)
+        try:
+            glColor3f(*self.args["U_color"])
+        except KeyError:
+            glColor3f(1.0, 1.0, 1.0)
+
+        glLineWidth(1.0)
         glDisable(GL_LIGHTING)
         
         glBegin(GL_LINES)
