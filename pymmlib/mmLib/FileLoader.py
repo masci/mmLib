@@ -3,6 +3,11 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""This module provides loading and saving of Structure classes from and to
+various supported file formats.  The mmCIF and PDB file formats are currently
+supported."""
+
+
 import os
 import string
 import types
@@ -10,8 +15,8 @@ import types
 import mmCIF
 import PDB
 
-from Scientific.Geometry import Vector, Tensor
-from Structure           import *
+from mmTypes   import *
+from Structure import *
 
 
 FileLoaderError = "FileLoaderError"

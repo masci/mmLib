@@ -3,6 +3,11 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""The module provides a parser for MTZ reflection files.  It does not
+save MTZ files yet."""
+
+
+
 import types
 import struct
 from   FileIO  import OpenFile
@@ -12,13 +17,12 @@ from   FileIO  import OpenFile
 MTZError = "MTZError"
 
 
+
 ## host system variable sizes 
 INT_SIZE   = struct.calcsize("i")
 FLOAT_SIZE = struct.calcsize("f")
 WORD_SIZE  = struct.calcsize("f")
 
-print "INT_SIZE", INT_SIZE
-print "FLOAT_SIZE", FLOAT_SIZE
 
 
 ## MTZ header keywords

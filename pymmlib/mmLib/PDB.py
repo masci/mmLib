@@ -3,6 +3,13 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""This module provides a PDB v2.2 parser.  All records in the PDB v2.2
+specification have coorasponding classes defined here.  PDB files are
+loaded into a list of these cassed, and also can be constrcted/modified
+and written back out as PDB files."""
+
+
+
 import string
 import types
 import fpformat

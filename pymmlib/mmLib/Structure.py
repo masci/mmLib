@@ -5,14 +5,20 @@ from __future__ import generators
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""This module provides all the classes for describing a biological
+macromolecule.  These classes are mostly subclassed from Composite.py.
+The classes representing amino acids, nucleic acids, atoms, etc., are
+also autfitted with methods to compute basic properties of the structure
+they are describing.  See the documentation for the individual classes
+for more detail."""
+
+
+
 import fpformat
 
-from   Numeric              import array
-from   LinearAlgebra        import eigenvalues
-from   Scientific.Geometry  import Vector, Tensor
+from   mmTypes              import *
 from   Composite            import *
 from   AtomMath             import *
-
 from   Elements             import ElementNames, ElementMap
 from   AminoAcids           import AminoAcidNames, AminoAcidMap
 from   NucleicAcids         import NucleicAcidNames, NucleicAcidMap

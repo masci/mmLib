@@ -3,6 +3,14 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""This module provides a primitive mmCIF file parser.  Files are parsed
+into a set of data structures where they can be further processed.  The
+data structures can also be constructed and written back out as mmCIF.
+A CIF dictionary parser is also included as a specialized version of the
+mmCIF parser."""
+
+
+
 import string
 import types
 
