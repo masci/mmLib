@@ -57,6 +57,25 @@ def calculateTorsionAngle(a1, a2, a3, a4):
 
     return angle
 
+def calc_CCuij(U, V):
+    invU = inverse(U)
+    invV = inverse(V)
+    
+    det_invU = determinant(invU)
+    det_invV = determinant(invV)
+
+    return ( math.sqrt(math.sqrt(det_invU * det_invV)) /
+             math.sqrt((1.0/8.0) * determinant(invU + invV)) )
+
+def calc_Suij(U, V):
+    eqU = trace(U) / 3.0
+    eqV = trace(V) / 3.0
+
+    isoU = eqU * identity(3)
+    isoV = eqV * identity(3)
+
+    return ( calc_CCuij(U, (eqU/eqV)*V) /
+             (calc_CCuij(U, isoU) * calc_CCuij(V, isoV)) )
 
 ### <TESTING>
 if __name__ == "__main__":

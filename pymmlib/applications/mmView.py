@@ -385,7 +385,8 @@ class TLSDialog(gtk.Dialog):
                 tls.origin = tls.calc_centroid()
                 tls.calc_tls_tensors()
 
-                if tls.check_positive_eigenvalues() and tls.calc_R() <= 0.15:
+                if tls.check_positive_eigenvalues() and \
+                  (tls.calc_R() <= 0.10 or tls.calc_adv_Suij() >= 1.10):
                     self.show_tls_group(tls)
 
     def show_tls_group(self, tls):

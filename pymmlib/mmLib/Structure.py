@@ -1833,6 +1833,21 @@ class Atom(object):
                             [u12, u22, u23],
                             [u13, u23, u33]])
 
+    def calc_Uiso(self):
+        """Calculates the Uiso tensor from the Atom's temperature factor.
+        """
+        if self.temp_factor == None:
+            return None
+        return identity(3) * (self.temp_factor / (24.0 * math.pi * math.pi))
+
+    def get_U(self):
+        """Returns the Atoms's U tensor if it exists, otherwise returns
+        the isotropic U tensor calculated by self.calc_Uiso
+        """
+        if self.U != None:
+            return self.U
+        return self.calc_Uiso()
+
     def calc_anisotropy(self):
         """Calculates the anisotropy of that atom.  Anisotropy is defined
         as the ratio of the minimum/maximum eigenvalues of the 3x3
@@ -1863,10 +1878,28 @@ class Atom(object):
                 min(e1, e3) / max(e1, e3),
                 min(e2, e3) / max(e2, e3))
 
-    def calc_ccuij(self, atm):
+    def calc_CCuij(self, atom_U):
+        """Calculates the correlation coefficent between this Atom and the
+        argument Atom.  The argument atom may also be a U matrix
         """
+        U = self.get_U()
+        if isinstance(atom_U, Atom):
+            V = atom_U.get_U()
+        else:
+            V = atom_U
+        return calc_CCuij(U, V)
+
+    def calc_Suij(self, atom_U):
+        """Compares self Atom with argument Atom or U matrix, and returns
+        a value greator than 1.0 when the two Atoms are more alike than a
+        isotropic Atom.
         """
-        pass
+        U = self.get_U()
+        if isinstance(atom_U, Atom):
+            V = atom_U.get_U()
+        else:
+            V = atom_U
+        return calc_Suij(U, V)
         
     def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the
@@ -2023,17 +2056,17 @@ class FragmentList(list):
     """Provides the functionallity of a Python list class for containing
     Fragment instances.
     """
-    def __setitem__(self, x, item):
-        assert isinstance(item, Fragment)
-        list.__setitem__(self, x, item)
+    def __setitem__(self, i, fragment):
+        assert isinstance(fragment, Fragment)
+        list.__setitem__(self, i, fragment)
+    
+    def append(self, fragment):
+        assert isinstance(fragment, Fragment)
+        list.append(self, fragment)
 
-    def append(self, item):
-        assert isinstance(item, Fragment)
-        list.append(self, item)
-
-    def insert(self, x, item):
-        assert isinstance(item, Fragment)
-        list.insert(self, x, item)
+    def insert(self, i, fragment):
+        assert isinstance(fragment, Fragment)
+        list.insert(self, i, fragment)
 
 
 class AtomList(list):
@@ -2041,17 +2074,17 @@ class AtomList(list):
     Atom instances.  It also provides class methods for performing some
     useful calculations on the list of atoms.
     """
-    def __setitem__(self, x, item):
-        assert isinstance(item, Atom)
-        list.__setitem__(self, x, item)
+    def __setitem__(self, i, atom):
+        assert isinstance(atom, Atom)
+        list.__setitem__(self, i, atom)
 
-    def append(self, item):
-        assert isinstance(item, Atom)
-        list.append(self, item)
+    def append(self, atom):
+        assert isinstance(atom, Atom)
+        list.append(self, atom)
 
-    def insert(self, x, item):
-        assert isinstance(item, Atom)
-        list.insert(self, x, item)
+    def insert(self, i, atom):
+        assert isinstance(atom, Atom)
+        list.insert(self, i, atom)
     
     def calc_centroid(self):
         """Calculates the centroid of all contained Atom instances and
@@ -2138,6 +2171,20 @@ class AtomList(list):
         return (adv_aniso1 / num_atoms,
                 adv_aniso2 / num_atoms,
                 adv_aniso3 / num_atoms)
+
+    def calc_adv_temp_factor(self):
+        """Calculates the adverage temperature factor of all contained
+        Atom instances and returns the adverage temperature factor.
+        """
+        num_tf = 0
+        adv_tf = 0.0
+
+        for atm in self:
+            if atm.temp_factor != None:
+                adv_tf += atm.temp_factor
+                num_tf += 1
+
+        return adv_tf / num_tf
 
     
 ### <testing>

@@ -244,22 +244,26 @@ class GLTLSGroup(GLDrawList):
 
         ## L axes
         glColor3f(1.0, 0.0, 0.0)
-        self.draw_tensor(self.calcs["L'"], 0.05 * rad2deg2)
+        self.draw_tensor(self.calcs["L'"], 3.0 * rad2deg2)
 
         ## S axes
         glColor3f(0.0, 0.0, 1.0)
         self.draw_tensor(self.calcs["S'"], rad2deg)
 
-        return
-
-        ## draw a line from the center of reaction to each atom
-        self.set_material(1.0, 1.0, 1.0, 1.0)
+        ## draw a line from the center of reaction to all CA atoms in the
+        ## TLS group
+        glDisable(GL_LIGHTING)
+        glColor3f(0.5, 0.5, 0.5)
+        glLineWidth(1.0)
+        
         for atm in self.tls_group:
             if atm.name in ["CA"]:
                 glBegin(GL_LINES)
                 glVertex3f(0.0, 0.0, 0.0)
                 glVertex3f(*atm.position - self.origin)
                 glEnd()
+
+        glEnable(GL_LIGHTING)
 
     def draw_tensor(self, ten, scale = 1.0):
         """Draw tensor axis.

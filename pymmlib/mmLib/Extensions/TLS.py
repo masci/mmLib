@@ -688,24 +688,36 @@ class TLSGroup(AtomList):
             yield (atm, U)
 
     def calc_R(self):
-        """Calculate the R factor of U vs. Ucalc.
+        """Calculate the R factor of U vs. Utls.
         """
         Rn = 0.0
         Rd = 0.0
 
-        for (atm, Ucalc) in self.iter_atm_Ucalc():
-            if atm.U == None:
-                Uobs = identity(3) * (atm.temp_factor/(24.0*math.pi*math.pi))
-            else:
-                Uobs = atm.U
-
+        for (atm, Utls) in self.iter_atm_Ucalc():
+            U = atm.get_U()
             for i in range(3):
                 for j in range(3):
-                    Rn += abs(Uobs[i,j] - Ucalc[i,j])
-                    Rd += abs(Uobs[i,j])
+                    Rn += abs(U[i,j] - Utls[i,j])
+                    Rd += abs(U[i,j])
 
         return Rn / Rd
 
+    def calc_adv_Suij(self):
+        """Calculates the adverage Suij of U vs. Utls.
+        """
+        num      = 0
+        adv_Suij = 0.0
+
+        for (atm, Utls) in self.iter_atm_Ucalc():
+            try:
+                adv_Suij += atm.calc_Suij(Utls)
+            except ValueError:
+                pass
+            else:
+                num += 1
+
+        return adv_Suij/num
+        
     def calc_COR(self):
         """Calculate new tensors based on the center for reaction.
         This method returns a dictionary of the calculations:
