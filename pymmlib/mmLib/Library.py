@@ -29,6 +29,103 @@ ELEMENT_CACHE          = {}
 MONOMER_RES_NAME_CACHE = {}
 
 ###############################################################################
+## Constants
+##
+ELEMENT_SYMBOL_DICT = {
+    "H" : True, "h" : True,
+    "He": True, "he": True, "HE": True,
+    "Li": True, "li": True, "LI": True,
+    "Be": True, "be": True, "BE": True,
+    "B" : True, "b" : True,
+    "C" : True, "c" : True,
+    "N" : True, "n" : True,
+    "O" : True, "o" : True,
+    "F" : True, "f" : True,
+    "Ne": True, "ne": True, "NE": True,
+    "Na": True, "na": True, "NA": True,
+    "Mg": True, "mg": True, "MG": True,
+    "Al": True, "al": True, "AL": True,
+    "Si": True, "si": True, "SI": True,
+    "P" : True, "p" : True,
+    "S" : True, "s" : True,
+    "Cl": True, "cl": True, "CL": True,
+    "Ar": True, "ar": True, "AR": True,
+    "K" : True, "k" : True,
+    "Ca": True, "ca": True, "CA": True,
+    "Sc": True, "sc": True, "SC": True,
+    "Ti": True, "ti": True, "TI": True,
+    "V" : True, "v" : True,
+    "Cr": True, "cr": True, "CR": True,
+    "Mn": True, "mn": True, "MN": True,
+    "Fe": True, "fe": True, "FE": True,
+    "Co": True, "co": True, "CO": True,
+    "Ni": True, "ni": True, "NI": True,
+    "Cu": True, "cu": True, "CU": True,
+    "Zn": True, "zn": True, "ZN": True,
+    "Ga": True, "ga": True, "GA": True,
+    "Ge": True, "ge": True, "GE": True,
+    "As": True, "as": True, "AS": True,
+    "Se": True, "se": True, "SE": True,
+    "Br": True, "br": True, "BR": True,
+    "Kr": True, "kr": True, "KR": True,
+    "Rb": True, "rb": True, "RB": True,
+    "Sr": True, "sr": True, "SR": True,
+    "Y" : True, "y" : True,
+    "Zr": True, "zr": True, "ZR": True,
+    "Nb": True, "nb": True, "NB": True,
+    "Mo": True, "mo": True, "MO": True,
+    "Tc": True, "tc": True, "TC": True,
+    "Ru": True, "ru": True, "RU": True,
+    "Rh": True, "rh": True, "RH": True,
+    "Pd": True, "pd": True, "PD": True,
+    "Ag": True, "ag": True, "AG": True,
+    "Cd": True, "cd": True, "CD": True,
+    "In": True, "in": True, "IN": True,
+    "Sn": True, "sn": True, "SN": True,
+    "Sb": True, "sb": True, "SB": True,
+    "Te": True, "te": True, "TE": True,
+    "I" : True, "i" : True,
+    "Xe": True, "xe": True, "XE": True,
+    "Cs": True, "cs": True, "CS": True,
+    "Ba": True, "ba": True, "BA": True,
+    "La": True, "la": True, "LA": True,
+    "Ce": True, "ce": True, "CE": True,
+    "Pr": True, "pr": True, "PR": True,
+    "Nd": True, "nd": True, "ND": True,
+    "Pm": True, "pm": True, "PM": True,
+    "Sm": True, "sm": True, "SM": True,
+    "Eu": True, "eu": True, "EU": True,
+    "Gd": True, "gd": True, "GD": True,
+    "Tb": True, "tb": True, "TB": True,
+    "Dy": True, "dy": True, "DY": True,
+    "Ho": True, "ho": True, "HO": True,
+    "Er": True, "er": True, "ER": True,
+    "Tm": True, "tm": True, "TM": True,
+    "Yb": True, "yb": True, "YB": True,
+    "Lu": True, "lu": True, "LU": True,
+    "Hf": True, "hf": True, "HF": True,
+    "Ta": True, "ta": True, "TA": True,
+    "W" : True, "w" : True,
+    "Re": True, "re": True, "RE": True,
+    "Os": True, "os": True, "OS": True,
+    "Ir": True, "ir": True, "IR": True,
+    "Pt": True, "pt": True, "PT": True,
+    "Au": True, "au": True, "AU": True,
+    "Hg": True, "hg": True, "HG": True,
+    "Tl": True, "tl": True, "TL": True,
+    "Pb": True, "pb": True, "PB": True,
+    "Bi": True, "bi": True, "BI": True,
+    "Po": True, "po": True, "PO": True,
+    "At": True, "at": True, "AT": True,
+    "Rn": True, "rn": True, "RN": True,
+    "Fr": True, "fr": True, "FR": True,
+    "Ra": True, "ra": True, "RA": True,
+    "Ac": True, "ac": True, "AC": True,
+    "Th": True, "th": True, "TH": True,
+    "Pa": True, "pa": True, "PA": True,
+    "U" : True, "u" : True }
+
+###############################################################################
 ## Library Description Objects
 ##
 
@@ -362,49 +459,48 @@ def library_guess_element_from_name(name0, res_name):
     if len(alpha_name)==0:
         return None
 
-    e1 = library_get_element_desc(alpha_name[0])
+    e1_symbol = alpha_name[0]
+    e1_valid  = ELEMENT_SYMBOL_DICT.has_key(e1_symbol)
 
     if len(alpha_name)>1:
-        e2 = library_get_element_desc(alpha_name[:2])
+        e2_symbol = alpha_name[:2]
+        e2_valid  = ELEMENT_SYMBOL_DICT.has_key(e2_symbol)
     else:
-        e2 = None
+        e2_symbol = None
+        e2_valid  = False
 
     ## e1 or e2 must return somthing for us to proceed, otherwise,
     ## there's just no possible element symbol contained in the atom
     ## name
-    if e1==None and e2==None:
+    if e1_valid==False and e2_valid==False:
         return None
 
-    elif e1!=None and e2==None:
-        return e1.symbol
+    elif e1_valid==True and e2_valid==False:
+        return e1_symbol
 
-    elif e1==None and e2!=None:
-        return e2.symbol
+    elif e1_valid==False and e2_valid==True:
+        return e2_symbol
 
     ## if we get here, then e1 and e2 are both valid elements
-
-    ## no monomer library help narrow down the choices, choose e1
-    if mdesc==None:
-        return e1.symbol
-
-    e1x = e1.symbol in mdesc.atom_dict.values()
-    e2x = e2.symbol in mdesc.atom_dict.values()
-
-    if e1x == True and e2x == False:
-        return e1.symbol
-    elif e1x == False and e2x == True:
-        return e2.symbol
 
     ## we're out of choices, go by the space_flag: if there is a space
     ## before the atom name, then use the 1-char element symbol;
     ## if there is no space, then use the 2-char element symbol
     if space_flag==True:
-        return e1.symbol
+        return e1_symbol
 
-    return e2.symbol
+    return e2_symbol
 
 
 ## <TESTING>
 if __name__ == "__main__":
-    pass
+    h = library_get_element_desc("H")
+
+    for cif_data in ELEMENT_CIF_FILE:
+        if len(cif_data.name)==1:
+            print '    "%s" : True, "%s" : True,' % (
+                cif_data.name, cif_data.name.lower())
+        else:
+            print '    "%s": True, "%s": True, "%s": True,' % (
+                cif_data.name, cif_data.name.lower(), cif_data.name.upper())
 ## </TESTING>
