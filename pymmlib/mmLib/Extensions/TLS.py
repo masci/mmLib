@@ -526,8 +526,8 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         "(?:^TLS\s*$)|(?:^TLS\s+(.*)$)"),
         
         "range": re.compile(
-        "^RANGE\s+[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s+"\
-        "[']([A-Z])\s*([0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "^RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+"\
+        "[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         
         "origin": re.compile(
         "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
@@ -937,226 +937,10 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
     return tls_info
 
 
-def calc_CA_pivot_TLS_least_squares_fit_ols(segment, weight_dict=None):
-    """Perform a LSQ-TLS fit on the given Segment object using
-    the TLS model with amino acid side chains which can pivot
-    about the CA atom.  This model uses 20 TLS parameters and 6
-    libration parameters per side chain.
-    """
-    
-    ## calculate the number of parameters in the model
-    num_atoms = segment.count_atoms()
-    num_frags = segment.count_fragments()
-
-    params = (6 * num_frags) + 20
-
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
-    A = zeros((num_atoms * 6, params), Float)
-    b = zeros(num_atoms * 6,  Float)
-
-    i = -1
-    for atm in segment.iter_atoms():
-        i += 1
-
-        ## set x, y, z as the vector components from the TLS origin
-        x, y, z = atm.position
-
-        ## is this fit weighted?
-        if weight_dict!=None:
-            w = math.sqrt(weight_dict[atm])
-        else:
-            w = 1.0
-
-        ## calculate the A matrix indexes of the side-chain L tensors
-        frag  = atm.get_fragment()
-        atm_CA = frag.get_atom("CA")
-        if atm_CA!=None:
-            Ls_origin = atm_CA.position
-        else:
-            Ls_origin = None
-
-        ifrag = segment.index(frag)        
-        ls11 = 20 + (ifrag * 6)
-        Ls11, Ls22, Ls33, Ls12, Ls13, Ls23 = (
-            ls11, ls11+1, ls11+2, ls11+3, ls11+4, ls11+5)
-
-        ## indecies of the components of U
-        u11 =   i * 6
-        u22 = u11 + 1
-        u33 = u11 + 2
-        u12 = u11 + 3
-        u13 = u11 + 4
-        u23 = u11 + 5
-
-        ## set the B vector
-        Uatm   = atm.get_U()
-        b[u11] = w * Uatm[0,0]
-        b[u22] = w * Uatm[1,1]
-        b[u33] = w * Uatm[2,2]
-        b[u12] = w * Uatm[0,1]
-        b[u13] = w * Uatm[0,2]
-        b[u23] = w * Uatm[1,2]
-
-        ## C Matrix
-        xx = x*x
-        yy = y*y
-        zz = z*z
-
-        xy = x*y
-        xz = x*z
-        yz = y*z
-
-        A[u11, T11] = w * 1.0
-        A[u11, L22] = w * zz
-        A[u11, L33] = w * yy
-        A[u11, L23] = w * -2.0*yz
-        A[u11, S31] = w * -2.0*y
-        A[u11, S21] = w * 2.0*z
-
-        A[u22, T22] = w * 1.0
-        A[u22, L11] = w * zz
-        A[u22, L33] = w * xx
-        A[u22, L13] = w * -2.0*xz
-        A[u22, S12] = w * -2.0*z
-        A[u22, S32] = w * 2.0*x
-
-        A[u33, T33] = w * 1.0
-        A[u33, L11] = w * yy
-        A[u33, L22] = w * xx
-        A[u33, L12] = w * -2.0*xy
-        A[u33, S23] = w * -2.0*x
-        A[u33, S13] = w * 2.0*y
-
-        A[u12, T12] = w * 1.0
-        A[u12, L33] = w * -xy
-        A[u12, L23] = w * xz
-        A[u12, L13] = w * yz
-        A[u12, L12] = w * -zz
-        A[u12, S2211] = w * z
-        A[u12, S31] = w * x
-        A[u12, S32] = w * -y
-
-        A[u13, T13] = w * 1.0
-        A[u13, L22] = w * -xz
-        A[u13, L23] = w * xy
-        A[u13, L13] = w * -yy
-        A[u13, L12] = w * yz
-        A[u13, S1133] = w * y
-        A[u13, S23] = w * z
-        A[u13, S21] = w * -x
-
-        A[u23, T23] = w * 1.0
-        A[u23, L11] = w * -yz
-        A[u23, L23] = w * -xx
-        A[u23, L13] = w * xy
-        A[u23, L12] = w * xz
-        A[u23, S2211] = w * -x
-        A[u23, S1133] = w * -x
-        A[u23, S12] = w * y
-        A[u23, S13] = w * -z
-
-        ## independent side-chain Ls tensor
-        if Ls_origin!=None and atm.name not in ["N", "CA", "C", "O"]:
-            xs, ys, zs = atm.position - Ls_origin
-
-            #print atm, length(atm.position - Ls_origin)
-            #print atm.get_U()
-            #print u11, u22, u33, u12, u13, u23
-            #print Ls11, Ls22, Ls33, Ls12, Ls13, Ls23
-
-            xxs = xs * xs
-            yys = ys * ys
-            zzs = zs * zs
-            xys = xs * ys
-            xzs = xs * zs
-            yzs = ys * zs
-
-            A[u11, Ls22] = w * zzs
-            A[u11, Ls33] = w * yys
-            A[u11, Ls23] = w * -2.0 * yzs
-
-            A[u22, Ls11] = w * zzs
-            A[u22, Ls33] = w * xxs
-            A[u22, Ls13] = w * -2.0 * xzs
-
-            A[u33, Ls11] = w * yys
-            A[u33, Ls22] = w * xxs
-            A[u33, Ls12] = w * -2.0 * xys
-
-            A[u12, Ls33] = w * -xys
-            A[u12, Ls23] = w * xzs
-            A[u12, Ls13] = w * yzs
-            A[u12, Ls12] = w * -zzs
-
-            A[u13, Ls22] = w * -xzs
-            A[u13, Ls23] = w * xys
-            A[u13, Ls13] = w * -yys
-            A[u13, Ls12] = w * yzs
-
-            A[u23, Ls11] = w * -yzs
-            A[u23, Ls23] = w * -xxs
-            A[u23, Ls13] = w * xys
-            A[u23, Ls12] = w * xzs
-
-    ## solve by SVD
-    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
-
-    ## make W
-    dim_W = len(S)
-    W = zeros((dim_W, dim_W), Float)
-
-    for i in range(dim_W):
-        if S[i]>1e-5:
-            W[i,i] = 1.0 / S[i]
-        else:
-            W[i,i] = 0.0
-
-    M1 = matrixmultiply(transpose(Vt), W)
-    M2 = matrixmultiply(M1, transpose(U))
-    C  = matrixmultiply(M2, b)
-
-    T = array([ [ C[T11], C[T12], C[T13] ],
-                [ C[T12], C[T22], C[T23] ],
-                [ C[T13], C[T23], C[T33] ] ], Float)
-
-    L = array([ [ C[L11], C[L12], C[L13] ],
-                [ C[L12], C[L22], C[L23] ],
-                [ C[L13], C[L23], C[L33] ] ], Float)
-
-    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
-
-    S = array([ [    s11, C[S12], C[S13] ],
-                [ C[S21],    s22, C[S23] ],
-                [ C[S31], C[S32],    s33 ] ], Float)
-
-
-    ## calculate the lsq residual since silly Numeric Python won't
-    ## do it for us
-    utlsw = matrixmultiply(A, C)
-    xw = utlsw - b
-    lsq_residual = dot(xw, xw)
-
-    ## caclculate the center of reaction for the group and
-    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
-
-    ret_dict = {}
-
-    ret_dict["T"] = cor_info["T'"]
-    ret_dict["L"] = cor_info["L'"]
-    ret_dict["S"] = cor_info["S'"]
-
-    ret_dict["lsq_residual"] = lsq_residual
-
-    ret_dict["num_atoms"] = num_atoms
-
-    return ret_dict
-
-
 def set_TLS_b(b, i, U, w):
+    """Sets the six rows of vector b with the experimental/target anisotropic
+    ADP values U starting at index b[i] and ending at b[i+6] with weight w.
+    """
     b[i]   = w * U[0,0]
     b[i+1] = w * U[1,1]
     b[i+2] = w * U[2,2]
@@ -1164,8 +948,11 @@ def set_TLS_b(b, i, U, w):
     b[i+4] = w * U[0,2]
     b[i+5] = w * U[1,2]
 
-
 def set_TLS_A(A, i, j, x, y, z, w):
+    """Sets the six rows of matrix A starting at A[i,j] with the TLS
+    coefficents for a atom located at position x,y,z with least-squares
+    weight w.  Matrix A is filled to row i+6 and column j+20.
+    """
     ## use label indexing to avoid confusion!
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
@@ -1240,6 +1027,10 @@ def set_TLS_A(A, i, j, x, y, z, w):
 
 
 def set_L_A(A, i, j, x, y, z, w):
+    """Sets coefficents of a L tensor in matrix A for a atom at position
+    x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
+    using weight w.
+    """
     L11, L22, L33, L12, L13, L23 = (
         j, j+1, j+2, j+3, j+4, j+5)
 
@@ -1285,6 +1076,101 @@ def set_L_A(A, i, j, x, y, z, w):
     A[u23, L23] = w * -xx
     A[u23, L13] = w * xy
     A[u23, L12] = w * xz
+
+
+def calc_TLS_least_squares_fit(atom_list, weight_dict=None):
+    """Perform a LSQ-TLS fit on the given Segment object using
+    the TLS model with amino acid side chains which can pivot
+    about the CA atom.  This model uses 20 TLS parameters and 6
+    libration parameters per side chain.
+    """    
+    ## calculate the number of parameters in the model
+    num_atoms = len(atom_list)
+    params = 20
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+    A = zeros((num_atoms * 6, params), Float)
+    b = zeros(num_atoms * 6,  Float)
+
+    i = -1
+    for atm in atom_list:
+        i += 1
+
+        ## set x, y, z as the vector components from the TLS origin
+        x, y, z = atm.position
+
+        ## is this fit weighted?
+        if weight_dict!=None:
+            w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
+
+        ## indecies of the components of U
+        u11 = i * 6
+
+        ## set the b vector
+        set_TLS_b(b, u11, atm.get_U(), w)
+
+        ## set the A matrix
+        set_TLS_A(A, u11, 0, x, y, z, w)
+
+    ## solve by SVD
+    U, S, Vt = singular_value_decomposition(A, full_matrices=0)
+
+    ## make W
+    dim_W = len(S)
+    W = zeros((dim_W, dim_W), Float)
+
+    for i in range(dim_W):
+        if S[i]>1e-5:
+            W[i,i] = 1.0 / S[i]
+        else:
+            W[i,i] = 0.0
+
+    M1 = matrixmultiply(transpose(Vt), W)
+    M2 = matrixmultiply(M1, transpose(U))
+    C  = matrixmultiply(M2, b)
+
+    T = array([ [ C[T11], C[T12], C[T13] ],
+                [ C[T12], C[T22], C[T23] ],
+                [ C[T13], C[T23], C[T33] ] ], Float)
+
+    L = array([ [ C[L11], C[L12], C[L13] ],
+                [ C[L12], C[L22], C[L23] ],
+                [ C[L13], C[L23], C[L33] ] ], Float)
+
+    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
+
+    S = array([ [    s11, C[S12], C[S13] ],
+                [ C[S21],    s22, C[S23] ],
+                [ C[S31], C[S32],    s33 ] ], Float)
+
+    ## calculate the lsq residual since silly Numeric Python won't
+    ## do it for us
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
+
+    ## caclculate the center of reaction for the group and
+    cor_info = calc_TLS_center_of_reaction(T, L, S, zeros(3, Float))
+
+    ret_dict = {}
+
+    ret_dict["T"] = cor_info["T'"]
+    ret_dict["L"] = cor_info["L'"]
+    ret_dict["S"] = cor_info["S'"]
+
+    ret_dict["lsq_residual"] = lsq_residual
+
+    ret_dict["num_atoms"] = num_atoms
+    ret_dict["params"] = params
+
+    return ret_dict
+
 
 pivot_side_chain_dict = {
     "TYR": "CB",
@@ -1409,13 +1295,10 @@ def calc_CA_pivot_TLS_least_squares_fit_2(segment, weight_dict=None):
     about the CA atom.  This model uses 20 TLS parameters and 6
     libration parameters per side chain.
     """
-
     ## use label indexing to avoid confusion!
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
-
     
     ## calculate the number of parameters in the model
     num_atoms = segment.count_atoms()
@@ -1744,7 +1627,7 @@ class TLSGroup(AtomList):
                          [ C[L12], C[L22], C[L23] ],
                          [ C[L13], C[L23], C[L33] ] ], Float)
 
-        s11, s22, s33 = self.calc_s11_s22_s33(C[S2211], C[S1133])
+        s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
         
         self.S = array([ [    s11, C[S12], C[S13] ],
                          [ C[S21],    s22, C[S23] ],
@@ -1755,6 +1638,12 @@ class TLSGroup(AtomList):
         utlsw = matrixmultiply(A, C)
         xw = utlsw - b
         lsq_residual = dot(xw, xw)
+
+        ## double-check
+        rdict = calc_TLS_least_squares_fit(self, weight_dict)
+        if not allclose(lsq_residual, rdict["lsq_residual"]):
+            print "EEK! lsq_residual %f %f" % (
+                lsq_residual, rdict["lsq_residual"])
 
         return lsq_residual
 
@@ -2265,10 +2154,11 @@ class TLSStructureAnalysis(object):
                 continue
             
             for segment in self.iter_segments(chain, residue_width):
-                frag_id1 = segment[0].fragment_id
-                frag_id2 = segment[-1].fragment_id
-                name     = "%s-%s" % (frag_id1, frag_id2)
-
+                frag_id1     = segment[0].fragment_id
+                frag_id2     = segment[-1].fragment_id
+                name         = "%s-%s" % (frag_id1, frag_id2)
+                frag_id_cntr = segment[len(segment)/2].fragment_id
+                
                 ## create the TLSGroup
                 pv_struct = Structure()
                 pv_seg    = Chain(chain_id=segment.chain_id,
@@ -2288,6 +2178,14 @@ class TLSStructureAnalysis(object):
 
                 ## check for enough atoms(parameters) after atom filtering
                 if len(tls_group)<20:
+                    tls_info = {
+                        "name":     name,
+                        "chain_id": chain.chain_id,
+                        "frag_id1": frag_id1,
+                        "frag_id2": frag_id2,
+                        "frag_id_cntr": frag_id_cntr,
+                        "error":    "Not Enough Atoms"}
+                    yield tls_info
                     continue
                 
                 ## calculate tensors and print
@@ -2301,21 +2199,21 @@ class TLSStructureAnalysis(object):
                 tls_info["ca_pivot"] = rdict
 
                 ## check if the TLS model is valid
-              #  if not tls_info["valid_model"]:
-              #      continue
+                if not tls_info["valid_model"]:
+                    tls_info["error"] = "TLS Model Invalid"
 
                 ## add additional information
                 tls_info["name"]      = name
                 tls_info["chain_id"]  = chain.chain_id
                 tls_info["frag_id1"]  = frag_id1
                 tls_info["frag_id2"]  = frag_id2
+                tls_info["frag_id_cntr"]  = frag_id_cntr
                 tls_info["tls_group"] = tls_group
                 tls_info["residues"]  = segment
                 tls_info["segment"]   = segment
                     
                 ## this TLS group passes all our tests -- yield it
                 yield tls_info
-
 
     def fit_TLS_segments(self, **args):
         """Returns the list iterated by iter_fit_TLS_segments
@@ -3055,7 +2953,15 @@ class GLTLSGroup(GLDrawList):
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
-
+        self.glo_add_property(
+            { "name":        "gof",
+              "desc":        "Goodness of Fit", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "float",
+              "default":     0.0,
+              "action":      "recompile" })
+        
         ## Show/Hide
         self.glo_add_property(
             { "name":        "symmetry",
@@ -3201,7 +3107,7 @@ class GLTLSGroup(GLDrawList):
               "type":        "enum_string",
               "default":     "Green",
               "enum_list":   self.gldl_color_list,
-              "action":      "recompile" })
+              "action":      ["redraw", "recompile"] })
         self.glo_add_property(
             { "name":       "adp_prob",
               "desc":       "Isoprobability Magnitude",
@@ -3331,7 +3237,7 @@ class GLTLSGroup(GLDrawList):
               "recompile_action":    "recompile_surface" })
          
     def tls_update_cb(self, updates, actions):
-        if "time" in updates:
+        if "time" in updates or "adp_prob" in updates:
             self.update_time()
 
     def update_time(self):
@@ -3639,6 +3545,7 @@ class GLTLSChain(GLDrawList):
     def __init__(self, **args):
         GLDrawList.__init__(self)
         self.glo_set_name("TLS Chain %s" % (args["chain_id"]))
+        self.glo_add_update_callback(self.update_cb)
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
@@ -3835,22 +3742,137 @@ class GLTLSChain(GLDrawList):
               "range":       PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_fan" })
-##         ## color methods
-##         self.glo_add_property(
-##             { "name":        "color_method",
-##               "desc":        "TLS Group Coloring Scheme",
-##               "catagory":    "Color Methods",
-##               "type":        "enum_string",
-##               "default":     "Color by Group",
-##               "enum_list":   ["Color By Group", "Color By Goodness of Fit"],
-##               "action":      "" })
 
+        ## color methods
+        self.glo_add_property(
+            { "name":        "color_method",
+              "desc":        "TLS Group Coloring Scheme",
+              "catagory":    "Color",
+              "type":        "enum_string",
+              "default":     "Color by Group",
+              "enum_list":   ["Color By Group", "Color By Goodness of Fit"],
+              "action":      "recolor" })
+        self.glo_add_property(
+            { "name":       "show_frac",
+              "desc":       "Show Fraction of Top Fitting Groups",
+              "catagory":   "Color",
+              "type":       "integer",
+              "range":      PROP_PROBABILTY_RANGE,
+              "default":    50,
+              "action":     "recolor" })
+        self.glo_add_property(
+            { "name":        "style1",
+              "desc":        "Cool Visualization Style #1",
+              "catagory":    "Color",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "style1" })
 
-##     def color_by_group(self):
-##         """Color TLS Groups by 
-##         """
-##         for gl_tls_group in self.glo_iter_children():
-##             pass
+    def update_cb(self, updates, actions):
+        if "recolor" in actions:
+            if self.properties["color_method"]=="Color By Goodness of Fit":
+                show_frac = float(self.properties["show_frac"] / 100.0)
+                self.color_by_gof(show_frac)
+            elif self.properties["color_method"]=="Color By Group":
+                self.color_by_group()
+
+        if "style1" in actions and self.properties["style1"]==True:
+            self.properties.update(style1=False)
+            self.set_style1()
+            
+    def set_style1(self):
+        self.properties.update(
+            L1_visible         = True,
+            L2_visible         = True,
+            L3_visible         = True)
+        
+        for gl_tls_group in self.glo_iter_children():
+            gl_tls_group.properties.update(
+                time               = 0.25)
+            
+            gl_tls_group.gl_atom_list.properties.update(
+                trace        = False,
+                ball_stick   = True,
+                ball_radius  = 0.075,
+                stick_radius = 0.075)
+
+    def color_by_group(self):
+        """Color TLS Groups by 
+        """
+        print "color by group"
+        
+        colori = 2
+        for gl_tls_group in self.glo_iter_children():
+            try:
+                tls_color = COLOR_NAMES_CAPITALIZED[colori]
+            except IndexError:
+                colori = 2
+                tls_color = COLOR_NAMES_CAPITALIZED[colori]
+                                                                
+            gl_tls_group.properties.update(
+                visible = True,
+                tls_color=tls_color)
+
+            colori += 1
+
+    def color_by_gof(self, show_frac):
+        """Color TLS Groups by goodness-of-fit.
+        """
+        gof_list = []
+        
+        for gl_tls_group in self.glo_iter_children():
+            gof = gl_tls_group.properties["gof"]
+            gof_list.append((gof, gl_tls_group))
+
+        if len(gof_list)==0:
+            return
+        elif len(gof_list)==1:
+            return
+
+        ## sort from highest->lowest since the gof metric is a minimization
+        ## residual
+        gof_list.sort()
+        gof_list.reverse()
+
+        ## n is the number to show
+        n = int(round(float(len(gof_list)) * show_frac))
+        i = len(gof_list) - n
+
+        ## hide the groups with the lowest gof values below the show_frac
+        ## percentage
+        for j in range(i):
+            gof, gl_tls_group = gof_list[j]
+            gl_tls_group.properties.update(
+                visible   = False,
+                tls_color = "gray")
+
+        ## remove the hidden groups
+        gof_list = gof_list[i:]
+
+        min_gof = gof_list[0][0]
+        max_gof = gof_list[-1][0]
+
+        ## a reasonable range is needed to color by goodness of fit
+        gof_range = max_gof - min_gof
+        if allclose(gof_range, 0.0):
+            for gof, gl_tls_group in gof_list:
+                gl_tls_group.properties.update(
+                    visible = True,
+                    tls_color = "gray")
+            return
+        
+        for gof, gl_tls_group in gof_list:
+            goodness = 1.0 - (gof - min_gof) / gof_range
+            tls_color = "%4.2f,%4.2f,%4.2f" % (goodness_color(goodness))
+            
+            ## set TLS color for group based on goodness of fit
+            gl_tls_group.properties.update(
+                visible   = True,
+                tls_color = tls_color)
+
+            ## set trace radius based on goodness of fit
+            gl_tls_group.gl_atom_list.properties.update(
+                trace_radius = 0.3 + (goodness * 0.01))
 
     def add_gl_tls_group(self, gl_tls_group):
         self.glo_add_child(gl_tls_group)
@@ -3915,6 +3937,12 @@ class GLTLSChain(GLDrawList):
         self.glo_link_child_property(
             "surface_opacity", child_id, "surface_opacity")
 
+        ## update coloring
+        if self.properties["color_method"]=="Color By Goodness of Fit":
+            show_frac = float(self.properties["show_frac"] / 100.0)
+            self.color_by_gof(show_frac)
+        else:
+            self.color_by_group()
 
 
 ## <testing>

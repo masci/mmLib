@@ -76,67 +76,46 @@ def prnt_header(args):
     print "## OMIT SINGLE BONDED ATOMS: %s" % (str(args["omit_single_bonded"]))
 
 
-def prnt_stats(stats):
-        ## print out results
-        print str(stats["name"]).ljust(8),
-
-        print str(stats["segment_num"]).ljust(5),
-
-        x = "%d" % (stats["num_atoms"])
-        print x.ljust(8),
-
-        x = "%.3f" % (stats["mean_B"])
-        print x.ljust(7),
-
-        x = "%4.2f" % (stats["mean_A"])
-        print x.ljust(5),
-
-        x = "%.3f" % (stats["R"])
-        print x.ljust(6),
-
-        x = "%.4f" % (stats["mean_dp2"])
-        print x.ljust(7),
-
-        x = "%.4f" % (stats["mean_dp2_sigma"])
-        print x.ljust(7),
-
-        x = "%5.3f" % (stats["mean_S"])
-        print x.ljust(6),
-
-        x = "%5.3f" % (stats["mean_S_sigma"])
-        print x.ljust(6),
-
-        x = "%6.4f" % (trace(stats["rT'"]))
-        print x.ljust(7),
-
-        x = "%6.4f" % (trace(stats["L'"])*RAD2DEG2)
-        print x.ljust(10),
-
-        print
-
 def mk_tab2():
+    """Create and return the tabulator object for output.
+    """
     tab2 = Tabulator()
-    tab2.add_column("name",         "ResRng" , 8, "%s")
-    tab2.add_column("segment_num",  "SegNo" ,  5, "%d")
-    tab2.add_column("num_atoms",    "Atoms",   6, "%d")
-    tab2.add_column("mean_B",       "<B>",     6, "%6.2f")
-    tab2.add_column("mean_A",       "<A>",     4, "%4.2f")
-    tab2.add_column("R",            "R",       6, "%.3f")
-    tab2.add_column("Tr",           "t(Tr)",   6, "%6.4f")
-    tab2.add_column("L",            "tr(L)",   6, "%5.2f")
-    tab2.add_column("lsqr",         "LSQR",    6, "%6.4f")
-    tab2.add_column("pv_lsqr",      "LSQRpv",  6, "%6.4f")
-    tab2.add_column("params",       "Params",  4, "%d")
-    tab2.add_column("lsq_ratio",    "Ratio",   6, "%4.2f")
-    tab2.add_column("pv_Tr",        "pv_t(Tr)",   8, "%6.4f")
-    tab2.add_column("pv_L",         "pv_tr(L)",   8, "%5.2f")
-    tab2.add_column("pv_num_atoms", "pv_Atoms",   8, "%d")
+    tab2.add_column("name",         "ResRng" ,  8, "%s")
+    tab2.add_column("frag_id_cntr", "ResCntr" , 5, "%s")
+    tab2.add_column("segment_num",  "SegNo" ,   5, "%d")
+    tab2.add_column("num_atoms",    "Atoms",    6, "%d")
+    tab2.add_column("mean_B",       "<B>",      6, "%6.2f")
+    tab2.add_column("mean_A",       "<A>",      4, "%4.2f")
+    tab2.add_column("R",            "R",        6, "%.3f")
+    tab2.add_column("Tr",           "t(Tr)",    6, "%6.4f")
+    tab2.add_column("L",            "tr(L)",    6, "%5.2f")
+    tab2.add_column("lsqr",         "LSQR",     6, "%6.4f")
+    tab2.add_column("lsqr_atom",    "LSQRA",    8, "%8.6f")
+    tab2.add_column("pv_lsqr",      "LSQRpv",   6, "%6.4f")
+    tab2.add_column("pv_lsqr_atom", "LSQRApv",  8, "%8.6f")
+    tab2.add_column("params",       "Params",   4, "%d")
+    tab2.add_column("lsq_ratio",    "Ratio",    6, "%4.2f")
+    tab2.add_column("pv_Tr",        "pv_t(Tr)", 8, "%6.4f")
+    tab2.add_column("pv_L",         "pv_tr(L)", 8, "%5.2f")
+    tab2.add_column("pv_num_atoms", "pv_Atoms", 8, "%d")
     
+    return tab2
+
+def mk_tab3():
+    """Create and return the tabulator object for output.
+    """
+    tab2 = Tabulator()
+    tab2.add_column("frag_id",      "Residue",  5, "%s")
+    tab2.add_column("name",         "ResRng" ,  8, "%s")
+    tab2.add_column("frag_id_cntr", "ResCntr" , 5, "%s")
+    tab2.add_column("segment_num",  "SegNo" ,   5, "%d")
+    tab2.add_column("lsqr",         "LSQR",     6, "%6.4f")
+    tab2.add_column("lsqr_atom",    "LSQRA",    8, "%8.6f")
+
     return tab2
 
             
 def prnt_stats2(tab, stats):
-
     lsqr = stats["lsq_residual"]
     pv_lsqr = stats["ca_pivot"]["lsq_residual"]
     
@@ -145,6 +124,7 @@ def prnt_stats2(tab, stats):
 
     row = {
         "name":           stats["name"],
+        "frag_id_cntr":   stats["frag_id_cntr"],
         "segment_num":    stats["segment_num"],
         "num_atoms":      stats["num_atoms"],
         "mean_B":         stats["mean_B"],
@@ -153,8 +133,10 @@ def prnt_stats2(tab, stats):
         "Tr":             trace(stats["rT'"]),
         "L":              trace(stats["L'"])*RAD2DEG2,
         "lsqr":           lsqr,
+        "lsqr_atom":      lsqr / stats["num_atoms"],
         "params":         stats["ca_pivot"]["params"],
         "pv_lsqr":        pv_lsqr,
+        "pv_lsqr_atom":   pv_lsqr / stats["num_atoms"],
         "lsq_ratio":      pv_lsqr / lsqr,
         "pv_Tr":          trace(pv_T),
         "pv_L":           trace(pv_L)*RAD2DEG2,
@@ -167,6 +149,8 @@ def prnt_stats2(tab, stats):
 def main(**args):
     tab = mk_tab2()
 
+    frag_best_tls = {}
+
     prnt_header(args)
     tab.prnt_cols()
 
@@ -175,12 +159,45 @@ def main(**args):
 
     tls_num = 0
     for tls_info in tls_analysis.iter_fit_TLS_segments(
+        chain_ids           = args.get("chain", None),
         residue_width       = args["seg_len"],
         use_side_chains     = not args["mainchain_only"],
         include_single_bond = not args["omit_single_bonded"]):
 
         tls_num += 1
         tls_info["segment_num"] = tls_num
+        
+        lsqr = tls_info["lsq_residual"]
+        num_atoms = tls_info["num_atoms"]
+        tls_info["lsq_residual_atom"] = lsqr/num_atoms
+
+
+        if tls_info.has_key("error"):
+            print "# [ERROR:%s] %s" % (tls_info["name"], tls_info["error"])
+            stats = tls_info
+
+            row = {
+                "name":           stats["name"],
+                "frag_id_cntr":   stats["frag_id_cntr"],
+                "segment_num":    stats["segment_num"],
+                "num_atoms":      stats["num_atoms"],
+                "mean_B":         0.0,
+                "mean_A":         0.0,
+                "R":              0.0,
+                "Tr":             0.0,
+                "L":              0.0,
+                "lsqr":           0.0,
+                "lsqr_atom":      0.0,
+                "params":         0.0,
+                "pv_lsqr":        0.0,
+                "pv_lsqr_atom":   0.0,
+                "lsq_ratio":      0.0,
+                "pv_Tr":          0.0,
+                "pv_L":           0.0,
+                "pv_num_atoms":   0.0
+                }
+            tab.prnt_row(row)
+            continue
         
         ## calculate adverage temp factor and anisotropy
         tls_group = tls_info["tls_group"]
@@ -199,6 +216,35 @@ def main(**args):
         tls_info["mean_A"] = Amean
 
         prnt_stats2(tab, tls_info)
+
+        ## for each fragment, find best fitting segment
+        for fragx in tls_info["segment"]:
+
+            if frag_best_tls.has_key(fragx):
+                tix = frag_best_tls[fragx]
+                if tls_info["lsq_residual_atom"]<tix["lsq_residual_atom"]:
+                    frag_best_tls[fragx] = tls_info
+            else:
+                frag_best_tls[fragx] = tls_info
+
+
+    ## output tabular data for each residue on its best fit
+    print "## printing best fit"
+    btab = mk_tab3()
+
+    for frag in struct.iter_fragments():
+        if not frag_best_tls.has_key(frag):
+            continue
+
+        tix = frag_best_tls[frag]
+
+        btab.prnt_row(
+            {"frag_id":        frag.fragment_id,
+             "name":           tix["name"],
+             "frag_id_cntr":   tix["frag_id_cntr"],
+             "segment_num":    tix["segment_num"],
+             "lsqr":           tix["lsq_residual"],
+             "lsqr_atom":      tix["lsq_residual_atom"]})
 
 
 def usage():

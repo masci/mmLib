@@ -98,8 +98,13 @@ class Raster3DDriver(object):
 
         self.front_clip       = near
         self.back_clip        = far
-        
-        self.bg_color_rgbf    = bg_color_rgbf
+
+        ## Raster3D assumes r,g,b triplits are squared
+        r, g, b = bg_color_rgbf
+        r = r*r
+        g = g*g
+        b = b*b
+        self.bg_color_rgbf = (r,g,b)
 
         ## the lighting model for Raster3D is not quite the same as
         ## OpenGL; this conversion gets it close
@@ -360,9 +365,9 @@ class Raster3DDriver(object):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
-        self.material_color_r = r
-        self.material_color_g = g
-        self.material_color_b = b
+        self.material_color_r = r*r
+        self.material_color_g = g*g
+        self.material_color_b = b*b
         
         if self.material_alpha<1.0:
             self.material_alpha = 1.0
@@ -380,9 +385,9 @@ class Raster3DDriver(object):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
-        self.material_color_r = r
-        self.material_color_g = g
-        self.material_color_b = b
+        self.material_color_r = r*r
+        self.material_color_g = g*g
+        self.material_color_b = b*b
 
         if self.material_alpha!=a:
             self.material_alpha = a

@@ -119,6 +119,21 @@ class DictListTreeView(gtk.TreeView):
                 self.model.set(miter, i, dictX.get(column_desc, ""))
 
 
+class GNUPlotDialog(gtk.Dialog):
+    """Render a plot using GNUPlot and display it in the dialog.
+    """
+    def __init__(self, ):
+        gtk.Dialog.__init__(self, "Raster3D Raytrace", None, 0)
+        self.set_resizable(gtk.FALSE)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        
+        self.image = gtk.Image()
+        self.image.set_from_file(png_path)
+        self.vbox.pack_start(self.image, gtk.TRUE, gtk.TRUE, 0)
+
+        self.show_all()
+
+
 ###############################################################################
 ### GTK OpenGL Viewer Widget Using GtkGlExt/PyGtkGLExt
 ###
@@ -1002,7 +1017,6 @@ class TLSDialog(gtk.Dialog):
 
         ## map chain_id -> color index so each tls group in a chain
         ## gets its own color
-        self.chn_colori     = {}
         self.gl_tls_chain   = {}
         ## master list of tls groups handled by the dialog
         self.tls_list       = []
@@ -1036,7 +1050,8 @@ class TLSDialog(gtk.Dialog):
             gobject.TYPE_STRING,    #2
             gobject.TYPE_STRING,    #3
             gobject.TYPE_STRING,    #4
-            gobject.TYPE_STRING)    #5
+            gobject.TYPE_STRING,    #5
+            gobject.TYPE_STRING)    #6
      
         treeview = gtk.TreeView(self.model)
         sw.add(treeview)
@@ -1084,6 +1099,11 @@ class TLSDialog(gtk.Dialog):
         column.add_attribute(cell_rend, "markup", 5)
         treeview.append_column(column)
 
+        cell_rend = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("LSQ-Residual/Atom", cell_rend)
+        column.add_attribute(cell_rend, "markup", 6)
+        treeview.append_column(column)
+        
         self.show_all()
 
         gobject.timeout_add(200, self.timeout_cb)
@@ -1207,9 +1227,10 @@ class TLSDialog(gtk.Dialog):
 
     def add_tls_group(self, tls):
         """Adds the TLS group and creates tls.gl_tls OpenGL
-        renderer.
+        renderer.  The tls argument is a dictionary.
         """
         self.tls_list.append(tls)
+
         tls_group = tls["tls_group"]
 
         ## if no atoms were found in the tls_group,
@@ -1223,53 +1244,39 @@ class TLSDialog(gtk.Dialog):
         chain_id = atm0.chain_id
         tls["chain_id"] = chain_id
 
-        ## if the TLS group is NULL, then perform a LSQ fit of it
-        if tls_group.is_null():
-            tls_group.calc_TLS_least_squares_fit()
-            tls["lsq_fit"] = True
-        tls["tls_info"] = tls_group.calc_tls_info()
-
-        ## select color for the TLS group
-        if tls.has_key("color_rgbf"):
-            tls["color_name"] = "%f,%f,%f" % tls["color_rgbf"]
+        ## select the TLSChain coloring scheme
+        if tls["lsq_fit"]==True:
+            color_method = "Color By Goodness of Fit"
+            gof = tls["lsq_residual_atom"]
         else:
-            ## set the tls group color starting from color 2, unique
-            ## for each chain
-            try:
-                self.chn_colori[chain_id] += 1
-                colori = self.chn_colori[chain_id]
-            except KeyError:
-                self.chn_colori[chain_id] = colori = 2
-
-            ## calculate importent properties for the TLS group
-            tls["color_name"] = COLOR_NAMES_CAPITALIZED[colori]
-
-        ## creat GLTLSGroup for the visualization component
-        tls["GLTLSGroup"] = GLTLSGroup(
+            color_method = "Color By Group"
+            gof = -1.0
+            
+        ## create GLTLSGroup for the visualization component
+        gl_tls_group = GLTLSGroup(
             tls_group = tls["tls_group"],
             tls_info  = tls["tls_info"],
             tls_name  = tls["name"],
-            tls_color = tls["color_name"])
+            gof       = gof)
 
-        ## XXX: hack
-        if tls.has_key("goodness"):
-            trad = tls["GLTLSGroup"].gl_atom_list.properties["trace_radius"]
-            trad += tls["goodness"] * 0.1
-            tls["GLTLSGroup"].gl_atom_list.properties.update(trace_radius=trad)
+        tls["GLTLSGroup"] = gl_tls_group
 
         ## get the GLTLSChain to add the GLTLSGroup to
         try:
             gl_tls_chain = self.gl_tls_chain[chain_id]
         except KeyError:
-            gl_tls_chain = GLTLSChain(chain_id=chain_id)
+            gl_tls_chain = GLTLSChain(
+                chain_id     = chain_id,
+                color_method = color_method)
+
             self.sc.gl_struct.glo_add_child(gl_tls_chain)
             self.gl_tls_chain[chain_id] = gl_tls_chain
 
         tls["GLTLSChain"] = gl_tls_chain
-        gl_tls_chain.add_gl_tls_group(tls["GLTLSGroup"])
-        tls["GLTLSGroup"].glo_add_update_callback(self.update_cb)
+        gl_tls_chain.add_gl_tls_group(gl_tls_group)
+        gl_tls_group.glo_add_update_callback(self.update_cb)
 
-        ## redraw the treeview adds this tls group
+        ## update the view
         self.redraw_treeview()
 
         ## rebuild GUI viewers
@@ -1295,7 +1302,6 @@ class TLSDialog(gtk.Dialog):
 
         ## re-initalize
         self.gl_tls_chain   = {}
-        self.chn_colori     = {}
         self.tls_list       = []
         self.animation_list = []
 
@@ -1303,22 +1309,24 @@ class TLSDialog(gtk.Dialog):
         tab = self.main_window.get_sc_tab(self.sc)
         if tab.has_key("gl_prop_browser"):
             tab["gl_prop_browser"].rebuild_gl_object_tree()
-        
+
         self.redraw_treeview()
 
     def update_cb(self, updates={}, actions=[]):
         """Property change callback from the GLTLSGroups.
         """
-        i = 0
         for tls in self.tls_list:
-            miter = self.model.get_iter((i,))
+            i = self.tls_list.index(tls)
+
+            try:
+                miter = self.model.get_iter((i,))
+            except ValueError:
+                continue
 
             if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)
             else:
                 self.model.set(miter, 0, gtk.FALSE)
-
-            i += 1
 
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
@@ -1369,13 +1377,37 @@ class TLSDialog(gtk.Dialog):
         if len(tls_file.tls_desc_list)==0:
             self.error_dialog("No TLS Groups Found: %s" % (path))
             return
-        
+
+        tls_list = []        
         for tls_desc in tls_file.tls_desc_list:
             tls = {}
+
             tls["tlsout_path"] = path
             tls["tls_desc"]    = tls_desc
             tls["tls_group"]   = tls_desc.generate_tls_group(self.sc.struct)
             tls["name"]        = self.markup_tls_name(tls_desc)
+
+            tls_group = tls["tls_group"]
+            if len(tls_group)==0:
+                print "[ERROR] no atoms in TLS group"
+                print tls_desc.range_list
+                continue
+
+            tls_list.append(tls)
+
+            ## if the TLS group is NULL, then perform a LSQ fit of it
+            if tls_group.is_null():
+                lsq_residual = tls_group.calc_TLS_least_squares_fit()
+                tls["lsq_fit"] = True
+                tls["lsq_residual"] = lsq_residual
+                tls["lsq_residual_atom"] = lsq_residual / len(tls_group)
+                tls["tls_info"] = tls_group.calc_tls_info()
+            else:
+                tls["lsq_fit"] = False
+                tls["tls_info"] = tls_group.calc_tls_info()
+
+        ## add the groups
+        for tls in tls_list:
             self.add_tls_group(tls)
 
     def load_TLS_fit(self):
@@ -1395,12 +1427,8 @@ class TLSDialog(gtk.Dialog):
             return
 
         ## create a tls_list containing the tls description
-        ## dictionaries for all fit TLS segments
-        min_dp2 = None
-        max_dp2 = None
-
-        tls_list = []
-        
+        ## dictionaries for all fit TLS segments        
+        tls_list = []        
         for tls_info in dialog.tls_info_list:
             tls = {}
             tls["tls_group"] = tls_info["tls_group"]
@@ -1409,24 +1437,10 @@ class TLSDialog(gtk.Dialog):
             tls["name"]      = tls_info["name"]
             tls["TLS_fit"]   = True
             tls["lsq_fit"]   = True
+            tls["lsq_residual"]      = tls_info["lsq_residual"]
+            tls["lsq_residual_atom"] = tls_info["lsq_residual_atom"]
 
             tls_list.append(tls)
-
-            ## find min/max dp2 for coloring
-            if min_dp2==None:
-                min_dp2 = max_dp2 = tls_info["mean_dp2"]
-            else:
-                min_dp2 = min(min_dp2, tls_info["mean_dp2"])
-                max_dp2 = max(max_dp2, tls_info["mean_dp2"])
-
-        ## color tls groups according to dp2 goodness of fit
-        rng = max_dp2 - min_dp2
-        for tls in tls_list:
-            dp2 = tls["tls_info"]["mean_dp2"]
-            gof   = 1.0 - (dp2 - min_dp2)/rng
-            tls["goodness"]   = gof
-            tls["color_rgbf"] = goodness_color(gof)
-            #print x, tls["color_rgbf"]
 
         for tls in tls_list:
             self.add_tls_group(tls)
@@ -1488,6 +1502,13 @@ class TLSDialog(gtk.Dialog):
                 source = "LSQ Fit"
 
             self.model.set(miter, 5, source)
+
+            ## LSQ-Residual
+            if tls.has_key("lsq_residual_atom"):
+                lra = "%6.4f" % (tls["lsq_residual_atom"])
+            else:
+                lra = ""
+            self.model.set(miter, 6, lra)
         
     def timeout_cb(self):
         """Timer which drives the TLS animation.
@@ -1668,7 +1689,10 @@ class TLSSearchDialog(gtk.Dialog):
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
      
         self.treeview = DictListTreeView(
-            column_list=["Residue Range", "Atoms", "R", "<DP2>"])
+            column_list = [
+            "Residue Range", "Atoms", "LSQ-Residual",
+            "LSQ-Residual/Atom", "<DP2>"])
+
         sw.add(self.treeview)
 
         return frame
@@ -1752,11 +1776,20 @@ class TLSSearchDialog(gtk.Dialog):
 
             ## set some dict values just for the treeview user interface
             ##"Residue Range", "Atoms", "R", "<DP2>", "sig<DP2>"
-
             tls_info["Residue Range"] = tls_info["name"]
             tls_info["R"]             = "%.3f" % (tls_info["R"])
-            tls_info["<DP2>"]         = "%.4f" % (tls_info["mean_dp2"])
             tls_info["Atoms"]         = str(tls_info["num_atoms"])
+            tls_info["LSQ-Residual"]  = "%.4f" % (tls_info["lsq_residual"])
+
+            ## calculate LSQ-Residual/Atom
+            lsqa = tls_info["lsq_residual"] / tls_info["num_atoms"]
+            tls_info["lsq_residual_atom"] = lsqa
+            tls_info["LSQ-Residual/Atom"] = "%.5f" % (lsqa)
+
+            if tls_info.has_key("mean_dp2"):
+                tls_info["<DP2>"] = "%.4f" % (tls_info["mean_dp2"])
+            else:
+                tls_info["<DP2>"] = "---"
             
             ## create a TLSGroupDesc object for this tls group
             tls_desc = TLSGroupDesc()

@@ -122,6 +122,8 @@ def quaternionrmatrix(r):
         q3 = 0.25 / s;
 
     else:
+        print "EEK! Quat Problem"
+
         if r[0,0]>r[1,1] and r[0,0]>r[2,2]:
             s  = math.sqrt(1.0 + r[0,0] - r[1,1] - r[2,2]) * 2.0
             q0 = 0.25 * s
