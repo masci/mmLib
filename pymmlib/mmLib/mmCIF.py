@@ -66,18 +66,8 @@ class mmCIFTable:
 
 
     def addRow(self, row):
-        """Adds a row of data.  The data should be a list the same size as
-        the number of columns."""
-        if len(row) != len(self._cname_list):
-            raise mmCIFError, "numer of columns in row and table differ"
-
-        ## create row and add it to the row list
-        crow = mmCIFRow()
-        self._row_list.append(crow)
-
-        ## set the data attributes for the row
-        for i in range(len(self._cname_list)):
-            setattr(crow, self._cname_list[i], row[i])
+        """Adds a mmCIFRow to the table."""
+        self._row_list.append(row)
 
 
     def getOneRow(self):
@@ -704,7 +694,11 @@ class mmCIFFileWriter:
             key = "_%s.%s" % (cif_table.getName(), col)
             self.write(key.ljust(kmax))
 
-            val = getattr(row, col)
+            try:
+                val = getattr(row, col)
+            except AttributeError:
+                val = "?"
+
             fval = self.fix_value(val)
             
             if   len(fval) > MAX_LINE-1:
@@ -738,7 +732,10 @@ class mmCIFFileWriter:
 
         for row in row_list:
             for (col, i) in col_tuple:
-                val = getattr(row, col)
+                try:
+                    val = getattr(row, col)
+                except AttributeError:
+                    val = "?"
                 val = self.fix_value(val)
                 vmax[i] = max(vmax[i], len(val))
                 
@@ -748,7 +745,10 @@ class mmCIFFileWriter:
             wlen = MAX_LINE-1
             
             for (col, i) in col_tuple:
-                val = getattr(row, col)
+                try:
+                    val = getattr(row, col)
+                except AttributeError:
+                    val = "?"
 
                 ## we don't have enough space left on this line
                 if vmax[i]+self.SPACING > wlen and wlen < MAX_LINE-1:

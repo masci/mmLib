@@ -718,7 +718,7 @@ class PDBToStructureLoader:
 class StructureTommCIFSaver:
     """Converts Structure to mmCIFFile class and saves it to the given path."""
 
-    def save(self, path, structure):
+    def save(self, fil, structure):
         self.cif_file = mmCIF.mmCIFFile()
         self.structure = structure
 
@@ -737,15 +737,14 @@ class StructureTommCIFSaver:
                 self.available_chain_ids = self.available_chain_ids[i+1:]
 
         ## create the mmCIF data block and mmCIF tables we need
-        data = mmCIFData("mol")
-        data.addTable(atom_site)
-        self.cif_file.addData(data)
+        self.cif_data = mmCIF.mmCIFData("mol")
+        self.cif_file.addData(self.cif_data)
                 
-        table = mmCIFTable("atom_site", AtomSiteColumns)
-        data.addTable(table)
+        tbl = mmCIF.mmCIFTable("atom_site", AtomSiteColumns)
+        self.cif_data.addTable(tbl)
         
-        table = mmCIFTable("atom_site_anisotrop", AtomSiteAnisotropColumns)
-        data.addTable(table)
+        tbl = mmCIF.mmCIFTable("atom_site_anisotrop",AtomSiteAnisotropColumns)
+        self.cif_data.addTable(tbl)
 
         ## write out the structure
         for mol in self.structure.moleculeIterator():
@@ -815,62 +814,60 @@ class StructureTommCIFSaver:
         self.water_res_seq += 1
 
 
-    def add_hetatm(self, atm, resName, chainID, resSeq, iCode, altLoc):
-        self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
-                       PDB.HETATM())
+    def add_hetatm(self, atm, label_comp_id, label_asym_id,
+                   label_seq_id, label_alt_id, auth_seq_id):
+        self.add_atom2(atm, label_comp_id, label_asym_id,
+                       label_seq_id, label_alt_id, auth_seq_id, "HETATM")
 
 
-    def add_atom(self, atm, resName, chainID, resSeq, iCode, altLoc):
-        self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
-                       PDB.ATOM())
+    def add_atom(self, atm, label_comp_id, label_asym_id,
+                 label_seq_id, label_alt_id, auth_seq_id):
+        self.add_atom2(atm, label_comp_id, label_asym_id,
+                       label_seq_id, label_alt_id, auth_seq_id, "ATOM")
+
+
+    def add_atom2(self, atm, label_comp_id, label_asym_id,
+                  label_seq_id, label_alt_id, auth_seq_id, group_PDB):
+
+        row = mmCIF.mmCIFRow()
+        self.cif_data.atom_site.addRow(row)
+
+        ## unique serial number/id for atom
+        row.id             = 0
+
+        ## residue/entity/monomer properties
+        row.group_PDB      = group_PDB
+        row.label_comp_id  = label_comp_id
+        row.label_asym_id  = label_asym_id
+        row.label_seq_id   = label_seq_id
+        row.label_alt_id   = label_alt_id
+        row.auth_seq_id    = auth_seq_id
+
+        ## atom properties
+        row.type_symbol    = atm.getElement()
+        row.label_atom_id  = atm.getAtomLabel()
+
+        vec                = atm.getPosition()
+        row.Cartn_x        = vec[0]
+        row.Cartn_y        = vec[1]
+        row.Cartn_z        = vec[2]
         
-
-    def add_atom2(self, atm, resName, chainID, resSeq, iCode, altLoc,
-                  pdb_atom):
+        row.occupancy      = atm.getOccupancy()
+        row.B_iso_or_equiv = atm.getTemperatureFactor()
         
-        self.pdb_file.pdbrecord_list.append(pdb_atom)
-
-        pdb_atom.name = atm.getAtomLabel()
-        pdb_atom.resName = resName
-        pdb_atom.altLoc = altLoc
-        pdb_atom.chainID = chainID
-        pdb_atom.resSeq = resSeq
-        pdb_atom.iCode = iCode
-        
-        vec = atm.getPosition()
-        pdb_atom.x = vec[0]
-        pdb_atom.y = vec[1]
-        pdb_atom.z = vec[2]
-        
-        pdb_atom.occupancy = atm.getOccupancy()
-        pdb_atom.tempFactor = atm.getTemperatureFactor()
-        pdb_atom.element = atm.getElement()
-        
-        if atm.getU() != None:
-            pdb_anisou = PDB.ANISOU()
-            self.pdb_file.pdbrecord_list.append(pdb_anisou)
-
-            pdb_anisou.name = pdb_atom.name
-            pdb_anisou.resName = pdb_atom.resName
-            pdb_anisou.chainID = pdb_atom.chainID
-            pdb_anisou.resSeq = pdb_atom.resSeq
-            pdb_anisou.iCode = pdb_atom.iCode
-            pdb_anisou.element = pdb_atom.element
-
+        if atm.getU():
             (u00, u11, u22, u01, u02, u12) = atm.getU()
-            u00 = int(u00 * 10000.0)
-            u11 = int(u11 * 10000.0)
-            u22 = int(u22 * 10000.0)
-            u01 = int(u01 * 10000.0)
-            u02 = int(u02 * 10000.0)
-            u12 = int(u12 * 10000.0)
+            
+            urow = mmCIF.mmCIFRow()
+            self.cif_data.atom_site_anisotrop.addRow(urow)
 
-            setattr(pdb_anisou, "u[0][0]", u00)
-            setattr(pdb_anisou, "u[1][1]", u11)
-            setattr(pdb_anisou, "u[2][2]", u22)
-            setattr(pdb_anisou, "u[0][1]", u01)
-            setattr(pdb_anisou, "u[0][2]", u02)
-            setattr(pdb_anisou, "u[1][2]", u12)
+            urow.id = 0
+            setattr(urow, "U[1][1]", u00)
+            setattr(urow, "U[2][2]", u11)
+            setattr(urow, "U[3][3]", u22)
+            setattr(urow, "U[1][2]", u01)
+            setattr(urow, "U[1][3]", u02)
+            setattr(urow, "U[2][3]", u12)
 
 
 
@@ -1042,7 +1039,7 @@ def GetAdaptor(path, mode, format):
     ## select adaptor based on file extention
     if ext == '.cif':
         if mode == "r": return mmCIFToStructureLoader
-        if mode == "w": return None
+        if mode == "w": return StructureTommCIFSaver
 
     ## defualt to PDB
     else:

@@ -17,6 +17,9 @@ INT_SIZE   = struct.calcsize("i")
 FLOAT_SIZE = struct.calcsize("f")
 WORD_SIZE  = struct.calcsize("f")
 
+print "INT_SIZE", INT_SIZE
+print "FLOAT_SIZE", FLOAT_SIZE
+
 
 ## MTZ header keywords
 MTZKeywords = [
@@ -74,7 +77,7 @@ class MTZFile:
         ## read the offset for the file header and seek to
         ## the begging of the header and read it
         self.fil.seek(4)
-        hoffset = (self.read_int() * self.int_size) - self.int_size
+        hoffset = self.get_offset(self.read_int() - 1)
         self.fil.seek(hoffset)
 
         header = self.fil.read()
@@ -112,16 +115,17 @@ class MTZFile:
             
             self.column_list.append(cname)
 
-        ## data rows start at byte 21
+        ## data rows start at 20*sizeof(int) into the file
         self.data_list = []
-            
-        self.fil.seek(21)
 
+        doffset    = self.get_offset(20)
         ncol       = len(self.column_list)
-        row_format = "f" * ncol
+        row_format = "f" * ncol ## This needs to be equiv to REAL*4
         row_bytes  = 4 * ncol
-        nrow       = (hoffset - 21) / row_bytes
+        nrow       = (hoffset - doffset) / row_bytes
 
+        self.fil.seek(doffset)
+        
         for i in range(nrow):
             row = struct.unpack(row_format, self.fil.read(row_bytes))
             self.data_list.append(row)
@@ -129,6 +133,14 @@ class MTZFile:
     
     def saveFile(self, fil):
         pass
+
+
+    def get_offset(self, x):
+        """Seeking in a MTZ file is a painful experience.  The documentation
+        for the MTZ files gives a completely incorrect description of them,
+        so it's best to ignore it.  Seeks are actually in multiples of the
+        size of integers on the machine the MTZ file was written in."""
+        return x * self.int_size
 
 
     def read_int(self):
@@ -161,3 +173,6 @@ if __name__ == "__main__":
     mtz = MTZFile()
     mtz.loadFile(path)
     print mtz
+
+    for row in mtz.getDataList():
+        print row
