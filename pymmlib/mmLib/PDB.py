@@ -70,15 +70,16 @@ class PDBRecord(dict):
 
     def read(self, rec):
         for (field, start, end, ftype, just, get_func) in self._field_list:
-            ## adjust record reading indexes if the line doesn't contain
-            ## all the fields
-            if end > len(rec):
-                if start > len(rec): break
-                end = len(rec)
+            s = rec[start-1:end]
+            if not s or not s.strip():
+                continue
 
-            s = rec[start-1:end].strip()
-            if   not s:                continue
-            elif ftype == "string":    pass
+            elif ftype == "string":
+                if just == "ljust":
+                    s = s.rstrip()
+                elif just == "rjust":
+                    s = s.lstrip()
+
             elif ftype == "integer":
                 try:
                     s = int(s)
@@ -86,6 +87,7 @@ class PDBRecord(dict):
                     debug("PDB parser: int(%s) failed on record" % (s))
                     debug(str(rec))
                     continue
+
             elif ftype.startswith("float"):
                 try:
                     s = float(s)
@@ -1151,27 +1153,34 @@ class PDBFileBuilder:
         self.atom_serial_map[atm] = atom_serial_num
         return atom_serial_num
 
+    def set_from_cifdb(self, rec, field, ctbl, ccol):
+        try:
+            rec[field] = self.struct.cifdb[ctbl][ccol]
+        except KeyError:
+            pass
+
     def add_header_records(self):
         header = HEADER()
         self.pdb_file.append(header)
-        header["idCode"] = self.struct.exp_data.get("id", "XXX")
-        header["depDate"] = self.struct.exp_data.get("date", "")
-        header["classification"] = self.struct.exp_data.get("pdbx_keywords","")
-
+        self.set_from_cifdb(header, "idCode",
+                            "entry", "id")
+        self.set_from_cifdb(header, "depDate",
+                            "database_pdb_rev", "date_original")
+        self.set_from_cifdb(header, "classification",
+                            "struct_keywords", "pdbx_keywords")
+        
     def add_title_records(self):
         title = TITLE()
         self.pdb_file.append(title)
-        title["title"] = self.struct.exp_data["title"]
+        self.set_from_cifdb(title, "title",
+                            "struct", "title")
 
     def add_coord_transform_records(self):
         ## add the CRYST1 and unit-cell related records
         cryst1 = CRYST1()
         self.pdb_file.append(cryst1)
 
-        if self.struct.unit_cell:
-            unit_cell = self.struct.unit_cell
-        else:
-            unit_cell = UnitCell(1.0, 1.0, 1.0, 90.0, 90.0, 90.0)
+        unit_cell = self.struct.unit_cell
 
         cryst1["a"] = self.struct.unit_cell.a
         cryst1["b"] = self.struct.unit_cell.b
@@ -1206,7 +1215,6 @@ class PDBFileBuilder:
                 for atm in frag.iter_atoms():
                     for alt_atm in atm.iter_alt_loc():
                         self.add_one_atom_records("HETATM", alt_atm)
-
 
     def add_one_atom_records(self, rec_type, atm):
         if rec_type == "ATOM":

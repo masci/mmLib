@@ -39,13 +39,17 @@ class FragmentID(object):
     res_seq and icode internally.
     """
     def __init__(self, frag_id):
+        self.res_seq = 1
+        self.icode = ""
         try:
-            self.res_seq  = int(frag_id)
+            self.res_seq = int(frag_id)
         except ValueError:
-            self.res_seq  = int(frag_id[:-1])
-            self.icode    = frag_id[-1]
-        else:
-            self.icode    = ""
+            try:
+                self.res_seq = int(frag_id[:-1])
+            except ValueError:
+                pass
+            else:
+                self.icode = frag_id[-1]
     def __str__(self):
         return str(self.res_seq) + self.icode
     def __lt__(self, other):

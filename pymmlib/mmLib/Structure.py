@@ -4,121 +4,96 @@
 ## included as part of this package.
 """Classes for representing biological macromolecules.
 """
-from   __future__ import generators
+from __future__ import generators
 import fpformat
 import time
 from mmTypes import *
 from AtomMath import *
 from Library import Library
-from ExpData import ExpData
 from UnitCell import UnitCell
+from mmCIFDB import *
+
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
-    macromolecular data structure.
+    macromolecular data structure.  It contains a list of the Chain objects
+    in the structure hierarchy, and contains these additional data
+    objects:
 
-    Attributes:
-    library          (mmLib.Library object) the monomer library used by
-                              the structure
+    library(mmLib.Library) The monomer library used by the structure.
+                              
+    cifdb(mmLib.mmCIFDB) A mmCIF database with additional structure data.
 
-    exp_data         Experimental Data class containing non-structural
-                     data from the structure source file
-                     
-    unit_cell        UnitCell class containing the unit cell descripton
+    unit_cell(mmLib.UnitCell) Unit cell/Spacegroup for the structure.
 
-    space_group      SpaceGroup class containing space group description
+    default_model(int) The default NMR-style model used when iterating
+    or retreiving the structure
 
-    default_alt_loc  (string) all objects in the structure hierarcy
-                              default to iterating, retrieving, and
-                              calculating the structure using the alt_loc
-                              conformation set in default_alt_loc
-    sites            (list)   list of Site objects containing all defined
-                              sites in the structure
-    alpha_helices    (list)   list of AlphaHelix objects containing all
-                              alpha helices in the structure
-    beta_sheets      (list)   list of BetaSheet objects containing all
-                              beta sheets in the structure
-    turns            (list)   list of Turn objects
+    default_alt_loc(string) The default alternate location identifier used
+    when iterating or retreiving Atom objects in the structure.
     """
     def __init__(self, library = None):
-        if library:
-            self.library = library
-        else:
-            self.library = Library()
-
-        self.exp_data = ExpData()
-        self.unit_cell = UnitCell()
-
-        self.default_model = 1
+        self.library         = library or Library()
+        self.cifdb           = mmCIFDB("XXX")
+        self.unit_cell       = UnitCell()
+        self.default_model   = 1
         self.default_alt_loc = "A"
-
-        self.sites = []
-        self.alpha_helices = []
-        self.beta_sheets = []
-        self.turns = []
-        self.__chain_list = []
+        self.chain_list      = []
 
     def __str__(self):
-        tstr =  "Structure::%s\n" % (self.exp_data.get("id", ""))
-        tstr += "%s\n" % (self.exp_data.get("title", "no title")[:40])
-        try:
-            tstr += "res(A): %1.2f\n" % (self.exp_data["res_high"])
-            tstr += "R: %1.3f\n" % (self.exp_data["R_fact"])
-            tstr += "Rfree: %1.3f\n" % (self.exp_data["free_R_fact"])
-        except KeyError:
-            pass
+        tstr = "Structure(id=%s, meth=)" % (self.cifdb.get_entry_id())
         return tstr
  
     def __len__(self):
         """Returns the number of stored Chain objects.
         """
-        return len(self.__chain_list)
+        return len(self.chain_list)
     
     def __getitem__(self, x):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
         """
         if type(x) == StringType:
-            for chain in self.__chain_list:
+            for chain in self.chain_list:
                 if chain.chain_id == x:
                     return chain
             raise KeyError, x
 
         elif type(x) == IntType:
-            return self.__chain_list[x]
+            return self.chain_list[x]
 
         raise TypeError, x
 
     def __delitem__(self, x):
-        self.__chain_list.remove(self[x])
+        self.chain_list.remove(self[x])
 
     def __iter__(self):
         """Iterates the Chain objects in the Structure.
         """
-        return iter(self.__chain_list)
+        return iter(self.chain_list)
 
     def __contains__(self, x):
         if isinstance(x, Chain):
-            return x in self.__chain_list
+            return x in self.chain_list
         elif type(x) == StringType:
-            return self[x] in self.__chain_list
+            return self[x] in self.chain_list
         raise TypeError, x
 
     def index(self, chain):
         """Returns the numeric index of the Chain object.
         """
         assert isinstance(chain, Chain)
-        return self.__chain_list.index(chain)
+        return self.chain_list.index(chain)
 
     def remove(self, chain):
         """Removes the chain from the structure.
         """
         assert isinstance(chain, Chain)
         del chain.structure
-        self.__chain_list.remove(chain)
+        self.chain_list.remove(chain)
 
     def sort(self):
-        self.__chain_list.sort()
+        self.chain_list.sort()
 
     def add_chain(self, chain, delay_sort = True):
         """Adds a Chain object to the Structure, and set the chain's
@@ -129,13 +104,12 @@ class Structure(object):
         for chn in self:
             if chn.chain_id == chain.chain_id:
                 print "[ERROR] add_chain overwrite",chn,chain
-                time.sleep(1)
                 return False
 
         chain.structure = self
-        self.__chain_list.append(chain)
+        self.chain_list.append(chain)
         if not delay_sort:
-            self.__chain_list.sort()
+            self.chain_list.sort()
         return True
 
     def get_chain(self, chain_id):
@@ -199,7 +173,57 @@ class Structure(object):
                     yield bond
                     visited.insert(0, bond)
 
+    def iter_alpha_helicies(self):
+        """Iterates over all alpha helicies in the Structure.
+        """
+        try:
+            struct_conf = self.cifdb["struct_conf"]
+        except KeyError:
+            return
 
+        for row in struct_conf.iter_rows(("conf_type_id", "HELX_P")):
+            try:
+                yield AlphaHelix(self, row["id"])
+            except KeyError:
+                continue
+
+    def iter_beta_sheets(self):
+        """Iterate over all beta sheets in the Structure.
+        """
+        try:
+            struct_sheet = self.cifdb["struct_sheet"]
+        except KeyError:
+            return
+
+        for row in struct_sheet:
+            try:
+                yield BetaSheet(self, row["id"])
+            except KeyError:
+                continue
+
+    def iter_turns(self):
+        pass
+
+    def iter_sites(self):
+        """Iterate over all active/important sites defined in the Structure.
+        """
+        try:
+            struct_site_gen = self.cifdb["struct_site_gen"]
+        except KeyError:
+            return
+
+        site_ids = []
+        for row in struct_site_gen:
+            try:
+                site_id = row["site_id"]
+            except KeyError:
+                continue
+
+            if site_id not in site_ids:
+                site_ids.insert(0, site_id)
+                yield Site(self, site_id)
+
+    
 class Chain(object):
     """Chain objects conatain a ordered list of Fragment objects.
     """
@@ -212,12 +236,12 @@ class Chain(object):
 
         ## fragments are contained in the list and also cached in
         ## a dictionary for fast random-access lookup
-        self.__fragment_list  = []
+        self.fragment_list  = []
 
     def __str__(self):
         return "Chain(%s, %s...%s)" % (self.chain_id,
-                                       self.__fragment_list[0],
-                                       self.__fragment_list[-1])
+                                       self.fragment_list[0],
+                                       self.fragment_list[-1])
 
     def __lt__(self, other):
         assert isinstance(other, Chain)
@@ -237,7 +261,7 @@ class Chain(object):
 
     def __len__(self):
         """Return the number of fragments in the Chain."""
-        return len(self.__fragment_list)
+        return len(self.fragment_list)
 
     def __getitem__(self, x):
         """Retrieve a Fragment within the Chain.  This can take a integer
@@ -246,7 +270,7 @@ class Chain(object):
         return a new Chain object containing the sliced subset of Fragments.
         """
         if type(x) == IntType:
-            return self.__fragment_list[x]
+            return self.fragment_list[x]
         
         elif type(x) == StringType:
             for frag in self:
@@ -269,7 +293,7 @@ class Chain(object):
 
             for frag in self:
                 if frag >= frag_start and frag <= frag_stop:
-                    chain.__fragment_list.append(frag)
+                    chain.fragment_list.append(frag)
                     if frag.fragment_id in self.sequence:
                         chain.sequence.append(frag.fragment_id)
 
@@ -283,35 +307,35 @@ class Chain(object):
         or the integer index of the Fragment within the Chain.
         """
         frag = self[x]
-        self.__fragment_list.remove(frag)
+        self.fragment_list.remove(frag)
 
     def __iter__(self):
         """Iterate all Fragments contained in the Chain.
         """
-        return iter(self.__fragment_list)
+        return iter(self.fragment_list)
 
     def __contains__(self, x):
         if isinstance(x, Fragment):
-            return x in self.__fragment_list
+            return x in self.fragment_list
         elif type(x) == StringType:
-            return self[x] in self.__fragment_list
+            return self[x] in self.fragment_list
         raise TypeError, x
 
     def index(self, frag):
         """Return the 0-based index of the framgent in the chain list.
         """
-        return self.__fragment_list.index(frag)
+        return self.fragment_list.index(frag)
 
     def remove(self, frag):
         """Remove the Fragment from the chain.
         """
         del frag.chain
-        self.__fragment_list.remove(frag)
+        self.fragment_list.remove(frag)
 
     def sort(self):
         """Sort the Fragments in the chain into proper order.
         """
-        self.__fragment_list.sort()
+        self.fragment_list.sort()
         
     def add_fragment(self, frag, delay_sort = False):
         """Adds a Fragment instance to the chain.  If delay_sort is True,
@@ -324,13 +348,12 @@ class Chain(object):
         for frg in self:
             if frg.fragment_id == frag.fragment_id:
                 print "[ERROR] add_fragment overwrite",frg,frag
-                time.sleep(1)
                 return False
 
         frag.chain = self
-        self.__fragment_list.append(frag)
+        self.fragment_list.append(frag)
         if not delay_sort:
-            self.__fragment_list.sort()
+            self.fragment_list.sort()
         return True
 
     def get_structure(self):
@@ -481,7 +504,7 @@ class Fragment(object):
         self.fragment_id = fragment_id
         self.chain_id    = chain_id
 
-        self.__atom_list = []
+        self.atom_list = []
 
     def __str__(self):
         return "%s(%s,%s,%s)" % (self.__class__.__name__,
@@ -516,16 +539,16 @@ class Fragment(object):
 
     def __getitem__(self, x):
         """Lookup a atom contained in a fragment by its name, or by its index
-        within the fragment's private __atom_list.  If the atom is not found,
+        within the fragment's private atom_list.  If the atom is not found,
         a exception is raised.  The type of exception depends on the argument
         type.  If the argument was a integer, then a IndexError is raised.
         If the argument was a string, then a KeyError is raised.
         """
         if type(x) == IntType:
-            return self.__atom_list[x]
+            return self.atom_list[x]
 
         elif type(x) == StringType:
-            for atm in self.__atom_list:
+            for atm in self.atom_list:
                 if atm.name == x:
                     ret_atm = atm.get_default()
                     if ret_atm:
@@ -533,14 +556,14 @@ class Fragment(object):
                     raise KeyError, x
             raise KeyError, x
 
-        raise TypeError, x
+        raise TypeError, str(x)
 
     def __delitem__(self, x):
         """Removes a atom from the fragment.  The argument can be the name
         of the atom, or the private integer index of the atom within the
-        fragment's private __atom_list.
+        fragment's private atom_list.
         """
-        self.__atom_list.remove(self[x])
+        self.atom_list.remove(self[x])
 
     def __iter__(self):
         """Iterates the atoms within the fragment.  If the fragment contains
@@ -550,13 +573,13 @@ class Fragment(object):
         ## this is a difficult function to write and perserve what is left
         ## of iteration performance (not much now that I'm tring to handle
         ## all cases of illegal altLoc combinations)
-        ## assume __atom_list is properly sorted -- this should be true
+        ## assume atom_list is properly sorted -- this should be true
         model = self.chain.structure.default_model
         alt_loc = self.chain.structure.default_alt_loc
 
         yield_me_if_no_match = None
 
-        for atm in self.__atom_list:
+        for atm in self.atom_list:
             if atm.model != model:
                 continue
             if yield_me_if_no_match:
@@ -585,15 +608,15 @@ class Fragment(object):
         can be a atom instance of a the name of the atom.
         """
         if isinstance(x, Atom):
-            return x in self.__atom_list
-        return self[x] in self.__atom_list
+            return x in self.atom_list
+        return self[x] in self.atom_list
 
     def index(self, atom):
         """Returns the index of the atom within the fragment's private
-        __atom_list.
+        atom_list.
         """
         assert isinstance(atom, Atom)
-        return self.__atom_list.index(atom)
+        return self.atom_list.index(atom)
 
     def remove(self, atom):
         """Removes the atom from the fragment, and deletes the atom's
@@ -602,7 +625,7 @@ class Fragment(object):
         assert isinstance(atom, Atom)
         del atom.fragment
         atom.alt_loc_list.remove(atom)
-        self.__atom_list.remove(atom)
+        self.atom_list.remove(atom)
 
     def add_atom(self, atom):
         """Adds a atom to the fragment, and sets the atom's atom.fragment
@@ -611,27 +634,26 @@ class Fragment(object):
         assert isinstance(atom, Atom)
         assert atom.chain_id    == self.chain_id
         assert atom.fragment_id == self.fragment_id
-        assert atom not in self.__atom_list
+        assert atom not in self.atom_list
 
-        for atm in self.__atom_list:
+        for atm in self.atom_list:
             if atm.name == atom.name and \
                atm.model == atom.model and \
                atm.alt_loc == atom.alt_loc:
-                print "[ERROR] add_atom overwrite",atm,atom
-                time.sleep(1)
+                debug("[ERROR] add_atom overwrite " + str(atm) + str(atom))
                 return False
 
         atom.fragment = self
 
         ## if this atom is a alternate conformation of a atom already in
         ## the fragment, add it to that atom's private __alt_loc_list
-        for atm in self.__atom_list:
+        for atm in self.atom_list:
             if atm.name == atom.name:
                 atm.add_alt_loc(atom)
                 break
 
         ## now add the atom to the fragment
-        self.__atom_list.append(atom)
+        self.atom_list.append(atom)
         return True
 
     def get_atom(self, name):
@@ -1050,7 +1072,7 @@ class Atom(object):
         self.sig_U = None
         self.charge = None
 
-        self.__alt_loc_list = [self]
+        self.alt_list = [self]
         self.bond_list = []
 
     def __str__(self):
@@ -1089,7 +1111,7 @@ class Atom(object):
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
         """
-        return len(self.__alt_loc_list)
+        return len(self.alt_list)
 
     def __getitem__(self, x):
         """This is a alternative to calling get_alt_loc, but a KeyError
@@ -1101,7 +1123,7 @@ class Atom(object):
         
         if type(x) == IntType:
             default_atm = None
-            for atm in self.__alt_loc_list:
+            for atm in self.alt_list:
                 if atm.model != x:
                     continue
                 if atm.alt_loc == default_alt_loc:
@@ -1113,7 +1135,7 @@ class Atom(object):
             raise KeyError, x
 
         elif type(x) == StringType:
-            for atm in self.__alt_loc_list:
+            for atm in self.alt_list:
                 if atm.model == default_model and atm.alt_loc == x:
                     return atm
             raise KeyError, x
@@ -1122,7 +1144,7 @@ class Atom(object):
              len(x) == 2 and \
              type(x[0]) == StringType and \
              type(x[1]) == IntType:
-            for atm in self.__alt_loc_list:
+            for atm in self.alt_list:
                 if atm.alt_loc == x[0] and atm.model == x[1]:
                     return atm
             raise KeyError, x
@@ -1131,23 +1153,35 @@ class Atom(object):
 
     def __delitem__(self, x):
         """Deletes the alternate conformation of the atom matching the
-        argument.  The argument is the alt_loc label of the atom to be
-        deleted.
+        argument.  The argument is the same as the argument for __getitem__.
         """
-        self.__alt_loc_list.remove(self[x])
+        self.remove(self[x])
 
     def __iter__(self):
-        """Iterate all conformations of this atom.
+        """Iterate all alternate locations of this atom within the default
+        model.
         """
-        return iter(self.__alt_loc_list)
+        default_model = self.fragment.chain.structure.default_model
+        for atm in self.alt_list:
+            if atm.model == default_model:
+                yield atm
 
     def __contains__(self, x):
         """Returns True if the argument matches a alternate conformation of
         the atom.  The argument can be a alt_loc label, or a Atom object.
         """
         if isinstance(x, Atom):
-            return x in self.__alt_loc_list
-        return self[x] in self.__alt_loc_list
+            return x in self.alt_list
+        return self[x] in self.alt_list
+
+    def remove(self, atom):
+        """Remove the atom from the list of alternate conformations of this
+        atom.
+        """
+        atom.alt_list.remove(atm)
+        atom.alt_list = []
+        atom.fragment.remove(atom)
+        del atom.fragment
 
     def add_alt_loc(self, atom):
         """Add atom as a alternate conformation of the current atom.
@@ -1156,18 +1190,17 @@ class Atom(object):
         assert atom.name == self.name
         assert atom.fragment_id == self.fragment_id
         assert atom.chain_id == self.chain_id
-        assert atom not in self.__alt_loc_list
+        assert atom not in self.alt_list
 
-        for atm in self.__alt_loc_list:
+        for atm in self.alt_list:
             if atm.model == atom.model and \
                atm.alt_loc == atom.alt_loc:
                 print "[ERROR] add_alt_loc overwrite",atm,atom
-                time.sleep(1)
                 return False
 
-        self.__alt_loc_list.append(atom)
-        atom.__alt_loc_list = self.__alt_loc_list
-        self.__alt_loc_list.sort()
+        self.alt_list.append(atom)
+        atom.alt_list = self.alt_list
+        self.alt_list.sort()
         return True
 
     def get_default(self):
@@ -1178,7 +1211,7 @@ class Atom(object):
         default_model = self.fragment.chain.structure.default_model
         default_alt_loc = self.fragment.chain.structure.default_alt_loc
         default_atm = None
-        for atm in self.__alt_loc_list:
+        for atm in self.alt_list:
             if atm.model != default_model:
                 continue
             if atm.alt_loc == default_alt_loc:
@@ -1189,16 +1222,6 @@ class Atom(object):
             return default_atm
         return None
 
-    def get_model(self, model):
-        """Returns the atom in the argument model number.  Uses the Structure
-        default_alt_loc.  Return None if the atom is not found.
-        """
-        assert type(model) == IntType
-        try:
-            return self[model]
-        except KeyError:
-            return None
-        
     def get_alt_loc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument.
         """
@@ -1215,13 +1238,24 @@ class Atom(object):
         """
         return iter(self)
 
-    def has_alt_loc(self):
-        """Returns True if alternate models or conformations of this
-        atom exist.
+    def get_model(self, model):
+        """Returns the atom in the argument model number.  Uses the Structure
+        default_alt_loc.  Return None if the atom is not found.
         """
-        if len(self.__alt_loc_list) > 1:
-            return True
-        return False
+        assert type(model) == IntType
+        try:
+            return self[model]
+        except KeyError:
+            return None
+
+    def iter_model(self):
+        """Iterates over all models of this atom matching the structure
+        wide default_alt_loc.
+        """
+        default_alt_loc = self.fragment.chain.structure.default_alt_loc
+        for atm in self.alt_list:
+            if not atm.alt_loc or atm.alt_loc == default_alt_loc:
+                yield atm
 
     def create_bond(self,
                     atom,
@@ -1261,8 +1295,8 @@ class Atom(object):
         """
         assert isinstance(atom, Atom)
 
-        for atm1 in self.__alt_loc_list:
-            for atm2 in atom.__alt_loc_list:
+        for atm1 in self.alt_list:
+            for atm2 in atom.alt_list:
                 if atm1.model != atm2.model:
                     continue
 
@@ -1399,6 +1433,95 @@ class Bond(object):
         return self.atom2
 
 
+class AlphaHelix:
+    def __init__(self, structure, helix_id):
+        self.structure = structure
+        self.helix_id = helix_id
+
+    def __str__(self):
+        try:
+            (start_frag, end_frag) = self.get_start_end_fragments()
+        except KeyError:
+            return "AlphaHelix(id=%s,start=*,end=*)" % (self.helix_id)
+        return "AlphaHelix(id=%s,start=%s,end=%s)" % (
+            self.helix_id, start_frag, end_frag)
+
+    def get_start_end_fragments(self):
+        """Return the tuple of the fragment at the start of the
+        alpha helix, and the fragment at the end.  Raises KeyError
+        if either fragment cannot be found.
+        """
+        struct_conf = self.structure.cifdb["struct_conf"]
+        row = struct_conf.get_row(("id", self.helix_id))
+        
+        chain_id1 = row["beg_label_asym_id"]
+        frag_id1 = row["beg_label_seq_id"]
+        chain_id2 = row["end_label_asym_id"]
+        frag_id2 = row["end_label_seq_id"]
+        
+        frag1 = self.structure[chain_id1][frag_id1]
+        frag2 = self.structure[chain_id2][frag_id2]
+
+        return (frag1, frag2)
+
+    def iter_fragments(self):
+        """Iterate the Fragment objects contained in the AlphaHelix.
+        """
+        try:
+            (start_frag, end_frag) = self.get_start_end_fragments()
+        except KeyError:
+            return
+        frag_iter = self.structure.iter_fragments()
+        for frag in frag_iter:
+            if frag == start_frag:
+                yield frag
+                break
+        for frag in frag_iter:
+            yield frag
+            if frag == end_frag:
+                break
+
+    def iter_atoms(self):
+        """Iterate all Atoms in the AlphaHelix.
+        """
+        for frag in self.iter_fragments():
+            for atm in frag.iter_atoms():
+                yield atm
+
+
+class BetaSheet:
+    """List of Fragments within a structure which are part of a beta
+    sheet.
+    """
+    def __init__(self, structure, sheet_id):
+        self.structure = structure
+        self.sheet_id = sheet_id
+
+    def __str__(self):
+        return "BetaSheet(id=%s)" % (self.sheet_id)
+
+
+class Site:
+    """List of Fragments within a structure involved in a SITE description.
+    """
+    def __init__(self, structure, site_id):
+        self.structure = structure
+        self.site_id = site_id
+
+    def __str__(self):
+        return "Site(id=%s)" % (self.site_id)
+
+    def iter_fragments(self):
+        struct_site_gen = self.structure.cifdb["struct_site_gen"]
+        for row in struct_site_gen.iter_rows(("site_id", self.site_id)):
+            try:
+                chain_id = row.mget("_asym_id", "label_asym_id")
+                frag_id = row.mget("auth_seq_id","label_seq_id")
+                yield self.structure[chain_id][frag_id]
+            except KeyError:
+                continue
+
+
 class FragmentList(list):
     """Provides the functionallity of a Python list class for containing
     Fragment instances.
@@ -1414,28 +1537,6 @@ class FragmentList(list):
     def insert(self, x, item):
         assert isinstance(item, Fragment)
         list.insert(self, x, item)
-
-
-class Site(FragmentList):
-    """List of Fragments within a structure involved in a SITE description.
-    """
-    def __init__(self, name):
-        FragmentList.__init__(self)
-        self.name = name
-
-
-class AlphaHelix(FragmentList):
-    """List of Fragments within a structure which are part of a alpha
-    helix.
-    """
-    pass
-
-
-class BetaSheet(FragmentList):
-    """List of Fragments within a structure which are part of a beta
-    sheet.
-    """
-    pass
 
 
 class AtomList(list):

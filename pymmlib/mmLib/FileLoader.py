@@ -59,20 +59,20 @@ def LoadStructure(fil,
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))
 
 
-def SaveStructure(fil, struct, format = ""):
+def SaveStructure(fil, structure, format = ""):
     """Saves a Structure object into a supported file type.
     """
     format = decode_format(fil, format)
 
     if format == "PDB":
         pdb_file = PDBFile()
-        PDBFileBuilder(struct, pdb_file)
+        PDBFileBuilder(structure, pdb_file)
         pdb_file.save_file(fil)
         return
 
     elif format == "CIF":
         cif_file = mmCIFFile()
-        mmCIFFileBuilder(struct, cif_file)
+        mmCIFFileBuilder(structure, cif_file)
         cif_file.save_file(fil)
         return
 

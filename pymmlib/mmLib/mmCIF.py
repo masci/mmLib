@@ -35,6 +35,19 @@ class mmCIFRow(dict):
     def __eq__(self, other):
         return id(self) == id(other)
 
+    def __deepcopy__(self, memo):
+        return mmCIFRow(self)
+
+    def mget(self, *keys):
+        """Return the fist value found for the given keys in the argument
+        list.
+        """
+        for key in keys:
+            try:
+                return self[key]
+            except KeyError:
+                continue
+
 
 class mmCIFTable(list):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
@@ -44,6 +57,12 @@ class mmCIFTable(list):
         list.__init__(self)
         self.name = name
         self.columns = columns or []
+
+    def __deepcopy__(self, memo):
+        table = mmCIFTable(self.name, self.columns[:])
+        for row in self:
+            table.append(copy.deepcopy(row, memo))
+        return table
 
     def __eq__(self, other):
         return id(self) == id(other)
@@ -71,6 +90,10 @@ class mmCIFTable(list):
         row.table = self
         list.__setitem__(self, i, row)
 
+    def __delitem__(self, i):
+        assert isinstance(row, mmCIFRow)
+        self.remove(self[i])
+
     def append(self, row):
         assert isinstance(row, mmCIFRow)
         row.table = self
@@ -81,6 +104,11 @@ class mmCIFTable(list):
         row.table = self
         list.insert(self, i, row)
 
+    def remove(self, row):
+        assert isinstance(row, mmCIFRow)
+        del row.table
+        list.remove(self, row)
+
     def autoset_columns(self):
         """Iterates through all rows in self, and forms a list of all
         unique column names, then sets the self.columns to that list.
@@ -88,9 +116,36 @@ class mmCIFTable(list):
         self.columns = []
         for row in self:
             for col in row.keys():
-                if key not in columns:
-                    self.columns.append(key)
+                if col not in self.columns:
+                    self.columns.append(col)
         self.columns.sort()
+
+    def get_row(self, *args):
+        """Returns the first row found matching the argument list.
+        """
+        def chk(row):
+            for (key, val) in args:
+                if row[key] != val:
+                    return False
+            return True
+        
+        for row in self:
+            if chk(row):
+                return row
+        return None
+
+    def iter_rows(self, *args):
+        """Iterate over all rows matching the argument list.
+        """
+        def chk(row):
+            for (key, val) in args:
+                if row[key] != val:
+                    return False
+            return True
+
+        for row in self:
+            if chk(row):
+                yield row
 
     def select_row_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
@@ -136,6 +191,12 @@ class mmCIFData(list):
         list.__init__(self)
         self.name = name
 
+    def __deepcopy__(self, memo):
+        data = mmCIFData(self.name)
+        for table in self:
+            data.append(copy.deepcopy(table, memo))
+        return data
+
     def __eq__(self, other):
         return id(self) == id(other)
     
@@ -152,22 +213,35 @@ class mmCIFData(list):
         raise TypeError, x
 
     def __delitem__(self, x):
-        list.__delitem__(self, self[x])
-
-    def __setitem__(self, i, table):
-        assert isinstance(table, mmCIFTable)
-        table.data = self
-        list.__setitem__(self, i, table)
+        """Remove a mmCIFTable by index or table name.
+        """
+        self.remove(self[x])
 
     def append(self, table):
+        """Append a mmCIFTable.  This will trigger the removal of any
+        table with the same name.
+        """
         assert isinstance(table, mmCIFTable)
+        try:
+            del self[table.name]
+        except KeyError:
+            pass
         table.data = self
         list.append(self, table)
 
     def insert(self, i, table):
         assert isinstance(table, mmCIFTable)
+        try:
+            del self[table.name]
+        except KeyError:
+            pass
         table.data = self
         list.insert(self, i, table)
+
+    def remove(self, table):
+        assert isinstance(table, mmCIFTable)
+        del table.data
+        list.remove(self, table)
 
     def has_key(self, x):
         try:
@@ -211,7 +285,18 @@ class mmCIFSave(mmCIFData):
 class mmCIFFile(list):
     """Class representing a mmCIF files.
     """
+    def __deepcopy__(self, memo):
+        file = mmCIFFile()
+        for data in self:
+            file.append(copy.deepcopy(data, memo))
+        return file
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
     def __getitem__(self, x):
+        """Retrieve a mmCIFData object by index or name.
+        """
         if type(x) == IntType:
             return list.__getitem__(self, x)
 
@@ -222,25 +307,32 @@ class mmCIFFile(list):
             raise KeyError, x
 
         raise TypeError, x
-
-    def __eq__(self, other):
-        return id(self) == id(other)
     
     def __delitem__(self, x):
-        list.remove(self, self[x])
+        """Remove a mmCIFData by index or data name.  Raises IndexError
+        or KeyError if the mmCIFData object is not found, the error raised
+        depends on the argument type.
+        """
+        self.remove(self[x])
 
-    def __setitem__(self, i, cdata):
-        assert isinstance(table, mmCIFData)
-        cdata.file = self
-        list.__setitem__(self, i, cdata)
-        
     def append(self, cdata):
+        """Append a mmCIFData object.  This will trigger the removal of any
+        mmCIFData object in the file with the same name.
+        """
         assert isinstance(cdata, mmCIFData)
+        try:
+            del self[cdata.name]
+        except KeyError:
+            pass
         cdata.file = self
         list.append(self, cdata)
 
     def insert(self, i, cdata):
         assert isinstance(cdata, mmCIFData)
+        try:
+            del self[cdata.name]
+        except KeyError:
+            pass
         cdata.file = self
         list.insert(self, i, cdata)
 
@@ -801,6 +893,10 @@ class mmCIFFileBuilder:
         "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd", "pdbx_auth_seq_id",
         "pdbx_auth_comp_id", "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
 
+    copy_cifdb_tables = [
+        "entry","audit_author","struct","struct_keywords","struct_conf",
+        "struct_siite_gen"]
+
     def __init__(self, struct, cif_file):
         self.struct = struct
         self.cif_data = mmCIFData("XXX")
@@ -808,9 +904,17 @@ class mmCIFFileBuilder:
 
         ## maps fragment -> entity_id
         self.entity_id_map = {}
-        
-        self.add_entry()
-        self.add_audit_author()
+
+        ## these tables can be copied directly from the structure's
+        ## cif database
+        for tbl in self.copy_cifdb_tables:
+            try:
+                cpy = copy.deepcopy(self.struct.cifdb[tbl])
+            except KeyError:
+                continue
+            self.cif_data.append(cpy)
+
+        ## these tables need to be formed from the atom structure
         self.add_entity()
         self.add_cell()
         self.add_symmetry()
@@ -825,24 +929,6 @@ class mmCIFFileBuilder:
         table = mmCIFTable(name, columns[:])
         self.cif_data.append(table)
         return table
-
-    def add_entry(self):
-        entry = self.get_table("entry", self.entry_columns)
-        row = mmCIFRow()
-        entry.append(row)
-        row["id"] = self.struct.exp_data["id"]
-
-    def add_audit_author(self):
-        if not self.struct.exp_data.has_key("author_list"):
-            return
-        
-        audit_author = self.get_table("audit_author",
-                                      self.audit_author_columns)
-
-        for auth in self.struct.exp_data["author_list"]:
-            aurow = mmCIFRow()
-            audit_author.append(aurow)
-            aurow["name"] = auth
 
     def add_entity(self):
         ## maps fragment -> entity_id
@@ -948,66 +1034,69 @@ class mmCIFFileBuilder:
         row["space_group_name_H-M"] = space_group.pdb_name
         row["Int_Tables_number"] = space_group.number
 
-
     def add_atom_site(self):
-        atom_site = self.get_table("atom_site", self.atom_site_columns)
-        
-        for atm in self.struct.iter_atoms():
-            asrow = mmCIFRow()
-            atom_site.append(asrow)
+        atom_site = self.get_table("atom_site", self.atom_site_columns)        
 
-            if atm.get_fragment().is_standard_residue():
-                asrow["group_PDB"] = "ATOM"
-            else:
-                asrow["group_PDB"] = "HETATM"
+        for atm1 in self.struct.iter_atoms():
+            for atm2 in atm1.alt_list:
+                asrow = mmCIFRow()
+                atom_site.append(asrow)
+                self.add_atom_site_row(asrow, atm2)
 
-            asrow["id"] = atom_site.index(asrow) + 1
-            asrow["label_entity_id"] = self.entity_id_map[atm.get_fragment()]
-            asrow["auth_atom_id"] = atm.name
-            asrow["auth_comp_id"] = atm.res_name
-            asrow["auth_seq_id"] = atm.fragment_id
-            asrow["auth_asym_id"] = atm.chain_id
-            asrow["type_symbol"] = atm.element
-            asrow["Cartn_x"] = atm.position[0]
-            asrow["Cartn_y"] = atm.position[1]
-            asrow["Cartn_z"] = atm.position[2]
-            asrow["occupancy"] = atm.occupancy
-            asrow["B_iso_or_equiv"] = atm.temp_factor
+    def add_atom_site_row(self, asrow, atm):
+        if atm.get_fragment().is_standard_residue():
+            asrow["group_PDB"] = "ATOM"
+        else:
+            asrow["group_PDB"] = "HETATM"
 
-            if atm.sig_position:
-                asrow["Cartn_x_esd"] = atm.sig_position[0]
-                asrow["Cartn_y_esd"] = atm.sig_position[1]
-                asrow["Cartn_z_esd"] = atm.sig_position[2]
-                asrow["occupancy_esd"] = atm.sig_occupancy
-                asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
+        asrow["id"] = atom_site.index(asrow) + 1
+        asrow["label_entity_id"] = self.entity_id_map[atm.get_fragment()]
+        asrow["auth_atom_id"] = atm.name
+        asrow["auth_comp_id"] = atm.res_name
+        asrow["auth_seq_id"] = atm.fragment_id
+        asrow["auth_asym_id"] = atm.chain_id
+        asrow["type_symbol"] = atm.element
+        asrow["Cartn_x"] = atm.position[0]
+        asrow["Cartn_y"] = atm.position[1]
+        asrow["Cartn_z"] = atm.position[2]
+        asrow["occupancy"] = atm.occupancy
+        asrow["B_iso_or_equiv"] = atm.temp_factor
 
-            if atm.U:
-                aniso = self.get_table("atom_site_anisotrop",
-                                       self.atom_site_anisotrop_columns)
+        if atm.sig_position:
+            asrow["Cartn_x_esd"] = atm.sig_position[0]
+            asrow["Cartn_y_esd"] = atm.sig_position[1]
+            asrow["Cartn_z_esd"] = atm.sig_position[2]
+            asrow["occupancy_esd"] = atm.sig_occupancy
+            asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
 
-                anrow = mmCIFRow()
-                aniso.append(anrow)
-                anrow["id"] = asrow["id"]
-                anrow["type_symbol"] = asrow["type_symbol"]
-                anrow["label_entity_id"] = asrow["label_entity_id"]
-                anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
-                anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
-                anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
-                anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
-                anrow["U[1][1]"] = atm.U[0,0]
-                anrow["U[2][2]"] = atm.U[1,1]
-                anrow["U[3][3]"] = atm.U[2,2]
-                anrow["U[1][2]"] = atm.U[0,1]
-                anrow["U[1][3]"] = atm.U[0,2]
-                anrow["U[2][3]"] = atm.U[1,2]
+        if atm.U:
+            aniso = self.get_table("atom_site_anisotrop",
+                                   self.atom_site_anisotrop_columns)
 
-                if atm.sig_U:
-                    anrow["U[1][1]_esd"] = atm.sig_U[0,0]
-                    anrow["U[2][2]_esd"] = atm.sig_U[1,1]
-                    anrow["U[3][3]_esd"] = atm.sig_U[2,2]
-                    anrow["U[1][2]_esd"] = atm.sig_U[0,1]
-                    anrow["U[1][3]_esd"] = atm.sig_U[0,2]
-                    anrow["U[2][3]_esd"] = atm.sig_U[1,2]
+            anrow = mmCIFRow()
+            aniso.append(anrow)
+            anrow["id"] = asrow["id"]
+            anrow["type_symbol"] = asrow["type_symbol"]
+            anrow["label_entity_id"] = asrow["label_entity_id"]
+            anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
+            anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
+            anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
+            anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
+            anrow["U[1][1]"] = atm.U[0,0]
+            anrow["U[2][2]"] = atm.U[1,1]
+            anrow["U[3][3]"] = atm.U[2,2]
+            anrow["U[1][2]"] = atm.U[0,1]
+            anrow["U[1][3]"] = atm.U[0,2]
+            anrow["U[2][3]"] = atm.U[1,2]
+
+            if atm.sig_U:
+                anrow["U[1][1]_esd"] = atm.sig_U[0,0]
+                anrow["U[2][2]_esd"] = atm.sig_U[1,1]
+                anrow["U[3][3]_esd"] = atm.sig_U[2,2]
+                anrow["U[1][2]_esd"] = atm.sig_U[0,1]
+                anrow["U[1][3]_esd"] = atm.sig_U[0,2]
+                anrow["U[2][3]_esd"] = atm.sig_U[1,2]
+
 
 
 ### <testing>
