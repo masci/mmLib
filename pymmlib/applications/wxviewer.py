@@ -99,12 +99,16 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
         y = 0.0
         z = 0.0
 
+        rotx = 0.0
+        roty = 0.0
+        rotz = 0.0
+
         evx,   evy    = event.GetPosition()
         width, height = self.GetClientSize()
             
         if event.LeftIsDown():
-            self.glv.roty += 360.0 * ((evx - self.beginx) / float(width)) 
-            self.glv.rotx += 360.0 * ((evy - self.beginy) / float(height))
+            roty = 360.0 * ((evx - self.beginx) / float(width)) 
+            rotx += 360.0 * ((evy - self.beginy) / float(height))
 
         elif event.MiddleIsDown():
             z = 50.0 * ((evy - self.beginy) / float(height))
@@ -113,6 +117,7 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
             x = 50.0 * ( (evx - self.beginx) / float(height))
             y = 50.0 * (-(evy - self.beginy) / float(height))
 
+        self.glv.glv_rotate(rotx, roty, rotz)
         self.glv.glv_translate(x, y, z)
         self.beginx, self.beginy = evx, evy
 
@@ -122,12 +127,17 @@ class wxGLViewer(wx.glcanvas.GLCanvas):
         self.Refresh(False)
 
 
-class AppFrame(wx.Frame):
+class ViewerFrame(wx.Frame):
     """Frame class.
     """
-    def __init__(self, parent=None, id=-1, title='Title', pos=wx.DefaultPosition, size=(400, 200)):
-        """Create a Frame instance.
-        """
+    def __init__(
+        self,
+        parent  = None,
+        id      = -1,
+        title   = 'Title',
+        pos     = wx.DefaultPosition,
+        size    = (400, 200)):
+
         wx.Frame.__init__(self, parent, id, title, pos, size)
 
         ## <menu bar>
@@ -142,7 +152,6 @@ class AppFrame(wx.Frame):
         ## </menu bar>
         
         self.glviewer = wxGLViewer(self)
-        self.load_structure(sys.argv[1])
 
     def evt_file_quit(self, event):
         self.Close()
@@ -169,20 +178,24 @@ class AppFrame(wx.Frame):
         gl_struct = self.glviewer.glv.glv_add_struct(struct)
 
 
-class App(wx.App):
+class ViewerApp(wx.App):
     """Application class.
     """
     def OnInit(self):
-        self.frame = AppFrame()
+        self.frame = ViewerFrame()
         self.frame.Show()
         self.SetTopWindow(self.frame)
         return True
 
-def main():
-    app = App()
+def main(files):
+    app = ViewerApp()
+
+    for file in files:
+        app.frame.load_structure(file)
+
     app.MainLoop()
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
 
 
