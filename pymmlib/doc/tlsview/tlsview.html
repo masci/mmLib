@@ -1,0 +1,586 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+ "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+ <title>TLSView Manual</title>
+ <style type="text/css" media=screen>
+ <!-- 
+ BODY { background-color: white }
+ -->
+ </style> 
+</head>
+
+<body>
+
+<h1>TLSView Manual</h1>
+<h3>A Molecular Viewer for TLS Rigid Body Motion</h3>
+
+<center>
+<table width="75%">
+ <tr><th><img src="intro.png"></th></tr>
+ <tr><td>
+   <b>Figure 1</b>: TLSView visualization of protein
+   backbone atoms using thermal ellipsoids contoured
+   at the 50% isoprobability level.  Atoms from
+   several independent TLS groups are shown in different
+   colors.  This visualization uses two ellipsoids per
+   atom.  One opaque ellipsoid is derived from the reduced
+   translation tensor 
+   <var>T<sup>r</sup></var>, the minimum translational 
+   component of the TLS predicted anisotropic ADP for the
+   atom.  The larger transparent ellipsoid is derived
+   from the full TLS predicted ADP for the atom, 
+   <var>U<sup>TLS</sup></var>, which includes the additional
+   displacement from three TLS screw motions.
+ </td></tr>
+</table>
+</center>
+
+<h3>Introduction</h3>
+<p>
+The TLSView molecular viewer specializes in the visualization of TLS rigid body displacements of macromolecular structures.  It uses OpenGL for interactive graphics rendering, and supports most of the visualization found it other programs.  It also introduces a new screw-displacement traced surface, and computer animation of conventional visualizations according to rigid body displacement parameters.  The TLS model is a more complex than a simple Euclidean rigid body displacement, and a cursory understanding of the theory behind the TLS model is required to understand the visualizations available in TLSView.  For those in a hurry, it may be enough to know that the standard interpretation of the displacements parameterized in a TLS model can be reduced to six Euclidean displacements: 3 orthogonal translational displacements, and three screw displacements about non-intersecting orthogonal axes.  This is the canonical interpretation of TLS displacement, and it is used by TLSView to animate the displacement of the atoms in a TLS group.
+</p>
+
+<hr>
+<h3>Translation, Libration, Skew (TLS) Model Overview</h3>
+
+<p>
+Here are links to well-written introductions of Chasles' Theorem, tensors, and the multivariate Gaussian distribution.  They are subjects used in the formulation of the TLS model.
+</p>
+
+<ul>
+ <li><a href="http://www.seas.upenn.edu/~meam520/notes02/EulerChasles4.pdf">The Theorems of Euler and Chasles (PDF Document)</a></li>
+
+ <li><a href="http://www.public.iastate.edu/~jba/tensors.pdf">Tensors in a Nutshell (PDF Document)</a></li>
+
+ <li><a href="http://www.inf.ed.ac.uk/teaching/courses/pmr/slides/cts4up.pdf">The Multivariate Gaussian Distribution (PDF Document)</a></li>
+</ul>
+
+<p>
+In Euclidean space, a rigid body undergoing displacement is fully described by a 3x3 rotation matrix <var>R</var> and a 3x1 translation vector <var>t</var>.  The displacement can be simplified further and described by a simple screw displacement(see Chasles' Theorem): a rotation about a 3x1 vector up to given rotational magnitude while being translated along the vector by a magnitude proportional to the rotation(screw pitch).  Keep in mind the screw displacement takes a rigid body from one orientation to another, but the literal screw displacement path may not be the path followed by rigid body to get to the second orientation.  Even with this caveat the screw displacement is a useful concept when visualizing the rigid body displacement of a structure in a macromolecular viewer, because the magnitude of the displacements are small compared to the size of the rigid body.
+</p>
+
+<p>
+Individual anisotropic ADPs give the mean square deviation(MSD) of a atom from its mean position as measured over time and crystal lattice position during a xray experiment.  The TLS rigid body model predicts the anisotropic ADPs for atoms based on their vector position relative the the TLS tensor origin.  The TLS model does this assuming the atoms are all points on a rigid body undergoing displacement.  This is not a Euclidean rigid body displacement, because ADPs are the MSD magnitudes of the atom's position within a Gaussian probablility distribution. The re-formulation of the Euclidean rigid body displacement to predict anisotropic ADPs results in a more complex description of rigid body motion requiring 20 unique parameters arranged into three 3x3 tensors: <var>T</var>, <var>L</var>, and <var>S</var>.  The <var>T</var> tensor, or translation tensor, is a symmetric 3x3 tensor(six unique parameters) with elements given in units of Angstroms<sup class=exponent>2</sup> just like the individual atomic anisotropic displacement tensor <var>U</var>.  The <var>T</var> tensor is the anisotropic translational displacement common to all atoms in the rigid body group.  The <var>L</var>, or libration(rotation) tensor, is also a symmetric 3x3 tensor with elements in units of Radians<sup class=exponent>2</sup>, but commonly converted to Degrees<sup class=exponent>2</sup> when reported.  The libration tensor describes rotational component of the rigid body displacement.  The <var>T</var> and <var>L</var> tensors can also be thought of as Gaussian variance-covariance tensors, which makes intuitive sense since the anisotropic ADP tensors <var>U<sup>TLS</sup></var> the TLS model predicts are also Gaussian variance-covariance tensors.  The <var>S</var> tensor is not usually symmetric, and isn't as easy to interpret directly like the <var>L</var> and <var>T</var> tensors.  It exists in the TLS model to account for a rotation-translation correlation which occurs when a rigid body undergoes rotation about three orthogonal rotation axes which do not intersect at a common point.
+</p>
+
+<p>
+Given the TLS tensors and their origin, a TLS predicted anisotropic ADP may be calculated for any atom using its position relative to the TLS origin by the set of linear equations given in <b>Table 1</b>.
+</p>
+
+<table width="100%" border=1>
+ <caption>
+  <b>Table 1</b>:
+  Linear Equations Relating TLS Tensors to the Atomic
+  Anisotropic ADP tensor <var>U<sup>TLS</sup></var>
+ </caption>
+
+ <tr>
+  <th><var>U<sup>TLS</sup><sub>ij</sub></var></th>
+  <th>Equation</th>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>11</sub></var></td>
+  <td>
+   <var>L<sub>22</sub></var><var>z<sup>2</sup></var>+
+   <var>L<sub>33</sub></var><var>y<sup>2</sup></var>-
+   2<var>L<sub>23</sub></var><var>yz</var>+
+   2<var>S<sub>21</sub></var><var>z</var>-
+   2<var>S<sub>31</sub></var><var>y</var>+
+   <var>t<sub>11</sub></var>
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>22</sub></var></td>
+  <td>
+   <var>L<sub>11</sub></var><var>z<sup>2</sup></var>+
+   <var>L<sub>33</sub></var><var>x<sup>2</sup></var>-
+   2<var>L<sub>31</sub></var><var>xz</var>-
+   2<var>S<sub>12</sub></var><var>z</var>+
+   2<var>S<sub>32</sub></var><var>x</var>+
+   <var>t<sub>22</sub></var>
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>33</sub></var></td>
+  <td>
+   <var>L<sub>11</sub></var><var>y<sup>2</sup></var>+
+   <var>L<sub>22</sub></var><var>x<sup>2</sup></var>-
+   2<var>L<sub>12</sub></var><var>xy</var>-
+   2<var>S<sub>23</sub></var><var>x</var>+
+   2<var>S<sub>13</sub></var><var>y</var>+
+   <var>t<sub>33</sub></var>
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>12</sub></var></td>
+  <td>
+   -<var>L<sub>33</sub></var><var>xy</sup></var>+
+   <var>L<sub>23</sub></var><var>yxz</var>-
+   <var>L<sub>13</sub></var><var>yz</var>-
+   <var>L<sub>12</sub></var><var>z<sup>2</sup></var>-
+ 
+   <var>S<sub>11</sub></var><var>z</var>+
+   <var>S<sub>22</sub></var><var>z</var>+
+   <var>S<sub>31</sub></var><var>x</var>-
+   <var>S<sub>32</sub></var><var>y</var>+ 
+
+  <var>t<sub>12</sub></var>
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>13</sub></var></td>
+  <td>
+   -<var>L<sub>22</sub></var><var>xz</sup></var>+
+   <var>L<sub>23</sub></var><var>yx</var>-
+   <var>L<sub>13</sub></var><var>y<sup>2</sup></var>+
+   <var>L<sub>12</sub></var><var>yz</var>+
+ 
+   <var>S<sub>11</sub></var><var>y</var>-
+   <var>S<sub>33</sub></var><var>y</var>+
+   <var>S<sub>23</sub></var><var>z</var>-
+   <var>S<sub>21</sub></var><var>x</var>+
+
+   <var>t<sub>13</sub></var>
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>23</sub></var></td>
+  <td>
+   -<var>L<sub>11</sub></var><var>yz</var>-
+   <var>L<sub>23</sub></var><var>x<sup>2</sup></var>+
+   <var>L<sub>13</sub></var><var>xy</var>+
+   <var>L<sub>12</sub></var><var>xz</var>-
+ 
+   <var>S<sub>22</sub></var><var>x</var>+
+   <var>S<sub>33</sub></var><var>x</var>+
+   <var>S<sub>12</sub></var><var>y</var>-
+   <var>S<sub>13</sub></var><var>z</var>+
+
+   <var>t<sub>23</sub></var>
+  </td>
+ </tr>
+</table>
+
+<p>
+These equations can also be used to fit TLS tensors to the experimental individual ADPs of a group of atoms in a crystal structure.  This requires at least 6 atoms with anisotropic ADPs, or 21 atoms with isotropic ADPs.  Isotropic ADPs must be converted from their typical <var>B</var> values to equivalent <var>U<sup>ISO</sup></var> tensors.  Fitting a group of residues in a macromolecule often involves enough atoms so that the TLS parameters are overdetermined.  When this is the case, the TLS calculated <var>U<sup>TLS</sup></var> tensors can be compared with the experimental <var>U</var> tensors to quantify how well the model fit.  TLSView reports two ADP comparison functions: <b>R</b>, and <b>dP<sup>2</sup></b>.  
+</p>
+
+<p>
+<var>U</var>, <var>T</var>, and <var>L</var> are all trivariate Gaussian variance-covariance tensors.  Since they are symmetric, each has six independent parameters.  Three parameters are the princpal MSDs along orthogonal axes, and three are the rotational orientation of the principal axes with respect to the current coordinate system.  When a tensor is rotated to its principal axes, the off-diagonal terms become zero and the principal axis MSDs can be read from the diagonal elements.  The orientation of the principal axes can be found by calculating the tensor eigenvectors.  Most programming routines for calculating eigenvectors return the normalized eigenvalue-eigenvector pairs.  The eigenvalue is the independent MSD in the direction of the eigenvector.  <b>Table 2</b> gives a overview of some useful properties common to all trivariate Gaussian variance-covariance tensors.
+</p>
+
+<table width="100%" border=1>
+ <caption>
+  <b>Table 2</b>: Properties of Trivariate Gaussian Tensor(3x3 Matrix) <var>S</var>
+ </caption>
+
+ <tr>
+  <th>Calculation</th>
+  <th>Description</th>
+ <tr>
+
+ <tr>
+  <td>
+   <var>s<sub>11</sub></var>+<var>s<sub>22</sub></var>+<var>s<sub>33</sub></var>
+  </td>
+  <td>Trace of <var>S</var>.  The trace is always equal to the sum of three principal MSDs, and is invariant under rotation.</td>
+ </tr>
+
+ <tr>
+  <td>
+   1/3*(<var>s<sub>11</sub></var>+<var>s<sub>22</sub></var>+<var>s<sub>33</sub></var>)
+  </td>
+  <td>The isotropic approximation of <var>S</var>.</td>
+ </tr>
+
+ <tr>
+  <td><b>eigenvalues(</b><var>S</var><b>)</b></td>
+  <td>The MSD magnitues of the principal axes of <var>S</var>.</td>
+ </tr>
+
+ <tr>
+  <td><b>eigenvectors(</b><var>S</var><b>)</b></td>
+  <td>The principal axes of <var>S</var>.</td>
+ </tr>
+
+ <tr>
+  <td>
+   <var>n<sup>t</sup>Sn</var><br>
+   <b>sqrt(</b><var>n<sup>t</sup>Sn</var><b>)</b>
+  </td>
+  <td>The MSD/RMSD(root mean square deviation) magnitude in the dirction of unit vector <var>n</var>.  The anisotropic ADP visualization often refered to as "peanuts" is generated by the RMSD surface of a atom's <var>U</var> tensor.</td>
+ </tr>
+
+ <tr>
+  <td><var>C</var>*<b>sqrt(</b><var>n<sup>t</sup>S<sup>-1</sup>n</var><b>)</b></td>
+  <td>The distance to the isoprobability ellipsoid surface of <var>S</var> in the direction of unit vector <var>n</var>. The critical value <var>C</var> determines the amount of probability enclosed by the ellipsoid.  The value of <var>C</var> is obtained by numerical integration of the trivariate Gaussian, but is constant for all trivariate Gaussians, so the values of <var>C</var> are often just looked up in a table.
+ </tr>
+</table>
+
+<center>
+<table width="75%">
+ <tr><th><img src="2drot.png"></th></tr>
+ <tr><td>
+   <b>Figure 2</b>: Two equivalent displacements of a rigid body.  (A) The rigid body is displaced by a translation followed by by a rotation about its centroid.  (B) The same displacement reduced to a single rotation about a unique axis.
+ </td></tr>
+</table>
+</center>
+
+<p>
+The reduction of a given TLS model to three translational displacements and three screw displacements is accomplished by a series of tensor transformations.  The parameters from the <var>L</var> and <var>S</var> tensor are combined to calculate the screw displacements, and the <var>T</var> tensor is reduced to a new translation tensor <var>T<sup>r</sup></var> which is a absolute minimum translational component for the TLS displacement.  Put another way, this reduction maximizes the displacement contribution from the screw axes while minimizing the displacment contribution from pure translation.  <b>Figure 2</b> demonstrates this type of reduction in two dimentions, where it is possible to completely eliminate the translational displacement.  This is accomplished by shifting the object rotation origin to a unique point where the rotation alone will complete the displacement.  Attempting this reduction on a displaced object in three dimentions leads to the result of Chastles' thereom, because a rotation about a axis displaces a object in the plane perpendicular to the rotation axis, and the remaining displacement is a translation perpendicular to the plane(parallel to the rotation axis).  For a TLS displacement, there is a unique tensor origin which minimized the trace of <var>T</var>, and also makes the <var>S</var> tensor symmetric.  This origin is called the <b>center of reaction</b>, <var>cor</var>.  The center of reaction is independent of the original tensor origin of calculation which is usually arbitrary.  Once the TLS tensor origin is shifted to the <var>cor</var>, the <var>L<sup>cor</sup></var> and <var>S<sup>cor</sup></var>
+tensors can be used to calculate three perpendicular non-intersecting screw displacements which reduces the trace of <var>T<sup>cor</sup></var> further, resulting in a new  reduced translation tensor <var>T<sup>r</sup></var>.  <b>Table 3</b> gives a overview of all the the parameters involved in this reduction.
+
+<table width="100%" border=1>
+ <caption>
+  <b>Table 3</b>: TLS Parameter Summary
+ </caption> 
+
+ <tr>
+  <th>Symbol</th>
+  <th>Parameter</th>
+  <th>Type</th>
+  <th>Units</td>
+  <th>Description</th>
+ </tr>
+
+ <tr>
+  <td><var>oc<sub>i</sub></var></td>
+  <td>TLS Origin of Calculations</td>
+  <td>3x1 vector/point</td>
+  <td><acronym title="Angstroms">A</acronym></td>
+  <td>
+   The arbitrary origin of calculations, meaning the origin
+   of the <var>T<sub>ij</sub></var>, <var>L<sub>ij</sub></var>,
+   and <var>S<sub>ij</sub></var> tensors.  The positions of the
+   atoms of a TLS group are calculated relative to this origin.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sub>ij</sub></var></td>
+  <td>Anisotropic ADP Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
+  <td>
+   The anisotropic form of a individual atomic displacement
+   parameter(ADP).
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>U<sup>TLS</sup><sub>ij</sub></var></td>
+  <td>TLS Calculated Anisotropic ADP Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
+  <td>
+   The anisotropic ADP calculated from a TLS model.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>T<sub>ij</sub></var></td>
+  <td>Translation Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
+  <td>
+   The translation tensor of the TLS model.
+   This tensor describes the anisotropic translational
+   component of the rigid body displacement
+   the same way the anisotropic atomic displacement
+   parameters in <var>U<sub>ij</sub></var> describes 
+   the translation displacement for a single atom.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>L<sub>ij</sub></var></td>
+  <td>Libration (Rotation) Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td>
+   <acronym title="Radians">RAD</acronym><sup class=exponent>2</sup> or
+   <acronym title="Degrees">DEG</acronym><sup class=exponent>2</sup>
+  </td>
+  <td>
+   The libration tensor of the TLS model.
+   This describes the rotational component of
+   the rigid body displacement.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>S<sub>ij</sub></var></td>
+  <td>Skew/Screw Tensor</td>
+  <td>3x3 non-symmetric tensor</td>
+  <td>
+   (<acronym title="Angstroms">A</acronym>*<acronym title="Radians">RAD</acronym>) or
+   (<acronym title="Angstroms">A</acronym>*<acronym title="Degrees">DEG</acronym>)
+  </td>
+  <td>
+   The skew tensor of the TLS model.  This describes
+   rotation-translation correlation which happens when
+   the rigid body is rotated about three orthogonal 
+   rotation axes which do not intersect at a single point.
+   The skew tensor is generally non-symmetric, but through
+   a transformation of the TLS model origin a unique origin
+   may be found where it becomes symmetric.  This origin is called
+   the <b>center of reaction</b>.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>cor<sub>i</sub></var></td>
+  <td>Center of Reaction</td>
+  <td>3x1 vector/point</td>
+  <td><acronym title="Angstroms">A</acronym></td>
+  <td>
+   The center of reaction is a special origin which can be calculated using the <var>T<sub>ij</sub></var> <var>L<sub>ij</sub></var>, <var>S<sub>ij</sub></var>, and <var>oc<sub>i</sub></var> parameters of a existing TLS model.  The center of reaction is independent of the TLS model's origin of calculations, and once it has been calculated, the TLS tensors can be transformed to use the center of reaction as the origin of calculations for a new TLS model which predicts the same anisotropic ADPs as the TLS model it was derived from.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>T<sup>cor</sup><sub>ij</sub></var></td>
+  <td>Translation Tensor at the Center of Reaction</td>
+  <td>3x3 symmetric tensor</td>
+  <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
+  <td>
+   The translation tensor after the origin shift to the center of reaction.  The shift to the center of reaction minimizes the trace of the translation tensor.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>T<sup>r</sup><sub>ij</sub></var></td>
+  <td>Reduced Translation Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td><acronym title="Angstroms">A</acronym><sup class=exponent>2</sup></td>
+  <td>
+   This is what is left of the translation tensor after the displacements of the <var>L<sup>cor</sup></var> and <var>S<sup>cor</sup></var> have been reduced to three non-intersecting screw axes.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>L<sup>cor</sup><sub>ij</sub></var></td>
+  <td>Libration (Rotation) Tensor at the Center of Reaction</td>
+  <td>3x3 symmetric tensor</td>
+  <td>
+   <acronym title="Radians">RAD</acronym><sup class=exponent>2</sup> or
+   <acronym title="Degrees">DEG</acronym><sup class=exponent>2</sup>
+  </td>
+  <td>
+   The libration tensor after the shift to the center of reaction.
+   Shifting to a new origin has no effect on the components of
+   the libration tensor.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>S<sup>cor</sup><sub>ij</sub></var></td>
+  <td>Skew/Screw Tensor</td>
+  <td>3x3 symmetric tensor</td>
+  <td>
+   (<acronym title="Angstroms">A</acronym>*<acronym title="Radians">RAD</acronym>) or
+   (<acronym title="Angstroms">A</acronym>*<acronym title="Degrees">DEG</acronym>)
+  </td>
+  <td>
+   The skew tensor after the shift to the center of reaction.  The
+   center of reaction is the only possible origin which can make the
+   skew tensor symmetric, and is therefore a unique origin for a given
+   TLS model.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>rho<sup>l</sup><sub>i</sub></var></td>
+  <td>Position of Screw Axis <var>l</var> With Respect to <var>cor</var></td>
+  <td>3x1 vector</td>
+  <td><acronym title="Angstroms">A</acronym></td>
+  <td>
+   Three vectors <var>l={1,2,3}</var> corresponding 
+   to the three eigenvectors of <var>L<sup>cor</sup></var>.  
+   The eigenvectors
+   displaced from the <var>cor</var> by <var>rho</var>
+   are the position and orientation of the TLS 
+   canonical screw axes.
+  </td>
+ </tr>
+
+ <tr>
+  <td><var>pitch<sup>l</sup></var></td>
+  <td>Pitch of Screw Axis <var>l</var></td>
+  <td>Real Number</td>
+  <td>
+   (<acronym title="Angstroms">A</acronym>/<acronym title="Radians">RAD</acronym>) or
+   (<acronym title="Angstroms">A</acronym>/<acronym title="Degrees">DEG</acronym>)
+  </td>
+  <td>
+   Three screw pitches <var>l={1,2,3}</var> corresponding 
+   to the screw axes parallel to the three eigenvectors 
+   of <var>L<sup>cor</sup></var>.
+  </td>
+ </tr>
+</table>
+
+
+
+
+<hr>
+<h3>TLS Visualizations</h3>
+
+<center>
+<table width="75%">
+ <tr>
+  <th><img src="screwsurf.png" alt="Figure 1"></th>
+  <th><img src="screwanim.png" alt="Figure 1"></th>
+ </tr>
+ <tr><td colspan=2>
+   <b>Figure 3</b>: Two TLSView visualizations of a portion of a protein backbone with TLS screw displacement.  The thermal ellipsoid in the foreground of the visualization is generated from <var>T<sup>r</sup></var> and located at the center of reaction.  The axes are the TLS screw displacement axes. (A) Shows the three screw trajectory surfaces.  (B) Shows a still image captured during screw displacement animation.  The ball/stick visualization with normal atom colors is static, and three blue copies are undergoing screw displacement.
+ </td></tr>
+</table>
+</center>
+<p>
+One option for visualizing a TLS model is to use the TLS calculated anisotropic ADPs to draw thermal ellipsoids or thermal axes.  Programs such as Raster3D and Ortep already do this.  The CCP4 project also has a program called TLSANL which will produce Molscript output to draw the non-intersecting screw axes as solid rods with a length proportional to the MSD rotational magnitude.  TLSView implements both of these visualizations with additional detail, and introduces two new visualizations for the screw displacements: a surface tracing the trajectory of the TLS group atoms, and oscillating computer animation of any of the supported visualizations.  These visualizations are shown in <b>Figure 3</b>.  The rotation of each screw displacement is calculated from the MSD and the trivariate Gaussian critical value table.  For the screw displacement surface visualization, the surface is drawn up to a displacement magnitude containing a percentage of the total distribution.  TLSView has one centeral control for selecting the isosurface probability magnitude so that all ellipsoids, surfaces, and animations will be drawn in proper proportions.
+</p>
+
+<p>
+Atomic thermal ellipsoids may be drawn using a three different ADP tensors: <var>U</var> or <var>U<sup>iso</sup></var> from the structure file, <var>U<sup>tls</sup></var>, and <var>T<sup>r</sup></var>.  <b>Figure 1</b> shows a <var>U<sup>TLS</sup></var> and <var>T<sup>r</sup></var> ellipsoid for each atom.  The <var>U<sup>TLS</sup></var> ellipsoid has been set to be transparent, while 
+<var>T<sup>r</sup></var> is opaque.  If the TLS model was fit to the experimental ADPs in the structure file, it may be interesting to render those ellipsoids too for a visual comparison of how well the TLS ADPs match the experimental ones.
+</p>
+
+<hr>
+<h3>User Interface: Main Window</h3>
+
+<center>
+<table width="75%">
+ <tr><th><img src="viewer1.png" alt="Figure 1"></th></tr>
+ <tr><td>
+   <b>Figure 2</b>: TLSView main window with two tab
+   windows displaying structure 1VJU in Tab 1.  The
+   structure is split into 12 TLS groups, each with its
+   own color.  The <var>U<sup>TLS</sup></var> thermal 
+   ellipsoids of the protein backbone atoms are shown 
+   at 50% probability.
+ </td></tr>
+</table>
+</center>
+
+<p>
+The user interface of TLSView is programed using the GTK+ user interface toolkit, embedding a OpenGL rendering window using GtkGLExt widget.  It supports tabbed viewing, multiple windows, and loading multiple structures.  Commands are available through the menu bar as follows:
+</p>
+
+<table width="100%" border=1 align=left>
+ <caption>
+  <b>Table 4</b>: TLSView Main Window Menubar
+ </caption>
+
+ <tr>
+  <th>Menu/Submenu</th>
+  <th>Command Description</th>
+ </tr>
+ 
+ <tr>
+  <td>File/*</td>
+  <td> 
+   Commands to open/close new windows, tabls, and open structures files in PDB or mmCIF fomat.
+  </td>
+ </tr>
+
+ <tr>
+  <td>Visualization/Properties Browser...</td>
+  <td>
+   Opens the visualization properties browser dialog for the 
+   visualization <b>Tab</b> currently in view.
+  </td>
+ </tr>
+
+ <tr>
+  <td>TLS/TLS Analysis</td>
+  <td>
+   Opens the TLS Analysis dialog for the macromolecular structure selected in the <b>Current Selection</b> bar.
+  </td>
+ </tr>
+ 
+ <tr>
+  <td>Structures/*</td>
+  <td>
+   Change the cureently selected structure.
+  </td>
+ </tr>
+  
+ <tr>
+  <td>Help/About...</td>
+  <td>
+   Opens one mostly unhelpful dialog.
+  </td>
+ </tr>
+</table>
+
+<p>
+The controls for structure navigation mimic <a href="http://pymol.sourceforge.net/">PyMol</a> implementing a virtual trackball and clipping plane adjustment.  All three mouse buttons and the <b>SHIFT</b> key are used:
+</p>
+
+<table border=1 width="100%">
+ <caption>
+  <b>Table 4</b>: Mouse Navigation Controls for Virtual Trackball and Clipping Plane Adjustment
+ </caption>
+
+ <tr>
+  <th>Mouse Button</th>
+  <th>No Key</th>
+  <th>Depressing SHIFT</th>
+ </tr>
+
+ <tr>
+  <td>Left</td>
+  <td>XY Rotation</td>
+  <td>No Change</td>
+ </tr>
+
+ <tr>
+  <td>Middle</td>
+  <td>XY Translation</td>
+  <td>No Change</td>
+ </tr>
+
+ <tr>
+  <td>Right</td>
+  <td>Zoom In and Out</td>
+  <td>Move Near and Far Clipping Plane</td>
+ </tr>
+</table>
+
+
+
+<hr>
+<h3>User Interface: TLS Analysis Dialog</h3>
+<img src="vprop1.png" alt="TLS Analysis Dialog">
+<p>
+</p>
+
+
+
+<hr>
+<h3>User Interface: Visualization Properties Dialog</h3>
+<img src="vprop1.png" alt="Visualization Properties Dialog">
+<p>
+The Visualization Properties Dialog is used to modify the default visualization settings in TLSView.  Each tab window has its own Visualization Properties Dialog, and all the structures loaded in the tab window are arranged hierarchically by structure and chain in the left hand pane of the dialog.  The right hand pane displays panels containing settings for the currently selected visualization object, and any changes made to the visualization settings to not take effect until the <b>Apply</b> button has been depressed.  Most users familiar with molecular viewers will recognize the various options for visualizing structures, and most of the options work as expected.  Colors are selected through drop-down boxes which provide a menu of solid colors or color functions.  Depending on the object, the list of colors might be quite small, but the user can always enter a custom color using a floating point RGB triplet, separated by commas.  The range for each RGB value is between <b>0.0-1.0</b>.  When the selection <b>Random</b> is available in the menu, selecting it generates a single random RGB triplet which is displayed in the color selection entry box once applied.
+</p>
+
+<p>
+The hierarchical arrangement of graphics objects allows parent objects to control the settings in their child objects.  This is the case for the <b>TLS Chain</b> object, which collects together the individual TLS groups defined in the chain.  Most options selected in the <b>TLS Chain</b> property panels are propagated to the <b>TLS Group</b> objects they contain, but properties of <b>TLS Group</b> objects can also be set individually.
+</p>
+
+
+<hr>
+<p>
+Last modified by <i>Jay Painter</i>
+</p>
+
+</body>
+</html>

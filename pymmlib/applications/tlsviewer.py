@@ -64,21 +64,21 @@ class GLTLSAtomList(GLAtomList):
 
         self.glo_add_property(
             { "name":        "L1_animation_visible",
-              "desc":        "Show L1 Animation",
+              "desc":        "Show L1 Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_animation_visible",
-              "desc":        "Show L2 Animation",
+              "desc":        "Show L2 Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_animation_visible",
-              "desc":        "Show L3 Animation",
+              "desc":        "Show L3 Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
@@ -87,10 +87,11 @@ class GLTLSAtomList(GLAtomList):
         ## TLS
         self.glo_add_property(
             { "name":        "tls_color",
-              "desc":        "Color for TLS Group",
+              "desc":        "TLS Group Color",
               "catagory":    "TLS",
-              "type":        "color",
-              "default":     (0.5, 1.0, 0.5),
+              "type":        "enum_string",
+              "default":     "Green",
+              "enum_list":   self.gldl_color_list,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "fan_opacity",
@@ -341,12 +342,19 @@ class GLTLSAtomList(GLAtomList):
         """Overrides the GLAtomList coloring behavior and just
         colors using the tls_color.
         """
-        r, g, b = self.properties["tls_color"] 
-        dim     = 0.9
-        return (r*dim, g*dim, b*dim)
+        return self.gldl_property_color_rgbf("tls_color")
 
+    def glal_calc_color_U(self, atom):
+        r, g, b = self.glal_calc_color(atom)
+        dim     = 0.8
+        return (r*dim, g*dim, b*dim)
+    def glal_calc_color_Uellipse(self, atom):
+        return self.glal_calc_color_U(atom)
+    def glal_calc_color_Urms(self, atom):
+        return self.glal_calc_color_U(atom)
+    
     def glal_calc_color_trace(self):
-        return self.properties["tls_color"]
+        return self.gldl_property_color_rgbf("tls_color") 
 
     def glal_calc_U(self, atom):
         """Always return the reduced T tensor.
@@ -358,7 +366,7 @@ class GLTLSAtomList(GLAtomList):
         TLS group backbone atoms.
         """
         COR     = self.properties["COR"]
-        r, g, b = self.properties["tls_color"]
+        r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["fan_opacity"]
 
         self.glr_set_material_rgb(r, g, b, a)
@@ -728,34 +736,6 @@ class GLTLSGroup(GLDrawList):
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
-        self.glo_add_property(
-            { "name":        "L1_rot",
-              "desc":        "L1 Axis Viewing Libration (DEG)",
-              "catagory":    "Simulation State",
-              "type":        "float",
-              "default":     0.0,
-              "action":      "redraw" })
-        self.glo_add_property(
-            { "name":        "L2_rot",
-              "desc":        "L2 Axis Viewing Libration (DEG)", 
-              "catagory":    "Simulation State",
-              "type":        "float",
-              "default":     0.0,
-              "action":      "redraw" })
-        self.glo_add_property(
-            { "name":        "L3_rot",
-              "desc":        "L2 Axis Viewing Libration (DEG)",
-              "catagory":    "Simulation State",
-              "type":        "float",
-              "default":     0.0,
-              "action":      "redraw" })        
-        self.glo_add_property(
-            { "name":        "time",
-              "desc":        "Simulation Time",
-              "catagory":    "Simulation State",
-              "type":        "float",
-              "default":     0.0,
-              "action":      "redraw" })
 
         ## Show/Hide
         self.glo_add_property(
@@ -814,13 +794,6 @@ class GLTLSGroup(GLDrawList):
               "type":        "boolean",
               "default":     True,
               "action":      "recompile_tensors" })
-        self.glo_add_property(
-            { "name":        "Utls_U_diff",
-              "desc":        "Show Utls vs. Experimental U Diff",
-              "catagory":    "Show/Hide",
-              "type":        "boolean",
-              "default":     False,
-              "action":      "recompile_Utls_ellipse" })
         self.glo_add_property(
             { "name":        "U",
               "desc":        "Show TLS Thermal Axes",
@@ -889,21 +862,19 @@ class GLTLSGroup(GLDrawList):
         
         ## TLS
         self.glo_add_property(
-            { "name":        "tls_color",
-              "desc":        "TLS Group Visualization Color",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (0.10, 0.75, 0.35),
-              "action":      ["recompile_Utls_axes",
-                              "recompile_Utls_ellipse",
-                              "recompile_Utls_rms"] })
-
-        self.glo_add_property(
             { "name":        "add_biso",
               "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
               "catagory":    "TLS",
               "type":        "boolean",
               "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "tls_color",
+              "desc":        "TLS Group Visualization Color",
+              "catagory":    "TLS",
+              "type":        "enum_string",
+              "default":     "Green",
+              "enum_list":   self.gldl_color_list,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":       "adp_prob",
@@ -921,33 +892,12 @@ class GLTLSGroup(GLDrawList):
               "default":    1.0,
               "action":     "recompile_tensors" })
         self.glo_add_property(
-            { "name":        "T_color",
-              "desc":        "T Axes Color",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (0.5, 0.5, 1.0),
-              "action":      "recompile_tensors" })
-        self.glo_add_property(
             { "name":       "L_axis_radius",
               "desc":       "Screw Axes Radius",
               "catagory":   "TLS",
               "type":       "float",
               "default":    0.05,
               "action":     "recompile_tensors" })
-        self.glo_add_property(
-            { "name":       "L_color",
-              "desc":       "Screw Axes Color",
-              "catagory":   "TLS",
-              "type":       "color",
-              "default":    (1.0, 0.5, 0.5),
-              "action":     "recompile_tensors" })
-        self.glo_add_property(
-            { "name":        "U_color",
-              "desc":        "Thermal Atom U Color for Diff Mode",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (1.0, 1.0, 1.0),
-              "action":      "recompile_Utls_ellipse" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
               "desc":        "TLS Thermal Ellipseoid Opacity",
@@ -972,6 +922,34 @@ class GLTLSGroup(GLDrawList):
               "range":      PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "time",
+              "desc":        "Simulation Time",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L1_rot",
+              "desc":        "L1 Axis Viewing Libration (DEG)",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_rot",
+              "desc":        "L2 Axis Viewing Libration (DEG)", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_rot",
+              "desc":        "L2 Axis Viewing Libration (DEG)",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     0.0,
+              "action":      "redraw" })
 
     def gldl_install_draw_methods(self):
         self.gldl_draw_method_install(
@@ -1108,13 +1086,16 @@ class GLTLSGroup(GLDrawList):
         """
         if self.tls_group.is_null():
             return
+
+        ## get the TLS color
+        r, g, b = self.gldl_property_color_rgbf("tls_color")
+        glColor3f(r, g, b)
+        self.glr_set_material_rgb(r, g, b, 1.0)
         
         glPushMatrix()
         glTranslatef(*self.properties["COR"])
 
         ## T: units (A^2)
-        r, g, b = self.properties["tls_color"]
-        self.glr_set_material_rgb(r, g, b, 1.0)
         self.glr_Uellipse((0.0, 0.0, 0.0),
                           self.properties["rT"],
                           self.properties["adp_prob"])
@@ -1139,8 +1120,6 @@ class GLTLSGroup(GLDrawList):
             L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
-            glColor3f(*self.properties["tls_color"])
-
             ## draw lines from COR to the axis
             glDisable(GL_LIGHTING)
             glBegin(GL_LINES)
@@ -1149,8 +1128,6 @@ class GLTLSGroup(GLDrawList):
             glEnd()
 
             ## draw axis
-            r, g, b = self.properties["tls_color"]
-            self.glr_set_material_rgb(r, g, b, 1.0)
             self.glr_axis(L_rho - (0.5 * L_v), L_v,
                           self.properties["L_axis_radius"])
 
@@ -1171,11 +1148,11 @@ class GLTLSGroup(GLDrawList):
         if self.tls_group.is_null():
             return
         
-        prob  = self.properties["adp_prob"]
-        color = self.properties["tls_color"]
+        prob = self.properties["adp_prob"]
+        rgbf = self.gldl_property_color_rgbf("tls_color")
 
         for atm, Utls in self.gltls_iter_atoms():
-            self.glr_Uaxes(atm.position, Utls, prob, color, 1.0)
+            self.glr_Uaxes(atm.position, Utls, prob, rgbf, 1.0)
 
     def draw_Utls_ellipse(self):
         """Render the anisotropic thremal ellipseoids at the given probability
@@ -1185,7 +1162,7 @@ class GLTLSGroup(GLDrawList):
             return
         
         prob    = self.properties["adp_prob"]
-        r, g, b = self.properties["tls_color"]
+        r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["ellipse_opacity"]
 
         for atm, Utls in self.gltls_iter_atoms():
@@ -1199,7 +1176,7 @@ class GLTLSGroup(GLDrawList):
         if self.tls_group.is_null():
             return
         
-        r, g, b = self.properties["tls_color"]
+        r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["rms_opacity"]
         self.glr_set_material_rgb(r, g, b, a)
 
@@ -1272,7 +1249,7 @@ class GLTLSGroup(GLDrawList):
         glEnable(GL_LIGHTING)
         glEnable(GL_NORMALIZE)
 
-        r, g, b = self.properties["tls_color"]
+        r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["surface_opacity"]
         
         self.glr_set_material_rgb(r, g, b, a)
@@ -1342,42 +1319,42 @@ class GLTLSChain(GLDrawList):
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "redraw" })
+              "action":      "" })
         self.glo_add_property(
             { "name":      "main_chain_visible",
               "desc":      "Show Main Chain Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    ["recompile", "recalc_positions"] })
+              "action":    "" })
         self.glo_add_property(
             { "name":      "side_chain_visible",
               "desc":      "Show Side Chain Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    ["recompile", "recalc_positions"] })
+              "action":    "" })
         self.glo_add_property(
             { "name":      "hetatm_visible",
               "desc":      "Show Hetrogen Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
-              "action":    ["recompile", "recalc_positions"] })
+              "action":    "" })
         self.glo_add_property(
             { "name":      "water_visible",
               "desc":      "Show Waters",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
-              "action":    ["recompile", "recalc_positions"] })
+              "action":    "" })
         self.glo_add_property(
             { "name":      "hydrogen_visible",
               "desc":      "Show Hydrogens",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
-              "action":    ["recompile", "recalc_positions"] })
+              "action":    "" })
         self.glo_add_property(
             { "name":        "fan_visible",
               "desc":        "Show Fans from COR to Backbone",
@@ -1391,35 +1368,28 @@ class GLTLSChain(GLDrawList):
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
-              "action":      "recompile_tensors" })
-        self.glo_add_property(
-            { "name":        "Utls_U_diff",
-              "desc":        "Show Utls vs. Experimental U Diff",
-              "catagory":    "Show/Hide",
-              "type":        "boolean",
-              "default":     False,
-              "action":      "recompile_Utls_ellipse" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "U",
               "desc":        "Show TLS Thermal Axes",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_Utls_axes" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "ellipse",
               "desc":        "Show TLS Thermal Ellipsoids",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_Utls_ellipse" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "rms",
               "desc":        "Show TLS Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_Utls_rms" })
+              "action":      "" })
 
         self.glo_add_property(
             { "name":        "axes_rT",
@@ -1427,21 +1397,21 @@ class GLTLSChain(GLDrawList):
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "redraw" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "ellipse_rT",
               "desc":        "Show Reduced Translation Thermal Ellipsoids", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "redraw" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "rms_rT",
               "desc":        "Show Reduced Translation Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_Utls_rms" })
+              "action":      "" })
 
         self.glo_add_property(
             { "name":        "L1_visible",
@@ -1449,39 +1419,30 @@ class GLTLSChain(GLDrawList):
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_surface" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "L2_visible",
               "desc":        "Show Screw L1 Displacement Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_surface" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "L3_visible",
               "desc":        "Show Screw L1 Displacement Surface",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile_surface" })
+              "action":      "" })
         
         ## TLS
-        self.glo_add_property(
-            { "name":        "tls_color",
-              "desc":        "TLS Group Visualization Color",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (0.10, 0.75, 0.35),
-              "action":      ["recompile_Utls_axes",
-                              "recompile_Utls_ellipse",
-                              "recompile_Utls_rms"] })
         self.glo_add_property(
             { "name":        "add_biso",
               "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
               "catagory":    "TLS",
               "type":        "boolean",
               "default":     False,
-              "action":      "recompile" })
+              "action":      "" })
         self.glo_add_property(
             { "name":       "adp_prob",
               "desc":       "Contour Probability",
@@ -1489,42 +1450,21 @@ class GLTLSChain(GLDrawList):
               "type":       "integer",
               "range":      PROP_PROBABILTY_RANGE,
               "default":    50,
-              "action":     "recompile" })
+              "action":     "" })
         self.glo_add_property(
             { "name":       "T_line_width",
               "desc":       "T Axes Line Width",
               "catagory":   "TLS",
               "type":       "float",
               "default":    1.0,
-              "action":     "recompile_tensors" })
-        self.glo_add_property(
-            { "name":        "T_color",
-              "desc":        "T Axes Color",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (0.5, 0.5, 1.0),
-              "action":      "recompile_tensors" })
+              "action":     "" })
         self.glo_add_property(
             { "name":       "L_axis_radius",
               "desc":       "Screw Axes Radius",
               "catagory":   "TLS",
               "type":       "float",
               "default":    0.05,
-              "action":     "recompile_tensors" })
-        self.glo_add_property(
-            { "name":       "L_color",
-              "desc":       "Screw Axes Color",
-              "catagory":   "TLS",
-              "type":       "color",
-              "default":    (1.0, 0.5, 0.5),
-              "action":     "recompile_tensors" })
-        self.glo_add_property(
-            { "name":        "U_color",
-              "desc":        "Thermal Atom U Color for Diff Mode",
-              "catagory":    "TLS",
-              "type":        "color",
-              "default":     (1.0, 1.0, 1.0),
-              "action":      "recompile_Utls_ellipse" })
+              "action":     "" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
               "desc":        "TLS Thermal Ellipseoid Opacity",
@@ -1532,7 +1472,7 @@ class GLTLSChain(GLDrawList):
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
               "default":     1.0,
-              "action":      "recompile_Utls_ellipse" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "rms_opacity",
               "desc":        "TLS Thermal Peanut Opacity",
@@ -1540,7 +1480,7 @@ class GLTLSChain(GLDrawList):
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
               "default":     1.0,
-              "action":      "recompile_Utls_rms" })
+              "action":      "" })
         self.glo_add_property(
             { "name":        "surface_opacity",
               "desc":        "Screw Surface Opacity",
@@ -1548,7 +1488,7 @@ class GLTLSChain(GLDrawList):
               "type":        "float",
               "range":      PROP_OPACITY_RANGE,
               "default":     1.0,
-              "action":      "recompile_surface" })
+              "action":      "" })
 
     def add_gl_tls_group(self, gl_tls_group):
         self.glo_add_child(gl_tls_group)
@@ -1573,8 +1513,6 @@ class GLTLSChain(GLDrawList):
             "fan_visible", child_id, "fan_visible")
         self.glo_link_child_property(
             "TLS_visible", child_id, "TLS_visible")
-        self.glo_link_child_property(
-            "Utls_U_diff", child_id, "Utls_U_diff")
 
         self.glo_link_child_property(
             "U", child_id, "U")
@@ -1603,11 +1541,7 @@ class GLTLSChain(GLDrawList):
         self.glo_link_child_property(
             "T_line_width", child_id, "T_line_width")
         self.glo_link_child_property(
-            "T_color", child_id, "T_color")
-        self.glo_link_child_property(
             "L_axis_radius", child_id, "L_axis_radius")
-        self.glo_link_child_property(
-            "U_color", child_id, "U_color")
         self.glo_link_child_property(
             "ellipse_opacity", child_id, "ellipse_opacity")
         self.glo_link_child_property(
@@ -1847,7 +1781,13 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         return gtk.TRUE
 
     def glv_redraw(self):
+        #self.snapshot()
         self.queue_draw()
+
+    def snapshot(self):
+        print [x for x in dir(self) if x.count("pixbuf")]
+        
+        
 
 
 ###############################################################################
@@ -1870,83 +1810,6 @@ def markup_matrix3(tensor):
                tensor[0,0], tensor[0,1], tensor[0,2],
                tensor[1,0], tensor[1,1], tensor[1,2],
                tensor[2,0], tensor[2,1], tensor[2,2])
-
-
-class ColorSelection(gtk.Combo):
-    def __init__(self):
-        gtk.Combo.__init__(self)
-
-        self.color = None
-
-        self.color_dict = {
-            "white":   (1.0, 1.0, 1.0),
-            "red":     (1.0, 0.0, 0.0),
-            "green":   (0.0, 1.0, 0.0),
-            "blue":    (0.0, 0.0, 1.0) }
-        
-        self.set_popdown_strings(
-            ["Random",
-             "Color By Atom",
-             "White",
-             "Red",
-             "Green",
-             "Blue" ])
-
-        self.entry.connect("activate", self.activate, None)
-
-    def activate(self, entry, junk):
-        txt = self.entry.get_text()
-
-        ## color format: r, g, b
-        try:
-            r, g, b = txt.split(",")
-            color = (float(r), float(g), float(b))
-        except ValueError:
-            pass
-        else:
-            self.set_color(color)
-            return
-
-        ## color format: Random
-        if txt=="Random":
-            color = (random.random(),
-                     random.random(),
-                     random.random())
-            self.set_color(color)
-            return
-
-        ## color format: keywords
-        if txt=="Color By Atom":
-            self.set_color(None)
-            return
-
-        ## color fomat: match color name
-        try:
-            color = self.color_dict[txt.lower()]
-        except KeyError:
-            pass
-        else:
-            self.set_color(color)
-            return
-
-    def match_color_name(self, color):
-        if color==None:
-            return "Color By Atom"
-
-        for color_name, color_val in self.color_dict.items():
-            if color==color_val:
-                return color_name
-
-        return "%3.2f,%3.2f,%3.2f" % (color[0], color[1], color[2])
-    
-    def set_color(self, color):
-        self.color = color
-        name       = self.match_color_name(color)
-        self.entry.set_text(name)
-
-    def get_color(self):
-        self.activate(self.entry, None)
-        return self.color
 
 
 class EnumeratedStringEntry(gtk.Combo):
@@ -2231,10 +2094,6 @@ class GLPropertyEditor(gtk.Notebook):
         ## ARRAY(3,3)
         elif prop["type"]=="array(3,3)":
             widget = gtk.Label()
-
-        ## COLOR
-        elif prop["type"]=="color":
-            widget = ColorSelection()
             
         ## ENUMERATED STRING
         elif prop["type"]=="enum_string":
@@ -2303,9 +2162,6 @@ class GLPropertyEditor(gtk.Notebook):
                 widget.set_markup(
                     markup_matrix3(self.gl_object.properties[name]))
 
-            elif prop_desc["type"]=="color":
-                widget.set_color(self.gl_object.properties[name])
-
             elif prop_desc["type"]=="enum_string":
                 widget.set_string(self.gl_object.properties[name])
 
@@ -2360,9 +2216,6 @@ class GLPropertyEditor(gtk.Notebook):
                         update_dict[name] = float(widget.get_text())
                     except ValueError:
                         pass
-
-            elif prop["type"]=="color":
-                update_dict[name] = widget.get_color()
 
             elif prop["type"]=="enum_string":
                 update_dict[name] = widget.get_string()
@@ -2533,6 +2386,8 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         parent_window  = args["parent_window"]
         gl_object_root = args["glo_root"]
         title          = args.get("title", "")
+
+        gl_object_root.glo_set_name(title)
 
         title = "Visualization Properties: %s" % (title)
 
@@ -2797,7 +2652,7 @@ class TLSDialog(gtk.Dialog):
         except KeyError:
             self.chn_colori[atm0.chain_id] = colori = 2
 
-        tls_group.color = COLORS[colori]
+        tls_group.color_name = COLOR_NAMES_CAPITALIZED[colori]
 
         ## add the tls_group object
         self.tls_group_list.append(tls_group)
@@ -2805,7 +2660,7 @@ class TLSDialog(gtk.Dialog):
         ## creat GLTLSGroup for the visualization component
         tls_group.gl_tls = GLTLSGroup(
             tls_group = tls_group,
-            tls_color = tls_group.color[1])
+            tls_color = tls_group.color_name)
 
 
         ## get the GLTLSChain to add the GLTLSGroup to

@@ -496,18 +496,6 @@ class OpenGLRenderMethods(object):
         else:
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
 
-    def glr_set_material_atom(self, atm, a):
-        """Sets a material for rendering a atom which uses the atom's
-        element color for the material selection.
-        """
-        elem = atm.get_structure().library.get_element(atm.element)
-        if elem!=None:
-            r, g, b = elem.color
-        else:
-            r, g, b = 1.0, 1.0, 1.0
-
-        self.glr_set_material_rgb(r, g, b, a)
-
     def glr_text(self, text):
         """Renders a text string.
         """
@@ -679,8 +667,11 @@ class OpenGLRenderMethods(object):
 class GLDrawList(GLObject, OpenGLRenderMethods):
     """Fundamental OpenGL rigid entity.
     """
+
+    gldl_color_list = COLOR_NAMES_CAPITALIZED[:]
+    
     def __init__(self, **args):
-        self.__draw_method_list = []
+        self.gldl_draw_method_list = []
         
         GLObject.__init__(self, **args)
         self.glo_add_update_callback(self.gldl_update_cb)
@@ -753,6 +744,29 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
               "default":    0.0,
               "action":     "redraw" })
 
+    def gldl_update_cb(self, updates, actions):
+        """Properties update callback.
+        """
+        ## recompile action recompiles all OpenGL draw lists
+        if "recompile" in actions:
+            self.gldl_delete_list()
+            self.gldl_redraw()
+
+        ## redraw action redraws all OpenGL draw lists
+        elif "redraw" in actions:
+            self.gldl_redraw()
+
+        ## go through the draw method definitions and trigger
+        ## fine-grained redraw/recompile actions for specific
+        ## draw methods
+        for draw_method in self.gldl_draw_method_list:
+            if draw_method["recompile_action"] in actions:
+                self.gldl_draw_method_gl_draw_list_delete(draw_method)
+
+                op = draw_method["opacity_property"]
+                if op!=None:
+                    draw_method["transparent"] = self.properties[op]<1.0
+
     def gldl_redraw(self):
         """Triggers a redraw of the GLViewer
         """
@@ -765,26 +779,34 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         """
         return self.glo_get_root()
 
+    def gldl_property_color_rgbf(self, prop_name):
+        """Returns the property value as a RGBF triplet.
+        """
+        try:
+            colorx = self.properties[prop_name]
+        except KeyError:
+            raise KeyError, "gldl_property_color_rgbf: bad prop_name %s" % (
+                prop_name)
+        
+        try:
+            return COLOR_RGBF[colorx.lower()]
+        except KeyError:
+            pass
+
+        try:
+            r, g, b = colorx.split(",")
+        except ValueError:
+            pass
+        else:
+            return (r, g, b)
+
+        raise TypeError, "gldl_property_color_rgbf: bad colorx %s" % (
+            str(colorx))
+
     def gldl_install_draw_methods(self):
         """Override in children to install draw methods for a GLDrawList.
         """
         pass
-
-    def gldl_update_cb(self, updates, actions):
-        if "recompile" in actions:
-            self.gldl_delete_list()
-            self.gldl_redraw()
-
-        elif "redraw" in actions:
-            self.gldl_redraw()
-
-        for draw_method in self.__draw_method_list:
-            if draw_method["recompile_action"] in actions:
-                self.gldl_draw_method_gl_draw_list_delete(draw_method)
-
-                op = draw_method["opacity_property"]
-                if op!=None:
-                    draw_method["transparent"] = self.properties[op]<1.0
 
     def gldl_draw_method_install(self, draw_method):
         """Installs a draw method to compile and render a OpenGL draw listlist.
@@ -822,12 +844,12 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         draw_method["multidraw_all_iter"] = draw_method.get(
             "multipdraw_all_iter", None)
 
-        self.__draw_method_list.append(draw_method)
+        self.gldl_draw_method_list.append(draw_method)
 
     def gldl_draw_method_get(self, draw_method_name):
         """Returns the draw metod of the given name or None if not found.
         """
-        for draw_method in self.__draw_method_list:
+        for draw_method in self.gldl_draw_method_list:
             if draw_method["name"]==draw_method_name:
                 return draw_method
         return None
@@ -840,7 +862,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
             raise ValueError, "GLDrawList.gl_draw_method_remove(x) x "\
                   "not in GLDrawList"
 
-        self.__draw_method_list.remove(draw_method)
+        self.gldl_draw_method_list.remove(draw_method)
         if draw_method["gl_draw_list_id"]!=None:
             glDeleteLists(draw_method["gl_draw_list_id"], 1)
         del draw_method["gl_draw_list_id"]
@@ -858,7 +880,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
     def gldl_draw_method_recompile_all(self):
         """Deletes all currently compiled OpenGL compiled draw lists.
         """
-        for draw_method in self.__draw_method_list:
+        for draw_method in self.gldl_draw_method_list:
             self.gldl_draw_method_gl_draw_list_delete(draw_method)
 
     def gldl_draw_method_set_transparent(self, draw_method_name, transparent):
@@ -906,7 +928,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
     def gldl_render_draw_methods(self, transparent):
         """Render all draw methods.
         """
-        for draw_method in self.__draw_method_list:
+        for draw_method in self.gldl_draw_method_list:
             if self.gldl_draw_method_check_visible(draw_method)==False:
                 continue
 
@@ -1025,6 +1047,7 @@ class GLAxes(GLDrawList):
         self.glo_add_property(
             { "name":       "line_length",
               "desc":       "Axis Length",
+              "catagory":   "Show/Hide",
               "type":       "float",
               "spin":       "1.0-500.0,10.0",
               "default":    20.0,
@@ -1032,6 +1055,7 @@ class GLAxes(GLDrawList):
         self.glo_add_property(
             { "name":       "line_width",
               "desc":       "Axis Radius",
+              "catagory":   "Show/Hide",
               "type":       "float",
               "spin":      "0.0-5.0,0.1",
               "default":    0.1,
@@ -1039,23 +1063,26 @@ class GLAxes(GLDrawList):
         self.glo_add_property(
             { "name":       "color_x",
               "desc":       "X Axis Color",
-              "catagory":   "Colors",
-              "type":       "color",
-              "default":    (1.0, 0.4, 0.4),
+              "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "Red",
+              "enum_list":  self.gldl_color_list,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "color_y",
               "desc":       "Y Axis Color",
-              "catagory":   "Colors",
-              "type":       "color",
-              "default":    (0.4, 1.0, 0.4),
+              "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "Green",
+              "enum_list":  self.gldl_color_list,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "color_z",
               "desc":       "Z Axis Color",
-              "catagory":   "Colors",
-              "type":       "color",
-              "default":    (0.4, 0.4, 1.0),
+              "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "Blue",
+              "enum_list":  self.gldl_color_list,
               "action":     "recompile" })
 
     def gldl_install_draw_methods(self):
@@ -1067,18 +1094,18 @@ class GLAxes(GLDrawList):
     def draw_axes(self):
         line_length = self.properties["line_length"]
         line_width  = self.properties["line_width"]
-        
-        (r, g, b) = self.properties["color_x"]
+
+        r, g, b = self.gldl_property_color_rgbf("color_x")
         self.glr_set_material_rgb(r, g, b, 1.0)
         self.glr_axis(zeros(3, Float),
                       array([line_length, 0.0, 0.0]), line_width) 
 
-        (r, g, b) = self.properties["color_y"]
+        r, g, b = self.gldl_property_color_rgbf("color_y")
         self.glr_set_material_rgb(r, g, b, 1.0)
         self.glr_axis(zeros(3, Float),
                       array([0.0, line_length, 0.0]), line_width) 
 
-        (r, g, b) = self.properties["color_z"]
+        r, g, b = self.gldl_property_color_rgbf("color_z")
         self.glr_set_material_rgb(r, g, b, 1.0)
         self.glr_axis(zeros(3, Float),
                       array([0.0, 0.0, line_length]), line_width) 
@@ -1098,17 +1125,20 @@ class GLUnitCell(GLDrawList):
         GLDrawList.glo_install_properties(self)
         
         self.glo_add_property(
-            { "name":       "line_width",
-              "desc":       "Line Width",
+            { "name":       "radius",
+              "desc":       "Radius",
+              "catagory":   "Show/Hide",
               "type":       "float",
               "spin":       PROP_LINE_RANGE,
-              "default":    1.0,
+              "default":    0.25,
               "action":     "recompile" })
         self.glo_add_property(
-            { "name":       "color",
-              "desc":       "Line Color",
-              "type":       "color",
-              "default":    (1.0, 1.0, 1.0),
+            { "name":       "rod_color",
+              "desc":       "Rod Color",
+               "catagory":   "Show/Hide",
+              "type":       "enum_string",
+              "default":    "White",
+              "enum_list":  self.gldl_color_list,
               "action":     "recompile" })
 
     def gldl_install_draw_methods(self):
@@ -1119,53 +1149,48 @@ class GLUnitCell(GLDrawList):
 
     def draw_unit_cell(self):
         self.draw_cell(-1, -1, -1, 0, 0, 0)
-        
+
     def draw_cell(self, x1, y1, z1, x2, y2, z2):
         """Draw the unit cell lines in a rectangle starting at fractional
         integer coordinates x1, y1, z1, ending at x2, y2, z2.  The first set of
         coordinates must be <= the second set.
         """
-        assert x1 <= x2 and y1 <= y2 and z1 <= z2
+        assert x1<=x2 and y1<=y2 and z1<=z2
 
         a = self.unit_cell.calc_frac_to_orth(array([1.0, 0.0, 0.0]))
         b = self.unit_cell.calc_frac_to_orth(array([0.0, 1.0, 0.0]))
         c = self.unit_cell.calc_frac_to_orth(array([0.0, 0.0, 1.0]))
 
-        glDisable(GL_LIGHTING)
-        glLineWidth(self.properties["line_width"])
-        glColor3f(*self.properties["color"])
- 
+        rad = self.properties["radius"]
+
+        rf, gf, bf = self.gldl_property_color_rgbf("rod_color")
+        self.glr_set_material_rgb(rf, gf, bf, 1.0)
+
         for k in range(z1, z2+2):
             for j in range(y1, y2+2):
-                glBegin(GL_LINES)
-                glVertex3f(*     x1*a + j*b + k*c)
-                glVertex3f(* (x2+1)*a + j*b + k*c)
-                glEnd()
+                p1 = x1*a + j*b + k*c
+                p2 = (x2+1)*a + j*b + k*c
+                self.glr_tube(p1, p2, rad)
 
         for k in range(z1, z2+2):
             for i in range(x1, x2+2):
-                glBegin(GL_LINES)
-                glVertex3f(* i*a +     y1*b + k*c)
-                glVertex3f(* i*a + (y2+1)*b + k*c)
-                glEnd()
+                p1 = i*a + y1*b + k*c
+                p2 = i*a + (y2+1)*b + k*c
+                self.glr_tube(p1, p2, rad)
 
         for j in range(y1, y2+2):
             for i in range(x1, x2+2):
-                glBegin(GL_LINES)
-                glVertex3f(* i*a + j*b +     z1*c)
-                glVertex3f(* i*a + j*b + (z2+1)*c)
-                glEnd()
+                p1 = i*a + j*b + z1*c
+                p2 = i*a + j*b + (z2+1)*c
+                self.glr_tube(p1, p2, rad)
 
 
-class GLAtomColor(GLObject):
-    """This is going to replace the 3-tuple RGB color...
+class GLAtomList(GLDrawList):
+    """OpenGL renderer for a list of atoms.  Optional arguments iare:
+    color, U, U_color.
     """
-    ## if any color functions fail, default to this
-    ## color
-    fail_color = (1.0, 1.0, 1.0)
 
-    ## XXX: move into monomers.cif library!
-    aa_type_color_dict = {
+    glal_res_type_color_dict = {
         "aliphatic":         (0.50, 0.50, 0.50),
         "aromatic":          (0.75, 0.75, 0.75),
         "sulfer-containing": (0.20, 1.00, 0.20),
@@ -1173,158 +1198,21 @@ class GLAtomColor(GLObject):
         "acids":             (1.00, 0.25, 0.25),
         "bases":             (0.25, 0.25, 1.00),
         "amides":            (0.60, 0.60, 1.00)}
-        
-    def __init__(self):
-        GLObject.__init__(self)
-        
-        self.value      = None
-        self.value_desc = None
-
-        self.enum_list = [
-            "Random"]
-
-        self.enum_dict = {}
-
-        self.install_color_method(
-            "Color By Element", self.color_by_element)
-        self.install_color_method(
-            "Color By Residue Type", self.color_by_residue)
-        self.install_color_method(
-            "Color By Temp Factor", self.color_by_temp)
-        self.install_color_method(
-            "Color By Anisotropy", self.color_by_anisotropy)
-
-    def install_color_method(self, name, func):
-        """Adds a color function to the 
-        """
-        assert name not in self.enum_list
-        self.enum_list.append(name)
-        self.enum_dict[name.lower()] = func
-
-    def get_enum_list(self):
-        """Return a list of the values as a enumeration.
-        """
-        return self.enum_list
-
-    def get_value_desc(self):
-        """Returns the description string of the current enumerated value.
-        """
-        return self.value_desc
-
-    def get_value(self):
-        return self.value
-
-    def set_value(self, value):
-        """
-        """
-        if type(value)==StringType:
-            value = value.lower()
-
-            ## select a random color
-            if value=="random":
-                self.value = (random.random(),random.random(),random.random())
-                self.value_desc = "Random RGB: %4.2f %4.2f %4.2f" % self.value
-                    
-            ## selects one of the named color functions
-            elif value in self.enum_dict:
-                self.value = value
-                for upper in self.enum_list:
-                    if upper.lower()==self.value:
-                        self.value_desc = upper
-                        break
-
-            else:
-                ## maybe the color is in R,G,B format
-                try:
-                    r, g, b = value.split(",")
-                except ValueError:
-                    pass
-                else:
-                    self.value = (float(r), float(g), float(b))
-                    self.value_desc = "RGB: %4.2f %4.2f %4.2f" % self.value
-
-        elif type(value)==TupleType:
-            self.value = value
-            self.value_desc = "RGB: %4.2f %4.2f %4.2f" % self.value
-
-    def calc_atom_color(self, atom):
-        """This is what this class is for!  Returns the r,g,b 3-tuple for
-        the atom.
-        """
-        if type(self.value)==TupleType:
-            return self.value
-        else:
-            return self.enum_dict[self.value](atom)
-
-    def color_by_element(self, atom):
-        """Returns the color based on the element type.  The color definitions
-        for all the elements are in the mmLib/Data/elements.cif file.
-        """
-        element = atom.get_structure().library.get_element(atom.element)
-        if element!=None:
-            return element.color
-        else:
-            return self.fail_color
-
-    def color_by_residue(self, atom):
-        """Returns the color based on the residue type.
-        """
-        library = atom.get_structure().library
-        monomer = library.get_monomer(atom.res_name)
-        
-        if monomer.is_amino_acid()==False:
-            return self.fail_color
-
-        try:
-            return self.aa_type_color_dict[monomer.chem_type]
-        except KeyError:
-            return self.fail_color
-
-    def color_by_temp(self, atom):
-        """Returns the color based on the tempature factor.
-        """
-        if atom.temp_factor!=None:
-            return self.color_by_range(10.0, 25.0, atom.temp_factor)
-        else:
-            return self.fail_color
-
-    def color_by_anisotropy(self, atom):
-        """Color by anisotropy.
-        """
-        aniso = atom.calc_anisotropy()
-        return self.color_by_range(0.0, 1.0, 1.0 - aniso)
-
-    def color_by_range(self, min, max, value):
-        """Blue->Red
-        """
-        if value<min:
-            b = 1.0
-        if value>max:
-            b = 0.0
-        else:
-            b = 1.0 - (value - min) / (max - min)
-
-        return (1.0-b, 0.0, b)
-
-
-class GLAtomList(GLDrawList):
-    """OpenGL renderer for a list of atoms.  Optional arguments iare:
-    color, U, U_color.
-    """
+    
     def __init__(self, **args):
-        ## setup atom coloring object
-        self.glal_atom_color         = GLAtomColor()
+        
+        self.glal_atom_color_opts = [
+            "Color By Element",
+            "Color By Residue Type",
+            "Color By Temp Factor",
+            "Color By Anisotropy" ]
+        self.glal_atom_color_opts += self.gldl_color_list
+        
         self.glal_hidden_atoms_dict  = None
         self.glal_visible_atoms_dict = None
         self.glal_xyzdict            = None
-        
+
         GLDrawList.__init__(self, **args)
-
-        ## install atom coloring object
-        self.glal_atom_color.glo_set_name("Atom Color Properties")
-        self.glal_atom_color.glo_set_properties_id("glal_atom_color")
-        self.glo_add_child(self.glal_atom_color)
-
         self.glo_add_update_callback(self.glal_update_properties)
         self.glo_init_properties(**args)
 
@@ -1345,7 +1233,30 @@ class GLAtomList(GLDrawList):
               "catagory":  "Colors",
               "type":      "enum_string",
               "default":   "Color By Element",
-              "enum_list": self.glal_atom_color.get_enum_list(),
+              "enum_list": self.glal_atom_color_opts,
+              "action":    "" })
+        
+        self.glo_add_property(
+            { "name":      "color_setting",
+              "desc":      "Atom Color",
+              "catagory":  "Colors",
+              "type":      "string",
+              "hidden":    True,
+              "default":   "Color By Element",
+              "action":    "recompile" })
+        self.glo_add_property(
+            { "name":      "color_blue",
+              "desc":      "Color Range Blue",
+              "catagory":  "Colors",
+              "type":      "float",
+              "default":   0.0,
+              "action":    "recompile" })
+        self.glo_add_property(
+            { "name":      "color_red",
+              "desc":      "Color Range Red",
+              "catagory":  "Colors",
+              "type":      "float",
+              "default":   1.0,
               "action":    "recompile" })
         
         self.glo_add_property(
@@ -1358,6 +1269,13 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":      "main_chain_visible",
               "desc":      "Show Main Chain Atoms",
+              "catagory":  "Show/Hide",
+              "type":      "boolean",
+              "default":   True,
+              "action":    ["recompile", "recalc_positions"] })
+        self.glo_add_property(
+            { "name":      "oatm_visible",
+              "desc":      "Show Main Chain Carbonyl Atoms",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   True,
@@ -1418,7 +1336,7 @@ class GLAtomList(GLDrawList):
               "action":     "recompile_lines" })
         self.glo_add_property(
             { "name":       "line_width",
-              "desc":       "Bond Line Drawing Width",
+              "desc":       "Bond Line Size",
               "catagory":   "Bond Lines",
               "type":       "float",
               "spin":       PROP_LINE_RANGE,
@@ -1468,7 +1386,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Scale CPK Radius",
               "catagory":   "CPK",
               "type":       "float",
-              "spin":       "0.0-5.0,0.1",
+              "range":       "0.0-5.0,0.1",
               "default":    1.0,
               "action":     "recompile_cpk" })
         self.glo_add_property(
@@ -1498,17 +1416,18 @@ class GLAtomList(GLDrawList):
               "action":     "recompile_trace" })
         self.glo_add_property(
             { "name":       "trace_radius",
-              "desc":       "Trace Stick Radius",
+              "desc":       "Trace Radius",
               "catagory":   "Trace",
               "type":       "float",
               "default":    0.2,
               "action":     "recompile_trace" })
         self.glo_add_property(
             { "name":       "trace_color",
-              "desc":       "Backbone Trace Color",
+              "desc":       "Trace Color",
               "catagory":   "Trace",
-              "type":       "color",
-              "default":    (1.0, 1.0, 1.0),
+              "type":       "enum_string",
+              "default":    "White",
+              "enum_list":  self.gldl_color_list,
               "action":     "recompile_trace" })
 
         ## ADPs
@@ -1528,12 +1447,13 @@ class GLAtomList(GLDrawList):
               "default":   False,
               "action":    "recompile_Uaxes" })
         self.glo_add_property(
-            { "name":      "U_color",
-              "desc":      "Thermal Axes Color",
-              "catagory":  "ADP",
-              "type":      "color",
-              "default":   (1.0, 1.0, 1.0),
-              "action":    "recompile_Uaxes" })
+            { "name":       "U_color",
+              "desc":       "Thermal Axes Color",
+              "catagory":   "ADP",
+              "type":       "enum_string",
+              "default":    "White",
+              "enum_list":  self.gldl_color_list,
+              "action":     "recompile_Uaxes" })
         self.glo_add_property(
             { "name":       "ellipse",
               "desc":       "Show Thermal Ellipseoids",
@@ -1551,7 +1471,7 @@ class GLAtomList(GLDrawList):
               "action":     "recompile_Uellipse" })
         self.glo_add_property(
             { "name":       "rms",
-              "desc":       "Show Thermal Peanuts (RMS Deviation Surface)",
+              "desc":       "Show Thermal Peanuts",
               "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
@@ -1569,7 +1489,7 @@ class GLAtomList(GLDrawList):
         self.gldl_draw_method_install(
             { "name":                "labels",
               "func":                self.draw_labels,
-              "no_gl_compile":          True,
+              "no_gl_compile":       True,
               "transparent":         False,
               "visible_property":    "labels",
               "recompile_action":    "recompile_labels" })
@@ -1615,30 +1535,76 @@ class GLAtomList(GLDrawList):
               "visible_property":    "rms",
               "opacity_property":    "rms_opacity",
               "recompile_action":    "recompile_Urms" })
-        
+
+    def glal_update_color_value(self, value):
+        """Configure the color_value property from the value argument.
+        """
+        ## select a random color
+        if value=="random":
+            color_setting = (random.random(), random.random(), random.random())
+            self.properties.update(color_setting=color_setting)
+            return
+
+        ## selects one of the named color functions
+        elif value in self.glal_atom_color_opts:
+
+            if value=="Color By Temp Factor":
+                ## calculate the min/max temp factor of the atoms
+                ## and auto-set the low/high color range
+                min_tf = None
+                max_tf = None
+                for atm in self.glal_iter_atoms():
+                    if min_tf==None:
+                        min_tf = atm.temp_factor
+                        max_tf = atm.temp_factor
+                        continue
+                    min_tf = min(atm.temp_factor, min_tf)
+                    max_tf = max(atm.temp_factor, max_tf)
+
+                self.properties.update(
+                    color_blue    = min_tf,
+                    color_red     = max_tf,
+                    color_setting = value)
+                return
+                
+            elif value=="Color By Anisotropy":
+                self.properties.update(
+                    color_blue    = 1.0,
+                    color_red     = 0.0,
+                    color_setting = value)
+                return
+
+            try:
+                self.properties.update(
+                    color_setting=COLOR_RGBF[value.lower()])
+            except KeyError:
+                pass
+            else:
+                return
+
+            self.properties.update(color_setting=value)
+
+        ## maybe the color is in R,G,B format
+        try:
+            r, g, b = value.split(",")
+        except ValueError:
+            pass
+        else:
+            color_setting = (float(r), float(g), float(b))
+            self.properties.update(color_setting=color_setting)
+            return
+
     def glal_update_properties(self, updates, actions):
         ## rebuild visible/hidden dictionaries
         if "recalc_positions" in actions:
              self.glal_hidden_atoms_dict  = None
              self.glal_visible_atoms_dict = None
-             self.glal_xyzdict           = None
+             self.glal_xyzdict            = None
 
-        ## update color enumeration
+        ## update color
         if "color" in updates:
-            self.glal_atom_color.set_value(updates["color"])
-
-            if updates["color"].lower()=="random":
-                new_color_str = "%4.2f,%4.2f,%4.2f" % (
-                    self.glal_atom_color.value[0],
-                    self.glal_atom_color.value[1],
-                    self.glal_atom_color.value[2])
-
-                self.properties.update(color=new_color_str)
-                return
-                
-            self.glo_update_properties(
-                color_setting = str(self.glal_atom_color.get_value_desc()))
-
+            self.glal_update_color_value(updates["color"])
+            
     def gldl_iter_multidraw_self(self):
         """Specialized draw list invokation to recycle the draw list for
         symmetry related copies.  Cartesian versions of the symmetry rotation
@@ -1728,6 +1694,7 @@ class GLAtomList(GLDrawList):
         na_bb_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
 
         main_chain_visible = self.properties["main_chain_visible"]
+        oatm_visible       = self.properties["oatm_visible"]
         side_chain_visible = self.properties["side_chain_visible"]
         hetatm_visible     = self.properties["hetatm_visible"]
         water_visible      = self.properties["water_visible"]
@@ -1808,20 +1775,82 @@ class GLAtomList(GLDrawList):
              return position - self.properties["atom_origin"]
         return position
     
+    def glal_calc_color_range(self, value):
+        """Return a RGBF 3-tuple color of a color gradient for value.
+        """
+        blue  = self.properties["color_blue"]
+        red   = self.properties["color_red"]
+        width = abs(red - blue)
+
+        if red>blue:
+            if value>=red:
+                return (1.0, 0.0, 0.0)
+            elif value<=blue:
+                return (0.0, 0.0, 1.0)
+            
+            b = 1.0 - ((value - blue) / width)
+            return (1.0-b, 0.0, b)
+        
+        else:
+            if value<=red:
+                return (1.0, 0.0, 0.0)
+            elif value>=blue:
+                return (0.0, 0.0, 1.0)
+
+            b = 1.0 - ((value - red) / width)
+            return (b, 0.0, 1.0-b)
+
     def glal_calc_color(self, atom):
         """Sets the open-gl color for the atom.
         """
-        return self.glal_atom_color.calc_atom_color(atom)
+        setting = self.properties["color_setting"]
+        if type(setting)==TupleType:
+            return setting
+
+        if setting=="Color By Element":
+            element = atom.get_structure().library.get_element(atom.element)
+            try:
+                return element.color
+            except AttributeError:
+                return COLOR_RGBF["white"]
+
+        elif setting=="Color By Residue Type":
+            library = atom.get_structure().library
+            monomer = library.get_monomer(atom.res_name)
+        
+            try:
+                return self.glal_res_type_color_dict[monomer.chem_type]
+            except KeyError:
+                return COLOR_RGBF["white"]
+
+        elif setting=="Color By Temp Factor":
+            return self.glal_calc_color_range(atom.temp_factor)
+
+        elif setting=="Color By Anisotropy":
+            return self.glal_calc_color_range(atom.calc_anisotropy())
+
+        raise ValueError, "glal_calc_color: bad color setting %s" % (
+            str(setting))
 
     def glal_calc_color_trace(self):
         """Returns the trace color.
         """
-        return self.properties["trace_color"]
+        return self.gldl_property_color_rgbf("trace_color")
 
-    def glal_calc_color_U(self, atom):
-        """Return the color to be used for visualizations of ADP parameters.
+    def glal_calc_color_Uaxes(self, atom):
+        """Return the color to be used for thermal axes.
         """
-        return None
+        return self.gldl_property_color_rgbf("U_color")
+    
+    def glal_calc_color_Uellipse(self, atom):
+        """Return the color to be used for thermal ellipse.
+        """
+        return self.glal_calc_color(atom)
+
+    def glal_calc_color_Urms(self, atom):
+        """Return the color to be used for thermal peanuts.
+        """
+        return self.glal_calc_color(atom)
         
     def glal_calc_U(self, atom):
         """Return the ADP U tensor for the atom
@@ -1854,8 +1883,6 @@ class GLAtomList(GLDrawList):
 
         for atm, pos in self.glal_iter_visible_atoms():
             relative_pos = matrixmultiply(R, pos + cv) + tp
-            if length(relative_pos)>auto_label_dist:
-                continue
 
             if atm.alt_loc=="":
                 text = "%s %s %s %s" % (
@@ -1895,40 +1922,43 @@ class GLAtomList(GLDrawList):
     def draw_Uaxes(self):
         """Draw thermal axes at the given ADP probability level.
         """
+        rgb  = self.glal_calc_color_Uaxes()
+        prob = self.properties["adp_prob"]
+        
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
             if U==None:
                 continue
-
-            self.glr_Uaxes(
-                pos, U,
-                self.properties["adp_prob"],
-                self.properties["U_color"],
-                1.0)
+            self.glr_Uaxes(pos, U, prob, rgb, 1.0)
 
     def draw_Uellipse(self):
         """Draw the ADP determined probability ellipseoid.
         """
+        opacity = self.properties["ellipse_opacity"]
+        prob    = self.properties["adp_prob"]
+        
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
             if U==None:
                 continue
 
-            r, g, b = self.glal_calc_color(atm) 
-            self.glr_set_material_rgb(
-                r, g, b, self.properties["ellipse_opacity"])
-            self.glr_Uellipse(pos, U, self.properties["adp_prob"])
+            r, g, b = self.glal_calc_color_Uellipse(atm) 
+            self.glr_set_material_rgb(r, g, b, opacity)
+            self.glr_Uellipse(pos, U, prob)
 
     def draw_Urms(self):
         """Draw the ADP determined RMS displacement surface.
         """
+        opacity = self.properties["rms_opacity"]
+
+        
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
             if U==None:
                 continue
 
-            r, g, b = self.glal_calc_color(atm)        
-            self.glr_set_material_rgb(r, g, b, self.properties["rms_opacity"])
+            r, g, b = self.glal_calc_color_Urms(atm)        
+            self.glr_set_material_rgb(r, g, b, opacity)
             self.glr_Urms(pos, U)
 
     def draw_lines(self):
@@ -1994,99 +2024,6 @@ class GLAtomList(GLDrawList):
                 self.glr_tube(pos1, end, stick_radius)
 
             ## draw ball
-            self.glr_sphere(pos1, ball_radius, 10)
-
-    def draw_Udiff(self, atoms):
-        ball_radius  = self.properties["ball_radius"]
-        stick_radius = self.properties["stick_radius"]
-
-        visited = {}
-
-        for atm, pos in atoms.items():
-            ## if there are bonds, then draw the lines 1/2 way to the
-            ## bonded atoms
-            for bond in atm.iter_bonds():
-
-                if visited.has_key(bond):
-                    continue
-
-                atm2 = bond.get_partner(atm)
-
-                try:
-                    pos2 = atoms[atm2]
-                except KeyError:
-                    continue
-
-                v    = pos2 - pos
-                n    = normalize(v)
-                end  = pos + v
-
-                U  = atm.get_U()
-                U2 = atm2.get_U()
-
-                rms  = math.sqrt(matrixmultiply(n, matrixmultiply(U, n)))
-                rms2 = math.sqrt(matrixmultiply(n, matrixmultiply(U2, n)))
-
-                rms_diff = abs(rms - rms2)
-
-                rms_diff = rms_diff  * 50.0
-                self.glr_set_material_rgb(
-                    1.0 - rms_diff, 1.0 - rms_diff, 1.0, 1.0)
-
-                self.glr_tube(pos, end, stick_radius)
-
-            self.glr_set_material_rgb(1.0, 1.0, 1.0, 1.0)
-            self.glr_sphere(pos, ball_radius, 10)
-
-    def draw_Udiff2(self, atoms):
-        ball_radius  = self.properties["ball_radius"] + 0.01
-        stick_radius = self.properties["stick_radius"] + 0.01
-
-        visited = {}
-        atom_list = atoms.items()
-
-        for atm1, pos1 in atom_list:
-            visited[atm1] = True
-            
-            for atm2, pos2 in atom_list:
-                if visited.has_key(atm2):
-                    continue
-
-                if atm1.alt_loc!=atm2.alt_loc:
-                    if atm1.alt_loc!="" and atm2.alt_loc!="":
-                        continue
-
-                v = pos2 - pos1
-
-                if length(v) > 5.0:
-                    continue
-
-                if atm1.get_bond(atm2)==None:
-                    tube_radius = 0.25 * stick_radius
-                else:
-                    tube_radius = stick_radius
-                
-                n    = normalize(v)
-                end  = pos1 + v
-
-                U1 = atm1.get_U()
-                U2 = atm2.get_U()
-
-                rms1 = math.sqrt(matrixmultiply(n, matrixmultiply(U1, n)))
-                rms2 = math.sqrt(matrixmultiply(n, matrixmultiply(U2, n)))
-
-                rms_diff = abs(rms1 - rms2)
-
-                if rms_diff > 0.005:
-                    continue
-
-                rms_diff = rms_diff  * 20.0
-                self.glr_set_material_rgb(
-                    1.0 - rms_diff, 1.0 - rms_diff, 1.0, 1.0)
-
-                self.glr_tube(pos1, end, tube_radius)
-
-            self.glr_set_material_rgb(1.0, 1.0, 1.0, 1.0)
             self.glr_sphere(pos1, ball_radius, 10)
 
     def draw_cross(self, atm, pos):
@@ -2384,6 +2321,7 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         self.quat = array((0.0, 0.0, 0.0, 1.0), Float)
         
         GLObject.__init__(self)
+        self.glo_set_name("GLViewer")
         self.glo_add_update_callback(self.glv_update_cb)
         self.glo_init_properties()
 
@@ -2397,7 +2335,7 @@ class GLViewer(GLObject, OpenGLRenderMethods):
               "catagory":  "Background",
               "type":      "enum_string",
               "default":   "Black",
-              "enum_list": ["Black", "White", "Dark Green"],
+              "enum_list": ["Black", "White", "Off-White", "Dark Green"],
               "action":    "redraw" })
 
         ## View
@@ -2534,10 +2472,6 @@ class GLViewer(GLObject, OpenGLRenderMethods):
               "default":   50.0,
               "action":    "redraw" })
 
-        
-    def glo_name(self):
-        return "GLViewer"
-
     def glv_update_cb(self, updates, actions):
         if "redraw" in actions:
             self.glv_redraw()
@@ -2615,7 +2549,7 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         method.
         """
         pass
-
+    
     def glv_init(self):
         """Called once to initalize the GL scene before drawing.
         """
@@ -2659,7 +2593,7 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         self.properties.update(zoom=zoom)
 
     def glv_straif(self, x, y):
-        """Move in XY plane.
+        """Translate in the XY plane.
         """
         ## figure out A/pixel, multipy straif by pixes to get the
         ## the translation
@@ -2685,7 +2619,7 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         self.properties.update(cor=cor)
 
     def glv_trackball(self, x1, y1, x2, y2):
-        """Virtual Trackball
+        """Implements a virtual trackball.
         """
         def project_to_sphere(r, x, y):
             d = math.sqrt(x*x + y*y)
@@ -2766,12 +2700,9 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         """
         ## OpenGL Features
         glEnable(GL_NORMALIZE)
-        glEnable(GL_CULL_FACE)
         glShadeModel(GL_SMOOTH)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-        
-        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
         
         ## background color
         if self.properties["bg_color"]=="Black":
@@ -2779,8 +2710,12 @@ class GLViewer(GLObject, OpenGLRenderMethods):
         elif self.properties["bg_color"]=="White":
             glClearColor(1.0, 1.0, 1.0, 0.0)
         elif self.properties["bg_color"]=="Dark Green":
-            glClearColor(0.0, 0.2, 0.0, 0.1)
+            glClearColor(0.0, 0.15, 0.0, 0.1)
+        elif self.properties["bg_color"]=="Off-White":
+            glClearColor(0.9, 0.85, 0.65, 0.0)
 
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+            
         ## lighting
         ambient  = (self.properties["GL_AMBIENT"],
                     self.properties["GL_AMBIENT"],

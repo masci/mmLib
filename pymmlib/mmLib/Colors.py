@@ -5,6 +5,17 @@
 """Library of colors matching PyMol color names.
 """
 
+def rgbf2rgbi(rgbf):
+    """Converts a RGB/float color into a RGB/integer.
+    """
+    return (int(rgbf[0]*255.0), int(rgbf[1]*255.0), int(rgbf[2]*255.0))
+
+
+def rgbi2rgbf(rgbf):
+    """Converts a RGB/integer color into a RGB/float.
+    """
+    return (int(rgbf[0]*255.0), int(rgbf[1]*255.0), int(rgbf[2]*255.0))
+
 COLORS = [
     ('white', (1.0, 1.0, 1.0)),
     ('black', (0.0, 0.0, 0.0)),
@@ -59,3 +70,14 @@ COLORS = [
     ('brown', (0.555, 0.274, 0.15)),
     ('wheat', (0.99, 0.82, 0.65))
     ]
+
+COLOR_NAMES             = []
+COLOR_NAMES_CAPITALIZED = []
+COLOR_RGBF              = {}
+COLOR_RGBI              = {}
+
+for name, rgb in COLORS:
+    COLOR_NAMES.append(name)
+    COLOR_NAMES_CAPITALIZED.append(name.capitalize())
+    COLOR_RGBF[name] = rgb
+    COLOR_RGBI[name] = rgbf2rgbi(rgb)

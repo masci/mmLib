@@ -277,8 +277,8 @@ def make_doc():
     #os.system("happydoc -d doc -t 'PyMMLib Documentation' --no-comments "\
     #          "--no-private-names mmLib")
     os.system(
-        'epydoc --html --output doc --name "mmLib Documentation" '\
-        'mmLib mmLib/Extensions') 
+        'epydoc --html --output doc/api_reference '\
+        '--name "mmLib Documentation" mmLib mmLib/Extensions') 
 
 
 def check_deps():
