@@ -15,7 +15,6 @@ from mmCIF   import mmCIFFile
 ###############################################################################
 ## Library Data Locations
 ##
-
 (MMLIB_PATH, JUNK) = os.path.split(__file__)
 
 ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
@@ -106,23 +105,12 @@ class MonomerDesc(object):
 ## Library API
 ##
 
-def library_get_element_desc(symbol):
-    """Loads/caches/returns a instance of the ElementDesc class for the given
-    element symbol.  The source of the element data is the
-    mmLib/Data/elements.cif file.
+def library_construct_element_desc(symbol):
+    """Constructs the ElementDesc object for the given element symbol.
     """
-    assert type(symbol)==StringType
-
-    try:
-        return ELEMENT_CACHE[symbol]
-    except KeyError:
-        pass
-
     ## only load elements.cif once
     global ELEMENT_CIF_FILE
     if ELEMENT_CIF_FILE==None:
-        warning("loading %s" % (ELEMENT_DATA_PATH))
-        
         ELEMENT_CIF_FILE = mmCIFFile()
         ELEMENT_CIF_FILE.load_file(ELEMENT_DATA_PATH)
 
@@ -148,22 +136,34 @@ def library_get_element_desc(symbol):
     element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0,
                                int(rgb8[3:5], 16) / 255.0,
                                int(rgb8[5:7], 16) / 255.0)
+
+    return element_desc
+
+
+def library_get_element_desc(symbol):
+    """Loads/caches/returns a instance of the ElementDesc class for the given
+    element symbol.  The source of the element data is the
+    mmLib/Data/elements.cif file.
+    """
+    assert type(symbol)==StringType
+
+    try:
+        return ELEMENT_CACHE[symbol]
+    except KeyError:
+        pass
+
+    element_desc = library_construct_element_desc(symbol)
+    if element_desc==None:
+        warning("element description not found for %s" % (symbol))
+        return None
     
     ELEMENT_CACHE[symbol] = element_desc
     return element_desc
 
 
-def library_get_monomer_desc(res_name):
-    """Loads/caches/returns the monomer description objec MonomerDesc
-    for the given monomer residue name.
+def library_construct_monomer_desc(res_name):
+    """Constructs the MonomerDesc object for the given residue name.
     """
-    assert type(res_name)==StringType
-
-    try:
-        return MONOMER_RES_NAME_CACHE[res_name]
-    except KeyError:
-        pass
-
     ## this hack is necessary beause most PDB files do not have
     ## a indicator in the 3-letter-code for RNA or DNA
     dna_map = {
@@ -260,6 +260,23 @@ def library_get_monomer_desc(res_name):
     elif mon_type=="HOH" or mon_type=="WAT":
         mon_desc.water = True
 
+    return mon_desc
+
+    
+def library_get_monomer_desc(res_name):
+    """Loads/caches/returns the monomer description objec MonomerDesc
+    for the given monomer residue name.
+    """
+    assert type(res_name)==StringType
+
+    try:
+        return MONOMER_RES_NAME_CACHE[res_name]
+    except KeyError:
+        pass
+
+    mon_desc = library_construct_monomer_desc(res_name)
+    if mon_desc==None:
+        return None
 
     MONOMER_RES_NAME_CACHE[res_name] = mon_desc
     return mon_desc
