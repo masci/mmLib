@@ -576,11 +576,14 @@ class Fragment(object):
         self.  Returns None if no fragment is found.
         """
         assert type(offset) == IntType
-        
         chain = self.get_chain()
-        i     = chain.index(self) + offset
-        try:               return chain[i]
-        except IndexError: return None
+        i = chain.index(self) + offset
+        if i < 0:
+            return None
+        try:
+            return chain[i]
+        except IndexError:
+            return None
 
     def get_structure(self):
         """Returns the parent structure.
@@ -633,7 +636,6 @@ class Fragment(object):
         return isinstance(self, AminoAcidResidue) or \
                isinstance(self, NucleicAcidResidue)
 
-
     def is_water(self):
         """Returns True if the Fragment is a water molecule, returns False
         otherwise.
@@ -668,7 +670,6 @@ class Residue(Fragment):
         if the fragment found is not the same type of residue as self.
         """
         assert type(offset) == IntType
-        
         frag = Fragment.get_offset_fragment(self, offset)
         if type(self) == type(frag):
             return frag
@@ -801,11 +802,22 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(aCA, aC, naN, naCA)
 
     def is_cis(self):
-        """Returns true if this is a CIS amino acid, otherwise returns false.
-        It uses calc_torsion_omega.
+        """Returns True if this is a CIS amino acid, otherwise returns False.
+        It uses calc_torsion_omega, and if there are missing atoms this method
+        will return None.
         """
-        omega = self.calc_torsion_omega()
-        return abs(omega) > (math.pi / 2.0)
+        prev_res = self.get_offset_residue(-1)
+        if prev_res == None:
+            return None
+
+        prev_omega = prev_res.calc_torsion_omega()
+        if prev_omega == None:
+            return None
+
+        if abs(prev_omega) <= (math.pi/2.0):
+            return True
+
+        return False
 
     def calc_pucker_torsion(self, conf_id = None):
         """Calculates the Pucker torsion of a ring system.  Returns None
@@ -988,7 +1000,12 @@ class Atom(object):
         raise TypeError, x
 
     def add_alt_loc(self, atom):
+        """Add atom as a alternate conformation of the current atom.
+        """
         assert isinstance(atom, Atom)
+        assert atom.name == self.name
+        assert atom.fragment_id == self.fragment_id
+        assert atom.chain_id == self.chain_id
         assert atom not in self.__alt_loc_list
 
         self.__alt_loc_list.append(atom)
@@ -1012,6 +1029,13 @@ class Atom(object):
         """
         return iter(self)
 
+    def has_alt_loc(self):
+        """Returns True if there are no alternative locations for this atom.
+        """
+        if len(self.__alt_loc_list) > 1:
+            return True
+        return False
+
     def create_bond(self, atom, bond_alt_loc = False):
         """Creates a bond between two Atom objects.  If bond_alt_loc
         is True, then the bond is also formed between the alternate
@@ -1020,6 +1044,10 @@ class Atom(object):
         assert isinstance(atom, Atom)
 
         def make_bond(a1, a2):
+            assert ((a1.alt_loc == a2.alt_loc) or
+                    (a1.alt_loc == "" and a2.alt_loc != "") or
+                    (a1.alt_loc != "" and a2.alt_loc == ""))
+            
             if a1.get_bond(a2):
                 return
             bond = Bond(a1, a2)
@@ -1037,18 +1065,20 @@ class Atom(object):
 
             elif alist1 and alist2:
                 for alt_loc in alist1:
-                    make_bond(self[alt_loc], atom[alt_loc])
+                    try: make_bond(self[alt_loc], atom[alt_loc])
+                    except KeyError: pass
 
             elif alist1 and not alist2:
                 for alt_loc in alist1:
-                    make_bond(self[alt_loc], atom)
-
+                    try: make_bond(self[alt_loc], atom)
+                    except KeyError: pass
             else:
                 for alt_loc in alist2:
-                    make_bond(self, atom[alt_loc])  
+                    try: make_bond(self, atom[alt_loc])  
+                    except KeyError: pass
 
         else:
-            make_bond(atom)
+            make_bond(self, atom)
 
     def get_bond(self, atom):
         """Returns the Bond connecting self with the argument atom.

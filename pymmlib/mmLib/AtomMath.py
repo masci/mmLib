@@ -2,50 +2,34 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-"""Mathmatical operations performed on mmLib.Strcuture.Atom objects."""
-
+"""Mathmatical operations performed on mmLib.Strcuture.Atom objects.
+"""
 import math
-from   mmTypes import *
-
-rad2deg = 180.0   / math.pi
-deg2rad = math.pi / 180.0
-
-
-def cos(deg):
-    return math.cos(deg2rad * deg)
-
-def acos(x):
-    return math.acos(x) * rad2deg
-
-def sin(deg):
-    return math.sin(deg2rad * deg)
-
-def asin(x):
-    return math.asin(x) * rad2deg
-
+from mmTypes import *
 
 def calculateDistance(a1, a2):
-    """Returns the distance between two argument atoms."""
-    if not (a1 and a2): return None
-
+    """Returns the distance between two argument atoms.
+    """
+    if not (a1 and a2):
+        return None
     a12 = a1.position - a2.position
     distance = abs(a12.length())
     return distance
 
-
 def calculateAngle(a1, a2, a3):
-    """Return the angle between the three argument atoms."""
-    if not (a1 and a2 and a3): return None
-
+    """Return the angle between the three argument atoms.
+    """
+    if not (a1 and a2 and a3):
+        return None
     a21 = a1.position - a2.position
     a23 = a3.position - a2.position
-    return a21.angle(a23) * rad2deg
-
+    return a21.angle(a23)
 
 def calculateTorsionAngle(a1, a2, a3, a4):
-    """Calculates the torsion angle between the four argument atoms."""
-    if not (a1 and a2 and a3 and a4): return None
+    """Calculates the torsion angle between the four argument atoms.
+    """
+    if not (a1 and a2 and a3 and a4):
+        return None
 
     a12 = a2.position - a1.position
     a23 = a3.position - a2.position
@@ -66,7 +50,7 @@ def calculateTorsionAngle(a1, a2, a3, a4):
     if scalar_product < -1.0:
         scalar_product = -1.0
 
-    angle = acos(scalar_product)
+    angle = math.acos(scalar_product)
 
     if direction < 0.0:
         angle = -angle

@@ -7,32 +7,49 @@
 import math
 from AtomMath import *
 
+deg2rad = math.pi / 180.0
+rad2deg = 180.0 / math.pi
+
 
 class UnitCell(object):
     """Class for storing and performing calculations on unit cell
-    parameters.
+    parameters.  The constructor expects alpha, beta, and gamma to be in
+    degrees, but converts them to radians.  Set angle_units = "rad" if
+    the alpha, beta, and gamma are already in radians.
     """
-    def __init__(self, a=1.0, b=1.0, c=1.0, alpha=90.0, beta=90.0, gamma=90.0):
+    def __init__(self, a=1.0, b=1.0, c=1.0, alpha=90.0, beta=90.0, gamma=90.0,
+                 angle_units = "deg"):
         self.a = a
         self.b = b
         self.c = c
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
+
+        if angle_units == "deg":
+            self.alpha = alpha * deg2rad
+            self.beta = beta * deg2rad
+            self.gamma = gamma * deg2rad
+        else:
+            self.alpha = alpha
+            self.beta = beta
+            self.gamma = gamma
+
         self.orth_to_frac = self.calc_fractionalization_matrix()
         self.frac_to_orth = self.calc_orthogonalization_matrix()
 
     def __str__(self):
+        alpha = self.alpha * rad2deg
+        beta = self.beta * rad2deg
+        gamma = self.gamma * rad2deg
+
         return "UnitCell(a=%f, b=%f, c=%f, alpha=%f, beta=%f, gamma=%f)" % (
-            self.a, self.b, self.c, self.alpha, self.beta, self.gamma)
+            self.a, self.b, self.c, alpha, beta, gamma)
 
     def calc_v(self):
         """Calculates the volume of the rhombohedrial created by the
         unit vectors a1/|a1|, a2/|a2|, a3/|a3|.
         """
-        cos_alpha = cos(self.alpha)
-        cos_beta  = cos(self.beta)
-        cos_gamma = cos(self.gamma)
+        cos_alpha = math.cos(self.alpha)
+        cos_beta  = math.cos(self.beta)
+        cos_gamma = math.cos(self.gamma)
         return math.sqrt(1                       -
                          (cos_alpha * cos_alpha) -
                          (cos_beta  * cos_beta)  -
@@ -49,13 +66,13 @@ class UnitCell(object):
         """
         V = self.calc_volume()
 
-        sin_alpha = sin(self.alpha)
-        sin_beta  = sin(self.beta)
-        sin_gamma = sin(self.gamma)
+        sin_alpha = math.sin(self.alpha)
+        sin_beta  = math.sin(self.beta)
+        sin_gamma = math.sin(self.gamma)
 
-        cos_alpha = cos(self.alpha)
-        cos_beta  = cos(self.beta)
-        cos_gamma = cos(self.gamma)
+        cos_alpha = math.cos(self.alpha)
+        cos_beta  = math.cos(self.beta)
+        cos_gamma = math.cos(self.gamma)
 
         ra  = (self.b * self.c * sin_alpha) / V
         rb  = (self.a * self.c * sin_beta)  / V
@@ -78,13 +95,13 @@ class UnitCell(object):
     def calc_orthogonalization_matrix(self):
         """Fractional to cartesian coordinates.
         """
-        sin_alpha = sin(self.alpha)
-        sin_beta  = sin(self.beta)
-        sin_gamma = sin(self.gamma)
+        sin_alpha = math.sin(self.alpha)
+        sin_beta  = math.sin(self.beta)
+        sin_gamma = math.sin(self.gamma)
 
-        cos_alpha = cos(self.alpha)
-        cos_beta  = cos(self.beta)
-        cos_gamma = cos(self.gamma)
+        cos_alpha = math.cos(self.alpha)
+        cos_beta  = math.cos(self.beta)
+        cos_gamma = math.cos(self.gamma)
 
         o11 = self.a
         o12 = self.b * cos_gamma
