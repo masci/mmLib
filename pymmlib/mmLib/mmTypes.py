@@ -92,7 +92,48 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
-def setmaps(smap, skey, dmap, dkey, default = None):
+def setmaps(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the string value from smap/skey/
+    """
+    if smap.has_key(skey):
+        try:
+            dmap[dkey] = str(smap[skey])
+        except ValueError:
+            print "setmaps(): ValueError"
+            return False
+        return True
+    return False
+
+
+def setmapi(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the integer value from smap/skey.
+    """
+    if smap.has_key(skey) and smap[skey]:
+        try:
+            dmap[dkey] = int(smap[skey])
+        except ValueError:
+            print "setmapi(): ValueError"
+            return False
+        return True
+    return False
+
+
+def setmapf(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the float value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    if smap.has_key(skey) and smap[skey]:
+        try:
+            dmap[dkey] = float(smap[skey])
+        except ValueError:
+            print "setmapf(): ValueError dmap[%s]=smap[%s]=%s" % (
+                dkey, skey, smap[skey])
+            return False
+        return True
+    return False
+
+
+def setmapsd(smap, skey, dmap, dkey):
     """Sets the dmap/dkey with the string value from smap/skey or
     default if not smap/skey value is found.
     """
@@ -103,43 +144,45 @@ def setmaps(smap, skey, dmap, dkey, default = None):
     except KeyError:
         pass
 
-    if default == None:
+    if default==None:
         return False
 
     dmap[dkey] = default
     return True
 
 
-def setmapi(smap, skey, dmap, dkey, default = None):
+def setmapid(smap, skey, dmap, dkey, default=None):
     """Sets the dmap/dkey with the integer value from smap/skey or
     default if not smap/skey value is found.
     """
     try:
         dmap[dkey] = int(smap[skey])
+        return
     except ValueError:
         pass
     except KeyError:
         pass
 
-    if default == None:
+    if default==None:
         return False
 
     dmap[dkey] = default
     return True
 
 
-def setmapf(smap, skey, dmap, dkey, default = None):
+def setmapfd(smap, skey, dmap, dkey, default=None):
     """Sets the dmap/dkey with the float value from smap/skey or
     default if not smap/skey value is found.
     """
     try:
         dmap[dkey] = float(smap[skey])
+        return
     except ValueError:
         pass
     except KeyError:
         pass
 
-    if default == None:
+    if default==None:
         return False
 
     dmap[dkey] = default

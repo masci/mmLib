@@ -95,36 +95,28 @@ mmCIFStandardColumnsMap = {
     }
 
 
+def setmaps_cif(smap, skey, dmap, dkey):
+    """For string converisons, treat question marks as blank.
+    """
+    try:
+        dmap[dkey] = str(smap[skey])
+    except ValueError:
+        print "setmaps_cif(): ValueError",smap[skey]
+        return False
+    except KeyError:
+        print "KeyError"
+        return False
+
+    if dmap[dkey]=="?":
+        del dmap[dkey]
+        return False
+
+    return True
 
 
 class mmCIFStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file.
     """
-    def setmaps(self, smap, skey, dmap, dkey, default = None):
-        """For string converisons, treat question marks as blank.
-        """
-        ## get data from smap
-        x = None
-        try:
-            x = smap[skey]
-        except KeyError:
-            pass
-
-        ## set default under conditions
-        if x == None or x == "?":
-            if default == None:
-                return False
-            else:
-                dmap[dkey] = default
-                return True
-            
-        ## set dmap
-        try:
-            dmap[dkey] = str(x)
-        except ValueError:
-            return False
-
-        return True
 
     def read_start(self, fil, update_cb = None):
         ## parse the mmCIF file
@@ -233,13 +225,13 @@ class mmCIFStructureBuilder(StructureBuilder):
 
             atm_map = {}
 
-            self.setmaps(atom_site, self.atom_id, atm_map, "name")
-            self.setmaps(atom_site, self.alt_id,  atm_map, "alt_loc")
-            self.setmaps(atom_site, self.comp_id, atm_map, "res_name")
-            self.setmaps(atom_site, self.seq_id,  atm_map, "fragment_id")
-            self.setmaps(atom_site, self.asym_id, atm_map, "chain_id")
+            setmaps_cif(atom_site, self.atom_id, atm_map, "name")
+            setmaps_cif(atom_site, self.alt_id,  atm_map, "alt_loc")
+            setmaps_cif(atom_site, self.comp_id, atm_map, "res_name")
+            setmaps_cif(atom_site, self.seq_id,  atm_map, "fragment_id")
+            setmaps_cif(atom_site, self.asym_id, atm_map, "chain_id")
 
-            self.setmaps(atom_site, "type_symbol", atm_map, "element")
+            setmaps_cif(atom_site, "type_symbol", atm_map, "element")
             setmapf(atom_site, "cartn_x", atm_map, "x")
             setmapf(atom_site, "cartn_y", atm_map, "y")
             setmapf(atom_site, "cartn_z", atm_map, "z")
@@ -256,7 +248,7 @@ class mmCIFStructureBuilder(StructureBuilder):
             setmapi(atom_site, "pdbx_pdb_model_num",
                     atm_map,   "model_id")
 
-            if aniso_table != None:
+            if aniso_table!=None:
                 try:
                     aniso = aniso_dict[atom_site_id]
                 except KeyError:
@@ -327,8 +319,8 @@ class mmCIFStructureBuilder(StructureBuilder):
         else:
             symm = symmetry_table.get_row(("entry_id", entry_id))
             if symm != None:
-                self.setmaps(symm, "space_group_name_H-M",
-                             ucell_map, "space_group")
+                setmaps_cif(symm, "space_group_name_H-M",
+                            ucell_map, "space_group")
         
         self.load_unit_cell(ucell_map)
 
@@ -689,45 +681,74 @@ class mmCIFFileBuilder(object):
         asrow["auth_asym_id"]       = atm.chain_id
 
         asrow["type_symbol"]        = atm.element
-        asrow["Cartn_x"]            = atm.position[0]
-        asrow["Cartn_y"]            = atm.position[1]
-        asrow["Cartn_z"]            = atm.position[2]
-        asrow["occupancy"]          = atm.occupancy
-        asrow["B_iso_or_equiv"]     = atm.temp_factor
         asrow["pdbx_PDB_model_num"] = atm.model_id
         
-        if atm.sig_position:
-            asrow["Cartn_x_esd"] = atm.sig_position[0]
-            asrow["Cartn_y_esd"] = atm.sig_position[1]
-            asrow["Cartn_z_esd"] = atm.sig_position[2]
+        if atm.occupancy!=None:
+            asrow["occupancy"] = atm.occupancy
+
+        if atm.temp_factor!=None:
+            asrow["B_iso_or_equiv"] = atm.temp_factor
+
+        if atm.position!=None:
+            if atm.position[0]!=None:
+                asrow["Cartn_x"] = atm.position[0]
+            if atm.position[1]!=None:
+                asrow["Cartn_y"] = atm.position[1]
+            if atm.position[2]!=None:
+                asrow["Cartn_z"] = atm.position[2]
+        
+        if atm.sig_position!=None:
+            if atm.sig_position[0]!=None:
+                asrow["Cartn_x_esd"] = atm.sig_position[0]
+            if atm.sig_position[1]!=None:
+                asrow["Cartn_y_esd"] = atm.sig_position[1]
+            if atm.sig_position[2]!=None:
+                asrow["Cartn_z_esd"] = atm.sig_position[2]
+
+        if atm.sig_occupancy!=None:
             asrow["occupancy_esd"] = atm.sig_occupancy
+
+        if atm.sig_temp_factor!=None:
             asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
 
-        if atm.U:
+        if atm.U!=None:
             aniso = self.get_table("atom_site_anisotrop")
             anrow = mmCIFRow()
             aniso.append(anrow)
 
-            anrow["id"] = asrow["id"]
-            anrow["type_symbol"] = asrow["type_symbol"]
-            anrow["label_entity_id"] = asrow["label_entity_id"]
-            anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
+            anrow["id"]                = asrow["id"]
+            anrow["type_symbol"]       = asrow["type_symbol"]
+            anrow["label_entity_id"]   = asrow["label_entity_id"]
+            anrow["pdbx_auth_seq_id"]  = asrow["auth_seq_id"]
             anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
             anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
             anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
-            anrow["pdbx_auth_alt_id"] = asrow["auth_alt_id"]
-            anrow["U[1][1]"] = atm.U[0,0]
-            anrow["U[2][2]"] = atm.U[1,1]
-            anrow["U[3][3]"] = atm.U[2,2]
-            anrow["U[1][2]"] = atm.U[0,1]
-            anrow["U[1][3]"] = atm.U[0,2]
-            anrow["U[2][3]"] = atm.U[1,2]
+            anrow["pdbx_auth_alt_id"]  = asrow["auth_alt_id"]
 
-            if atm.sig_U:
-                anrow["U[1][1]_esd"] = atm.sig_U[0,0]
-                anrow["U[2][2]_esd"] = atm.sig_U[1,1]
-                anrow["U[3][3]_esd"] = atm.sig_U[2,2]
-                anrow["U[1][2]_esd"] = atm.sig_U[0,1]
-                anrow["U[1][3]_esd"] = atm.sig_U[0,2]
-                anrow["U[2][3]_esd"] = atm.sig_U[1,2]
+            if atm.U[0,0]!=None:
+                anrow["U[1][1]"] = atm.U[0,0]
+            if atm.U[1,1]!=None:
+                anrow["U[2][2]"] = atm.U[1,1]
+            if atm.U[2,2]!=None:
+                anrow["U[3][3]"] = atm.U[2,2]
+            if atm.U[0,1]!=None:
+                anrow["U[1][2]"] = atm.U[0,1]
+            if atm.U[0,2]!=None:
+                anrow["U[1][3]"] = atm.U[0,2]
+            if atm.U[1,2]!=None:
+                anrow["U[2][3]"] = atm.U[1,2]
+
+            if atm.sig_U!=None:
+                if atm.sig_U[0,0]!=None:
+                    anrow["U[1][1]_esd"] = atm.sig_U[0,0]
+                if atm.sig_U[1,1]!=None:
+                    anrow["U[2][2]_esd"] = atm.sig_U[1,1]
+                if atm.sig_U[2,2]!=None:
+                    anrow["U[3][3]_esd"] = atm.sig_U[2,2]
+                if atm.sig_U[0,1]!=None:
+                    anrow["U[1][2]_esd"] = atm.sig_U[0,1]
+                if atm.sig_U[0,2]!=None:
+                    anrow["U[1][3]_esd"] = atm.sig_U[0,2]
+                if atm.sig_U[1,2]!=None:
+                    anrow["U[2][3]_esd"] = atm.sig_U[1,2]
 

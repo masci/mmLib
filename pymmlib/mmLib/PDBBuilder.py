@@ -1253,7 +1253,7 @@ class PDBFileBuilder(object):
         atom_rec["element"]     = atm.element
         atom_rec["altLoc"]      = atm.alt_loc
 
-        if atm.position:
+        if atm.position!=None:
             atom_rec["x"] = atm.position[0]
             atom_rec["y"] = atm.position[1]
             atom_rec["z"] = atm.position[2]
@@ -1273,7 +1273,7 @@ class PDBFileBuilder(object):
             arec2["element"] = arec1["element"]
             arec2["charge"]  = arec1["charge"]
 
-        if atm.sig_position:
+        if atm.sig_position!=None:
             sigatm_rec = SIGATM()
             self.pdb_file.append(sigatm_rec)
             atom_common(atom_rec, sigatm_rec)
@@ -1283,7 +1283,7 @@ class PDBFileBuilder(object):
             sigatm_rec["sigOccupancy"] = atm.sig_temp_factor
             sigatm_rec["sigTempFactor"] = atm.sig_occupancy
 
-        if atm.U:
+        if atm.U!=None:
             anisou_rec = ANISOU()
             self.pdb_file.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
@@ -1294,7 +1294,7 @@ class PDBFileBuilder(object):
             anisou_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
             anisou_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
 
-        if atm.sig_U:
+        if atm.sig_U!=None:
             siguij_rec = SIGUIJ()
             self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)

@@ -71,6 +71,7 @@ class mmCIFRow(dict):
         return dict.__contains__(self, column.lower())
 
     def __setitem__(self, column, value):
+        assert value!=None
         dict.__setitem__(self, column.lower(), value)
 
     def __getitem__(self, column):
@@ -104,6 +105,8 @@ class mmCIFTable(list):
     __slots__ = ["name", "columns", "data"]
 
     def __init__(self, name, columns = None):
+        assert name!=None
+        
         list.__init__(self)
         self.name = name
         self.columns = columns or []
@@ -142,6 +145,8 @@ class mmCIFTable(list):
         raise TypeError, x
     
     def __setitem__(self, x, value):
+        assert value!=None
+        
         if type(x) == IntType and isinstance(value, mmCIFRow):
             value.table = self
             list.__setitem__(self, x, value)
@@ -254,6 +259,8 @@ class mmCIFData(list):
     __slots__ = ["name", "file"]
     
     def __init__(self, name):
+        assert name!=None
+        
         list.__init__(self)
         self.name = name
 
@@ -884,24 +891,19 @@ class mmCIFFileWriter(object):
         strx += ";\n"
         return strx
 
-    def fix(self, x):
-        if type(x) != StringType:
-            return str(x)
-        if x == "":
-            return "."
-        return x
-
     def data_type(self, x):
         """Analyze x and return its type: token, qstring, mstring
         """
-        if type(x) != StringType:
+        assert x!=None
+
+        if type(x)!=StringType:
             x = str(x)
             return x, "token"
 
-        if x == "" or x == ".":
+        if x=="" or x==".":
             return ".", "token"
 
-        if x.find("\n") != -1:
+        if x.find("\n")!=-1:
             return x, "mstring"
         
         if x.count(" ")!=0 or x.count("\t")!=0 or x.count("#")!=0:
@@ -921,11 +923,12 @@ class mmCIFFileWriter(object):
             self.writeln("save_%s" % self.cif_data.name)
         else:
             self.writeln("data_%s" % self.cif_data.name)
+
         self.writeln("#")
         
         for cif_table in self.cif_data:
             ## ignore tables without data rows
-            if len(cif_table) == 0:
+            if len(cif_table)==0:
                 continue
 
             ## special handling for tables with one row of data

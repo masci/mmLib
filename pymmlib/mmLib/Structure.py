@@ -2418,17 +2418,19 @@ class Atom(object):
         self.occupancy       = occupancy
         self.sig_occupancy   = sig_occupancy
         self.charge          = charge
-        
-        if type(position) != NoneType:
+
+        ## position
+        if position!=None:
             self.position = position
-        elif x != None or y != None or z != None:
+        elif x!=None or y!=None or z!=None:
             self.position = array([x, y, z])
         else:
             self.position = None
-        
-        if type(sig_position) != NoneType:
+
+        ## sig_position
+        if sig_position!=None:
             self.sig_position = sig_position
-        elif sig_x != None or sig_y != None or sig_z != None:
+        elif sig_x!=None or sig_y!=None or sig_z!=None:
             self.sig_position = array([sig_x, sig_y, sig_z])
         else:
             self.sig_position = None
