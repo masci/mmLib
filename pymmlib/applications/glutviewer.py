@@ -21,12 +21,33 @@ from mmLib.R3DDriver      import Raster3DDriver
 from mmLib.OpenGLDriver   import OpenGLDriver
 from mmLib.Extensions.TLS import *
 
+##
+## constants
+##
+GL_DOUBLE_BUFFER = False
+
+
+class Terminal(object):
+    """Terminal window for controlling mmLib.Viewer options.
+    """
+    def __init__(self, glut_viewer):
+        self.x      = 0
+        self.y      = 0
+        self.width  = 0
+        self.height = 0
+
 
 class GLUT_Viewer(GLViewer):
+    """The main OpenGL Viewer using GLUT.
+    """
     def __init__(self):
         self.glut_init_done = False
         self.struct_desc_list = []
         self.opengl_driver = OpenGLDriver()
+
+        ## pixel width and height of window
+        self.width  = 640
+        self.height = 480
 
         ## mouse navigation state
         self.in_drag         = False
@@ -37,10 +58,18 @@ class GLUT_Viewer(GLViewer):
         GLViewer.__init__(self)
         
     def error(self, text):
-        sys.stderr.write("[ERROR] %s\n" % (text))
+        sys.stderr.write("[GV ERROR] %s\n" % (text))
+        sys.stderr.flush()
+
+    def info(self, text):
+        sys.stderr.write("[GV INFO]  %s\n" % (text))
         sys.stderr.flush()
 
     def load_struct(self, path):
+        """Loads the requested structure.
+        """
+        self.info("loading: %s" % (path))
+        
         try:
             struct = LoadStructure(
                 fil              = path,
@@ -57,18 +86,26 @@ class GLUT_Viewer(GLViewer):
 
     def glv_render(self):
         self.glv_render_one(self.opengl_driver)
-        glFlush()
+        
+        if GL_DOUBLE_BUFFER:
+            glutSwapBuffers()
+        else:
+            glFlush()
 
     def glv_redraw(self):
         if self.glut_init_done:
             glutPostRedisplay()
 
     def glut_init(self):
-        self.error("glut_init")
-        
         glutInit(sys.argv)
-        glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB)
-        glutInitWindowSize (500, 500); 
+
+        ## initalize OpenGL display mode
+        if GL_DOUBLE_BUFFER:
+            glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
+        else:
+            glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB)
+
+        glutInitWindowSize(self.width, self.height); 
         glutInitWindowPosition(100, 100)
         glutCreateWindow("GLUT TLSViewer")
 
@@ -94,7 +131,10 @@ class GLUT_Viewer(GLViewer):
     def glut_reshape(self, width, height):
         """Reshape the viewering window.
         """
-        self.glv_resize(width, height)
+        self.width  = width
+        self.height = height
+
+        self.glv_resize(self.width, self.height)
 
     def glut_mouse(self, button, state, x, y):
         """Mouse button press callback.
@@ -143,8 +183,17 @@ class GLUT_Viewer(GLViewer):
         self.beginy = y
 
     def glut_keyboard(self, key, x, y):
-        if key == chr(27):
+        """Keyboard press events.
+        """
+        key = key.lower()
+        
+        ## quit
+        if key=="q":
             sys.exit(0)
+
+        ## toggle fullscreen mode:
+        elif key=="o":
+            pass
 
     def glut_special(self, key, x, y):
         pass
@@ -154,7 +203,9 @@ def main():
     gv = GLUT_Viewer()
     gv.glut_init()
 
-    gv.load_struct(sys.argv[1])
+
+    for path in sys.argv[1:]:
+        gv.load_struct(path)
     
     gv.glut_main()
 

@@ -3080,7 +3080,7 @@ class GLTLSGroup(GLDrawList):
             else:
                 for symop in gl_struct.iter_orth_symops():
                     self.driver.glr_push_matrix()
-                    self.glr_mult_matrix_Rt(symop.R, symop.t)
+                    self.driver.glr_mult_matrix_Rt(symop.R, symop.t)
                     yield True
                     self.driver.glr_pop_matrix()
 

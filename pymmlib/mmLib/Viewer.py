@@ -2451,6 +2451,18 @@ class GLViewer(GLObject):
               "action":    "redraw" })
 
     def glv_update_cb(self, updates, actions):
+        ## prevent the near clipping plane from passing behind the far
+        ## clipping plane
+        slice = self.properties["near"] - self.properties["far"]
+        if slice<1.0:
+            if updates.has_key("near") and updates.has_key("far"):
+                self.properties.update(far = self.properties["near"] - 1.0)
+            elif updates.has_key("near") and not updates.has_key("far"):
+                self.properties.update(near = self.properties["far"] + 1.0)
+            elif updates.has_key("far") and not updates.has_key("near"):
+                self.properties.update(far = self.properties["near"] - 1.0)
+
+        ## redraw request
         if "redraw" in actions:
             self.glv_redraw()
             
