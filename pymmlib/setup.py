@@ -294,10 +294,12 @@ def check_deps():
     """
 
     print "="*79
-    print "Running Depancy Checks"
+    print "Running Python Depancy Checks"
     print "-"*79
 
     ## check Python version
+    print "Checking for Python Interpreter..."
+
     (major, minor, mminor, junk1, junk2) = sys.version_info
     ver_string = "%d.%d.%d" % (major, minor, mminor)
 
@@ -325,6 +327,7 @@ def check_deps():
         print "OK:    Python Distutils found."
 
     ## check Python Numeric
+    print "Checking for Numeric Python..."
     try:
         import Numeric
     except ImportError:
@@ -333,6 +336,7 @@ def check_deps():
         print "OK:    Numeric Python found."
 
     ## check PyOpenGL
+    print "Checking for Python OpenGL Bindings..."
     try:
         import OpenGL.GL
     except ImportError:
@@ -356,6 +360,7 @@ def check_deps():
         print "OK:    OpenGL.GLUT found."
 
     ## check PyGTK >= 2.0
+    print "Checking for Python GTK+ Bindings..."
     try:
         import pygtk
         pygtk.require("2.0")
@@ -365,6 +370,7 @@ def check_deps():
         print "OK:    PyGTK found."
 
     ## check of PyGTKGLExt
+    print "Checking for Python GTK+ OpenGL Widget Bindings..."
     try:
         import gtk.gtkgl
     except ImportError:
