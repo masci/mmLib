@@ -50,7 +50,7 @@ def run_setup():
         cmdclass = {'install_data': package_install_data},
         
         name         = "pymmlib",
-        version      = "0.5",
+        version      = "0.6",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
