@@ -5,12 +5,6 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-## Distutils script to ease installation
-## python setup.py doc             : runs happydoc creating "doc" dir
-## python setup.py sdist           : creates a .tar.gz distribution
-## python setup.py bdist_wininst   : creates a window binary installer
-## python setup.py bdist_rpm       : creates a rpm distribution
-
 import os
 import sys
 
@@ -43,6 +37,20 @@ def assemble_paths_list():
         "/usr/local",
         "/opt" ]
 
+    ## add path from environment var LD_LIBRARY_PATH
+    try:
+        ld_lib_path = os.environ["LD_LIBRARY_PATH"]
+    except KeyError:
+        pass
+    else:
+        for path in ld_lib_path.split(":"):
+            path = path.strip()
+            (dir, first) = os.path.split(path)
+
+            if dir not in PATHS:
+                PATHS.append(dir)
+
+    ## add paths from /etc/ld.so.conf
     try:
         ld_so_conf = open("/etc/ld.so.conf", "r").readlines()
     except IOError:
@@ -124,7 +132,7 @@ def library_data():
 def pdbmodule_extension():
     """Add the PDB Accelerator module.
     """
-    print "PDB Accelorator Module (pdbmodule)"
+    print "PDB C Module (pdbmodule)"
     ext = Extension(
         "mmLib.pdbmodule", 
         ["src/pdbmodule.c"],
@@ -138,7 +146,7 @@ def pdbmodule_extension():
 def glaccel_extension():
     """Add the OpenGL Accelorator module.
     """
-    print "OpenGL Accelorator Module (glaccel)"
+    print "OpenGL C Module (glaccel)"
     
     glaccel_libs = [
         {"library":    "m",
@@ -361,13 +369,46 @@ def check_deps():
     print "="*79
 
 
+def usage():
+    """Print setup.py usage.
+    """
+    print "SYNOPSIS"
+    print "    python setup.py <command>"
+    print
+    print "DESCRIPTION"
+    print "    mmLib build/install program based on the Python"
+    print "    distutils package.  This setup.py script has several"
+    print "    features not found in most Python seutp.py scrips."
+    print
+    print "COMMANDS"
+    print "    build"
+    print "        Comples/builds mmLib C modules and preps Python"
+    print "        files for installation."
+    print "    install"
+    print "        Installs all mmLib files into the Python library"
+    print "        directory."
+    print "    checkdeps"
+    print "        Checks for all dependant Python modules used by"
+    print "        the mmLib library and associated applications."
+    print "        This produces a nice report to help you figure out"
+    print "        what dependancies need to be installed."
+    print "        See INSTALL.txt for more details."
+    print "    doc"
+    print "        Build the mmLib developers documentation using the"
+    print "        Epidoc program."
+    print
+    
 
 if __name__ == "__main__":
+
     print
     print "PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM"
     print
 
-    if sys.argv[1] == "doc":
+    if len(sys.argv)==1:
+        usage()
+
+    elif sys.argv[1] == "doc":
         make_doc()
 
     elif sys.argv[1] == "checkdeps":

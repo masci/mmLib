@@ -903,9 +903,13 @@ class GLPropertyEditDialog(gtk.Dialog):
 class GLPropertyBrowserDialog(gtk.Dialog):
     """Dialog for manipulating the properties of a GLViewer.
     """
-    def __init__(self, parent_window, glo_root):
-        gl_object_root = glo_root
-        title = "Browse OpenGL Properties: %s" % (gl_object_root.glo_name())
+    def __init__(self, **args):
+
+        parent_window  = args["parent_window"]
+        gl_object_root = args["glo_root"]
+        title          = args.get("title", "")
+
+        title = "Visualization Properties: %s" % (title)
 
         gtk.Dialog.__init__(
             self,
@@ -914,6 +918,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
         self.connect("response", self.response_cb)
+        self.set_default_size(450, 400)
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
 
@@ -985,9 +990,9 @@ class TLSDialog(gtk.Dialog):
     """    
 
     def __init__(self, **args):
-        self.main_window    = args["main_window"]
-        self.struct_context = args["struct_context"]
-        self.sel_tls_group  = None
+        self.main_window = args["main_window"]
+        self.sc = args["struct_context"]
+        self.sel_tls_group = None
 
         self.animation_time = 0.0
         self.animation_list = []
@@ -995,7 +1000,7 @@ class TLSDialog(gtk.Dialog):
 
         gtk.Dialog.__init__(
             self,
-            "TLS Analysis: %s" % (str(self.struct_context.struct)),
+            "TLS Analysis: %s" % (str(self.sc.struct)),
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
@@ -1065,7 +1070,7 @@ class TLSDialog(gtk.Dialog):
 
         gobject.timeout_add(200, self.timeout_cb)
 
-        self.load_PDB(self.struct_context.struct.path)
+        self.load_PDB(self.sc.struct.path)
 
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
@@ -1089,7 +1094,7 @@ class TLSDialog(gtk.Dialog):
             ## the application main window to present the
             ## properties of the gl_tls object for modification
             
-            self.main_window.edit_properties_gl_object(
+            self.main_window.autoselect_gl_prop_browser(
                 self.sel_tls_group.gl_tls)
 
         elif response_code==102:
@@ -1149,18 +1154,22 @@ class TLSDialog(gtk.Dialog):
         self.tls_group_list.append(tls_group)
         
         tls_group.gl_tls = GLTLSGroup(tls_group=tls_group)
-        self.struct_context.gl_struct.glo_add_child(tls_group.gl_tls)
+        self.sc.gl_struct.glo_add_child(tls_group.gl_tls)
         tls_group.gl_tls.glo_add_update_callback(self.update_cb)
 
         ## rebuild GUI viewers
-        self.main_window.gl_prop_browser_rebuild_gl_object_tree()
+        tab = self.main_window.get_sc_tab(self.sc)
+
+        if tab.has_key("gl_prop_browser"):
+            tab["gl_prop_browser"].rebuild_gl_object_tree()
+
         self.redraw_treeview()
 
     def clear_tls_groups(self):
         """Remove the current TLS groups, including destroying
         the tls.gl_tls OpenGL renderer
         """
-        gl_viewer = self.main_window.struct_gui.gtkglviewer
+        gl_viewer = self.sc.gl_struct.glo_get_root()
 
         for tls_group in self.tls_group_list:
             gl_viewer.glv_remove_draw_list(tls_group.gl_tls)
@@ -1171,7 +1180,10 @@ class TLSDialog(gtk.Dialog):
         self.animation_list = []
 
         ## rebuild GUI viewers
-        self.main_window.gl_prop_browser_rebuild_gl_object_tree()
+        tab = self.main_window.get_sc_tab(self.sc)
+        if tab.has_key("gl_prop_browser"):
+            tab["gl_prop_browser"].rebuild_gl_object_tree()
+        
         self.redraw_treeview()
 
     def update_cb(self, updates={}, actions=[]):
@@ -1199,7 +1211,7 @@ class TLSDialog(gtk.Dialog):
         pdb_file.record_processor(tls_file)
 
         for tls_info in tls_file:
-            tls_group = tls_info.make_tls_group(self.struct_context.struct)
+            tls_group = tls_info.make_tls_group(self.sc.struct)
             tls_group.tls_info = tls_info
             self.add_tls_group(tls_group)
             
@@ -1216,7 +1228,7 @@ class TLSDialog(gtk.Dialog):
         tls_file.load_refmac_tlsout_file(fil)
         
         for tls_info in tls_file:
-            tls_group = tls_info.make_tls_group(self.struct_context.struct)
+            tls_group = tls_info.make_tls_group(self.sc.struct)
             tls_group.tls_info = tls_info
             self.add_tls_group(tls_group)
 
@@ -1227,7 +1239,7 @@ class TLSDialog(gtk.Dialog):
 
         dialog = TLSSearchDialog(
             main_window    = self.main_window,
-            struct_context = self.struct_context)
+            struct_context = self.sc)
 
         dialog.run()
         dialog.destroy()
@@ -1237,8 +1249,9 @@ class TLSDialog(gtk.Dialog):
         
     def markup_tls_name(self, tls_info):
         listx = []
-        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_info.range_list:
-            listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
+        for (chain_id1,frag_id1,chain_id2,frag_id2,sel) in tls_info.range_list:
+            listx.append("%s%s-%s%s %s" % (
+                chain_id1, frag_id1, chain_id2, frag_id2, sel))
         return "<small>"+string.join(listx, "\n")+"</small>"
 
     def markup_tensor(self, tensor):
@@ -1296,14 +1309,14 @@ class TLSSearchDialog(gtk.Dialog):
     """    
     def __init__(self, **args):
         self.main_window    = args["main_window"]
-        self.struct_context = args["struct_context"]
+        self.sc = args["struct_context"]
         self.sel_tls_group  = None
 
         self.tls_stats_list = []
 
         gtk.Dialog.__init__(
             self,
-            "TLS Search: %s" % (str(self.struct_context.struct)),
+            "TLS Search: %s" % (str(self.sc.struct)),
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
@@ -1360,7 +1373,7 @@ class TLSSearchDialog(gtk.Dialog):
         except ValueError:
             max_DP2 = 1.0
         
-        tls_analysis = TLSStructureAnalysis(self.struct_context.struct)
+        tls_analysis = TLSStructureAnalysis(self.sc.struct)
         stats_list   = tls_analysis.fit_TLS_segments()
 
         self.tls_stats_list = []
@@ -1560,15 +1573,16 @@ class StructDetailsDialog(gtk.Dialog):
 ###
 
 class StructureContext(object):
-    """
+    """Keeps track of a loaded Structure's contextual information.
     """
     def __init__(self, struct = None, gl_struct = None):
         self.struct_id = ""
+        self.tab_id    = ""
         self.struct    = struct
         self.gl_struct = gl_struct
 
     def suggest_struct_id(self):
-        """
+        """Suggests a name for the display of the Structure.
         """
         entry_id = self.struct.cifdb.get_entry_id()
         if entry_id!=None and entry_id!="":
@@ -1581,14 +1595,13 @@ class StructureContext(object):
 
 
 class MainWindow(object):
-    """
+    """Main viewer window.
     """
     def __init__(self, quit_notify_cb):
-        self.struct_context_list = []
-        self.selected_sc         = None
-
-        self.gl_prop_browser     = None
         self.quit_notify_cb      = quit_notify_cb
+        
+        self.selected_sc         = None
+        self.tab_list            = []
 
         ## dialog lists
         self.details_dialog_list = []
@@ -1605,20 +1618,31 @@ class MainWindow(object):
 
         ## file menu bar
         menu_items = [
-            ('/_File',            None,          None,                 0,'<Branch>'),
-            ('/File/_New Window', None,          self.file_new_window, 0,'<StockItem>',gtk.STOCK_NEW),
-            ('/File/_New Tab',    None,          self.file_new_tab,    0,'<StockItem>',gtk.STOCK_NEW),
-            ('/File/sep1',        None,          None,                 0,'<Separator>'),
-            ('/File/_Open',       None,          self.file_open,       0,'<StockItem>',gtk.STOCK_OPEN),
-            ('/File/_Open In New Tab', None,     self.file_open_in_new_tab,0,'<StockItem>',gtk.STOCK_OPEN),
-            ('/File/sep2',        None,          None,                 0,'<Separator>'),
-            ('/File/_Quit',      '<control>Q',   self.file_quit,       0,'<StockItem>',gtk.STOCK_QUIT),
+            ('/_File', None, None, 0,'<Branch>'),
+            ('/File/_New Window', None, self.file_new_window,
+             0,'<StockItem>', gtk.STOCK_NEW),
+            ('/File/_New Tab', None, self.file_new_tab,
+             0,'<StockItem>',gtk.STOCK_NEW),
+            ('/File/sep1', None, None, 0,'<Separator>'),
+            ('/File/_Open', None, self.file_open,
+             0,'<StockItem>', gtk.STOCK_OPEN),
+            ('/File/_Open In New Tab', None, self.file_open_in_new_tab,
+             0,'<StockItem>',gtk.STOCK_OPEN),
+            ('/File/sep2', None, None, 0, '<Separator>'),
+            ('/File/_Close Structure', None, self.file_close_struct,
+             0,'<StockItem>',gtk.STOCK_CLOSE),
+            ('/File/_Close Tab', None, self.file_close_tab,
+             0,'<StockItem>',gtk.STOCK_CLOSE),
+            ('/File/sep3' ,None, None, 0,'<Separator>'),
+            ('/File/_Quit', '<control>Q', self.file_quit,
+             0,'<StockItem>',gtk.STOCK_QUIT),
             
-            ('/_Dialogs',            None,          None,                  0,'<Branch>'),
-            ('/Dialogs/_Properties', None,          self.dialogs_properties,  0, None),
+            ('/_Visualization', None, None, 0, '<Branch>'),
+            ('/Visualization/_Properties Browser...', None,
+             self.visualization_properties_browser, 0, None),
 
             ('/_Tools', None, None, 0, '<Branch>'),
-            ('/Tools/TLS Analysis...',          None, self.tools_tls_analysis, 0, None),
+            ('/Tools/TLS Analysis...', None, self.tools_tls_analysis, 0, None),
 
             ('/_Structures', None, None, 0, '<Branch>'),
 
@@ -1627,7 +1651,9 @@ class MainWindow(object):
 
         self.accel_group = gtk.AccelGroup()
         self.window.add_accel_group(self.accel_group)
-        self.item_factory = gtk.ItemFactory(gtk.MenuBar, '<main>', self.accel_group)
+
+        self.item_factory = gtk.ItemFactory(
+            gtk.MenuBar, '<main>', self.accel_group)
         self.item_factory.create_items(menu_items)
     
         table.attach(self.item_factory.get_widget('<main>'),
@@ -1660,8 +1686,6 @@ class MainWindow(object):
                      0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  gtk.EXPAND | gtk.FILL,
                      0,                      0)
-        self.notebook.connect("switch-page", self.notebook_switch_page)
-
 
         ## Create statusbar 
         self.hbox = gtk.HBox()
@@ -1685,13 +1709,6 @@ class MainWindow(object):
 
         self.window.show_all()
 
-    def notebook_switch_page(self, notebook, page, page_num):
-        """This is necessary to work around some GtkGLExt bugs.
-        """
-        print "switch page",page_num
-        #gl_viewer = self.notebook.get_nth_page(page_num)
-        #gl_viewer.map()
-
     def file_new_window(self, *args):
         """File->New Window
         """
@@ -1700,7 +1717,7 @@ class MainWindow(object):
     def file_new_tab(self, *args):
         """File->New Tab
         """
-        self.add_viewer_page()
+        self.add_tab()
     
     def file_open(self, *args):
         """File->Open
@@ -1743,54 +1760,57 @@ class MainWindow(object):
         """
         self.destroy_file_selector()
 
+    def file_close_struct(self, *args):
+        """File->Close Structure
+        Closes the currently selected structure.
+        """
+        if self.selected_sc!=None:
+            self.remove_sc(self.selected_sc)
+        
+    def file_close_tab(self, *args):
+        """File->Close Tab
+        Closes the current viewable tab.
+        """
+        tab = self.get_current_tab()
+
+        ## remove all structures 
+        for sc in tab["sc_list"]:
+            self.remove_sc(sc)
+
+        ## remove the page from the notebook
+        page_no = self.notebook.page_num(tab["gl_viewer"])
+        self.notebook.remove_page(page_no)
+
+        ## destroy the GLPropertiesDialog for the tab
+        if tab.has_key("gl_prop_browser"):
+            tab["gl_prop_browser"].destroy()
+
+        self.tab_list.remove(tab)
+
     def file_quit(self, *args):
         """File->Quit
         """
         self.quit_notify_cb(self.window, self)
 
-    def dialogs_properties(self, *args):
+    def visualization_properties_browser(self, *args):
         """Edit->Properties (GLPropertyBrowserDialog)
         """
-        if self.gl_prop_browser==None:
-            self.gl_prop_browser = GLPropertyBrowserDialog(
-                self.window,
-                self.get_current_viewer())
-
-            self.gl_prop_browser.connect(
-                "destroy",
-                self.gl_prop_browser_destroy)
-
-        self.gl_prop_browser.present()
-
-    def edit_properties_gl_object(self, gl_object):
-        """Opens/Presents the GLPropertyBrowser Dialog and selects
-        gl_object for editing.
-        """
-        self.edit_properties()
-        self.gl_prop_browser.select_gl_object(gl_object)
-
-    def gl_prop_browser_destroy(self, widget):
-        """Callback when the GLProeriesBrowser is destroyed.
-        """
-        self.gl_prop_browser = None
-
-    def gl_prop_browser_rebuild_gl_object_tree(self):
-        """This rebuilds the GLPropertiesBrowser when any
-        GLObject is added or removed from it.
-        """
-        if self.gl_prop_browser!=None:
-            self.gl_prop_browser.rebuild_gl_object_tree()
+        tab = self.get_current_tab()
+        if tab!=None:
+            self.present_gl_prop_browser(tab)
 
     def tools_tls_analysis(self, *args):
         """Tools->TLS Analysis
+        Launches the TLS Analysis dialog on the currently selected
+        StructureContext.
         """
-        selected_sc = self.get_selected_sc()
-        if selected_sc==None:
+        if self.selected_sc==None:
             return
         
         tls = TLSDialog(
             main_window    = self,
-            struct_context = selected_sc)
+            struct_context = self.selected_sc)
+        
         tls.present()
 
     def set_statusbar(self, text):
@@ -1820,38 +1840,95 @@ class MainWindow(object):
         dialog.run()
         dialog.destroy()
 
-    def add_viewer_page(self, text="New Tab"):
-        """Adds a page to the tabbed-viewer notebook and places a
+    def add_tab(self):
+        """Adds a tab page to the tabbed-viewer notebook and places a
         GtkGLViewer widget inside of it.
         """
-        event_box = gtk.EventBox()
-        gl_viewer = GtkGLViewer()
-        event_box.add(gl_viewer)
-        event_box.show_all()
+        ## initalize new tab dictionary
+        tab = {}
+        tab["sc_list"] = []
         
-        page_num  = self.notebook.append_page(event_box, gtk.Label(text))
+        ## come up with a new tab name
+        tab["num"] = 1
         
-        return page_num, gl_viewer
+        for tabx in self.tab_list:
+            if tabx["num"]>=tab["num"]:
+                tab["num"] = tabx["num"] + 1
 
-    def get_current_viewer(self):
-        """Returns the current GtkGLViewer, or None if there
-        are not viewers in the window.
+        ## now add the tab dictionary
+        self.tab_list.append(tab)
+
+        tab["name"]      = "Page %d" % (tab["num"])
+        tab["gl_viewer"] = GtkGLViewer()
+
+        page_num  = self.notebook.append_page(
+            tab["gl_viewer"], gtk.Label(tab["name"]))
+
+        tab["gl_viewer"].show()
+        
+        return tab
+
+    def get_current_tab(self):
+        """Returns the tab dictionary of the current viewable tab.
         """
         page_num = self.notebook.get_current_page()
         if page_num==-1:
             return None
 
-        event_box = self.notebook.get_nth_page(page_num)
-        gl_viewer = event_box.get_child()
-        return gl_viewer
+        gl_viewer = self.notebook.get_nth_page(page_num)
+        for tab in self.tab_list:
+            if tab["gl_viewer"]==gl_viewer:
+                return tab
+
+        return None
+
+    def get_sc_tab(self, sc):
+        """Return the tab containing the argument StructureContext.
+        """
+        for tab in self.tab_list:
+            for scx in tab["sc_list"]:
+                if sc==scx:
+                    return tab
+        return None
+
+    def remove_sc(self, sc):
+        """Completely removes the Structure (referenced by its sc).
+        """
+        ## if this StructureContext is the selected context, unselect it
+        ## before removing
+        if self.selected_sc==sc:
+            self.set_selected_sc(None)
+        
+        tab = self.get_sc_tab(sc)
+        tab["sc_list"].remove(sc)
+
+        ## remove from GLViewer
+        tab["gl_viewer"].glv_remove_draw_list(sc.gl_struct)
+
+        ## remove from /Structure menu
+        structs = self.item_factory.get_item("/Structures")
+        structs_menu = structs.get_submenu()
+
+        for mi in structs_menu.get_children():
+            label = mi.get_child()
+            text  = label.get_text()
+
+            if text==sc.struct_id:
+                structs_menu.remove(mi)
+                mi.destroy()
+                break
+
+        ## rebuild the brower for the tab
+        if tab.has_key("gl_prop_browser"):
+            tab["gl_prop_browser"].rebuild_gl_object_tree()
 
     def add_struct(self, struct, new_tab=False, new_window=False):
-        """Adds the Structure to the window
+        """Adds the Structure to the window.  Returns the newly created
+        StructureContext for the window.
         """
         ## create a StructureContext used by the viewer for
         ## this Structure/GLStructure pair
         sc = StructureContext()
-        self.struct_context_list.append(sc)
 
         sc.struct    = struct
         sc.struct_id = sc.suggest_struct_id()
@@ -1859,21 +1936,34 @@ class MainWindow(object):
         ## get the current notebook tab's GtkGLViewer or create
         ## a new notebook table with a new GtkGLViewer
         if new_tab==True:
-            page_num, gl_viewer = self.add_viewer_page(sc.struct_id)
+            tab = self.add_tab()
         else:
-            gl_viewer = self.get_current_viewer()
+            tab = self.get_current_tab()
+            if tab==None:
+                tab = self.add_tab()
 
-            if gl_viewer==None:
-                page_num, gl_viewer = self.add_viewer_page(sc.struct_id)
-            else:
-                label = self.notebook.get_tab_label(gl_viewer.get_parent())
-                text = label.get_text()
-                if text=="New Tab":
-                    label.set_text(sc.struct_id)
+        ## add the StructureContext to the tab's sc_list
+        tab["sc_list"].append(sc)
 
         ## add the structure to the GLViewer
-        sc.gl_struct = gl_viewer.glv_add_struct(sc.struct)
-        
+        sc.gl_struct = tab["gl_viewer"].glv_add_struct(sc.struct)
+
+        ## add the structure to the Structures menu
+        structs = self.item_factory.get_item("/Structures")
+        structs_menu = structs.get_submenu()
+
+        mi = gtk.CheckMenuItem(sc.struct_id)
+        structs_menu.append(mi)
+        mi.sc  = sc
+        mi.cid = mi.connect("activate", self.struct_item_activate)
+        mi.show_all()
+
+        ## rebuild the brower for the tab
+        if tab.has_key("gl_prop_browser"):
+            tab["gl_prop_browser"].rebuild_gl_object_tree()
+            
+        return sc
+
     def load_file(self, path, new_tab=False, new_window=False):
         """Loads the structure file specified in the path.
         """
@@ -1894,6 +1984,8 @@ class MainWindow(object):
         struct.path = path
 
         sc = self.add_struct(struct, new_tab, new_window)
+
+        ## autoselect a loaded structure
         self.set_selected_sc(sc)
 
         ## blank the status bar
@@ -1902,63 +1994,120 @@ class MainWindow(object):
 
         return gtk.FALSE
 
+    def struct_item_activate(self, menu_item):
+        """Structure->MI
+        Called by the Structure menu items when activated.
+        """
+        self.set_selected_sc(menu_item.sc)
 
     def set_selected_sc(self, sc):
         """Set the selected StructureContext.
         """
-        pass
+        self.selected_sc = sc
+
+        ## special handling if setting the current StructureContext
+        ## to None
+        if sc==None:
+
+            ## uncheck all Structure menu items
+            structs = self.item_factory.get_item("/Structures")
+            structs_menu = structs.get_submenu()
+            for mi in structs_menu.get_children():
+                mi.disconnect(mi.cid)
+                mi.set_active(gtk.FALSE)
+                mi.cid = mi.connect("activate", self.struct_item_activate)
+
+            ## blank the label
+            self.select_label.set_text("")
+
+            return
+
+        ## set the Structure menu
+        structs = self.item_factory.get_item("/Structures")
+        structs_menu = structs.get_submenu()
+
+        for mi in structs_menu.get_children():
+
+            label = mi.get_child()
+            text  = label.get_text()
+
+            ## XXX: stupid GTK API emits activate signal causing recursion
+            mi.disconnect(mi.cid)
+
+            if text==sc.struct_id:
+                mi.set_active(gtk.TRUE)
+            else:
+                mi.set_active(gtk.FALSE)
+
+            ## XXX: reinstall signal handler
+            mi.cid = mi.connect("activate", self.struct_item_activate)
+
+        ## set the window bar information
+        self.select_label.set_text(sc.struct_id)
+
+        ## switch to the right notebook tab
+        for gl_viewer in self.notebook.get_children():
+            for glo in gl_viewer.glo_iter_children():
+                if glo==sc.gl_struct:
+                    page_no = self.notebook.page_num(gl_viewer)
+                    self.notebook.set_current_page(page_no)
 
     def get_selected_sc(self):
         """Returns the currently selected StructureContext
         """
         return self.selected_sc
 
-
-    
-    def set_selected_struct_obj(self, struct_obj):
-        """Set the currently selected structure item.
+    def present_gl_prop_browser(self, tab):
+        """Creates and/or presents the GLPropertyBrowserDialog for the
+        given tab.
         """
-        self.sel_struct_obj = struct_obj
+        try:
+            tab["gl_prop_browser"].present()
+
+        except KeyError:
+            tab["gl_prop_browser"] = GLPropertyBrowserDialog(
+                parent_window = self.window,
+                glo_root      = tab["gl_viewer"],
+                title         = tab["name"])
+
+            tab["gl_prop_browser"].connect(
+                "destroy", self.gl_prop_browser_destroy, tab)
+
+            tab["gl_prop_browser"].present()
+
+    def autoselect_gl_prop_browser(self, gl_object):
+        """Opens/Presents the GLPropertyBrowser Dialog and selects
+        gl_object for editing.
+        """
+
+        ## the tab containing the gl_object needs to be found
+        tab = None
         
-        ## nothing selected
-        if struct_obj==None:
-            self.sel_struct_context = None
-            self.select_label.set_text("")
+        for tabx in self.tab_list:
+            ## if the selected gl_object is the gl_viewer
+            if tabx["gl_viewer"]==gl_object:
+                tab = tabx
+                break
 
-            for view_cmd in self.view_cmds:
-                menu_item = self.item_factory.get_item(view_cmd["menu path"])
-                menu_item.set_active(view_cmd["checked"])
+            ## iterate the gl_viewer's children looking for the gl_object
+            for glo in tabx["gl_viewer"].glo_iter_preorder_traversal():
+                if glo==gl_object:
+                    tab = tabx
+                    break
 
-        else:
-            self.select_label.set_text(str(self.sel_struct_obj))
+        self.gl_prop_browser.select_gl_object(gl_object)
 
-            struct = struct_obj.get_structure()
-            self.sel_struct_context = self.get_struct_context(struct)
-            self.set_selected_struct_context(self.sel_struct_context)
-
-    def set_selected_struct_context(self, struct_context):
-        """Sets the current struct_context and updates the context
-        sensitive GUI widgets.
+    def gl_prop_browser_destroy(self, widget, tab):
+        """Callback when the GLProeriesBrowser is destroyed.
         """
-        for view_cmd in self.view_cmds:
-            property  = view_cmd["glstruct property"]
-            menu_item = self.item_factory.get_item(view_cmd["menu path"])
+        del tab["gl_prop_browser"]
 
-            menu_item.set_active(gtk.FALSE)
-            continue
 
-            if struct_context.gl_struct.properties[property]==False:
-                menu_item.set_active(gtk.FALSE)
-            else:
-                menu_item.set_active(gtk.TRUE)
 
-    def get_struct_context(self, struct):
-        """Returns the struct_context containing struct.
-        """
-        for struct_context in self.struct_context_list:
-            if struct_context.struct==struct:
-                return struct_context
-        return None
+
+
+
+
 
 
 class ViewerApp(object):

@@ -15,7 +15,13 @@ from mmTypes        import *
 from Structure      import *
 from Extensions.TLS import *
 
-import glaccel
+try:
+    import glaccel
+except ImportError:
+    GLACCEL_EXISTS = False
+else:
+    GLACCEL_EXISTS = True
+
 
 ## MISC Constents
 
@@ -224,13 +230,15 @@ class GLObject(object):
         self.__globject_children.append(child)
         
     def glo_remove_child(self, child):
+        """Removes the child GLObject.
+        """
         assert isinstance(child, GLObject)
         assert child.__globject_parent==self
         child.__globject_parent = None
         self.__globject_children.remove(child)
 
     def glo_remove(self):
-        """Removes GLObject.
+        """The GLObject removes itself from its parent.
         """
         parent = self.__globject_parent
         if parent==None:
@@ -563,11 +571,18 @@ class OpenGLRenderMethods(object):
             return
         
         end = position + axis
-        
-        glaccel.rod(
-            position[0], position[1], position[2],
-            end[0], end[1], end[2],
-            radius)
+
+        try:
+            glaccel.rod(
+                position[0], position[1], position[2],
+                end[0], end[1], end[2],
+                radius)
+
+        except NameError:
+            glBegin(GL_LINES)
+            glVertex3f(*position)
+            glVertex3f(*end)
+            glEnd()
 
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
