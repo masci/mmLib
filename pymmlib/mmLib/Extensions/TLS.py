@@ -5,6 +5,9 @@
 """Utility classes for loading, manipulating, and analyzing TLS parameters.
 """
 import re
+import sys
+import string
+
 from mmLib.mmTypes import *
 from mmLib.Structure import *
 
@@ -136,14 +139,18 @@ class TLSGroup(AtomList):
 
     def __str__(self):
         tstr  = "TLS %s\n" % (self.name)
+
         tstr += "ORIGIN  %f %f %f\n" % (
             self.origin[0], self.origin[1], self.origin[2])
+
         tstr += "T %f %f %f %f %f %f\n" % (
             self.T[0,0], self.T[1,1], self.T[2,2], self.T[0,1], self.T[0,2],
             self.T[1,2])
+
         tstr += "L %f %f %f %f %f %f\n" % (
             self.L[0,0], self.L[1,1], self.L[2,2], self.L[0,1], self.L[0,2],
             self.L[1,2])
+
         tstr += "S %f %f %f %f %f %f %f %f\n" % (
             self.S[1,1]-self.S[0,0], self.S[0,0]-self.S[2,2], self.S[0,1],
             self.S[0,2], self.S[1,2], self.S[1,0], self.S[2,0], self.S[2,1])
@@ -297,43 +304,51 @@ class TLSGroup(AtomList):
 
         (C, resids, rank, s) = linear_least_squares(A, b)
 
-        T = array([ [ C[ 0,0], C[ 1,0], C[ 3,0] ],
-                    [ C[ 1,0], C[ 2,0], C[ 4,0] ],
-                    [ C[ 3,0], C[ 4,0], C[ 5,0] ] ])
+        self.T = array([ [ C[ 0,0], C[ 1,0], C[ 3,0] ],
+                         [ C[ 1,0], C[ 2,0], C[ 4,0] ],
+                         [ C[ 3,0], C[ 4,0], C[ 5,0] ] ])
 
-        L = array([ [ C[ 9,0], C[13,0], C[18,0] ],
-                    [ C[13,0], C[14,0], C[19,0] ],
-                    [ C[18,0], C[19,0], C[20,0] ] ])
+        self.L = array([ [ C[ 9,0], C[13,0], C[18,0] ],
+                         [ C[13,0], C[14,0], C[19,0] ],
+                         [ C[18,0], C[19,0], C[20,0] ] ])
 
-        S = array([ [ C[ 6,0], C[ 7,0], C[ 8,0] ],
-                    [ C[10,0], C[11,0], C[12,0] ],
-                    [ C[15,0], C[16,0], C[17,0] ] ])
+        self.S = array([ [ C[ 6,0], C[ 7,0], C[ 8,0] ],
+                         [ C[10,0], C[11,0], C[12,0] ],
+                         [ C[15,0], C[16,0], C[17,0] ] ])
 
+    def write(self, out = sys.stdout):
+        """Write a nicely formatted tensor description.
+        """
         ## the TLS tensors are in radians
         ## convert from radians to degrees
-        rad2deg =  180.0 / math.pi
-        L       *= rad2deg * rad2deg
-        S       *= rad2deg
+        T = self.T
+        L = self.L * rad2deg2
+        S = self.S * rad2deg
 
-        print "T=\n",T
-        (eval, evec) = eigenvectors(T)
-        print "eval(T)=",eval
-        print "evec(T)=\n",evec
+        (eval_t, evec_t) = eigenvectors(T)
+        (eval_l, evec_l) = eigenvectors(L)
+        
+        listx = [
+            "Tensor: T(A)",
+            str(T),
+            "Eigenvectors",
+            str(evec_t),
+            "Eigenvalues",
+            str(eval_t),
+            "",
+            "Tensor: L(deg*deg)",
+            str(L),
+            "Eigenvectors",
+            str(evec_l),
+            "Eigenvalues",
+            str(eval_l),
+            "",
+            "Tensor: S(deg*A)",
+            str(S),
+            ""
+            ]
 
-        print
-
-        print "L=\n",L
-        (eval, evec) = eigenvectors(L)
-        print "eval(L)=",eval
-        print "evec(L)=\n",evec
-
-        print
-
-        print "S=\n",S
-
-        self.T = T
-        self.L = L
-        self.S = S
+        out.write(string.join(listx, "\n"))
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@
 import sys
 import math
 import string
-import cPickle
 import copy
+import cPickle
 
 import pygtk
 pygtk.require("2.0")
@@ -24,6 +24,7 @@ CIF_EDITOR_CONF = "cif_editor.conf"
 LARGE_DIALOG_SIZE = (400, 300)
 
 ## /constants
+
 
 
 ## large text edit window
@@ -1296,6 +1297,10 @@ class mmCIFEditor:
     def cif_data_insert_table(self, cif_data, i, cif_table, save_undo = True):
         """Inserts a new cif_table into cif_data at position i.
         """
+        if cif_data.has_key(cif_table.name):
+            self.error("Insert Error: Table names must be unique.")
+            return
+        
         if save_undo:
             undo = (self.cif_data_insert_table_undo, cif_table)
             self.undo_list.append(undo)
@@ -1315,6 +1320,11 @@ class mmCIFEditor:
     def cif_table_set_name(self, cif_table, name, save_undo = True):
         """Sets the name of a cif_table.
         """
+        if cif_table.data.has_key(name):
+            self.error(
+                "Name Change Error: Table names must be unique.")
+            return
+        
         if save_undo:
             undo = (self.cif_table_set_name_undo, cif_table, cif_table.name)
             self.undo_list.append(undo)
@@ -1357,6 +1367,8 @@ class mmCIFEditor:
         ## do not allow duplicate column names
         for j in range(len(cif_table.columns)):
             if i != j and cif_table.columns[j] == col_name:
+                self.error(
+                    "Name Change Error: Column names must be unique.")
                 return
 
         if save_undo:
@@ -1389,6 +1401,7 @@ class mmCIFEditor:
         """
         ## do not allow duplicate column names
         if col_name in cif_table.columns:
+            self.error("Insert Error: Column names must be unique.")
             return
 
         if save_undo:
@@ -1449,6 +1462,11 @@ class mmCIFEditor:
     def cif_file_insert_data(self, cif_file, i, cif_data, save_undo = True):
         """Inserts a new cif_data into cif_file at position i.
         """
+        if cif_file.has_key(cif_data.name):
+            self.error(
+                "Insert Error: Data block names must be unique.")
+            return
+        
         if save_undo:
             undo = (self.cif_file_insert_data_undo, cif_data)
             self.undo_list.append(undo)
@@ -1490,6 +1508,11 @@ class mmCIFEditor:
     def cif_data_set_name(self, cif_data, name, save_undo = True):
         """Sets the name of a cif_data
         """
+        if cif_data.file.has_key(name):
+            self.error(
+                "Name Change Error: Data block names must be unique.")
+            return
+
         if save_undo:
             undo = (self.cif_data_set_name_undo, cif_data, cif_data.name)
             self.undo_list.append(undo)
@@ -1553,15 +1576,26 @@ class mmCIFEditorWindowContext(mmCIFEditor):
         """Opens a CIF file for editing.
         """
         if self.open_into_context:
+
+            if path == None or path == "":
+                return
+            try:
+                fil = OpenFile(path, "r")
+            except IOError:
+                self.error("Unable to open file:\n%s" % (path))
+                return
+
+            try:
+                self.cif_file.load_file(fil)
+            except mmCIFError, e:
+                self.error("mmCIF parse error:\n%s" % (e))
+                return
+
             self.open_into_context = False
             self.path = path
             self.clear_undo_stack()
-
             self.mw.set_title("mmCIF Editor: %s" % (self.path))
             self.mw.set_status_bar("Loading File...please wait.")
-
-            self.cif_file.load_file(OpenFile(self.path, "r"))
-            
             self.mw.file_ctrl.set_cif_file()
             self.mw.set_status_bar("")
             self.update_enabled_menuitems()
@@ -1586,7 +1620,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
         try:
             self.cif_file.save_file(save_path)
         except IOError, err:
-            self.mw.set_status_bar("ERROR: Save file %s failed!" % (save_path))
+            self.error("ERROR: Save file %s failed!" % (save_path))
         else:
             ## back to case 1: Save As... sets filename
             if self.path == None:
@@ -1601,6 +1635,20 @@ class mmCIFEditorWindowContext(mmCIFEditor):
         """Called when the editors main window is destroyed.
         """
         APP.editor_context_closed(self)
+
+    def error(self, text):
+        """Display a modeal dialog containing a error message.
+        """
+
+        dialog = gtk.MessageDialog(
+            self.mw,
+            gtk.DIALOG_DESTROY_WITH_PARENT,
+            gtk.MESSAGE_ERROR,
+            gtk.BUTTONS_CLOSE,
+            text)
+        
+        dialog.run()
+        dialog.destroy()
 
     def changed(self):
         self.open_into_context = False

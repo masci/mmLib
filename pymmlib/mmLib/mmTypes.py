@@ -9,12 +9,19 @@ imported from other Python packages.
 from __future__ import generators
 import os
 import sys
+import math
 import string
 import gzip
 from types import *
 from Scientific.Geometry  import Vector
 from Numeric import *
 from LinearAlgebra import *
+
+## useful constents
+rad2deg  = 180.0 / math.pi
+deg2rad  = math.pi / 180.0
+rad2deg2 = rad2deg * rad2deg
+deg2rad2 = deg2rad * deg2rad
 
 
 def OpenFile(path, mode):

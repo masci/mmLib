@@ -1390,9 +1390,6 @@ class mmCIFStructureBuilder(StructureBuilder):
             if symm2:
                 bond_map[bnd]["symop2"] = symm2
 
-            print "Bond[%s,%s] = %s" % (atm1, atm2, conn_type)
-
-
         ## load the bonds
         self.load_bonds(bond_map)
 

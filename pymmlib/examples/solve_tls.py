@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distrobution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+
 import sys
 from mmLib.Structure import *
 from mmLib.FileLoader import *
@@ -13,6 +19,11 @@ def usage():
     print
 
 def main(path):
+    print """
+    Calculating TLS parameters for a single rigid body group composed of
+    all the amino acids
+    """
+    
     struct = LoadStructure(fil = path)
     tls_group = TLSGroup()
 
@@ -20,13 +31,16 @@ def main(path):
         for atm in res.iter_atoms():
             tls_group.append(atm)
 
-    print len(tls_group),"atoms"
+    print "Atoms: ",len(tls_group)
 
     tls_group.origin = tls_group.calc_centroid()
-    print "centroid=",tls_group.origin
+
+    print "Centroid of Atoms:"
+    print tls_group.origin
+    print
 
     tls_group.calc_tls_tensors()
-    print tls_group
+    tls_group.write()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distrobution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+
 ## This example program calculates the distribution of ansotropy
 ## for a protein structure
 
@@ -14,7 +19,9 @@ except IndexError:
 def main(path):
     ## load structure
     print "Loading ",path
-    struct = LoadStructure(path, build_properties=("polymers",))
+    struct = LoadStructure(
+        fil = path,
+        build_properties = ("no_bonds",))
 
     ## list of anisotropic values
     anisou_list = []

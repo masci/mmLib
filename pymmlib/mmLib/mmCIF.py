@@ -14,6 +14,9 @@ import re
 import types
 from mmTypes import *
 
+## errors
+mmCIFError = "mmCIFError"
+
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -399,8 +402,6 @@ class mmCIFFileParser(object):
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
     data hierarchy.
     """
-    error = "mmCIF Syntax Error"
-
     def parse_file(self, fil, cif_file):
         self.line_number = 0
 
@@ -411,11 +412,11 @@ class mmCIFFileParser(object):
         except StopIteration:
             pass
         else:
-            print "CIF ERROR!!!"
+            raise mmCIFError
 
     def syntax_error(self, err):
         err = "[line %d] %s" % (self.line_number, err)
-        raise self.error, err
+        raise mmCIFError, err
  
     def parse(self, token_iter, cif_file):
         cif_table_cache = {}
