@@ -660,7 +660,8 @@ class Chain(object):
         return self.chain_id >= other.chain_id
 
     def __len__(self):
-        """Return the number of fragments in the Chain."""
+        """Return the number of fragments in the Chain.
+        """
         return len(self.fragment_list)
 
     def __getitem__(self, fragment_idx):
@@ -738,6 +739,10 @@ class Chain(object):
         """Sort the Fragments in the chain into proper order.
         """
         self.fragment_list.sort()
+        print
+        print self
+        for frag in self.fragment_list:
+            print frag, FragmentID(frag.fragment_id)
         
     def add_fragment(self, fragment, delay_sort = False, link_chain = True):
         """Adds a Fragment instance to the chain.  If delay_sort is True,
@@ -974,7 +979,7 @@ class Fragment(object):
             fragment.add_atom(copy.deepcopy(atom, memo))
 
         return fragment
-    
+
     def __lt__(self, other):
         assert isinstance(other, Fragment)
         return FragmentID(self.fragment_id) < FragmentID(other.fragment_id)
@@ -2088,6 +2093,9 @@ class Bond(object):
         self.atom2_symop       = atom2_symop
         self.standard_res_bond = standard_res_bond
 
+        if self.calc_length() > 5.0:
+            print "Bond Error: %s = %d" % (self, self.calc_length())
+
     def __str__(self):
         return "Bond(%s %s)" % (self.atom1, self.atom2)
 
@@ -2116,6 +2124,10 @@ class Bond(object):
         """
         return self.atom2
 
+    def calc_length(self):
+        """Returns the length of the bond.
+        """
+        return length(self.atom1.position - self.atom2.position)
 
 class AlphaHelix(object):
     def __init__(self, structure, helix_id):

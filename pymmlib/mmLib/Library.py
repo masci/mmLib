@@ -271,6 +271,10 @@ class Library(LibraryInterface):
         self.mon1_lib_path = os.path.join(path, "Data", "monomers.cif")
         self.mon_lib_path  = os.path.join(path, "Data", "Monomers") 
 
+        print "elm_lib_path:  ",self.elm_lib_path
+        print "mon1_lib_path: ",self.mon1_lib_path
+        print "mon_lib_path:  ",self.mon_lib_path
+
         ## doms to be loaded as needed
         self.elm_cif_file = mmCIFFile()
         self.elm_cif_file.load_file(self.elm_lib_path)

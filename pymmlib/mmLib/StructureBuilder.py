@@ -32,9 +32,9 @@ class StructureBuilder(object):
         self.cache_chain = None
         self.cache_frag = None
 
-        ## if anything goes wrong, setting self.halt=1 will stop the madness
-        self.halt = 0
-
+        ## if anything goes wrong, setting self.halt=1 will stop the madness        self.halt = 0
+        self.halt = False
+        
         ## build the structure by executing this fixed sequence of methods
         self.read_start(args.get("fil"), args.get("update_cb"))
         if not self.halt: self.read_start_finalize()
@@ -97,7 +97,9 @@ class StructureBuilder(object):
         return atm
 
     def name_service(self):
-        """Runs the name service on all atoms needing to be named.
+        """Runs the name service on all atoms needing to be named.  This is
+        a complicated function which corrects most commonly found errors and
+        omitions from PDB files.
         """
         if len(self.name_service_list) == 0:
             return
@@ -119,6 +121,145 @@ class StructureBuilder(object):
                 
             warning("name_service: exhausted PDB-allowed chain ids")
             return None
+        
+
+        ## NAME SERVICE FOR POLYMER ATOMS
+
+        ## what if we are given a list of atoms with res_name, frag_id,
+        ## and model_id where the frag_id are sequental?  they can be
+        ## sequental sever ways using insertion codes, but large breaks
+        ## often denote chain breaks
+
+        ## I need to handle the special case of a list of polymer residues
+        ## which do not have chain_ids.   This requires a first pass over
+        ## the atom list usind different rules than what I use for sorting
+        ## out non-polymers
+
+        current_polymer_type      = None
+        current_polymer_model_id  = None
+        current_polymer_chain_id  = None
+        current_polymer_frag_id   = None
+        current_polymer_res_name  = None
+        current_polymer_name_dict = None
+    
+        polymer_model_dict = {}
+        current_frag       = None
+        current_frag_list  = None
+
+        for atm in self.name_service_list[:]:
+            
+            ## determine the polymer type of the atom
+            if self.struct.library.is_amino_acid(atm.res_name):
+                polymer_type = "protein"
+            elif self.struct.library.is_nucleic_acid(atm.res_name):
+                polymer_type = "dna"
+            else:
+                ## if the atom is not a polymer, we definately have a break
+                ## in this chain
+                current_polymer_type      = None
+                current_polymer_model_id  = None
+                current_polymer_chain_id  = None
+                current_polymer_frag_id   = None
+                current_polymer_res_name  = None
+                current_polymer_name_dict = None
+                current_frag              = None
+                current_frag_list         = None
+                continue
+
+            fragment_id = FragmentID(atm.fragment_id)
+
+            ## now we deal with conditions which can terminate the current
+            ## polymer chain
+            if polymer_type!=current_polymer_type or \
+               atm.model_id!=current_polymer_model_id or \
+               atm.chain_id!=current_polymer_chain_id or \
+               fragment_id<current_polymer_frag_id:
+                
+                current_polymer_type      = polymer_type
+                current_polymer_model_id  = atm.model_id
+                current_polymer_chain_id  = atm.chain_id
+                current_polymer_frag_id   = FragmentID(atm.fragment_id)
+                current_polymer_res_name  = atm.res_name
+                current_polymer_name_dict = {atm.name: True}
+
+                ## create new fragment
+                current_frag = [atm]
+                current_frag_list = [current_frag]
+                
+                ## create new fragment list (chain)
+                try:
+                    model = polymer_model_dict[atm.model_id]
+                except KeyError:
+                    model = [current_frag_list]
+                    polymer_model_dict[atm.model_id] = model
+                else:
+                    model.append(current_frag_list)
+
+                ## we have now dealt with the atom, so it can be removed
+                ## from the name service list
+                self.name_service_list.remove(atm)
+                continue
+
+            ## if we get here, then we know this atom is destine for the
+            ## current chain, and the algorithm needs to place the atom
+            ## in the current fragment, or create a new fragment for it
+            ## to go into; the conditions for it going into the current
+            ## fragment are: it has it have the same res_name, and its
+            ## atom name cannot conflict with the names of atoms already in
+            ## in the fragment
+            if atm.res_name!=current_polymer_res_name or \
+               current_polymer_name_dict.has_key(atm.name):
+                
+                current_polymer_res_name  = atm.res_name
+                current_polymer_name_dict = {atm.name: True}
+
+                ## create new fragment and add it to the current fragment list
+                current_frag = [atm]
+                current_frag_list.append(current_frag)
+  
+                ## we have now dealt with the atom, so it can be removed
+                ## from the name service list
+                self.name_service_list.remove(atm)
+                continue
+
+            ## okay, put it in the current fragment
+            current_frag.append(atm)
+            self.name_service_list.remove(atm)
+
+        ## now assign chain_ids and add the atoms to the structure
+        model_ids = polymer_model_dict.keys()
+        model_ids.sort()
+        model_list = [polymer_model_dict[model_id] for model_id in model_ids]
+
+        num_chains = 0
+        for frag_list in polymer_model_dict.values():
+            num_chains = max(num_chains, len(frag_list))
+
+        for chain_index in range(num_chains):
+            ## get next availible chain_id
+            chain_id = next_chain_id("")
+
+            ## assign the chain_id to all the atoms in the chain
+            ## TODO: check fragment_id too
+            for model in model_list:
+                frag_list = model[chain_index]
+
+                for frag in frag_list:
+                    if type(frag)!=ListType:
+                        print "## frag not listtype: ",frag
+                        import time
+                        time.sleep(5)
+
+                    for atm in frag:
+                        atm.chain_id = chain_id
+                        self.struct.add_atom(atm)
+
+        ## free the memory used by the polymer naming service
+        del polymer_model_dict
+        del model_list
+
+        
+        ## NAME SERVICE FOR NON-POLYMER ATOMS
 
         ## cr = (chain_id, res_name)
         ##
@@ -129,7 +270,7 @@ class StructureBuilder(object):
         ## frag_list = [ frag1, frag2, frag3, ...]
         ##
         ## frag = [atm1, atm2, atm3, ...]
-
+        
         cr_dict      = {}
         cr_key_list  = []
         
@@ -151,7 +292,7 @@ class StructureBuilder(object):
             if atm_frag_id == frag_id and not name_dict.has_key(atm_id):
                 frag.append(atm)
                 name_dict[atm_id] = True
-
+                
             else:
                 cr_key = (atm.chain_id, atm.res_name)
                 
@@ -175,9 +316,8 @@ class StructureBuilder(object):
                     frag_list = model_dict[atm.model_id] = []
 
                 name_dict = {atm_id: True}
-
-                frag_id  = atm_frag_id
-                frag     = [atm]
+                frag_id   = atm_frag_id
+                frag      = [atm]
                 frag_list.append(frag)
 
         ## free self.name_service_list and other vars to save some memory
@@ -249,6 +389,7 @@ class StructureBuilder(object):
             ## logging
             warning("NS: Added ChainID: %s with %3d Residues of Type: %s" % (
                 new_chain_id, fragment_id_num, cr_key[1]))
+
 
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to

@@ -2123,13 +2123,13 @@ class GLViewer(GLObject):
         #glFogf(GL_FOG_START, 20.0)
 
         ## ANTI-ALIASING
-        glEnable(GL_LINE_SMOOTH)
-        glEnable(GL_POINT_SMOOTH)
-        glEnable(GL_POLYGON_SMOOTH)
+        #glEnable(GL_LINE_SMOOTH)
+        #glEnable(GL_POINT_SMOOTH)
+        #glEnable(GL_POLYGON_SMOOTH)
 
         ## ALPHA BLENDING
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        #glEnable(GL_BLEND)
+        #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def gl_resize(self, width, height):
         """Called to set the size of the OpenGL window this class is
