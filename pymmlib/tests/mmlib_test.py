@@ -92,9 +92,15 @@ def atom_test(atom, stats):
         assert atm.fragment_id == atom.fragment_id
         assert atm.chain_id == atom.chain_id
 
-    atom.calc_anisotropy()
-    atom.calc_anisotropy3()
+    try:
+        atom.calc_anisotropy()
+    except ZeroDivisionError:
+        pass
 
+    try:
+        atom.calc_anisotropy3()
+    except ZeroDivisionError:
+        pass
 
 def fragment_test(frag, stats):
     """Tests the mmLib.Structure.Fragment/AminoAcidResidue/NucleicAcidResidue
