@@ -1,5 +1,3 @@
-from __future__ import generators
-
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -13,9 +11,8 @@ they are describing.  See the documentation for the individual classes
 for more detail."""
 
 
-
+from   __future__           import generators
 import fpformat
-
 from   mmTypes              import *
 from   Composite            import *
 from   AtomMath             import *

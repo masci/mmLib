@@ -1,11 +1,16 @@
-from __future__ import generators
-
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+"""This module provides the Composite class used as the base class for
+the Structure.AtomContainer class."""
 
+
+from __future__ import generators
+
+
+## error raised by Composite classes
 CompositeError = 'CompositeError'
 
 
