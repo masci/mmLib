@@ -116,10 +116,6 @@ class Structure(object):
         self.cifdb            = args.get("cifdb")     or mmCIFDB("XXXX")
         self.unit_cell        = args.get("unit_cell") or UnitCell()
 
-        self.alpha_helix_list = []
-        self.beta_sheet_list  = []
-        self.site_list        = []
-
         self.default_alt_loc = "A"
         self.default_model   = None
         self.model_list      = []

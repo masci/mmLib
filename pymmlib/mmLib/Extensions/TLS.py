@@ -656,7 +656,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         """Converts TLSGroupDesc instance to a multi-line string format
         ready to write to a TLSOUT file.
         """        
-        listx = ["", "REFMAC", ""]
+        listx = []
 
         if tls_desc.name!="":
             listx.append("TLS %s" % (tls_desc.name))
@@ -713,6 +713,10 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         return string.join(listx, "\n")
 
     def save(self, fil, tls_desc_list):
+        ## with this line, the tensor components will be read by some
+        ## programs in a different order, mangling the tensor values
+        fil.write("REFMAC\n\n")
+        
         for tls_desc in tls_desc_list:
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")

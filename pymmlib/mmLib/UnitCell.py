@@ -248,10 +248,11 @@ class UnitCell(object):
         ## compute the distance from the centroid to the
         ## farthest point from it in the structure
         max_dist = 0.0
-        for atm in struct.iter_all_atoms():
-            dist = length(atm.position - centroid)
-            max_dist = max(max_dist, dist)
-        max_dist2 = 2.0 * max_dist
+        for frag in struct.iter_amino_acids():
+            for atm in frag.iter_atoms():
+                dist = length(atm.position - centroid)
+                max_dist = max(max_dist, dist)
+        max_dist2 = max_dist + 5.0
 
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():
