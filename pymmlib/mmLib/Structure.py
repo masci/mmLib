@@ -6,7 +6,6 @@
 """
 from   __future__ import generators
 import fpformat
-import weakref
 from mmTypes import *
 from AtomMath import *
 from Library import Library
@@ -112,17 +111,19 @@ class Structure(object):
         """Removes the 
         """
         assert isinstance(chain, Chain)
-        del chain.get_structure
+        del chain.structure
         self.__chain_list.remove(chain)
 
     def sort(self):
         self.__chain_list.sort()
 
     def add_chain(self, chain, delay_sort = True):
+        """Adds a Chain object to the Structure, and set the chain's
+        structure attribute to self.
+        """
         assert isinstance(chain, Chain)
-        chain.get_structure = weakref.ref(self)
+        chain.structure = self
         self.__chain_list.append(chain)
-
         if not delay_sort:
             self.__chain_list.sort()
 
@@ -248,8 +249,8 @@ class Chain(object):
             ## in the slice range, but I don't copy the fragments nor do
             ## I set the fragments's get_chain() function to return the
             ## new Chain object
-            chain               = Chain(self.chain_id)
-            chain.get_structure = self.get_structure
+            chain           = Chain(self.chain_id)
+            chain.structure = self.structure
 
             frag_start = self[x.start]
             frag_stop  = self[x.stop]
@@ -292,7 +293,7 @@ class Chain(object):
     def remove(self, frag):
         """Remove the Fragment from the chain.
         """
-        del frag.get_chain
+        del frag.chain
         self.__fragment_list.remove(frag)
 
     def sort(self):
@@ -308,11 +309,16 @@ class Chain(object):
         assert isinstance(frag, Fragment)
         assert frag.chain_id == self.chain_id
 
-        frag.get_chain = weakref.ref(self)
+        frag.chain = self
         self.__fragment_list.append(frag)
 
         if not delay_sort:
             self.__fragment_list.sort()
+
+    def get_structure(self):
+        """Returns the parent structure.  Also available by self.structure.
+        """
+        return self.structure
 
     def get_fragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its fragment_id.
@@ -394,7 +400,7 @@ class Chain(object):
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        try:             self.get_structure()[chain_id]
+        try:             self.structure[chain_id]
         except KeyError: pass
         else:            raise ValueError, chain_id
 
@@ -411,7 +417,7 @@ class Chain(object):
                 atm.chain_id = chain_id
 
         ## resort the parent structure
-        self.get_structure().sort()
+        self.structure.sort()
 
     def calc_sequence(self):
         """Attempts to calculate the residue sequence contained in the
@@ -478,14 +484,23 @@ class Fragment(object):
         return FragmentID(self.fragment_id) >= FragmentID(other.fragment_id)
 
     def __len__(self):
+        """Returns the number of atoms contained in the fragment, including
+        all atoms in alternate conformations.
+        """
         return len(self.__atom_list)
 
     def __getitem__(self, x):
-        if   type(x) == IntType:
+        """Lookup a atom contained in a fragment by its name, or by its index
+        within the fragment's private __atom_list.  If the atom is not found,
+        a exception is raised.  The type of exception depends on the argument
+        type.  If the argument was a integer, then a IndexError is raised.
+        If the argument was a string, then a KeyError is raised.
+        """
+        if type(x) == IntType:
             return self.__atom_list[x]
 
         elif type(x) == StringType:
-            alt_loc = self.get_chain().get_structure().default_alt_loc
+            alt_loc = self.chain.structure.default_alt_loc
             
             for atom in self.__atom_list:
                 if atom.name == x:
@@ -499,10 +514,18 @@ class Fragment(object):
         raise TypeError, x
 
     def __delitem__(self, x):
+        """Removes a atom from the fragment.  The argument can be the name
+        of the atom, or the private integer index of the atom within the
+        fragment's private __atom_list.
+        """
         self.__atom_list.remove(self[x])
 
     def __iter__(self):
-        alt_loc = self.get_chain().get_structure().default_alt_loc
+        """Iterates the atoms within the fragment.  If the fragment contains
+        atoms in alternate conformations, only the atoms with the structure's
+        default_alt_loc are iterated.
+        """
+        alt_loc = self.chain.structure.default_alt_loc
         for atom in self.__atom_list:
             if atom.alt_loc == alt_loc:
                 yield atom
@@ -510,6 +533,9 @@ class Fragment(object):
                 yield atom
 
     def __contains__(self, x):
+        """Returns True if the atom is contained in the fragment.  The argument
+        can be a atom instance of a the name of the atom.
+        """
         if isinstance(x, Atom):
             return x in self.__atom_list
         elif type(x) == StringType:
@@ -517,23 +543,31 @@ class Fragment(object):
         raise TypeError, x
 
     def index(self, atom):
+        """Returns the index of the atom within the fragment's private
+        __atom_list.
+        """
         assert isinstance(atom, Atom)
         return self.__atom_list.index(atom)
 
     def remove(self, atom):
+        """Removes the atom from the fragment, and deletes the atom's
+        reference to the framgnet.
+        """
         assert isinstance(atom, Atom)
-        del atom.get_fragment
+        del atom.fragment
         atom.alt_loc_list.remove(atom)
         self.__atom_list.remove(atom)
 
     def add_atom(self, atom):
+        """Adds a atom to the fragment, and sets the atom's atom.fragment
+        attribute to the fragment.
+        """
         assert isinstance(atom, Atom)
         assert atom.chain_id    == self.chain_id
         assert atom.fragment_id == self.fragment_id
         assert atom not in self.__atom_list
-        
-        atom.get_fragment = weakref.ref(self)
 
+        atom.fragment = self
         for a in self.__atom_list:
             if atom.name == a.name:
                 a.add_alt_loc(atom)
@@ -573,26 +607,33 @@ class Fragment(object):
         self.  Returns None if no fragment is found.
         """
         assert type(offset) == IntType
-        chain = self.get_chain()
-        i = chain.index(self) + offset
+
+        i = self.chain.index(self) + offset
         if i < 0:
             return None
         try:
-            return chain[i]
+            return self.chain[i]
         except IndexError:
             return None
 
     def get_structure(self):
-        """Returns the parent structure.
+        """Returns the parent structure.  This is also available by the
+        attribute self.chain.structure.
         """
-        return self.get_chain().get_structure()
+        return self.chain.structure
+
+    def get_chain(self):
+        """Returns the parent chain, this is also available by the attribute
+        self.chain.
+        """
+        return self.chain
 
     def set_fragment_id(self, fragment_id):
         """Sets a new ID for the Fragment object, updating the fragment_id
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        try:             self.get_chain()[fragment_id]
+        try:             self.chain[fragment_id]
         except KeyError: pass
         else:            raise ValueError, fragment_id
 
@@ -606,7 +647,7 @@ class Fragment(object):
             atm.fragment_id = fragment_id
 
         ## resort the parent chain
-        self.get_chain().sort()
+        self.chain.sort()
 
     def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
@@ -683,8 +724,9 @@ class Residue(Fragment):
         if not next_res:
             return
 
-        mon1 = self.get_structure().library.get_monomer(self.res_name)
-        mon2 = self.get_structure().library.get_monomer(next_res.res_name)
+        library = self.chain.structure.library
+        mon1 = library.get_monomer(self.res_name)
+        mon2 = library.get_monomer(next_res.res_name)
         if not (mon1 and mon2):
             return
 
@@ -820,7 +862,7 @@ class AminoAcidResidue(Residue):
         """Calculates the Pucker torsion of a ring system.  Returns None
         for Amino Acids which do not have Pucker torsion angles.
         """
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon or not mon.pucker_definition:
             return None
 
@@ -831,7 +873,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi1(self):
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon.chi1_definition:
             return None
         
@@ -842,7 +884,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi2(self):
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon.chi2_definition:
             return None
         
@@ -853,7 +895,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi3(self):
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon.chi3_definition:
             return None
         
@@ -864,7 +906,7 @@ class AminoAcidResidue(Residue):
         return calculateTorsionAngle(a1, a2, a3, a4)
 
     def calc_torsion_chi4(self):
-        mon = self.get_structure().library.get_monomer(self.res_name)
+        mon = self.chain.structure.library.get_monomer(self.res_name)
         if not mon.chi4_definition:
             return None
         
@@ -940,10 +982,8 @@ class Atom(object):
         self.sig_U = None
         self.charge = None
 
-        self.__alt_loc_list = WeakrefList()
-        self.__alt_loc_list.append(self)
-        
-        self.bond_list    = []
+        self.__alt_loc_list = [self]
+        self.bond_list = []
 
     def __str__(self):
         return "Atom(%s,%s,%s,%s,%s)" % (self.name,
@@ -1047,6 +1087,7 @@ class Atom(object):
             
             if a1.get_bond(a2):
                 return
+
             bond = Bond(a1, a2)
             a1.bond_list.append(bond)
             a2.bond_list.append(bond)
@@ -1083,7 +1124,7 @@ class Atom(object):
         assert isinstance(atom, Atom)
 
         for bond in self.bond_list:
-            if atom == bond.get_atom1() or atom == bond.get_atom2():
+            if atom == bond.atom1 or atom == bond.atom2:
                 return bond
         return None
 
@@ -1099,15 +1140,23 @@ class Atom(object):
         for bond in self.iter_bonds():
             yield bond.get_partner(self)
 
-    def get_chain(self):
-        """Return the parent Chain object.
+    def get_fragment(self):
+        """Return the parent Fragment object.  This is also available by the
+        attribute self.fragment.
         """
-        return self.get_fragment().get_chain()
+        return self.fragment
+
+    def get_chain(self):
+        """Return the parent Chain object.  This is also available by the
+        attribute self.fragment.chain.
+        """
+        return self.fragment.chain
 
     def get_structure(self):
-        """Return the parent Structure object.
+        """Return the parent Structure object.  This is also abailable by the
+        attribute self.fragment.chain.structure
         """
-        return self.get_chain().get_structure()
+        return self.fragment.chain.structure
 
     def set_U(self, u11, u22, u33, u12, u13, u23):
         """Sets the symmetric U tensor from the six unique values.
@@ -1162,25 +1211,26 @@ class Bond(object):
         assert isinstance(atom2, Atom)
         assert atom1 != atom2
 
-        self.get_atom1 = weakref.ref(atom1)
-        self.get_atom2 = weakref.ref(atom2)
+        self.atom1 = atom1
+        self.atom2 = atom2
 
     def __str__(self):
-        return "Bond(%s...%s)" % (self.get_atom1(), self.get_atom2())
+        return "Bond(%s...%s)" % (self.atom1, self.atom2)
 
     def get_partner(self, atm):
-        if   atm == self.get_atom1(): return self.get_atom2()
-        elif atm == self.get_atom2(): return self.get_atom1()
+        if   atm == self.atom1: return self.atom2
+        elif atm == self.atom2: return self.atom1
         return None
 
-    def get_fragment(self):
-        return self.get_atom1().get_fragment()
+    def get_atom1(self):
+        """Returns atom #1 of the pair of bonded atoms.
+        """
+        return self.atom1
 
-    def get_chain(self):
-        return self.get_atom1().get_chain()
-
-    def get_structure(self):
-        return self.get_atom1().get_structure()
+    def get_atom2(self):
+        """Returns atom #2 of the pair of bonded atoms.
+        """
+        return self.atom2
 
 
 class FragmentList(list):
