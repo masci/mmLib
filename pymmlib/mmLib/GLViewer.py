@@ -21,7 +21,7 @@ class GLDrawList:
 
     def gl_compile_list(self, execute = 0):
         if self.name != None:
-            gl_delete_lists(self.name, 1)
+            self.gl_delete_list()
         
         self.name = glGenLists(1)
 
@@ -35,7 +35,7 @@ class GLDrawList:
 
     def gl_delete_list(self):
         if self.name != None:
-            gl_delete_lists(self.name, 1)
+            glDeleteLists(self.name, 1)
             self.name = None
 
     def gl_call_list(self):
@@ -48,8 +48,8 @@ class GLDrawList:
 	glRotatef(self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
 	glRotatef(self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
         glRotatef(self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
-        
-        gl_call_list(self.name)
+
+        glCallList(self.name)
 
         glPopMatrix()
         
@@ -60,8 +60,6 @@ class GLDrawList:
         """Reset the origin of the draw list.
         """
         self.origin = origin
-
-
 
 
 class GLUnitCellDrawList(GLDrawList):
