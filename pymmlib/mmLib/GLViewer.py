@@ -7,13 +7,14 @@ from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
 
+from mmTypes import *
+
 
 class GLDrawList:
     def __init__(self):
         self.name = None
-        self.xpos = 0.0
-        self.ypos = 0.0
-        self.zpos = 0.0
+        self.origin = Vector(0.0, 0.0, 0.0)
+        self.axes = identity(3)
         self.rotx = 0.0
         self.roty = 0.0
         self.rotz = 0.0
@@ -28,24 +29,39 @@ class GLDrawList:
 
         if execute: glNewList(self.name, GL_COMPILE_AND_EXECUTE)
         else:       glNewList(self.name, GL_COMPILE)
-
-        glPushMatrix()
-	glTranslatef(self.xpos, self.ypos, self.zpos)
-	glRotatef(self.rotx, 1.0, 0.0, 0.0)
-	glRotatef(self.roty, 0.0, 1.0, 0.0)
-        glRotatef(self.rotz, 0.0, 0.0, 1.0)
         
         self.glDraw()
-
-        glPopMatrix()
         glEndList()
 
     def glDeleteList(self):
-        glDeleteLists(self.name, 1)
-        self.name = None
+        if self.name != None:
+            glDeleteLists(self.name, 1)
+            self.name = None
 
+    def glCallList(self):
+        #print "glCallList = ",self.name
+
+        glPushMatrix()
+
+        apply(glTranslatef, self.origin)
+
+	glRotatef(self.rotx, self.axes[0,0], self.axes[0,1], self.axes[0,2])
+	glRotatef(self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
+        glRotatef(self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
+        
+        glCallList(self.name)
+
+        glPopMatrix()
+        
     def glDraw(self):
         pass
+
+    def set_origin(self, origin):
+        """Reset the origin of the draw list.
+        """
+        self.origin = origin
+
+
 
 
 class GLUnitCellDrawList(GLDrawList):
@@ -55,14 +71,13 @@ class GLUnitCellDrawList(GLDrawList):
         self.unit_cell = unit_cell
 
     def glDraw(self):
-        lw = 2.0
         self.set_material(1.0, 1.0, 1.0, 1.0)
 
         def cell_line(v1, v2):
-            glLineWidth(lw)
+            glLineWidth(2.0)
             glBegin(GL_LINES)
-            glVertex3f(v1[0], v1[1], v1[2])
-            glVertex3f(v2[0], v2[1], v2[2])
+            apply(glVertex3f, v1)
+            apply(glVertex3f, v2)
             glEnd()
 
         m = self.unit_cell.calcCartisianUnitCellAxes()
@@ -79,6 +94,24 @@ class GLUnitCellDrawList(GLDrawList):
             for j in rng:
                 for k in rng:
                     draw_cell(i, j, k)
+
+        ## draw cartesian axes
+        def axis_line(v1, v2):
+            glLineWidth(5.0)
+            glBegin(GL_LINES)
+            apply(glVertex3f, v1)
+            apply(glVertex3f, v2)
+            glEnd()
+                    
+        self.set_material(1.0, 0.0, 0.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(100.0, 0.0, 0.0))
+
+        self.set_material(0.0, 1.0, 0.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(1.0, 100.0, 0.0))
+
+        self.set_material(0.0, 0.0, 1.0, 1.0)
+        axis_line(Vector(0.0, 0.0, 0.0), Vector(0.0, 0.0, 100.0))
+
         
     def set_material(self, r, g, b, brightness):
 	glMaterial(GL_FRONT, GL_AMBIENT,
@@ -103,6 +136,12 @@ class GLUnitCellDrawList(GLDrawList):
 
 
 class GLAtomDrawList(GLDrawList, list):
+    def __init__(self):
+        GLDrawList.__init__(self)
+        list.__init__(self)
+        self.atom_origin = Vector(0.0, 0.0, 0.0)
+        self.draw_u = 0
+
     def set_material(self, r, g, b, brightness):
 	glMaterial(GL_FRONT, GL_AMBIENT,
                    [0.2 * r * brightness,
@@ -155,23 +194,45 @@ class GLAtomDrawList(GLDrawList, list):
     def draw_atom(self, atm):
         glPushMatrix()
 
-        glTranslatef(atm.position[0], atm.position[1], atm.position[2])
+        apply(glTranslatef, atm.position - self.atom_origin)
+
         (r, g, b, brightness) = self.select_atom_material(atm)
         self.set_material(r, g, b, brightness)
-        glutSolidSphere(0.5, 12, 12)
+        glutSolidSphere(0.1, 12, 12)
+
+        ## U axes
+        m = array([[ atm.U[0], atm.U[3], atm.U[4] ],
+                   [ atm.U[3], atm.U[1], atm.U[5] ],
+                   [ atm.U[4], atm.U[5], atm.U[2] ]])
+        
+        (eval, evec) = eigenvectors(m)
+
+        if self.draw_u:
+            self.set_material(1.0, 1.0, 1.0, 1.0)
+            for i in range(3):
+                glLineWidth(1.0)
+                glBegin(GL_LINES)
+                apply(glVertex3f,  evec[i])
+                apply(glVertex3f, -evec[i])
+                glEnd()
 
         glPopMatrix()
         
     def draw_bond(self, atm1, atm2):
         glLineWidth(5.0)
         glBegin(GL_LINES)
-        glVertex3f(atm1.position[0], atm1.position[1], atm1.position[2])
-        glVertex3f(atm2.position[0], atm2.position[1], atm2.position[2])
+        apply(glVertex3f, atm1.position - self.atom_origin)
+        apply(glVertex3f, atm2.position - self.atom_origin)
         glEnd()
 
     def glDraw(self):
+        ## draw origin
+        self.set_material(1.0, 1.0, 1.0, 1.0)
+        glutSolidSphere(1.0, 32, 32)
+
+        ## draw atoms and bonds
         visited_bonds = []
-        
+
         for atm in self:
             ## draw atom
             self.draw_atom(atm)
@@ -184,6 +245,11 @@ class GLAtomDrawList(GLDrawList, list):
                 atm2 = bond.getPartner(atm)
                 self.draw_bond(atm, atm2)
 
+    def set_atom_origin(self, atom_origin):
+        self.atom_origin = atom_origin
+        self.glDeleteList()
+
+        
 
 class GLViewer(list):
     """Inherits from Python's list object.  To draw """
@@ -249,7 +315,7 @@ class GLViewer(list):
 	self.gldrawable.gl_end()
 
     def glDrawLists(self):
-        print "begin"
+        #print "begin"
         
 	if not self.gldrawable.gl_begin(self.glcontext):
             return
@@ -263,17 +329,15 @@ class GLViewer(list):
 	glRotatef(self.roty, 0.0, 1.0, 0.0)
         glRotatef(self.rotz, 0.0, 0.0, 1.0)
 
-        glutSolidSphere(3.0, 12, 12)
+        #glutSolidSphere(3.0, 12, 12)
 
         for draw_list in self:
-            print "glDrawLists name = ", draw_list.name
-            
             if draw_list.name == None: draw_list.glCompileList(execute = 1)
-            else:                      glCallList(draw_list.name)
+            else:                      draw_list.glCallList()
             
 	if self.gldrawable.is_double_buffered(): self.gldrawable.swap_buffers()
 	else:                                    glFlush()
 
         self.gldrawable.gl_end()
 
-        print "end"
+        #print "end"

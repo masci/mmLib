@@ -16,10 +16,12 @@ from   UnitCell             import UnitCell
 from   SpaceGroups          import SpaceGroup
 
 
+
+
 class FragmentGroupList(list):
     """Specialized list class which holds a weak reference to the Structure,
-    and sets a getStructure() attribute for all the children added to it."""
-
+    and sets a getStructure() attribute for all the children added to it.
+    """
     def __init__(self, struct):
         list.__init__(self)
         self.getStructure = weakref.ref(struct)
@@ -42,7 +44,8 @@ class FragmentGroupList(list):
 
 class FragmentGroup(object):
     """Provides base functionallity for grouping together fragments in a
-    Structure."""
+    Structure.
+    """
     def __init__(self):
         self.list         = []
         self.getStructure = None
@@ -207,7 +210,8 @@ class Structure(object):
             self.__chain_list.sort()
 
     def getChain(self, chain_id):
-        """Returns the Chain object matching the chain_id charactor."""
+        """Returns the Chain object matching the chain_id charactor.
+        """
         try:
             return self[chain_id]
         except KeyError:
@@ -215,27 +219,31 @@ class Structure(object):
 
     def iterChains(self):
         """Iterates over all Chain objects in alphabetical order according
-        to their chain_id."""
+        to their chain_id.
+        """
         return iter(self)
 
     def iterFragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according the the parent Chain's chain_id, and the
-        Fragment's positioin within the chain."""
+        Fragment's positioin within the chain.
+        """
         for chain in self.iterChains():
             for frag in chain.iterFragments():
                 yield frag
 
     def iterAminoAcids(self):
         """Same as iterFragments() but only iterates over Fragments of the
-        subclass AminoAcidResidue."""
+        subclass AminoAcidResidue.
+        """
         for chain in self.iterChains():
             for aa in chain.iterAminoAcids():
                 yield aa
 
     def iterNucleicAcids(self):
         """Same as iterFragments() but only iterates over Fragments of the
-        subclas NucleicAcidResidue."""
+        subclas NucleicAcidResidue.
+        """
         for chain in self.iterChains():
             for aa in chain.iterNucleicAcids():
                 yield aa
@@ -243,7 +251,8 @@ class Structure(object):
     def iterAtoms(self):
         """Iterates over all Atom objects.  The iteration is preformed in
         order according to the Chain and Fragment ordering rules the Atom
-        object is a part of."""
+        object is a part of.
+        """
         for chain in self.iterChains():
             for atm in chain.iterAtoms():
                 yield atm
@@ -251,7 +260,8 @@ class Structure(object):
     def iterBonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
         iterating over all Atom objects in the same order as iterAtoms(),
-        then iterating over each Atom's Bond objects."""
+        then iterating over each Atom's Bond objects.
+        """
         visited = []
 
         for atm in self.iterAtoms():
@@ -715,11 +725,13 @@ class Residue(Fragment):
 
 class AminoAcidResidue(Residue):
     """A subclass of Residue representing one amino acid residue in a
-    polypeptide chain."""
+    polypeptide chain.
+    """
     def calcMainchainBondLength(self):
         """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
         CA-(next)N).  The result is returned as a 5-tuple in that order.  Bond
-        lengths involving missing atoms are returned as None in the tuple."""
+        lengths involving missing atoms are returned as None in the tuple.
+        """
         aN  = self.getAtom('N')
         aCA = self.getAtom('CA')
         aC  = self.getAtom('C')
@@ -738,11 +750,12 @@ class AminoAcidResidue(Residue):
         CA_CB = calculateDistance(aCA, aCB)
         return (N_CA, CA_C, C_O, CA_CB, C_nN)
 
-    def calcMainchainBondAngle(self, conf_id = None):
+    def calcMainchainBondAngle(self):
         """Calculates main chain bond angles (N-CA-C, N-CA-CB, CB-CA-C,
         CA-C-O, CA-C-(next)N, C-(next residue)N-(next residue)CA) and
         returnst the result as a 6-tuple in that order.  Angles involving
-        missing atoms are returned as None in the tuple."""
+        missing atoms are returned as None in the tuple.
+        """
         aN       = self.getAtom('N')
         aCA      = self.getAtom('CA')
         aC       = self.getAtom('C')
@@ -768,7 +781,8 @@ class AminoAcidResidue(Residue):
     def calcTorsionPsi(self):
         """Calculates the Psi torsion angle of the amino acid.  Raises a
         CTerminal exception if called on a C-terminal residue which does
-        not have a Psi torsion angle."""
+        not have a Psi torsion angle.
+        """
         next_res = self.getOffsetResidue(1)
         if not next_res:
             return None
@@ -782,7 +796,8 @@ class AminoAcidResidue(Residue):
     def calcTorsionPhi(self):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
         NTerminal exception if called on a N-terminal residue which does
-        not have a Phi torsion angle."""
+        not have a Phi torsion angle.
+        """
         prev_res = self.getOffsetResidue(-1)
         if not prev_res:
             return None
@@ -796,7 +811,8 @@ class AminoAcidResidue(Residue):
     def calcTorsionOmega(self):
         """Calculates the Omega torsion angle of the amino acid. Raises a
         CTerminal exception if called on a C-terminal residue which does
-        not have a Omega torsion angle."""
+        not have a Omega torsion angle.
+        """
         next_res = self.getOffsetResidue(1)
         if not next_res:
             return None
@@ -809,13 +825,15 @@ class AminoAcidResidue(Residue):
 
     def isCis(self):
         """Returns true if this is a CIS amino acid, otherwise returns false.
-        It uses calcTorsionOmega."""
+        It uses calcTorsionOmega.
+        """
         omega = self.calcTorsionOmega()
         return abs(omega) > (math.pi / 2.0)
 
     def calcPuckerTorsion(self, conf_id = None):
         """Calculates the Pucker torsion of a ring system.  Returns None
-        for Amino Acids which do not have Pucker torsion angles."""
+        for Amino Acids which do not have Pucker torsion angles.
+        """
         mon = self.getStructure().library[self.res_name]
         if not mon.pucker_definition:
             return None
@@ -875,7 +893,8 @@ class AminoAcidResidue(Residue):
         amino acid specific definitions in the AminoAcids library.
         Returns the 4-tuple (CHI1, CHI2, CHI3, CHI4).  Angles involving
         missing atoms, or angles which do not exist for the amino acid
-        are returned as None in the tuple."""
+        are returned as None in the tuple.
+        """
         chi1 = self.calcTorsionChi1()
         chi2 = self.calcTorsionChi2()
         chi3 = self.calcTorsionChi3()
@@ -964,7 +983,8 @@ class Atom(object):
 
     def __getitem__(self, x):
         """This is a alternative to calling getAltLoc, but a KeyError
-        exception is raised if the alt_loc Atom is not found."""
+        exception is raised if the alt_loc Atom is not found.
+        """
         if type(x) == StringType:
             for atom in self.__alt_loc_list:
                 if atom.alt_loc == x:
@@ -1130,3 +1150,54 @@ class Bond(object):
     def getStructure(self):
         return self.getAtom1().getStructure()
 
+
+class FragmentList(list):
+    """Provides the functionallity of a Python list class for containing
+    Fragment instances."""
+    pass
+
+
+class AtomList(list):
+    """Provides the functionallity of a Python list class for containing
+    Atom instances.  It also provides class methods for performing some
+    useful calculations on the list of atoms."""
+
+    def calc_centroid(self):
+        """Calculates the centroid of all contained Atom instances and
+        returns a Vector to the centroid.
+        """
+        centroid = Vector(0.0, 0.0, 0.0)
+        for atm in self:
+            centroid += atm.position
+        return centroid / len(self)
+        
+    def calc_adv_temp_factor(self):
+        """Calculates the adverage temperature factor of all contained
+        Atom instances and returns the adverage temperature factor.
+        """
+        adv_tf = 0.0
+        for atm in self:
+            adv_tf += atm.temp_factor
+        return adv_tf / len(self)
+
+    def calc_adv_U(self):
+        """Calculates the adverage U matrix of all contained Atom
+        instances and returns the 3x3 symmetric U matrix of that
+        adverage.
+        """
+        adv_U = array([[0.0,0.0,0.0],
+                       [0.0,0.0,0.0],
+                       [0.0,0.0,0.0]])
+
+        for atm in self:
+            ## use the atom's U matrix if it exists, otherwise use the
+            ## temperature factor
+            if atm.U:
+                adv_U += atm.U
+            else:
+                adv_U[0,0] += atm.temp_factor
+                adv_U[1,1] += atm.temp_factor
+                adv_U[2,2] += atm.temp_factor
+        return adv_U / len(self)
+
+    

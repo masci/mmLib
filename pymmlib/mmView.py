@@ -20,6 +20,7 @@ from OpenGL.GLUT import *
 
 from mmLib.Structure     import *
 from mmLib.FileLoader    import LoadStructure, SaveStructure
+from mmLib.GLViewer      import *
 from mmLib.Extensions.PenultimateRotamers import FindBestRotamer
 
 
@@ -34,7 +35,19 @@ except gtk.gdkgl.NoMatches:
                                 gtk.gdkgl.MODE_DEPTH)
 
 
-class GLViewer(gtk.gtkgl.DrawingArea):
+class SelectionGLAtomDrawList(GLAtomDrawList):
+    def __init__(self):
+        GLAtomDrawList.__init__(self)
+        self.selected = []
+    
+    def select_atom_material(self, atm):
+        (r, g, b, brightness) = GLAtomDrawList.select_atom_material(self, atm)
+        if not atm in self.selected:
+            brightness = brightness * 0.2
+        return (r, g, b, brightness)
+        
+
+class GtkGLViewer(gtk.gtkgl.DrawingArea):
     def __init__(self):
         gtk.gtkgl.DrawingArea.__init__(self)
         gtk.gtkgl.widget_set_gl_capability(self, glconfig)
@@ -50,15 +63,8 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         self.connect('expose_event',        self.expose_event)
         self.connect('destroy',             self.destroy)
 
-        self.rotx        = 0
-        self.roty        = 0
+        self.glviewer = None
 
-        self.xpos        = 0
-        self.ypos        = 0
-        self.zpos        = -50
-
-        self.draw_list   = []
-        
     def destroy(self, glarea):
         return gtk.TRUE
 
@@ -71,212 +77,86 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         height    = glarea.allocation.height
 
         if (event.state & gtk.gdk.BUTTON1_MASK):
-            self.roty = self.roty + \
+            self.glviewer.roty = self.glviewer.roty + \
                         (((event.x - self.beginx) / float(width)) * 360.0)
-            self.rotx = self.rotx + \
+            self.glviewer.rotx = self.glviewer.rotx + \
                         (((event.y - self.beginy) / float(height)) * 360.0)
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
-            self.zpos = self.zpos + \
+            self.glviewer.zpos = self.glviewer.zpos + \
                         (((event.y - self.beginy) / float(height)) * 50.0)
 
-            self.zpos = max(self.zpos, -250)
+            self.glviewer.zpos = max(self.glviewer.zpos, -250.0)
 
         elif (event.state & gtk.gdk.BUTTON3_MASK):
-            self.ypos = self.ypos - \
+            self.glviewer.ypos = self.glviewer.ypos - \
                         (((event.y - self.beginy) / float(height)) * 50.0)
-            self.xpos = self.xpos + \
+            self.glviewer.xpos = self.glviewer.xpos + \
                         (((event.x - self.beginx) / float(width)) * 50.0)
 
         self.beginx = event.x
         self.beginy = event.y
+
         self.queue_draw()
+
+    def configure_event(self, glarea, event):
+        if not self.glviewer:
+            self.glviewer = GLViewer(self.get_gl_context(),
+                                     self.get_gl_drawable())
+
+        x, y, width, height = glarea.get_allocation()
+        self.glviewer.glResize(width, height)
+
+        self.queue_draw()
+        return gtk.TRUE
+
 
     def map(self, glarea):
         self.add_events(gtk.gdk.BUTTON_PRESS_MASK   |
                         gtk.gdk.BUTTON_RELEASE_MASK |
                         gtk.gdk.BUTTON_MOTION_MASK  |
                         gtk.gdk.POINTER_MOTION_MASK)
-
         return gtk.TRUE
 
     def unmap(self, glarea):
         return gtk.TRUE
 
-    def set_material(self, r, g, b, bright = 1.0):
-        
-	glMaterial(GL_FRONT, GL_AMBIENT,
-                   [0.2*r*bright, 0.2*g*bright, 0.2*b*bright, 1.0])
-	glMaterial(GL_FRONT, GL_DIFFUSE,
-                   [0.8*bright, 0.8*bright, 0.8*bright, 1.0])
-	glMaterial(GL_FRONT, GL_SPECULAR,
-                   [1.0*bright, 1.0*bright, 1.0*bright, 1.0])
-        
-	glMaterial(GL_FRONT, GL_SHININESS, 50.0*bright)
-
     def realize(self, glarea):
-        # get GLContext and GLDrawable
-	glcontext = self.get_gl_context()
-	gldrawable = self.get_gl_drawable()
-	
-	# GL calls
-	if not gldrawable.gl_begin(glcontext):
-            return gtk.FALSE
-
-        self.set_material(1.0, 1.0, 1.0)
-	
-	glLight(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
-	glLight(GL_LIGHT0, GL_DIFFUSE,  [1.0, 1.0, 1.0, 1.0])
-	glLight(GL_LIGHT0, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-	glLight(GL_LIGHT0, GL_POSITION, [1.0, 1.0, 1.0, 0.0])
-	
-	glLightModel(GL_LIGHT_MODEL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-
- 	glEnable(GL_LIGHTING)
- 	glEnable(GL_LIGHT0)
-	
-	glDepthFunc(GL_LESS)
-	glEnable(GL_DEPTH_TEST)
-		
-        gldrawable.gl_end()
+        self.glviewer.glInit()
         return gtk.TRUE
 
-    def configure_event(self, glarea, event):
-	# get GLContext and GLDrawable
-	glcontext = self.get_gl_context()
-	gldrawable = self.get_gl_drawable()
-	
-	# GL calls
-	if not gldrawable.gl_begin(glcontext):
-            return gtk.FALSE
-	
-	x, y, width, height = glarea.get_allocation()
-	
-	glViewport(0, 0, width, height)
-	glMatrixMode(GL_PROJECTION)
-	glLoadIdentity()
-	if width > height:
-            w = float(width) / float(height)
-            glFrustum(-w, w, -1.0, 1.0, 3.0, 150.0)
-	else:
-            h = float(height) / float(width)
-            glFrustum(-1.0, 1.0, -h, h, 3.0, 150.0)
-	
-	glMatrixMode(GL_MODELVIEW)
-	
-	gldrawable.gl_end()
-	
-	return gtk.TRUE
-
     def expose_event(self, glarea, event):
-	# get GLContext and GLDrawable
-	glcontext = self.get_gl_context()
-	gldrawable = self.get_gl_drawable()
-	
-	# GL calls
-	if not gldrawable.gl_begin(glcontext):
-            return gtk.FALSE
-	
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-	
-	glLoadIdentity()
+        self.glviewer.glDrawLists()
+        return gtk.TRUE
 
-	glTranslate(self.xpos, self.ypos, self.zpos)
-	
-	glRotate(self.rotx, 1, 0, 0)
-	glRotate(self.roty, 0, 1, 0)
+    def set_unit_cell(self, unit_cell):
+        self.glviewer.append(GLUnitCellDrawList(unit_cell))
+        self.queue_draw()
 
-        ## <DRAW>
-        for i in self.draw_list: glCallList(i)
-        ## </DRAW>
-            
-	if gldrawable.is_double_buffered():
-            gldrawable.swap_buffers()
-	else:
-            glFlush()
-	
-	gldrawable.gl_end()
-	
-	return gtk.TRUE
+    def set_structure(self, struct_obj, sel_struct_obj = None):
+        ## remove all previous atom draw lists
+        for draw_list in self.glviewer:
+            if isinstance(draw_list, GLAtomDrawList):
+                self.glviewer.remove(draw_list)
+                draw_list.glDeleteList()
 
-    def setAtomContainer(self, atom_container, selected = None):
-        ## compute the centroid
-        if not hasattr(self, "centroid"):
-            self.centroid = Vector(0.0, 0.0, 0.0)
-            n = 0
-            for atm in atom_container.iterAtoms():
-                n += 1
-                self.centroid += atm.position
-            self.centroid = self.centroid / n        
+        ## create and add new view group
+        draw_list = SelectionGLAtomDrawList()
+        self.glviewer.append(draw_list)
 
-        ## selected map
-        select_list = []
+        for atm in struct_obj.iterAtoms():
+            draw_list.append(atm)
 
-        for atm in selected.iterAtoms():
-            if atm not in select_list:
-                select_list.append(atm)
-
-        ## Temp Factor
-        max_tf = 25.0
-
-        ## atom spheres
-        visited_bonds = []
-
-        glNewList(1, GL_COMPILE)
-        if not self.draw_list: self.draw_list.append(1)
-
-        for atm in atom_container.iterAtoms():
-            pos  = atm.position - self.centroid
-
-            tf = math.log10(atm.temp_factor) / max_tf
-
-            ## hilight selections
-            try:
-                select_list.remove(atm)
-            except ValueError:
-                br = 0.2
+        if sel_struct_obj:
+            if isinstance(sel_struct_obj, Atom):
+                draw_list.selected=[sel_struct_obj]
             else:
-                br = 1.0
-
-            size = 0.3
-
-            glPushMatrix()
-            glTranslatef(pos[0], pos[1], pos[2])
-
-            if   atm.element == "C": self.set_material(1.0, 1.0, 0.0, br)
-            elif atm.element == "N": self.set_material(0.0, 0.0, 1.0, br)
-            elif atm.element == "O": self.set_material(1.0, 0.0, 0.0, br)
-            elif atm.element == "S": self.set_material(0.0, 1.0, 0.0, br)
-            else:                    self.set_material(1.0, 1.0, 1.0, 1.0)
-
-            glutSolidSphere(size, 12, 12)
-            glPopMatrix()
-
-            ## bonds
-            glLineWidth(5.0)
-
-            for bond in atm.iterBonds():
-                if bond in visited_bonds: continue
-                else:                     visited_bonds.insert(0, bond)
-
-                atm2 = bond.getPartner(atm)
-                v1   = atm.position - self.centroid
-                v2   = atm2.position - self.centroid
-
-                self.set_material(1.0, 1.0, 1.0, 0.2)
-
-                glBegin(GL_LINES)
-                glVertex3f(v1[0], v1[1], v1[2])
-                glVertex3f(v2[0], v2[1], v2[2])
-                glEnd()
-                
-        glEndList()
+                draw_list.selected=[atm for atm in sel_struct_obj.iterAtoms()]
 
         self.queue_draw()
 
 
-
-class AtomContainerPanel(gtk.VPaned):
+class StructurePanel(gtk.VPaned):
     def __init__(self):
         gtk.VPaned.__init__(self)
         self.set_border_width(3)
@@ -303,60 +183,57 @@ class AtomContainerPanel(gtk.VPaned):
         treeview.append_column(column)
 
         ## create the GLViewer
-        self.glviewer = GLViewer()
+        self.glviewer = GtkGLViewer()
         self.add2(self.glviewer)
 
-    def printBox(self, key, value):
+    def add_line(self, key, value):
         iter = self.store.append()
         self.store.set(iter, 0, key, 1, str(value))
 
-    def setAtomContainer(self, atom_container, selected = None):
-        self.atom_container = atom_container
+    def set_structure(self, struct, sel_struct_obj = None):
+        self.struct = struct
         self.store.clear()
 
-        if isinstance(atom_container, Residue):
-            res = atom_container
-            self.printBox("Residue.res_name", res.res_name)
-            self.printBox("Residue.getOffsetResidue(-1)",
-                          res.getOffsetResidue(-1))
-            self.printBox("Residue.getOffsetResidue(1)",
-                          res.getOffsetResidue(1))
+        if isinstance(sel_struct_obj, Residue):
+            self.add_line("Residue.res_name", sel_struct_obj.res_name)
+            self.add_line("Residue.getOffsetResidue(-1)",
+                          sel_struct_obj.getOffsetResidue(-1))
+            self.add_line("Residue.getOffsetResidue(1)",
+                          sel_struct_obj.getOffsetResidue(1))
 
-        if isinstance(atom_container, Fragment):
-            frag = atom_container
+        if isinstance(sel_struct_obj, Fragment):
             bonds = ""
-            for bond in frag.iterBonds():
+            for bond in sel_struct_obj.iterBonds():
                 bonds += str(bond)
-            self.printBox("Fragment.iterBonds()", bonds)
+            self.add_line("Fragment.iterBonds()", bonds)
 
-        if isinstance(atom_container, AminoAcidResidue):
-            aa_res = atom_container
-            self.printBox("AminoAcidResidue.calcMainchainBondLength()",
-                          aa_res.calcMainchainBondLength())
-            self.printBox("AminoAcidResidue.calcMainchainBondAngle()",
-                          aa_res.calcMainchainBondAngle())
-            self.printBox("AminoAcidResidue.calcTorsionPsi()",
-                          aa_res.calcTorsionPsi())
-            self.printBox("AminoAcidResidue.calcTorsionPhi()",
-                          aa_res.calcTorsionPhi())
-            self.printBox("AminoAcidResidue.calcTorsionOmega()",
-                          aa_res.calcTorsionOmega())
-            self.printBox("AminoAcidResidue.calcTorsionChi()",
-                          aa_res.calcTorsionChi())
+        if isinstance(sel_struct_obj, AminoAcidResidue):
+            self.add_line("AminoAcidResidue.calcMainchainBondLength()",
+                          sel_struct_obj.calcMainchainBondLength())
+            self.add_line("AminoAcidResidue.calcMainchainBondAngle()",
+                          sel_struct_obj.calcMainchainBondAngle())
+            self.add_line("AminoAcidResidue.calcTorsionPsi()",
+                          sel_struct_obj.calcTorsionPsi())
+            self.add_line("AminoAcidResidue.calcTorsionPhi()",
+                          sel_struct_obj.calcTorsionPhi())
+            self.add_line("AminoAcidResidue.calcTorsionOmega()",
+                          sel_struct_obj.calcTorsionOmega())
+            self.add_line("AminoAcidResidue.calcTorsionChi()",
+                          sel_struct_obj.calcTorsionChi())
 
-        if isinstance(atom_container, Atom):
-            atm = atom_container
-            self.printBox("Atom.element", atm.element)
-            self.printBox("Atom.name", atm.name)
-            self.printBox("Atom.occupancy", atm.occupancy)
-            self.printBox("Atom.temp_factor", atm.temp_factor)
-            self.printBox("Atom.U", atm.U)
-            self.printBox("Atom.position", atm.position)
-            self.printBox("len(Atom.bond_list)", len(atm.bond_list))
-            self.printBox("Atom.calcAnisotropy()", atm.calcAnisotropy())
+        if isinstance(sel_struct_obj, Atom):
+            self.add_line("Atom.element", sel_struct_obj.element)
+            self.add_line("Atom.name", sel_struct_obj.name)
+            self.add_line("Atom.occupancy", sel_struct_obj.occupancy)
+            self.add_line("Atom.temp_factor", sel_struct_obj.temp_factor)
+            self.add_line("Atom.U", sel_struct_obj.U)
+            self.add_line("Atom.position", sel_struct_obj.position)
+            self.add_line("len(Atom.bond_list)", len(sel_struct_obj.bond_list))
+            self.add_line("Atom.calcAnisotropy()",
+                          sel_struct_obj.calcAnisotropy())
 
-        self.glviewer.setAtomContainer(self.atom_container, selected)
-
+        self.glviewer.set_unit_cell(self.struct.unit_cell)
+        self.glviewer.set_structure(self.struct, sel_struct_obj)
 
 
 class StructureTreeModel(gtk.GenericTreeModel):
@@ -524,7 +401,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
 class StructureGUI:
     def __init__(self):
-        self.structure = None
+        self.struct = None
     
         ## MAIN WIDGET
         self.hpaned = gtk.HPaned()
@@ -544,26 +421,27 @@ class StructureGUI:
         self.struct_tree_view.connect("row_activated", self.row_activated)
 
         ## RIGHT HALF
-        self.ac_panel = AtomContainerPanel()
-        self.hpaned.add2(self.ac_panel)
-
+        self.struct_panel = StructurePanel()
+        self.hpaned.add2(self.struct_panel)
 
     def getWidget(self):
         return self.hpaned
 
-    def loadStructure(self, path):
-        self.structure = LoadStructure(
+    def load_structure(self, path):
+        self.struct = LoadStructure(
             fil              = path,
             build_properties = ("sequence","bonds"))
 
-        model = StructureTreeModel(self.structure)
+        model = StructureTreeModel(self.struct)
         self.struct_tree_view.set_model(model)
+        self.struct_panel.set_structure(self.struct)
+        
 
     def row_activated(self, tree_view, path, column):
         ## find selected node
         model = tree_view.get_model()
         node = model.on_get_iter(path)
-        self.ac_panel.setAtomContainer(self.structure, node)
+        self.struct_panel.set_structure(self.struct, node)
 
 
 class MainWindow:
@@ -663,7 +541,7 @@ class MainWindow:
         while gtk.events_pending():
             gtk.main_iteration(gtk.TRUE)
 
-        self.structure_gui.loadStructure(path)
+        self.structure_gui.load_structure(path)
 
         self.setStatusBar("")
         return gtk.FALSE

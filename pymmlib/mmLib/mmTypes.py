@@ -20,8 +20,8 @@ from   types                import *
 from   Scientific.Geometry  import Vector
 
 ## use Numeric Python (Numeric, LinearAlgebra) for array(matrix)
-from   Numeric              import array, transpose, matrixmultiply
-from   LinearAlgebra        import eigenvalues, eigenvectors
+from   Numeric              import *
+from   LinearAlgebra        import *
 
 
 class OrderedList(object):
