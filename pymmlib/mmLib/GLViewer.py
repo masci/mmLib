@@ -465,23 +465,77 @@ class OpenGLRenderMethods(object):
     """OpenGL renderer methods.  Eventually, all OpenGL rendering will
     be done through methods in this object.
     """
+    def glr_push_matrix(self):
+        """
+        """
+        glPushMatrix()
+
+    def glr_pop_matrix(self):
+        """
+        """
+        glPopMatrix()
+        
+    def glr_matrix_R_t(self):
+        """Return the current matrix as a 3x3 rotation matrix R and 3x1
+        translation vector t.
+        """
+        pass
+        
     def glr_translate(self, t):
         """Translates the scene by vector t.
         """
         glTranslatef(*t)
+
+    def glr_translate3(self, x, y, z):
+        """
+        """
+        glTranslatef(x, y, z)
     
-    def glr_mult_matrix(self, R, t=zeros(3, Float)):
+    def glr_mult_matrix(self, R, t=None):
         """Multiplies the current matrix by rotation matrix R and translates
         by t
         """
-        ## OpenGL wants the matrix in column-major form
-        glMultMatrixf(
-            (R[0,0], R[1,0], R[2,0], 0.0,
-             R[0,1], R[1,1], R[2,1], 0.0,
-             R[0,2], R[1,2], R[2,2], 0.0,
-             t[0],   t[1],   t[2],   1.0) )
+        if t==None:
+            ## OpenGL wants the matrix in column-major form
+            glMultMatrixf(
+                (R[0,0], R[1,0], R[2,0], 0.0,
+                 R[0,1], R[1,1], R[2,1], 0.0,
+                 R[0,2], R[1,2], R[2,2], 0.0,
+                 0.0,    0.0,    0.0,    1.0) )
+        else:
+            ## OpenGL wants the matrix in column-major form
+            glMultMatrixf(
+                (R[0,0], R[1,0], R[2,0], 0.0,
+                 R[0,1], R[1,1], R[2,1], 0.0,
+                 R[0,2], R[1,2], R[2,2], 0.0,
+                 t[0],   t[1],   t[2],   1.0) )
+
+    def glr_lighting_enable(self):
+        """
+        """
+        glEnable(GL_LIGHTING)
+
+    def glr_lighting_disable(self):
+        """
+        """
+        glDisable(GL_LIGHTING)
+
+    def glr_set_line_width(self, width):
+        """
+        """
+        glLineWidth(width)
     
-    def glr_set_material_rgb(self, r, g, b, a):
+    def glr_set_material_rgb(self, r, g, b):
+        """Creates a stock rendering material colored according to the given
+        RGB values.
+        """
+        glColor3f(r, g, b)
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, (r, g, b, 1.0))
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, (0.0, 0.0, 0.0, 1.0))
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+
+    def glr_set_material_rgba(self, r, g, b, a):
         """Creates a stock rendering material colored according to the given
         RGB values.
         """
@@ -495,6 +549,34 @@ class OpenGLRenderMethods(object):
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 128.0)
         else:
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
+
+    def glr_begin_lines(self):
+        """
+        """
+        glBegin(GL_LINES)
+
+    def glr_end(self):
+        """
+        """
+        glEnd()
+
+    def glr_vertex(self, position):
+        """
+        """
+        glVertex3f(*position)
+
+    def glr_vertex3(self, x, y, z):
+        """
+        """
+        glVertex3f(x, y, z)
+
+    def glr_line(self, position1, position2):
+        """Draws a single line.
+        """
+        glBegin(GL_LINES)
+        glVertex3f(*position1)
+        glVertex3f(*position2)
+        glEnd()
 
     def glr_text(self, text, scale):
         """Renders a text string.
@@ -952,10 +1034,10 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
     def gldl_push_matrix(self):
         """Rotate and translate to the correct position for drawing.
         """
-        glPushMatrix()
+        self.glr_push_matrix()
 
         if not allclose(self.properties["origin"], zeros(3, Float)):
-            glTranslatef(*self.properties["origin"])
+            self.glr_translate(self.properties["origin"])
 
         axes = self.properties["axes"]
         if not allclose(axes, identity(3, Float)):
@@ -966,7 +1048,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
     def gldl_pop_matrix(self):
         """Pop the roatated/translated position.
         """
-        glPopMatrix()
+        self.glr_pop_matrix()
 
     def gldl_render(self, transparent=False):
         """Compile or force a recompile of this object's gl_draw list, and
@@ -1098,17 +1180,17 @@ class GLAxes(GLDrawList):
         line_width  = self.properties["line_width"]
 
         r, g, b = self.gldl_property_color_rgbf("color_x")
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_set_material_rgb(r, g, b)
         self.glr_axis(zeros(3, Float),
                       array([line_length, 0.0, 0.0]), line_width) 
 
         r, g, b = self.gldl_property_color_rgbf("color_y")
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_set_material_rgb(r, g, b)
         self.glr_axis(zeros(3, Float),
                       array([0.0, line_length, 0.0]), line_width) 
 
         r, g, b = self.gldl_property_color_rgbf("color_z")
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_set_material_rgb(r, g, b)
         self.glr_axis(zeros(3, Float),
                       array([0.0, 0.0, line_length]), line_width) 
 
@@ -1262,7 +1344,7 @@ class GLUnitCell(GLDrawList):
         rad = self.properties["radius"]
 
         rf, gf, bf = self.gldl_property_color_rgbf("a_color")
-        self.glr_set_material_rgb(rf, gf, bf, 1.0)
+        self.glr_set_material_rgb(rf, gf, bf)
         for k in range(z1, z2+2):
             for j in range(y1, y2+2):
                 p1 = x1*a + j*b + k*c
@@ -1270,7 +1352,7 @@ class GLUnitCell(GLDrawList):
                 self.glr_tube(p1, p2, rad)
 
         rf, gf, bf = self.gldl_property_color_rgbf("b_color")
-        self.glr_set_material_rgb(rf, gf, bf, 1.0)
+        self.glr_set_material_rgb(rf, gf, bf)
         for k in range(z1, z2+2):
             for i in range(x1, x2+2):
                 p1 = i*a + y1*b + k*c
@@ -1278,7 +1360,7 @@ class GLUnitCell(GLDrawList):
                 self.glr_tube(p1, p2, rad)
 
         rf, gf, bf = self.gldl_property_color_rgbf("c_color")
-        self.glr_set_material_rgb(rf, gf, bf, 1.0)
+        self.glr_set_material_rgb(rf, gf, bf)
         for j in range(y1, y2+2):
             for i in range(x1, x2+2):
                 p1 = i*a + j*b + z1*c
@@ -1730,22 +1812,18 @@ class GLAtomList(GLDrawList):
 
             else:
                 for symop in gl_struct.iter_orth_symops():
-                    glPushMatrix()
+                    self.glr_push_matrix()
 
                     if self.properties["atom_origin"]!=None:
-                        glTranslate(*-self.properties["atom_origin"])
+                        self.glr_translate(-self.properties["atom_origin"])
 
-                    glMultMatrixf(
-                        (symop.R[0,0], symop.R[1,0], symop.R[2,0], 0.0,
-                         symop.R[0,1], symop.R[1,1], symop.R[2,1], 0.0,
-                         symop.R[0,2], symop.R[1,2], symop.R[2,2], 0.0,
-                         symop.t[0],   symop.t[1],   symop.t[2],   1.0) )
+                    self.glr_mult_matrix(symop.R, symop.t)
 
                     if self.properties["atom_origin"]!=None:
                         glTranslate(*self.properties["atom_origin"])
                     
                     yield True
-                    glPopMatrix()
+                    self.glr_pop_matrix()
 
     def glal_iter_atoms(self):
         """Implement in a subclass to iterate over all atoms which
@@ -1997,9 +2075,7 @@ class GLAtomList(GLDrawList):
         """Draws atom lables.
         """
         scale = self.properties["label_size"]
-
-        r, g, b = self.glal_calc_color_label()
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_set_material_rgb(*self.glal_calc_color_label())
 
         viewer = self.gldl_get_glviewer()
         R  = viewer.properties["R"]
@@ -2008,8 +2084,8 @@ class GLAtomList(GLDrawList):
         ## this vecor is needed to adjust for origin/atom_origin
         ## changes, but it does not account for object rotation yet
         cv = self.properties["origin"]
-        
-        glPushMatrix()
+
+        self.glr_push_matrix()
 
         ## shift back to the view window coordinate system so the
         ## labels can be drawn in the plane perpendicular to the viewer's
@@ -2055,12 +2131,12 @@ class GLAtomList(GLDrawList):
                          atm.fragment_id,
                          atm.chain_id)
 
-            glPushMatrix()
-            glTranslatef(*relative_pos + array([0.0, 0.0, 0.5]))
+            self.glr_push_matrix()
+            self.glr_translate(relative_pos + array([0.0, 0.0, 0.5]))
             self.glr_text(text, scale)
-            glPopMatrix()
+            self.glr_pop_matrix()
 
-        glPopMatrix()
+        self.glr_pop_matrix()
 
     def draw_cpk(self):
         """Draw a atom as a CPK sphere.
@@ -2075,7 +2151,7 @@ class GLAtomList(GLDrawList):
             r, g, b = self.glal_calc_color(atm)
 
             a = self.properties["cpk_opacity"]
-            self.glr_set_material_rgb(r, g, b, a)
+            self.glr_set_material_rgba(r, g, b, a)
 
             self.glr_sphere(
                 pos,
@@ -2106,7 +2182,7 @@ class GLAtomList(GLDrawList):
                 continue
 
             r, g, b = self.glal_calc_color_Uellipse(atm) 
-            self.glr_set_material_rgb(r, g, b, opacity)
+            self.glr_set_material_rgba(r, g, b, opacity)
             self.glr_Uellipse(pos, U, prob)
 
     def draw_Urms(self):
@@ -2121,17 +2197,17 @@ class GLAtomList(GLDrawList):
                 continue
 
             r, g, b = self.glal_calc_color_Urms(atm)        
-            self.glr_set_material_rgb(r, g, b, opacity)
+            self.glr_set_material_rgba(r, g, b, opacity)
             self.glr_Urms(pos, U)
 
     def draw_lines(self):
         """Draw a atom using bond lines only.
         """
-        glDisable(GL_LIGHTING)
-        glLineWidth(self.properties["line_width"])
+        self.glr_lighting_disable()
+        self.glr_set_line_width(self.properties["line_width"])
 
         for atm1, pos1 in self.glal_iter_visible_atoms():
-            glColor3f(*self.glal_calc_color(atm1))
+            self.glr_set_material_rgb(*self.glal_calc_color(atm1))
 
             if len(atm1.bond_list)>0:
                 ## if there are bonds, then draw the lines 1/2 way to the
@@ -2148,12 +2224,9 @@ class GLAtomList(GLDrawList):
                             pos2 = self.glal_calc_position(atm2.position)
                     
                     end = pos1 + ((pos2 - pos1) / 2)
+                    self.glr_line(pos1, end)
 
-                    glBegin(GL_LINES)
-                    glVertex3f(*pos1)
-                    glVertex3f(*end)
-                    glEnd()
-                    
+            ## draw a cross for non-bonded atoms
             else:
                 self.glr_cross(
                     pos1,
@@ -2167,8 +2240,7 @@ class GLAtomList(GLDrawList):
         stick_radius = self.properties["stick_radius"]
 
         for atm1, pos1 in self.glal_iter_visible_atoms():
-            r, g, b = self.glal_calc_color(atm1)
-            self.glr_set_material_rgb(r, g, b, 1.0)
+            self.glr_set_material_rgb(*self.glal_calc_color(atm1))
 
             ## if there are bonds, then draw the lines 1/2 way to the
             ## bonded atoms
@@ -2203,7 +2275,7 @@ class GLAtomList(GLDrawList):
         trace_radius = self.properties["trace_radius"]
         r, g, b      = self.glal_calc_color_trace()
         
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_set_material_rgb(r, g, b)
 
         for chain in self.glal_iter_chains():
 

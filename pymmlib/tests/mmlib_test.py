@@ -482,6 +482,11 @@ def cmp_struct(struct1, struct2):
             print "atm1.temp_factor = %s" % (atm1.temp_factor)
             print "atm2.temp_factor = %s" % (atm2.temp_factor)
             raise
+
+        for bond in atm1.iter_bonds():
+            atm1p = bond.get_partner(atm1)
+
+            
     
 
 def file_verify(path, struct, stats):

@@ -30,6 +30,17 @@
 The TLSView molecular viewer specializes in visualizing TLS rigid body displacements in macromolecular structures.  It uses OpenGL for interactive graphics rendering, and supports most of the macromolecular visualization styles found it other programs.  TLSView includes several new visualizations designed to represent TLS model parameters as physical displacements of the atomic model.  The 20 parameters of a TLS model can be interpreted as six independent rigid body displacements: three orthogonal translational displacements, and three screw displacements.  The screw displacement axes are orthogonal, but do not necessarily intersect at a common point.  This is the canonical interpretation of TLS displacement, and the trajectories of these six independent displacements are used by TLSView to draw static trajectory paths and animate atomic model visualizations.
 </p>
 
+<!---------------------------------------------------------->
+<!---------------------------------------------------------->
+<hr>
+<h3>Running TLSView</h3>
+
+<p>
+The TLSView program is located in the mmLib <i>applications/</i> directory, and the program is actually called <i>tlsviewer.py</i>.  For TLSView to run correctly, mmLib must be properly installed.  See the README.txt and INSTALL.txt files for instructions on how to correctly set up mmLib and its dependencies.  Once mmLib is installed, TLSView can be run by the shell command:
+<pre>
+# python tlsviewer.py [PDB/mmCIF path]
+</pre>
+</p>
 
 <!---------------------------------------------------------->
 <!---------------------------------------------------------->
