@@ -581,10 +581,18 @@ class mmCIFFileParser(object):
         ## get file size for update callbacks
         percent_done = 0
         fil_read_bytes = 0
-        
-        fil.seek(0, 2)
-        fil_size_bytes = fil.tell()
-        fil.seek(0, 0)
+
+        ## some file objects do not support seek/tell
+        if hasattr(fil, "seek") and hasattr(fil, "tell"):
+            try:
+                fil.seek(0, 2)
+                fil_size_bytes = fil.tell()
+                fil.seek(0, 0)
+            except:
+                # this is a adverage file size ;)
+                fil_size_bytes = 1304189
+        else:
+            fil_size_bytes = 1304189
 
         file_iter = iter(fil)
         while 1:
@@ -599,7 +607,7 @@ class mmCIFFileParser(object):
             ## call update callback
             if self.update_cb != None:
                 pdone = (fil_read_bytes * 100)/fil_size_bytes
-                if pdone != percent_done:
+                if pdone != percent_done and pdone <= 100:
                     percent_done = pdone
                     self.update_cb(percent_done)
 
