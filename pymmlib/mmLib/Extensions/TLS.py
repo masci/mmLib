@@ -137,6 +137,7 @@ class TLSInfo(object):
         set.
         """
         tls = TLSGroup()
+        tls.name = self.name
         tls.set_origin(*self.origin)
         tls.set_T(*self.T)
         tls.set_L(*self.L)
@@ -941,10 +942,12 @@ class TLSGroup(AtomList):
 
         ## libration axis 1 shift in the L coordinate system
         cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
+
         ## libration axis 2 shift in the L coordinate system
         cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
+
         ## libration axis 2 shift in the L coordinate system
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,1]/cL[2,2], 0.0])
+        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0])
 
         ## libration axes shifts in the origional orthogonal
         ## coordinate system
@@ -952,11 +955,24 @@ class TLSGroup(AtomList):
         calcs["L2_rho"] = matrixmultiply(evec_L, cL2rho)
         calcs["L3_rho"] = matrixmultiply(evec_L, cL3rho)
 
-        ## calculate screw pitches
-        calcs["L1_pitch"] = cL[0,0]/cSp[0,0]
-        calcs["L2_pitch"] = cL[1,1]/cSp[1,1]
-        calcs["L3_pitch"] = cL[2,2]/cSp[2,2]
+        ## calculate screw pitches (A*R / R*R) = (A/R)
+        small = 0.05 * deg2rad2
 
+        if cL[0,0]>=small:
+            calcs["L1_pitch"] = cS[0,0]/cL[0,0]
+        else:
+            calcs["L1_pitch"] = 0.0
+            
+        if cL[1,1]>=small:
+            calcs["L2_pitch"] = cS[1,1]/cL[1,1]
+        else:
+            calcs["L2_pitch"] = 0.0
+
+        if cL[2,2]>=small:
+            calcs["L3_pitch"] = cS[2,2]/cL[2,2]
+        else:
+            calcs["L3_pitch"] = 0.0
+        
         return calcs
 
     def check_positive_eigenvalues(self):

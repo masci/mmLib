@@ -50,6 +50,8 @@ def print_TLS(text, Tt, T, Lt, L, St, S):
         print "   %s   %s   %s" % (astr(T[i]), astr(L[i]), astr(S[i]))
 
 def print_TLSGroup(tls):
+    print "TLS GROUP NAME: %s" % (tls.name)
+
     calcs = tls.calc_COR()
 
     print_TLS(
@@ -120,12 +122,14 @@ def print_TLSGroup(tls):
     print
 
     print "SCREW PITCH OF THE 3 NON-INTERSECTING LIBRATION AXES"
-    print "L1 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
-        calcs["L1_pitch"]*rad2deg, 1.0/(calcs["L1_pitch"]*rad2deg))
-    print "L2 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
-        calcs["L2_pitch"]*rad2deg, 1.0/(calcs["L2_pitch"]*rad2deg))
-    print "L3 PITCH (DEG/A) (A/DEG): %10.3f %10.3f" % (
-        calcs["L3_pitch"]*rad2deg, 1.0/(calcs["L3_pitch"]*rad2deg))
+
+    for Lx, Lx_pitch in [
+        ("L1", "L1_pitch"),
+        ("L2", "L2_pitch"),
+        ("L3", "L3_pitch")]:
+
+        print "%s PITCH (A/DEG): %10.3f" % (
+            Lx, calcs[Lx_pitch]/rad2deg)
 
 
 def main(pdb_path, tls_out_path, calc_tls):
@@ -165,6 +169,7 @@ def main(pdb_path, tls_out_path, calc_tls):
         for tls_info in tls_groups:
             tls = tls_info.make_tls_group(struct)
             print_TLSGroup(tls)
+            print
         
 
 if __name__ == "__main__":

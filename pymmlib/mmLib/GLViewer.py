@@ -502,18 +502,6 @@ class OpenGLRenderMethods(object):
     """OpenGL renderer methods.  Eventually, all OpenGL rendering will
     be done through methods in this object.
     """
-    def glr_lines_begin(self, width, color):
-        glDisable(GL_LIGHTING)
-        glColor3f(color.r, color.g, color.b)
-        glLineWidth(width)
-        glBegin(GL_LINES)
-
-    def glr_line_vertex(self, vertex):
-        glVertex3f(*vertex)
-
-    def glr_lines_end(self):
-        glEnd()
-
     def glr_set_material_name(self, material_name, opacity):
         """Sets the given named material with the given opacity
         """
@@ -587,19 +575,18 @@ class OpenGLRenderMethods(object):
 
         glPopMatrix()
 
-    def glr_atm_cpk(self, position, radius, sphere_quality):
+    def glr_cpk(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
         """
         glEnable(GL_LIGHTING)
         glPushMatrix()
         glTranslatef(*position)
-        glutSolidSphere(radius, 12, 12)
+        glutSolidSphere(radius, quality, quality)
         glPopMatrix()
 
     def glr_cross(self, position, color, line_width):
         """Draws atom with a cross of lines.
         """
-        
         glDisable(GL_LIGHTING)
         glColor3f(*color)
         glLineWidth(line_width)
@@ -626,28 +613,8 @@ class OpenGLRenderMethods(object):
         glVertex3f(*end)
 
         glEnd()
-        
-    def glr_atm_cross(self, atm, position_func, color, line_width):
-        """Draws atom with a cross of lines.
-        """
-        self.glr_cross(position_func(atm.position), color, line_width)
 
-    def glr_backbone_trace(self, atom_list, position_func, color, line_width):
-        """Draws trace over all backbone atoms.
-        """
-        glDisable(GL_LIGHTING)
-        glColor3f(*color)
-        glLineWidth(line_width)
-        
-        glBegin(GL_LINE_STRIP)
-
-        for atm in self.atom_list:
-            if atm.name in ["N", "CA", "C"]:
-                glVertex3f(*position_func(atm.position))
-
-        glEnd()
-
-    def glr_U_axes(self, atm, U, position_func, color):
+    def glr_U_axes(self, position, U, color, line_width):
         """Draw the anisotropic axies of the atom with R.M.S.
         magnitude.
         """
@@ -661,11 +628,9 @@ class OpenGLRenderMethods(object):
         v1 = eigen_vectors[1] * v1_peak
         v2 = eigen_vectors[2] * v2_peak
 
-        position = position_func(atm.position)
-
         glDisable(GL_LIGHTING)
         glColor3f(*color)
-        glLineWidth(1.0)
+        glLineWidth(line_width)
         
         glBegin(GL_LINES)
 
@@ -699,6 +664,7 @@ class GLDrawList(GLObject, OpenGLRenderMethods):
         self.glo_add_property(
             { "name" :      "visible",
               "desc":       "Visible",
+              "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    True,
               "action":     "redraw" })
@@ -972,6 +938,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":      "symmetry",
               "desc":      "Show Symmetry Equivelants",
+              "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
               "action":    "redraw" })
@@ -1001,6 +968,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":       "lines",
               "desc":       "Draw Atom Bond Lines",
+              "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    True,
               "action":     "recompile" })
@@ -1016,6 +984,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":       "cpk",
               "desc":       "Draw CPK Spheres",
+              "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
               "action":     "recompile" })
@@ -1045,6 +1014,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":       "trace",
               "desc":       "Draw Backbone Trace",
+              "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
               "action":     "recompile" })
@@ -1074,6 +1044,7 @@ class GLAtomList(GLDrawList):
         self.glo_add_property(
             { "name":      "U",
               "desc":      "Draw ADP Axes",
+              "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
               "action":    "recompile" })
@@ -1187,15 +1158,12 @@ class GLAtomList(GLDrawList):
         else:
             radius = 2.0
 
-        radius *= self.properties["cpk_scale_radius"]
-            
-        r, g, b = self.get_color(atm)
-        
+        r, g, b = self.get_color(atm)        
         self.glr_set_material_rgb(r, g, b, self.properties["cpk_opacity"])
 
-        self.glr_atm_cpk(
+        self.glr_cpk(
             self.calc_position(atm.position),
-            radius,
+            self.properties["cpk_scale_radius"] * radius,
             self.properties["sphere_quality"])
 
     def draw_lines(self, atm):
@@ -1231,34 +1199,10 @@ class GLAtomList(GLDrawList):
     def draw_cross(self, atm):
         """Draws atom with a cross of lines.
         """
-        position = self.calc_position(atm.position)
-
-        glDisable(GL_LIGHTING)
-        glColor3f(*self.get_color(atm))        
-        glLineWidth(self.properties["line_width"])
-
-        vx = array([0.25, 0.0,  0.0])
-        vy = array([0.0,  0.25, 0.0])
-        vz = array([0.0,  0.0,  0.25])
-
-        glBegin(GL_LINES)
-        
-        start = position - vx
-        end   = position + vx
-        glVertex3f(*start)
-        glVertex3f(*end)
-        
-        start = position - vy
-        end   = position + vy
-        glVertex3f(*start)
-        glVertex3f(*end)
-        
-        start = position - vz
-        end   = position + vz
-        glVertex3f(*start)
-        glVertex3f(*end)
-
-        glEnd()
+        self.glr_cross(
+            self.calc_position(atm.position),
+            self.get_color(atm),
+            self.properties["line_width"])
 
     def draw_trace(self, color=(1.0, 1.0, 1.0)):
         """Draws trace over all protein backbone atoms.
@@ -1282,7 +1226,12 @@ class GLAtomList(GLDrawList):
         U = getattr(atm, self.properties["atm_U_attr"], None)
         if U==None:
             return
-        self.glr_U_axes(atm, U, self.calc_position, self.properties["U_color"])
+        
+        self.glr_U_axes(
+            self.calc_position(atm.position),
+            U,
+            self.properties["U_color"],
+            1.0)
 
     def draw_symmetry_debug(self):
         """Draws crosses where all the symmetry equivalent atoms should be.
@@ -1335,42 +1284,56 @@ class GLTLSScrewRotation(GLDrawList):
         self.glo_add_property(
             { "name":        "symmetry",
               "desc":        "Show Symmetry Equivelants",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
+            { "name":        "scale_rot",
+              "desc":        "Scale Rotation",
+              "catagory":    "Show/Hide",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "COR",
               "desc":        "TLS Center of Reaction", 
+              "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })        
         self.glo_add_property(
             { "name":        "Lx_eigen_val",
               "desc":        "Libration Axis Eigenvalue", 
+              "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "Lx_eigen_vec",
-              "desc":        "Libration Axis Normalized Eigenvector", 
+              "desc":        "Libration Axis Normalized Eigenvector",  
+              "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "Lx_rho",
-              "desc":        "Libration Axis Translation from COR", 
+              "desc":        "Libration Axis Translation from COR",  
+              "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "Lx_pitch",
-              "desc":        "Libration screw pitch (DEG/A)", 
+              "desc":        "Libration screw pitch (DEG/A)",  
+              "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "Lx_rot",
-              "desc":        "Current Setting for Libration Rotation", 
+              "desc":        "Current Setting for Libration Rotation",
+              "catagory":    "Simulation",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
@@ -1415,7 +1378,8 @@ class GLTLSScrewRotation(GLDrawList):
         screw axis.  Lx_eigen_val is the vaiance (mean square deviation MSD)
         of the rotation about the Lx_eigen_vec axis.
         """
-        Lx_s          = math.sqrt(abs(Lx_eigen_val))
+        Lx_s          = math.sqrt(abs(Lx_eigen_val * deg2rad2))
+        Lx_s         *= self.properties["scale_rot"]
         COR           = self.properties["COR"]
         steps         = 10
         rot_step      = Lx_s / steps
@@ -1460,15 +1424,12 @@ class GLTLSScrewRotation(GLDrawList):
                 Dstep1 = dmatrixu(Lx_eigen_vec, rot1)
                 Dstep2 = dmatrixu(Lx_eigen_vec, rot2)
 
-                screw1 = Lx_eigen_vec * (rot1 / Lx_pitch)
-                screw2 = Lx_eigen_vec * (rot2 / Lx_pitch)
+                screw1 = Lx_eigen_vec * rot1 * Lx_pitch
+                screw2 = Lx_eigen_vec * rot2 * Lx_pitch
 
                 rho1 = matrixmultiply(Dstep1, -Lx_rho)
                 rho2 = matrixmultiply(Dstep2, -Lx_rho)
 
-                rho1 = matrixmultiply(Dstep1, Lx_rho)
-                rho2 = matrixmultiply(Dstep2, Lx_rho)
-                
                 rho_screw1 = rho1 + screw1
                 rho_screw2 = rho2 + screw2
 
@@ -1521,6 +1482,27 @@ class GLTLSAtomList(GLAtomList):
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L1_animation_visible",
+              "desc":        "Show L1 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_animation_visible",
+              "desc":        "Show L2 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_animation_visible",
+              "desc":        "Show L3 Animation",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
               "desc":        "L1 Eigen Vector", 
@@ -1585,21 +1567,21 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
-              "desc":        "L1 screw pitch (DEG/A)", 
+              "desc":        "L1 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_pitch",
-              "desc":        "L2 screw pitch (DEG/A)", 
+              "desc":        "L2 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_pitch",
-              "desc":        "L3 screw pitch (DEG/A)", 
+              "desc":        "L3 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
@@ -1639,9 +1621,63 @@ class GLTLSAtomList(GLAtomList):
             ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot"),
             ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot") ):
 
-            ## TODO: add properties for L1, L2, L3 animation
-            ##       visibility
+            if Lx_axis=="L1_eigen_vec" and \
+               self.properties["L1_animation_visible"]==False:
+                continue
+            if Lx_axis=="L2_eigen_vec" and \
+               self.properties["L2_animation_visible"]==False:
+                continue
+            if Lx_axis=="L3_eigen_vec" and \
+               self.properties["L3_animation_visible"]==False:
+                continue
 
+            Lx_axis  = self.properties[Lx_axis]
+            Lx_rho   = self.properties[Lx_rho]
+            Lx_pitch = self.properties[Lx_pitch]
+            Lx_rot   = self.properties[Lx_rot]
+
+            screw = Lx_axis * Lx_rot * Lx_pitch
+
+            ## positive rotation
+            glPushMatrix()
+            glTranslatef(*Lx_rho + screw)
+            glRotatef(Lx_rot, *Lx_axis)
+            glTranslatef(*-Lx_rho)
+
+            for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
+                yield True
+
+            glPopMatrix()
+
+            ## negitive rotation
+            glPushMatrix()
+            glTranslatef(*Lx_rho - screw)
+            glRotatef(-Lx_rot, *Lx_axis)
+            glTranslatef(*-Lx_rho)
+
+            for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
+                yield True
+
+            glPopMatrix()
+
+    def gldl_iter_multidraw_self_old_slow(self):
+        """
+        """        
+        for Lx_axis, Lx_rho, Lx_pitch, Lx_rot in (
+            ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot"),
+            ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot"),
+            ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot") ):
+
+            if Lx_axis=="L1_eigen_vec" and \
+               self.properties["L1_animation_visible"]==False:
+                continue
+            if Lx_axis=="L2_eigen_vec" and \
+               self.properties["L2_animation_visible"]==False:
+                continue
+            if Lx_axis=="L3_eigen_vec" and \
+               self.properties["L3_animation_visible"]==False:
+                continue
+            
             Lx_axis  = self.properties[Lx_axis]
             Lx_rho   = self.properties[Lx_rho]
             Lx_pitch = self.properties[Lx_pitch]
@@ -1650,7 +1686,7 @@ class GLTLSAtomList(GLAtomList):
             rot = 0.0
             
             while 1:
-                screw = Lx_axis * rot / (Lx_pitch * rad2deg)
+                screw = Lx_axis * rot * Lx_pitch
 
                 ## positive rotation
                 glPushMatrix()
@@ -1832,15 +1868,15 @@ class GLTLSGroup(GLDrawList):
             L1_eigen_vec = L_eigen_vecs[0],
             L2_eigen_vec = L_eigen_vecs[1],
             L3_eigen_vec = L_eigen_vecs[2],
-            L1_eigen_val = L_eigen_vals[0],
-            L2_eigen_val = L_eigen_vals[1],
-            L3_eigen_val = L_eigen_vals[2],
+            L1_eigen_val = L_eigen_vals[0] * rad2deg2,
+            L2_eigen_val = L_eigen_vals[1] * rad2deg2,
+            L3_eigen_val = L_eigen_vals[2] * rad2deg2,
             L1_rho       = calcs["L1_rho"],
             L2_rho       = calcs["L2_rho"],
             L3_rho       = calcs["L3_rho"],
-            L1_pitch     = calcs["L1_pitch"],
-            L2_pitch     = calcs["L2_pitch"],
-            L3_pitch     = calcs["L3_pitch"],
+            L1_pitch     = calcs["L1_pitch"] * (1.0/rad2deg),
+            L2_pitch     = calcs["L2_pitch"] * (1.0/rad2deg),
+            L3_pitch     = calcs["L3_pitch"] * (1.0/rad2deg),
             **args)
 
     def glo_install_properties(self):
@@ -1849,6 +1885,7 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_property(
             { "name":        "symmetry",
               "desc":        "Show Symmetry Equivelant",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
@@ -1945,21 +1982,21 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
-              "desc":        "L1 screw pitch (DEG/A)", 
+              "desc":        "L1 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_pitch",
-              "desc":        "L2 screw pitch (DEG/A)", 
+              "desc":        "L2 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_pitch",
-              "desc":        "L3 screw pitch (DEG/A)", 
+              "desc":        "L3 screw pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "type":        "float",
               "default":     0.0,
@@ -1995,20 +2032,30 @@ class GLTLSGroup(GLDrawList):
 
         ## visualization properties
         self.glo_add_property(
-            { "name":       "tensor_line_width",
-              "desc":       "Line Width of Tensors",
-              "type":       "float",
-              "default":    2.0,
-              "action":     "recompile" })
-        self.glo_add_property(
             { "name":        "TLS_visible",
               "desc":        "Show TLS Tensors",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "recompile" })
         self.glo_add_property(
+            { "name":       "tensor_line_width",
+              "desc":       "Line Width of Tensors",
+              "catagory":   "Tensors",
+              "type":       "float",
+              "default":    1.0,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "tensor_axis_radius",
+              "desc":       "Radius of Tensor Axes",
+              "catagory":   "Tensors",
+              "type":       "float",
+              "default":    0.05,
+              "action":     "recompile" })
+        self.glo_add_property(
             { "name":        "scale",
               "desc":        "Tensor Display Scaling Factor",
+              "catagory":    "Tensors",
               "type":        "float",
               "default":     1.0,
               "action":      "recompile" })
@@ -2036,18 +2083,21 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_property(
             { "name":        "CA_line_visible",
               "desc":        "Show Lines to C-Alpha Atoms",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "fan_visible",
               "desc":        "Show Fans to Backbone",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "fan_opacity",
               "desc":        "Set Backbone Fan Transparancy",
+              "catagroy":    "Fans",
               "type":        "float",
               "default":     0.60,
               "action":      "recompile" })
@@ -2074,6 +2124,7 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_property(
             { "name":        "U",
               "desc":        "Show ADP Utls Axes",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
@@ -2087,30 +2138,35 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_property(
             { "name":        "trace",
               "desc":        "Protein Backbone Trace Only", 
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "animation_visible",
               "desc":        "Show Animated Atoms", 
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw1_visible",
               "desc":        "Show Screw Axis 1 Gaussian Surface", 
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw2_visible",
               "desc":        "Show Screw Axis 2 Gaussian Surface", 
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw3_visible",
-              "desc":        "Show Screw Axis 3 Gaussian Surface", 
+              "desc":        "Show Screw Axis 3 Gaussian Surface",
+              "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
@@ -2126,9 +2182,9 @@ class GLTLSGroup(GLDrawList):
         sin_tm = abs(sin_tm)
 
         ## L Tensor
-        L1_peak = math.sqrt(abs(self.properties["L1_eigen_val"] * rad2deg2))
-        L2_peak = math.sqrt(abs(self.properties["L2_eigen_val"] * rad2deg2))
-        L3_peak = math.sqrt(abs(self.properties["L3_eigen_val"] * rad2deg2))
+        L1_peak = math.sqrt(abs(self.properties["L1_eigen_val"]))
+        L2_peak = math.sqrt(abs(self.properties["L2_eigen_val"]))
+        L3_peak = math.sqrt(abs(self.properties["L3_eigen_val"]))
 
         L1_rot  = abs(L1_peak * sin_tm)
         L2_rot  = abs(L2_peak * sin_tm)
@@ -2193,13 +2249,15 @@ class GLTLSGroup(GLDrawList):
         """Render the anisotropic thremal axes calculated from the TLS
         model.
         """
-        def position_func(pos):
-            return pos - self.properties["COR"]
-
+        COR   = self.properties["COR"]
         color = self.properties["U_color"]
 
         for atm, Utls in self.tls_group.iter_atm_Utls():
-            self.glr_U_axes(atm, Utls, position_func, color)
+            self.glr_U_axes(
+                atm.position - COR,
+                Utls,
+                color,
+                1.0)
         
     def draw_CA_lines(self):
         glDisable(GL_LIGHTING)
@@ -2239,13 +2297,14 @@ class GLTLSGroup(GLDrawList):
 
         ## T: units (A^2)
         glColor3f(*self.properties["T_color"])
-        (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.T)
+        (eigen_values, eigen_vectors) = eigenvectors(self.properties["T"])
         
         for i in range(3):
-            amplitude = math.sqrt(abs(eigen_values[i]))
-            scaled_amplitude = scale * amplitude
-            v = scaled_amplitude * array(eigen_vectors[i])
-
+            v  = array(eigen_vectors[i])
+            v *= math.sqrt(abs(eigen_values[i]))
+            v *= self.properties["scale"]
+            v *= 0.5
+            
             glBegin(GL_LINES)
             glVertex3f(*-v)
             glVertex3f(*v)
@@ -2254,19 +2313,24 @@ class GLTLSGroup(GLDrawList):
             glEnable(GL_LIGHTING)
             r, g, b = self.properties["T_color"]
             self.glr_set_material_rgb(r, g, b, 1.0)
-            self.glr_axis(-v, 2*v, 0.01)
+            self.glr_axis(-v, 2*v, self.properties["tensor_axis_radius"])
             glDisable(GL_LIGHTING)
 
         ## L: units (RAD^2)
         glColor3f(*self.properties["L_color"])
         (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.L)
         
-        for i, x in [(0, "L1_rho"), (1, "L2_rho"), (2, "L3_rho")]:
-            amplitude = rad2deg * math.sqrt(abs(eigen_values[i]))
-            scaled_amplitude = scale * amplitude
-            v = scaled_amplitude * array(eigen_vectors[i])
+        for Lx_eigen_val, Lx_eigen_vec, Lx_rho in [
+            ("L1_eigen_val", "L1_eigen_vec", "L1_rho"),
+            ("L2_eigen_val", "L2_eigen_vec", "L2_rho"),
+            ("L3_eigen_val", "L3_eigen_vec", "L3_rho")]:
 
-            rho = self.properties[x]
+            v  = self.properties[Lx_eigen_vec]
+            v *= math.sqrt(abs(self.properties[Lx_eigen_val]))
+            v *= self.properties["scale"]
+            v *= 0.5
+
+            rho = self.properties[Lx_rho]
 
             glBegin(GL_LINES)
 
@@ -2281,7 +2345,7 @@ class GLTLSGroup(GLDrawList):
             glEnable(GL_LIGHTING)
             r, g, b = self.properties["L_color"]
             self.glr_set_material_rgb(r, g, b, 1.0)
-            self.glr_axis(rho-v, 2*v, 0.01)
+            self.glr_axis(rho-v, 2*v, self.properties["tensor_axis_radius"])
             glDisable(GL_LIGHTING)
 
 
@@ -2751,13 +2815,22 @@ class GLViewer(GLObject):
         """Change the viewing position of the structure.  Changes to the
         current viewport are given relative to the current view vector.
         """
-        R    = self.properties["R"]
-        
-        Rrot = rmatrix(math.radians(alpha),
-                       math.radians(beta),
-                       math.radians(gamma))
+        R = self.properties["R"]
 
-        upR = matrixmultiply(R, Rrot)
+        Rx = rmatrixu(
+            matrixmultiply(inverse(R), array([1.0, 0.0, 0.0])),
+            math.radians(alpha))
+
+        Ry = rmatrixu(
+            matrixmultiply(inverse(R), array([0.0, 1.0, 0.0])),
+            math.radians(beta))
+
+        Rz = rmatrixu(
+            matrixmultiply(inverse(R), array([0.0, 0.0, 1.0])),
+            math.radians(gamma))
+
+        Rxyz = matrixmultiply(Rz, matrixmultiply(Ry, Rx))
+        upR  = matrixmultiply(R, Rxyz)
 
         self.properties.update(R=upR)
         

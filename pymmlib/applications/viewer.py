@@ -24,37 +24,25 @@ from mmLib.GLViewer       import *
 from mmLib.Extensions.TLS import *
 
 try:
-    # try double-bufferedq
-    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
-                                gtk.gdkgl.MODE_DOUBLE |
-                                gtk.gdkgl.MODE_DEPTH)
+    ## try double-bufferedq
+    glconfig = gtk.gdkgl.Config(
+        mode = gtk.gdkgl.MODE_RGB|
+        gtk.gdkgl.MODE_DOUBLE|
+        gtk.gdkgl.MODE_DEPTH)
+
 except gtk.gdkgl.NoMatches:
-    # try single-buffered
-    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
-                                gtk.gdkgl.MODE_DEPTH)
-
-
-
-def markup_vector3(vector):
-    return "<small>%7.4f %7.4f %7.4f</small>" % (vector[0], vector[1], vector[2])
-
-def markup_matrix3(tensor):
-    """Uses pango markup to make the presentation of the tenosr
-    look nice.
-    """
-    return "<small>%7.4f %7.4f %7.4f\n"\
-                  "%7.4f %7.4f %7.4f\n"\
-                  "%7.4f %7.4f %7.4f</small>" % (
-               tensor[0,0], tensor[0,1], tensor[0,2],
-               tensor[1,0], tensor[1,1], tensor[1,2],
-               tensor[2,0], tensor[2,1], tensor[2,2])
+    ## try single-buffered
+    glconfig = gtk.gdkgl.Config(
+        mode = gtk.gdkgl.MODE_RGB|
+        gtk.gdkgl.MODE_DEPTH)
 
 
 
 ###############################################################################
 ### GTK OpenGL Viewer Widget Using GtkGlExt/PyGtkGLExt
 ###
-### see http://gtkglext.sourceforge.net/
+### see http://gtkglext.sourceforge.net/ for information on GtkGLExt and
+### OpenGL binding in GTK 2.0
 ###
 
 class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
@@ -155,7 +143,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
 
         elif (event.state & gtk.gdk.BUTTON2_MASK):
             z = 50.0 * ((event.y - self.beginy) / float(height))
-            #rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
+            rotz += 360.0 * ((event.x - self.beginx) / float(width)) 
 
         elif (event.state & gtk.gdk.BUTTON3_MASK):
             x = 50.0 * ((event.x - self.beginx) / float(height))
@@ -273,8 +261,25 @@ class StructDetailsDialog(gtk.Dialog):
 
 
 ###############################################################################
-### GLProperty Browser Components
+### GLProperty Browser Components for browsing and changing GLViewer.GLObject
+### properties
 ###
+
+
+def markup_vector3(vector):
+    return "<small>%7.4f %7.4f %7.4f</small>" % (
+        vector[0], vector[1], vector[2])
+
+def markup_matrix3(tensor):
+    """Uses pango markup to make the presentation of the tenosr
+    look nice.
+    """
+    return "<small>%7.4f %7.4f %7.4f\n"\
+                  "%7.4f %7.4f %7.4f\n"\
+                  "%7.4f %7.4f %7.4f</small>" % (
+               tensor[0,0], tensor[0,1], tensor[0,2],
+               tensor[1,0], tensor[1,1], tensor[1,2],
+               tensor[2,0], tensor[2,1], tensor[2,2])
 
 
 class ColorOptionMenu(gtk.OptionMenu):
