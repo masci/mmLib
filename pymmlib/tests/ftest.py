@@ -11,7 +11,7 @@ import string
 from mmLib.FileLoader import LoadStructure, SaveStructure
 
 if __name__ == '__main__':
-    dir = "/home/jpaint/mmCIF"
+    dir = "/home/jpaint/mmCIF.gz/all/"
 
     go = 0
     for path in os.listdir(dir):

@@ -488,11 +488,15 @@ class Fragment(object):
             return self.__atom_list[x]
 
         elif type(x) == StringType:
-            alt_loc = self.get_chain().get_structure()
+            alt_loc = self.get_chain().get_structure().default_alt_loc
+            
             for atom in self.__atom_list:
                 if atom.name == x:
-                    if not atom.alt_loc:        return atom
-                    if atom.alt_loc == alt_loc: return atom
+                    if atom.alt_loc == alt_loc:
+                        return atom
+                    elif atom.alt_loc == None or atom.alt_loc == "":
+                        return atom
+                    
             raise KeyError, x
 
         raise TypeError, x
@@ -503,8 +507,10 @@ class Fragment(object):
     def __iter__(self):
         alt_loc = self.get_chain().get_structure().default_alt_loc
         for atom in self.__atom_list:
-            if   not atom.alt_loc:        yield atom
-            elif atom.alt_loc == alt_loc: yield atom
+            if atom.alt_loc == alt_loc:
+                yield atom
+            elif atom.alt_loc == None or atom.alt_loc == "":
+                yield atom
 
     def __contains__(self, x):
         if isinstance(x, Atom):
