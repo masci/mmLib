@@ -611,7 +611,7 @@ class PDBStructureBuilder(StructureBuilder):
             self.atm_map["name"] = ""
         else:
             (name, element) = self.guess_element_from_name(
-                name, rec.get("resName"))
+                name, rec.get("resName", ""))
             if name != None:
                 self.atm_map["name"] = name
             if element != None:

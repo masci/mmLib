@@ -1975,9 +1975,9 @@ class Atom(object):
     def calc_Uiso(self):
         """Calculates the Uiso tensor from the Atom's temperature factor.
         """
-        if self.temp_factor == None:
+        if self.temp_factor==None:
             return None
-        return identity(3) * (self.temp_factor / (24.0 * math.pi * math.pi))
+        return identity(3) * (self.temp_factor / (24.0 * math.pi**2))
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns

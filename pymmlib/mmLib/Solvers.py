@@ -19,7 +19,7 @@ class NewtonsMethod(Solver):
     using a finite difference jacobian.  This algorithm has been modified
     to handle a overdetermined system of equations.
     """
-    def __init__(self, F, N=100, h=1.0e-5, tol=1.0e-10):
+    def __init__(self, F, N=100, h=1.0e-2, tol=1.0e-10):
         """Initalize with the list of non-linear functions to solve.  F
         is a Python list of function objects.  Each function object needs
         to implement a __call__ method which takes a single x vector
@@ -59,6 +59,8 @@ class NewtonsMethod(Solver):
         x = x.copy()
 
         for n in range(self.N):
+            #print "Cycle: ",n
+            
             f = self.calc_F(x)
             J = self.calc_finite_difference_jacobian(x)
 

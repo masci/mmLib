@@ -43,6 +43,14 @@ except gtk.gdkgl.NoMatches:
 ### TLS Search Algorithm
 ###
 
+def print_U(tensor):
+    print "%7.4f %7.4f %7.4f\n"\
+          "%7.4f %7.4f %7.4f\n"\
+          "%7.4f %7.4f %7.4f" % (
+        tensor[0,0], tensor[0,1], tensor[0,2],
+        tensor[1,0], tensor[1,1], tensor[1,2],
+        tensor[2,0], tensor[2,1], tensor[2,2])
+
 
 def iter_segments(chain, seg_len):
     """
@@ -65,7 +73,7 @@ def iter_segments(chain, seg_len):
         yield atom_list
 
 
-def all_tls_segments(struct):
+def fit_TLS_segments(struct, seg_width = 6):
     print """\
     ## Calculating TLS parameters for a single rigid body group composed of
     ## all the amino acids
@@ -73,38 +81,119 @@ def all_tls_segments(struct):
     print "## <group num> <num atoms> <Badv> <R> <dP2>"
 
     ## list of all TLS groups
-    tls_list = []
-
-    segments = []
+    tls_list    = []
+    segments    = []
     cur_segment = []
 
     for chain in struct.iter_chains():
-        for seg_atom_list in iter_segments(chain, 12):
+        for seg_atom_list in iter_segments(chain, seg_width):
 
             atm0 = seg_atom_list[0]
             atmX = seg_atom_list[-1]
             name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
 
             ## new tls group for segment
-            tls = TLSGroup(seg_atom_list)
-            tls_list.append(tls)
+            tls = TLSGroup()
+            tls.name = name
 
-            tls.origin = tls.calc_centroid()
+            ## add all atoms to the TLS group which are at full occupancy
+            for atm in seg_atom_list:
+                if atm.occupancy<1.0:
+                    continue
+                tls.append(atm)
+
+            if len(tls)==0:
+                continue
+
+            ## set the origin of the TLS group to the centroid, and also
+            ## save it under calc_origin because origin will be overwritten
+            ## using the COR after the least squares fit
+            tls.origin      = tls.calc_centroid()
+            tls.calc_origin = tls.origin
 
             ## calculate tensors and print
             tls.calc_TLS_least_squares_fit()
+            calc = tls.calc_COR()
 
-            Rfact = tls.calc_R()
-            dP2   = tls.calc_adv_DP2uij()
+            if min(eigenvalues(tls.L))<=0.0:
+                   print "%s: removed negitive L eigenvalue" % (tls.name)     
+                   continue
+            elif min(eigenvalues(tls.T))<=0.0:
+                   print "%s: removed negitive T eigenvalue" % (tls.name)
+                   continue
+            elif  min(eigenvalues(calc["rT'"]))<=0.0:
+                print "%s: removed negitive rT' eigenvalue" % (tls.name)
+                continue
 
+            tls_list.append(tls)
+
+            ### <verify> the independance of the original origin of calculation
+            tls_check = TLSGroup(tls)
+            tls_check.origin = tls.origin.copy() + \
+                               array([random.random()*10.0,
+                                      random.random()*10.0,
+                                      random.random()*10.0])
+
+            tls_check.calc_TLS_least_squares_fit()
+            calc_check = tls_check.calc_COR()
+
+            assert len(tls)==len(tls_check)
+
+            for i in range(len(tls)):
+                atmi  = tls[i]
+                atmci = tls_check[i]
+
+                assert atmi==atmci
+                assert allclose(atmi.position,atmci.position)
+                assert allclose(atmi.get_U(),atmci.get_U())
+
+                U = tls.calc_Utls(tls.T,
+                                  tls.L,
+                                  tls.S,
+                                  atmi.position - tls.origin)
+
+                Ucheck = tls_check.calc_Utls(tls_check.T,
+                                             tls_check.L,
+                                             tls_check.S,
+                                             atmci.position - tls_check.origin)
+                
+                try:
+                    assert allclose(U, Ucheck, 1.0e-4)
+                except AssertionError:
+                    print atm
+                    print_U(U)
+                    print_U(Ucheck)
+                    raise
+
+            try:
+                assert allclose(calc["COR"], calc_check["COR"], 1.0e-4)
+            except AssertionError:
+                print "COR:       ", calc["COR"]
+                print "COR_CHECK: ", calc_check["COR"]
+                raise
+            
+            assert allclose(calc["T'"],  calc_check["T'"],  1.0e-4)
+            assert allclose(calc["L'"],  calc_check["L'"],  1.0e-4)
+            assert allclose(calc["S'"],  calc_check["S'"],  1.0e-4)
+            ### </verify>
+
+
+            ## calculate matching statistics
+            calcs = tls.shift_COR()
+            
+            Rfact   = tls.calc_R()
+            dP2     = tls.calc_adv_DP2uij()
+            dP2n    = tls.calc_adv_normalized_DP2uij()
+            Suij    = tls.calc_adv_Suij()
+            tls.fit = dP2
+
+            ## calculate the average Biso value of the TLS group
             Uadv = 0.0
             for atm in tls:
-                if atm.U != None:
-                    Uadv += trace(atm.U)/3.0
-
+                Uadv += trace(atm.get_U())/3.0
             Uadv = Uadv / float(len(tls))
 
-            ## print out results
+            ## print out statistics
             print str(name).ljust(8),
 
             print str(tls_list.index(tls)).ljust(5),
@@ -112,25 +201,30 @@ def all_tls_segments(struct):
             x = "%d" % (len(tls))
             print x.ljust(8),
 
-            x = "%.3f" % (Uadv * 8 * math.pi * math.pi)
+            x = "%.3f" % (Uadv * 8*math.pi**2)
             print x.ljust(10),
 
             x = "%.3f" % (Rfact)
             print x.ljust(8),
 
-            x = "%.3f" % (dP2)
+            x = "%.4f" % (dP2)
             print x.ljust(10),
 
+            x = "%.4f" % (dP2n)
+            print x.ljust(10),
 
-            if min(eigenvalues(tls.T))<0.0 or min(eigenvalues(tls.L))<0.0:
-                   tls_list.remove(tls)
-                   print "removed",
-                   continue
+            x = "%.4f" % (Suij)
+            print x.ljust(10),
             
-            if dP2>=0.010:
-                tls_list.remove(tls)
-                print "removed",
+            x = "%.2f" % (max(eigenvalues(tls.L))*rad2deg2)
+            print x.ljust(7),
 
+            if (max(eigenvalues(tls.L))*rad2deg2)<0.0:
+                tls_list.remove(tls)
+                print "removed small libration",
+            elif dP2>0.1:
+                tls_list.remove(tls)
+                print "removed bad match",
                 cur_segment = []
             else:
                 if len(cur_segment)==0:
@@ -139,25 +233,32 @@ def all_tls_segments(struct):
 
             print
 
-
     ## now just grab the best segment from the group
-    best_tls_list = []
+    ret_list = []
+
     for seg in segments:
-        best_tls = None
-        min_dP2  = None
+        for i in range(len(seg)):
+            tls = tls_list[i]
 
-        for tls in seg:
-            dP2 = tls.calc_adv_DP2uij()
+            try:
+                prev = tls_list[i-1]
+            except IndexError:
+                prev = None
 
-            if min_dP2==None:
-                best_tls = tls
-                continue
-            
-            if min_dP2>dP2:
-                min_dP2  = dP2
-                best_tls = tls
+            try:
+                next = tls_list[i+1]
+            except IndexError:
+                next = None
 
-        best_tls_list.append(tls)
+            if prev==None:
+                if next.fit>tls.fit:
+                    ret_list.append(tls)
+            elif next==None:
+                if prev.fit>tls.fit:
+                    ret_list.append(tls)
+
+            elif prev.fit>tls.fit and next.fit>tls.fit:
+                ret_list.append(tls)
 
 
     return tls_list
@@ -486,34 +587,6 @@ class ColorSelection(gtk.Combo):
         return self.color
 
 
-class MaterialOptionMenu(gtk.OptionMenu):
-    """Specialized option menu for selecting OpenGL materials.
-    This could use some extension, including writing a dialog for
-    defining new materials.
-    """
-
-    def __init__(self):
-        gtk.OptionMenu.__init__(self)
-
-        self.material_name_list = GL_MATERIALS_DICT.keys()
-
-        self.menu = gtk.Menu()
-        for material_name in self.material_name_list:
-            menu_item = gtk.MenuItem(material_name.capitalize())
-            menu_item.show()
-            gtk.MenuShell.append(self.menu, menu_item)
-
-        self.set_menu(self.menu)
-
-    def set_material(self, material_name):
-        index = self.material_name_list.index(material_name)
-        self.set_history(index)
-        
-    def get_material(self):
-        index = self.get_history()
-        return self.material_name_list[index]
-    
-
 class GLPropertyEditor(gtk.Notebook):
     """Gtk Widget which generates a customized editing widget for a
     GLObject widget supporting GLProperties.
@@ -631,8 +704,6 @@ class GLPropertyEditor(gtk.Notebook):
             widget.set_markup(markup_matrix3(self.gl_object.properties[prop["name"]]))
         elif prop["type"]=="color":
             widget = ColorSelection()
-        elif prop["type"]=="material":
-            widget = MaterialOptionMenu()
         else:
             text = str(self.gl_object.properties[prop["name"]])
             widget = gtk.Label(text)
@@ -667,8 +738,6 @@ class GLPropertyEditor(gtk.Notebook):
                 widget.set_markup(markup_matrix3(self.gl_object.properties[name]))
             elif prop_desc["type"]=="color":
                 widget.set_color(self.gl_object.properties[name])
-            elif prop_desc["type"]=="material":
-                widget.set_material(self.gl_object.properties[name])
             else:
                 widget.set_text(str(self.gl_object.properties[name]))
 
@@ -711,9 +780,6 @@ class GLPropertyEditor(gtk.Notebook):
             elif prop["type"]=="color":
                 update_dict[name] = widget.get_color()
 
-            elif prop["type"]=="material":
-                update_dict[name] = widget.get_material()
-                    
         self.gl_object.glo_update_properties(**update_dict)
 
 
@@ -974,6 +1040,7 @@ class TLSDialog(gtk.Dialog):
 
         self.add_button("Open TLSIN", 100)
         self.add_button("Graphics Properties", 101)
+        self.add_button("Fit TLS Groups", 102)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
 
         self.set_default_size(400, 400)
@@ -1035,10 +1102,9 @@ class TLSDialog(gtk.Dialog):
 
         self.show_all()
 
-        gobject.timeout_add(100, self.timeout_cb)
+        gobject.timeout_add(200, self.timeout_cb)
 
-        #self.load_PDB(self.struct_context.struct.path)
-        self.load_all()
+        self.load_PDB(self.struct_context.struct.path)
 
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
@@ -1064,6 +1130,9 @@ class TLSDialog(gtk.Dialog):
             
             self.main_window.edit_properties_gl_object(
                 self.sel_tls_group.gl_tls)
+
+        elif response_code==102:
+            self.load_TLS_fit()
 
     def destroy_cb(self, *args):
         """Destroy the TLS dialog and everything it has built
@@ -1188,10 +1257,12 @@ class TLSDialog(gtk.Dialog):
             tls_group.tls_info = tls_info
             self.add_tls_group(tls_group)
 
-    def load_all(self):
+    def load_TLS_fit(self):
+        """Fit TLS groups to sequence segments
+        """
         self.clear_tls_groups()
 
-        for tls_group in all_tls_segments(self.struct_context.struct):
+        for tls_group in fit_TLS_segments(self.struct_context.struct):
             self.add_tls_group(tls_group)
         
     def markup_tls_name(self, tls_info):
@@ -1229,8 +1300,14 @@ class TLSDialog(gtk.Dialog):
             else:
                 self.model.set(iter, 1, gtk.FALSE)
 
-            #self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
-            self.model.set(iter, 2, "name here")
+
+            if hasattr(tls, "tls_info"):
+                self.model.set(iter, 2, self.markup_tls_name(tls.tls_info))
+            elif hasattr(tls, "name"):
+                self.model.set(iter, 2, tls.name)
+            else:
+                self.model.set(iter, 2, "name here")
+
             self.model.set(iter, 3, self.markup_tensor(tls.T))
             self.model.set(iter, 4, self.markup_tensor(tls.L*rad2deg2))
             self.model.set(iter, 5, self.markup_tensor(tls.S*rad2deg))

@@ -14,7 +14,7 @@ import fpformat
 from types import *
  
 try:
-    from mmTypes import OpenFile
+    from mmTypes import *
 except ImportError:
     OpenFile = open    
 

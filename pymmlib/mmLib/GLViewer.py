@@ -16,124 +16,6 @@ from Structure      import *
 from Extensions.TLS import *
 
 
-## <hack>
-
-GL_MATERIALS = [
-    { "name":         "emerald",
-      "GL_AMBIENT":   (0.0215, 0.1745, 0.0215),
-      "GL_DIFFUSE":   (0.07568, 0.61424, 0.07568),
-      "GL_SPECULAR":  (0.633, 0.727811, 0.633),
-      "GL_SHININESS": 0.6 },
-
-    { "name":         "jade",
-      "GL_AMBIENT":   (0.135, 0.2225, 0.1575),
-      "GL_DIFFUSE":   (0.54, 0.89, 0.63),
-      "GL_SPECULAR":  (0.316228, 0.316228, 0.316228),
-      "GL_SHININESS": 0.1 },
-
-    { "name":         "obsidian",
-      "GL_AMBIENT":   (0.05375, 0.05, 0.06625),
-      "GL_DIFFUSE":   (0.18275, 0.17, 0.22525),
-      "GL_SPECULAR":  (0.332741, 0.328634, 0.346435),
-      "GL_SHININESS":  0.3 },
-
-    { "name":         "pearl",
-      "GL_AMBIENT":   (0.25, 0.20725, 0.20725),
-      "GL_DIFFUSE":   (1.0, 0.829, 0.829),
-      "GL_SPECULAR":  (0.296648, 0.296648, 0.296648),
-      "GL_SHININESS": 0.088 },
-
-    { "name":         "ruby",
-      "GL_AMBIENT":   (0.1745, 0.01175, 0.01175),
-      "GL_DIFFUSE":   (0.61424, 0.04136, 0.04136),
-      "GL_SPECULAR":  (0.727811, 0.626959, 0.626959),
-      "GL_SHININESS": 0.6 },
-
-    { "name":         "turquoise",
-      "GL_AMBIENT":   (0.1, 0.18725, 0.1745),
-      "GL_DIFFUSE":   (0.396, 0.74151, 0.69102),
-      "GL_SPECULAR":  (0.297254, 0.30829, 0.306678),
-      "GL_SHININESS": 0.1 },
-
-    { "name":         "brass",
-      "GL_AMBIENT":   (0.329412, 0.223529, 0.027451),
-      "GL_DIFFUSE":   (0.780392, 0.568627, 0.113725),
-      "GL_SPECULAR":  (0.992157, 0.941176, 0.807843),
-      "GL_SHININESS": 0.21794872 },
-
-    { "name":         "bronze",
-      "GL_AMBIENT":   (0.2125, 0.1275, 0.054),
-      "GL_DIFFUSE":   (0.714, 0.4284, 0.18144),
-      "GL_SPECULAR":  (0.393548, 0.271906, 0.166721),
-      "GL_SHININESS": 0.2 },
-
-    { "name":         "chrome",
-      "GL_AMBIENT":   (0.25, 0.25, 0.25,),
-      "GL_DIFFUSE":   (0.4, 0.4, 0.4),
-      "GL_SPECULAR":  (0.774597, 0.774597, 0.774597),
-      "GL_SHININESS": 0.6 },
-
-    { "name":         "copper",
-      "GL_AMBIENT":   (0.19125, 0.0735, 0.0225),
-      "GL_DIFFUSE":   (0.7038, 0.27048, 0.0828),
-      "GL_SPECULAR":  (0.256777, 0.137622, 0.086014),
-      "GL_SHININESS": 0.1 },
-
-    { "name":         "gold",
-      "GL_AMBIENT":   (0.24725, 0.1995, 0.0745),
-      "GL_DIFFUSE":   (0.75164, 0.60648, 0.22648),
-      "GL_SPECULAR":  (0.628281, 0.555802, 0.366065),
-      "GL_SHININESS": 0.4 },
-
-    { "name":         "silver",
-      "GL_AMBIENT":   (0.19225, 0.19225, 0.19225),
-      "GL_DIFFUSE":   (0.50754, 0.50754, 0.50754),
-      "GL_SPECULAR":  (0.508273, 0.508273, 0.508273),
-      "GL_SHININESS": 0.4 },
-
-    { "name":         "black",
-      "GL_AMBIENT":   (0.02, 0.02, 0.02),
-      "GL_DIFFUSE":   (0.01, 0.01, 0.01),
-      "GL_SPECULAR":  (0.4, 0.4, 0.4),
-      "GL_SHININESS": 0.078125 },
-
-    { "name":         "cyan",
-      "GL_AMBIENT":   (0.0, 0.1, 0.06),
-      "GL_DIFFUSE":   (0.0, 0.50980392, 0.50980392),
-      "GL_SPECULAR":  (0.50196078, 0.50196078, 0.50196078),
-      "GL_SHININESS": 0.25 },
-
-    { "name":         "green",
-      "GL_AMBIENT":   (0.0, 0.0, 0.0),
-      "GL_DIFFUSE":   (0.1, 0.35, 0.1),
-      "GL_SPECULAR":  (0.45, 0.55, 0.45),
-      "GL_SHININESS": 0.25 },
-
-    { "name":         "red",
-      "GL_AMBIENT":   (0.0, 0.0, 0.0),
-      "GL_DIFFUSE":   (0.5, 0.0, 0.0),
-      "GL_SPECULAR":  (0.7, 0.6, 0.6,),
-      "GL_SHININESS": 0.25 },
-
-    { "name":         "white",
-      "GL_AMBIENT":   (0.0, 0.0, 0.0),
-      "GL_DIFFUSE":   (0.55, 0.55, 0.55),
-      "GL_SPECULAR":  (0.70, 0.70, 0.70),
-      "GL_SHININESS": 0.25 },
-
-    { "name":         "yellow",
-      "GL_AMBIENT":   (0.0, 0.0, 0.0),
-      "GL_DIFFUSE":   (0.5, 0.5, 0.0),
-      "GL_SPECULAR":  (0.60, 0.60, 0.50),
-      "GL_SHININESS": 0.25 },
-    ]
-
-GL_MATERIALS_DICT = {}
-for gl_material in GL_MATERIALS:
-    GL_MATERIALS_DICT[gl_material["name"]] = gl_material
-    
-## </hack>
-    
 
 class GLPropertyDict(dict):
     """Property cache/routing dictionary
@@ -509,36 +391,16 @@ class GLObject(object):
 
 
 class GLColor(object):
-    """
+    """This is going to replace the 3-tuple RGB color...
     """
     def __init__(self, **args):
         self.rgb = args.get("rgb")
-
-class GLAtomColor(GLColor):
-    pass
 
 
 class OpenGLRenderMethods(object):
     """OpenGL renderer methods.  Eventually, all OpenGL rendering will
     be done through methods in this object.
     """
-    def glr_set_material_name(self, material_name, a):
-        """Sets the given named material with the given opacity
-        """
-        gl_material = GL_MATERIALS_DICT[material_name]
-
-        r, g, b = gl_material["GL_AMBIENT"]
-        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, a))
-
-        r, g, b = gl_material["GL_DIFFUSE"]
-        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (r, g, b, a))
-
-        r, g, b = gl_material["GL_SPECULAR"]
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (r, g, b, 1.0))
-
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS,
-                     gl_material["GL_SHININESS"]*128.0)
-
     def glr_set_material_rgb(self, r, g, b, a):
         """Creates a stock rendering material colored according to the given
         RGB values.
@@ -564,6 +426,9 @@ class OpenGLRenderMethods(object):
         """Draw a vector axis using the current set material at position
         with the given radius.
         """
+        if allclose(length(axis), 0.0):
+            return
+
         axis_cap_length     = 0.01 * length(axis)
         axis_length         = length(axis) - 2*axis_cap_length
         axis_cap_tip_radius = 0.75 * radius
@@ -641,15 +506,24 @@ class OpenGLRenderMethods(object):
         """Draw the anisotropic axies of the atom with R.M.S.
         magnitude.
         """
-        eigen_values, eigen_vectors = eigenvectors(U)
+        eval, evec = eigenvectors(U)
 
-        v0_peak = math.sqrt(abs(eigen_values[0]))
-        v1_peak = math.sqrt(abs(eigen_values[1]))
-        v2_peak = math.sqrt(abs(eigen_values[2]))
+        try:
+            v0_peak = math.sqrt(eval[0])
+        except ValueError:
+            v0_peak = 0.0
+        try:
+            v1_peak = math.sqrt(eval[1])
+        except ValueError:
+            v1_peak = 0.0
+        try:
+            v2_peak = math.sqrt(eval[2])
+        except ValueError:
+            v2_peak = 0.0
         
-        v0 = eigen_vectors[0] * v0_peak
-        v1 = eigen_vectors[1] * v1_peak
-        v2 = eigen_vectors[2] * v2_peak
+        v0 = evec[0] * v0_peak
+        v1 = evec[1] * v1_peak
+        v2 = evec[2] * v2_peak
 
         glDisable(GL_LIGHTING)
         glColor3f(*color)
@@ -669,21 +543,26 @@ class OpenGLRenderMethods(object):
         
         glPopMatrix()
 
-    def glr_Uellipse(self, position, U, probability = 1.5382):
+    def glr_Uellipse(self, position, U, C = 1.0):
         """Renders the ellipsoid enclosing the given fractional probability
         given the gaussian variance-covariance matrix U at the given position.
+
+        C=1.8724 = 68%
+
         """
-        Uinv = inverse(U)
+        C2 = C*C
+        Ui = inverse(U)
         
-        def ellipse_surface_func(v):
-            d = matrixmultiply(v, matrixmultiply(Uinv, v))
+        def ellipse_surface_func(x):
+            d = matrixmultiply(x, matrixmultiply(Ui, x))
 
             try:
-                a = math.sqrt(probability / d)
-            except ValueError:
-                a = 0.0
+                return math.sqrt(C2/d) * x
 
-            return a * v
+            except ValueError:
+                print "ellipse_surface_func: U not positive definate"
+                return zeros(3, Float)
+
         self.glr_radial_surface(position, ellipse_surface_func, 3)
 
     def glr_Urms(self, position, U):
@@ -713,33 +592,20 @@ class OpenGLRenderMethods(object):
             u3 = func(v3)
 
             ## normals are computed numericly
-##             v21 = delta * (v2 - v1)
-##             v31 = delta * (v3 - v1)
-##             v32 = delta * (v3 - v2)
+            v21 = delta * (v2 - v1)
+            v31 = delta * (v3 - v1)
+            v32 = delta * (v3 - v2)
 
-##             d21 = func(normalize(v1 + v21))
-##             d31 = func(normalize(v1 + v31))
-##             n1  = cross(d21-u1, d31-u1)
-
-##             d32 = func(normalize(v2 + v32))
-##             d12 = func(normalize(v2 - v21))
-##             n2  = cross(d32-u2, d12-u2)
-
-##             d13 = func(normalize(v3 - v31))
-##             d23 = func(normalize(v3 - v32))
-##             n3  = cross(d13-u3, d23-u3)
-
-## this is a little slower...
-            d21 = func(normalize((delta * (v2 - v1)) + v1))
-            d31 = func(normalize((delta * (v3 - v1)) + v1))
+            d21 = func(normalize(v1 + v21))
+            d31 = func(normalize(v1 + v31))
             n1  = cross(d21-u1, d31-u1)
 
-            d32 = func(normalize((delta * (v3 - v2)) + v2))
-            d12 = func(normalize((delta * (v1 - v2)) + v2))
+            d32 = func(normalize(v2 + v32))
+            d12 = func(normalize(v2 - v21))
             n2  = cross(d32-u2, d12-u2)
 
-            d13 = func(normalize((delta * (v1 - v3)) + v3))
-            d23 = func(normalize((delta * (v2 - v3)) + v3))
+            d13 = func(normalize(v3 - v31))
+            d23 = func(normalize(v3 - v32))
             n3  = cross(d13-u3, d23-u3)
                 
             glNormal3f(*n1)
@@ -1169,7 +1035,7 @@ class GLAtomList(GLDrawList):
               "desc":       "Draw Atom Bond Lines",
               "catagory":   "Show/Hide",
               "type":       "boolean",
-              "default":    True,
+              "default":    False,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "line_width",
@@ -1184,6 +1050,13 @@ class GLAtomList(GLDrawList):
             { "name":       "cpk",
               "desc":       "Draw CPK Spheres",
               "catagory":   "Show/Hide",
+              "type":       "boolean",
+              "default":    False,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "cpk_opacity_occupancy",
+              "desc":       "Set Opacity by Atom Occupancy",
+              "catagory":   "CPK",
               "type":       "boolean",
               "default":    False,
               "action":     "recompile" })
@@ -1206,7 +1079,7 @@ class GLAtomList(GLDrawList):
               "desc":       "CPK Sphere Quality",
               "catagory":   "CPK",
               "type":       "integer",
-              "default":    12,
+              "default":    10,
               "action":     "recompile" })
 
         ## trace           
@@ -1215,14 +1088,14 @@ class GLAtomList(GLDrawList):
               "desc":       "Draw Backbone Trace",
               "catagory":   "Show/Hide",
               "type":       "boolean",
-              "default":    False,
+              "default":    True,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "trace_line_width",
               "desc":       "Backbone Trace Line Width",
               "catagory":   "Trace",
               "type":       "float",
-              "default":    1.0,
+              "default":    4.0,
               "action":     "recompile" })
         self.glo_add_property(
             { "name":       "trace_color",
@@ -1242,7 +1115,7 @@ class GLAtomList(GLDrawList):
 
         self.glo_add_property(
             { "name":      "U",
-              "desc":      "Draw ADP Axes",
+              "desc":      "Show Thermal Axes at RMS Displacement",
               "catagory":  "Show/Hide",
               "type":      "boolean",
               "default":   False,
@@ -1256,17 +1129,31 @@ class GLAtomList(GLDrawList):
               "action":    "recompile" })
         self.glo_add_property(
             { "name":       "ellipse",
-              "desc":       "Draw Ellipseoids",
+              "desc":       "Show Thermal Ellipseoids",
               "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
               "action":     "recompile" })
         self.glo_add_property(
+            { "name":       "ellipse_opacity",
+              "desc":       "Thermal Ellipseoid Opacity",
+              "catagory":   "ADP",
+              "type":       "float",
+              "default":    1.0,
+              "action":     "recompile" })
+        self.glo_add_property(
             { "name":       "rms",
-              "desc":       "Draw RMS Surface (Peanuts)",
+              "desc":       "Show Thermal RMS Deviation Surface (Peanuts)",
               "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
+              "action":     "recompile" })
+        self.glo_add_property(
+            { "name":       "rms_opacity",
+              "desc":       "Thermal RMS Deviation Surface Opacity",
+              "catagory":   "ADP",
+              "type":       "float",
+              "default":    1.0,
               "action":     "recompile" })
 
     def gldl_iter_multidraw_self(self):
@@ -1317,9 +1204,24 @@ class GLAtomList(GLDrawList):
         
         if self.properties["lines"]==True:
             draw_funcs.append(self.draw_lines)
+
         if self.properties["U"]==True:
             draw_funcs.append(self.draw_U_axes)
 
+        if self.properties["cpk"]==True and \
+           self.properties["cpk_opacity"]>=1.0:
+            draw_funcs.append(self.draw_cpk)
+
+        if self.properties["ellipse"]==True and \
+           self.properties["ellipse_opacity"]>=1.0:
+            draw_funcs.append(self.draw_ellipse)
+
+        if self.properties["rms"]==True and \
+           self.properties["rms_opacity"]>=1.0:
+            draw_funcs.append(self.draw_rms)
+
+
+        ## execute draw functions for each atom
         for atm in self.atom_list:
             for draw_func in draw_funcs:
                 draw_func(atm)
@@ -1329,11 +1231,16 @@ class GLAtomList(GLDrawList):
         """
         draw_funcs = []
 
-        if self.properties["cpk"]==True:
+        if self.properties["cpk"]==True and \
+           self.properties["cpk_opacity"]<1.0:
             draw_funcs.append(self.draw_cpk)
-        if self.properties["ellipse"]==True:
+            
+        if self.properties["ellipse"]==True and \
+           self.properties["ellipse_opacity"]<1.0:
             draw_funcs.append(self.draw_ellipse)
-        if self.properties["rms"]==True:
+
+        if self.properties["rms"]==True and \
+           self.properties["rms_opacity"]<1.0:
             draw_funcs.append(self.draw_rms)
 
         for atm in self.atom_list:
@@ -1385,26 +1292,38 @@ class GLAtomList(GLDrawList):
         else:
             radius = 2.0
 
-        r, g, b = self.get_color(atm)        
-        self.glr_set_material_rgb(r, g, b, self.properties["cpk_opacity"])
+        r, g, b = self.get_color(atm)
 
-        self.glr_cpk(
-            self.calc_position(atm.position),
-            self.properties["cpk_scale_radius"] * radius,
-            self.properties["sphere_quality"])
+        if self.properties["cpk_opacity_occupancy"]==True:
+            a = atm.occupancy
+            self.glr_set_material_rgb(r, g, b, a)
+
+            for atm_alt in atm.iter_alt_loc():
+                self.glr_cpk(
+                    self.calc_position(atm_alt.position),
+                    self.properties["cpk_scale_radius"] * radius,
+                    self.properties["sphere_quality"])
+        else:
+            a = self.properties["cpk_opacity"]
+            self.glr_set_material_rgb(r, g, b, a)
+
+            self.glr_cpk(
+                self.calc_position(atm.position),
+                self.properties["cpk_scale_radius"] * radius,
+                self.properties["sphere_quality"])
 
     def draw_ellipse(self, atm):
         """Draw the ADP determined probability ellipseoid.
         """
         r, g, b = self.get_color(atm)        
-        self.glr_set_material_rgb(r, g, b, self.properties["cpk_opacity"])
+        self.glr_set_material_rgb(r, g, b, self.properties["ellipse_opacity"])
         self.glr_Uellipse(self.calc_position(atm.position), atm.get_U())
 
     def draw_rms(self, atm):
         """Draw the ADP determined RMS displacement surface.
         """
         r, g, b = self.get_color(atm)        
-        self.glr_set_material_rgb(r, g, b, self.properties["cpk_opacity"])
+        self.glr_set_material_rgb(r, g, b, self.properties["rms_opacity"])
         self.glr_Urms(self.calc_position(atm.position), atm.get_U())
 
     def draw_lines(self, atm):
@@ -1531,11 +1450,19 @@ class GLTLSScrewRotation(GLDrawList):
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "scale_rot",
-              "desc":        "Scale Rotation",
+              "desc":        "Scale Rotation by Standard Deviation",
               "catagory":    "Show/Hide",
               "type":        "float",
               "default":     1.0,
               "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "surface_opacity",
+              "desc":        "Screw Rotation Surface Opacity",
+              "catagory":    "Show/Hide",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "recompile" })
+
         self.glo_add_property(
             { "name":        "COR",
               "desc":        "TLS Center of Reaction", 
@@ -1606,13 +1533,22 @@ class GLTLSScrewRotation(GLDrawList):
 
                     yield True
                     glPopMatrix()
-                    
+
+    def gldl_draw(self):
+        if self.properties["surface_opacity"]==1.0:
+            self.draw_TLS_surface(
+                self.properties["Lx_eigen_vec"],
+                self.properties["Lx_eigen_val"],
+                self.properties["Lx_rho"],
+                self.properties["Lx_pitch"])
+    
     def gldl_draw_transparent(self):
-        self.draw_TLS_surface(
-            self.properties["Lx_eigen_vec"],
-            self.properties["Lx_eigen_val"],
-            self.properties["Lx_rho"],
-            self.properties["Lx_pitch"])
+        if self.properties["surface_opacity"]<1.0:
+            self.draw_TLS_surface(
+                self.properties["Lx_eigen_vec"],
+                self.properties["Lx_eigen_val"],
+                self.properties["Lx_rho"],
+                self.properties["Lx_pitch"])
             
     def draw_TLS_surface(self, Lx_eigen_vec, Lx_eigen_val, Lx_rho, Lx_pitch):
         """Draws the TLS probability surface for a single non-intersecting
@@ -1627,7 +1563,7 @@ class GLTLSScrewRotation(GLDrawList):
         sq2pi         = math.sqrt(2.0 * math.pi)
         opacity_scale = None
 
-        glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 1.0)
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
         glEnable(GL_LIGHTING)
         glEnable(GL_NORMALIZE)
 
@@ -1652,12 +1588,8 @@ class GLTLSScrewRotation(GLDrawList):
             if opacity_scale==None:
                 opacity_scale = 0.6 / p
 
-            opacity = p * opacity_scale
-
-            opacity = 1.0
-
-#            print "## step = %f Lx = %f opacity = %f" % (
-#                step2, Lx_s, opacity)
+            #opacity = p * opacity_scale
+            opacity = self.properties["surface_opacity"]
 
             for sign in (-1, 1):
 
@@ -1712,7 +1644,7 @@ class GLTLSScrewRotation(GLDrawList):
         glEnd()
 
         glDisable(GL_NORMALIZE)
-        glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 0.0)
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
 
         
 class GLTLSAtomList(GLAtomList):
@@ -1733,6 +1665,28 @@ class GLTLSAtomList(GLAtomList):
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "T",
+              "desc":        "Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "type":        "array(3,3)",
+              "default":     zeros((3,3)),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "L",
+              "desc":        "Libration Tensor (DEG*DEG)",
+              "catagory":    "TLS Analysis",
+              "type":        "array(3,3)",
+              "default":     zeros((3,3)),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "S",
+              "desc":        "Skew Tensor (A*DEG)",
+              "catagory":    "TLS Analysis",
+              "type":        "array(3,3)",
+              "default":     zeros((3,3)),
+              "action":      "recompile" })
+
         self.glo_add_property(
             { "name":        "L1_animation_visible",
               "desc":        "Show L1 Animation",
@@ -1757,6 +1711,7 @@ class GLTLSAtomList(GLAtomList):
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
               "desc":        "L1 Eigen Vector", 
+              "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
@@ -1859,6 +1814,100 @@ class GLTLSAtomList(GLAtomList):
               "default":     0.0,
               "action":      "redraw" })
 
+        self.glo_add_property(
+            { "name":        "L1_scale",
+              "desc":        "Scale L1 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L2_scale",
+              "desc":        "Scale L2 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "L3_scale",
+              "desc":        "Scale L3 Rotation", 
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+
+        self.glo_add_property(
+            { "name":        "CA_line_visible",
+              "desc":        "Show Lines to C-Alpha Atoms",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "fan_visible",
+              "desc":        "Show Fans to Backbone",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "fan_opacity",
+              "desc":        "Fan Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     0.5,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "fan_color",
+              "desc":        "Fan Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (1.0, 0.5, 0.5),
+              "action":      "recompile" })
+
+        self.glo_add_property(
+            { "name":        "Ut_color",
+              "desc":        "T Color",
+              "catagory":    "TLS",
+              "type":        "color",
+              "default":     (0.5, 0.5, 1.0),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Ut_axes",
+              "desc":        "Show T Thermal Axes",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Ut_ellipse",
+              "desc":        "Show T Thermal Ellipseoids",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Ut_ellipse_opacity",
+              "desc":        "T Thermal Ellipse Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Ut_rms",
+              "desc":        "Show T RMS Peanuts",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Ut_rms_opacity",
+              "desc":        "T Thermal RMS Peanut Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "recompile" })
+        
     def gldl_update_cb(self, updates, actions):
         GLAtomList.gldl_update_cb(self, updates, actions)
         if "trace" in updates:
@@ -1872,10 +1921,10 @@ class GLTLSAtomList(GLAtomList):
     def gldl_iter_multidraw_animate(self):
         """
         """
-        for Lx_axis, Lx_rho, Lx_pitch, Lx_rot in (
-            ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot"),
-            ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot"),
-            ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot") ):
+        for Lx_axis, Lx_rho, Lx_pitch, Lx_rot, Lx_scale in (
+            ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot", "L1_scale"),
+            ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot", "L2_scale"),
+            ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot", "L3_scale") ):
 
             if Lx_axis=="L1_eigen_vec" and \
                self.properties["L1_animation_visible"]==False:
@@ -1890,7 +1939,7 @@ class GLTLSAtomList(GLAtomList):
             Lx_axis  = self.properties[Lx_axis]
             Lx_rho   = self.properties[Lx_rho]
             Lx_pitch = self.properties[Lx_pitch]
-            Lx_rot   = self.properties[Lx_rot]
+            Lx_rot   = self.properties[Lx_rot] * self.properties[Lx_scale]
 
             screw = Lx_axis * Lx_rot * Lx_pitch
 
@@ -1901,6 +1950,137 @@ class GLTLSAtomList(GLAtomList):
             yield True
             glPopMatrix()
 
+    def gldl_draw(self):
+        GLAtomList.gldl_draw(self)
+
+        if self.properties["Ut_axes"]:
+            self.draw_Ut_axes()
+            
+        ## draw a line from the COR (center of reaction)
+        ## to all CA atoms in the TLS group
+        if self.properties["CA_line_visible"]==True:
+            self.draw_CA_lines()
+
+        ## draw a transparent fan from the COR to all backbone atoms
+        ## in the TLS group
+        if self.properties["fan_visible"]==True and \
+           self.properties["fan_opacity"]>=1.0:
+            self.draw_fan()
+
+        if self.properties["Ut_ellipse"]==True and \
+           self.properties["Ut_ellipse_opacity"]>=1.0:
+            self.draw_Ut_ellipse()
+
+        if self.properties["Ut_rms"]==True and \
+           self.properties["Ut_rms_opacity"]>=1.0:
+            self.draw_Ut_rms()
+
+    def gldl_draw_transparent(self):
+        GLAtomList.gldl_draw_transparent(self)
+
+        if self.properties["fan_visible"]==True and \
+           self.properties["fan_opacity"]<1.0:
+            self.draw_fan()
+
+        if self.properties["Ut_ellipse"]==True and \
+           self.properties["Ut_ellipse_opacity"]<1.0:
+            self.draw_Ut_ellipse()
+
+        if self.properties["Ut_rms"]==True and \
+           self.properties["Ut_rms_opacity"]<1.0:
+            self.draw_Ut_rms()
+
+    def draw_Ut_axes(self):
+        """Draw the anisotropic axies of the T tensor only.
+        """
+        T     = self.properties["T"]
+        color = self.properties["Ut_color"]
+
+        for atm in self.atom_list:
+            self.glr_U_axes(self.calc_position(atm.position), T, color, 1.0)
+
+    def draw_Ut_ellipse(self):
+        """Draw the ADP determined probability ellipseoid of the T tensor only.
+        """
+        T       = self.properties["T"]
+        r, g, b = self.properties["Ut_color"]
+        a       = self.properties["Ut_ellipse_opacity"]
+        
+        self.glr_set_material_rgb(r, g, b, a)
+
+        for atm in self.atom_list:
+            self.glr_Uellipse(self.calc_position(atm.position), T)
+
+    def draw_Ut_rms(self, atm):
+        """Draw the ADP determined RMS displacement surface of the T tensor
+        only.
+        """
+        T       = self.properties["T"]
+        r, g, b = self.properties["Ut_color"]
+        a       = self.properties["Ut_rms_opacity"]
+        
+        self.glr_set_material_rgb(r, g, b, a)
+
+        for atm in self.atom_list:
+            self.glr_Urms(self.calc_position(atm.position), T)
+   
+    def draw_CA_lines(self):
+        glDisable(GL_LIGHTING)
+        
+        COR = self.properties["COR"]
+        
+        glColor3f(1.0, 1.0, 1.0)
+        glLineWidth(1.0)
+        
+        for atm in self.atom_list:
+            if atm.name in ["CA"]:
+                glBegin(GL_LINES)
+                glVertex3f(0.0, 0.0, 0.0)
+                glVertex3f(*atm.position - COR)
+                glEnd()
+
+    def draw_fan(self):
+        glEnable(GL_LIGHTING)
+
+        COR     = self.properties["COR"]
+        r, g, b = self.properties["fan_color"]
+        a       = self.properties["fan_opacity"]
+
+        self.glr_set_material_rgb(r, g, b, a)
+        
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        glEnable(GL_NORMALIZE) ## let OpenGL normalize the normals
+
+        glBegin(GL_TRIANGLE_FAN)
+
+        v1 = None
+        v2 = None
+
+        for atm in self.atom_list:
+            if atm.name not in ("N", "CA", "C"):
+                continue
+
+            if v1==None:
+                v1 = atm.position - COR
+                continue
+            elif v2==None:
+                v2 = atm.position - COR
+                glNormal3f(*cross(v1, v2))
+                glVertex3f(0.0, 0.0, 0.0)                
+            else:
+                v1 = v2
+                v2 = atm.position - COR
+
+            glNormal3f(*cross(v1, v2))    
+            glVertex3f(*v1)
+            glVertex3f(*v2)
+
+
+        glEnd()
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+        glDisable(GL_NORMALIZE)
+
 
 class GLTLSGroup(GLDrawList):
     """Top level visualization object for a TLS group.
@@ -1908,9 +2088,8 @@ class GLTLSGroup(GLDrawList):
     def __init__(self, **args):
         GLDrawList.__init__(self)
 
-        orig_tls_group        = args["tls_group"]
+        orig_tls_group = args["tls_group"]
         self.orig_tls_group = orig_tls_group
-
 
         if orig_tls_group.name!="":
             self.glo_set_name("TLS Group: %s" % (orig_tls_group.name))
@@ -2000,8 +2179,17 @@ class GLTLSGroup(GLDrawList):
         ## step 4: add child GLTLSAtomList 
         self.gl_atom_list = GLTLSAtomList(
             atom_list   = self.tls_group,
-            origin      = calcs["COR"],
-            atom_origin = calcs["COR"])
+            origin      = calcs["COR"].copy(),
+            atom_origin = calcs["COR"].copy(),
+            trace       = True,
+            trace_line_width = 5.0,
+            trace_color = (0.5, 1.0, 0.5),
+            lines       = False,
+            fan_visible = True,
+            #cpk         = True,
+            #cpk_scale_radius = 0.1,
+            #Ut_ellipse = True
+            )
 
         self.gl_atom_list.glo_set_name("TLS Atom Animation")
         self.gl_atom_list.glo_set_properties_id("gl_atom_list")
@@ -2009,10 +2197,16 @@ class GLTLSGroup(GLDrawList):
         
         self.glo_link_child_property(
             "animation_visible", "gl_atom_list", "visible")
-        self.glo_link_child_property(
-            "COR", "gl_atom_list", "atom_list")
+
         self.glo_link_child_property(
             "COR", "gl_atom_list", "COR")
+        self.glo_link_child_property(
+            "T_reduced", "gl_atom_list", "T")
+        self.glo_link_child_property(
+            "L", "gl_atom_list", "L")
+        self.glo_link_child_property(
+            "S", "gl_atom_list", "S")
+
         self.glo_link_child_property(
             "L1_eigen_vec", "gl_atom_list", "L1_eigen_vec")
         self.glo_link_child_property(
@@ -2049,16 +2243,15 @@ class GLTLSGroup(GLDrawList):
             "atom_line_width", "gl_atom_list", "line_width")
         self.glo_link_child_property(
             "symmetry", "gl_atom_list", "symmetry")
-        self.glo_link_child_property(
-            "trace", "gl_atom_list", "trace")
  
         ## initalize properties
         self.glo_add_update_callback(self.tls_update_cb)
         self.glo_init_properties(
-            COR          = calcs["COR"],
-            T            = self.tls_group.T,
-            L            = self.tls_group.L * rad2deg2,
-            S            = self.tls_group.S * rad2deg,
+            COR          = calcs["COR"].copy(),
+            T            = self.tls_group.T.copy(),
+            T_reduced    = calcs["rT'"].copy(),
+            L            = self.tls_group.L.copy() * rad2deg2,
+            S            = self.tls_group.S.copy() * rad2deg,
             L1_eigen_vec = L_eigen_vecs[0],
             L2_eigen_vec = L_eigen_vecs[1],
             L3_eigen_vec = L_eigen_vecs[2],
@@ -2098,6 +2291,13 @@ class GLTLSGroup(GLDrawList):
               "default":     zeros((3,3)),
               "action":      "recompile" })
         self.glo_add_property(
+            { "name":        "T_reduced",
+              "desc":        "Reduced Translation Tensor (A*A)",
+              "catagory":    "TLS Analysis",
+              "type":        "array(3,3)",
+              "default":     zeros((3,3)),
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "L",
               "desc":        "Libration Tensor (DEG*DEG)",
               "catagory":    "TLS Analysis",
@@ -2111,6 +2311,7 @@ class GLTLSGroup(GLDrawList):
               "type":        "array(3,3)",
               "default":     zeros((3,3)),
               "action":      "recompile" })
+
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
               "desc":        "L1 Eigen Vector",
@@ -2155,21 +2356,21 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_rho",
-              "desc":        "L1 translation from COR", 
+              "desc":        "L1 Translation Vector from COR", 
               "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_rho",
-              "desc":        "L2 translation from COR", 
+              "desc":        "L2 Translation Vector from COR", 
               "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_rho",
-              "desc":        "L3 translation from COR", 
+              "desc":        "L3 Translation Vector from COR", 
               "catagory":    "TLS Analysis",
               "type":        "array(3)",
               "default":     zeros(3),
@@ -2197,21 +2398,21 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_rot",
-              "desc":        "L1 Rotation",
+              "desc":        "L1 Axis Viewing Libration (DEG)",
               "catagory":    "Simulation State",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_rot",
-              "desc":        "L2 Rotation", 
+              "desc":        "L2 Axis Viewing Libration (DEG)", 
               "catagory":    "Simulation State",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_rot",
-              "desc":        "L3 Rotation",
+              "desc":        "L2 Axis Viewing Libration (DEG)",
               "catagory":    "Simulation State",
               "type":        "float",
               "default":     0.0,
@@ -2258,7 +2459,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "T Tensor Color",
               "catagory":    "Colors",
               "type":        "color",
-              "default":     (0.5, 1.0, 0.5),
+              "default":     (0.5, 0.5, 1.0),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":       "L_color",
@@ -2267,34 +2468,6 @@ class GLTLSGroup(GLDrawList):
               "type":       "color",
               "default":    (1.0, 0.5, 0.5),
               "action":     "recompile" })
-        self.glo_add_property(
-            { "name":        "CA_line_visible",
-              "desc":        "Show Lines to C-Alpha Atoms",
-              "catagory":    "Show/Hide",
-              "type":        "boolean",
-              "default":     False,
-              "action":      "recompile" })
-        self.glo_add_property(
-            { "name":        "fan_visible",
-              "desc":        "Show Fans to Backbone",
-              "catagory":    "Show/Hide",
-              "type":        "boolean",
-              "default":     False,
-              "action":      "recompile" })
-        self.glo_add_property(
-            { "name":        "fan_opacity",
-              "desc":        "Set Backbone Fan Transparancy",
-              "catagroy":    "Fans",
-              "type":        "float",
-              "default":     0.60,
-              "action":      "recompile" })
-        self.glo_add_property(
-            { "name":        "fan_material",
-              "desc":        "Set Backbone Fan Material",
-              "catagory":    "Colors",
-              "type":        "material",
-              "default":     "emerald",
-              "action":      "recompile" })
         self.glo_add_property(
             { "name":        "atom_color",
               "desc":        "Atom Color",
@@ -2309,66 +2482,92 @@ class GLTLSGroup(GLDrawList):
               "default":     1.0,
               "action":      "redraw" })
         self.glo_add_property(
+            { "name":        "main_chain_only",
+              "desc":        "Show Protein Mainchain Atoms Only",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     True,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "Utls_U_diff",
+              "desc":        "Show Utls vs. Experimental U Diff",
+              "catagory":    "Show/Hide",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "U",
-              "desc":        "Show TLS Calculated Thermal Axes",
+              "desc":        "Show TLS Thermal Axes at RMS Displacement",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "ellipse",
-              "desc":        "Show TLS Calculated Thermal Ellipseoids",
+              "desc":        "Show TLS Thermal Ellipseoids",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "ellipse_opacity",
+              "desc":        "TLS Thermal Ellipseoid Opacity",
+              "catagory":    "Colors",
+              "type":        "float",
+              "default":     1.0,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "rms",
-              "desc":        "Show TLS Calculated RMS Displacement Surface",
+              "desc":        "Show TLS Thermal RMS Displacement Surface",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
-        
+        self.glo_add_property(
+            { "name":        "rms_opacity",
+              "desc":        "TLS Thermal RMS Displacement Surface Opacity",
+              "catagory":    "Colors",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "recompile" })
         self.glo_add_property(
             { "name":        "U_color",
-              "desc":        "ADP Axes Color",
+              "desc":        "Thermal Axes Color",
               "catagory":    "Colors",
               "type":        "color",
-              "default":     (0.0, 0.75, 0.25),
+              "default":     (1.0, 1.0, 1.0),
               "action":      "redraw" })
-
         self.glo_add_property(
-            { "name":        "trace",
-              "desc":        "Protein Backbone Trace Only", 
-              "catagory":    "Show/Hide",
-              "type":        "boolean",
-              "default":     False,
-              "action":      "recompile" })
+            { "name":        "Utls_color",
+              "desc":        "Thermal Axes Color",
+              "catagory":    "Colors",
+              "type":        "color",
+              "default":     (0.10, 0.75, 0.35),
+              "action":      "redraw" })
         self.glo_add_property(
             { "name":        "animation_visible",
-              "desc":        "Show Animated Atoms", 
+              "desc":        "Show TLS Animated Atoms", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw1_visible",
-              "desc":        "Show Screw Axis 1 Gaussian Surface", 
+              "desc":        "Show Screw Axis 1 Traced Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw2_visible",
-              "desc":        "Show Screw Axis 2 Gaussian Surface", 
+              "desc":        "Show Screw Axis 2 Traced Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "screw3_visible",
-              "desc":        "Show Screw Axis 3 Gaussian Surface",
+              "desc":        "Show Screw Axis 3 Traced Surface",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -2424,159 +2623,164 @@ class GLTLSGroup(GLDrawList):
                     glPopMatrix()
 
     def gldl_draw(self):
+        draw_func_list = []
+
+        if self.properties["U"]==True:
+            draw_func_list.append(self.draw_Utls_axes)
+        
+        if self.properties["ellipse"]==True and \
+           self.properties["ellipse_opacity"]>=1.0:
+            draw_func_list.append(self.draw_Utls_ellipse)
+
+        if self.properties["rms"]==True and \
+           self.properties["rms_opacity"]>=1.0:
+            draw_func_list.append(self.draw_Utls_rms)
+
         ## everything is drawn from the center of reaction
+        COR = self.properties["COR"]
+
         glPushMatrix()
-        glTranslatef(*self.properties["COR"])
+        glTranslatef(*COR)
 
         ## draw TLS axes
         if self.properties["TLS_visible"]==True:
             self.draw_tensors()
 
-        ## draw Utls thermal axes
-        if self.properties["U"]==True:
-            self.draw_Utls()
-
-        ## draw a line from the COR (center of reaction)
-        ## to all CA atoms in the TLS group
-        if self.properties["CA_line_visible"]==True:
-            self.draw_CA_lines()
-
-        ## draw a transparent fan from the COR to all backbone atoms
-        ## in the TLS group
-        if self.properties["fan_visible"]==True:
-            self.draw_fan()
+        if len(draw_func_list)>0:
+            for atm, Utls in self.tls_group.iter_atm_Utls():
+                if self.properties["main_chain_only"]==True and \
+                    atm.name not in ("C", "CA", "N"):
+                    continue
+                for draw_func in draw_func_list:
+                    draw_func(atm, Utls)
 
         glPopMatrix()
 
     def gldl_draw_transparent(self):
+        draw_func_list = []
+        
+        if self.properties["ellipse_opacity"]<1.0:
+            draw_func_list.append(self.draw_Utls_ellipse)
+
+        if self.properties["rms_opacity"]<1.0:
+            draw_func_list.append(self.draw_Utls_rms)
+
+        if len(draw_func_list)==0:
+            return
+
         ## everything is drawn from the center of reaction
+        COR = self.properties["COR"]
+
         glPushMatrix()
-        glTranslatef(*self.properties["COR"])
+        glTranslatef(*COR)
 
-        self.draw_Utls_transparent()
-
+        for atm, Utls in self.tls_group.iter_atm_Utls():
+            if self.properties["main_chain_only"]==True and \
+               atm.name not in ("C", "CA", "N"):
+                continue
+            for draw_func in draw_func_list:
+                draw_func(atm, Utls)
+            
         glPopMatrix()
     
-    def draw_Utls(self):
+    def draw_Utls_axes(self, atm, Utls):
         """Render the anisotropic thremal axes calculated from the TLS
         model.
         """
-        COR   = self.properties["COR"]
-        color = self.properties["U_color"]
+        color = self.properties["Utls_color"]
+        self.glr_U_axes(atm.position - self.properties["COR"],
+                        Utls,
+                        color,
+                        1.0)
 
-        for atm, Utls in self.tls_group.iter_atm_Utls():
-            self.glr_U_axes(
-                atm.position - COR,
-                Utls,
-                color,
-                1.0)
-
-    def draw_Utls_transparent(self):
+    def draw_Utls_ellipse(self, atm, Utls):
         """Render the anisotropic thremal ellipseoids/RMS surface from
         TLS calculated U values.
         """
-        COR = self.properties["COR"]
+        r, g, b = self.properties["Utls_color"]
+        a       = self.properties["ellipse_opacity"]
+        self.glr_set_material_rgb(r, g, b, a)
 
-        r, g, b = self.properties["U_color"]
+        self.glr_Uellipse(atm.position - self.properties["COR"], Utls)
 
-        self.glr_set_material_rgb(r, g, b, 1.0)
+        if self.properties["Utls_U_diff"]:
+            r, g, b = self.properties["U_color"]
+            self.glr_set_material_rgb(r, g, b, a)
+            self.glr_Uellipse(atm.position - self.properties["COR"],
+                              atm.get_U())
 
-        for atm, Utls in self.orig_tls_group.iter_atm_Utls():
-            
-            if self.properties["ellipse"]==True:
-                self.glr_Uellipse(atm.position - COR, Utls)
+    def draw_Utls_rms(self, atm, Utls):
+        """Render the anisotropic thremal ellipseoids/RMS surface from
+        TLS calculated U values.
+        """
+        r, g, b = self.properties["Utls_color"]
+        a       = self.properties["rms_opacity"]
+        self.glr_set_material_rgb(r, g, b, a)
 
-            if self.properties["rms"]==True:
-                self.glr_Urms(atm.position - COR, Utls)
-
-    def draw_CA_lines(self):
-        glDisable(GL_LIGHTING)
-        glColor3f(0.5, 0.5, 0.5)
-        glLineWidth(1.0)
-        
-        for atm in self.tls_group:
-            if atm.name in ["CA"]:
-                glBegin(GL_LINES)
-                glVertex3f(0.0, 0.0, 0.0)
-                glVertex3f(*atm.position - self.properties["COR"])
-                glEnd()
-
-        glEnable(GL_LIGHTING)
-
-    def draw_fan(self):
-        glEnable(GL_LIGHTING)
-
-        self.glr_set_material_name(
-            self.properties["fan_material"],
-            self.properties["fan_opacity"])
-        
-        glBegin(GL_TRIANGLE_FAN)
-        glVertex3f(0.0, 0.0, 0.0)
-        for atm in self.tls_group:
-            if atm.name in ["N", "CA", "C"]:
-                glVertex3f(*atm.position - self.properties["COR"])
-        glEnd()
+        self.glr_Urms(atm.position - self.properties["COR"], Utls)
 
     def draw_tensors(self):
         """Draw tensor axis.
         """
-        scale = self.properties["scale"]
+        ### <REMOVE>
+      ##   OC = self.orig_tls_group.calc_origin - self.properties["COR"]
+##         glColor3f(0.8, 0.7, 0.2)
+##         glLineWidth(1.0)
 
-        glDisable(GL_LIGHTING)
-        glLineWidth(self.properties["tensor_line_width"])
+##         glDisable(GL_LIGHTING)
+##         glBegin(GL_LINES)
+##         glVertex3f(0.0, 0.0, 0.0)
+##         glVertex3f(*OC)
+##         glEnd()
 
+##         self.glr_set_material_rgb(0.8, 0.7, 0.2, 1.0)
+##         self.glr_cpk(OC, 0.1, 36)
+        ### <REMOVE>
+
+        r, g, b = self.properties["Utls_color"]        
+        self.glr_set_material_rgb(r, g, b, 1.0)
+        self.glr_cpk(array([0.0, 0.0, 0.0]), 0.1, 36)
+        
         ## T: units (A^2)
-        glColor3f(*self.properties["T_color"])
-        (eigen_values, eigen_vectors) = eigenvectors(self.properties["T"])
-        
-        for i in range(3):
-            v  = array(eigen_vectors[i])
-            v *= math.sqrt(abs(eigen_values[i]))
-            v *= self.properties["scale"]
-            v *= 0.5
-            
-            glBegin(GL_LINES)
-            glVertex3f(*-v)
-            glVertex3f(*v)
-            glEnd()
+        self.glr_U_axes(
+            (0.0, 0.0, 0.0),
+            self.properties["T_reduced"],
+            self.properties["T_color"],
+            self.properties["tensor_line_width"])
 
-            glEnable(GL_LIGHTING)
-            r, g, b = self.properties["T_color"]
-            self.glr_set_material_rgb(r, g, b, 1.0)
-            self.glr_axis(-v, 2*v, self.properties["tensor_axis_radius"])
-            glDisable(GL_LIGHTING)
-
-        ## L: units (RAD^2)
-        glColor3f(*self.properties["L_color"])
-        (eigen_values, eigen_vectors) = eigenvectors(self.tls_group.L)
-        
+        ## L: units (DEG^2)
         for Lx_eigen_val, Lx_eigen_vec, Lx_rho in [
             ("L1_eigen_val", "L1_eigen_vec", "L1_rho"),
             ("L2_eigen_val", "L2_eigen_vec", "L2_rho"),
             ("L3_eigen_val", "L3_eigen_vec", "L3_rho")]:
 
-            v  = self.properties[Lx_eigen_vec]
-            v *= math.sqrt(abs(self.properties[Lx_eigen_val]))
+            Lx_eigen_val = self.properties[Lx_eigen_val]
+
+            v  = self.properties[Lx_eigen_vec].copy()
+            v *= math.sqrt(abs(Lx_eigen_val))
             v *= self.properties["scale"]
             v *= 0.5
 
             rho = self.properties[Lx_rho]
 
-            glBegin(GL_LINES)
+            ## line from COR to center of screw/rotation axis
+            glColor3f(*self.properties["L_color"])
 
+            glDisable(GL_LIGHTING)
+            glBegin(GL_LINES)
             glVertex3f(0.0, 0.0, 0.0)
             glVertex3f(*rho)
-            
-            glVertex3f(*-v + rho)
-            glVertex3f(* v + rho)
-
             glEnd()
 
-            glEnable(GL_LIGHTING)
             r, g, b = self.properties["L_color"]
-            self.glr_set_material_rgb(r, g, b, 1.0)
+
+            ## for negitive librations, make the L axis really dark
+            if Lx_eigen_val<0.0:
+                self.glr_set_material_rgb(r*0.25, g*0.25, b*0.25, 1.0)
+            else:
+                self.glr_set_material_rgb(r, g, b, 1.0)
+            
             self.glr_axis(rho-v, 2*v, self.properties["tensor_axis_radius"])
-            glDisable(GL_LIGHTING)
 
 
 class GLFragment(GLDrawList):

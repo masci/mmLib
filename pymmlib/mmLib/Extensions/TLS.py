@@ -429,6 +429,119 @@ class TLSInfoList(list):
                 float(s31), float(s32))
 
 
+class DP2TLSMin(object):
+    def __init__(self, position, U):
+        self.U = U
+        self.position = position
+
+        ## use label indexing to avoid confusion!
+        T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+        S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
+            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+
+        x, y, z = position
+
+        ## C Matrix
+        xx = x*x
+        yy = y*y
+        zz = z*z
+
+        xy = x*y
+        xz = x*z
+        yz = y*z
+        
+        self.A = A = zeros((6,21), Float)
+
+        u11,u22,u33,u12,u13,u23 = 0,1,2,3,4,5
+
+        A[u11, T11] = 1.0
+        A[u11, L22] = xx
+        A[u11, L33] = yy
+        A[u11, L23] = -2.0*yz
+        A[u11, S31] = -2.0*y
+        A[u11, S21] = 2.0*z
+        
+        A[u22, T22] = 1.0
+        A[u22, L11] = zz
+        A[u22, L33] = xx
+        A[u22, L13] = -2.0*xz
+        A[u22, S12] = -2.0*z
+        A[u22, S32] = 2.0*x
+
+        A[u33, T33] = 1.0
+        A[u33, L11] = yy
+        A[u33, L22] = xx
+        A[u33, L12] = -2.0*xy
+        A[u33, S23] = -2.0*x
+        A[u33, S13] = 2.0*y
+
+        A[u12, T12] = 1.0
+        A[u12, L33] = -xy
+        A[u12, L23] = xz
+        A[u12, L13] = yz
+        A[u12, L12] = -zz
+        A[u12, S11] = -z
+        A[u12, S22] = z
+        A[u12, S31] = x
+        A[u12, S32] = -y
+
+        A[u13, T13] = 1.0
+        A[u13, L22] = -xz
+        A[u13, L23] = xy
+        A[u13, L13] = -yy
+        A[u13, L12] = yz
+        A[u13, S11] = y
+        A[u13, S33] = -y
+        A[u13, S23] = z
+        A[u13, S21] = -x
+
+        A[u23, T23] = 1.0
+        A[u23, L11] = -yz
+        A[u23, L23] = -xx
+        A[u23, L13] = xy
+        A[u23, L12] = xz
+        A[u23, S22] = -x
+        A[u23, S33] = x
+        A[u23, S12] = y
+        A[u23, S13] = -z
+        
+    def __call__(self, TLS):
+        U6 = matrixmultiply(self.A, TLS)
+
+
+        #print "A",self.A
+        #print "U6",U6
+        #print
+
+        Utls = array([ [U6[0], U6[3], U6[4]],
+                       [U6[3], U6[1], U6[5]],
+                       [U6[4], U6[5], U6[2]] ])
+
+
+        r = (self.U[0,0]-Utls[0,0])**2 + \
+            (self.U[1,1]-Utls[1,1])**2 + \
+            (self.U[2,2]-Utls[2,2])**2 + \
+            (self.U[0,1]-Utls[0,1])**2 + \
+            (self.U[0,2]-Utls[0,2])**2 + \
+            (self.U[1,2]-Utls[1,2])**2
+
+        #print r
+        return r
+
+        try:
+            dp2 = calc_DP2uij(self.U, Utls)
+        except ValueError:
+            dp2 = 0.00
+            print "Value Error"
+
+        print "%.2f %.2f %.2f: %8.6f" % (self.position[0],
+                                         self.position[1],
+                                         self.position[2],
+                                         dp2)
+        
+        return dp2
+
+
 class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
@@ -531,17 +644,13 @@ class TLSGroup(AtomList):
             u23 = u11 + 5
 
             ## set the B vector
-            if atm.U == None:
-                b[u11] = atm.temp_factor / (24.0 * math.pi * math.pi)
-                b[u22] = b[u11]
-                b[u33] = b[u11]
-            else:
-                b[u11] = atm.U[0,0]
-                b[u22] = atm.U[1,1]
-                b[u33] = atm.U[2,2]
-                b[u12] = atm.U[0,1]
-                b[u13] = atm.U[0,2]
-                b[u23] = atm.U[1,2]
+            Uatm   = atm.get_U()            
+            b[u11] = Uatm[0,0]
+            b[u22] = Uatm[1,1]
+            b[u33] = Uatm[2,2]
+            b[u12] = Uatm[0,1]
+            b[u13] = Uatm[0,2]
+            b[u23] = Uatm[1,2]
 
             ## C Matrix
             xx = x*x
@@ -553,7 +662,7 @@ class TLSGroup(AtomList):
             yz = y*z
 
             A[u11, T11] = 1.0
-            A[u11, L22] = xx
+            A[u11, L22] = zz
             A[u11, L33] = yy
             A[u11, L23] = -2.0*yz
             A[u11, S31] = -2.0*y
@@ -605,6 +714,9 @@ class TLSGroup(AtomList):
 
         (C, resids, rank, s) = linear_least_squares(A, b)
 
+        ## verify the trase of S is zero
+        assert allclose(C[S11]+C[S22]+C[S33], 0.0)
+
         self.T = array([ [ C[T11], C[T12], C[T13] ],
                          [ C[T12], C[T22], C[T23] ],
                          [ C[T13], C[T23], C[T33] ] ])
@@ -616,6 +728,65 @@ class TLSGroup(AtomList):
         self.S = array([ [ C[S11], C[S12], C[S13] ],
                          [ C[S21], C[S22], C[S23] ],
                          [ C[S31], C[S32], C[S33] ] ])
+
+
+    def calc_TLS_dP2_fit(self):
+        """
+        """
+        from mmLib.Solvers import NewtonsMethod
+
+        ## use label indexing to avoid confusion!
+        T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+        S11, S22, S33, S12, S13, S23, S21, S31, S32 = (
+            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+
+        C      = zeros(21, Float)
+
+        C[T11] = self.T[0,0]
+        C[T22] = self.T[1,1]
+        C[T33] = self.T[2,2]
+        C[T12] = self.T[0,1]
+        C[T13] = self.T[0,2]
+        C[T23] = self.T[1,2]
+
+        C[L11] = self.L[0,0]
+        C[L22] = self.L[1,1]
+        C[L33] = self.L[2,2]
+        C[L12] = self.L[0,1]
+        C[L13] = self.L[0,2]
+        C[L23] = self.L[1,2]
+
+        C[S11] = self.S[0,0]
+        C[S22] = self.S[1,1]
+        C[S33] = self.S[2,2]
+        C[S12] = self.S[0,1]
+        C[S13] = self.S[0,2]
+        C[S23] = self.S[1,2]
+        C[S21] = self.S[1,0]
+        C[S31] = self.S[2,0]
+        C[S32] = self.S[2,1]
+        
+        min_func_list = []
+        for atm in self:
+            min_func_list.append(DP2TLSMin(atm.position - self.origin, atm.U))
+
+        nmethod = NewtonsMethod(min_func_list, N=20)
+        
+        C = nmethod.solve(C)
+
+        T = array([ [ C[T11], C[T12], C[T13] ],
+                    [ C[T12], C[T22], C[T23] ],
+                    [ C[T13], C[T23], C[T33] ] ])
+
+        L = array([ [ C[L11], C[L12], C[L13] ],
+                    [ C[L12], C[L22], C[L23] ],
+                    [ C[L13], C[L23], C[L33] ] ])
+        
+        S = array([ [ C[S11], C[S12], C[S13] ],
+                    [ C[S21], C[S22], C[S23] ],
+                    [ C[S31], C[S32], C[S33] ] ])
+
+        return T, L, S
 
     def calc_Utls(self, T, L, S, vec):
         """Returns the calculated value for the anisotropic U tensor for
@@ -668,26 +839,10 @@ class TLSGroup(AtomList):
         L      = self.L
         S      = self.S
         origin = self.origin
-
-##         print "T"
-##         print T
-##         print "L"
-##         print L*rad2deg2
-##         print "S"
-##         print S*rad2deg
-
         
         for atm in self:
             Utls = self.calc_Utls(T, L, S, atm.position - origin)
-
-##             if atm.fragment_id == "3":
-##                 print atm
-##                 print atm.position
-##                 print Utls * 10000
-##                 print
-
             yield atm, Utls
-
 
     def calc_R(self):
         """Calculate the R factor of U vs. Utls.
@@ -731,14 +886,53 @@ class TLSGroup(AtomList):
         return adv_Suij/num
         
     def calc_adv_DP2uij(self):
-        """Calculates the adverage Suij of U vs. Utls.
+        """Calculates the adverage dP2 of U vs. Utls.
         """
         num        = 0
         adv_DP2uij = 0.0
 
         for (atm, Utls) in self.iter_atm_Utls():
+            Uatm = atm.get_U()
+
             try:
-                adv_DP2uij += atm.calc_DP2uij(Utls)
+                adv_DP2uij += calc_DP2uij(Uatm, Utls)
+            except ValueError:
+                print "bad DP2uij"
+                pass
+            else:
+                num += 1
+
+        return adv_DP2uij / float(num)
+        
+    def calc_adv_normalized_DP2uij(self):
+        """Calculates the adverage DP2uij of the normalized U vs Utls.
+        """
+        U2B = 8.0*math.pi*math.pi
+        B2U = 1.0/U2B
+        
+        num        = 0
+        adv_DP2uij = 0.0
+
+        for (atm, Utls) in self.iter_atm_Utls():
+            eval,evec = eigenvectors(Utls)
+            eveci = inverse(evec)
+            
+            U2 = matrixmultiply(evec,matrixmultiply(Utls, transpose(evec)))
+            U2 = 0.1 * (U2 / trace(U2))
+            Utls = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+
+            U = atm.get_U().copy()
+            eval,evec = eigenvectors(U)
+            eveci = inverse(evec)
+            
+            U2 = matrixmultiply(evec,matrixmultiply(U, transpose(evec)))
+            U2 = 0.1 * (U2 / trace(U2))
+            U = matrixmultiply(eveci, matrixmultiply(U2, transpose(eveci)))
+
+            assert allclose(trace(U), trace(Utls))
+            
+            try:
+                adv_DP2uij += calc_DP2uij(U, Utls)
             except ValueError:
                 print "bad DP2uij"
                 pass
@@ -746,6 +940,18 @@ class TLSGroup(AtomList):
                 num += 1
 
         return adv_DP2uij/num
+
+    def shift_COR(self):
+        """Shift the TLS group to the center of reaction.
+        """
+        calcs       = self.calc_COR()
+        
+        self.origin = calcs["COR"].copy()
+        self.T      = calcs["T'"].copy()
+        self.L      = calcs["L'"].copy()
+        self.S      = calcs["S'"].copy()
+
+        return calcs
         
     def calc_COR(self):
         """Calculate new tensors based on the center for reaction.
@@ -791,7 +997,7 @@ class TLSGroup(AtomList):
         calcs["S^"] = cS
         
         ## ^rho: the origin-shift vector in the coordinate system of L
-        small = 0.10 * deg2rad2
+        small = 0.001 * deg2rad2
 
         cL1122 = cL[1,1] + cL[2,2]
         cL2200 = cL[2,2] + cL[0,0]
@@ -868,17 +1074,48 @@ class TLSGroup(AtomList):
         ## L' is just L
         calcs["L'"] = self.L.copy()
 
+
+        ### Verify that the the math we've just done is correct by
+        ### comparing the original TLS calculated U tensors with the
+        ### U tensors calculated from the COR
+        
+        T_cor = calcs["T'"].copy()
+        L_cor = calcs["L'"].copy()
+        S_cor = calcs["S'"].copy()
+
+        for atm in self:
+            x  = atm.position - self.origin
+            xp = atm.position - calcs["COR"]
+
+            Utls     = self.calc_Utls(self.T, self.L, self.S, x)
+            Utls_cor = self.calc_Utls(T_cor, L_cor, S_cor, xp)
+
+            assert allclose(Utls, Utls_cor)
+        ###
+
+
         ## now calculate the TLS motion description using 3 non
         ## intersecting screw axes, with one
 
         ## libration axis 1 shift in the L coordinate system
-        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
+        
+        if cL[0,0]>=small:
+            cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]])
+        else:
+            cL1rho = zeros(3)
 
         ## libration axis 2 shift in the L coordinate system
-        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
+        if cL[1,1]>=small:
+            cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]])
+        else:
+            cL2rho = zeros(3)
 
         ## libration axis 2 shift in the L coordinate system
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0])
+        if cL[2,2]>=small:
+            cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0])
+            
+        else:
+            cL3rho = zeros(3)
 
         ## libration axes shifts in the origional orthogonal
         ## coordinate system
@@ -901,7 +1138,27 @@ class TLSGroup(AtomList):
             calcs["L3_pitch"] = cS[2,2]/cL[2,2]
         else:
             calcs["L3_pitch"] = 0.0
-        
+
+        ## now calculate the reduction in T for the screw rotation axes
+        cTred = cT.copy()
+
+        for i in range(3):
+            for k in range(3):
+                if i==k:
+                    continue
+                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
+
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    if j==i:
+                        continue
+                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
+                
+
+        calcs["rT'"] = matrixmultiply(transpose(evec_L),
+                                      matrixmultiply(cTred, evec_L))
+
         return calcs
 
     def check_positive_eigenvalues(self):

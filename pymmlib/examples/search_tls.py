@@ -13,138 +13,6 @@ from mmLib.Structure import *
 from mmLib.FileLoader import *
 from mmLib.Extensions.TLS import *
 
-def usage():
-    print "search_tls.py <file path>"
-    print
-    print "description:"
-    print "    Compute a range of TLS tensors by walking the amino"
-    print "    acid backbone one atom at a time, spanning a continous"
-    print "    segment of 9 atoms (3 residues).  Each TLS calculation"
-    print "    produces one line of output with some useful statistics."
-    print "    Please do not assume this is a scientifically useful"
-    print "    thing to do!"
-    print
-
-
-def iter_mainchain(chain, atom_len):
-    """Yields a list of continous mainchain atoms length of atom_len, walking
-    the chain one atom at a time.
-    """
-    extra_dict = {}
-    atom_list  = []    
-
-    for res in chain.iter_amino_acids():
-
-        for name in ["N", "CA", "C"]:
-            try:
-                atm = res[name]
-            except KeyError:
-                raise StopIteration
-
-            atom_list.append(atm)
-
-            ## add side chain atoms
-            if atm.name == "CA":
-                extra_dict[atm] = []
-                for atmx in res:
-                    if atmx.name not in ["N", "CA", "C", "O"]:
-                        extra_dict[atm].append(atmx)
-
-            ## add C-O oxygen atoms
-            if atm.name == "C":
-                try:
-                    atm0 = res["O"]
-                except KeyError:
-                    pass
-                else:
-                    extra_dict[atm] = [atm0]
-                    
-            if len(atom_list) >= atom_len:
-                if  len(atom_list) > atom_len:
-                    atm0 = atom_list[0]
-                    atom_list = atom_list[1:]
-                    try:
-                        del extra_dict[atm0]
-                    except KeyError:
-                        pass
-
-                ## add extra atoms to the yield list
-                yield_list = []
-                for atmx in atom_list:
-                    yield_list.append(atmx)
-                    try:
-                        yield_list += extra_dict[atmx]
-                    except KeyError:
-                        pass
-
-                yield yield_list
-
-
-def iter_mainchain2(chain, atom_len):
-    """Yields a list of continous mainchain atoms length of atom_len, walking
-    the chain one atom at a time.
-    """
-    extra_dict = {}
-    atom_list  = []    
-
-    for res in chain.iter_amino_acids():
-
-        for name in ["N", "CA", "C"]:
-            try:
-                atm = res[name]
-            except KeyError:
-                raise StopIteration
-
-            atom_list.append(atm)
-
-            ## add C-O oxygen atoms
-            if atm.name == "C":
-                try:
-                    atm0 = res["O"]
-                except KeyError:
-                    pass
-                else:
-                    extra_dict[atm] = [atm0]
-                    
-            if len(atom_list) >= atom_len:
-                if  len(atom_list) > atom_len:
-                    atm0 = atom_list[0]
-                    atom_list = atom_list[1:]
-                    try:
-                        del extra_dict[atm0]
-                    except KeyError:
-                        pass
-
-                ## add extra atoms to the yield list
-                yield_list = []
-                for atmx in atom_list:
-                    yield_list.append(atmx)
-                    try:
-                        yield_list += extra_dict[atmx]
-                    except KeyError:
-                        pass
-
-                yield yield_list
-
-def segment_list(chain, seg_len):
-    """Simple amino acid segment generator.  Given a chain and segment length,
-    this returns a list of all continuos segments of amino acids of that length
-    in the chain, starting at the beginning of the chain.
-    """
-    segment = []
-    segment_list = []
-
-    for res in chain.iter_amino_acids():
-        segment.append(res)
-
-        if len(segment) < seg_len:
-            continue
-
-        segment_list.append(segment)
-        segment = segment[1:]
-
-    return segment_list
-
 
 def iter_segments(chain, seg_len):
     """
@@ -167,50 +35,82 @@ def iter_segments(chain, seg_len):
         yield atom_list
 
 
-def main(path):
-    print """\
-    ## Calculating TLS parameters for a single rigid body group composed of
-    ## all the amino acids
-    """
-    print "## <group num> <num atoms> <Badv> <R> <R/Uadv> <trT> <trL> <trS>"
+def main(**args):
+    print "## PATH: %s" % (args["path"])
+    print "## SEGMENT LENGTH: %d" % (args["seg_len"])
+    print "## MAINCHAIN ONLY: %s" % (str(args["mainchain_only"]))
+    print "## OMIT SINGLE BONDED ATOMS: %s" % (str(args["omit_single_bonded"]))
+    print "## res range::group num::num atoms::Badv::Aadv::R::dP2::Suij"
 
-    struct = LoadStructure(fil = path)
+    struct = LoadStructure(fil = args["path"])
 
     ## list of all TLS groups
     tls_list = []
 
     for chain in struct.iter_chains():
-        for seg_atom_list in iter_segments(chain, 4):
+
+        ## if a chain is specified, then skip all other chains
+        if args.get("chain")!=None and args.get("chain")!=chain.chain_id:
+            continue
+
+        for seg_atom_list in iter_segments(chain, args["seg_len"]):
 
             atm0 = seg_atom_list[0]
             atmX = seg_atom_list[-1]
             name = "%s-%s" % (atm0.fragment_id, atmX.fragment_id)
 
             ## new tls group for segment
-            tls = TLSGroup(seg_atom_list)
-            tls_list.append(tls)
+            tls = TLSGroup()
 
+            ## filter atoms being added to the group
+            ## add all atoms to the TLS group which are at full occupancy
+            for atm in seg_atom_list:
+
+                if atm.occupancy<1.0:
+                    continue
+
+                if args["mainchain_only"]==True and\
+                   atm.name not in ("N", "CA", "C", "O"):
+                    continue
+
+                if args["omit_single_bonded"]==True and\
+                   len(atm.bond_list)<=1:
+                    continue
+                
+                tls.append(atm)
+            ##
+
+            if len(tls)==0:
+                print "## empty group"
+                continue
+
+            tls_list.append(tls)
             tls.origin = tls.calc_centroid()
 
             ## calculate tensors and print
             tls.calc_TLS_least_squares_fit()
 
+            if args["omit_neg_eigen"]==True:
+                if min(eigenvalues(tls.T))<=0.0:
+                       continue
+                if min(eigenvalues(tls.L))<=0.0:
+                       continue
+            
+            calcs = tls.shift_COR()
             Rfact = tls.calc_R()
             dP2   = tls.calc_adv_DP2uij()
-            calcs = tls.calc_COR()
+            Suij  = tls.calc_adv_Suij()
 
-            trT   = trace(calcs["T'"])/3.0
-            trL   = trace(calcs["L'"])/3.0
-
-            trS   = ( abs(calcs["S'"][0,0]) + abs(calcs["S'"][1,1]) +\
-                      abs(calcs["S'"][2,2]) ) / 3.0
-
+            ## calculate adverage temp factor and anisotropy
             Uadv = 0.0
+            Aadv = 0.0
             for atm in tls:
-                if atm.U != None:
-                    Uadv += trace(atm.U)/3.0
+                Uadv += trace(atm.get_U())/3.0
+                Aadv += atm.calc_anisotropy()
 
             Uadv = Uadv / float(len(tls))
+            Badv = Uadv * 8.0 * math.pi**2
+            Aadv = Aadv / float(len(tls))
 
             ## print out results
             print str(name).ljust(8),
@@ -220,30 +120,110 @@ def main(path):
             x = "%d" % (len(tls))
             print x.ljust(8),
 
-            x = "%.3f" % (Uadv * 8 * math.pi * math.pi)
+            x = "%.3f" % (Badv)
             print x.ljust(10),
 
+            x = "%4.2f" % (Aadv)
+            print x.ljust(10),
+            
             x = "%.3f" % (Rfact)
             print x.ljust(8),
 
-            x = "%.3f" % (dP2 * 8.0)
+            x = "%.4f" % (dP2)
+            print x.ljust(10),
+
+            x = "%5.3f" % (Suij)
             print x.ljust(10),
             
-            x = "%.3f" % (trT)
-            print x.ljust(12),
-            x = "%.3f" % (trL * rad2deg2)
-            print x.ljust(12),
-            x = "%.3f" % (trS * rad2deg)
-            print x.ljust(12),
+            x = "%6.4f" % (trace(tls.T))
+            print x.ljust(10),
 
+            x = "%6.4f" % (trace(tls.L)*rad2deg2)
+            print x.ljust(10),
+
+
+            eval = eigenvalues(tls.L)
+
+            x = "%6.4f" % ((math.sqrt(eval[0]) +
+                            math.sqrt(eval[1]) +
+                            math.sqrt(eval[2]))*rad2deg)
+
+            print x.ljust(10),
+            
             print
             
 
+def usage():
+    print "search_tls.py - A utility to fit TLS groups to anisotropically"
+    print "                or isotropically refined protein structures for"
+    print "                motion analysis."
+    print
+    print "DESCRIPTION:"
+    print "    Compute a range of TLS tensors by walking the amino"
+    print "    acid backbone one residue at a time, spanning a continous"
+    print "    sequence segment of a given length.  Each TLS calculation"
+    print "    produces one line of output with some interesting statistics."
+    print "    Please do not assume this is a scientifically useful"
+    print "    thing to do!"
+    print
+    print "OPTIONS:"
+    print "    -l <length>"
+    print "        Set the length, in sequential amino acids, of the"
+    print "        TLS groups which will be fit to the protein. The"
+    print "        default is 3."
+    print "    -m  Search mainchain atoms only"
+    print "    -s  Omit atoms with only one bond"
+    print "    -n  Omit TLS groups with negitive L/T Eigenvalues"
+    print "    -c <chain_id>"
+    print "        Only search the given chain."
+    print
+
+
 if __name__ == "__main__":
+    import getopt
+
     try:
-        path = sys.argv[1]
-    except IndexError:
+        (opts, args) = getopt.getopt(sys.argv[1:], "l:msnc:")
+    except getopt.GetoptError:
         usage()
         sys.exit(1)
 
-    main(path)
+    ## program defaults
+    seg_len            = 3
+    mainchain_only     = False
+    omit_single_bonded = False
+    omit_neg_eigen     = False
+    chain              = None
+
+    ## read program options
+    for (opt, item) in opts:
+        if opt=="-l":
+            try:
+                seg_len = int(item)
+            except ValueError:
+                usage()
+                sys.exit(1)
+
+        if opt=="-m":
+            mainchain_only = True
+
+        if opt=="-s":
+            omit_single_bonded = True
+
+        if opt=="-n":
+            omit_neg_eigen = True
+
+        if opt=="-c":
+            chain = item
+
+    ## make sure a file name was entered
+    if len(args)!=1:
+        usage()
+        sys.exit(1)
+
+    main(path               = args[0],
+         seg_len            = seg_len,
+         mainchain_only     = mainchain_only,
+         omit_single_bonded = omit_single_bonded,
+         omit_neg_eigen     = omit_neg_eigen,
+         chain              = chain)
