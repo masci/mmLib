@@ -13,12 +13,14 @@ class UnitCell(object):
     parameters.
     """
     def __init__(self, a=1.0, b=1.0, c=1.0, alpha=90.0, beta=90.0, gamma=90.0):
-        self.a     = a
-        self.b     = b
-        self.c     = c
+        self.a = a
+        self.b = b
+        self.c = c
         self.alpha = alpha
-        self.beta  = beta
+        self.beta = beta
         self.gamma = gamma
+        self.orth_to_frac = self.calc_fractionalization_matrix()
+        self.frac_to_orth = self.calc_orthogonalization_matrix()
 
     def __str__(self):
         return "UnitCell(a=%f, b=%f, c=%f, alpha=%f, beta=%f, gamma=%f)" % (

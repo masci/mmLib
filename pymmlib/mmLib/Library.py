@@ -129,9 +129,9 @@ class Library:
     """Interface to chemical and monomer libraries.
     """
     def __init__(self):
-        from Data.Elements     import ElementMap
-        from Data.AminoAcids   import AminoAcidMap
-        from Data.NucleicAcids import NucleicAcidMap
+        from mmLib.Data.Elements     import ElementMap
+        from mmLib.Data.AminoAcids   import AminoAcidMap
+        from mmLib.Data.NucleicAcids import NucleicAcidMap
 
         self.element_map      = ElementMap
         self.amino_acid_map   = AminoAcidMap

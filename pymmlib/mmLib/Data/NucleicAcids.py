@@ -6,7 +6,7 @@
 """Library of nucleic acid residues.
 """
 
-from Library import NucleicAcid
+from mmLib.Library import NucleicAcid
 
 
 NucleicAcidNames = [

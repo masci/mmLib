@@ -25,7 +25,7 @@ def run_setup():
            author_email = "jpaint@u.washington.edu",
            url          = "http://pymmlib.sourceforge.net/",
            
-           packages     = ["mmLib"] )
+           packages     = ["mmLib", "mmLib/Data", "mmLib/Extensions"] )
 
 
 def make_doc():

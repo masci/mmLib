@@ -8,7 +8,7 @@
 """Library of atomic elements.
 """
 
-from Library import Element
+from mmLib.Library import Element
 
 ElementNames = [
     'H', 'He', 'HE', 'Li', 'LI', 'Be', 'BE', 'B', 'C', 'N', 'O', 'F', 'Ne',

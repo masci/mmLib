@@ -5,7 +5,7 @@
 
 """Library of amino acid residues."""
 
-from Library import AminoAcid
+from mmLib.Library import AminoAcid
 
 AminoAcidNames = [
     "ALA", "VAL", "LEU", "ILE", "GLY", "PRO", "CYS", "MET", "HIS",

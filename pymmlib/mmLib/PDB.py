@@ -34,7 +34,9 @@ class PDBRecord(dict):
             ln = ln.ljust(start - 1)
                 
             ## access the namespace of this class to write the field
-            s = self.get(field) or ""
+            s = self.get(field)
+	    if s == None:
+		s = ""
 
             ## convert integer and float types
             if   ftype == "string":
