@@ -35,6 +35,8 @@ class Raster3DDriver(object):
     """
     def __init__(self):
         self.render_png_path  = "ray.png"
+        self.render_stdin     = None
+        
         self.glr_init_state()
 
     def glr_set_render_stdin(self, stdin):
@@ -46,8 +48,6 @@ class Raster3DDriver(object):
     def glr_init_state(self):
         """Re-initalizes driver state variables.
         """
-        self.render_stdin     = None
-
         self.object_list      = []
         
         self.matrix           = identity(4, Float)
@@ -95,6 +95,10 @@ class Raster3DDriver(object):
         self.width            = width
         self.height           = height
         self.zoom             = zoom
+
+        self.front_clip       = near
+        self.back_clip        = far
+        
         self.bg_color_rgbf    = bg_color_rgbf
 
         ## the lighting model for Raster3D is not quite the same as
@@ -103,8 +107,12 @@ class Raster3DDriver(object):
         
         self.ambient          = ambient_light  / total_light
         self.specular         = specular_light / total_light 
-        self.phong            = 5
+        self.phong            = 3
 
+        ## initial material state
+        self.object_list.append(
+            (8, 0.0, 0, self.front_clip, self.back_clip))
+                
     def glr_construct_header(self):
         """Creates the header for the render program.
         """
@@ -147,6 +155,10 @@ class Raster3DDriver(object):
             "* 	      (free format triangle and plane descriptors)",
             "* 	      (free format sphere descriptors",
             "* 	      (free format cylinder descriptors)",
+            "16",
+            "FRONTCLIP %8.3f" % (self.front_clip),
+            "16",
+            "BACKCLIP  %8.3f" % (self.back_clip),
             ]
 
     def glr_render_end(self):
@@ -159,7 +171,7 @@ class Raster3DDriver(object):
             stdout, stdin, stderr = popen2.popen3(
                 (RENDER_PATH,
                  "-png", self.render_png_path,
-                 "-gamma", "1.2"), 8192)
+                 "-gamma", "1.5"), 8192)
 
         ## add required hader for the render program
         self.glr_construct_header()
@@ -169,11 +181,6 @@ class Raster3DDriver(object):
                 stdin.write(ln + "\n")
             self.glr_write_objects(stdin)
         except IOError:
-            print "Raster3D Error:"
-            print "STDOUT"
-            print stdout.read()
-            print "STDERR"
-            print stderr.read()
             return
 
         ## close stdin to the render program
@@ -251,9 +258,12 @@ class Raster3DDriver(object):
 
             ## material properties
             elif gob_type==8:
+
                 stdin.write(
                     "%d\n"\
-                    "-1 -1  -1 -1 -1  %4.2f  %1d 0 0 0\n" % gob)
+                    "-1 -1  -1 -1 -1  %4.2f  %1d 0 0 2\n"\
+                    "FRONTCLIP %8.3f\n"\
+                    "BACKCLIP  %8.2f\n" % gob)
 
             ## ellipse
             elif gob_type==14:                
@@ -358,9 +368,13 @@ class Raster3DDriver(object):
             self.material_alpha = 1.0
 
             if self.light_two_sides==True:
-                self.object_list.append((8, 0.0, 2))
+                self.object_list.append(
+                    (8, 0.0, 2,
+                     self.front_clip, self.back_clip))
             else:
-                self.object_list.append((8, 0.0, 0))
+                self.object_list.append(
+                    (8, 0.0, 0,
+                     self.front_clip, self.back_clip))
 
     def glr_set_material_rgba(self, r, g, b, a):
         """Creates a stock rendering material colored according to the given
@@ -374,9 +388,13 @@ class Raster3DDriver(object):
             self.material_alpha = a
 
             if self.light_two_sides==True:
-                self.object_list.append((8, 1.0 - self.material_alpha, 2))
+                self.object_list.append(
+                    (8, 1.0 - self.material_alpha, 2,
+                     self.front_clip, self.back_clip))
             else:
-                self.object_list.append((8, 1.0 - self.material_alpha, 0))
+                self.object_list.append(
+                    (8, 1.0 - self.material_alpha, 0,
+                     self.front_clip, self.back_clip))
 
     def glr_vertex(self, vertex):
         """
@@ -567,13 +585,17 @@ class Raster3DDriver(object):
         """
         """
         self.light_two_sides = True
-        self.object_list.append((8,  1.0 - self.material_alpha, 2))
+        self.object_list.append(
+            (8,  1.0 - self.material_alpha, 2,
+             self.front_clip, self.back_clip))
         
     def glr_light_two_sides_disable(self):
         """
         """
         self.light_two_sides = False
-        self.object_list.append((8,  1.0 - self.material_alpha, 0))
+        self.object_list.append(
+            (8,  1.0 - self.material_alpha, 0,
+             self.front_clip, self.back_clip))
         
     def glr_line(self, position1, position2):
         """Draws a single line.

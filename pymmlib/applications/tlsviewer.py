@@ -126,6 +126,22 @@ class DictListTreeView(gtk.TreeView):
 ### OpenGL binding in GTK 2.0
 ###
 
+
+class R3DDialog(gtk.Dialog):
+    """Open a dialog for rendering the image using Raster3D.
+    """
+    def __init__(self, png_path):
+        gtk.Dialog.__init__(self, "Raster3D Raytrace", None, 0)
+        self.set_resizable(gtk.FALSE)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        
+        self.image = gtk.Image()
+        self.image.set_from_file(png_path)
+        self.vbox.pack_start(self.image, gtk.TRUE, gtk.TRUE, 0)
+
+        self.show_all()
+
+
 class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
     def __init__(self):
         self.in_drag = False
@@ -235,8 +251,16 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
             return gtk.FALSE
 
     def gtk_glv_button_press_event(self, glarea, event):
+
+        ## Ray-Trace
         if event.type==gtk.gdk._2BUTTON_PRESS:
+            #self.r3d_driver.glr_set_render_stdin(open("raytrace.r3d","w"))
+            self.r3d_driver.glr_set_render_png_path("/tmp/raytrace.png")
             self.glv_render_one(self.r3d_driver)
+            
+            dialog = R3DDialog("/tmp/raytrace.png")
+            dialog.run()
+            dialog.destroy()
             return
 
         self.in_drag = True

@@ -119,7 +119,7 @@ class OpenGLDriver(object):
 
         zoom  = zoom / 2.0
         ratio = float(height) / float(width)
-        glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, near, far)
+        glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, -near, -far)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         

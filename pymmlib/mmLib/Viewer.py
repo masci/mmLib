@@ -2497,8 +2497,8 @@ class GLViewer(GLObject):
             m2   = min(min_x, min(min_y, min_z))
             zoom = m1 - m2
 
-            near = - zoom / 2.0
-            far  =   zoom / 2.0
+            near = max_z
+            far  = min_z
 
             self.properties.update(
                 cor  = centroid,
