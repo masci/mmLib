@@ -34,9 +34,10 @@ MONOMER_RES_NAME_CACHE = {}
 ##
 
 class ElementDesc(object):
-    """
+    """Element description class returned by library_get_element_desc().
     """
     def __init__(self):
+        self.cif_data             = None
         self.name                 = None
         self.symbol               = None
         self.group                = None
@@ -52,9 +53,9 @@ class ElementDesc(object):
 
 
 class MonomerDesc(object):
+    """Monomer description class returned by library_get_monomer_desc().
     """
-    """
-    def __init__(self, **args):
+    def __init__(self):
         self.res_name           = None
         self.full_name          = None
         self.one_letter_code    = None
@@ -263,7 +264,7 @@ def library_get_monomer_desc(res_name):
 def library_is_amino_acid(res_name):
     """Returns True if the res_name is a amino acid.
     """
-    assert type(res_name) == StringType
+    assert type(res_name)==StringType
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc==None:
@@ -275,7 +276,7 @@ def library_is_amino_acid(res_name):
 def library_is_nucleic_acid(res_name):
     """Returns True if the res_name is a nucleic acid.
     """
-    assert type(res_name) == StringType
+    assert type(res_name)==StringType
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc==None:
@@ -287,7 +288,7 @@ def library_is_nucleic_acid(res_name):
 def library_is_water(res_name):
     """Return True if the res_name is water.
     """
-    assert type(res_name) == StringType
+    assert type(res_name)==StringType
     if res_name=="HOH" or res_name=="WAT":
         return True
     return False

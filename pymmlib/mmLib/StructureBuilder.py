@@ -30,12 +30,15 @@ class StructureBuilder(object):
         
         ## allocate a new Structure object for building if one was not
         ## passed to the StructureBuilder
-        self.struct = args.get("structure") or \
-                      args.get("struct") or \
-                      Structure()
+        if args.get("structure")!=None:
+            self.struct = args["structure"]
+        elif args.get("struct")!=None:
+            self.struct = args["struct"]
+        else:
+            self.struct = Structure()
 
         ## set structure_id
-        if args.get("structure_id"):
+        if args.get("structure_id")!=None:
             self.struct.structure_id = args["structure_id"]
 
         ## options

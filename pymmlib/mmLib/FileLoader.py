@@ -39,7 +39,6 @@ def LoadStructure(**args):
 
     fil = <file object or path; required>
     format = <PDB|CIF; defaults to PDB>
-    library = <mmLib.Library class; defaults to mmLib.Library>
     struct = <mmLib.Structure object to build on; defaults to createing new>
     build_properties = <tuple of strings for the StructureBuilder>
     """
@@ -50,7 +49,6 @@ def LoadStructure(**args):
 
     update_cb        = args.get("update_cb")
     format           = args.get("format") or decode_format(fil)
-    library          = args.get("library")
     struct           = args.get("struct") or args.get("structure")
     build_properties = args.get("build_properties", ())
 
@@ -58,7 +56,6 @@ def LoadStructure(**args):
         return PDBStructureBuilder(
             fil              = fil,
             update_cb        = update_cb,
-            library          = library,
             build_properties = build_properties,
             struct           = struct).struct
 
@@ -66,7 +63,6 @@ def LoadStructure(**args):
         return mmCIFStructureBuilder(
             fil              = fil,
             update_cb        = update_cb,
-            library          = library,
             build_properties = build_properties,
             struct           = struct).struct
 
