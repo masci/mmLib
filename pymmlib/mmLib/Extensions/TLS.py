@@ -13,7 +13,8 @@ from Structure import *
 
 class RefmacTLSFile:
     """This class reads and writes TLS information stored in the same
-    format as REFMAC from CCP4 >= 4.1.0."""
+    format as REFMAC from CCP4 >= 4.1.0.
+    """
 
     re_RANGE  = re.compile(
         "^RANGE\s+\'([A-Z])\s*([^\']+)\'\s+\'([A-Z])\s*([^\']+)\'\s*(\w+).*$")
@@ -51,8 +52,8 @@ class RefmacTLSFile:
 
     def load(self, fil):
         """Read the TLS information from file object fil, and store that
-        inforamtion in the class instance variables."""
-
+        inforamtion in the class instance variables.
+        """
         self.tls_list = []
 
         while 1:
@@ -61,7 +62,7 @@ class RefmacTLSFile:
             if not ln.strip(): continue
 
             if ln[:3] == "TLS":
-                tls                    = TLS()
+                tls = TLS()
                 residue_selection_list = []
 
                 tls.name = ln[4:].strip()
@@ -111,7 +112,8 @@ class RefmacTLSFile:
         """For each TLS group in the Refmac input file, there are one
         or more RANGE records describing the residues included in the
         TLS group.  This method uses these ranges to set each TLS
-        instance tls.atom_list method."""
+        instance tls.atom_list method.
+        """
         pass
 
 
@@ -119,7 +121,6 @@ class TLSGroup(AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
     """
-
     def __init__(self):
         AtomList.__init__(self)
 
@@ -229,12 +230,12 @@ class TLSGroup(AtomList):
             u23 = u11 + 5
 
             ## set the U vector
-            b[u11, 0] = atm.U[0]
-            b[u22, 0] = atm.U[1]
-            b[u33, 0] = atm.U[2]
-            b[u12, 0] = atm.U[3]
-            b[u13, 0] = atm.U[4]
-            b[u23, 0] = atm.U[5]
+            b[u11, 0] = atm.U[0,0]
+            b[u22, 0] = atm.U[1,1]
+            b[u33, 0] = atm.U[2,2]
+            b[u12, 0] = atm.U[0,1]
+            b[u13, 0] = atm.U[0,2]
+            b[u23, 0] = atm.U[1,2]
 
             ## C Matrix
             xx = x*x

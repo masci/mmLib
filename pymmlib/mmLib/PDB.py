@@ -50,15 +50,14 @@ class PDBRecord(dict):
                 raise PDBError, "INVALID TYPE: %s" % (ftype)
 
             ## check for maximum length
-            l = end - start + 1
-            if len(s) > l:
-                raise PDBError, "field=%s value=%s len=%d > max=%d" % (
-                    field, s, len(s), l)
+            flen = end - start + 1
+            if len(s) > flen:
+                s = s[:flen]
 
             if just == "ljust":
-                ln += s.ljust(l)
+                ln += s.ljust(flen)
             else:
-                ln += s.rjust(l)
+                ln += s.rjust(flen)
 
         return ln
 
@@ -1108,6 +1107,8 @@ class PDBFileBuilder:
         self.atom_serial_map = {}
 
         self.add_header_records()
+        self.add_title_records()
+        self.add_coord_transform_records()
         self.add_atom_records()
 
     def new_atom_serial(self, atm):
@@ -1126,7 +1127,16 @@ class PDBFileBuilder:
         return atom_serial_num
 
     def add_header_records(self):
-        self.add_coord_transform_records()
+        header = HEADER()
+        self.pdb_file.append(header)
+        header["idCode"] = self.struct.exp_data.get("id", "XXX")
+        header["depDate"] = self.struct.exp_data.get("date", "")
+        header["classification"] = self.struct.exp_data.get("pdbx_keywords","")
+
+    def add_title_records(self):
+        title = TITLE()
+        self.pdb_file.append(title)
+        title["title"] = self.struct.exp_data["title"]
 
     def add_coord_transform_records(self):
         ## add the CRYST1 and unit-cell related records

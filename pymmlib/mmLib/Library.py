@@ -19,7 +19,7 @@ class Element(object):
                  atomic_weight           = 0.0,
                  atomic_radius           = 0.0,
                  covalent_radius         = 0.0,
-                 van_der_waals_radius    = 0.0,
+                 van_der_waals_radius    = 2.0,
                  electronegativity       = 0.0):
 
         self.name                 = name

@@ -256,20 +256,29 @@ class StructureBuilder:
         try: self.structure.space_group = SpaceGroup(ucell_map["space_group"])
         except KeyError: pass
 
-    def load_site(self, site_id, site_list):
+    def load_site(self, site_map):
         """Called by the implementation of load_metadata to load information
         about one site in the structure.  Sites are groups of residues
         which are of special interest.  This usually means active sites
-        of enzymes and such.
+        of enzymes and such.  The structure of the site_map is this: the
+        keys are the ID of the site (integer), and the values are a list
+        of maps with values under the keys "id"(redundent), "chain_id",
+        and "fragment_id".
         """
-        site = Site(name = site_id)
-        self.structure.sites.append(site)
-        for (chain_id, frag_id) in site_list:
-            try:
-                frag = self.structure[chain_id][frag_id]
-            except KeyError:
-                continue
-            site.append(frag)
+        for (site_id, sentry_list) in site_map.items():
+            site = Site(name = site_id)
+            self.structure.sites.append(site)
+
+            for sentry in sentry_list:
+                chain_id = sentry["chain_id"]
+                fragment_id = sentry["fragment_id"]
+                try:
+                    frag = self.structure[chain_id][fragment_id]
+                except KeyError:
+                    debug("load_site: chain_id=%s fragment_id=%s not found"%(
+                        chain_id, fragment_id))
+                else:
+                    site.append(frag)
 
     def load_bond(self, bond_map):
         """Call by the implementation of load_metadata to load bond
@@ -464,8 +473,8 @@ class PDBStructureBuilder(StructureBuilder):
         self.load_info(info_map)
 
         ## load the SITE information if found
-        for (site_id, site_list) in site_map.items():
-            self.load_site(site_id, site_list)
+        if site_map:
+            self.load_site(site_map)
 
         ## load the unit cell parameters if found
         if ucell_map:
@@ -523,10 +532,6 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["z"] = rec.get("z", "")
 
     def process_SITE(self, site_map, rec):
-        site_id = rec["siteID"]
-        if not site_map.has_key(site_id):
-            site_map[site_id] = []
-
         for i in range(1, 5):
             chain_key = "chainID%d" % (i)
             frag_key = "seq%d" % (i)
@@ -536,10 +541,16 @@ class PDBStructureBuilder(StructureBuilder):
                not rec.has_key(frag_key) or \
                not rec.has_key(icode_key):
                 break
-            
-            site_map[site_id].append(
-                (rec[chain_key],
-                 self.get_fragment_id(rec, frag_key, icode_key)))
+
+            sentry = {}
+            self.setmaps(rec, "siteID", sentry, "id")
+            self.setmaps(rec, chain_key, sentry, "chain_id")
+            sentry["fragment_id"]=self.get_fragment_id(rec,frag_key,icode_key)
+
+            try:
+                site_map[sentry["id"]].append(sentry)
+            except KeyError:
+                site_map[sentry["id"]] = [sentry]
 
     def process_SSBOND(self, bond_map, rec):
         bond_map["type"] = "disulfide"
@@ -733,28 +744,19 @@ class mmCIFStructureBuilder(StructureBuilder):
             site_map = {}
         
             for struct_site_gen in self.cif_data["struct_site_gen"]:
-                ## extract data for chain_id and seq_id
-                site_id  = struct_site_gen["site_id"]
+                sentry = {}
+                self.setmaps(struct_site_gen, "site_id", sentry, "id")
+                self.setmaps(struct_site_gen, ["auth_asym_id","label_asym_id"],
+                             sentry, "chain_id")
+                self.setmaps(struct_site_gen, ["auth_seq_id","label_seq_id"],
+                             sentry, "fragment_id")
 
-                chain_id = struct_site_gen["auth_asym_id"]
-                if chain_id in ["?", "."]:
-                    chain_id = struct_site_gen["label_asym_id"]
-
-                frag_id  = struct_site_gen["auth_seq_id"]
-                if frag_id in ["?", "."]:
-                    frag_id = struct_site_gen["label_seq_id"]
-
-                ## skip bad rows
-                if chain_id in ["?", "."] or frag_id in ["?", "."]:
-                    continue
+                try:
+                    site_map[sentry["id"]].append(sentry)
+                except KeyError:
+                    site_map[sentry["id"]] = [sentry]
                     
-                if not site_map.has_key(site_id):
-                    site_map[site_id] = []
-
-                site_map[site_id].append((chain_id, frag_id))
-
-            for (site_id, site_list) in site_map.items():
-                self.load_site(site_id, site_list)
+            self.load_site(site_map)
 
         ## UNIT CELL
         ucell_map = {}
