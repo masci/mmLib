@@ -139,7 +139,7 @@ def warning(x):
     or a empty string for no action.  It writes to the file
     mmlib_warning.txt by default.  
     """
-    str  = x + "\n"
+    x    = x + "\n"
     path = os.environ.get("MMLIB_WARNING", "mmlib_warning.txt")
 
     try:
@@ -161,7 +161,7 @@ def debug(x):
     or a empty string for no action.  It writes to the file
     mmlib_warning.txt by default.
     """
-    str  = x + "\n"
+    x    = x + "\n"
     path = os.environ.get("MMLIB_DEBUG", "mmlib_debug.txt")
 
     try:

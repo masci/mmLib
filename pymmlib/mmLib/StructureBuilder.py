@@ -232,6 +232,9 @@ class StructureBuilder(object):
                            atm.fragment_id,
                            atm.res_name)
 
+            ## if the atom fragment id matches the current fragment id
+            ## and doesn't conflict with any other atom name in the fragment
+            ## then add it to the fragment
             if atm_frag_id == frag_id and not name_dict.has_key(atm_id):
                 frag.append(atm)
                 name_dict[atm_id] = True
@@ -284,8 +287,9 @@ class StructureBuilder(object):
             ## if we are not out of chain IDs, use the new chain ID and
             ## reset the fragment_id
             if chain_id != None:
-                new_chain_id = chain_id
+                new_chain_id    = chain_id
                 fragment_id_num = 0
+
             elif new_chain_id == None or fragment_id_num == None:
                 print "name_service: unable to assign any chain ids"
                 sys.exit(1)
@@ -325,9 +329,13 @@ class StructureBuilder(object):
                     ## assign new chain_id and fragment_id, than place the
                     ## atom in the structure
                     for atm in frag:
-                        atm.chain_id = new_chain_id
+                        atm.chain_id    = new_chain_id
                         atm.fragment_id = str(fragment_id_num)
                         self.place_atom(atm)
+
+            ## logging
+            warning("NS: Added ChainID: %s with %3d Residues of Type: %s" % (
+                new_chain_id, fragment_id_num, cr_key[1]))
 
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to
