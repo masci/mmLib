@@ -2249,6 +2249,7 @@ class MainWindow(object):
                     tab = tabx
                     break
 
+        self.present_gl_prop_browser(tab)
         tab["gl_prop_browser"].select_gl_object(gl_object)
 
     def gl_prop_browser_destroy(self, widget, tab):

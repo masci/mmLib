@@ -712,7 +712,6 @@ class TLSGroup(AtomList):
         num      = 0
         mean_S   = 0.0
         MSD      = 0.0
-
         
         S_dict = {}
         for atm, Utls in self.iter_atm_Utls():
@@ -1387,6 +1386,169 @@ class TLSStructureAnalysis(object):
 
         return stats_list2
 
+    def iter_chain_split(self, chain, num_splits, min_width):
+        """Iterates all possible ways to split a Chain in the number
+        of places given by the num_splits argument, except any wich
+        result segments with fewer residues than min_width. 
+        """
+        if num_splits>0:
+            assert len(chain)>=((num_splits+1)*min_width)
+
+            split_point = min_width
+            end_point   = len(chain) - ((num_splits)*min_width)
+
+            while split_point<=end_point:
+                seg1 = chain[:split_point]
+                seg2 = chain[split_point:]
+
+                for slist in self.iter_chain_split(
+                    seg2, num_splits-1, min_width):
+                    slist.insert(0, seg1)
+                    yield slist
+
+                split_point += 1
+        else:
+            yield [chain]
+
+    def brute_force_TLS_segments(self, **args):
+        """
+        """        
+        ## arguments
+        origin                  = args.get("origin_of_calc")
+        num_splits              = args.get("segments", 5) - 1
+        residue_width           = args.get("min_res_width", 6)
+        use_side_chains         = args.get("use_side_chains", True)
+        filter_neg_eigen_values = args.get("filter_neg_eigen_values", True)
+        include_hydrogens       = args.get("include_hydrogens", False)
+        include_frac_occupancy  = args.get("include_frac_occupancy", False)
+        include_single_bond     = args.get("include_single_bond", True)
+
+        def tls_fit_segment(segment):
+            stats             = {}
+            stats["tls"]      = TLSGroup()
+            stats["residues"] = segment
+            stats["segment"]  = segment
+            stats["name"]     = "%s-%s" % (
+                segment[0].fragment_id, segment[-1].fragment_id)
+
+            tls      = stats["tls"]
+            tls.name = stats["name"]
+
+            ## add atoms into the TLSGroup
+            ## filter the atoms going into the TLS group
+            for atm in segment.iter_atoms():
+                if self.atom_filter(atm, **args):
+                    tls.append(atm)
+
+            tls.origin = tls.calc_centroid()
+            stats["calc_origin"] = tls.origin
+
+            self.tls_fit_stats(tls, stats)
+
+            if not self.check_positive_eigen(stats):
+                return None
+
+            ## calculate the total DP2
+            dp2 = 0.0
+            for atm, Utls in tls.iter_atm_Utls():
+                Uatm = atm.get_U()
+                dp2 += calc_DP2uij(Uatm, Utls)
+            stats["total_DP2"] = dp2
+
+            return stats
+
+        ## keep a dictionary of segments known to have negitive eigenvalues
+        bad_segments = {}
+        
+        ## list of all TLS groups
+        best_splits = []
+
+        for chain in self.struct.iter_chains():
+
+            ## don't bother with non-biopolymers
+            if not chain.has_standard_residues():
+                continue
+
+            for segment_set in self.iter_chain_split(
+                chain, num_splits, residue_width):
+
+                print "SPLIT: ",
+
+                bad_split = False
+
+                for seg in segment_set:
+                    seg_key = "%s-%s" % (
+                        seg[0].fragment_id,seg[-1].fragment_id)
+                    print seg_key," ",
+                    if bad_segments.has_key(seg_key):
+                        bad_split = True
+                        break
+
+                if bad_split:
+                    print "[NEG::%s]" % (seg_key)
+                    continue
+
+
+                ## keep data on this split
+                split_info = {
+                    "segment_set":   segment_set,
+                    "total_DP2":  0.0,
+                    "stats_list": [],
+                    }
+
+                ## TLS fit the segments
+                tls_fit_ok = True
+                for segment in segment_set:
+
+                    stats = tls_fit_segment(segment)
+                    if stats==None:
+                        seg_key = "%s-%s" % (
+                            segment[0].fragment_id, segment[-1].fragment_id)
+                        bad_segments[seg_key] = True
+                        tls_fit_ok = False
+                        break
+
+                    split_info["stats_list"].append(stats)
+                    split_info["total_DP2"] += stats["total_DP2"]
+
+                ## this flag is false if one of the segments
+                ## doesn't heave positive eigenvalues
+                if not tls_fit_ok:
+                    print "[NEW NEG::%s]" % (seg_key)
+                    continue
+
+                print "%f" % (split_info["total_DP2"])
+
+                ## if the TLS fit doesn't have negitive eigenvalues
+                ## then place it in the best list
+
+                dp2 = split_info["total_DP2"]
+
+                try:
+                    best_split0 = best_splits[-1]
+                except IndexError:
+                    best_splits.append(split_info)
+                    continue
+
+                keep = 10
+                
+                if len(best_splits)==keep and best_split0["total_DP2"]<dp2:
+                    continue
+
+                added = False
+                for i in range(len(best_splits)):
+                    if best_splits[i]["total_DP2"]<dp2:
+                        added = True
+                        best_splits.insert(i, split_info)
+                        break
+
+                if not added:
+                    best_splits.append(split_info)
+
+                if len(best_splits)>keep:
+                    best_splits = best_splits[1:]
+
+        return best_splits
 
 
 ## <testing>
