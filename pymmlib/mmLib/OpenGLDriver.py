@@ -6,6 +6,7 @@
 """
 from __future__  import generators
 
+import sys
 import copy
 
 from OpenGL.GL      import *
@@ -18,6 +19,7 @@ from Structure      import *
 try:
     import glaccel
 except ImportError:
+    sys.stderr.write("ERROR: cannot load glaccel\n")
     GLACCEL_EXISTS = False
 else:
     GLACCEL_EXISTS = True

@@ -126,6 +126,7 @@ def mk_tab2():
     tab2.add_column("L",            "tr(L)",   6, "%5.2f")
     tab2.add_column("lsqr",         "LSQR",    6, "%6.4f")
     tab2.add_column("pv_lsqr",      "LSQRpv",  6, "%6.4f")
+    tab2.add_column("params",       "Params",  4, "%d")
     tab2.add_column("lsq_ratio",    "Ratio",   6, "%4.2f")
     tab2.add_column("pv_Tr",        "pv_t(Tr)",   8, "%6.4f")
     tab2.add_column("pv_L",         "pv_tr(L)",   8, "%5.2f")
@@ -152,6 +153,7 @@ def prnt_stats2(tab, stats):
         "Tr":             trace(stats["rT'"]),
         "L":              trace(stats["L'"])*RAD2DEG2,
         "lsqr":           lsqr,
+        "params":         stats["ca_pivot"]["params"],
         "pv_lsqr":        pv_lsqr,
         "lsq_ratio":      pv_lsqr / lsqr,
         "pv_Tr":          trace(pv_T),

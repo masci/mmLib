@@ -1286,8 +1286,14 @@ def set_L_A(A, i, j, x, y, z, w):
     A[u23, L13] = w * xy
     A[u23, L12] = w * xz
 
-    
-def calc_CA_pivot_TLS_least_squares_fit_real(segment, weight_dict=None):
+pivot_side_chain_dict = {
+    "TYR": "CB",
+    "PHE": "CB",
+    "TRP": "CB",
+    "HIS": "CB",
+    "ARG": "CA" }
+
+def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
     the TLS model with amino acid side chains which can pivot
     about the CA atom.  This model uses 20 TLS parameters and 6
@@ -1390,11 +1396,14 @@ def calc_CA_pivot_TLS_least_squares_fit_real(segment, weight_dict=None):
     ret_dict["lsq_residual"] = lsq_residual
 
     ret_dict["num_atoms"] = num_atoms
+    ret_dict["params"] = params
 
     return ret_dict
 
-    
-def calc_CA_pivot_TLS_least_squares_fit(segment, weight_dict=None):
+
+## this one splits the segment in half and uses a overall TLS group
+## and a TLS group for both halves, and pivots side chains at the CA atom
+def calc_CA_pivot_TLS_least_squares_fit_2(segment, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
     the TLS model with amino acid side chains which can pivot
     about the CA atom.  This model uses 20 TLS parameters and 6
@@ -2262,7 +2271,8 @@ class TLSStructureAnalysis(object):
 
                 ## create the TLSGroup
                 pv_struct = Structure()
-                pv_seg    = Chain(chain_id=segment.chain_id, model_id=segment.model_id)
+                pv_seg    = Chain(chain_id=segment.chain_id,
+                                  model_id=segment.model_id)
                 pv_struct.add_chain(pv_seg)
                 
                 tls_group = TLSGroup()

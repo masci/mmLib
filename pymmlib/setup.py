@@ -87,12 +87,18 @@ def find_lib_paths(library, include):
         shared_libs = glob.glob(lib_glob)
 
         if len(shared_libs)==0:
+            print lib_glob
             continue
+
+        print lib_glob + "*"
 
         found_lib_path = lib_path
         found_library  = shared_libs[0]
         
         inc_check = os.path.join(inc_path, include)
+
+	print "Checking Library/Include: %s %s" % (found_library, inc_check)
+
         if not os.path.isfile(inc_check):
             continue
 
@@ -175,7 +181,7 @@ def glaccel_extension():
 
         {"library":    "GLU",
          "header":     "GL/glu.h",
-         "desc":       "OpenGL Library"},
+         "desc":       "OpenGLU Library"},
         
         {"library":    "glut",
          "header":     "GL/glut.h",

@@ -1880,7 +1880,7 @@ class GLAtomList(GLDrawList):
         """Draw thermal axes at the given ADP probability level.
         """
         ## driver optimization
-        glr_Uaxes = self.driver.glr_sphere
+        glr_Uaxes = self.driver.glr_Uaxes
         ##
         
         prob = self.properties["adp_prob"]

@@ -13,10 +13,10 @@ import math
 import string
 import gzip
 
-from types         import *
+from types import *
 
 ## use old Numeric libraries, or the new Numarray
-use_numarray = True
+use_numarray = False
 
 if use_numarray:
     from numarray import *
