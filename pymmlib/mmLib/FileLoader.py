@@ -887,7 +887,7 @@ class StructureToPDBSaver:
 
         ## waters shall always be in chain S
         self.water_chain = "S"
-        self.water_res_seq = 1
+        self.water_res_seq = 0
 
         ## list of chain ID's available for use
         ## "S" should not be in the list -- it's the default solvent chain
@@ -901,6 +901,7 @@ class StructureToPDBSaver:
 
         ## write out the structure
         for mol in self.structure.moleculeIterator():
+
             if mol.getType() == "polymer":
                 self.molecule_polymer(mol)
 
@@ -915,7 +916,9 @@ class StructureToPDBSaver:
 
     def molecule_polymer(self, mol):
         for chain in mol.chainIterator():
+
             for aa_res in chain.aminoAcidResidueIterator():
+
                 for atm in aa_res.atomIterator():
                     resName = aa_res.getName()
                     chainID = chain.getID()
@@ -955,25 +958,27 @@ class StructureToPDBSaver:
 
 
     def molecule_water(self, mol):
+        self.water_res_seq = self.water_res_seq + 1
+
         for atm in mol.atomIterator():
             altLoc = ""
-            conf = atm.getConformation()
-            if conf:
-                altLoc = conf.getID()
+            conf   = atm.getConformation()
+            if conf: altLoc = conf.getID()
             
             self.add_hetatm(atm, "HOH", self.water_chain,
                             self.water_res_seq, "", altLoc)
-            self.water_res_seq += 1
 
 
     def add_hetatm(self, atm, resName, chainID, resSeq, iCode, altLoc):
+        pdb_atom = PDB.HETATM()
         self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
-                       PDB.HETATM())
+                       pdb_atom)
 
 
     def add_atom(self, atm, resName, chainID, resSeq, iCode, altLoc):
+        pdb_atom = PDB.ATOM()
         self.add_atom2(atm, resName, chainID, resSeq, iCode, altLoc,
-                       PDB.ATOM())
+                       pdb_atom)
         
 
     def add_atom2(self, atm, resName, chainID, resSeq, iCode, altLoc,
@@ -981,31 +986,32 @@ class StructureToPDBSaver:
         
         self.pdb_file.pdbrecord_list.append(pdb_atom)
 
-        pdb_atom.name = atm.getAtomLabel()
-        pdb_atom.resName = resName
-        pdb_atom.altLoc = altLoc
-        pdb_atom.chainID = chainID
-        pdb_atom.resSeq = resSeq
-        pdb_atom.iCode = iCode
-        
-        vec = atm.getPosition()
-        pdb_atom.x = vec[0]
-        pdb_atom.y = vec[1]
-        pdb_atom.z = vec[2]
-        
-        pdb_atom.occupancy = atm.getOccupancy()
+        pdb_atom.name       = atm.getAtomLabel()
+        pdb_atom.resName    = resName
+        pdb_atom.altLoc     = altLoc
+        pdb_atom.chainID    = chainID
+        pdb_atom.resSeq     = resSeq
+        pdb_atom.iCode      = iCode
+        vec                 = atm.getPosition()
+        pdb_atom.x          = vec[0]
+        pdb_atom.y          = vec[1]
+        pdb_atom.z          = vec[2]
+        pdb_atom.occupancy  = atm.getOccupancy()
         pdb_atom.tempFactor = atm.getTemperatureFactor()
-        pdb_atom.element = atm.getElement()
-        
-        if atm.getU() != None:
+        pdb_atom.element    = atm.getElement()
+
+        ## does the atom have anisotropic 
+        if atm.getU():
+            
             pdb_anisou = PDB.ANISOU()
             self.pdb_file.pdbrecord_list.append(pdb_anisou)
 
-            pdb_anisou.name = pdb_atom.name
+            pdb_anisou.name    = pdb_atom.name
             pdb_anisou.resName = pdb_atom.resName
+            pdb_anisou.altLoc  = pdb_atom.altLoc
             pdb_anisou.chainID = pdb_atom.chainID
-            pdb_anisou.resSeq = pdb_atom.resSeq
-            pdb_anisou.iCode = pdb_atom.iCode
+            pdb_anisou.resSeq  = pdb_atom.resSeq
+            pdb_anisou.iCode   = pdb_atom.iCode
             pdb_anisou.element = pdb_atom.element
 
             (u00, u11, u22, u01, u02, u12) = atm.getU()

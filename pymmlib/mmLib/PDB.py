@@ -23,11 +23,11 @@ PDBError = "PDB Error"
 ## these are the fields in a ATOM/HETATM/ANISOU/etc... record that uniquely
 ## identify a record; often passed into compareRecord when searching for
 ## additional PDBRecord classes describing a ATOM
-AtomIDFields = ["name", "altLoc", "resName", "seqRes", "iCode", "chainID"]
+AtomIDFields = ["name", "altLoc", "resName", "resSeq", "iCode", "chainID"]
 
 
 ## these are the fields uniquely identifing a specic residue
-ResidueIDFields = ["resName", "seqRes", "iCode", "chainID"]
+ResidueIDFields = ["resName", "resSeq", "iCode", "chainID"]
 
 
 
@@ -106,7 +106,7 @@ class PDBRecord:
             rec += s.upper()
 
         return rec
-    
+
 
     def read(self, rec):
         for (field, start, end, ftype, just) in self._field_list:
@@ -128,15 +128,21 @@ class PDBRecord:
                 try:
                     s = int(s)
                 except ValueError:
+                    print "=== PDB Parser Error ===================="
                     print rec
-                    raise PDBError, "int(\"%s\") failed" % (s)
+                    print "int('%s') failed" % (s)
+                    print "========================================="
+                    continue
 
             elif ftype[:5] == "float":
                 try:
                     s = float(s)
                 except ValueError:
+                    print "=== PDB Parser Error ===================="
                     print rec
-                    raise PDBError, "float conversion error"
+                    print "float('%s') failed" % (s)
+                    print "========================================="
+                    continue
 
             setattr(self, field, s)
 
@@ -1104,12 +1110,18 @@ class PDBFile:
                 ## the atom given in atom_rec from the list of records
                 ## passed in rec_list
                 def get_rec(atom_rec, rec_list):
+                    retval = None
+                    
                     for rec in rec_list:
-                        if not atom_rec.compareRecord(rec, AtomIDFields):
-                            continue
-                        rec_list.remove(rec)
-                        return rec
-                    return None
+                        if atom_rec.compareRecord(rec, AtomIDFields):
+                            retval = rec
+                            break
+
+                    if retval:
+                        rec_list.remove(retval)
+
+                    return retval
+                
 
                 for atom_rec in record_map[name]:
                     atom_rec.serial = serial_num
@@ -1138,6 +1150,7 @@ class PDBFile:
 
             elif requirement == "mandatory" and not record_map.has_key(name):
                 pdbrecord_list.append(rec_class())
+
             elif record_map.has_key(name):
                 pdbrecord_list += record_map[name]
 
