@@ -8265,14 +8265,17 @@ SpaceGroupList = [
 
 
 def GetSpaceGroup(name):
-    """Returns the SpaceGroup instance for the given name.
+    """Returns the SpaceGroup instance for the given name.  If the
+    space group is not found, return the P1 space group as default.
     """
     for sg in SpaceGroupList:
         if sg.check_group_name(name):
             return sg
 
-    print "SG NOT FOUND: '%s'"%(name)
-    return None
+    warning("GetSpaceGroup('%s') not found" % (name))
+
+    ## return P1
+    return sg1
 
 
 ### <testing>
