@@ -16,19 +16,18 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from Scientific.Geometry import Vector
 from mmLib.Structure     import *
 from mmLib.FileLoader    import LoadStructure, SaveStructure
 
 
 try:
     # try double-buffered
-    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB    |
+    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
                                 gtk.gdkgl.MODE_DOUBLE |
                                 gtk.gdkgl.MODE_DEPTH)
 except gtk.gdkgl.NoMatches:
     # try single-buffered
-    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB    |
+    glconfig = gtk.gdkgl.Config(mode = gtk.gdkgl.MODE_RGB |
                                 gtk.gdkgl.MODE_DEPTH)
 
 
@@ -40,12 +39,14 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         
         self.set_size_request(300, 300)
 
-        self.connect('realize', self.realize)
-        self.connect('map', self.map)
-        self.connect('unmap', self.unmap)
-        self.connect('configure_event', self.configure_event)
-        self.connect('expose_event', self.expose_event)
-        self.connect('destroy', self.destroy)
+        self.connect('button_press_event',  self.button_press_event)
+        self.connect('motion_notify_event', self.motion_notify_event)
+        self.connect('realize',             self.realize)
+        self.connect('map',                 self.map)
+        self.connect('unmap',               self.unmap)
+        self.connect('configure_event',     self.configure_event)
+        self.connect('expose_event',        self.expose_event)
+        self.connect('destroy',             self.destroy)
 
         self.rot         = "x"
         self.rotx        = 0
@@ -53,46 +54,35 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         self.is_solid    = gtk.TRUE
         self.sphere_list = []
         self.line_list   = []
-
         
     def destroy(self, glarea):
-        if hasattr(self, "tn"):
-            gtk.timeout_remove(self.tn)
-            del self.tn
-
         return gtk.TRUE
 
+    def button_press_event(self, glarea, event):
+        self.beginx = event.x
+        self.beginy = event.y
 
-    def timeout(self):
-        if self.rot == "x":
-            self.rotx += 1
-            if self.rotx > 360:
-                self.rotx = 0
-                self.rot = "y"
-        elif self.rot == "y":
-            self.roty += 1
-            if self.roty > 360:
-                self.roty = 0
-                self.rot = "x"
+    def motion_notify_event(self, glarea, event):
+        if (event.state & gtk.gdk.BUTTON1_MASK):
+            width     = glarea.allocation.width
+            height    = glarea.allocation.height
+            self.rotx = self.rotx + ((event.y-self.beginy)/width)*360.0
+            self.roty = self.roty + ((event.x-self.beginx)/height)*360.0
+
+        self.beginx = event.x
+        self.beginy = event.y
         self.queue_draw()
-        
-        return gtk.TRUE
-
 
     def map(self, glarea):
-        self.tn = gtk.timeout_add(80, self.timeout)
-        #print "timeout: ", self.tn
-        return gtk.TRUE
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK   |
+                        gtk.gdk.BUTTON_RELEASE_MASK |
+                        gtk.gdk.BUTTON_MOTION_MASK  |
+                        gtk.gdk.POINTER_MOTION_MASK)
 
+        return gtk.TRUE
 
     def unmap(self, glarea):
-        if hasattr(self, "tn"):
-            gtk.timeout_remove(self.tn)
-            #print "removing timeout ",self.tn
-        else:
-            print "no self.tn"
         return gtk.TRUE
-
 
     def realize(self, glarea):
         # get GLContext and GLDrawable
@@ -124,7 +114,6 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         gldrawable.gl_end()
         return gtk.TRUE
 
-
     def configure_event(self, glarea, event):
 	# get GLContext and GLDrawable
 	glcontext = self.get_gl_context()
@@ -152,7 +141,6 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	
 	return gtk.TRUE
 
-
     def expose_event(self, glarea, event):
 	# get GLContext and GLDrawable
 	glcontext = self.get_gl_context()
@@ -166,7 +154,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	
 	glLoadIdentity()
 
-	glTranslate(0, 0, -10)
+	glTranslate(0, 0, -50)
 	
 	glRotate(self.rotx, 1, 0, 0)
 	glRotate(self.roty, 0, 1, 0)
@@ -195,61 +183,64 @@ class GLViewer(gtk.gtkgl.DrawingArea):
 	
 	return gtk.TRUE
 
-
     def setAtomContainer(self, atom_container):
         self.rot  = "x"
         self.rotx = 0
         self.roty = 0
         
         self.sphere_list = []
-        self.line_list = []
+        self.line_list   = []
         
         ## compute the centroid
         centroid = Vector(0.0, 0.0, 0.0)
         n = 0
-        for atm in atom_container.atomIterator():
+        max_tf = 0.0
+        for atm in atom_container.iterAtoms():
             n += 1
-            centroid += atm.getPosition()
+            centroid += atm.position
+            max_tf = max(max_tf, atm.temp_factor)
         centroid = centroid / n        
 
         ## atom spheres
-        for atm in atom_container.atomIterator():
-            pos = atm.getPosition() - centroid
-            size = atm.el.atomic_number / 20.0
+        visited_bonds = []
+
+        for atm in atom_container.iterAtoms():
+
+            if atm.name not in ["C", "N", "CA", "O"]: continue
+            
+            pos  = atm.position - centroid
+            size = 1.0 * (atm.temp_factor / max_tf)
+
             self.sphere_list.append( ((pos[0], pos[1], pos[2]), size) )
 
-        for bond in atom_container.bondIterator():
-            ## calculate line width based on the number of standard deviations
-            ## from ideal
-            (dist, dist_esd) = bond.getDistance()
-            if dist and dist_esd:
-                sigma = (dist - bond.calcLength()) / dist_esd
-                lwidth = 10.0 - (3.0 * sigma)
-                if lwidth < 1.0:
-                    lwidth = 1.0
-            else:
-                lwidth = 5.0
+            for bond in atm.iterBonds():
+                if bond in visited_bonds:
+                    continue
+                else:
+                    visited_bonds.insert(0, bond)
 
-            (atm1, atm2) = bond.getAtoms()
-            v1 = atm1.getPosition() - centroid
-            v2 = atm2.getPosition() - centroid
-            self.line_list.append(
-               ( (v1[0], v1[1], v1[2]), (v2[0], v2[1], v2[2]), lwidth) )
+                atm2 = bond.getPartner(atm)
+                if atm2.name not in ["C", "N", "CA", "O"]: continue
+                
+                v1   = atm.position - centroid
+                v2   = atm2.position - centroid
+                self.line_list.append(
+                    ( (v1[0], v1[1], v1[2]), (v2[0], v2[1], v2[2]), 5.0) )
 
         self.queue_draw()
 
 
 
-class AtomContainerPanel(gtk.VBox):
+class AtomContainerPanel(gtk.VPaned):
     def __init__(self):
-        gtk.VBox.__init__(self, spacing=3)
+        gtk.VPaned.__init__(self)
         self.set_border_width(3)
 
         ## make the print box
         sw = gtk.ScrolledWindow()
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        self.pack_start(sw)
+        self.add1(sw)
 
         self.store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
      
@@ -268,39 +259,30 @@ class AtomContainerPanel(gtk.VBox):
 
         ## create the GLViewer
         self.glviewer = GLViewer()
-        self.add(self.glviewer)
-
+        self.add2(self.glviewer)
 
     def printBox(self, key, value):
         iter = self.store.append()
         self.store.set(iter, 0, key, 1, str(value))
 
-
     def setAtomContainer(self, atom_container):
         self.atom_container = atom_container
         self.store.clear()
 
-        if isinstance(atom_container, Molecule):
-            mol = atom_container
-            self.printBox("Molecule.getName()",
-                          mol.getName())
-            self.printBox("Molecule.getType()",
-                          mol.getType())
-            self.printBox("Molecule.getPolymerType()",
-                          mol.getPolymerType())
-            self.printBox("Molecule.isProtein()",
-                          mol.isProtein())
-            
         if isinstance(atom_container, Residue):
             res = atom_container
-            self.printBox("Residue.getName()",
-                          res.getName())
-            self.printBox("Residue.getSequenceID()",
-                          res.getSequenceID())
-            self.printBox("Residue.getPrevResidue()",
-                          res.getPrevResidue())
-            self.printBox("Residue.getNextResidue()",
-                          res.getNextResidue())
+            self.printBox("Residue.res_name", res.res_name)
+            self.printBox("Residue.getOffsetResidue(-1)",
+                          res.getOffsetResidue(-1))
+            self.printBox("Residue.getOffsetResidue(1)",
+                          res.getOffsetResidue(1))
+
+        if isinstance(atom_container, Fragment):
+            frag = atom_container
+            bonds = ""
+            for bond in frag.iterBonds():
+                bonds += str(bond)
+            self.printBox("Fragment.iterBonds()", bonds)
 
         if isinstance(atom_container, AminoAcidResidue):
             aa_res = atom_container
@@ -317,31 +299,16 @@ class AtomContainerPanel(gtk.VBox):
             self.printBox("AminoAcidResidue.calcTorsionChi()",
                           aa_res.calcTorsionChi())
 
-        if isinstance(atom_container, Conformation):
-            conf = atom_container
-            self.printBox("Conformation.getID()",
-                          conf.getID())
-
         if isinstance(atom_container, Atom):
             atm = atom_container
-            self.printBox("Atom.getElement()",
-                          atm.getElement())
-            self.printBox("Atom.getAtomLabel()",
-                          atm.getAtomLabel())
-            self.printBox("Atom.getCharge()",
-                          atm.getCharge())
-            self.printBox("Atom.getOccupancy()",
-                          atm.getOccupancy())
-            self.printBox("Atom.getTemperatureFactor()",
-                          atm.getTemperatureFactor())
-            self.printBox("Atom.getU()",
-                          atm.getU())
-            self.printBox("Atom.getPosition()",
-                          atm.getPosition())
-            self.printBox("Atom.countBonds()",
-                          atm.countBonds())
-            self.printBox("Atom.calcAnisotropy()",
-                          atm.calcAnisotropy())
+            self.printBox("Atom.element", atm.element)
+            self.printBox("Atom.name", atm.name)
+            self.printBox("Atom.occupancy", atm.occupancy)
+            self.printBox("Atom.temp_factor", atm.temp_factor)
+            self.printBox("Atom.U", atm.U)
+            self.printBox("Atom.position", atm.position)
+            self.printBox("len(Atom.bond_list)", len(atm.bond_list))
+            self.printBox("Atom.calcAnisotropy()", atm.calcAnisotropy())
 
         self.glviewer.setAtomContainer(self.atom_container)
 
@@ -352,83 +319,160 @@ class StructureTreeModel(gtk.GenericTreeModel):
         self.structure = structure
 	gtk.GenericTreeModel.__init__(self)
 
-
     def get_iter_root(self):
         return self.structure
-
 
     def on_get_flags(self):
 	'''returns the GtkTreeModelFlags for this particular type of model'''
 	return 0
 
-
     def on_get_n_columns(self):
 	'''returns the number of columns in the model'''
 	return 1
-
 
     def on_get_column_type(self, index):
 	'''returns the type of a column in the model'''
 	return gobject.TYPE_STRING
 
-
     def on_get_path(self, node):
 	'''returns the tree path (a tuple of indices at the various
 	levels) for a particular node.'''
-	return node.getIndexPath()
+        if isinstance(node, Chain):
+            chain_path = self.structure.chain_list.index(node)
+            return (chain_path, )
 
+        elif isinstance(node, Fragment):
+            chain      = self.structure[node.chain_id]
+
+            chain_path = self.structure.chain_list.index(chain)
+            frag_path  = chain.frag_list.index(node)
+
+            return (chain_path, frag_path)
+
+        elif isinstance(node, Atom):
+            chain      = self.structure[node.chain_id]
+            frag       = chain[(node.res_name, node.icode)]
+
+            chain_path = self.structure.chain_list.index(chain)
+            frag_path  = chain.fragment_list.index(frag)
+            atom_path  = frag.atom_list.index(node)
+            
+            return (chain_path, frag_path, atom_path)
 
     def on_get_iter(self, path):
         '''returns the node corresponding to the given path.'''
-        node = self.structure
-        for i in path:
-            node = node.getChild(i)
-        return node
+        chain = self.structure.chain_list[path[0]]
+        if len(path) == 1:
+            return chain
 
+        frag = chain.fragment_list[path[1]]
+        if len(path) == 2:
+            return frag
 
+        atm = frag.atom_list[path[2]]
+        if len(path) == 3:
+            return atm
+        
     def on_get_value(self, node, column):
 	'''returns the value stored in a particular column for the node'''
 	return str(node)
 
-
     def on_iter_next(self, node):
 	'''returns the next node at this level of the tree'''
-        try:
-            return node.getSibling(1)
-        except IndexError:
-            return None
+        if isinstance(node, Chain):
+            i = self.structure.chain_list.index(node)
+            try:
+                return self.structure.chain_list[i+1]
+            except IndexError:
+                return None
 
+        elif isinstance(node, Fragment):
+            return node.getOffsetFragment(1)
+            
+        elif isinstance(node, Atom):
+            frag = self.structure[node.chain_id][(node.res_seq,node.icode)]
+            i = frag.atom_list.index(node)
+            try:
+                return frag.atom_list[i+1]
+            except IndexError:
+                return None
 
     def on_iter_children(self, node):
 	'''returns the first child of this node'''
-        return node.getFirstChild()
+        if isinstance(node, Structure):
+            try:
+                return self.structure.chain_list[0]
+            except IndexError:
+                return None
+        
+        elif isinstance(node, Chain):
+            try:
+                return self.structure[node.chain_id].fragment_list[0]
+            except IndexError:
+                pass
 
+        elif isinstance(node, Fragment):
+            frag = self.structure[node.chain_id][(node.res_seq,node.icode)]
+            try:
+                return frag.atom_list[0]
+            except IndexError:
+                return None
 
     def on_iter_has_child(self, node):
 	'''returns true if this node has children'''
-        if node.getDegree() > 0:
-            return 1
-        return 0
+        if isinstance(node, Structure):
+            return not not node.chain_list
 
+        elif isinstance(node, Chain):
+            return not not node.fragment_list
+
+        elif isinstance(node, Fragment):
+            return not not node.atom_list
+
+        else:
+            return False
 
     def on_iter_n_children(self, node):
 	'''returns the number of children of this node'''
-        return node.getDegree()
+        if isinstance(node, Structure):
+            return len(node.chain_list)
 
+        elif isinstance(node, Chain):
+            return len(node.fragment_list)
+
+        elif isinstance(node, Fragment):
+            return len(node.atom_list)
+
+        else:
+            return 0
 
     def on_iter_nth_child(self, node, n):
 	'''returns the nth child of this node'''
-        if node == None:
-            return None
-        try:
-            return node.getChild(n)
-        except IndexError:
-            return None
+        if isinstance(node, Structure):
+            return self.chain_list[n]
 
+        elif isinstance(node, Chain):
+            return self.fragment_list[n]
+
+        elif isinstance(node, Fragment):
+            return self.atom_list[n]
+
+        else:
+            return None
 
     def on_iter_parent(self, node):
 	'''returns the parent of this node'''
-        return node.getParent()
+        if isinstance(node, Structure):
+            return None
+
+        elif isinstance(node, Chain):
+            return self.structure
+
+        elif isinstance(node, Fragment):
+            return self.structure[node.chain_id]
+
+        elif isinstance(node, Atom):
+            return self.structure[node.chain_id][(node.res_seq, node.icode)]
 
 
 
@@ -461,30 +505,18 @@ class StructureGUI:
     def getWidget(self):
         return self.hpaned
 
-
     def loadStructure(self, path):
-        self.structure = LoadStructure(path)
-        
-        try:
-            from mmLib.CCP4 import CCP4MonomerLibrary
-        except:
-            pass
-        else:
-            monomer_lib = CCP4MonomerLibrary()
-            for aa_res in self.structure.aminoAcidResidueIterator():
-                monomer_lib.setResidueInfo(aa_res)
-        
+        self.structure = LoadStructure(fil              = path,
+                                       build_properties = ("polymers","bonds"))
+
         model = StructureTreeModel(self.structure)
         self.struct_tree_view.set_model(model)
 
-
     def row_activated(self, tree_view, path, column):
         ## find selected node
-        node = self.structure
-        for i in path:
-            node = node.getChild(i)
+        model = tree_view.get_model()
+        node = model.on_get_iter(path)
         self.ac_panel.setAtomContainer(node)
-
 
 
 class MainWindow:
@@ -605,7 +637,7 @@ def main(path = None):
     main_window_list.append(mw)
 
     if path:
-        gobject.timeout_add(25.0, mw.loadFile, path)
+        gobject.timeout_add(25, mw.loadFile, path)
 
     gtk.main()
 
