@@ -11,7 +11,6 @@ from __future__ import generators
 import string
 import types
 import fpformat
-from FileIO import OpenFile
 from mmTypes import *
 from UnitCell import UnitCell
 

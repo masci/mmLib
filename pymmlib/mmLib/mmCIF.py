@@ -11,7 +11,6 @@ mmCIF parser.
 from __future__ import generators
 import string
 import types
-from FileIO import OpenFile
 from mmTypes import *
 
 ##

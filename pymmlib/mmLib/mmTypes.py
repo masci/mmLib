@@ -11,11 +11,29 @@ import os
 import sys
 import string
 import weakref
+import gzip
 from types import *
 from Scientific.Geometry  import Vector
 from Numeric import *
 from LinearAlgebra import *
 
+
+def OpenFile(path, mode):
+    """Right now this only supports opening GZip'ed files, in the future
+    it might be extended for URLs.
+    """
+    ## if path is not a string, assume it is a file object and
+    ## return it
+    if type(path) != StringType:
+        return path
+
+    (base, ext) = os.path.splitext(path)
+
+    if ext == ".gz":
+        return gzip.open(path, mode)
+
+    return open(path, mode)
+    
 
 class WeakrefList:
     """Implements a Python list, but it keeps weak references to the objects

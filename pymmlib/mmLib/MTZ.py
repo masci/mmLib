@@ -8,10 +8,9 @@ correctly convert files saved on machines with different endian formats or
 integer/float sizes.  It cannot save MTZ files.  If anyone needs these
 features, email jpaint@u.washington.edu and I'll finish them. ;)
 """
-
 import types
 import struct
-from   FileIO  import OpenFile
+from mmTypes import *
 
 ## Error
 MTZError = "MTZError"
