@@ -234,6 +234,9 @@ class mmCIFToStructureLoader:
         if resName in AminoAcidNames:
             return "amino acid residue"
 
+        elfi resName in NucleicAcidNames:
+            return "nucleic acid residue"
+
         elif resName == "HOH":
             return "water"
 
@@ -438,6 +441,7 @@ class PDBToStructureLoader:
 
                 frag_type = self.figure_fragment_type(fkey)
 
+
                 if   frag_type == "amino acid residue":
 
                     if cur_molecule == None:
@@ -453,6 +457,7 @@ class PDBToStructureLoader:
                     
                     aa_res = self.construct_amino_acid_residue(fkey)
                     cur_chain.appendChild(aa_res)
+
 
                 elif frag_type == "nucleic acid residue":
 
@@ -550,11 +555,15 @@ class PDBToStructureLoader:
             return "unknown"
 
         resName = resname_list[0]
+
         if resName in AminoAcidNames:
             return "amino acid residue"
 
         elif resName == "HOH":
             return "water"
+
+        elif resName in NucleicAcidNames:
+            return "nucleic acid residue"
 
         return "unknown"
 
@@ -842,11 +851,11 @@ def GetAdaptor(path, mode, format):
     if ext == '.cif':
         if mode == "r": return mmCIFToStructureLoader
         if mode == "w": return None
-    elif ext == '.pdb':
+
+    ## defualt to PDB
+    else:
         if mode == "r": return PDBToStructureLoader
         if mode == "w": return StructureToPDBSaver
-
-    raise FileLoaderError, "Unsupported file type=%s" % (ext)
 
 
 

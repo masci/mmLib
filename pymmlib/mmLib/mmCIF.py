@@ -314,7 +314,12 @@ class mmCIFElementFile:
                 continue
 
             elif state == "quote":
-                if line[i] in QUOTES and not self.escaped(line, i):
+                if line[i] in QUOTES:
+                    try:
+                        if line[i+1] not in string.whitespace: continue
+                    except IndexError:
+                        pass
+                    
                     state = "whitespace"
                     list.append((line[j+1:i],"string")) ## strip quotes
                 continue

@@ -6,6 +6,8 @@
 import string
 import types
 import fpformat
+from   FileIO   import OpenFile
+
 
 PDBError = "PDB Error"
 
@@ -1028,7 +1030,7 @@ class PDBFile:
     def loadFile(self, fil):
         ## self.path can be a string, or a file object
         if type(fil) == types.StringType:
-            fil = open(fil, "r")
+            fil = OpenFile(fil, "r")
 
         for ln in fil.readlines():
             
@@ -1044,7 +1046,8 @@ class PDBFile:
             try:
                 pdb_record_class = PDBRecordMap[rname]
             except KeyError:
-                raise PDBError, "Unknown record type=%s" % (rname)
+                print "Unknown record type=%s" % (rname)
+                continue
 
             ## create/add/parse the record
             pdb_record = pdb_record_class()
@@ -1055,7 +1058,7 @@ class PDBFile:
     def saveFile(self, fil):
         ## self.path can be a string, or a file object
         if type(fil) == types.StringType:
-            fil = open(fil, "w")
+            fil = OpenFile(fil, "w")
 
         ## this re-orders the PDB records with some basic grouping
         ## rules in the PDB v2.2 specification, it doesn't
