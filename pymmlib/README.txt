@@ -15,7 +15,8 @@ Additional requirements for GUI App/Viewer:
   * PyGtkGLExt          0.0.2
 
 To hijack CCP4's monomer library:
-  * CCP4                4.2.1
+  * CCP4             >= 4.2.1
+
 
 The Python Macromolecular Library (PyMMLib) is a collection of Python 
 modules the examination and manipulation of macromolecular structures,
