@@ -13,9 +13,12 @@ from Library import Library
 from UnitCell import UnitCell
 from mmCIFDB import *
 
-ChainOverwrite = "ChainOverwrite"
+
+## errors raised by class add_* methods
+ChainOverwrite    = "ChainOverwrite"
 FragmentOverwrite = "FragmentOverwrite"
-AtomOverwrite = "AtomOverwrite"
+AtomOverwrite     = "AtomOverwrite"
+
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
@@ -258,6 +261,7 @@ class Chain(object):
     """
     def __init__(self, chain_id = ""):
         assert type(chain_id) == StringType
+
         self.chain_id = chain_id
 
         ## the sequence list contains a list 3-letter residue names
@@ -528,9 +532,9 @@ class Fragment(object):
                  fragment_id = "",
                  chain_id    = ""):
 
-        assert type(res_name) == StringType
+        assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
-        assert type(chain_id) == StringType
+        assert type(chain_id)    == StringType
 
         self.res_name = res_name
         self.fragment_id = fragment_id
@@ -608,6 +612,7 @@ class Fragment(object):
         assert isinstance(atom, Atom)
         assert atom.chain_id == self.chain_id
         assert atom.fragment_id == self.fragment_id
+        assert atom not in self.atom_list
 
         if atom.res_name != self.res_name:
             raise AtomOverwrite, atom
@@ -1045,12 +1050,12 @@ class Atom(object):
                  fragment_id = "",
                  chain_id    = ""):
 
-        assert type(name) == StringType
-        assert type(model) == IntType
-        assert type(alt_loc) == StringType
-        assert type(res_name) == StringType
+        assert type(name)        == StringType
+        assert type(model)       == IntType
+        assert type(alt_loc)     == StringType
+        assert type(res_name)    == StringType
         assert type(fragment_id) == StringType
-        assert type(chain_id) == StringType
+        assert type(chain_id)    == StringType
 
         self.name = name
         self.model = model

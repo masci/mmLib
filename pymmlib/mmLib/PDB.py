@@ -1109,7 +1109,7 @@ class ATOM(PDBRecord):
     are optional.
     """
     __slots__ = []
-    
+
     _name = "ATOM  "
     _field_list = [
         ("serial", 7, 11, "integer", "rjust", None),

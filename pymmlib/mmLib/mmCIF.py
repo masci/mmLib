@@ -690,8 +690,11 @@ class mmCIFFileWriter(object):
             return x, "mstring"
 
     def write_cif_data(self):
-        self.writeln("data_%s" % self.cif_data.name)
-        self.writeln()
+        if isinstance(self.cif_data, mmCIFSave):
+            self.writeln("save_%s" % self.cif_data.name)
+        else:
+            self.writeln("data_%s" % self.cif_data.name)
+        self.writeln("#")
         
         for cif_table in self.cif_data:
             ## ignore tables without data rows

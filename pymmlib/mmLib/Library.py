@@ -5,6 +5,7 @@
 
 ## NOTES:
 ## Standard Van der Walls radii are from J.Phys.Chem., 68, 441, 1964.
+import os
 
 """Monomer and element library data classes.  The Library classes are used
 for the identification and construction of biopolymers and ligands.
@@ -46,111 +47,132 @@ class Element(object):
 class Monomer(object):
     """Base class for all monomer library entries.
     """
-    def __init__(self,
-                 name            = "",
-                 full_name       = "",
-                 one_letter_name = "",
-                 atom_list       = [],
-                 bond_list       = []):
-
+    def __init__(self, name, path):
         self.name              = name
-        self.full_name         = full_name
-        self.one_letter_name   = one_letter_name
-        self.atom_list         = atom_list
-        self.bond_list         = bond_list
+        self.full_name         = ""
+        self.one_letter_name   = ""
+        self.atom_list         = []
+        self.bond_list         = []
+
+        ## add attributes specific to mmLib which are not in most
+        ## libraries
+        try:
+            attr_list = MonomerDict[name]
+        except KeyError:
+            pass
+        else:
+            for (attr_name, attrx) in attr_list:
+                setattr(self, attr_name, attrx)
+
+        self.load_description(path)
+
+    def load_description(self, path):
+        """Load monomer description from monomer library files located
+        in Data/Monomers
+        """
+        from mmLib.mmCIF import mmCIFFile
+
+        cfile = mmCIFFile()
+        cfile.load_file(path)
+
+        chem_comp       = cfile[0]["chem_comp"][0]
+        self.name       = chem_comp["id"]
+        self.full_name  = chem_comp["name"]
+        self.type       = chem_comp["type"]
+        self.pdbx_type  = chem_comp["pdbx_type"]
+        self.rcsb_class = chem_comp["rcsb_class_1"]
+
+        try:
+            chem_comp_atom = cfile[0]["chem_comp_atom"]
+        except KeyError:
+            pass
+        else:
+            for row in chem_comp_atom:
+                self.atom_list.append((row["atom_id"], row["type_symbol"]))
+
+        try:
+            chem_comp_bond = cfile[0]["chem_comp_bond"]
+        except KeyError:
+            pass
+        else:
+            for row in chem_comp_bond:
+                self.bond_list.append((row["atom_id_1"], row["atom_id_2"]))
+
+    def __str__(self):
+        strx  = "Monomer: %s, %s\n" % (self.name, self.full_name)
+        strx += "  Atoms:\n"
+        for (n, t) in self.atom_list:
+            strx += "    %s:%s\n" % (t, n)
+        strx += "  Bonds:\n"
+        for (a1, a2) in self.bond_list:
+            strx += "    %s-%s\n" % (a1, a2)
+        return strx
 
     def is_amino_acid(self):
         """Returns True if the Monomer is a amino acid, otherwise
         returns False.
         """
-        return isinstance(self, AminoAcid)
-
+        return self.type == "L-PEPTIDE LINKING"
+            
     def is_nucleic_acid(self):
         """Returns True if the Monomer is a nucleic acid, otherwise
         returns False.
         """
-        return isinstance(self, NucleicAcid)
+        return self.type == "DNA LINKING" or self.type == "RNA LINKING"
 
     def is_water(self):
         """Returns True if the Monomer is a water molecule,
         otherwise returns False.
         """
-        return isinstance(self, Water)
+        return self.name == "HOH"
 
     def get_polymer_bond_list(self, mon1, mon2):
         """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
         represents one bond between the atom named mon1_name in mon1 and
         the atom named mon2_name in mon2.
         """
+        if self.type == "L-PEPTIDE LINKING":
+            return [("C", "N")]
         return []
-
-
-class AminoAcid(Monomer):
-    def __init__(self,
-                 name                = "",
-                 atom_list           = [],
-                 bond_list           = [],
-                 full_name           = "",
-                 one_letter_name     = "",
-                 chi1_definition     = None,
-                 chi2_definition     = None,
-                 chi3_definition     = None,
-                 chi4_definition     = None,
-                 pucker_definition   = None):
-
-        Monomer.__init__(self,
-                         name            = name,
-                         full_name       = full_name,
-                         one_letter_name = one_letter_name,
-                         atom_list       = atom_list,
-                         bond_list       = bond_list)
-
-        self.chi1_definition   = chi1_definition
-        self.chi2_definition   = chi2_definition
-        self.chi3_definition   = chi3_definition
-        self.chi4_definition   = chi4_definition
-        self.pucker_definition = pucker_definition
-
-    def __str__(self):
-	return "AminoAcid(%s)" % (self.name)
-
-    def get_polymer_bond_list(self, mon1, mon2):
-        return [("C", "N")]
-        
-
-class NucleicAcid(Monomer):
-    """Empty definition class for building a Nucleic Acid library.
-    """
-    def __str__(self):
-        return "NucleicAcid=%s" % (self.name)
-
-
-class Water(Monomer):
-    """Monomer class for water molecules.
-    """
-    pass
 
 
 class Library(object):
     """Interface to chemical and monomer libraries.
     """
     def __init__(self):
-        self.element_map = ElementMap
-        self.amino_acid_map = AminoAcidMap
-        self.nucleic_acid_map = NucleicAcidMap
+        self.element_map  = ElementMap
+        self.monomer_dict = {}
+
+        ## set library path -- this involves Python trickery
+        (path, x) = os.path.split(__file__)
+        self.mon_lib_path = os.path.join(path, "Data", "Monomers") 
 
     def __getitem__(self, key):
         try:
-            return self.amino_acid_map[key]
+            return self.monomer_dict[key]
         except KeyError:
-            pass
+            mon = self.load_monomer_description(key)
+            if mon == None:
+                raise KeyError, key
+            return mon
 
+    def load_monomer_description(self, res_name):
+        """Loads and caches the monomer description.
+        """
         try:
-            return self.nucleic_acid_map[key]
-        except KeyError:
-            pass
+            res_name0 = res_name[0]
+        except IndexError:
+            return None
 
-        raise KeyError
+        path = os.path.join(
+            self.mon_lib_path, res_name0, "%s.cif" % (res_name))
+
+        if not os.path.isfile(path):
+            return None
+
+        mon = Monomer(res_name, path)
+        self.monomer_dict[res_name] = mon
+        return mon
 
     def get_element(self, element):
         """Return the corresponding Element description instance for
@@ -174,10 +196,20 @@ class Library(object):
         return None
         
     def is_amino_acid(self, res_name):
-        return res_name in self.amino_acid_map
+        try:
+            mon = self[res_name]
+        except KeyError:
+            return False
+
+        return mon.is_amino_acid()
 
     def is_nucleic_acid(self, res_name):
-        return res_name in self.nucleic_acid_map
+        try:
+            mon = self[res_name]
+        except KeyError:
+            return False
+
+        return mon.is_nucleic_acid()
 
     def is_water(self, res_name):
         return res_name in ["HOH", "WAT"]
@@ -1010,927 +1042,169 @@ ElementMap = {
 
 ## begin amino acids
 
-## <ALANINE>
-ALA = AminoAcid(
-    name            = "ALA",
-    full_name       = "Alanine",
-    one_letter_name = "A",
 
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("HB3", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "HB3"),
-                       ("CA", "C"),
-                       ("C", "O")])
-## </ALANINE>
+MonomerDict = {
+    "CYS": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'SG')),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "ILE": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG1')),
+        ("chi2_definition", ('CA', 'CB', 'CG1', 'CD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "GLN": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD')),
+        ("chi3_definition", ('CB', 'CG', 'CD', 'OE1')),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "VAL": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG1')),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "MET": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'SD')),
+        ("chi3_definition", ('CB', 'CG', 'SD', 'CE')),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "PRO": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", ('C', 'CA', 'CB', 'CG')),
+        ],
+
+    "LYS": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD')),
+        ("chi3_definition", ('CB', 'CG', 'CD', 'CE')),
+        ("chi4_definition", ('CG', 'CD', 'CE', 'NZ')),
+        ("pucker_definition", None),
+        ],
+
+    "ASP": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'OD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "THR": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'OG1')),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "PHE": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "ALA": [
+        ("chi1_definition", None),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "GLY": [
+        ("chi1_definition", None),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "HIS": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'ND1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "GLU": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD')),
+        ("chi3_definition", ('CA', 'CB', 'CG', 'OE1')),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "LEU": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "ARG": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD')),
+        ("chi3_definition", ('CB', 'CG', 'CD', 'NE')),
+        ("chi4_definition", ('CG', 'CD', 'NE', 'CZ')),
+        ("pucker_definition", None),
+        ],
+
+    "TRP": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "ASN": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'OD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "TYR": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'CG')),
+        ("chi2_definition", ('CA', 'CB', 'CG', 'CD1')),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
+
+    "SER": [
+        ("chi1_definition", ('N', 'CA', 'CB', 'OG')),
+        ("chi2_definition", None),
+        ("chi3_definition", None),
+        ("chi4_definition", None),
+        ("pucker_definition", None),
+        ],
 
-
-### <VALINE>
-VAL = AminoAcid(
-    name            = "VAL",
-    full_name       = "Valine",
-    one_letter_name = "V",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB", "H"),
-                       ("CG1", "C"),
-                       ("HG11", "H"),
-                       ("HG12", "H"),
-                       ("HG13", "H"),
-                       ("CG2", "C"),
-                       ("HG21", "H"),
-                       ("HG22", "H"),
-                       ("HG23", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB"),
-                       ("CB", "CG1"),
-                       ("CG1", "HG11"),
-                       ("CG1", "HG12"),
-                       ("CG1", "HG13"),
-                       ("CB", "CG2"),
-                       ("CG2", "HG21"),
-                       ("CG2", "HG22"),
-                       ("CG2", "HG23"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG1"))
-### </VALINE>
-
-
-### <LEUSINE>
-LEU = AminoAcid(
-    name            = "LEU",
-    full_name       = "Leusine",
-    one_letter_name = "L",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG", "H"),
-                       ("CD1", "C"),
-                       ("HD11", "H"),
-                       ("HD12", "H"),
-                       ("HD13", "H"),
-                       ("CD2", "C"),
-                       ("HD21", "H"),
-                       ("HD22", "H"),
-                       ("HD23", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG"),
-                       ("CG", "CD1"),
-                       ("CD1", "HD11"),
-                       ("CD1", "HD12"),
-                       ("CD1", "HD13"),
-                       ("CG", "CD2"),
-                       ("CD2", "HD21"),
-                       ("CD2", "HD22"),
-                       ("CD2", "HD23"),
-                       ("CA", "C"),
-                       ("C", "O")],
-
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD1"))
-### </LEUSINE>
-
-
-### <ISOLEUSINE>
-ILE = AminoAcid(
-    name            = "ILE",
-    full_name       = "Isoleusine",
-    one_letter_name = "I",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB", "H"),
-                       ("CG1", "C"),
-                       ("HG11", "H"),
-                       ("HG12", "H"),
-                       ("CD1", "C"),
-                       ("HD11", "H"),
-                       ("HD12", "H"),
-                       ("HD13", "H"),
-                       ("CG2", "C"),
-                       ("HG21", "H"),
-                       ("HG22", "H"),
-                       ("HG23", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB"),
-                       ("CB", "CG1"),
-                       ("CG1", "HG11"),
-                       ("CG1", "HG12"),
-                       ("CG1", "CD1"),
-                       ("CD1", "HD11"),
-                       ("CD1", "HD12"),
-                       ("CD1", "HD13"),
-                       ("CB", "CG2"),
-                       ("CG2", "HG21"),
-                       ("CG2", "HG22"),
-                       ("CG2", "HG23"),
-                       ("CA", "C"),
-                       ("C", "O")],
-
-    chi1_definition = ("N", "CA", "CB", "CG1"),
-    chi2_definition = ("CA", "CB", "CG1", "CD1"))
-### <ISOLEUSINE>
-
-
-### <GLYSINE>
-GLY = AminoAcid(
-    name            = "GLY",
-    full_name       = "Glysine",
-    one_letter_name = "G",
-    
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA1", "H"),
-                       ("HA2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA1"),
-                       ("CA", "HA2"),
-                       ("CA", "C"),
-                       ("C", "O")])
-### </GLYSINE>
-
-
-### <PROLINE>
-PRO = AminoAcid(
-    name            = "PRO",
-    full_name       = "Proline",
-    one_letter_name = "P",
-
-    atom_list       = [("N", "N"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("CD", "C"),
-                       ("HD1", "H"),
-                       ("HD2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "CD"),
-                       ("CD", "HD1"),
-                       ("CD", "HD2"),
-                       ("CD", "N"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition   = ("N", "CA", "CB", "CG"),
-    pucker_definition = ("C", "CA", "CB", "CG"))
-### </PROLINE>
-
-
-### <CYSTINE>
-CYS = AminoAcid(
-    name            = "CYS",
-    full_name       = "Cystine",
-    one_letter_name = "C",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("SG", "S"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "SG"),
-                       ("CA", "C"),
-                       ("C", "O")],
-
-    chi1_definition = ("N", "CA", "CB", "SG"))
-### </CYSTINE>
-
-
-### <METHIONINE>
-MET = AminoAcid(
-    name            = "MET",
-    full_name       = "Methionine",
-    one_letter_name = "M",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("SD", "S"),
-                       ("CE", "C"),
-                       ("HE1", "H"),
-                       ("HE2", "H"),
-                       ("HE3", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "SD"),
-                       ("SD", "CE"),
-                       ("CE", "HE1"),
-                       ("CE", "HE2"),
-                       ("CE", "HE3"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "SD"),
-    chi3_definition = ("CB", "CG", "SD", "CE"))
-### </METHIONINE>
-
-
-### <HISTIDINE>
-HIS = AminoAcid(
-    name            = "HIS",
-    full_name       = "Histidine",
-    one_letter_name = "H",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("ND1", "N"),
-                       ("HD1", "H"),
-                       ("CE1", "C"),
-                       ("HE1", "H"),
-                       ("NE2", "N"),
-                       ("HE2", "H"),
-                       ("CD2", "C"),
-                       ("HD2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "CD2"),
-                       ("CG", "ND1"),
-                       ("ND1", "HD1"),
-                       ("ND1", "CE1"),
-                       ("CE1", "HE1"),
-                       ("CE1", "NE2"),
-                       ("NE2", "HE2"),
-                       ("NE2", "CD2"),
-                       ("CD2", "HD2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "ND1"))
-### </HISTIDINE>
-
-
-### <PHENYLALALINE>
-PHE = AminoAcid(
-    name            = "PHE",
-    full_name       = "Phenylalaline",
-    one_letter_name = "F",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("CD1", "C"),
-                       ("HD1", "H"),
-                       ("CE1", "C"),
-                       ("HE1", "H"),
-                       ("CZ", "C"),
-                       ("HZ", "H"),
-                       ("CE2", "C"),
-                       ("HE2", "H"),
-                       ("CD2", "C"),
-                       ("HD2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "CD2"),
-                       ("CG", "CD1"),
-                       ("CD1", "HD1"),
-                       ("CD1", "CE1"),
-                       ("CE1", "HE1"),
-                       ("CE1", "CZ"),
-                       ("CZ", "HZ"),
-                       ("CZ", "CE2"),
-                       ("CE2", "HE2"),
-                       ("CE2", "CD2"),
-                       ("CD2", "HD2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD1"))
-### </PHENYLALALINE>
-
-
-### <TYROSINE>
-TYR = AminoAcid(
-    name            = "TYR",
-    full_name       = "Tyrosine",
-    one_letter_name = "Y",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("CD1", "C"),
-                       ("HD1", "H"),
-                       ("CE1", "C"),
-                       ("HE1", "H"),
-                       ("CZ", "C"),
-                       ("OH", "O"),
-                       ("HH", "H"),
-                       ("CE2", "C"),
-                       ("HE2", "H"),
-                       ("CD2", "C"),
-                       ("HD2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "CD2"),
-                       ("CG", "CD1"),
-                       ("CD1", "HD1"),
-                       ("CD1", "CE1"),
-                       ("CE1", "HE1"),
-                       ("CE1", "CZ"),
-                       ("CZ", "OH"),
-                       ("OH", "HH"),
-                       ("CZ", "CE2"),
-                       ("CE2", "HE2"),
-                       ("CE2", "CD2"),
-                       ("CD2", "HD2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD1"))
-### </TYROSINE>
-
-
-### <TRPTOPHAN>
-TRP = AminoAcid(
-    name            = "TRP",
-    full_name       = "Trptophan",
-    one_letter_name = "W",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("CD1", "C"),
-                       ("HD1", "H"),
-                       ("NE1", "N"),
-                       ("HE1", "H"),
-                       ("CE2", "C"),
-                       ("CD2", "C"),
-                       ("CE3", "C"),
-                       ("HE3", "H"),
-                       ("CZ3", "C"),
-                       ("HZ3", "H"),
-                       ("CH2", "C"),
-                       ("HH2", "H"),
-                       ("CZ2", "C"),
-                       ("HZ2", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "CD2"),
-                       ("CG", "CD1"),
-                       ("CD1", "HD1"),
-                       ("CD1", "NE1"),
-                       ("NE1", "HE1"),
-                       ("NE1", "CE2"),
-                       ("CE2", "CZ2"),
-                       ("CE2", "CD2"),
-                       ("CD2", "CE3"),
-                       ("CE3", "HE3"),
-                       ("CE3", "CZ3"),
-                       ("CZ3", "HZ3"),
-                       ("CZ3", "CH2"),
-                       ("CH2", "HH2"),
-                       ("CH2", "CZ2"),
-                       ("CZ2", "HZ2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD1"))
-### </TRPTOPHAN>
-
-
-### <ASPARAGINE>
-ASN = AminoAcid(
-    name            = "ASN",
-    full_name       = "Asparagine",
-    one_letter_name = "N",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("OD1", "O"),
-                       ("ND2", "N"),
-                       ("HD21", "H"),
-                       ("HD22", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "OD1"),
-                       ("CG", "ND2"),
-                       ("ND2", "HD21"),
-                       ("ND2", "HD22"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "OD1"))
-### </ASPARAGINE>
-
-
-### <GLUTAMINE>
-GLN = AminoAcid(
-    name            = "GLN",
-    full_name       = "Glutamine",
-    one_letter_name = "Q",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("CD", "C"),
-                       ("OE1", "O"),
-                       ("NE2", "N"),
-                       ("HE21", "H"),
-                       ("HE22", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "CD"),
-                       ("CD", "OE1"),
-                       ("CD", "NE2"),
-                       ("NE2", "HE21"),
-                       ("NE2", "HE22"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD"),
-    chi3_definition = ("CB", "CG", "CD", "OE1"))
-### </GLUTAMINE>
-
-
-### <SERINE>
-SER = AminoAcid(
-    name            = "SER",
-    full_name       = "Serine",
-    one_letter_name = "S",
-
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("OG", "O"),
-                       ("HG", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "OG"),
-                       ("OG", "HG"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "OG"))
-### <SERINE>
-
-
-### <THREONINE>
-THR = AminoAcid(
-    name            = "THR",
-    full_name       = "Threonine",
-    one_letter_name = "T",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB", "H"),
-                       ("OG1", "O"),
-                       ("HG1", "H"),
-                       ("CG2", "C"),
-                       ("HG21", "H"),
-                       ("HG22", "H"),
-                       ("HG23", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB"),
-                       ("CB", "OG1"),
-                       ("OG1", "HG1"),
-                       ("CB", "CG2"),
-                       ("CG2", "HG21"),
-                       ("CG2", "HG22"),
-                       ("CG2", "HG23"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "OG1"))
-### <THREONINE>
-
-
-### <LYSINE>
-LYS = AminoAcid(
-    name            = "LYS",
-    full_name       = "lysine",
-    one_letter_name = "K",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("CD", "C"),
-                       ("HD1", "H"),
-                       ("HD2", "H"),
-                       ("CE", "C"),
-                       ("HE1", "H"),
-                       ("HE2", "H"),
-                       ("NZ", "N"),
-                       ("HZ1", "H"),
-                       ("HZ2", "H"),
-                       ("HZ3", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "CD"),
-                       ("CD", "HD1"),
-                       ("CD", "HD2"),
-                       ("CD", "CE"),
-                       ("CE", "HE1"),
-                       ("CE", "HE2"),
-                       ("CE", "NZ"),
-                       ("NZ", "HZ1"),
-                       ("NZ", "HZ2"),
-                       ("NZ", "HZ3"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD"),
-    chi3_definition = ("CB", "CG", "CD", "CE"),
-    chi4_definition = ("CG", "CD", "CE", "NZ"))
-### </LYSINE>
-
-
-### <ARGININE>
-ARG = AminoAcid(
-    name            = "ARG",
-    full_name       = "Arginine",
-    one_letter_name = "R",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("CD", "C"),
-                       ("HD1", "H"),
-                       ("HD2", "H"),
-                       ("NE", "N"),
-                       ("HE", "H"),
-                       ("CZ", "C"),
-                       ("NH1", "N"),
-                       ("HH11", "H"),
-                       ("HH12", "H"),
-                       ("NH2", "N"),
-                       ("HH21", "H"),
-                       ("HH22", "H"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "CD"),
-                       ("CD", "HD1"),
-                       ("CD", "HD2"),
-                       ("CD", "NE"),
-                       ("NE", "HE"),
-                       ("NE", "CZ"),
-                       ("CZ", "NH1"),
-                       ("NH1", "HH11"),
-                       ("NH1", "HH12"),
-                       ("CZ", "NH2"),
-                       ("NH2", "HH21"),
-                       ("NH2", "HH22"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD"),
-    chi3_definition = ("CB", "CG", "CD", "NE"),
-    chi4_definition = ("CG", "CD", "NE", "CZ"))
-### </ARGININE>
-
-
-### <ASPATATE>
-ASP = AminoAcid(
-    name            = "ASP",
-    full_name       = "Aspatate",
-    one_letter_name = "D",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("OD1", "O"),
-                       ("OD2", "O"),
-                       ("C", "C"),
-                       ("O", "O")],
-
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "OD1"),
-                       ("CG", "OD2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "OD1"))
-### </ASPATATE>
-
-
-### <GLUTAMATE>
-GLU = AminoAcid(
-    name            = "GLU",
-    full_name       = "Glutamate",
-    one_letter_name = "E",
-
-    atom_list       = [("N", "N"),
-                       ("H", "H"),
-                       ("CA", "C"),
-                       ("HA", "H"),
-                       ("CB", "C"),
-                       ("HB1", "H"),
-                       ("HB2", "H"),
-                       ("CG", "C"),
-                       ("HG1", "H"),
-                       ("HG2", "H"),
-                       ("CD", "C"),
-                       ("OE1", "O"),
-                       ("OE2", "O"),
-                       ("C", "C"),
-                       ("O", "O")],
-    
-    bond_list       = [("N", "H"),
-                       ("N", "CA"),
-                       ("CA", "HA"),
-                       ("CA", "CB"),
-                       ("CB", "HB1"),
-                       ("CB", "HB2"),
-                       ("CB", "CG"),
-                       ("CG", "HG1"),
-                       ("CG", "HG2"),
-                       ("CG", "CD"),
-                       ("CD", "OE1"),
-                       ("CD", "OE2"),
-                       ("CA", "C"),
-                       ("C", "O")],
-    
-    chi1_definition = ("N", "CA", "CB", "CG"),
-    chi2_definition = ("CA", "CB", "CG", "CD"),
-    chi3_definition = ("CA", "CB", "CG", "OE1"))
-### </GLUTAMATE>
-
-
-## for accessing the AminoAcid classes
-AminoAcidMap = {
-    "ALA" : ALA,
-    "VAL" : VAL,
-    "LEU" : LEU,
-    "ILE" : ILE,
-    "GLY" : GLY,
-    "PRO" : PRO,
-    "CYS" : CYS,
-    "MET" : MET,
-    "HIS" : HIS,
-    "PHE" : PHE,
-    "TYR" : TYR,
-    "TRP" : TRP,
-    "ASN" : ASN,
-    "GLN" : GLN,
-    "SER" : SER,
-    "THR" : THR,
-    "LYS" : LYS,
-    "ARG" : ARG,
-    "ASP" : ASP,
-    "GLU" : GLU,
     }
-
-
-## begin nucleic acids
-NucleicAcidMap = {}
-
-
 
 
 ### <TESTING>
