@@ -60,12 +60,15 @@ class mmCIFRow(dict):
     the column names as class attributes.
     """
     __slots__ = ["table"]
-    
+
     def __eq__(self, other):
         return id(self) == id(other)
 
     def __deepcopy__(self, memo):
-        return mmCIFRow(self)
+        cif_row = mmCIFRow()
+        for key, val in self.items():
+            cif_row[key] = val
+        return cif_row
 
     def __contains__(self, column):
         return dict.__contains__(self, column.lower())
@@ -111,7 +114,7 @@ class mmCIFTable(list):
         if columns==None:
             self.columns = []
         else:
-            self.columns = columns 
+            self.set_columns(columns)
 
     def __deepcopy__(self, memo):
         table = mmCIFTable(self.name, self.columns[:])
@@ -184,6 +187,23 @@ class mmCIFTable(list):
         assert isinstance(row, mmCIFRow)
         del row.table
         list.remove(self, row)
+
+    def set_columns(self, columns):
+        """
+        """
+        self.columns = []
+        for column in columns:
+            self.columns.append(column.lower())
+
+    def append_column(self, column):
+        """
+        """
+        self.columns.append(column.lower())
+
+    def has_column(self, column):
+        """
+        """
+        return column.lower() in self.columns
 
     def autoset_columns(self):
         """Automaticly sets the mmCITable column names by inspecting all
@@ -358,6 +378,14 @@ class mmCIFData(list):
         except KeyError:
             return default
 
+    def has_table(self, x):
+        try:
+            self[x]
+        except KeyError:
+            return False
+        else:
+            return True
+        
     def get_table(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
         name is the section key in the mmCIF file.

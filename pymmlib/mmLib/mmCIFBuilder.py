@@ -448,11 +448,9 @@ class mmCIFFileBuilder(object):
     """Builds a mmCIF file from a Structure object.
     """
     def __init__(self, struct, cif_file):
-        self.struct = struct
-        self.entry_id = self.struct.structure_id
-
-        self.cif_data = mmCIFData(self.entry_id)
-        cif_file.append(self.cif_data)
+        self.struct   = struct
+        self.entry_id = self.struct.structure_id        
+        self.cif_data = cif_file.new_data(self.entry_id)
 
         ## entity handling
         ## entity_desc list
@@ -474,15 +472,12 @@ class mmCIFFileBuilder(object):
         """Returns the self.cif_data[name] mmCIFTable, or it creates
         it and adds it to self.cif_data if it does not exist.
         """
-        try:
-            return self.cif_data[name]
-        except KeyError:
-            pass
+        table = self.cif_data.get_table(name)
+        if table!=None:
+            return table
 
         columns = copy.deepcopy(CIF_BUILD_TABLES[name])
-        
-        table = mmCIFTable(name, columns)
-        self.cif_data.append(table)
+        table  = self.cif_data.new_table(name, columns)
         return table
 
     def get_entity_desc_from_id(self, entity_id):
@@ -502,8 +497,7 @@ class mmCIFFileBuilder(object):
         """Add the _entry table.
         """
         entry = self.get_table("entry")
-        row = mmCIFRow()
-        entry.append(row)
+        row = entry.new_row()
         row["id"] = self.entry_id
 
     def add__entity(self):
@@ -643,8 +637,7 @@ class mmCIFFileBuilder(object):
             return
         
         cell = self.get_table("cell")
-        row = mmCIFRow()
-        cell.append(row)
+        row = cell.new_row()
 
         row["entry_id"]    = self.cif_data["entry"]["id"]
         row["length_a"]    = unit_cell.a
@@ -662,9 +655,8 @@ class mmCIFFileBuilder(object):
         except AttributeError:
             return
 
-        cell = self.get_table("symmetry")
-        row = mmCIFRow()
-        cell.append(row)
+        symmetry = self.get_table("symmetry")
+        row = symmetry.new_row()
 
         row["entry_id"]             = self.cif_data["entry"]["id"]
         row["space_group_name_H-M"] = space_group.pdb_name
@@ -746,8 +738,7 @@ class mmCIFFileBuilder(object):
 
         if atm.U!=None:
             aniso = self.get_table("atom_site_anisotrop")
-            anrow = mmCIFRow()
-            aniso.append(anrow)
+            anrow = aniso.new_row()
 
             anrow["id"]                = asrow["id"]
             anrow["type_symbol"]       = asrow["type_symbol"]

@@ -2512,11 +2512,11 @@ class GLViewer(GLObject):
 
         centroid = calc_atom_centroid(aa_atom_iter(struct))
         R = self.calc_inertia_tensor(aa_atom_iter(struct), centroid)
-        if allclose(determinant(R), -1.0):
-            R[0,0] = -R[0,0]
-            R[0,1] = -R[0,1]
-            R[0,2] = -R[0,2]
 
+        if allclose(determinant(R), -1.0):
+            I = identity(3, Float)
+            I[0,0] = -1.0
+            R = matrixmultiply(I, R)
         assert allclose(determinant(R), 1.0)
 
         ori = {}
@@ -2590,8 +2590,7 @@ class GLViewer(GLObject):
         ori = self.calc_orientation(struct)
 
         self.properties.update(
-#            R         = ori["R"],
-            R         = identity(3, Float),
+            R         = ori["R"],
             cor       = ori["centroid"],
             zoom      = ori["hzoom"],
             near      = ori["near"],
