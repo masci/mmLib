@@ -11,10 +11,6 @@
 import sys
 from mmLib.FileLoader import LoadStructure, SaveStructure
 
-try:
-    path = sys.argv[1]
-except IndexError:
-    print "usage: ansotropy.py <PDB/mmCIF file>"
 
 def main(path):
     ## load structure
@@ -55,5 +51,3 @@ except IndexError:
     print "usage: ansotropy.py <PDB/mmCIF file>"
 else:
     main(path)
-
-print "END"
