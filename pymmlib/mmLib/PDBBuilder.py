@@ -11,7 +11,6 @@ from PDB              import *
 from Structure        import *
 from StructureBuilder import *
 
-
 ## class specification for alpha helicies mapping mmLib classification
 ## strings with PDB helix class integers, -1 where no PDB helix class
 ## would apply; here is the PDB helix class description
@@ -29,6 +28,7 @@ from StructureBuilder import *
 ##     27 ribbon/helix                             9
 ##     Polyproline                                10
 ##
+
 HELIX_CLASS_LIST = [
     ## protein helix classes
     ("HELIX_P",      -1),
@@ -176,20 +176,21 @@ class PDBStructureBuilder(StructureBuilder):
         ## optimization
         atm_map = self.atm_map
 
-        ## name and element
+        ## always derive element from atom name for PDB files -- they are
+        ## too messed up to use the element column
         try:
             name = rec["name"]
         except KeyError:
-            atm_map["name"] = ""
+            atm_map["element"] = ""
         else:
-            (name, element) = self.guess_element_from_name(
-                name, rec.get("resName", ""))
+            res_name = rec.get("resName", "")
 
-            if name!=None:
-                atm_map["name"] = name
-
-            if element!=None:
-                atm_map["element"] = element
+            gname, gelement = self.guess_element_from_name(name, res_name)
+            
+            if gname!=None:
+                atm_map["name"] = gname
+            if gelement!=None:
+                atm_map["element"] = gelement
 
         ## additional atom information
         if rec.has_key("serial"):
@@ -236,21 +237,24 @@ class PDBStructureBuilder(StructureBuilder):
         ## strip any space from the name, and return now if there
         ## is nothing left to work with
         name = name0.strip()
-        if name == "":
+        if name=="":
             self.pdb_error("ATOM", "record with blank name field")
             return name, None
         
         ## try the easy way out -- look up the atom in the monomer dictionary
         mdesc = library_get_monomer_desc(res_name)
         if mdesc!=None:
-            try:
-                return name, mdesc.atom_dict[name]
-            except KeyError:
-                if mdesc.is_amino_acid() and name == "OXT":
-                    return name, "O"
-                if mdesc.is_amino_acid():
-                    warning("Invalid Atom Name: %s in Residue: %s" % (
-                        name, res_name))
+            if mdesc.atom_dict.has_key(name):
+                symbol = mdesc.atom_dict[name]
+                if symbol!=None:
+                    return name, symbol
+
+            if mdesc.is_amino_acid() and name=="OXT":
+                return name, "O"
+
+            if mdesc.is_amino_acid():
+                warning("Invalid Atom Name: %s in Residue: %s" % (
+                    name, res_name))
 
         ## ok, that didn't work...
 
@@ -262,44 +266,45 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             space_flag = False
 
-        ## digitsplt: take a name like 1HA and split it to ("1", "HA")
-        digitx = ""
-        strx   = ""
+        ## remove all non-alpha chars from the name
+        alpha_name = ""
         for c in name:
-            if strx == "" and c.isdigit():
-                digitx += c
-            else:
-                strx += c
+            if c.isalpha()==True:
+                alpha_name += c
 
         ## look up two possible element symbols in the library:
         ## e1 is the possible one-charactor symbol
         ## e2 is the possible two-charactor symbol
-        e1 = library_get_element_desc(strx[:1])
+        if len(alpha_name)==0:
+            return None, None
 
-        x = strx[:2]
-        if len(x) == 2 and x.isalpha():
-            e2 = library_get_element_desc(x)
+        e1 = library_get_element_desc(alpha_name[0])
+
+        if len(alpha_name)>1:
+            e2 = library_get_element_desc(alpha_name[:2])
         else:
             e2 = None
 
         ## e1 or e2 must return somthing for us to proceed, otherwise,
         ## there's just no possible element symbol contained in the atom
         ## name
-        if e1 == None and e2 == None:
+        if e1==None and e2==None:
             return name , None
-        elif e1 != None and e2 == None:
+
+        elif e1!=None and e2==None:
             return name, e1.symbol
-        elif e1 == None and e2 != None:
+
+        elif e1==None and e2!=None:
             return name, e2.symbol
 
         ## if we get here, then e1 and e2 are both valid elements
 
         ## no monomer library help narrow down the choices, choose e1
-        if mon == None:
+        if mdesc==None:
             return name, e1.symbol
         
-        e1x = e1.symbol in mon.atom_dict.values()
-        e2x = e2.symbol in mon.atom_dict.values()
+        e1x = e1.symbol in mdesc.atom_dict.values()
+        e2x = e2.symbol in mdesc.atom_dict.values()
 
         if e1x == True and e2x == False:
             return name, e1.symbol

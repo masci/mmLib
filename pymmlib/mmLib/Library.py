@@ -132,6 +132,7 @@ def library_get_element_desc(symbol):
 
     element = cif_data.get_table("element")
     element_desc.name            = element["name"]
+    element_desc.symbol          = element["symbol"]
     element_desc.number          = int(element["number"])
     element_desc.atomic_weight   = float(element["atomic_weight"])
     element_desc.vdw_radius      = float(element["van_der_walls_radius"])

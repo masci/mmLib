@@ -504,7 +504,12 @@ def cmp_struct(struct1, struct2):
     assert struct1.count_all_atoms() == struct2.count_all_atoms()
     
     def cmp_atoms(atm1, atm2):
-        assert atm1.element       == atm2.element
+        try:
+            assert atm1.element == atm2.element
+        except AssertionError:
+            print "%s != %s" % (atm1.element, atm2.element)
+            raise
+        
         assert atm1.name          == atm2.name
         assert atm1.fragment_id   == atm2.fragment_id
         assert atm1.res_name      == atm2.res_name
