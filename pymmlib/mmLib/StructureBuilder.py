@@ -201,18 +201,19 @@ class StructureBuilder:
         for i in range(len(segment_list)):
             (chain, residue_list) = segment_list[i]
 
-            res0 = residue_list[0]
-            poly = res0.polymer_class(self.structure, chain_id=chain.chain_id)
+            res0       = residue_list[0]
+            polymer_id = len(chain.polymer_list)
+            poly       = res0.polymer_class(self.structure,
+                                            chain_id    = chain.chain_id,
+                                            polymer_id = polymer_id)
 
             chain.polymer_list.add(poly)
-            poly.polymer_id = chain.polymer_list.index(poly)
-            
             for res in residue_list:
                 res.polymer_id = poly.polymer_id
                 poly.fragment_list.add(res)
-                
-            
+                            
     def buildBonds(self):
+
         def bond_atoms(atm1, atm2):
             def make_bond(a1, a2):
                 bond = a1.getBond(a2)
@@ -241,7 +242,6 @@ class StructureBuilder:
 
         ## BUILD BONDS INSIDE FRAGMENTS
         for frag in self.structure.iterFragments():
-
             ## lookup the definition of the monomer in the library
             try:
                 mon = self.structure.library[frag.res_name]
@@ -261,7 +261,7 @@ class StructureBuilder:
         for poly in self.structure.iterPolymers():
             for res1 in poly.iterResidues():
 
-                res2 = res1.getResidue(1)
+                res2 = res1.getOffsetResidue(1)
                 if not res2: continue
 
                 ## lookup the definition of the monomer in the library
@@ -279,7 +279,7 @@ class StructureBuilder:
                         continue
 
                     bond_atoms(atm1, atm2)
-                
+  
     def buildMolecules(self):
         pass
 
@@ -380,17 +380,23 @@ class CopyStructureBuilder(StructureBuilder):
 
 class PDBStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a PDB file."""
-
     def parseFormat(self, fil):
         pdb_file = PDB.PDBFile()
         pdb_file.loadFile(fil)
 
-        record_list = pdb_file.pdb_list
+        atm_map       = {}
+        record_list   = pdb_file.pdb_list
 
         for i in range(len(record_list)):
             rec = record_list[i]
             
             if isinstance(rec, PDB.ATOM):
+
+                ## load the last atom before moving to this one
+                if atm_map:
+                    self.loadAtom(atm_map)
+                
+                ## start new atom
                 atm_map                = {}
                 atm_map["name"]        = getattr(rec, "name")       or ""
                 atm_map["element"]     = getattr(rec, "element")    or ""
@@ -405,15 +411,20 @@ class PDBStructureBuilder(StructureBuilder):
                 atm_map["occupancy"]   = getattr(rec, "occupancy")  or 0.0
                 atm_map["temp_factor"] = getattr(rec, "tempFactor") or 0.0
                 atm_map["charge"]      = getattr(rec, "charge")     or 0.0
-               
-##                 atm_map["U[1][1]"] = float(cifattr(aniso, "U[1][1]"))
-##                 atm_map["U[2][2]"] = float(cifattr(aniso, "U[2][2]"))
-##                 atm_map["U[3][3]"] = float(cifattr(aniso, "U[3][3]"))
-##                 atm_map["U[1][2]"] = float(cifattr(aniso, "U[1][2]"))
-##                 atm_map["U[1][3]"] = float(cifattr(aniso, "U[1][3]"))
-##                 atm_map["U[2][3]"] = float(cifattr(aniso, "U[2][3]"))
 
-                self.loadAtom(atm_map)
+            elif isinstance(rec, PDB.ANISOU):
+                atm_map["U[1][1]"] = getattr(rec, "u[0][0]")/1000.0
+                atm_map["U[2][2]"] = getattr(rec, "u[1][1]")/1000.0
+                atm_map["U[3][3]"] = getattr(rec, "u[2][2]")/1000.0
+                atm_map["U[1][2]"] = getattr(rec, "u[0][1]")/1000.0
+                atm_map["U[1][3]"] = getattr(rec, "u[0][2]")/1000.0
+                atm_map["U[2][3]"] = getattr(rec, "u[1][2]")/1000.0
+                
+        ## if we were in the process of building a atom,
+        ## then load the final atm_map 
+        if atm_map:
+            self.loadAtom(atm_map)
+
 
 class mmCIFStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file."""
@@ -423,9 +434,9 @@ class mmCIFStructureBuilder(StructureBuilder):
         cif_file.loadFile(fil)
         
         for cif_data in cif_file.getDataList():
-            self.loadCIFData(cif_data)
+            self.__load_CIF_Data(cif_data)
 
-    def loadCIFData(self, cif_data):
+    def __load_CIF_Data(self, cif_data):
 
         def cifattr(cif_row, attr, default = ""):
             val = getattr(cif_row, attr, default)
@@ -501,14 +512,14 @@ class mmCIFStructureBuilder(StructureBuilder):
 if __name__ == "__main__":
     import sys
     struct = PDBStructureBuilder(sys.argv[1],
-                                   build_properties=("polymers","bonds")
-                                   ).structure
+                                 build_properties=("polymers","bonds")
+                                 ).structure
 
     for res in struct.iterAminoAcids():
         print "---"
-        print res.getResidue(-1)
+        print res.getOffsetResidue(-1)
         print res
-        print res.getResidue(1)
+        print res.getOffsetResidue(1)
         print "---"
 
     s2 = CopyStructureBuilder(res,

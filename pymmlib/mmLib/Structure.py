@@ -361,10 +361,16 @@ class Polymer(StructureMember):
         self.fragment_list = FragmentList()
 
     def __str__(self):
+        try:
+            frag1 = self.fragment_list[0]
+            frag2 = self.fragment_list[-1]
+        except IndexError:
+            frag1 = None
+            frag2 = None
+        
         return "%s(%d, %s...%s)" % (self.__class__.__name__,
                                     self.polymer_id,
-                                    self.fragment_list[0],
-                                    self.fragment_list[-1])
+                                    frag1, frag2)
     
     def __iter__(self):
         """Same as iterResidues()."""
@@ -529,7 +535,7 @@ class Fragment(StructureMember):
                     yield bond
                     visited.insert(0, bond)
 
-    def getFragment(self, offset):
+    def getOffsetFragment(self, offset):
         chain = self.structure().getChain(self.chain_id)
         if not chain: return None
 
@@ -569,7 +575,7 @@ class Residue(Fragment):
                                        self.polymer_id)
 
 
-    def getResidue(self, offset):
+    def getOffsetResidue(self, offset):
         chain = self.structure().getChain(self.chain_id)
         if not chain: return None
 
@@ -615,6 +621,11 @@ class Bond(BondAlgorithms):
 
     def __str__(self):
         return "Bond(%s...%s)" % (self.atom1(), self.atom2())
+
+    def getPartner(self, atm):
+        if   atm == self.atom1(): return self.atom2()
+        elif atm == self.atom2(): return self.atom1()
+        return None
 
 
 class Atom(StructureMember, AtomAlgorithms):
@@ -699,8 +710,5 @@ class Atom(StructureMember, AtomAlgorithms):
     def iterBondedAtoms(self):
         """Iterates over all the Atoms bonded to self."""
         for bond in self.iterBonds():
-            if self == bond.atom1():
-                yield bond.atom2()
-            else:
-                yield bond.atom1()
+            yield bond.getPartner(self)
 ### </ATOM>

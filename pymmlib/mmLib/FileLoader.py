@@ -24,10 +24,11 @@ def decode_format(path, format):
         if ext.lower() in ['.z', '.gz', '.bz2']:
             path = base
 
-    (base, ext) = os.path.splitext(path)
-    ext = ext.lower()
+        (base, ext) = os.path.splitext(path)
+        ext = ext.lower()
 
-    if ext == ".cif": return "CIF"
+        if ext == ".cif": return "CIF"
+
     return "PDB"
 
 

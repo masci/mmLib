@@ -20,7 +20,7 @@ class AminoAcidResidueAlgorithms(object):
         aCB = self.getAtom('CB')
 
         try:
-            naN = self.getResidue(1).getAtom('N')
+            naN = self.getOffsetResidue(1).getAtom('N')
         except AttributeError:
             naN = None
      
@@ -44,7 +44,7 @@ class AminoAcidResidueAlgorithms(object):
 
         naN      = None
         naCA     = None
-        next_res = self.getResidue(1)
+        next_res = self.getOffsetResidue(1)
         if next_res:
             naN  = next_res.getAtom('N')
             naCA = next_res.getAtom('CA')
@@ -62,7 +62,7 @@ class AminoAcidResidueAlgorithms(object):
         """Calculates the Psi torsion angle of the amino acid.  Raises a
         CTerminal exception if called on a C-terminal residue which does
         not have a Psi torsion angle."""
-        next_res = self.getResidue(1)
+        next_res = self.getOffsetResidue(1)
         if not next_res:
             return None
 
@@ -76,7 +76,7 @@ class AminoAcidResidueAlgorithms(object):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
         NTerminal exception if called on a N-terminal residue which does
         not have a Phi torsion angle."""
-        prev_res = self.getResidue(-1)
+        prev_res = self.getOffsetResidue(-1)
         if not prev_res:
             return None
 
@@ -90,7 +90,7 @@ class AminoAcidResidueAlgorithms(object):
         """Calculates the Omega torsion angle of the amino acid. Raises a
         CTerminal exception if called on a C-terminal residue which does
         not have a Omega torsion angle."""
-        next_res = self.getResidue(1)
+        next_res = self.getOffsetResidue(1)
         if not next_res:
             return None
 
