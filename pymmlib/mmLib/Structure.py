@@ -54,11 +54,54 @@ class BetaSheet(SecondaryStructure):
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
-    macromolecular data structure."""
+    macromolecular data structure.
+
+    Attributes:
+    id               (string) PDB ID 
+    date             (string) original deposition date
+    keywords         (string) structure keywords
+    pdbx_keywords    (string) PDB keywords
+    title            (stirng) title
+
+    R_fact           (float)  R factor
+    free_R_fact      (float)  free R factor
+    res_high         (float)  highest resolution of structure data
+    res_low          (float)  lowest resolution of structure
+
+    source_data      (object) the source data from whichthe structure was
+                              built, such as a PDBFile object or a
+                              mmCIFFile object
+    library          (mmLib.Library object) the monomer library used by
+                              the structure
+    default_alt_loc  (string) all objects in the structure hierarcy
+                              default to iterating, retrieving, and
+                              calculating the structure using the alt_loc
+                              conformation set in default_alt_loc
+    sites            (list)   list of Site objects containing all defined
+                              sites in the structure
+    alpha_helices    (list)   list of AlphaHelix objects containing all
+                              alpha helices in the structure
+    beta_sheets      (list)   list of BetaSheet objects containing all
+                              beta sheets in the structure
+    turns            (list)   list of Turn objects
+    """
 
     def __init__(self,
                  library         = None,
                  default_alt_loc = ""):
+
+        self.id              = ""
+        self.date            = ""
+        self.keywords        = ""
+        self.pdbx_keywords   = ""
+        self.title           = ""
+
+        self.R_fact          = None
+        self.free_R_fact     = None
+        self.res_high        = None
+        self.res_low         = None
+
+        self.source_data     = None
 
         self.library         = library
         self.default_alt_loc = default_alt_loc
@@ -71,9 +114,20 @@ class Structure(object):
         self.__chain_list    = []
 
     def __str__(self):
-        s = string.join([c.chain_id for c in self.__chain_list], ", ")
-        return "Structure["+s+"]"
+        tstr =  "Structure: %s\n" % (self.id)
+        tstr += "%s\n"           % (self.title[:40])
 
+        if self.res_high:
+            tstr += "res(A): %1.2f\n" % (self.res_high)
+
+        if self.R_fact:
+            tstr += "R: %1.3f\n" % (self.R_fact)
+
+        if self.free_R_fact:
+            tstr += "Rfree: %1.3f\n" % (self.free_R_fact)
+
+        return tstr
+ 
     def __len__(self):
         return len(self.__chain_list)
     
@@ -314,25 +368,40 @@ class Chain(object):
         """Attempts to calculate the residue sequence contained in the
         Chain object.  This is a simple algorithm: find the longest running
         sequence of the same bio-residue, and that's the sequence."""
-        sequence_list  = []
+
+        slist          = []
+        sequence_list  = None
         sequence_class = None
 
+        ## iterate through all fragments in the chain and create a
+        ## list of the continuous residue segments
         for frag in self.iterFragments():
             if sequence_class:
-                if not isinstance(frag, sequence_class): break
-                sequence_list.append(frag.fragment_id)
+                if isinstance(frag, sequence_class):
+                    sequence_list.append(frag.fragment_id)
+                else:
+                    slist.append(sequence_list)
+                    sequence_list  = None
+                    sequence_class = None
 
             else:
-                if   isinstance(frag, AminoAcidResidue):
-                    sequence_list.append(frag.fragment_id)
+                if isinstance(frag, AminoAcidResidue):
+                    sequence_list  = [frag.fragment_id]
                     sequence_class = AminoAcidResidue
 
                 elif isinstance(frag, NucleicAcidResidue):
-                    sequence_list.append(frag.fragment_id)
+                    sequence_list  = [frag.fragment_id]
                     sequence_class = NucleicAcidResidue
 
-        self.sequence_list = sequence_list
+        if sequence_list != None:
+            slist.append(sequence_list)
 
+        ## iterate through the detected polymer sequences, and use the
+        ## longest list for the residue sequence in this chain
+        self.sequence_list = []
+        for l in slist:
+            if len(l) > len(self.sequence_list):
+                self.sequence_list = l
 
 
 class Fragment(object):
@@ -766,8 +835,8 @@ class Atom(object):
         self.U            = None
         self.charge       = None
 
-        self.alt_loc_list = WeakrefList()
-        self.alt_loc_list.append(self)
+        self.__alt_loc_list = WeakrefList()
+        self.__alt_loc_list.append(self)
         
         self.bond_list    = []
 
@@ -795,33 +864,35 @@ class Atom(object):
         return self.alt_loc >= other.alt_loc
 
     def __len__(self):
-        return len(self.alt_loc_list)
+        return len(self.__alt_loc_list)
 
     def __getitem__(self, x):
         """This is a alternative to calling getAltLoc, but a KeyError
         exception is raised if the alt_loc Atom is not found."""
         if type(x) == StringType:
-            for atom in self.alt_loc_list:
+            for atom in self.__alt_loc_list:
                 if atom.alt_loc == x:
-                    return x
+                    return atom
             raise KeyError, x
 
         raise TypeError, x
 
     def __delitem__(self, x):
-        self.alt_loc_list.remove(self[x])
+        self.__alt_loc_list.remove(self[x])
 
     def __iter__(self):
-        return iter(self.alt_loc_list)
+        return iter(self.__alt_loc_list)
 
     def __contains__(self, x):
-        return self[x] in self.alt_loc_list
+        return self[x] in self.__alt_loc_list
 
     def addAltLoc(self, atom):
         assert isinstance(atom, Atom)
-        self.alt_loc_list.append(atom)
-        atom.alt_loc_list = self.alt_loc_list
-        self.alt_loc_list.sort()
+        assert atom not in self.__alt_loc_list
+
+        self.__alt_loc_list.append(atom)
+        atom.__alt_loc_list = self.__alt_loc_list
+        self.__alt_loc_list.sort()
 
     def getAltLoc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument."""
@@ -939,7 +1010,6 @@ class Bond(object):
     def __init__(self, atom1, atom2):
         assert isinstance(atom1, Atom)
         assert isinstance(atom2, Atom)
-
         assert atom1 != atom2
 
         self.getAtom1 = weakref.ref(atom1)

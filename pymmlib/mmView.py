@@ -20,6 +20,8 @@ from OpenGL.GLUT import *
 
 from mmLib.Structure     import *
 from mmLib.FileLoader    import LoadStructure, SaveStructure
+from mmLib.Extensions.PenultimateRotamers import FindBestRotamer
+
 
 try:
     # try double-buffered
@@ -245,7 +247,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
             elif atm.element == "N": self.set_material(0.0, 0.0, 1.0, br)
             elif atm.element == "O": self.set_material(1.0, 0.0, 0.0, br)
             elif atm.element == "S": self.set_material(0.0, 1.0, 0.0, br)
-            else:                    self.set_material(1.0, 1.0, 1.0, br)
+            else:                    self.set_material(1.0, 1.0, 1.0, 1.0)
 
             glutSolidSphere(size, 12, 12)
             glPopMatrix()
@@ -261,10 +263,7 @@ class GLViewer(gtk.gtkgl.DrawingArea):
                 v1   = atm.position - self.centroid
                 v2   = atm2.position - self.centroid
 
-                if atm in select_list and atm2 in select_list:
-                    self.set_material(1.0, 1.0, 1.0, 1.0)
-                else:
-                    self.set_material(1.0, 1.0, 1.0, 0.5)
+                self.set_material(1.0, 1.0, 1.0, 0.2)
 
                 glBegin(GL_LINES)
                 glVertex3f(v1[0], v1[1], v1[2])
@@ -389,29 +388,20 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
         elif isinstance(node, Chain):
             struct_path = self.structure_list.index(node.getStructure())
-            chain_path = node.getStructure().chain_list.index(node)
-            return (struct_path, chain_path, )
+            chain_path = node.getStructure().index(node)
+            return (struct_path, chain_path )
 
         elif isinstance(node, Fragment):
-            struct      = node.getStructure()
-            chain       = struct.getChain(node.chain_id)
-
-            struct_path = self.structure_list.index(struct)
-            chain_path  = struct.chain_list.index(chain)
-            frag_path   = chain.frag_list.index(node)
-
+            struct_path = self.structure_list.index(node.getStructure())
+            chain_path  = node.getStructure().index(node.getChain())
+            frag_path   = node.getChain().index(node)
             return (structure_path, chain_path, frag_path)
 
         elif isinstance(node, Atom):
-            struct     = node.getStructure()
-            chain      = struct.getChain(node.chain_id)
-            frag       = chain.getFragment(node.fragment_id)
-
             struct_path = self.structure_list.index(node.getStructure())
-            chain_path = struct.chain_list.index(chain)
-            frag_path  = chain.fragment_list.index(frag)
-            atom_path  = frag.atom_list.index(node)
-            
+            chain_path  = node.getStructure().index(node.getChain())
+            frag_path   = node.getChain().index(node.getFragment)
+            atom_path   = node.getFragment().index(node)
             return (struct_path, chain_path, frag_path, atom_path)
 
     def on_get_iter(self, path):
@@ -420,15 +410,15 @@ class StructureTreeModel(gtk.GenericTreeModel):
         if len(path) == 1:
             return struct
 
-        chain = struct.chain_list[path[1]]
+        chain = struct[path[1]]
         if len(path) == 2:
             return chain
 
-        frag = chain.fragment_list[path[2]]
+        frag = chain[path[2]]
         if len(path) == 3:
             return frag
 
-        atm = frag.atom_list[path[3]]
+        atm = frag[path[3]]
         if len(path) == 4:
             return atm
         
@@ -447,9 +437,9 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
         elif isinstance(node, Chain):
             struct = node.getStructure()
-            i = struct.chain_list.index(node)
+            i      = struct.index(node)
             try:
-                return struct.chain_list[i+1]
+                return struct[i+1]
             except IndexError:
                 return None
 
@@ -459,9 +449,9 @@ class StructureTreeModel(gtk.GenericTreeModel):
         elif isinstance(node, Atom):
             struct = node.getStructure()
             frag   = struct[node.chain_id][node.fragment_id]
-            i = frag.atom_list.index(node)
+            i      = frag.index(node)
             try:
-                return frag.atom_list[i+1]
+                return frag[i+1]
             except IndexError:
                 return None
 
@@ -473,75 +463,44 @@ class StructureTreeModel(gtk.GenericTreeModel):
             except IndexError:
                 return None
 
-        elif isinstance(node, Structure):
+        elif isinstance(node, Structure)  or \
+             isinstance(node, Chain)      or \
+             isinstance(node, Fragment):
             try:
-                return node.chain_list[0]
+                return node[0]
             except IndexError:
                 return None
-        
-        elif isinstance(node, Chain):
-            struct = node.getStructure()
-            try:
-                return struct[node.chain_id].fragment_list[0]
-            except IndexError:
-                pass
 
-        elif isinstance(node, Fragment):
-            struct = node.getStructure()
-            frag = struct[node.chain_id][node.fragment_id]
-            try:
-                return frag.atom_list[0]
-            except IndexError:
-                return None
+        else:
+            return None
 
     def on_iter_has_child(self, node):
 	'''returns true if this node has children'''
-        if node == self.structure_list:
-            return not not node
-
-        elif isinstance(node, Structure):
-            return not not node.chain_list
-
-        elif isinstance(node, Chain):
-            return not not node.fragment_list
-
-        elif isinstance(node, Fragment):
-            return not not node.atom_list
-
+        if   node == self.structure_list  or \
+             isinstance(node, Structure)  or \
+             isinstance(node, Chain)      or \
+             isinstance(node, Fragment):
+            return len(node)
         else:
             return False
 
     def on_iter_n_children(self, node):
 	'''returns the number of children of this node'''
-        if node == self.structure_list:
+        if   node == self.structure_list  or \
+             isinstance(node, Structure)  or \
+             isinstance(node, Chain)      or \
+             isinstance(node, Fragment):
             return len(node)
-
-        elif isinstance(node, Structure):
-            return len(node.chain_list)
-
-        elif isinstance(node, Chain):
-            return len(node.fragment_list)
-
-        elif isinstance(node, Fragment):
-            return len(node.atom_list)
-
         else:
             return 0
 
     def on_iter_nth_child(self, node, n):
 	'''returns the nth child of this node'''
-        if node == self.structure_list:
+        if   node == self.structure_list  or \
+             isinstance(node, Structure)  or \
+             isinstance(node, Chain)      or \
+             isinstance(node, Fragment):
             return node[n]
-
-        elif isinstance(node, Structure):
-            return self.chain_list[n]
-
-        elif isinstance(node, Chain):
-            return self.fragment_list[n]
-
-        elif isinstance(node, Fragment):
-            return self.atom_list[n]
-
         else:
             return None
 
@@ -557,11 +516,10 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return node.getStructure()
 
         elif isinstance(node, Fragment):
-            return node.getStructure()[node.chain_id]
+            return node.getChain()
 
         elif isinstance(node, Atom):
-            return node.getStructure()[node.chain_id][node.fragment_id]
-
+            return node.getFragment()
 
 
 class StructureGUI:
@@ -596,7 +554,7 @@ class StructureGUI:
     def loadStructure(self, path):
         self.structure = LoadStructure(
             fil              = path,
-            build_properties = ("polymers","bonds"))
+            build_properties = ("sequence","bonds"))
 
         model = StructureTreeModel(self.structure)
         self.struct_tree_view.set_model(model)

@@ -118,7 +118,6 @@ class StructureBuilder:
         file data if it exists, otherwise it will try to calculate
         the sequence."""
         for chain in self.structure.iterChains():
-            print "buildSequence"
             chain.calcSequence()
 
     def buildBonds(self):
@@ -126,6 +125,37 @@ class StructureBuilder:
         bond definitions, and data loaded from parseFormat()."""
         for frag in self.structure.iterFragments():
             frag.createBonds()
+
+    def loadInfo(self, info_map):
+        """Called by the implementation of parseFormat to load descriptive
+        information about the structure."""
+        
+        try: self.structure.id = info_map["id"]
+        except KeyError: pass
+
+        try: self.structure.date = info_map["date"]
+        except KeyError: pass
+
+        try: self.structure.keywords = info_map["keywords"]
+        except KeyError: pass
+       
+        try: self.structure.pdbx_keywords = info_map["pdbx_keywords"]
+        except KeyError: pass 
+      
+        try: self.structure.title = info_map["title"]
+        except KeyError: pass  
+
+        try: self.structure.R_fact = info_map["R_fact"]
+        except KeyError: pass  
+
+        try: self.structure.free_R_fact = info_map["free_R_fact"]
+        except KeyError: pass  
+
+        try: self.structure.res_high = info_map["res_high"]
+        except KeyError: pass  
+
+        try: self.structure.res_low = info_map["res_low"]
+        except KeyError: pass  
 
     def loadAtom(self, atm_map):
         """Called by the implementation of parseFormat to load all the
@@ -150,7 +180,7 @@ class StructureBuilder:
             return
 
         ## don't allow atoms with blank altLoc if one has a altLoc
-        if altLoc: 
+        if altLoc:
             tmp_id = (name, "", fragmentID, chainID)
             if self.atom_cache.has_key(tmp_id):
                 print "[ALTLOC LABELING ERROR]", atm_id
@@ -353,18 +383,61 @@ class mmCIFStructureBuilder(StructureBuilder):
         cif_file = mmCIF.mmCIFFile()
         cif_file.loadFile(fil)
         
-        for cif_data in cif_file.getDataList():
+        for cif_data in cif_file:
             self.__load_CIF_Data(cif_data)
 
     def __load_CIF_Data(self, cif_data):
 
         def cifattr(cif_row, attr, default = ""):
-            val = getattr(cif_row, attr, default)
+            val = cif_row.get(attr, default)
             if val == "?" or val == ".":
                 val = ""
             return val
 
-        for atom_site in cif_data.atom_site.getRowList():
+        ## read structure header/title info
+        info_map = {}
+
+        try: info_map["id"] = cif_data["entry"][0]["id"]
+        except KeyError: print "missing entry.id"
+
+        try: info_map["date"] = \
+             cif_data["database_pdb_rev"][0]["date_original"]
+        except KeyError: print "missing database_pdb_rev.date_original"
+
+        try: info_map["keywords"] = cif_data["struct_keywords"][0]["text"]
+        except KeyError: print "missing struct_keywords.text"
+
+        try: info_map["pdbx_keywords"] = \
+             cif_data["struct_keywords"][0]["pdbx_keywords"]
+        except KeyError: print "missing struct_keywords.pdbx_keywords"
+
+        try: info_map["title"] = cif_data["struct"][0]["title"]
+        except KeyError: print "missing struct.title"
+
+        try: info_map["R_fact"] = \
+            float(cif_data["refine"][0]["ls_R_factor_R_work"])
+        except KeyError:   print "missing refine.ls_R_factor_R_work"
+        except ValueError: print "missing refine.ls_R_factor_R_work"
+        
+        try: info_map["free_R_fact"] = \
+             float(cif_data["refine"][0]["ls_R_factor_R_free"])
+        except KeyError:   print "missing refine.ls_R_factor_R_free"
+        except ValueError: print "missing refine.ls_R_factor_R_free"
+
+        try: info_map["res_high"] = \
+             float(cif_data["refine"][0]["ls_d_res_high"])
+        except KeyError:   print "missing refine.ls_d_res_high"
+        except ValueError: print "missing refine.ls_d_res_high"
+
+        try: info_map["res_low"] = \
+             float(cif_data["refine"][0]["ls_d_res_low"])
+        except KeyError:   print "missing refine.ls_d_res_low"
+        except ValueError: print "missing refine.ls_d_res_low"
+        
+        self.loadInfo(info_map)
+
+        ## read atom coordinate data
+        for atom_site in cif_data["atom_site"]:
             atm_map = {}
 
             atm_map["name"]      = cifattr(atom_site, "label_atom_id")
@@ -399,14 +472,12 @@ class mmCIFStructureBuilder(StructureBuilder):
             atm_map["temp_factor"] = \
                 float(cifattr(atom_site, "B_iso_or_equiv"))
 
-            if hasattr(cif_data, "atom_site_anisotrop"):
+            if cif_data.has_key("atom_site_anisotrop"):
+                ctable = cif_data["atom_site_anisotrop"]
                 try:
-                    (aniso, ) = cif_data.atom_site_anisotrop.selectRowList(
-                        ("id", atom_site.id))
-
+                    (aniso, ) = ctable.selectRowList(("id", atom_site["id"]))
                 except ValueError:
                     pass
-
                 else:
                     atm_map["U[1][1]"] = float(cifattr(aniso, "U[1][1]"))
                     atm_map["U[2][2]"] = float(cifattr(aniso, "U[2][2]"))
@@ -419,25 +490,25 @@ class mmCIFStructureBuilder(StructureBuilder):
 
 
         ## load SITE data
-        if hasattr(cif_data, "struct_site_gen"):
+        if cif_data.has_key("struct_site_gen"):
             site_map = {}
         
-            for struct_site_gen in cif_data.struct_site_gen.getRowList():
+            for struct_site_gen in cif_data["struct_site_gen"]:
                 ## extract data for chain_id and seq_id
-                site_id  = struct_site_gen.site_id
+                site_id  = struct_site_gen["site_id"]
 
-                chain_id = struct_site_gen.auth_asym_id
+                chain_id = struct_site_gen["auth_asym_id"]
                 if chain_id in ["?", "."]:
-                    chain_id = struct_site_gen.label_asym_id
+                    chain_id = struct_site_gen["label_asym_id"]
 
-                frag_id  = struct_site_gen.auth_seq_id
+                frag_id  = struct_site_gen["auth_seq_id"]
                 if frag_id in ["?", "."]:
-                    frag_id = struct_site_gen.label_seq_id
+                    frag_id = struct_site_gen["label_seq_id"]
 
                 ## skip bad rows
                 if chain_id in ["?", "."] or frag_id in ["?", "."]:
                     continue
-                
+                    
                 if not site_map.has_key(site_id):
                     site_map[site_id] = []
 
