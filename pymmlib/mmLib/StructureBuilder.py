@@ -211,6 +211,11 @@ class StructureBuilder:
         except KeyError:
             pass
 
+    def loadUnitCell(self, ucell_map):
+        self.structure.unit_cell = UnitCell(
+            ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
+            ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
+
     def loadSite(self, site_id, site_list):
         """Called by the implementation of parseFormat to load information
         about one site in the structure.  Sites are groups of residues
@@ -331,14 +336,24 @@ class PDBStructureBuilder(StructureBuilder):
         else:
             site_map[site_id].append((chain_id, frag_id))
 
+    def __process_CRYST1(self, ucell_map, rec):
+        ucell_map["a"]      = getattr(rec, "a")
+        ucell_map["b"]      = getattr(rec, "b")
+        ucell_map["c"]      = getattr(rec, "c")
+        ucell_map["alpha"]  = getattr(rec, "alpha")
+        ucell_map["beta"]   = getattr(rec, "beta")
+        ucell_map["gamma"]  = getattr(rec, "gamma")
+        ucell_map["sgroup"] = getattr(rec, "sgroup")
+        ucell_map["z"]      = getattr(rec, "z")
     
     def parseFormat(self, fil):
         pdb_file = PDB.PDBFile()
         pdb_file.loadFile(fil)
 
-        site_map      = {}
-
         atm_map       = {}
+        site_map      = {}
+        ucell_map     = {}
+
         record_list   = pdb_file.pdb_list
 
         for i in range(len(record_list)):
@@ -365,6 +380,10 @@ class PDBStructureBuilder(StructureBuilder):
 
             elif isinstance(rec, PDB.SITE):
                 self.__process_SITE(site_map, rec)
+
+            elif isinstance(rec, PDB.CRYST1):
+                self.__process_CRYST1(ucell_map, rec)
+                
                 
         ## if we were in the process of building a atom,
         ## then load the final atm_map 
@@ -374,6 +393,9 @@ class PDBStructureBuilder(StructureBuilder):
         ## load the SITE records collected during parsing
         for (site_id, site_list) in site_map.items():
             self.loadSite(site_id, site_list)
+
+        if ucell_map:
+            self.loadUnitCell(ucell_map)
 
 
 class mmCIFStructureBuilder(StructureBuilder):
@@ -394,11 +416,12 @@ class mmCIFStructureBuilder(StructureBuilder):
                 val = ""
             return val
 
-        ## read structure header/title info
-        info_map = {}
-
-        try: info_map["id"] = cif_data["entry"][0]["id"]
+        ## PDB ENTRY ID
+        try: entry_id = cif_data["entry"][0]["id"]
         except KeyError: print "missing entry.id"
+
+        ## INFO/EXPERIMENTAL DATA
+        info_map = {"id" : entry_id}
 
         try: info_map["date"] = \
              cif_data["database_pdb_rev"][0]["date_original"]
@@ -436,7 +459,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         
         self.loadInfo(info_map)
 
-        ## read atom coordinate data
+        ## ATOM/HETATM
         for atom_site in cif_data["atom_site"]:
             atm_map = {}
 
@@ -485,11 +508,10 @@ class mmCIFStructureBuilder(StructureBuilder):
                     atm_map["U[1][2]"] = float(cifattr(aniso, "U[1][2]"))
                     atm_map["U[1][3]"] = float(cifattr(aniso, "U[1][3]"))
                     atm_map["U[2][3]"] = float(cifattr(aniso, "U[2][3]"))
-                    
+
             self.loadAtom(atm_map)
 
-
-        ## load SITE data
+        ## SITE
         if cif_data.has_key("struct_site_gen"):
             site_map = {}
         
@@ -516,6 +538,38 @@ class mmCIFStructureBuilder(StructureBuilder):
 
             for (site_id, site_list) in site_map.items():
                 self.loadSite(site_id, site_list)
+
+        ## UNIT CELL
+        ucell_map = {}
+                
+        if cif_data.has_key("cell"):
+            ucell_map = {}
+            
+            try:
+                (cell,) = cif_data["cell"].selectRowList(
+                    ("entry_id", entry_id))
+            except ValueError:
+                pass
+            else:
+                ucell_map["a"]     = float(cell["length_a"])
+                ucell_map["b"]     = float(cell["length_b"])
+                ucell_map["c"]     = float(cell["length_c"])
+                ucell_map["alpha"] = float(cell["angle_alpha"])
+                ucell_map["beta"]  = float(cell["angle_beta"])
+                ucell_map["gamma"] = float(cell["angle_gamma"])
+                ucell_map["z"]     = int(cell["Z_PDB"])
+
+        if cif_data.has_key("symmetry"):
+            try:
+                (symm,) = cif_data["symmetry"].selectRowList(
+                    ("entry_id", entry_id))
+            except ValueError:
+                pass
+            else:
+                ucell_map["sgroup"] = symm["space_group_name_H-M"]
+        
+        if ucell_map:
+            self.loadUnitCell(ucell_map)
             
 
 ### <TESTING>

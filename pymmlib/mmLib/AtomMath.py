@@ -8,8 +8,22 @@
 import math
 from   mmTypes import *
 
-def convertAngle(angle):
-    return (angle * 180.0) / math.pi
+rad2deg = 180.0   / math.pi
+deg2rad = math.pi / 180.0
+
+
+def cos(deg):
+    return math.cos(deg2rad * deg)
+
+def acos(x):
+    return math.acos(x) * rad2deg
+
+def sin(deg):
+    return math.sin(deg2rad * deg)
+
+def asin(x):
+    return math.asin(x) * rad2deg
+
 
 def calculateDistance(a1, a2):
     """Returns the distance between two argument atoms."""
@@ -26,7 +40,7 @@ def calculateAngle(a1, a2, a3):
 
     a21 = a1.position - a2.position
     a23 = a3.position - a2.position
-    return convertAngle(a21.angle(a23))
+    return a21.angle(a23) * rad2deg
 
 
 def calculateTorsionAngle(a1, a2, a3, a4):
@@ -52,12 +66,12 @@ def calculateTorsionAngle(a1, a2, a3, a4):
     if scalar_product < -1.0:
         scalar_product = -1.0
 
-    angle = math.acos(scalar_product)
+    angle = acos(scalar_product)
 
     if direction < 0.0:
         angle = -angle
 
-    return convertAngle(angle)
+    return angle
 
 
 ### <TESTING>

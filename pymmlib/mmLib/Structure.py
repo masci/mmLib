@@ -12,18 +12,47 @@ import weakref
 from   mmTypes              import *
 from   AtomMath             import *
 from   Library              import Library
+from   UnitCell             import UnitCell
+from   SpaceGroups          import SpaceGroup
+
+
+class FragmentGroupList(list):
+    """Specialized list class which holds a weak reference to the Structure,
+    and sets a getStructure() attribute for all the children added to it."""
+
+    def __init__(self, struct):
+        list.__init__(self)
+        self.getStructure = weakref.ref(struct)
+
+    def __setitem__(self, x, item):
+        assert isinstance(item, FragmentGroup)
+        list.__setitem__(self, x, item)
+        item.getStructure = self.getStructure
+
+    def append(self, item):
+        assert isinstance(item, FragmentGroup)
+        list.append(self, item)
+        item.getStructure = self.getStructure
+
+    def insert(self, x, item):
+        assert isinstance(item, FragmentGroup)
+        list.insert(self, x, item)
+        item.getStructure = self.getStructure   
 
 
 class FragmentGroup(object):
     """Provides base functionallity for grouping together fragments in a
     Structure."""
     def __init__(self):
-        self.list = []
+        self.list         = []
+        self.getStructure = None
 
     def addFragment(self, chain_id, fragment_id):
         self.list.append((chain_id, fragment_id))
 
-    def iterFragments(self, struct):
+    def iterFragments(self):
+        struct = self.getStructure()
+
         for (chain_id, fragment_id) in self.list:
             try:
                 yield struct[chain_id][fragment_id]
@@ -104,12 +133,15 @@ class Structure(object):
         self.source_data     = None
 
         self.library         = library
+        self.unit_cell       = None
+        self.space_group     = None
+
         self.default_alt_loc = default_alt_loc
 
-        self.sites           = []
-        self.alpha_helices   = []
-        self.beta_sheets     = []
-        self.turns           = []
+        self.sites           = FragmentGroupList(self)
+        self.alpha_helices   = FragmentGroupList(self)
+        self.beta_sheets     = FragmentGroupList(self)
+        self.turns           = FragmentGroupList(self)
 
         self.__chain_list    = []
 
@@ -242,7 +274,6 @@ class Chain(object):
         ## fragments are contained in the list and also cached in
         ## a dictionary for fast random-access lookup
         self.__fragment_list  = []
-        self.__fragment_cache = {}
 
     def __str__(self):
         return "Chain(%s, %s...%s)" % (self.chain_id,
@@ -266,6 +297,7 @@ class Chain(object):
         return self.chain_id >= other.chain_id
 
     def __len__(self):
+        """Return the number of fragments in the Chain."""
         return len(self.__fragment_list)
 
     def __getitem__(self, x):
@@ -273,17 +305,40 @@ class Chain(object):
             return self.__fragment_list[x]
         
         elif type(x) == StringType:
-            try:
-                return self.__fragment_cache[x]
-            except KeyError:
-                raise KeyError, x
+            for frag in self:
+                if frag.fragment_id == x:
+                    return frag
+            raise KeyError, x
+
+        elif type(x) == SliceType:
+            ## slices are a difficult concept to get right here, the
+            ## "Python way" is to return a object of the same type
+            ## so I return a new Chain object with only the fragments
+            ## in the slice range, but I don't copy the fragments nor do
+            ## I set the fragments's getChain() function to return the
+            ## new Chain object
+
+            chain              = Chain(self.chain_id)
+            chain.getStructure = self.getStructure
+
+            frag_start = self[x.start]
+            frag_stop  = self[x.stop]
+
+            for frag in self:
+                if frag >= frag_start and frag <= frag_stop:
+
+                    chain.__fragment_list.append(frag)
+                    
+                    if frag.fragment_id in self.sequence:
+                        chain.sequence.append(frag.fragment_id)
+
+            return chain
 
         raise TypeError, x
 
     def __delitem__(self, x):
         frag = self[x]
         self.__fragment_list.remove(frag)
-        del self.__fragment_cache[frag]
 
     def __iter__(self):
         return iter(self.__fragment_list)
@@ -306,15 +361,13 @@ class Chain(object):
         assert frag.chain_id == self.chain_id
 
         frag.getChain = weakref.ref(self)
-        self.__fragment_cache[frag.fragment_id] = frag
         self.__fragment_list.append(frag)
 
         if not delay_sort:
             self.__fragment_list.sort()
 
     def getFragment(self, fragment_id):
-        """Returns the PDB fragment uniquely identified by its chain_id,
-        res_seq, and icode."""
+        """Returns the PDB fragment uniquely identified by its fragment_id."""
         try:
             return self[fragment_id]
         except KeyError:
@@ -363,6 +416,30 @@ class Chain(object):
                 yield self[frag_id]
             except KeyError:
                 pass
+
+    def setChainID(self, chain_id):
+        """Sets a new ID for the Chain object, updating the chain_id
+        for all objects in the Structure hierarchy."""
+        
+        ## check for conflicting chain_id in the structure
+        try:             self.getStructure()[chain_id]
+        except KeyError: pass
+        else:            raise ValueError, chain_id
+
+        ## set the new chain_id in all the additional groups
+
+        ## set the new chain_id for the chain object (self)
+        self.chain_id = chain_id
+
+        ## set the chain_id in all the fragment and atom children
+        for frag in self:
+            frag.chain_id = chain_id
+
+            for atm in frag:
+                atm.chain_id = chain_id
+
+        ## resort the parent structure
+        self.getStructure().sort()
 
     def calcSequence(self):
         """Attempts to calculate the residue sequence contained in the
@@ -476,6 +553,7 @@ class Fragment(object):
             elif atom.alt_loc == alt_loc: yield atom
 
     def __contains__(self, x):
+        return x in self.__atom_list
         return self[x] in self.__atom_list
 
     def index(self, atom):
@@ -529,15 +607,36 @@ class Fragment(object):
                     visited.insert(0, bond)
 
     def getOffsetFragment(self, offset):
+        assert type(offset) == IntType
+        
         chain = self.getChain()
         i     = chain.index(self) + offset
-        try:
-            return chain[i]
-        except IndexError:
-            return None
+        try:               return chain[i]
+        except IndexError: return None
 
     def getStructure(self):
         return self.getChain().getStructure()
+
+    def setFragmentID(self, fragment_id):
+        """Sets a new ID for the Fragment object, updating the fragment_id
+        for all objects in the Structure hierarchy."""
+        
+        ## check for conflicting chain_id in the structure
+        try:             self.getChain()[fragment_id]
+        except KeyError: pass
+        else:            raise ValueError, fragment_id
+
+        ## set the new fragment_id in all the additional groups
+
+        ## set the new chain_id for the chain object (self)
+        self.fragment_id = fragment_id
+
+        ## set the chain_id in all the fragment and atom children
+        for atm in self:
+            atm.fragment_id = fragment_id
+
+        ## resort the parent chain
+        self.getChain().sort()
 
     def createBonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
@@ -577,19 +676,16 @@ class Residue(Fragment):
                                  self.chain_id)
 
     def getOffsetResidue(self, offset):
+        assert type(offset) == IntType
+        
         chain = self.getChain()
 
-        try:
-            i = chain.sequence_list.index(self.fragment_id)
-        except ValueError:
-            return None
+        try:               i = chain.sequence_list.index(self.fragment_id)
+        except ValueError: return None
 
-        try:
-            frag_id = chain.sequence_list[i + offset]
-        except IndexError:
-            return None
-        else:
-            return chain[frag_id]
+        try:               frag_id = chain.sequence_list[i + offset]
+        except IndexError: return None
+        else:              return chain[frag_id]
 
     def createBonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
@@ -896,6 +992,8 @@ class Atom(object):
 
     def getAltLoc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument."""
+        assert type(alt_loc) == StringType
+
         try:
             return self[alt_loc]
         except KeyError:

@@ -99,10 +99,10 @@ class mmCIFTable(object):
     def getOneRow(self):
         """Some tables are defined to have only one row.  Return it or
         raise an error."""
-        if len(self._row_list) != 1:
+        if len(self.__row_list) != 1:
             raise mmCIFError, "table=%s has num_rows=%d" % (
-                self._name, len(self._row_list))
-        return self._row_list[0]
+                self.name, len(self.__row_list))
+        return self.__row_list[0]
 
     def getRowList(self):
         """Returns a list of all mmCIFRow classes contained in the table."""

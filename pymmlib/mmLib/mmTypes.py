@@ -20,7 +20,7 @@ from   types                import *
 from   Scientific.Geometry  import Vector
 
 ## use Numeric Python (Numeric, LinearAlgebra) for array(matrix)
-from   Numeric              import array
+from   Numeric              import array, transpose, matrixmultiply
 from   LinearAlgebra        import eigenvalues
 
 

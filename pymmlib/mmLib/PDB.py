@@ -20,16 +20,23 @@ from   mmTypes  import *
 PDBError = "PDB Error"
 
 
-class PDBRecord:
+class PDBRecord(dict):
     """Base class for all PDB file records."""
     def __str__(self):
         return self.write()
 
     def __getattr__(self, attr):
-        for item in self._field_list:
-            if attr == item[0]: return None
-        raise AttributeError, "%s has not attribut %s" % (
-            self.__class__.__name__, attr)
+        try:
+            return self[attr]
+        except KeyError:
+            for item in self._field_list:
+                if attr == item[0]:
+                    return None
+
+        raise AttributeError, attr
+
+    def __setattr__(self, attr, val):
+        self[attr] = val
 
     def write(self):
         ln = self._name
