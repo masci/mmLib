@@ -23,8 +23,11 @@ class Structure(object):
     library          (mmLib.Library object) the monomer library used by
                               the structure
 
-    exp_data         Experimental Data
+    exp_data         Experimental Data class containing non-structural
+                     data from the structure source file
+                     
     unit_cell        UnitCell class containing the unit cell descripton
+
     space_group      SpaceGroup class containing space group description
 
     default_alt_loc  (string) all objects in the structure hierarcy
@@ -57,18 +60,14 @@ class Structure(object):
         self.__chain_list    = []
 
     def __str__(self):
-        tstr =  "Structure: %s\n" % (self.id)
-        tstr += "%s\n"           % (self.title[:40])
-
-        if self.res_high:
-            tstr += "res(A): %1.2f\n" % (self.res_high)
-
-        if self.R_fact:
-            tstr += "R: %1.3f\n" % (self.R_fact)
-
-        if self.free_R_fact:
-            tstr += "Rfree: %1.3f\n" % (self.free_R_fact)
-
+        tstr =  "Structure::%s\n" % (self.exp_data.get("id", ""))
+        tstr += "%s\n" % (self.exp_data.get("title", "no title")[:40])
+        try:
+            tstr += "res(A): %1.2f\n" % (self.exp_data["res_high"])
+            tstr += "R: %1.3f\n" % (self.exp_data["R_fact"])
+            tstr += "Rfree: %1.3f\n" % (self.exp_data["free_R_fact"])
+        except KeyError:
+            pass
         return tstr
  
     def __len__(self):
@@ -193,14 +192,13 @@ class Structure(object):
 
 
 class Chain(object):
-    """Chain objects conatain a ordered list of Fragment objects."""
-    def __init__(self,
-                 chain_id    = ""):
-        
-        self.chain_id       = chain_id
+    """Chain objects conatain a ordered list of Fragment objects.
+    """
+    def __init__(self, chain_id = ""):
+        self.chain_id = chain_id
 
-        ## the sequence list contains a list of the fragment ids 
-        self.sequence         = []
+        ## the sequence list contains a list 3-letter residue names
+        self.sequence = []
 
         ## fragments are contained in the list and also cached in
         ## a dictionary for fast random-access lookup
@@ -232,6 +230,11 @@ class Chain(object):
         return len(self.__fragment_list)
 
     def __getitem__(self, x):
+        """Retrieve a Fragment within the Chain.  This can take a integer
+        index of the Fragment's position within the chain, the fragment_id
+        string of the Fragment to retrieve, or a slice of the Chain to
+        return a new Chain object containing the sliced subset of Fragments.
+        """
         if type(x) == IntType:
             return self.__fragment_list[x]
         
@@ -265,10 +268,16 @@ class Chain(object):
         raise TypeError, x
 
     def __delitem__(self, x):
+        """Delete Fraagment from the chain.  This can take a reference to the
+        Fragment object to delete, the fragment_id of the Fragment to delete,
+        or the integer index of the Fragment within the Chain.
+        """
         frag = self[x]
         self.__fragment_list.remove(frag)
 
     def __iter__(self):
+        """Iterate all Fragments contained in the Chain.
+        """
         return iter(self.__fragment_list)
 
     def __contains__(self, x):
@@ -279,16 +288,26 @@ class Chain(object):
         raise TypeError, x
 
     def index(self, frag):
+        """Return the 0-based index of the framgent in the chain list.
+        """
         return self.__fragment_list.index(frag)
 
     def remove(self, frag):
+        """Remove the Fragment from the chain.
+        """
         del frag.get_chain
         self.__fragment_list.remove(frag)
 
     def sort(self):
+        """Sort the Fragments in the chain into proper order.
+        """
         self.__fragment_list.sort()
         
     def add_fragment(self, frag, delay_sort = False):
+        """Adds a Fragment instance to the chain.  If delay_sort is True,
+        then the fragment is not inserted in the proper position within the
+        chain.
+        """
         assert isinstance(frag, Fragment)
         assert frag.chain_id == self.chain_id
 
@@ -299,7 +318,8 @@ class Chain(object):
             self.__fragment_list.sort()
 
     def get_fragment(self, fragment_id):
-        """Returns the PDB fragment uniquely identified by its fragment_id."""
+        """Returns the PDB fragment uniquely identified by its fragment_id.
+        """
         try:
             return self[fragment_id]
         except KeyError:
@@ -308,22 +328,34 @@ class Chain(object):
     def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according to the Fragment's position within the Chain
-        object."""
+        object.
+        """
         return iter(self)
 
     def iter_amino_acids(self):
         """Same as iter_fragments(), but only iterates over AminoAcidResidue
-        objects."""
+        objects.
+        """
         for frag in self.iter_fragments():
             if isinstance(frag, AminoAcidResidue):
                 yield frag
 
     def iter_nucleic_acids(self):
         """Same as iter_fragments(), but only iterates over NucleicAcidResidue
-        objects."""
+        objects.
+        """
         for frag in self.iter_fragments():
             if isinstance(frag, NucleicAcidResidue):
                 yield frag
+
+    def has_standard_residues(self):
+        """Returns True if the chain contains standard residues as defined
+        by the PDB.  Standard residues are amino and nucleic acid resiudes.
+        """
+        for frag in self.iter_fragments():
+            if frag.is_standard_residue():
+                return True
+        return False
 
     def iter_standard_residues(self):
         """Iterates over standard residues in the chain, as defined by the
@@ -343,14 +375,16 @@ class Chain(object):
                 yield frag
 
     def iter_atoms(self):
-        """Iterates over all Atom objects within the Chain."""
+        """Iterates over all Atom objects within the Chain.
+        """
         for frag in self.iter_fragments():
             for atm in frag.iter_atoms():
                 yield atm
                 
     def iter_bonds(self):
         """Iterates over all Bond objects attached to Atom objects within the
-        Chain"""
+        Chain.
+        """
         visited = []
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
@@ -358,18 +392,10 @@ class Chain(object):
                     yield bond
                     visited.insert(0, bond)
 
-    def iter_sequence(self):
-        """Iterate through the polymer sequence of the chain."""
-        for frag_id in self.sequence_list:
-            try:
-                yield self[frag_id]
-            except KeyError:
-                pass
-
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain object, updating the chain_id
-        for all objects in the Structure hierarchy."""
-        
+        for all objects in the Structure hierarchy.
+        """
         ## check for conflicting chain_id in the structure
         try:             self.get_structure()[chain_id]
         except KeyError: pass
@@ -393,42 +419,22 @@ class Chain(object):
     def calc_sequence(self):
         """Attempts to calculate the residue sequence contained in the
         Chain object.  This is a simple algorithm: find the longest running
-        sequence of the same bio-residue, and that's the sequence.
+        sequence of the same bio-residue, and that's the sequence.  Returns
+        a list of 3-letter residues codes of the calculated sequence.
         """
-        slist = []
-        sequence_list = None
-        sequence_class = None
-
-        ## iterate through all fragments in the chain and create a
-        ## list of the continuous residue segments
-        for frag in self.iter_fragments():
-            if sequence_class:
-                if isinstance(frag, sequence_class):
-                    sequence_list.append(frag.fragment_id)
-                else:
-                    slist.append(sequence_list)
-                    sequence_list  = None
-                    sequence_class = None
-
+        residue_class = None
+        sequence_list = []
+        for frag in self.iter_standard_residues():
+            if residue_class:
+                if not isinstance(frag, residue_class):
+                    break
             else:
-                if isinstance(frag, AminoAcidResidue):
-                    sequence_list  = [frag.fragment_id]
-                    sequence_class = AminoAcidResidue
+                residue_class = frag.__class__
 
-                elif isinstance(frag, NucleicAcidResidue):
-                    sequence_list  = [frag.fragment_id]
-                    sequence_class = NucleicAcidResidue
+            sequence_list.append(frag.res_name)
 
-        if sequence_list != None:
-            slist.append(sequence_list)
-
-        ## iterate through the detected polymer sequences, and use the
-        ## longest list for the residue sequence in this chain
-        self.sequence_list = []
-        for l in slist:
-            if len(l) > len(self.sequence_list):
-                self.sequence_list = l
-
+        return sequence_list
+            
 
 class Fragment(object):
     """Fragment objects are a basic unit for organizing small groups of
@@ -620,6 +626,15 @@ class Fragment(object):
         """
         return isinstance(self, AminoAcidResidue) or \
                isinstance(self, NucleicAcidResidue)
+
+
+    def is_water(self):
+        """Returns True if the Fragment is a water molecule, returns False
+        otherwise.
+        """
+        if self.get_structure().library.is_water(self.res_name):
+            return True
+        return False
 
 
 class Residue(Fragment):

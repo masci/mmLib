@@ -63,6 +63,6 @@ class SymmetryOperator:
                     break
 
 class SpaceGroup:
-    def __init__(self, sg_symbol):
+    def __init__(self, sg_symbol = "P1"):
         self.sg_symbol = sg_symbol
 

@@ -216,49 +216,34 @@ class StructureBuilder:
                 self.structure.exp_data[dkey] = smap[skey]
             except KeyError:
                 pass
-        
-        ## source file format
-        set_ed(info_map, "file_format", "file_format")
+
+        ## ID of structure
+        set_ed(info_map, "id", "id")
 
         ## source file object: pdb_file or cif_file
-        try: self.structure.exp_data["pdb_file"] = info_map["pdb_file"]
-        except KeyError: pass
-
-        try: self.structure.exp_data["cif_file"] = info_map["cif_file"]
-        except KeyError: pass
+        set_ed(info_map, "pdb_file", "pdb_file")
+        set_ed(info_map, "cif_file", "cif_file")
 
         ## try to determine what kind of experiment produced the data
-        try: self.structure.exp_data["exp_method"] = info_map["exp_method"]
-        except KeyError: pass
+        set_ed(info_map, "exp_method", "exp_method")
+
+        ## structure data: Generic
+        set_ed(info_map, "title", "title")
+        set_ed(info_map, "date", "date")
+        set_ed(info_map, "author_list", "author_list")
+        set_ed(info_map, "method", "method")
+
+        ## structure data: X-Ray Generic
+        set_ed(info_map, "R_fact", "R_fact")
+        set_ed(info_map, "free_R_fact", "free_R_fact")
+        set_ed(info_map, "res_high", "res_high")
+        set_ed(info_map, "res_low", "res_low")
+        set_ed(info_map, "", "")
+        set_ed(info_map, "", "")
         
-        ## generic experimental data
-        try: self.structure.exp_data["id"] = info_map["id"]
-        except KeyError: pass
-
-        try: self.structure.exp_data["date"] = info_map["date"]
-        except KeyError: pass
-
-        try: self.structure.exp_data["keywords"] = info_map["keywords"]
-        except KeyError: pass
-       
-        try: self.structure.exp_data["pdbx_keywords"]=info_map["pdbx_keywords"]
-        except KeyError: pass 
-      
-        try: self.structure.exp_data["title"] = info_map["title"]
-        except KeyError: pass  
-
-        ## xray diffraction experimental data
-        try: self.structure.exp_data["R_fact"] = info_map["R_fact"]
-        except KeyError: pass  
-
-        try: self.structure.exp_data["free_R_fact"] = info_map["free_R_fact"]
-        except KeyError: pass  
-
-        try: self.structure.exp_data["res_high"] = info_map["res_high"]
-        except KeyError: pass  
-
-        try: self.structure.exp_data["res_low"] = info_map["res_low"]
-        except KeyError: pass  
+        ## structure date: May Be File-Format Specific (Questionable)
+        set_ed(info_map, "keywords", "keywords")
+        set_ed(info_map, "pdbx_keywords", "pdbx_keywords")
 
     def load_unit_cell(self, ucell_map):
         """Called by the implementation of load_metadata to load the
@@ -408,6 +393,7 @@ class PDBStructureBuilder(StructureBuilder):
     def read_start(self, fil):
         self.pdb_file = PDB.PDBFile()
         self.pdb_file.load_file(fil)
+        self.structure.exp_data["pdb_file"] = self.pdb_file
 
     def read_atoms(self):
         model_num = None
@@ -449,6 +435,7 @@ class PDBStructureBuilder(StructureBuilder):
             self.load_atom(atm_map)
 
     def read_metadata(self):
+        info_map = {}
         site_map = {}
         ucell_map = {}
 
@@ -459,6 +446,22 @@ class PDBStructureBuilder(StructureBuilder):
 
             elif isinstance(rec, PDB.CRYST1):
                 self.process_CRYST1(ucell_map, rec)
+
+            elif isinstance(rec, PDB.HEADER):
+                self.process_HEADER(info_map, rec)
+
+            elif isinstance(rec, PDB.TITLE):
+                self.process_TITLE(info_map, rec)
+
+            elif isinstance(rec, PDB.COMPND):
+                self.process_COMPND(info_map, rec)
+
+            elif isinstance(rec, PDB.AUTHOR):
+                self.process_AUTHOR(info_map, rec)
+
+        ## load info
+        info_map["pdb_file"] = self.pdb_file
+        self.load_info(info_map)
 
         ## load the SITE information if found
         for (site_id, site_list) in site_map.items():
@@ -516,7 +519,7 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["alpha"] = rec["alpha"]
         ucell_map["beta"] = rec["beta"]
         ucell_map["gamma"] = rec["gamma"]
-        ucell_map["sgroup"] = rec["space_group"]
+        ucell_map["space_group"] = rec["sgroup"]
         ucell_map["z"] = rec.get("z", "")
 
     def process_SITE(self, site_map, rec):
@@ -550,6 +553,27 @@ class PDBStructureBuilder(StructureBuilder):
 
     def process_LINK(self, bond_map, rec):
         pass
+
+    def process_HEADER(self, info_map, rec):
+        self.setmaps(rec, "idCode", info_map, "id")
+        self.setmaps(rec, "depDate", info_map, "date")
+        self.setmaps(rec, "classification", info_map, "pdbx_keywords")
+
+    def process_TITLE(self, info_map, rec):
+        self.setmaps(rec, "title", info_map, "title")
+
+    def process_COMPND(self, info_map, rec):
+        self.setmaps(rec, "title", info_map, "title")
+
+    def process_AUTHOR(self, info_map, rec):
+        if rec.has_key("authorList"):
+            for auth in rec["authorList"].split(","):
+                if not auth:
+                    continue
+                try:
+                    info_map["author_list"].append(auth.strip())
+                except KeyError:
+                    info_map["author_list"] = [auth.strip()]
 
     def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
         fragment_id = None
@@ -664,67 +688,44 @@ class mmCIFStructureBuilder(StructureBuilder):
             self.load_atom(atm_map)
 
     def read_metadata(self):
-        ## PDB ENTRY ID
-        try: entry_id = self.cif_data["entry"][0]["id"]
-        except KeyError: debug("missing entry.id")
-
-        ## INFO/EXPERIMENTAL DATA
-        info_map = {"id" : entry_id}
-
-        try:
-            info_map["date"] = \
-                self.cif_data["database_pdb_rev"][0]["date_original"]
-        except KeyError:
-            debug("missing database_pdb_rev.date_original")
-
-        try:
-            info_map["keywords"] = self.cif_data["struct_keywords"][0]["text"]
-        except KeyError:
-            debug("missing struct_keywords.text")
-
-        try:
-            info_map["pdbx_keywords"] = \
-                self.cif_data["struct_keywords"][0]["pdbx_keywords"]
-        except KeyError:
-            debug("missing struct_keywords.pdbx_keywords")
-
-        try:
-            info_map["title"] = self.cif_data["struct"][0]["title"]
-        except KeyError:
-            debug("missing struct.title")
-
-        try:
-            info_map["R_fact"] = \
-                float(self.cif_data["refine"][0]["ls_R_factor_R_work"])
-        except KeyError:
-            debug("missing refine.ls_R_factor_R_work")
-        except ValueError:
-            debug("missing refine.ls_R_factor_R_work")
+        def set_im(conv_func, ctable, col, dmap, dkey):
+            try:
+                dmap[dkey] = conv_func(self.cif_data[ctable][0][col])
+            except KeyError:
+                return False
+            except IndexError:
+                return False
+            except ValueError:
+                return False
+            return True
+        def set_ims(ctable, col, dmap, dkey):
+            return set_im(str, ctable, col, dmap, dkey)
+        def set_imi(ctable, col, dmap, dkey):
+            return set_im(int, ctable, col, dmap, dkey)
+        def set_imf(ctable, col, dmap, dkey):
+            return set_im(float, ctable, col, dmap, dkey)
         
-        try:
-            info_map["free_R_fact"] = \
-                float(self.cif_data["refine"][0]["ls_R_factor_R_free"])
-        except KeyError:
-            debug("missing refine.ls_R_factor_R_free")
-        except ValueError:
-            debug("missing refine.ls_R_factor_R_free")
+        ## entry.id is required, really
+        info_map = {}
+        if not set_ims("entry", "id", info_map, "id"):
+            debug("missing entry.id, read_metatadata cannot continue")
+            return
 
-        try:
-            info_map["res_high"] = \
-                float(self.cif_data["refine"][0]["ls_d_res_high"])
-        except KeyError:
-            debug("missing refine.ls_d_res_high")
-        except ValueError:
-            debug("missing refine.ls_d_res_high")
+        ## reference to source mmCIFFile object
+        info_map["cif_file"] = self.cif_file
 
-        try:
-            info_map["res_low"] = \
-                float(self.cif_data["refine"][0]["ls_d_res_low"])
-        except KeyError:
-            debug("missing refine.ls_d_res_low")
-        except ValueError:
-            debug("missing refine.ls_d_res_low")
+        ## generic data
+        set_ims("database_pdb_rev", "date_original", info_map, "date")
+        set_ims("struct_keywords", "text", info_map, "keywords")
+        set_ims("struct_keywords", "pdbx_keywords", info_map, "pdbx_keywords")
+        set_ims("struct", "title", info_map, "title")
         
+        ## X-ray experimental data
+        set_imf("refine", "ls_R_factor_R_work", info_map, "R_fact")
+        set_imf("refine", "ls_R_factor_R_free", info_map, "free_R_fact")
+        set_imf("refine", "ls_d_res_high", info_map, "res_high")
+        set_imf("refine", "ls_d_res_low", info_map, "res_low")
+
         self.load_info(info_map)
 
         ## SITE
@@ -757,32 +758,30 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         ## UNIT CELL
         ucell_map = {}
-                
         if self.cif_data.has_key("cell"):
-            ucell_map = {}
-            
             try:
                 (cell,) = self.cif_data["cell"].select_row_list(
-                    ("entry_id", entry_id))
+                    ("entry_id", info_map["id"]))
             except ValueError:
                 pass
             else:
-                ucell_map["a"]     = float(cell["length_a"])
-                ucell_map["b"]     = float(cell["length_b"])
-                ucell_map["c"]     = float(cell["length_c"])
-                ucell_map["alpha"] = float(cell["angle_alpha"])
-                ucell_map["beta"]  = float(cell["angle_beta"])
-                ucell_map["gamma"] = float(cell["angle_gamma"])
-                ucell_map["z"]     = int(cell["Z_PDB"])
+                self.setmapf(cell, "length_a", ucell_map, "a")
+                self.setmapf(cell, "length_b", ucell_map, "b")
+                self.setmapf(cell, "length_c", ucell_map, "c")
+                self.setmapf(cell, "angle_alpha", ucell_map, "alpha")
+                self.setmapf(cell, "angle_beta", ucell_map, "beta")
+                self.setmapf(cell, "angle_gamma", ucell_map, "gamma")
+                self.setmapi(cell, "Z_PDB", ucell_map, "z")
 
         if self.cif_data.has_key("symmetry"):
             try:
                 (symm,) = self.cif_data["symmetry"].select_row_list(
-                    ("entry_id", entry_id))
+                    ("entry_id", info_map["id"]))
             except ValueError:
                 pass
             else:
-                ucell_map["space_group"] = symm["space_group_name_H-M"]
+                self.setmaps(symm, "space_group_name_H-M",
+                             ucell_map, "space_group")
         
         if ucell_map:
             self.load_unit_cell(ucell_map)

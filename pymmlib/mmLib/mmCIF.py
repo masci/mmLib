@@ -743,18 +743,24 @@ class mmCIFFileBuilder:
     """
     entry_columns = ["id"]
 
+    audit_author_columns = ["name"]
+    
+    entity_columns = ["id", "type", "details"]
+
     cell_columns = [
         "entry_id", "length_a", "length_b", "length_c", "angle_alpha",
         "angle_beta", "angle_gamma", "PDB_Z"]
     
     atom_site_columns = [
-        "group_PDB", "id", "type_symbol", "Cartn_x", "Cartn_y", "Cartn_z", 
+        "group_PDB", "id", "type_symbol", "label_entity_id",
+        "Cartn_x", "Cartn_y", "Cartn_z", 
         "occupancy", "B_iso_or_equiv", "Cartn_x_esd", "Cartn_y_esd",
         "Cartn_z_esd", "occupancy_esd", "B_iso_or_equiv_esd", "auth_seq_id",
         "auth_comp_id", "auth_asym_id", "auth_atom_id"]
 
     atom_site_anisotrop_columns = [
-        "id", "type_symbol", "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
+        "id", "type_symbol", "label_entity_id",
+        "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
         "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd", "U[1][3]_esd",
         "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd", "pdbx_auth_seq_id",
         "pdbx_auth_comp_id", "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
@@ -764,7 +770,12 @@ class mmCIFFileBuilder:
         self.cif_data = mmCIFData("XXX")
         cif_file.append(self.cif_data)
 
+        ## maps fragment -> entity_id
+        self.entity_id_map = {}
+        
         self.add_entry()
+        self.add_audit_author()
+        self.add_entity()
         self.add_cell()
         self.add_atom_site()
 
@@ -782,7 +793,91 @@ class mmCIFFileBuilder:
         entry = self.get_table("entry", self.entry_columns)
         row = mmCIFRow()
         entry.append(row)
-        row["id"] = self.struct.exp_data.id
+        row["id"] = self.struct.exp_data["id"]
+
+    def add_audit_author(self):
+        if not self.struct.exp_data.has_key("author_list"):
+            return
+        
+        audit_author = self.get_table("audit_author",
+                                      self.audit_author_columns)
+
+        for auth in self.struct.exp_data["author_list"]:
+            aurow = mmCIFRow()
+            audit_author.append(aurow)
+            aurow["name"] = auth
+
+    def add_entity(self):
+        ## maps fragment -> entity_id
+        entity = self.get_table("entity", self.entity_columns)
+
+        ## I. entity.type == "polymer"
+        
+        ## first detect polymer chains
+        ## map of entity::mmCIFRow -> sequence list
+        es_list = []
+        
+        for chain in self.struct.iter_chains():
+
+            ## if the chain is a bio-polymer, it is one entity; come up
+            ## with a name from its sequence and add it to the
+            ## entity map
+            if not chain.has_standard_residues():
+                continue
+
+            sequence = chain.sequence or chain.calc_sequence()
+
+            ## compare aginst previously calculated sequences to
+            ## determine the correct entity_id
+            entity_id = None
+
+            for (row, seq) in es_list:
+                if seq == sequence:
+                    entity_id = row["id"]
+                    break
+
+            if entity_id == None:
+                row = mmCIFRow()
+                entity.append(row)
+                row["id"] = entity.index(row) + 1
+                row["type"] = "polymer"
+                if self.struct.library.is_amino_acid(sequence[0]):
+                    row["details"] = "%d residue polypeptide"%(len(sequence))
+                elif self.struct.library.is_nucleic_acid(sequence[0]):
+                    row["details"] = "%d residue DNA/RNA"%(len(sequence))
+
+                entity_id = row["id"]
+                es_list.append((row, sequence))
+
+            for res in chain.iter_standard_residues():
+                self.entity_id_map[res] = entity_id
+
+
+        ## II. entity.type == "non-polymer" or "water"
+        er_map = {}
+
+        for chain in self.struct.iter_chains():
+            for frag in chain.iter_non_standard_residues():
+
+                ## already assigned a entity_id for this fragment_id
+                if er_map.has_key(frag.res_name):
+                    self.entity_id_map[frag] = er_map[frag.res_name]
+
+                ## we need to assign a entity_id for this fragment_id
+                ## and add a row for it in the entity table
+                else:
+                    row = mmCIFRow()
+                    entity.append(row)
+                    entity_id = row["id"] = entity.index(row) + 1
+                    if frag.is_water():
+                        row["type"] = "water"
+                        row["details"] = ""
+                    else:
+                        row["type"] = "non-polymer"
+                        row["details"] = frag.res_name
+
+                    er_map[frag.res_name] = entity_id
+                    self.entity_id_map[frag] = entity_id
 
     def add_cell(self):
         if not self.struct.unit_cell:
@@ -815,6 +910,7 @@ class mmCIFFileBuilder:
                 asrow["group_PDB"] = "HETATM"
 
             asrow["id"] = atom_site.index(asrow) + 1
+            asrow["label_entity_id"] = self.entity_id_map[atm.get_fragment()]
             asrow["auth_atom_id"] = atm.name
             asrow["auth_comp_id"] = atm.res_name
             asrow["auth_seq_id"] = atm.fragment_id
@@ -841,6 +937,7 @@ class mmCIFFileBuilder:
                 aniso.append(anrow)
                 anrow["id"] = asrow["id"]
                 anrow["type_symbol"] = asrow["type_symbol"]
+                anrow["label_entity_id"] = asrow["label_entity_id"]
                 anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
                 anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
                 anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]

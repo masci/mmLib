@@ -19,6 +19,8 @@ class ExpData(dict):
     title               (string) 
     author              (string)
     exp_method          (string) experimental method
+    cif_file            (string) the mmCIFFile object used
+    pdb_file            (string) the PDBFile object used
     """
     def __init__(self):
         dict.__init__(self)
