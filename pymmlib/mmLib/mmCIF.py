@@ -42,41 +42,25 @@ class mmCIFRow(dict):
         self[attr] = val
 
 
-class mmCIFTable(object):
+class mmCIFTable(list):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
     are stored as mmCIFRow classes.
-    JMP: Rewrite to inherit from list.
     """
     def __init__(self, name, columns = None):
-        self.name       = name
-        self.columns    = columns or []
-        self.__row_list = []
+        self.name = name
+        self.columns = columns or []
 
-    def __len__(self):
-        return len(self.__row_list)
-
-    def __getitem__(self, x):
-        if type(x) == IntType:
-            return self.__row_list[x]
-
-        elif type(x) == StringType and len(self) == 1:
-            return self.__row_list[0][x]
-
-        raise TypeError, x
-
-    def __delitem__(self, x):
-        self.__row_list(self[x])
-
-    def __iter__(self):
-        return iter(self.__row_list)
+    def __setitem__(self, i, row):
+        assert isinstance(row, mmCIFRow)
+        list.__setitem__(self, i, row)
 
     def append(self, row):
         assert isinstance(row, mmCIFRow)
-        self.__row_list.append(row)
+        list.append(self, row)
 
-    def index(self, row):
+    def insert(self, i, row):
         assert isinstance(row, mmCIFRow)
-        return self.__row_list.index(row)
+        list.insert(i, row)
 
     def add_column(self, cname):
         """Adds a column to the table.  In this case, a column is a
@@ -88,17 +72,6 @@ class mmCIFTable(object):
         """Returns the column index of from the column name.
         """
         return self.columns.index(cname)
-
-    def get_column_list(self):
-        """Returns a list of all column names, in order.
-        """
-        return self.columns
-
-    def add_row(self, row):
-        """Adds a mmCIFRow to the table.
-        """
-        assert isinstance(row, mmCIFRow)
-        self.append(row)
 
     def select_row_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
@@ -126,34 +99,29 @@ class mmCIFTable(object):
         return row_list
 
     def debug(self):
-        print "mmCIFTable::%s" % (self._name)
+        print "mmCIFTable::%s" % (self.name)
         for row in self:
             for col in self.columns:
                 print "%s=%s" % (col, getattr(row, col))[:80]
             print "---"
 
 
-class mmCIFData(object):
+class mmCIFData(list):
     """Contains all information found under a data_ block in a mmCIF file.
     mmCIF files are represented differently here than their file format
     would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
     the files are represented here with their sections as "Tables" and
     their subsections as "Columns".  The data is stored in "Rows".
-    JMP: Rewrite to inherit from list.
     """
     def __init__(self, name):
-        self._name          = name
-        self.__ctable_list  = []
-
-    def __len__(self):
-        return len(self.__ctable_list)
+        self.name = name
 
     def __getitem__(self, x):
         if type(x) == IntType:
-            return self.__ctable_list[x]
+            return list.__getitem__(self, x)
 
         elif type(x) == StringType:
-            for ctable in self.__ctable_list:
+            for ctable in self:
                 if ctable.name == x:
                     return ctable
             raise KeyError, x
@@ -161,13 +129,22 @@ class mmCIFData(object):
         raise TypeError, x
 
     def __delitem__(self, x):
-        self.__ctable_list.remove(self[x])
+        list.__delitem__(self, self[x])
 
-    def __iter__(self):
-        return iter(self.__ctable_list)
+    def __setitem__(self, i, table):
+        assert isinstance(table, mmCIFTable)
+        list.__setitem__(i, table)
+
+    def append(self, table):
+        assert isinstance(table, mmCIFTable)
+        list.append(self, table)
+
+    def insert(self, i, table):
+        assert isinstance(table, mmCIFTable)
+        list.insert(self, i, table)
 
     def has_key(self, x):
-        for ctable in self.__ctable_list:
+        for ctable in self:
             if ctable.name == x:
                 return True
         return False
@@ -181,14 +158,7 @@ class mmCIFData(object):
     def get_name(self):
         """Returns the name given to the data section in the mmCIF file.
         """
-        return self._name
-
-    def add_table(self, ctable):
-        """Adds a mmCIFTable class."""
-        assert isinstance(ctable, mmCIFTable)
-        
-        self.__ctable_list.append(ctable)
-        setattr(self, ctable.name, ctable)
+        return self.name
 
     def get_table(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
@@ -207,50 +177,45 @@ class mmCIFData(object):
             ctable.debug()
 
 
-class mmCIFFile(object):
+class mmCIFFile(list):
     """Class representing a mmCIF files.
-    JMP: Rewrite to inherit from list.
     """
-    def __init__(self):
-        self.__cdata_list = []
-
-    def __len__(self):
-        return len(self.__cdata_list)
-
     def __getitem__(self, x):
         if type(x) == IntType:
-            return self.__cdata_list[x]
+            return list.__getitem__(self, x)
 
         elif type(x) == StringType:
-            for cdata in self.__cdata_list:
-                if cdata._name == x:
+            for cdata in self:
+                if cdata.name == x:
                     return cdata
             raise KeyError, x
 
         raise TypeError, x
 
     def __delitem__(self, x):
-        self.__cdata_list.remove(self[x])
+        list.remove(self, self[x])
 
-    def __iter__(self):
-        return iter(self.__cdata_list)
-
+    def __setitem__(self, i, cdata):
+        assert isinstance(table, mmCIFData)
+        list.__setitem__(i, cdata)
+        
     def append(self, cdata):
         assert isinstance(cdata, mmCIFData)
-        self.__cdata_list.append(cdata)
-        setattr(self, cdata._name, cdata)
+        list.append(self, cdata)
+
+    def insert(self, i, cdata):
+        assert isinstance(cdata, mmCIFData)
+        list.insert(self, i, cdata)
 
     def load_file(self, fil):
+        """Load and append the mmCIF data from file object fil into self.
+        """
         fil = OpenFile(fil, "r")
-        for cif_data in mmCIFFileParser().parse_file(fil):
-            self.add_data(cif_data)
+        mmCIFFileParser().parse_file(fil, self)
 
     def save_file(self, fil):
         fil = OpenFile(fil, "w")
-        mmCIFFileWriter().write_file(fil, self.__cdata_list)
-
-    def add_data(self, cdata):
-        self.append(cdata)
+        mmCIFFileWriter().write_file(fil, self)
 
     def get_data(self, name):
         try:
@@ -282,7 +247,7 @@ class mmCIFDictionary(mmCIFFile):
             fil = self._path
 
         for cif_data in mmCIFDictionaryParser().parse_file(fil):
-            self.add_data(cif_data)
+            self.append(cif_data)
 
 ##
 ## FILE PARSERS/WRITERS
@@ -417,11 +382,10 @@ class mmCIFFileParser:
         err = "[line %d] %s" % (self.cife.line_number, err)
         raise self.error, err
 
-    def parse_file(self, fil):
+    def parse_file(self, fil, cif_file):
         self.done = 0
         self.cife = mmCIFElementFile(fil)
 
-        data_list = []
         while not self.done:
             try:
                 (s,t) = self.cife.get_next_element()
@@ -431,12 +395,10 @@ class mmCIFFileParser:
 
             if s.startswith("data_"):
                 data = mmCIFData(s[5:])
-                data_list.append(data)
+                cif_file.append(data)
                 self.read_data(data)
             else:
                 self.syntax_error('unexpected element="%s"' % (s))
-
-        return data_list
 
     def read_data(self, data):
         while not self.done:
@@ -465,10 +427,10 @@ class mmCIFFileParser:
         table = data.get_table(tname)
         if not table:
             table = mmCIFTable(tname)
-            data.add_table(table)
+            data.append(table)
             table.append(mmCIFRow())
         else:
-            if cname in table.get_column_list():
+            if cname in table.columns:
                 self.syntax_error('redefined single column %s.%s' % (
                     tname, cname))
     
@@ -511,14 +473,14 @@ class mmCIFFileParser:
             cname_list.append(cname)
 
         table = mmCIFTable(table_name, cname_list)
-        data.add_table(table)
+        data.append(table)
 
         ## read in table column data
         while 1:
             row = mmCIFRow()
             table.append(row)
             
-            for cname in table.get_column_list():
+            for cname in table.columns:
                 try:
                     (s,t) = self.cife.get_next_element()
                 except EOFError:
@@ -685,7 +647,7 @@ class mmCIFFileWriter:
         return val
 
     def write_cif_data(self):
-        self.writeln("data_%s" % self.cif_data.get_name())
+        self.writeln("data_%s" % self.cif_data.name)
         self.writeln("")
         
         for cif_table in self.cif_data:
@@ -786,7 +748,24 @@ class mmCIFFileWriter:
                 self.writeln()
 
 
+class mmCIFBuilder:
+    """Builds a mmCIF file from a Structure object.
+    """
 
+    def __init__(self, struct, cif_file):
+        self.struct = struct
+        self.cif_file = cif_file
+        self.cif_data = mmCIFData("XXX")
+        self.cif
+        
+        
+        self.add_atom_site()
+
+    def add_atom_site(self):
+        atom_site = mmCIFTable("atom_site")
+        
+        for atm in self.struct.iter_atoms():
+            pass
 
                 
 ##
