@@ -247,10 +247,12 @@ class AtomContainerPanel(gtk.VBox):
         treeview.set_rules_hint(gtk.TRUE)
         treeview.set_search_column(0)
 
-        column = gtk.TreeViewColumn("Property", gtk.CellRendererText(), text=0)
+        column = gtk.TreeViewColumn("mmLib.Structure Method",
+                                    gtk.CellRendererText(), text=0)
         treeview.append_column(column)
     
-        column = gtk.TreeViewColumn("Value", gtk.CellRendererText(), text=1)
+        column = gtk.TreeViewColumn("Return Value",
+                                    gtk.CellRendererText(), text=1)
         treeview.append_column(column)
 
         ## create the GLViewer
@@ -436,8 +438,8 @@ class StructureGUI:
         return self.hpaned
 
 
-    def loadStructure(self):
-        self.structure = LoadStructure(sys.argv[1])
+    def loadStructure(self, path):
+        self.structure = LoadStructure(path)
         
         try:
             from mmLib.CCP4       import CCP4MonomerLibrary
@@ -465,94 +467,47 @@ class MainWindow:
     def __init__(self, quit_notify_cb):
         self.quit_notify_cb = quit_notify_cb
 
-        menu_items = (
-            ## FILE Menu
-            ('/_File',            None,         None,        0, '<Branch>' ),
-            ('/File/_New',        '<control>N',
-             self.menuitem_cb, 0, '<StockItem>', gtk.STOCK_NEW),
-            ('/File/_Open',       '<control>O',
-             self.menuitem_cb, 0, '<StockItem>', gtk.STOCK_OPEN),
-            ('/File/_Save',       '<control>S',
-             self.menuitem_cb, 0, '<StockItem>', gtk.STOCK_SAVE),
-            ('/File/Save _As...', None,
-             self.menuitem_cb, 0, '<StockItem>', gtk.STOCK_SAVE),
-            ('/File/sep1',        None,
-             self.menuitem_cb, 0, '<Separator>'),
-            ('/File/_Quit',       '<control>Q',
-             self.menuitem_cb, 0, '<StockItem>', gtk.STOCK_QUIT),
-
-            ## HELP Menu
-            ('/_Help',       None, None, 0, '<Branch>'),
-            ('/Help/_About', None, self.menuitem_cb, 0, ''))
-
-
         ## Create the toplevel window
-
         self.window = gtk.Window()
-        self.window.set_title('mmView')
-        self.window.set_default_size(200, 200)
+        self.setTitle("")
+        self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.quit_notify_cb, self)
 
-        table = gtk.Table(1, 4, gtk.FALSE)
+        table = gtk.Table(1, 3, gtk.FALSE)
         self.window.add(table)
 
         ## Create the menubar
+        menubar = gtk.MenuBar()
 
-        accel_group = gtk.AccelGroup()
-        self.window.add_accel_group(accel_group)
+        menuitem = gtk.MenuItem("File")
+        #menuitem.set_submenu(create_menu(2, 50))
+        menubar.add(menuitem)
+        
+        menuitem = gtk.MenuItem("Help")
+        #menuitem.set_submenu(create_menu(2))
+        menubar.add(menuitem)
 
-        item_factory = gtk.ItemFactory(gtk.MenuBar, '<main>', accel_group)
-
-        ## create menu items
-
-        item_factory.create_items(menu_items, self.window)
-
-        table.attach(item_factory.get_widget('<main>'),
-                     # X direction           Y direction
+        table.attach(menubar,
+                     # X direction              Y direction
                      0, 1,                      0, 1,
                      gtk.EXPAND | gtk.FILL,     0,
                      0,                         0)
 
-        ## Create the toolbar
-
-        toolbar = gtk.Toolbar()
-        toolbar.insert_stock(gtk.STOCK_OPEN,
-                             "This is a demo button with an 'open' icon",
-                             None,
-                             self.toolbar_cb,
-                             self.window,
-                             -1)
-
-        toolbar.insert_stock(gtk.STOCK_CLOSE,
-                             "This is a demo button with an 'close' icon",
-                             None,
-                             self.toolbar_cb,
-                             self.window,
-                             -1)
-
-        table.attach(toolbar,
-                     # X direction           Y direction
-                     0, 1,                   1, 2,
-                     gtk.EXPAND | gtk.FILL,  0,
-                     0,                      0)
 
         ## Create document
-
         self.structure_gui = StructureGUI()
-        self.structure_gui.loadStructure()
         table.attach(self.structure_gui.getWidget(),
                      # X direction           Y direction
-                     0, 1,                   2, 3,
+                     0, 1,                   1, 2,
                      gtk.EXPAND | gtk.FILL,  gtk.EXPAND | gtk.FILL,
                      0,                      0)
 
 
         ## Create statusbar 
-
         statusbar = gtk.Statusbar();
         table.attach(statusbar,
                      # X direction           Y direction
-                     0, 1,                   3, 4,
+                     0, 1,                   2, 3,
                      gtk.EXPAND | gtk.FILL,  0,
                      0,                      0)
 
@@ -563,6 +518,9 @@ class MainWindow:
 
         self.window.show_all()
  
+
+    def fuck(self, widget):
+        print "fuck"
 
     def menuitem_cb(self, widget):
         pass
@@ -577,9 +535,23 @@ class MainWindow:
     def mark_set_callback(self, widget):
         pass
 
+    def setTitle(self, title):
+        title = "mmView: " + title
+        title = title[:50]
+        self.window.set_title(title)
 
+    def loadFile(self, path):
+        self.setTitle(path)
+        self.window.set_sensitive(gtk.FALSE)
+        gtk.main_iteration(gtk.FALSE)
 
-def main():
+        self.structure_gui.loadStructure(path)
+
+        self.window.set_sensitive(gtk.TRUE)
+        return gtk.FALSE
+    
+    
+def main(path = None):
     main_window_list = []
 
     def quit_notify_cb(window, mw):
@@ -587,7 +559,12 @@ def main():
         if len(main_window_list) < 1:
             gtk.main_quit()
     
-    main_window_list.append(MainWindow(quit_notify_cb))
+    mw = MainWindow(quit_notify_cb)
+    main_window_list.append(mw)
+
+    if path:
+        gtk.idle_add(mw.loadFile, path)
+
     gtk.main()
 
 
@@ -596,9 +573,6 @@ if __name__ == "__main__":
     import sys
 
     try:
-        path = sys.argv[1]
+        main(sys.argv[1])
     except IndexError:
-        print "usage %s <mmCIF file path>" % (sys.argv[0])
-        sys.exit(1)
-
-    main()
+        main()

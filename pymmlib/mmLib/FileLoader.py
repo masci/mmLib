@@ -731,6 +731,9 @@ class StructureTommCIFSaver:
         self.water_chain = "S"
         self.water_res_seq = 1
 
+        ## atom_site tables require unique IDs
+        self.atom_site_id = 0
+
         ## list of chain ID's available for use
         ## "S" should not be in the list -- it's the default solvent chain
         self.available_chain_ids = ChainIDs
@@ -836,9 +839,10 @@ class StructureTommCIFSaver:
 
         row = mmCIF.mmCIFRow()
         self.cif_data.atom_site.addRow(row)
+        self.atom_site_id  += 1
 
         ## unique serial number/id for atom
-        row.id             = 0
+        row.id             = self.atom_site_id
 
         ## residue/entity/monomer properties
         row.group_PDB      = group_PDB
@@ -866,7 +870,7 @@ class StructureTommCIFSaver:
             urow = mmCIF.mmCIFRow()
             self.cif_data.atom_site_anisotrop.addRow(urow)
 
-            urow.id = 0
+            urow.id = self.atom_site_id
             setattr(urow, "U[1][1]", u00)
             setattr(urow, "U[2][2]", u11)
             setattr(urow, "U[3][3]", u22)
