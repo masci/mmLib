@@ -96,7 +96,7 @@ class mmCIFTable(list):
         print "mmCIFTable::%s" % (self.name)
         for row in self:
             for col in self.columns:
-                print "%s=%s" % (col, getattr(row, col))[:80]
+                print "%s=%s" % (col, row[col])[:80]
             print "---"
 
 
@@ -741,6 +741,12 @@ class mmCIFFileWriter:
 class mmCIFFileBuilder:
     """Builds a mmCIF file from a Structure object.
     """
+    entry_columns = ["id"]
+
+    cell_columns = [
+        "entry_id", "length_a", "length_b", "length_c", "angle_alpha",
+        "angle_beta", "angle_gamma", "PDB_Z"]
+    
     atom_site_columns = [
         "group_PDB", "id", "type_symbol", "Cartn_x", "Cartn_y", "Cartn_z", 
         "occupancy", "B_iso_or_equiv", "Cartn_x_esd", "Cartn_y_esd",
@@ -750,25 +756,63 @@ class mmCIFFileBuilder:
     atom_site_anisotrop_columns = [
         "id", "type_symbol", "U[1][1]", "U[1][2]", "U[1][3]", "U[2][2]",
         "U[2][3]", "U[3][3]", "U[1][1]_esd", "U[1][2]_esd", "U[1][3]_esd",
-        "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd"]
+        "U[2][2]_esd", "U[2][3]_esd", "U[3][3]_esd", "pdbx_auth_seq_id",
+        "pdbx_auth_comp_id", "pdbx_auth_asym_id", "pdbx_auth_atom_id"]
 
     def __init__(self, struct, cif_file):
         self.struct = struct
         self.cif_data = mmCIFData("XXX")
         cif_file.append(self.cif_data)
 
+        self.add_entry()
+        self.add_cell()
         self.add_atom_site()
 
-    def add_atom_site(self):
+    def get_table(self, name, columns = None):
         try:
-            atom_site = self.cif_data["atom_site"]
+            return self.cif_data[name]
         except KeyError:
-            atom_site = mmCIFTable("atom_site", self.atom_site_columns[:])
-            self.cif_data.append(atom_site)
+            pass
+        
+        table = mmCIFTable(name, columns[:])
+        self.cif_data.append(table)
+        return table
+
+    def add_entry(self):
+        entry = self.get_table("entry", self.entry_columns)
+        row = mmCIFRow()
+        entry.append(row)
+        row["id"] = self.struct.exp_data.id
+
+    def add_cell(self):
+        if not self.struct.unit_cell:
+            return
+        else:
+            unit_cell = self.struct.unit_cell
+        
+        cell = self.get_table("cell", self.cell_columns)
+        row = mmCIFRow()
+        cell.append(row)
+
+        row["entry_id"] = self.cif_data["entry"][0]["id"]
+        row["length_a"] = unit_cell.a
+        row["length_b"] = unit_cell.b
+        row["length_c"] = unit_cell.c
+        row["angle_alpha"] = unit_cell.alpha
+        row["angle_beta"] = unit_cell.beta
+        row["angle_gamma"] = unit_cell.gamma
+
+    def add_atom_site(self):
+        atom_site = self.get_table("atom_site", self.atom_site_columns)
         
         for atm in self.struct.iter_atoms():
             asrow = mmCIFRow()
             atom_site.append(asrow)
+
+            if atm.get_fragment().is_standard_residue():
+                asrow["group_PDB"] = "ATOM"
+            else:
+                asrow["group_PDB"] = "HETATM"
 
             asrow["id"] = atom_site.index(asrow) + 1
             asrow["auth_atom_id"] = atm.name
@@ -790,17 +834,13 @@ class mmCIFFileBuilder:
                 asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
 
             if atm.U:
-                try:
-                    aniso = self.cif_data["atom_site_anisotrop"]
-                except KeyError:
-                    aniso = mmCIFTable("atom_site_anisotrop",
-                                       self.atom_site_anisotrop_columns[:])
-                    self.cif_data.append(aniso)
+                aniso = self.get_table("atom_site_anisotrop",
+                                       self.atom_site_anisotrop_columns)
 
                 anrow = mmCIFRow()
                 aniso.append(anrow)
-
                 anrow["id"] = asrow["id"]
+                anrow["type_symbol"] = asrow["type_symbol"]
                 anrow["pdbx_auth_seq_id"] = asrow["auth_seq_id"]
                 anrow["pdbx_auth_comp_id"] = asrow["auth_comp_id"]
                 anrow["pdbx_auth_asym_id"] = asrow["auth_asym_id"]
@@ -821,10 +861,7 @@ class mmCIFFileBuilder:
                     anrow["U[2][3]_esd"] = atm.sig_U[1,2]
 
 
-##
-## <testing>
-##
-
+### <testing>
 if __name__ == '__main__':
     import sys
 
@@ -837,7 +874,4 @@ if __name__ == '__main__':
     cif = mmCIFFile()
     cif.load_file(path)
     cif.save_file(sys.stdout)
-
-##
-## </testing>
-##
+### </testing>

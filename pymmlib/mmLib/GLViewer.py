@@ -26,7 +26,7 @@ class GLDrawList:
         
         self.name = glGenLists(1)
 
-        print "gl_compile_list name = ", self.name
+        debug("gl_compile_list name="+str(self.name))
 
         if execute:
             glNewList(self.name, GL_COMPILE_AND_EXECUTE)
@@ -42,7 +42,6 @@ class GLDrawList:
             self.name = None
 
     def gl_call_list(self):
-        #print "gl_call_list = ",self.name
         glPushMatrix()
 
         apply(glTranslatef, self.origin)

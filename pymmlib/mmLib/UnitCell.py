@@ -2,15 +2,17 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-"""Classes for handling unit cell transformation."""
-
+"""Classes for handling unit cell transformation.
+"""
 import math
 from AtomMath import *
 
-class UnitCell(object):
 
-    def __init__(self, a, b, c, alpha, beta, gamma):
+class UnitCell(object):
+    """Class for storing and performing calculations on unit cell
+    parameters.
+    """
+    def __init__(self, a=1.0, b=1.0, c=1.0, alpha=90.0, beta=90.0, gamma=90.0):
         self.a     = a
         self.b     = b
         self.c     = c
@@ -24,7 +26,8 @@ class UnitCell(object):
 
     def calc_v(self):
         """Calculates the volume of the rhombohedrial created by the
-        unit vectors a1/|a1|, a2/|a2|, a3/|a3|."""
+        unit vectors a1/|a1|, a2/|a2|, a3/|a3|.
+        """
         cos_alpha = cos(self.alpha)
         cos_beta  = cos(self.beta)
         cos_gamma = cos(self.gamma)
@@ -35,11 +38,13 @@ class UnitCell(object):
                          (2 * cos_alpha * cos_beta * cos_gamma) )
 
     def calc_volume(self):
-        """Calculates the volume of the unit cell."""
+        """Calculates the volume of the unit cell.
+        """
         return self.a * self.b * self.c * self.calc_v()
 
     def calc_reciprocal_unit_cell(self):
-        """Corresponding reciprocal unit cell."""
+        """Corresponding reciprocal unit cell.
+        """
         V = self.calc_volume()
 
         sin_alpha = sin(self.alpha)
@@ -64,11 +69,13 @@ class UnitCell(object):
         return UnitCell(ra, rb, rc, ralpha, rbeta, rgamma)
 
     def calc_fractionalization_matrix(self):
-        """Cartesian to fractional coordinates."""
+        """Cartesian to fractional coordinates.
+        """
         return transpose(self.calc_orthogonalization_matrix())
         
     def calc_orthogonalization_matrix(self):
-        """Fractional to cartesian coordinates."""
+        """Fractional to cartesian coordinates.
+        """
         sin_alpha = sin(self.alpha)
         sin_beta  = sin(self.beta)
         sin_gamma = sin(self.gamma)

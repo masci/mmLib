@@ -13,6 +13,7 @@ import types
 import fpformat
 from FileIO import OpenFile
 from mmTypes import *
+from UnitCell import UnitCell
 
 PDBError = "PDB Error"
 
@@ -22,19 +23,6 @@ class PDBRecord(dict):
     """
     def __str__(self):
         return self.write()
-
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            for item in self._field_list:
-                if attr == item[0]:
-                    return None
-
-        raise AttributeError, attr
-
-    def __setattr__(self, attr, val):
-        self[attr] = val
 
     def write(self):
         ln = self._name
@@ -46,7 +34,7 @@ class PDBRecord(dict):
             ln = ln.ljust(start - 1)
                 
             ## access the namespace of this class to write the field
-            s = getattr(self, field) or ""
+            s = self.get(field) or ""
 
             ## convert integer and float types
             if   ftype == "string":
@@ -89,22 +77,18 @@ class PDBRecord(dict):
                 try:
                     s = int(s)
                 except ValueError:
-                    print "=== PDB Parser Error ===================="
-                    print rec
-                    print "int('%s') failed" % (s)
-                    print "========================================="
+                    debug("PDB parser: int(%s) failed on record" % (s))
+                    debug(str(rec))
                     continue
             elif ftype.startswith("float"):
                 try:
                     s = float(s)
                 except ValueError:
-                    print "=== PDB Parser Error ===================="
-                    print rec
-                    print "float('%s') failed" % (s)
-                    print "========================================="
+                    debug("PDB parser: float(%s) failed on record" % (s))
+                    debug(str(rec))
                     continue
 
-            setattr(self, field, s)
+            self[field] = s
 
 
 ###############################################################################
@@ -1037,109 +1021,25 @@ PDBRecordOrder = [
 ###############################################################################
 
 
-class PDBRecordList:
-    def __init__(self):
-        self.list = []
-        self.rec_order = {}
-        for i in range(len(PDBRecordOrder)):
-            self.rec_order[PDBRecordOrder[i][0]] = i
-    def __len__(self):
-        return len(self.list)
-    def __getitem__(self, i):
-        return self.list[i][-1]
-    def __delitem__(self, i):
-        assert type(i) == IntType
-        del self.list[i]
-    def __iter__(self):
-        for item in self.list: yield item[-1]
-    def __contains__(self, val):
-        for item in self.list:
-            if val == item[-1]: return True
-        return False
-    def count(self, val):
-        cnt = 0
-        for item in self.list:
-            if val == item[-1]: cnt += 1
-        return cnt
-    def index(self, val):
-        for item in self.list:
-            if val == item[-1]: return self.list.index(item)
-        raise ValueError, "list.index(x): x not in list"
-    def remove(self, val):
-        for item in self.list:
-            if val == item[-1]:
-                self.list.remove(item)
-                return
-            raise ValueError, "list.index(x): x not in list"
-    def add(self, rec):
-        assert isinstance(rec, PDBRecord)
-        rec_order = self.rec_order[rec._name]
-        if isinstance(rec, ATOM)    or \
-           isinstance(rec, SIGATM)  or \
-           isinstance(rec, ANISOU)  or \
-           isinstance(rec, SIGUIJ):
-            rel_order = rec_order - self.rec_order[ATOM._name]
-            val = (self.rec_order[ATOM._name],
-                   rec.chainID or "ZZZ",
-                   rec.resSeq,
-                   rec.iCode,
-                   rec.name,
-                   rec.altLoc,
-                   rel_order,
-                   rec)
-        else:
-            val = (rec_order, rec)
-        self.list.append(val)
-    def sort(self):
-        ## sort the records
-        self.list.sort()
-
-        ## reset the serial numbers
-        def has_serial(rec):
-            for field in rec._field_list:
-                if field[0] == "serial": return True
-            return False
-
-        def find_ATOM(i):
-            rec = self.list[i][-1]
-            j = 1
-            while j <= 3:
-                try:
-                    atom_rec = self.list[i-j][-1]
-                except IndexError:
-                    return None
-                j -= 1
-                if not isinstance(atom_rec, ATOM): continue
-                if rec.chainID == atom_rec.chainID      and \
-                   rec.resSeq  == atom_rec.resSeq       and \
-                   rec.iCode   == atom_rec.iCode        and \
-                   rec.name    == atom_rec.name         and \
-                   rec.altLoc  == atom_rec.altLoc:
-                    return atom_rec
-            return None
-            
-        serial = 0
-        for i in range(len(self.list)):
-            rec = self.list[i][-1]
-            if has_serial(rec):
-                if isinstance(rec, SIGATM)  or \
-                   isinstance(rec, ANISOU)  or \
-                   isinstance(rec, SIGUIJ):
-                    ## find matching atom, use serial
-                    atm_rec = find_ATOM(i)
-                    if atm_rec: rec.serial = atm_rec.serial
-                    else:       rec.serial = ""
-                else:
-                    serial     += 1
-                    rec.serial =  serial
-
-
-class PDBFile:
-    """Class for managing a PDB file.  Load, save, edit, and create PDB
-    files with this class.
+class PDBFile(list):
+    """Class for managing a PDB file.  This class inherits from a Python
+    list object, and contains a list of PDBRecord objects.
+    Load, save, edit, and create PDB files with this class.
     """
     def __init__(self):
-        self.pdb_list = PDBRecordList()
+        list.__init__(self)
+
+    def __setattr__(self, i, rec):
+        assert isinstance(rec, PDBRecord)
+        list.__setattr__(self, i, rec)
+
+    def append(self, rec):
+        assert isinstance(rec, PDBRecord)
+        list.append(self, rec)
+
+    def insert(self, i, rec):
+        assert isinstance(rec, PDBRecord)
+        list.insert(self, i, rec)
 
     def load_file(self, fil):
         """Loads a PDB file from File object fil.
@@ -1153,22 +1053,19 @@ class PDBFile:
             try:
                 pdb_record_class = PDBRecordMap[rname]
             except KeyError:
-                print "Unknown record type=%s" % (rname)
+                debug("PDB parser: unknown record type: %s"%(rname))
                 continue
 
             ## create/add/parse the record
             pdb_record = pdb_record_class()
             pdb_record.read(ln)
-            
-            self.pdb_list.add(pdb_record)
-
-        self.pdb_list.sort()
+            self.append(pdb_record)
 
     def save_file(self, fil):
         """Saves the PDBFile object in PDB file format to File object fil.
         """
         fil = OpenFile(fil, "w")
-        for pdb_record in self.pdb_list:
+        for pdb_record in self:
             fil.write(str(pdb_record) + "\n")
         fil.flush()
 
@@ -1184,19 +1081,13 @@ class PDBFile:
         (attr, val) = nvlist[0]
 
         rec_list = []
-        for rec in self.pdb_list:
-            try:
-                if getattr(rec, attr) != val: continue
-            except AttributeError:
+        for rec in self:
+            if rec.get(attr) != val:
                 continue
 
             add = 1
             for (attr, val) in nvlist:
-                try:
-                    if getattr(rec, attr) != val:
-                        add = 0
-                        break
-                except AttributeError:
+                if rec.get(attr) != val:
                     add = 0
                     break
 
@@ -1204,20 +1095,6 @@ class PDBFile:
                 rec_list.append(rec)
 
         return rec_list
-
-    def get_chain_list(self):
-        """Returns a list of all the chain ids in the PDB file.
-        """
-        chain_list = []
-        for pdb_record in self.pdb_list:
-            try:
-                chain_id = getattr(pdb_record, "chainID")
-            except AttributeError:
-                continue
-
-            if chain_id not in chain_list:
-                chain_list.append(chain_id)
-        return chain_list
 
 
 class PDBFileBuilder:
@@ -1249,23 +1126,38 @@ class PDBFileBuilder:
         return atom_serial_num
 
     def add_header_records(self):
-        pass
+        self.add_coord_transform_records()
+
+    def add_coord_transform_records(self):
+        ## add the CRYST1 and unit-cell related records
+        cryst1 = CRYST1()
+        self.pdb_file.append(cryst1)
+
+        if self.struct.unit_cell:
+            unit_cell = self.struct.unit_cell
+        else:
+            unit_cell = UnitCell(1.0, 1.0, 1.0, 90.0, 90.0, 90.0)
+
+        cryst1["a"] = self.struct.unit_cell.a
+        cryst1["b"] = self.struct.unit_cell.b
+        cryst1["c"] = self.struct.unit_cell.c
+        cryst1["alpha"] = self.struct.unit_cell.alpha
+        cryst1["beta"] = self.struct.unit_cell.beta
+        cryst1["gamma"] = self.struct.unit_cell.gamma
 
     def add_atom_records(self):
-        rec_list = []
-
         ## atom records for standard groups
         for chain in self.struct.iter_chains():
             res = None
             for res in chain.iter_standard_residues():
                 for atm in res.iter_atoms():
                     for alt_atm in atm.iter_alt_loc():
-                        rec_list += self.make_atom_records("ATOM", alt_atm)
+                        self.add_one_atom_records("ATOM", alt_atm)
 
             ## chain termination record
             if res:
                 ter_rec = TER()
-                rec_list.append(ter_rec)
+                self.pdb_file.append(ter_rec)
                 fid = FragmentID(res.fragment_id)
                 ter_rec["serial"]  = self.new_atom_serial(res)
                 ter_rec["resName"] = res.res_name
@@ -1275,24 +1167,20 @@ class PDBFileBuilder:
 
         ## hetatm records for non-standard groups
         for chain in self.struct.iter_chains():
-
             for frag in chain.iter_non_standard_residues():
                 for atm in frag.iter_atoms():
                     for alt_atm in atm.iter_alt_loc():
-                        rec_list += self.make_atom_records("HETATM", alt_atm)
+                        self.add_one_atom_records("HETATM", alt_atm)
 
-        for rec in rec_list:
-            self.pdb_file.pdb_list.add(rec)
 
-    def make_atom_records(self, rec_type, atm):
-        ar_list = []
-
+    def add_one_atom_records(self, rec_type, atm):
         if rec_type == "ATOM":
             atom_rec = ATOM()
         elif rec_type == "HETATM":
             atom_rec = HETATM()
 
-        ar_list.append(atom_rec)
+        self.pdb_file.append(atom_rec)
+
         serial = self.new_atom_serial(atm)
         fid = FragmentID(atm.fragment_id)
 
@@ -1324,7 +1212,7 @@ class PDBFileBuilder:
 
         if atm.sig_position:
             sigatm_rec = SIGATM()
-            ar_list.append(sigatm_rec)
+            self.pdb_file.append(sigatm_rec)
             atom_common(atom_rec, sigatm_rec)
             sigatm_rec["sigX"] = atm.sig_position[0]
             sigatm_rec["sigY"] = atm.sig_position[1]
@@ -1334,7 +1222,7 @@ class PDBFileBuilder:
 
         if atm.U:
             anisou_rec = ANISOU()
-            ar_list.append(anisou_rec)
+            self.pdb_file.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
             anisou_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
             anisou_rec["u[1][1]"] = int(atm.U[1,1] * 10000.0)
@@ -1345,7 +1233,7 @@ class PDBFileBuilder:
 
         if atm.sig_U:
             siguij_rec = siguij()
-            arlist.append(siguij_rec)
+            self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
             siguij_rec["u[0][0]"] = int(atm.U[0,0] * 10000.0)
             siguij_rec["u[1][1]"] = int(atm.U[1,1] * 10000.0)
@@ -1353,8 +1241,6 @@ class PDBFileBuilder:
             siguij_rec["u[0][1]"] = int(atm.U[0,1] * 10000.0)
             siguij_rec["u[0][2]"] = int(atm.U[0,2] * 10000.0)
             siguij_rec["u[1][2]"] = int(atm.U[1,2] * 10000.0)
-
-        return ar_list
 
 
 ### <testing>

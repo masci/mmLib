@@ -61,8 +61,8 @@ class SymmetryOperator:
                     tr = t
                     x.replace(t, "")
                     break
-            
-
 
 class SpaceGroup:
-    pass
+    def __init__(self, sg_symbol):
+        self.sg_symbol = sg_symbol
+

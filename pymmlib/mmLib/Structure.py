@@ -10,7 +10,9 @@ import weakref
 from mmTypes import *
 from AtomMath import *
 from Library import Library
+from ExpData import ExpData
 from UnitCell import UnitCell
+from SpaceGroup import SpaceGroup, SymmetryOperator
 
 
 class Structure(object):
@@ -18,22 +20,13 @@ class Structure(object):
     macromolecular data structure.
 
     Attributes:
-    id               (string) PDB ID 
-    date             (string) original deposition date
-    keywords         (string) structure keywords
-    pdbx_keywords    (string) PDB keywords
-    title            (stirng) title
-
-    R_fact           (float)  R factor
-    free_R_fact      (float)  free R factor
-    res_high         (float)  highest resolution of structure data
-    res_low          (float)  lowest resolution of structure
-
-    source_data      (object) the source data from whichthe structure was
-                              built, such as a PDBFile object or a
-                              mmCIFFile object
     library          (mmLib.Library object) the monomer library used by
                               the structure
+
+    exp_data         Experimental Data
+    unit_cell        UnitCell class containing the unit cell descripton
+    space_group      SpaceGroup class containing space group description
+
     default_alt_loc  (string) all objects in the structure hierarcy
                               default to iterating, retrieving, and
                               calculating the structure using the alt_loc
@@ -52,18 +45,10 @@ class Structure(object):
         else:
             self.library = Library()
 
-        self.id              = ""
-        self.date            = ""
-        self.keywords        = ""
-        self.pdbx_keywords   = ""
-        self.title           = ""
-        self.R_fact          = None
-        self.free_R_fact     = None
-        self.res_high        = None
-        self.res_low         = None
-        self.source_data     = None
-        self.unit_cell       = None
-        self.space_group     = None
+        self.exp_data        = ExpData()
+        self.unit_cell       = UnitCell()
+        self.space_group     = SpaceGroup()
+
         self.default_alt_loc = "A"
         self.sites           = []
         self.alpha_helices   = []
@@ -345,8 +330,7 @@ class Chain(object):
         PDB.  Standard residues are amino and nucleic acid residues.
         """
         for frag in self.iter_fragments():
-            if isinstance(frag, AminoAcidResidue) or \
-               isinstance(frag, NucleicAcidResidue):
+            if frag.is_standard_residue():
                 yield frag
 
     def iter_non_standard_residues(self):
@@ -355,8 +339,7 @@ class Chain(object):
         amino or nucleic acid.
         """
         for frag in self.iter_fragments():
-            if not (isinstance(frag, AminoAcidResidue) or \
-                    isinstance(frag, NucleicAcidResidue)):
+            if not frag.is_standard_residue():
                 yield frag
 
     def iter_atoms(self):
@@ -629,6 +612,14 @@ class Fragment(object):
                 continue
             else:
                 atm1.create_bond(atm2, bond_alt_loc = True)
+
+    def is_standard_residue(self):
+        """Returns True if the Fragment/Residue object is one of the
+        PDB defined standard residues.  PDB standard residues are amino
+        and nucleic acid residues.
+        """
+        return isinstance(self, AminoAcidResidue) or \
+               isinstance(self, NucleicAcidResidue)
 
 
 class Residue(Fragment):

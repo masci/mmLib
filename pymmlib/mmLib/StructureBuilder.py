@@ -26,15 +26,18 @@ class StructureBuilder:
         ## other components
         self.build_properties = build_properties
 
+        ## if anything goes wrong, setting self.halt=1 will stop the madness
+        self.halt = 0
+
         ## build the structure by executing this fixed sequence of methods
         self.read_start(fil)
-        self.read_start_finalize()
-        self.read_atoms()
-        self.read_atoms_finalize()
-        self.read_metadata()
-        self.read_metadata_finalize()
-        self.read_end()
-        self.read_end_finalize()
+        if not self.halt: self.read_start_finalize()
+        if not self.halt: self.read_atoms()
+        if not self.halt: self.read_atoms_finalize()
+        if not self.halt: self.read_metadata()
+        if not self.halt: self.read_metadata_finalize()
+        if not self.halt: self.read_end()
+        if not self.halt: self.read_end_finalize()
         ## self.structure is now built and ready for use
 
     def read_start(self, fil):
@@ -79,7 +82,7 @@ class StructureBuilder:
         chain_id = atm_map["chain_id"]
         ### </really, really, required>
         
-        res_name = atm_map.get("res_name")
+        res_name = atm_map.get("res_name", "")
         alt_loc = atm_map.get("alt_loc", "")
 
         ## form the cache ID for the atom and
@@ -194,7 +197,8 @@ class StructureBuilder:
             self.structure.default_alt_loc = alt_loc_list[0]
         
         ## we're done with the atom cache, delete it
-        del self.atom_cache
+        if hasattr(self, "atom_cache"):
+            del self.atom_cache
                     
     def read_metadata(self):
         """This method needs to be reimplemented in a fuctional subclass.
@@ -206,32 +210,54 @@ class StructureBuilder:
     def load_info(self, info_map):
         """Called by the implementation of parse_format to load descriptive
         information about the structure.
-        """        
-        try: self.structure.id = info_map["id"]
+        """
+        def set_ed(smap, skey, dkey):
+            try:
+                self.structure.exp_data[dkey] = smap[skey]
+            except KeyError:
+                pass
+        
+        ## source file format
+        set_ed(info_map, "file_format", "file_format")
+
+        ## source file object: pdb_file or cif_file
+        try: self.structure.exp_data["pdb_file"] = info_map["pdb_file"]
         except KeyError: pass
 
-        try: self.structure.date = info_map["date"]
+        try: self.structure.exp_data["cif_file"] = info_map["cif_file"]
         except KeyError: pass
 
-        try: self.structure.keywords = info_map["keywords"]
+        ## try to determine what kind of experiment produced the data
+        try: self.structure.exp_data["exp_method"] = info_map["exp_method"]
+        except KeyError: pass
+        
+        ## generic experimental data
+        try: self.structure.exp_data["id"] = info_map["id"]
+        except KeyError: pass
+
+        try: self.structure.exp_data["date"] = info_map["date"]
+        except KeyError: pass
+
+        try: self.structure.exp_data["keywords"] = info_map["keywords"]
         except KeyError: pass
        
-        try: self.structure.pdbx_keywords = info_map["pdbx_keywords"]
+        try: self.structure.exp_data["pdbx_keywords"]=info_map["pdbx_keywords"]
         except KeyError: pass 
       
-        try: self.structure.title = info_map["title"]
+        try: self.structure.exp_data["title"] = info_map["title"]
         except KeyError: pass  
 
-        try: self.structure.R_fact = info_map["R_fact"]
+        ## xray diffraction experimental data
+        try: self.structure.exp_data["R_fact"] = info_map["R_fact"]
         except KeyError: pass  
 
-        try: self.structure.free_R_fact = info_map["free_R_fact"]
+        try: self.structure.exp_data["free_R_fact"] = info_map["free_R_fact"]
         except KeyError: pass  
 
-        try: self.structure.res_high = info_map["res_high"]
+        try: self.structure.exp_data["res_high"] = info_map["res_high"]
         except KeyError: pass  
 
-        try: self.structure.res_low = info_map["res_low"]
+        try: self.structure.exp_data["res_low"] = info_map["res_low"]
         except KeyError: pass  
 
     def load_unit_cell(self, ucell_map):
@@ -241,6 +267,9 @@ class StructureBuilder:
         self.structure.unit_cell = UnitCell(
             ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
             ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
+
+        try: self.structure.space_group = SpaceGroup(ucell_map["space_group"])
+        except KeyError: pass
 
     def load_site(self, site_id, site_list):
         """Called by the implementation of load_metadata to load information
@@ -384,7 +413,7 @@ class PDBStructureBuilder(StructureBuilder):
         model_num = None
         atm_map = {}        
 
-        for rec in self.pdb_file.pdb_list:
+        for rec in self.pdb_file:
             if isinstance(rec, PDB.ATOM):
                 if atm_map:
                     self.load_atom(atm_map)
@@ -424,7 +453,7 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map = {}
 
         ## gather metadata
-        for rec in self.pdb_file.pdb_list:
+        for rec in self.pdb_file:
             if isinstance(rec, PDB.SITE):
                 self.process_SITE(site_map, rec)
 
@@ -487,7 +516,7 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["alpha"] = rec["alpha"]
         ucell_map["beta"] = rec["beta"]
         ucell_map["gamma"] = rec["gamma"]
-        ucell_map["sgroup"] = rec["sgroup"]
+        ucell_map["sgroup"] = rec["space_group"]
         ucell_map["z"] = rec.get("z", "")
 
     def process_SITE(self, site_map, rec):
@@ -543,7 +572,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         src_key = None
         
         if type(skey) == StringType:
-            if smap.has_key(skey):
+            if smap.has_key(skey) and smap[skey] != "?":
                 src_key = skey
 
         elif type(skey) == ListType:
@@ -753,7 +782,7 @@ class mmCIFStructureBuilder(StructureBuilder):
             except ValueError:
                 pass
             else:
-                ucell_map["sgroup"] = symm["space_group_name_H-M"]
+                ucell_map["space_group"] = symm["space_group_name_H-M"]
         
         if ucell_map:
             self.load_unit_cell(ucell_map)
