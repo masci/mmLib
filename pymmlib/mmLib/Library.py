@@ -9,8 +9,8 @@ for the identification and construction of biopolymers and ligands.
 import os
 import sys
 import xml.dom.minidom
-from mmLib.mmTypes import *
-from mmLib.mmCIF import mmCIFFile
+from mmTypes import *
+from mmCIF import mmCIFFile
 
     
 ###############################################################################
