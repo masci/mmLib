@@ -18,7 +18,7 @@ from OpenGL.GLUT import *
 
 from mmLib.Structure     import *
 from mmLib.FileLoader    import LoadStructure, SaveStructure
-
+from mmLib.CCP4Library   import CCP4Library
 
 try:
     # try double-buffered
@@ -205,11 +205,8 @@ class GLViewer(gtk.gtkgl.DrawingArea):
         visited_bonds = []
 
         for atm in atom_container.iterAtoms():
-
-            if atm.name not in ["C", "N", "CA", "O"]: continue
-            
             pos  = atm.position - centroid
-            size = 1.0 * (atm.temp_factor / max_tf)
+            size = 0.5 * (atm.temp_factor / max_tf)
 
             self.sphere_list.append( ((pos[0], pos[1], pos[2]), size) )
 
@@ -220,8 +217,6 @@ class GLViewer(gtk.gtkgl.DrawingArea):
                     visited_bonds.insert(0, bond)
 
                 atm2 = bond.getPartner(atm)
-                if atm2.name not in ["C", "N", "CA", "O"]: continue
-                
                 v1   = atm.position - centroid
                 v2   = atm2.position - centroid
                 self.line_list.append(
@@ -351,7 +346,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
 
         elif isinstance(node, Atom):
             chain      = self.structure[node.chain_id]
-            frag       = chain[(node.res_name, node.icode)]
+            frag       = chain[node.fragment_id]
 
             chain_path = self.structure.chain_list.index(chain)
             frag_path  = chain.fragment_list.index(frag)
@@ -390,7 +385,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return node.getOffsetFragment(1)
             
         elif isinstance(node, Atom):
-            frag = self.structure[node.chain_id][(node.res_seq,node.icode)]
+            frag = self.structure[node.chain_id][node.fragment_id]
             i = frag.atom_list.index(node)
             try:
                 return frag.atom_list[i+1]
@@ -412,7 +407,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
                 pass
 
         elif isinstance(node, Fragment):
-            frag = self.structure[node.chain_id][(node.res_seq,node.icode)]
+            frag = self.structure[node.chain_id][node.fragment_id]
             try:
                 return frag.atom_list[0]
             except IndexError:
@@ -472,7 +467,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return self.structure[node.chain_id]
 
         elif isinstance(node, Atom):
-            return self.structure[node.chain_id][(node.res_seq, node.icode)]
+            return self.structure[node.chain_id][node.fragment_id]
 
 
 
@@ -506,8 +501,10 @@ class StructureGUI:
         return self.hpaned
 
     def loadStructure(self, path):
-        self.structure = LoadStructure(fil              = path,
-                                       build_properties = ("polymers","bonds"))
+        self.structure = LoadStructure(
+            fil              = path,
+            library          = CCP4Library("/home/jpaint/ccp4/ccp4-4.2.2"),
+            build_properties = ("polymers","bonds"))
 
         model = StructureTreeModel(self.structure)
         self.struct_tree_view.set_model(model)

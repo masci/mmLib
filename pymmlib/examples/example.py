@@ -9,17 +9,17 @@ from mmLib.FileLoader import LoadStructure, SaveStructure
 
 
 def main(path):
-    structure = LoadStructure(path)
+    struct = LoadStructure(path)
 
-    for aa_res in structure.aminoAcidResidueIterator():
+    for res in struct.iterAminoAcids():
+
         temp_factor = 1.0
-        if aa_res.getName() == "LYS":
-            temp_factor = 50.0
+        if res.res_name == "LYS": temp_factor = 50.0
 
-        for atm in aa_res.atomIterator():
-            atm.setTemperatureFactor(temp_factor)
+        for atm in res.iterAtoms():
+            atm.temp_factor = temp_factor
 
-    SaveStructure(sys.stdout, structure, ".pdb")
+    SaveStructure(sys.stdout, structure = struct, format = "PDB")
 
 
 if __name__ == '__main__':

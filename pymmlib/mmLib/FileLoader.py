@@ -8,7 +8,6 @@ various supported file formats.  The mmCIF and PDB file formats are currently
 supported."""
 
 import os
-import string
 from   mmTypes          import *
 from   StructureBuilder import PDBStructureBuilder, mmCIFStructureBuilder
 from   PDB              import StructurePDBFileBuilder

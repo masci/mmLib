@@ -8,6 +8,8 @@ from   __future__           import generators
 custom, and the code for those is here.  Inother cases the types are imported
 from other Python packages."""
 
+import string
+
 ## we need weak references
 import weakref
 
@@ -47,7 +49,7 @@ class OrderedList(object):
     def add(self, val):
         self.list.append(val)
 
-class OrderedList2(object):
+class OrderedTupleList(object):
     """Implements a ordered Python list."""
     def __init__(self):
         self.list = []
@@ -120,7 +122,19 @@ class WeakrefList(object):
     def sort(self):
         self.list.sort()
 
-
+## Fragment IDs are tricky things
+class FragmentID(object):
+    def __init__(self, frag_id):
+        try:
+            self.res_seq  = int(frag_id)
+        except ValueError:
+            self.res_seq  = int(frag_id[:-1])
+            self.icode    = frag_id[-1]
+        else:
+            self.icode    = ""
+    def __str__(self):
+        return str(self.res_seq)+self.icode
+    
 ### TESTING
 def wrl_test():
     class C:

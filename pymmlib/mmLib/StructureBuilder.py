@@ -54,43 +54,31 @@ class StructureBuilder:
         del self.chain_cache
         del self.alt_loc_cache
 
-    def addFragment(self, resName, resSeq, iCode, chainID):
-        frag_id = (resName, resSeq, iCode, chainID)
+    def addFragment(self, resName, fragmentID, chainID):
+        frag_id = (fragmentID, chainID)
 
         try:
             return self.fragment_cache[frag_id]
         except KeyError:
             pass
 
-        frag = None
-
         if self.structure.library.isAminoAcid(resName):
-            frag = AminoAcidResidue(self.structure,
-                                    res_name   = resName,
-                                    res_seq    = resSeq,
-                                    icode      = iCode,
-                                    chain_id   = chainID)
-
+            frag_class = AminoAcidResidue
         elif self.structure.library.isNucleicAcid(resName):
-            frag = NucleicAcidResidue(self.structure,
-                                      res_name   = resName,
-                                      res_seq    = resSeq,
-                                      icode      = iCode,
-                                      chain_id   = chainID)
-
+            frag_class = NucleicAcidResidue
         else:
-            frag = Fragment(self.structure,
-                            res_name   = resName,
-                            res_seq    = resSeq,
-                            icode      = iCode,
-                            chain_id   = chainID)
+            frag_class = Fragment
+
+        frag = frag_class(self.structure,
+                          res_name    = resName,
+                          fragment_id = fragmentID,
+                          chain_id    = chainID)
 
         self.fragment_cache[frag_id] = frag
-
         return frag
 
-    def addAtom(self, name, altLoc, resName, resSeq, iCode, chainID):
-        atm_id = (name, altLoc, resName, resSeq, iCode, chainID)
+    def addAtom(self, name, altLoc, resName, fragmentID, chainID):
+        atm_id = (name, altLoc, fragmentID, chainID)
 
         try:
             return self.atom_cache[atm_id]
@@ -101,8 +89,7 @@ class StructureBuilder:
                    name        = name,
                    alt_loc     = altLoc,
                    res_name    = resName,
-                   res_seq     = resSeq,
-                   icode       = iCode,
+                   fragment_id = fragmentID,
                    chain_id    = chainID)
 
         ## update caches
@@ -136,17 +123,10 @@ class StructureBuilder:
         return atm
 
     def buildFragments(self):
-        ## first sort all the atoms into a guarenteed order which will
-        ## make things fast
-        asort = []
-        for (atm_id, atm) in self.atom_cache.items():
-            (name, altLoc, resName, resSeq, iCode, chainID) = atm_id
-            asort.append((chainID, resSeq, iCode, resName, name, altLoc, atm))
-        asort.sort()
-            
         ## create the fragments and connect them to their atoms
-        for (chainID, resSeq, iCode, resName, name, altLoc, atm) in asort:
-            frag = self.addFragment(resName, resSeq, iCode, chainID)
+        for atm in self.atom_cache.values():
+            frag = self.addFragment(
+                atm.res_name, atm.fragment_id, atm.chain_id)
             frag.atom_list.add(atm)
 
     def buildChains(self):
@@ -283,14 +263,13 @@ class StructureBuilder:
         pass
 
     def loadAtom(self, atm_map):
-        name    = atm_map["name"]
-        altLoc  = atm_map["alt_loc"]
-        resName = atm_map["res_name"]
-        resSeq  = atm_map["res_seq"]
-        iCode   = atm_map["icode"]
-        chainID = atm_map["chain_id"]
+        name       = atm_map["name"]
+        altLoc     = atm_map["alt_loc"]
+        resName    = atm_map["res_name"]
+        fragmentID = atm_map["fragment_id"]
+        chainID    = atm_map["chain_id"]
 
-        atm_id = (name, altLoc, resName, resSeq, iCode, chainID)
+        atm_id = (name, altLoc, fragmentID, chainID)
 
         ## <XXX> check the data we're loading and make sure a few
         ##       rules are followed; this is necessary, but a bit
@@ -298,33 +277,26 @@ class StructureBuilder:
 
         ## don't allow the same atom to be loaded twice
         if self.atom_cache.has_key(atm_id):
-            print "[DUPLICATE ATOM ERROR]",
-            print "name=%s altLoc=%s resName=%s resSeq=%s iCode=%s "\
-                  "chainID=%s" % (name, altLoc, resName, resSeq,
-                                  iCode, chainID)
+            print "[DUPLICATE ATOM ERROR]", atm_id
             return
 
         ## don't allow atoms with blank altLoc if one has a altLoc
         if altLoc: 
-            tmp_id = (name, "", resName, resSeq, iCode, chainID)
+            tmp_id = (name, "", fragmentID, chainID)
             if self.atom_cache.has_key(tmp_id):
-                print "[ALTLOC LABELING ERROR]",atm_id
+                print "[ALTLOC LABELING ERROR]", atm_id
 
         ##
         ## </XXX>
 
-        atm = self.addAtom(name, altLoc, resName, resSeq, iCode, chainID)
+        atm = self.addAtom(name, altLoc, resName, fragmentID, chainID)
 
-        ## set position
+        ## additional properties
+        atm.element     = atm_map["element"]
         atm.position    = Vector(atm_map["x"], atm_map["y"], atm_map["z"])
-
-        ## set occupancy
         atm.occupancy   = atm_map["occupancy"]
-
-        ## set temperature factor
         atm.temp_factor = atm_map["temp_factor"]
 
-        ## try to set the U values if they exist
         try:
             atm.U = (atm_map["U[1][1]"],
                      atm_map["U[2][2]"],
@@ -335,7 +307,6 @@ class StructureBuilder:
         except KeyError:
             pass
 
-        ## try to set the charge, if it exists
         try:
             atm.charge  = atm_map["charge"]
         except KeyError:
@@ -354,8 +325,7 @@ class CopyStructureBuilder(StructureBuilder):
             atm_map["name"]        = atm.name
             atm_map["alt_loc"]     = atm.alt_loc
             atm_map["res_name"]    = atm.res_name
-            atm_map["res_seq"]     = atm.res_seq
-            atm_map["icode"]       = atm.icode
+            atm_map["fragment_id"] = atm.fragment_id
             atm_map["chain_id"]    = atm.chain_id
             
             atm_map["x"]           = atm.position[0]
@@ -379,6 +349,41 @@ class CopyStructureBuilder(StructureBuilder):
 
 class PDBStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a PDB file."""
+
+    def __process_ATOM(self, atm_map, rec):
+        name    = getattr(rec, "name")       or ""
+        element = getattr(rec, "element")
+
+        ## get the element symbol from the first letter in the
+        ## atom name
+        if not element:
+            for c in name:
+                if c in string.letters:
+                    element = c
+                    break
+
+        atm_map["name"]        = name
+        atm_map["element"]     = element
+        atm_map["alt_loc"]     = getattr(rec, "altLoc")     or ""
+        atm_map["res_name"]    = getattr(rec, "resName")    or ""
+        atm_map["fragment_id"] = str(getattr(rec, "resSeq") or "") + \
+                                 (getattr(rec, "iCode")      or "")
+        atm_map["chain_id"]    = getattr(rec, "chainID")    or ""
+        atm_map["x"]           = getattr(rec, "x")          or 0.0
+        atm_map["y"]           = getattr(rec, "y")          or 0.0
+        atm_map["z"]           = getattr(rec, "z")          or 0.0
+        atm_map["occupancy"]   = getattr(rec, "occupancy")  or 0.0
+        atm_map["temp_factor"] = getattr(rec, "tempFactor") or 0.0
+        atm_map["charge"]      = getattr(rec, "charge")     or 0.0
+
+    def __process_ANISOU(self, atm_map, rec):
+        atm_map["U[1][1]"] = getattr(rec, "u[0][0]") / 10000.0
+        atm_map["U[2][2]"] = getattr(rec, "u[1][1]") / 10000.0
+        atm_map["U[3][3]"] = getattr(rec, "u[2][2]") / 10000.0
+        atm_map["U[1][2]"] = getattr(rec, "u[0][1]") / 10000.0
+        atm_map["U[1][3]"] = getattr(rec, "u[0][2]") / 10000.0
+        atm_map["U[2][3]"] = getattr(rec, "u[1][2]") / 10000.0
+    
     def parseFormat(self, fil):
         pdb_file = PDB.PDBFile()
         pdb_file.loadFile(fil)
@@ -390,34 +395,24 @@ class PDBStructureBuilder(StructureBuilder):
             rec = record_list[i]
             
             if isinstance(rec, PDB.ATOM):
-
                 ## load the last atom before moving to this one
                 if atm_map:
                     self.loadAtom(atm_map)
-                
-                ## start new atom
-                atm_map                = {}
-                atm_map["name"]        = getattr(rec, "name")       or ""
-                atm_map["element"]     = getattr(rec, "element")    or ""
-                atm_map["alt_loc"]     = getattr(rec, "altLoc")     or ""
-                atm_map["res_name"]    = getattr(rec, "resName")    or ""
-                atm_map["res_seq"]     = getattr(rec, "resSeq")     or 0
-                atm_map["icode"]       = getattr(rec, "iCode")      or ""
-                atm_map["chain_id"]    = getattr(rec, "chainID")    or ""
-                atm_map["x"]           = getattr(rec, "x")          or 0.0
-                atm_map["y"]           = getattr(rec, "y")          or 0.0
-                atm_map["z"]           = getattr(rec, "z")          or 0.0
-                atm_map["occupancy"]   = getattr(rec, "occupancy")  or 0.0
-                atm_map["temp_factor"] = getattr(rec, "tempFactor") or 0.0
-                atm_map["charge"]      = getattr(rec, "charge")     or 0.0
+                    atm_map = {}
+
+                try:
+                    self.__process_ATOM(atm_map, rec)
+                except:
+                    print "ERROR WITH ATOM RECORD:"
+                    print rec
 
             elif isinstance(rec, PDB.ANISOU):
-                atm_map["U[1][1]"] = getattr(rec, "u[0][0]")/1000.0
-                atm_map["U[2][2]"] = getattr(rec, "u[1][1]")/1000.0
-                atm_map["U[3][3]"] = getattr(rec, "u[2][2]")/1000.0
-                atm_map["U[1][2]"] = getattr(rec, "u[0][1]")/1000.0
-                atm_map["U[1][3]"] = getattr(rec, "u[0][2]")/1000.0
-                atm_map["U[2][3]"] = getattr(rec, "u[1][2]")/1000.0
+                try:
+                    self.__process_ANISOU(atm_map, rec)
+                except:
+                    print "ERROR WITH ANISOU RECORD:"
+                    print rec
+
                 
         ## if we were in the process of building a atom,
         ## then load the final atm_map 
@@ -453,17 +448,9 @@ class mmCIFStructureBuilder(StructureBuilder):
                 cifattr(atom_site, "auth_comp_id") or \
                 cifattr(atom_site, "label_comp_id")
 
-            res_seq              = \
+            atm_map["fragment_id"] = \
                 cifattr(atom_site, "auth_seq_id") or \
                 cifattr(atom_site, "label_seq_id")
-
-            try:
-               atm_map["res_seq"]  = int(res_seq)
-            except ValueError:
-                atm_map["icode"]   = res_seq[-1]
-                atm_map["res_seq"] = int(res_seq[:-1])
-            else:
-                atm_map["icode"]   = ""
 
             atm_map["chain_id"]    = \
                 cifattr(atom_site, "auth_asym_id") or \

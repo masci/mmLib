@@ -12,7 +12,10 @@ and written back out as PDB files."""
 import string
 import types
 import fpformat
+
 from   FileIO   import OpenFile
+from   mmTypes  import *
+
 
 PDBError = "PDB Error"
 
@@ -41,16 +44,11 @@ class PDBRecord:
             s = getattr(self, field) or ""
 
             ## convert integer and float types
-            if   ftype == "string":     pass
-            elif ftype == "integer":
-                try:
-                    s = str(s)
-                except ValueError:
-                    raise PDBError, "field=%s %s not int" % (field, s)
+            if   ftype     == "string":     pass
+            elif ftype     == "integer":    s = str(s)
             elif ftype[:5] == "float":
-                d = int(ftype[6])
                 try:
-                    s = fpformat.fix(s, d)
+                    s = fpformat.fix(s, int(ftype[6]))
                 except ValueError:
                     raise PDBError, "field=%s %s not float" % (field, s)
             else:
@@ -1063,7 +1061,7 @@ class PDBRecordList:
                    rec.resSeq  == atom_rec.resSeq       and \
                    rec.iCode   == atom_rec.iCode        and \
                    rec.name    == atom_rec.name         and \
-                   rec.altLoc == atom_rec.altLoc:
+                   rec.altLoc  == atom_rec.altLoc:
                     return atom_rec
             return None
             
@@ -1083,7 +1081,6 @@ class PDBRecordList:
                     rec.serial =  serial
 
 
-
 class PDBFile:
     """Class for managing a PDB file.  Load, save, edit, and create PDB
     files with this class."""
@@ -1096,8 +1093,7 @@ class PDBFile:
         for ln in fil.readlines():
             ## find the record data element for the given line
             ln    = ln.rstrip()
-            rname = ln[:6]
-            rname.ljust(6)
+            rname = ln[:6].ljust(6)
             
             try:
                 pdb_record_class = PDBRecordMap[rname]
@@ -1171,45 +1167,54 @@ class StructurePDBFileBuilder:
         self.structure = structure
         self.pdb_file  = PDBFile()
 
-        def add_records(atm):
-            atom_rec             = ATOM()
-            atom_rec.chainID     = atm.chain_id
-            atom_rec.resName     = atm.res_name
-            atom_rec.resSeq      = atm.res_seq
-            atom_rec.iCode       = atm.icode
-            atom_rec.name        = atm.name
-            atom_rec.altLoc      = atm.alt_loc
-            atom_rec.x           = atm.position[0]
-            atom_rec.y           = atm.position[1]
-            atom_rec.z           = atm.position[2]
-            atom_rec.occupancy   = atm.occupancy
-            atom_rec.tempFactor  = atm.temp_factor
-
-            self.pdb_file.pdb_list.add(atom_rec)
-
-            if atm.U:
-                anisou_rec             = ANISOU()
-                anisou_rec.chainID     = atom_rec.chainID
-                anisou_rec.resName     = atom_rec.resName
-                anisou_rec.resSeq      = atom_rec.resSeq
-                anisou_rec.iCode       = atom_rec.iCode
-                anisou_rec.name        = atom_rec.name
-                anisou_rec.altLoc      = atom_rec.altLoc
-
-                setattr(anisou_rec, "u[0][0]", int(atm.U[0] * 1000.0))
-                setattr(anisou_rec, "u[1][1]", int(atm.U[1] * 1000.0))
-                setattr(anisou_rec, "u[2][2]", int(atm.U[2] * 1000.0))
-                setattr(anisou_rec, "u[0][1]", int(atm.U[3] * 1000.0))
-                setattr(anisou_rec, "u[0][2]", int(atm.U[4] * 1000.0))
-                setattr(anisou_rec, "u[1][2]", int(atm.U[5] * 1000.0))
-
-                self.pdb_file.pdb_list.add(anisou_rec)
-
         for atm in self.structure.iterAtoms():
             for alt_atm in atm.iterAltLoc():
-                add_records(alt_atm)
+                self.__add_atom(alt_atm)
 
         self.pdb_file.pdb_list.sort()
+
+    def __add_atom(self, atm):
+        atom_rec             = ATOM()
+
+        fid                  = FragmentID(atm.fragment_id)
+
+        atom_rec.chainID     = atm.chain_id
+        atom_rec.resName     = atm.res_name
+        atom_rec.resSeq      = fid.res_seq
+        atom_rec.iCode       = fid.icode
+        atom_rec.name        = atm.name
+        atom_rec.element     = atm.element
+        atom_rec.altLoc      = atm.alt_loc
+        atom_rec.x           = atm.position[0]
+        atom_rec.y           = atm.position[1]
+        atom_rec.z           = atm.position[2]
+        atom_rec.occupancy   = atm.occupancy
+        atom_rec.tempFactor  = atm.temp_factor
+        atom_rec.charge      = atm.charge
+
+        self.pdb_file.pdb_list.add(atom_rec)
+
+        if atm.U:
+            anisou_rec             = ANISOU()
+            anisou_rec.chainID     = atom_rec.chainID
+            anisou_rec.resName     = atom_rec.resName
+            anisou_rec.resSeq      = atom_rec.resSeq
+            anisou_rec.iCode       = atom_rec.iCode
+            anisou_rec.name        = atom_rec.name
+            anisou_rec.altLoc      = atom_rec.altLoc
+            anisou_rec.element     = atom_rec.element
+            anisou_rec.charge      = atom_rec.charge
+
+            setattr(anisou_rec, "u[0][0]", int(atm.U[0] * 10000.0))
+            setattr(anisou_rec, "u[1][1]", int(atm.U[1] * 10000.0))
+            setattr(anisou_rec, "u[2][2]", int(atm.U[2] * 10000.0))
+            setattr(anisou_rec, "u[0][1]", int(atm.U[3] * 10000.0))
+            setattr(anisou_rec, "u[0][2]", int(atm.U[4] * 10000.0))
+            setattr(anisou_rec, "u[1][2]", int(atm.U[5] * 10000.0))
+
+            self.pdb_file.pdb_list.add(anisou_rec)
+
+        
 
 
 ### <testing>

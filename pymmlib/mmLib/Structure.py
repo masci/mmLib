@@ -14,7 +14,7 @@ from   StructureAlgorithms  import *
 
 
 ### <LISTS>
-class ChainList(OrderedList2):
+class ChainList(OrderedTupleList):
     def add(self, chain):
         assert isinstance(chain, Chain)
         self.list.append((chain.chain_id or "ZZZ", chain))
@@ -26,7 +26,7 @@ class ChainList(OrderedList2):
         return None
 
 
-class PolymerList(OrderedList2):
+class PolymerList(OrderedTupleList):
     def add(self, poly):
         assert isinstance(poly, Polymer)
         self.list.append((poly.polymer_id, poly))
@@ -40,22 +40,23 @@ class PolymerList(OrderedList2):
         return None
 
 
-class FragmentList(OrderedList2):
+class FragmentList(OrderedTupleList):
     def __init__(self):
-        OrderedList2.__init__(self)
+        OrderedTupleList.__init__(self)
         self.cache = {}
 
     def add(self, frag):
         assert isinstance(frag, Fragment)
-        self.list.append((frag.res_seq, frag.icode, frag))
-        self.cache[(frag.res_seq, frag.icode)] = frag
+        fid = FragmentID(frag.fragment_id)
+        self.list.append((fid.res_seq, fid.icode, frag))
+        self.cache[frag.fragment_id] = frag
         self.list.sort()
 
-    def get(self, res_seq, icode):
+    def get(self, fragment_id):
         try:
-            return self.cache[(res_seq, icode)]
+            return self.cache[fragment_id]
         except KeyError:
-            print "[ERROR] BAD frag_id=",str(res_seq)+icode
+            print "[ERROR] BAD frag_id=",fragment_id
         return None
 
 
@@ -101,6 +102,9 @@ class BondList(OrderedList):
 
 ### <STRUCTURE>
 class Structure(object):
+    """The Structure object is the parent container object for the entire
+    macromolecular data structure."""
+
     def __init__(self,
                  library         = None,
                  default_alt_loc = ""):
@@ -114,19 +118,14 @@ class Structure(object):
         ## chain list
         self.chain_list = ChainList()
 
-    def __del__(self):
-        print "STRUCTURE DESTROYED"
-
     def __str__(self):
         return "Structure"
 
-    def __getitem__(self, key):
+    def __getitem__(self, chain_id):
         """Same as getChain, but raises KeyError if the requested chain_id
         is not found."""
-        chain = self.getChain(key)
-        if not chain:
-            raise KeyError, key
-
+        chain = self.getChain(chain_id)
+        if not chain: raise KeyError
         return chain
 
     def __iter__(self):
@@ -159,12 +158,12 @@ class Structure(object):
             for dna in chain.iterDNA():
                 yield dna
 
-    def getFragment(self, chain_id, res_seq, icode = ""):
+    def getFragment(self, chain_id, fragment_id):
         """Returns the PDB fragment uniquely identified by its chain_id,
         res_seq, and icode."""
         chain = self.getChain(chain_id)
         if chain:
-            return chain.getFragment(res_seq, icode)
+            return chain.getFragment(fragment_id)
         return None
             
     def iterFragments(self):
@@ -189,11 +188,11 @@ class Structure(object):
             for aa in chain.iterNucleicAcids():
                 yield aa
 
-    def getAtom(self, chain_id, res_seq, icode, name, alt_loc):
+    def getAtom(self, chain_id, fragment_id, name):
         """Returns the Atom object matching the given set of arguments."""
         chain = self.getChain(chain_id)
         if chain:
-            return chain.getAtom(res_seq, icode, name, alt_loc)
+            return chain.getAtom(fragment_id, name)
         return None
 
     def iterAtoms(self):
@@ -218,6 +217,9 @@ class Structure(object):
 
 
 class StructureMember(object):
+    """All objects which are contained within a Structure object should be
+    subclassed from StructureMember."""
+    
     def __init__(self, structure):
         assert isinstance(structure, Structure)
         
@@ -228,8 +230,7 @@ class StructureMember(object):
 
 ### <CHAIN>
 class Chain(StructureMember):
-
-    getitem_error         = "Key must be res_seq or (res_seq, icode)"
+    """Chain objects conatain a ordered list of Fragment objects."""
 
     def __init__(self,
                  structure,
@@ -242,41 +243,19 @@ class Chain(StructureMember):
         self.fragment_list = FragmentList()
 
     def __str__(self):
-        return "Chain(%s, %s ... %s)" % (self.chain_id,
-                                         self.fragment_list[0],
-                                         self.fragment_list[-1])
+        return "Chain(%s, %s...%s)" % (self.chain_id,
+                                       self.fragment_list[0],
+                                       self.fragment_list[-1])
 
     def __iter__(self):
         """Same as iterFragments()."""
         return self.iterFragments()
         
-    def __getitem__(self, key):
-        """Similar to getFragment(), but the key can either be a 2-tuple
-        of (res_seq, icode), or it can be a single integer of res_seq.  If
-        the matching Fragment object is not found, a KeyError exception
-        is raised.  If the form of the key is incorrect, a ValueError
-        exception is raised."""
-        ## inialize res_seq
-        ## initalize icode
-        res_seq  = ""
-        icode    = ""
-
-        if type(key) == TupleType:
-            try:
-                (res_seq, icode) = key
-            except ValueError:
-                raise ValueError, self.getitem_error
-
-        elif type(key) == IntType:
-            res_seq = key
-
-        else:
-            raise ValueError, self.getitem_error
-
-        frag = self.getFragment(res_seq, icode)
-        if not frag:
-            raise KeyError
-
+    def __getitem__(self, fragment_id):
+        """This is a alternative to calling getFragment, but a KeyError
+        exception is raised if the Fragment is not found."""
+        frag = self.getFragment(fragment_id)
+        if not frag: raise KeyError
         return frag
 
     def getPolymer(self, polymer_id):
@@ -300,10 +279,10 @@ class Chain(StructureMember):
             if isinstance(poly, DNA):
                 yield poly
 
-    def getFragment(self, res_seq, icode = ""):
+    def getFragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its chain_id,
         res_seq, and icode."""
-        return self.fragment_list.get(res_seq, icode)
+        return self.fragment_list.get(fragment_id)
 
     def iterFragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
@@ -376,48 +355,26 @@ class Polymer(StructureMember):
         """Same as iterResidues()."""
         return self.iterResidues()
         
-    def __getitem__(self, key):
-        """Similar to getResidue(), but the key can either be a 2-tuple
-        of (res_seq, icode), or it can be a single integer of res_seq.  If
-        the matching Fragment object is not found, a KeyError exception
-        is raised.  If the form of the key is incorrect, a ValueError
-        exception is raised."""
-        ## inialize res_seq
-        ## initalize icode
-        res_seq  = ""
-        icode    = ""
-
-        if type(key) == TupleType:
-            try:
-                (res_seq, icode) = key
-            except ValueError:
-                raise ValueError, self.getitem_error
-
-        elif type(key) == IntType:
-            res_seq = key
-
-        else:
-            raise ValueError, self.getitem_error
-
-        frag = self.getResidue(res_seq, icode)
-        if not frag:
-            raise KeyError
-
+    def __getitem__(self, fragment_id):
+        """This is a alternative to calling getFragment, but a KeyError
+        exception is raised if the fragment is not found."""
+        frag = self.getFragment(fragment_id)
+        if not frag: raise KeyError
         return frag
 
-    def getFragment(self, res_seq, icode = ""):
+    def getFragment(self, fragment_id):
         """Returns the Residue object matching the argument res_seq and icode
         within the Polymer.  Returns None if no match is found."""
-        return self.fragment_list.get(res_seq, icode)
+        return self.fragment_list.get(fragment_id)
 
     def iterFragments(self):
         """Iterates over all Residue objects within the Polymer."""
         return iter(self.fragment_list)
 
-    def getResidue(self, res_seq, icode = ""):
+    def getResidue(self, fragment_id):
         """Returns the Residue object matching the argument res_seq and icode
         within the Polymer.  Returns None if no match is found."""
-        return self.fragment_list.get(res_seq, icode)
+        return self.fragment_list.get(fragment_id)
 
     def iterResidues(self):
         """Iterates over all Residue objects within the Polymer."""
@@ -453,70 +410,52 @@ class DNA(Polymer):
 
 ### <FRAGMENT>
 class Fragment(StructureMember):
-    """Fragments"""
+    """Fragment objects are a basic unit for organizing small groups of
+    Atoms.  Amino acid residues are fragments, as well as nucleic
+    acids and other small molecules.  In terms of a PDB file, they are
+    all the atoms from a unique residue in a chain.  Fragments have the
+    following attributes:
 
-    getitem_error     = "Key must be atom name or (name,alt_loc)"
+    Fragment.res_name     - the fragment/residue name
+    Fragment.res_seq      - the sequence id of the fragment/residue
+    Fragment.chain_id     - the ID of the chain containing this fragment
+    """
 
     def __init__(self,
                  structure,
                  res_name    = "",
-                 res_seq     = 0,
-                 icode       = "",
+                 fragment_id = "",
                  chain_id    = ""):
         
         StructureMember.__init__(self, structure)
 
-        self.res_name  = res_name
-        self.res_seq   = res_seq
-        self.icode     = icode
-        self.chain_id  = chain_id
+        self.res_name    = res_name
+        self.fragment_id = fragment_id
+        self.chain_id    = chain_id
 
         self.atom_list = AtomList()
 
     def __str__(self):
-        return "%s(%s,%d,%s,%s)" % (self.__class__.__name__,
-                                    self.res_name,
-                                    self.res_seq,
-                                    self.icode,
-                                    self.chain_id)
+        return "%s(%s,%s,%s)" % (self.__class__.__name__,
+                                 self.res_name,
+                                 self.fragment_id,
+                                 self.chain_id)
 
     def __iter__(self):
         """Same as iterAtoms() method."""
         return self.iterAtoms()
 
-    def __getitem__(self, key):
-        """Return the atom of the name key in this fragment.  If the key is a
-        tuple, then the atom matching (name, alt_loc) is returned.  This
-        raises the KeyError exception if a match is not found."""
-
-        ## initalize name
-        ## initalize alt_loc to the Structure default
-        name    = ""
-        alt_loc = ""
-
-        if type(key) == StringType:
-            name = key
-
-        elif type(key) == TupleType:
-            if len(key) != 2: raise ValueError, self.getitem_error
-            (name, alt_loc) = key
-
-        else:
-            raise ValueError, self.getitem_error
-
-
-        atm = self.getAtom(name, alt_loc)
-        if not atm:
-            raise KeyError
-
+    def __getitem__(self, name):
+        """This is a alternative to calling the getAtom method, except
+        a KeyError exception is raised if the Atom object is not found."""
+        atm = self.getAtom(name)
+        if not atm: raise KeyError
         return atm
 
-    def getAtom(self, name, alt_loc = ""):
+    def getAtom(self, name):
         """Returns the matching Atom object contained in the Fragment.
-        If alt_loc is not given, then the Structure's default_alt_loc
-        is used.  This method returns None if a match is not found."""
-        alt_loc = alt_loc or self.structure().default_alt_loc
-        return self.atom_list.get(name, alt_loc)
+        Returns None if a match is not found."""
+        return self.atom_list.get(name, self.structure().default_alt_loc)
     
     def iterAtoms(self):
         """Iterates over all Atom objects contained in the Fragment.
@@ -552,28 +491,24 @@ class Residue(Fragment):
     def __init__(self,
                  structure,
                  res_name    = "",
-                 res_seq     = 0,
-                 icode       = "",
+                 fragment_id = "",
                  chain_id    = "",
                  polymer_id  = 0):
 
         Fragment.__init__(self,
                           structure,
                           res_name    = res_name,
-                          res_seq     = res_seq,
-                          icode       = icode,
+                          fragment_id = fragment_id,
                           chain_id    = chain_id)
 
         self.polymer_id = polymer_id
 
     def __str__(self):
-        return "%s(%s,%d,%s,%s,%d)" % (self.__class__.__name__,
-                                       self.res_name,
-                                       self.res_seq,
-                                       self.icode,
-                                       self.chain_id,
-                                       self.polymer_id)
-
+        return "%s(%s,%s,%s,%d)" % (self.__class__.__name__,
+                                    self.res_name,
+                                    self.fragment_id,
+                                    self.chain_id,
+                                    self.polymer_id)
 
     def getOffsetResidue(self, offset):
         chain = self.structure().getChain(self.chain_id)
@@ -629,14 +564,33 @@ class Bond(BondAlgorithms):
 
 
 class Atom(StructureMember, AtomAlgorithms):
-    """Class representing a single atom."""
+    """Class representing a single atom.  Atoms have the following default
+    attributes.  If a attribue has the value None, then the attribue was
+    never set.  If the attribue has a default, then it is required.
+
+    Atom[alt_loc]    - Atom objects in alternate locations can be accessed
+                       by using Python's dictionary syntax with the alt_loc
+                       charactor
+    iter(Atom)       - iterates over all alt_loc versions of the Atom
+    Atom.name        - label of the atom
+    Atom.alt_loc     - alternate location indicater for the atom
+    Atom.res_name    - the name of the resiude/fragment this atom is part of
+    Atom.res_seq     - the residue/fragment sequence number
+    Atom.icode       - the insertion code for the residue/fragment
+    Atom.chain_id    - the chain ID of the chain containing this atom
+    Atom.element     - symbol for the element
+    Atom.position    - a Vector (ScientificPython)
+    Atom.occupancy
+    Atom.temp_factor
+    Atom.U           - a 6-tuple of the anisotropic values
+    Atom.charge      - charge on the atom
+    """
     def __init__(self,
                  structure,
                  name        = "",
                  alt_loc     = "",
                  res_name    = "",
-                 res_seq     = 0,
-                 icode       = "",
+                 fragment_id = "",
                  chain_id    = ""):
 
         assert isinstance(structure, Structure)
@@ -646,30 +600,32 @@ class Atom(StructureMember, AtomAlgorithms):
         self.name         = name
         self.alt_loc      = alt_loc
         self.res_name     = res_name
-        self.res_seq      = res_seq
-        self.icode        = icode
+        self.fragment_id  = fragment_id
         self.chain_id     = chain_id
 
+        self.element      = None
         self.position     = None
-        self.occupancy    = 0.0
-        self.temp_factor  = 0.0
+        self.occupancy    = None
+        self.temp_factor  = None
         self.U            = None
-        self.charge       = 0.0
+        self.charge       = None
         
         self.alt_loc_list = None
         self.bond_list    = BondList()
 
     def __str__(self):
-        return "Atom(%s,%s,%s,%s,%s,%s)" % (self.name,
-                                            self.alt_loc,
-                                            self.res_name,
-                                            self.res_seq,
-                                            self.icode,
-                                            self.chain_id)
+        return "Atom(%s,%s,%s,%s,%s)" % (self.name,
+                                         self.alt_loc,
+                                         self.res_name,
+                                         self.fragment_id,
+                                         self.chain_id)
 
-    def __getitem__(self, key):
-        """Same as getAltLoc(key)."""
-        return self.getAltLoc(key)
+    def __getitem__(self, alt_loc):
+        """This is a alternative to calling getAltLoc, but a KeyError
+        exception is raised if the alt_loc Atom is not found."""
+        atm = self.getAltLoc(alt_loc)
+        if not atm: raise KeyError
+        return atm
 
     def __iter__(self):
         """Same as iterAltLoc()."""
