@@ -31,11 +31,11 @@ def assemble_paths_list():
     """Returns a list of paths to search for libraries and headers.
     """
     PATHS = [
-        "/usr",
-        "/usr/X11",
-        "/usr/X11R6"
-        "/usr/local",
-        "/opt" ]
+        ("/usr/lib",       "/usr/include"),
+        ("/usr/X11/lib",   "/usr/X11/include"),
+        ("/usr/X11R6/lib", "/usr/X11R6/include"),
+        ("/usr/local/lib", "/usr/local/include"),
+        ("/opt/lib",       "/opt/include") ]
 
     ## add path from environment var LD_LIBRARY_PATH
     try:
@@ -46,9 +46,10 @@ def assemble_paths_list():
         for path in ld_lib_path.split(":"):
             path = path.strip()
             (dir, first) = os.path.split(path)
+            include_path = os.path.join(dir, "include")
 
             if dir not in PATHS:
-                PATHS.append(dir)
+                PATHS.append((path, include_path))
 
     ## add paths from /etc/ld.so.conf
     try:
@@ -59,9 +60,10 @@ def assemble_paths_list():
     for path in ld_so_conf:
         path = path.strip()
         (dir, first) = os.path.split(path)
+        include_path = os.path.join(dir, "include")
 
         if dir not in PATHS:
-            PATHS.append(dir)
+            PATHS.append((path, include_path))
 
     return PATHS
 
@@ -80,10 +82,7 @@ def find_lib_paths(library, include):
     found_inc_path = None
     found_library  = None
         
-    for path in PATHS:
-        lib_path = os.path.join(path, "lib")
-        inc_path = os.path.join(path, "include")
-
+    for lib_path, inc_path in PATHS:
         lib_glob    = os.path.join(lib_path, shared_lib)
         shared_libs = glob.glob(lib_glob)
 
