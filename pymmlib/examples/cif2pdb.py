@@ -61,5 +61,13 @@ if __name__ == '__main__':
     if cif == "-": cif = sys.stdin
     if pdb == "-": pdb = sys.stdout
 
-    struct = LoadStructure(fil = cif, format = "CIF")
-    SaveStructure(fil = pdb, structure = struct, format = "PDB")
+    struct = LoadStructure(
+                 fil = cif, 
+                 format = "CIF", 
+                 build_properties = ("no_bonds",))
+
+    SaveStructure(
+        fil = pdb, 
+        structure = struct, 
+        format = "PDB")
+
