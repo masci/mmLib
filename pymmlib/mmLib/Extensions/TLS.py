@@ -1982,11 +1982,6 @@ class TLSGroup(AtomList):
         if not tls_info["valid_model"]:
             return tls_info
 
-        ## goodness of fit 
-        #tls_info["mean_S"], tls_info["mean_S_sigma"] = self.calc_mean_S()
-        #tls_info["mean_dp2"], tls_info["mean_dp2_sigma"] = self.calc_mean_DP2()
-        #tls_info["sum_dp2"] = self.calc_sum_DP2()
-
         return tls_info
 
     def calc_R(self):

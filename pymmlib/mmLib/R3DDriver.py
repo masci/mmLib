@@ -169,6 +169,16 @@ class Raster3DDriver(object):
     def glr_render_end(self):
         """Write out the input file for the render program.
         """
+        class TeeWrite(object):
+            def __init__(self, *fils):
+                self.fils = fils
+            def write(self, buff):
+                for fil in self.fils:
+                    fil.write(buff)
+            def close(self):
+                for fil in self.fils:
+                    fil.close()
+
         ## open r3d file, write header
         if self.render_stdin!=None:
             stdin = self.render_stdin
@@ -176,7 +186,12 @@ class Raster3DDriver(object):
             stdout, stdin, stderr = popen2.popen3(
                 (RENDER_PATH,
                  "-png", self.render_png_path,
-                 "-gamma", "1.5"), 8192)
+                 "-gamma", "1.5"), 32768)
+
+        ## XXX: hack
+        r3dfil = open("/tmp/raytrace.r3d","w")
+        renderin = stdin
+        stdin = TeeWrite(renderin, r3dfil)
 
         ## add required hader for the render program
         self.glr_construct_header()
@@ -197,7 +212,7 @@ class Raster3DDriver(object):
             stdout.read()
             stdout.close()
             stderr.read()
-            stderr.close()
+            stderr.close()            
 
     def glr_write_objects(self, stdin):
         """Write the graphic objects to the stdin file.

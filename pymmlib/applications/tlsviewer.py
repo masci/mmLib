@@ -1772,6 +1772,9 @@ class TLSSearchDialog(gtk.Dialog):
             if self.cancel_flag==True:
                 break
 
+            if tls_info.has_key("error"):
+                continue
+
             self.tls_info_list.append(tls_info)
 
             ## set some dict values just for the treeview user interface
