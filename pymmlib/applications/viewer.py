@@ -69,12 +69,32 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         self.connect('expose_event',        self.expose_event)
         self.connect('destroy',             self.destroy)
 
+    def gl_begin(self):
+        """Sets up the OpenGL drawing context for drawing.  If
+        no context is availible (hiddent window, not created yet),
+        this method returns False, otherwise it returns True.
+        """
+        gl_drawable = gtk.gtkgl.DrawingArea.get_gl_drawable(self)
+        gl_context  = gtk.gtkgl.DrawingArea.get_gl_context(self)
+        if gl_drawable==None or gl_context==None:
+            return False
+        
+	if not gl_drawable.gl_begin(gl_context):
+            return False
 
-    def get_gl_drawable(self):
-        return gtk.gtkgl.DrawingArea.get_gl_drawable(self)
+        return True
 
-    def get_gl_context(self):
-        return gtk.gtkgl.DrawingArea.get_gl_context(self)
+    def gl_end(self):
+        """Ends a sequence of OpenGL drawing calls, then swaps drawing
+        buffers.
+        """
+        gl_drawable = gtk.gtkgl.DrawingArea.get_gl_drawable(self)
+	if gl_drawable.is_double_buffered():
+            gl_drawable.swap_buffers()
+	else:
+            glFlush()
+        
+        gl_drawable.gl_end()
 
     def gl_redraw(self):
         self.queue_draw()
@@ -115,7 +135,11 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
 
     def configure_event(self, glarea, event):
         x, y, width, height = glarea.get_allocation()
-        self.gl_resize(width, height)
+
+        if self.gl_begin()==True:
+            self.gl_resize(width, height)
+            self.gl_end()
+
         self.queue_draw()
         return gtk.TRUE
 
@@ -130,11 +154,15 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
         return gtk.TRUE
 
     def realize(self, glarea):
-        self.gl_init()
+        if self.gl_begin()==True:
+            self.gl_init()
+            self.gl_end()
         return gtk.TRUE
 
     def expose_event(self, glarea, event):
-        self.gl_render()
+        if self.gl_begin()==True:
+            self.gl_render()
+            self.gl_end()
         return gtk.TRUE
 
     def add_struct(self, struct):
