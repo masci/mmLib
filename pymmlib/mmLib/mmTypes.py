@@ -21,7 +21,7 @@ from   Scientific.Geometry  import Vector
 
 ## use Numeric Python (Numeric, LinearAlgebra) for array(matrix)
 from   Numeric              import array, transpose, matrixmultiply
-from   LinearAlgebra        import eigenvalues
+from   LinearAlgebra        import eigenvalues, eigenvectors
 
 
 class OrderedList(object):

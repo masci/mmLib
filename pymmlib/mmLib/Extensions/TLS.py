@@ -1,8 +1,12 @@
+## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distrobution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+
+"""Utility classes for loading, manipulating, and analyzing TLS parameters."""
 
 import re
-from Numeric import *
-from LinearAlgebra import *
-from Scientific.Geometry import Vector
+from mmTypes import *
 
 
 def LoadTLSGroups(fil):
@@ -112,7 +116,7 @@ class TLS:
 
     def setOrigin(self, x, y, z):
         self.origin = Vector(x, y, z)
-        
+
     def setT(self, t11, t22, t33, t12, t13, t23):
         self.T = array([[t11, t12, t13],
                         [t12, t22, t23],
@@ -134,6 +138,32 @@ class TLS:
 
 
 if __name__ == "__main__":
+    print "==============================================="
+    print "TEST CASE 1: TLS Class"
+    print
+
+    tls = TLS()
+    tls.name = "All protein"
+    tls.range_list = [(("A", "1"),("A", "118"))]
+    tls.setOrigin(18.885, 49.302, 13.315)
+    tls.setT(0.0263, 0.0561, 0.0048, -0.0128, 0.0065, -0.0157)
+    tls.setL(0.9730, 5.1496, 0.8488,  0.2151,-0.1296,  0.0815)
+    tls.setS(0.0007, 0.0281, 0.0336, -0.0446,-0.2288, -0.0551,
+             0.0487, 0.0163)
+
+    print tls
+
+    print "eigenvalues(T)"
+    print eigenvalues(tls.T)
+    print "eigenvalues(L)"
+    print eigenvalues(tls.L)
+    
+    print "==============================================="
+
+    print 
+
+    print "==============================================="
+    print "TEST CASE 2: TLS/REFMAC file loading"
 
     import sys
 
@@ -145,15 +175,11 @@ if __name__ == "__main__":
         print "----- TLS Group #%d ---" % (tls_list.index(tls))
         print tls
 
-    sys.exit(0)
+        print "eigenvalues(T)"
+        print eigenvalues(tls.T)
+        print "eigenvalues(L)"
+        print eigenvalues(tls.L)
 
-    t = array([[ 0.0263, -0.0128,  0.0065],
-               [-0.0128,  0.0561, -0.0157],
-               [ 0.0065, -0.0157,  0.0048]])
+        print "-----------------------"
 
-    l = array([[ 0.9730,  0.2151, -0.1296],
-               [ 0.2151,  5.1496,  0.0815],
-               [-0.1296,  0.0815,  0.8488]])
-
-    print "T", eigenvalues(t)
-    print "L", eigenvalues(l)
+    print "==============================================="

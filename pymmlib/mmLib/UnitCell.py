@@ -100,6 +100,10 @@ class UnitCell(object):
 
 
 if __name__ == "__main__":
+    print "================================================="
+    print "TEST CASE #1: Triclinic unit cell"
+    print
+
     uc = UnitCell(7.877, 7.210, 7.891, 105.563, 116.245, 79.836)
 
     e = array([[1.0, 0.0, 0.0],
@@ -113,11 +117,18 @@ if __name__ == "__main__":
     print "orthogonalization matrix =\n",uc.calcOrthogonalizationMatrix()
     print "orth * e =\n",matrixmultiply(
         uc.calcOrthogonalizationMatrix(), e)
+
+    print "================================================="
+
+    print
     
-    print "bla",e[2,2]
+    print "================================================="
+    print "TEST CASE #2: Reciprocal of above unit cell "
+    print
 
     ruc = uc.calcReciprocalUnitCell()
     print ruc
     print "volume      = ",ruc.calcV()
     print "cell volume = ",ruc.calcVolume()
     
+    print "================================================="
