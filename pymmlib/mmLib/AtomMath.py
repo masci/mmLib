@@ -240,6 +240,8 @@ def calc_anisotropy(U):
     return min(evals) / max(evals)
 
 
+
+
 ### <TESTING>
 if __name__ == "__main__":
     from Structure import *

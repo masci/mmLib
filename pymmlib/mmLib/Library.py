@@ -369,6 +369,10 @@ class Library(LibraryInterface):
         return res_name in ["HOH", "WAT"]
 
 
+##
+DEFAULT_LIBRARY = Library()
+
+
 ## <TESTING>
 if __name__ == "__main__":
     pass

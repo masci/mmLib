@@ -1793,25 +1793,27 @@ class GLTLSAtomList(GLAtomList):
             if Lx_axis=="L3_eigen_vec" and \
                self.properties["L3_animation_visible"]==False:
                 continue
+            
+            for sign in (1.0, -1.0):
+                axis  = self.properties[Lx_axis]
+                rho   = self.properties[Lx_rho]
+                pitch = self.properties[Lx_pitch]
 
-            axis  = self.properties[Lx_axis]
-            rho   = self.properties[Lx_rho]
-            pitch = self.properties[Lx_pitch]
-            rot   = self.properties[Lx_rot] * self.properties[Lx_scale]
-            screw = axis * (rot * pitch)
+                rot   = sign * \
+                        self.properties[Lx_rot] * \
+                        self.properties[Lx_scale]
 
-            if allclose(rot, 0.0):
-                if zero_rot:
-                    continue
-                zero_rot = True
-
-            for sign in (1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75, -1.0):
-                rot2 = rot * sign
-
+                screw = axis * (rot * pitch)
+                
+                if allclose(rot, 0.0):
+                    if zero_rot:
+                        continue
+                    zero_rot = True
+                    
                 self.driver.glr_push_matrix()
 
                 self.driver.glr_translate(-rho)
-                self.driver.glr_rotate_axis(rot2, axis)
+                self.driver.glr_rotate_axis(rot, axis)
                 self.driver.glr_translate(rho + screw)
                 yield True
             
@@ -2752,7 +2754,9 @@ class GLTLSGroup(GLDrawList):
 
         r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["surface_opacity"]
-        self.driver.glr_set_material_rgba(r, g, b, a)
+        gam     = 0.5
+        
+        self.driver.glr_set_material_rgba(r*gam, g*gam, b*gam, a)
 
         self.driver.glr_begin_quads()
 

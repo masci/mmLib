@@ -9,7 +9,7 @@ from __future__ import generators
 from mmTypes        import *
 from GeometryDict   import *
 from AtomMath       import *
-from Library        import Library
+from Library        import Library, DEFAULT_LIBRARY
 from UnitCell       import UnitCell
 from mmCIFDB        import *
 
@@ -112,7 +112,7 @@ class Structure(object):
     when iterating or retreiving Atom objects in the structure.
     """
     def __init__(self, **args):
-        self.library          = args.get("library")   or Library()
+        self.library          = args.get("library")   or DEFAULT_LIBRARY
         self.cifdb            = args.get("cifdb")     or mmCIFDB("XXXX")
         self.unit_cell        = args.get("unit_cell") or UnitCell()
 

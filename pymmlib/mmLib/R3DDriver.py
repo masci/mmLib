@@ -6,6 +6,7 @@
 for the Raster3D ray tracer.
 """
 from __future__  import generators
+import popen2
 import copy
 import random
 
@@ -14,8 +15,9 @@ from Structure      import *
 
 
 ## constants
-MARGIN = 1.20
+MARGIN          = 1.20
 BASE_LINE_WIDTH = 0.05
+RENDER_PATH     = "/usr/local/bin/render" 
 
 
 def matrixmultiply43(M, x):
@@ -32,11 +34,22 @@ class Raster3DDriver(object):
     for the Raster3D ray tracer.
     """
     def __init__(self):
+        self.render_png_path  = "ray.png"
         self.glr_init_state()
+
+    def glr_set_render_stdin(self, stdin):
+        self.render_stdin = stdin
+        
+    def glr_set_render_png_path(self, path):
+        self.render_png_path  = path
 
     def glr_init_state(self):
         """Re-initalizes driver state variables.
         """
+        self.render_stdin     = None
+
+        self.object_list      = []
+        
         self.matrix           = identity(4, Float)
         self.matrix_stack     = []
 
@@ -58,11 +71,6 @@ class Raster3DDriver(object):
         self.material_color_b = 1.0
         self.material_alpha   = 1.0
 
-    def glr_clear_objects(self):
-        """Clears out the current object list.
-        """
-        self.object_list = []
-
     def glr_compile_supported(self):
         """Returns True if draw compiling is supported by the driver.
         """
@@ -70,7 +78,6 @@ class Raster3DDriver(object):
         
     def glr_render_begin(
         self,
-        clear_object_list  = True,
         width              = 200,
         height             = 100,
         zoom               = 50,
@@ -84,9 +91,6 @@ class Raster3DDriver(object):
         """Sets up lighting and OpenGL options before scene rendering.
         """
         self.glr_init_state()
-
-        if clear_object_list:
-            self.glr_clear_objects()
         
         self.width            = width
         self.height           = height
@@ -149,103 +153,123 @@ class Raster3DDriver(object):
         """Write out the input file for the render program.
         """
         ## open r3d file, write header
-        fil = open("raster.r3d", "w")
+        if self.render_stdin!=None:
+            stdin = self.render_stdin
+        else:
+            stdout, stdin, stderr = popen2.popen3(
+                (RENDER_PATH,
+                 "-png", self.render_png_path,
+                 "-gamma", "1.2"), 8192)
 
         ## add required hader for the render program
         self.glr_construct_header()
-        
-        for ln in self.header_list:
-            fil.write(ln + "\n")
 
+        try:
+            for ln in self.header_list:
+                stdin.write(ln + "\n")
+            self.glr_write_objects(stdin)
+        except IOError:
+            print "Raster3D Error:"
+            print "STDOUT"
+            print stdout.read()
+            print "STDERR"
+            print stderr.read()
+            return
+
+        ## close stdin to the render program
+        stdin.close()
+        
+        if self.render_stdin!=None:
+            self.render_stdin = None
+        else:
+            stdout.read()
+            stdout.close()
+            stderr.read()
+            stderr.close()
+
+    def glr_write_objects(self, stdin):
+        """Write the graphic objects to the stdin file.
+        """
         ## write objects
         for gob in self.object_list:
+            gob_type = gob[0]
 
-            gob_type = gob["type"]
-
-            if gob_type=="cylinder":
-                p1 = gob["position1"]
-                p2 = gob["position2"]
-                r  = gob["radius"]
-                
-                fil.write(
-                    "5\n"\
-                    "%8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f "\
-                    "%4.2f %4.2f %4.2f\n" % (
-                    p1[0], p1[1], p1[2],
-                    r,
-                    p2[0], p2[1], p2[2],
-                    r,
-                    gob["r"], gob["g"], gob["b"]))
-
-            elif gob_type=="sphere":
-                p = gob["position"]
-
-                fil.write(
-                    "2\n"\
-                    "%8.3f %8.3f %8.3f %8.3f %4.2f %4.2f %4.2f\n" % (
-                    p[0], p[1], p[2],
-                    gob["radius"],
-                    gob["r"], gob["g"], gob["b"]))
-                
-            elif gob_type=="triangle":
-                v1 = gob["vertex1"]
-                v2 = gob["vertex2"]
-                v3 = gob["vertex3"]
-
-                fil.write(
+            ## triangle
+            if gob_type==1:
+                stdin.write(
                     "1\n"\
                     "%8.3f %8.3f %8.3f "\
                     "%8.3f %8.3f %8.3f "\
                     "%8.3f %8.3f %8.3f "\
                     "%4.2f %4.2f %4.2f\n" % (
-                     v1[0], v1[1], v1[2],
-                     v2[0], v2[1], v2[2],
-                     v3[0], v3[1], v3[2],
-                     gob["r"], gob["g"], gob["b"]))
+                    gob[1][0], gob[1][1], gob[1][2],
+                    gob[2][0], gob[2][1], gob[2][2],
+                    gob[3][0], gob[3][1], gob[3][2],
+                    gob[4], gob[5], gob[6]))
 
-            elif gob_type=="normal":
-                n1 = gob["normal1"]
-                n2 = gob["normal2"]
-                n3 = gob["normal3"]
-                
-                fil.write(
+            ## sphere
+            elif gob_type==2:
+                stdin.write(
+                    "2\n"\
+                    "%8.3f %8.3f %8.3f %8.3f %4.2f %4.2f %4.2f\n" % (
+                    gob[1][0], gob[1][1], gob[1][2],
+                    gob[2],
+                    gob[3], gob[4], gob[5]))
+
+            ## round-ended cylinder
+            elif gob_type==3:
+                stdin.write(
+                    "3\n"\
+                    "%8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f 0 "\
+                    "%4.2f %4.2f %4.2f\n" % (
+                    gob[1][0], gob[1][1], gob[1][2],
+                    gob[3],
+                    gob[2][0], gob[2][1], gob[2][2],
+                    gob[4], gob[5], gob[6]))
+
+            ## flat-ended cylinder
+            elif gob_type==5:
+                stdin.write(
+                    "5\n"\
+                    "%8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f 0 "\
+                    "%4.2f %4.2f %4.2f\n" % (
+                    gob[1][0], gob[1][1], gob[1][2],
+                    gob[3],
+                    gob[2][0], gob[2][1], gob[2][2],
+                    gob[4], gob[5], gob[6]))
+
+            ## normal
+            elif gob_type==7:
+                stdin.write(
                     "7\n"\
                     "%8.3f %8.3f %8.3f "\
                     "%8.3f %8.3f %8.3f "\
                     "%8.3f %8.3f %8.3f\n" % (
-                     n1[0], n1[1], n1[2],
-                     n2[0], n2[1], n2[2],
-                     n3[0], n3[1], n3[2]))
+                    gob[1][0], gob[1][1], gob[1][2],
+                    gob[2][0], gob[2][1], gob[2][2],
+                    gob[3][0], gob[3][1], gob[3][2] ))
 
-            elif gob_type=="ellipse":
-                p = gob["position"]
-                q = gob["quadric"]
+            ## material properties
+            elif gob_type==8:
+                stdin.write(
+                    "%d\n"\
+                    "-1 -1  -1 -1 -1  %4.2f  %1d 0 0 0\n" % gob)
+
+            ## ellipse
+            elif gob_type==14:                
+                q = gob[6]
                 
-                fil.write(
+                stdin.write(
                     "14\n"\
                     "%8.3f %8.3f %8.3f "\
                     "%8.3f "\
                     "%4.2f %4.2f %4.2f "\
                     "%8.3f %8.3f %8.3f %8.3f %8.3f %8.3f 0 0 0 %8.3f\n" % (
-                     p[0], p[1], p[2],
-                     gob["limit_radius"],
-                     gob["r"], gob["g"], gob["b"],
-                     q[0,0], q[1,1], q[2,2], q[0,1], q[0,2], q[1,2],
-                     gob["prob"]))
-
-            elif gob_type=="material_properties":
-                if gob["two_sided"]==True:
-                    two_sided_flag = 2
-                else:
-                    two_sided_flag = 0
-
-                fil.write(
-                    "8\n"\
-                    "-1 -1  -1 -1 -1  %4.2f  %1d 0 0 0\n" % (
-                    gob["clrity"], two_sided_flag))
-
-                
-        fil.close()
+                    gob[1][0], gob[1][1], gob[1][2], 
+                    gob[2],
+                    gob[3], gob[4], gob[5],
+                    q[0,0], q[1,1], q[2,2], q[0,1], q[0,2], q[1,2],
+                    gob[7]))
 
     def glr_push_matrix(self):
         """
@@ -333,10 +357,10 @@ class Raster3DDriver(object):
         if self.material_alpha<1.0:
             self.material_alpha = 1.0
 
-            self.object_list.append(
-                {"type":       "material_properties",
-                 "clrity":     0.0,
-                 "two_sided":  self.light_two_sides })
+            if self.light_two_sides==True:
+                self.object_list.append((8, 0.0, 2))
+            else:
+                self.object_list.append((8, 0.0, 0))
 
     def glr_set_material_rgba(self, r, g, b, a):
         """Creates a stock rendering material colored according to the given
@@ -349,10 +373,10 @@ class Raster3DDriver(object):
         if self.material_alpha!=a:
             self.material_alpha = a
 
-            self.object_list.append(
-                {"type":       "material_properties",
-                 "clrity":     1.0 - self.material_alpha,
-                 "two_sided":  self.light_two_sides })
+            if self.light_two_sides==True:
+                self.object_list.append((8, 1.0 - self.material_alpha, 2))
+            else:
+                self.object_list.append((8, 1.0 - self.material_alpha, 0))
 
     def glr_vertex(self, vertex):
         """
@@ -409,116 +433,42 @@ class Raster3DDriver(object):
         self.normal_3        = self.normal
         self.vertex_3        = matrixmultiply43(self.matrix, vertex)
 
-    def glr_vertex_quads_4_test(self, vertex):
-        self.glr_vertex_func = self.glr_vertex_quads_1
-
-        normal_4 = self.normal
-        vertex_4 = matrixmultiply43(self.matrix, vertex)
-
-        r = 0.05
-
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_1,
-             "position2":  self.vertex_2,
-             "radius":     r,
-             "r":          1.0,
-             "g":          0.0,
-             "b":          0.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_2,
-             "position2":  self.vertex_3,
-             "radius":     r,
-             "r":          0.0,
-             "g":          1.0,
-             "b":          0.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_3,
-             "position2":  vertex_4,
-             "radius":     r,
-             "r":          0.0,
-             "g":          0.0,
-             "b":          1.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  vertex_4,
-             "position2":  self.vertex_1,
-             "radius":     r,
-             "r":          1.0,
-             "g":          1.0,
-             "b":          1.0 })
-        
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_1,
-             "position2":  self.vertex_1 + self.normal_1,
-             "radius":     r,
-             "r":          1.0,
-             "g":          0.0,
-             "b":          0.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_2,
-             "position2":  self.vertex_2 + self.normal_2,
-             "radius":     r,
-             "r":          0.0,
-             "g":          1.0,
-             "b":          0.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  self.vertex_3,
-             "position2":  self.vertex_3 + self.normal_3,
-             "radius":     r,
-             "r":          0.0,
-             "g":          0.0,
-             "b":          1.0 })
-        self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  vertex_4,
-             "position2":  vertex_4 + normal_4,
-             "radius":     r,
-             "r":          1.0,
-             "g":          1.0,
-             "b":          1.0 })
-
     def glr_vertex_quads_4(self, vertex):
         self.glr_vertex_func = self.glr_vertex_quads_1
 
         normal_4 = self.normal
         vertex_4 = matrixmultiply43(self.matrix, vertex)
- 
-        self.object_list.append(
-            {"type":      "triangle",
-             "vertex1":   self.vertex_1,
-             "vertex2":   self.vertex_2,
-             "vertex3":   self.vertex_3,
-             "r":         self.material_color_r,
-             "g":         self.material_color_g,
-             "b":         self.material_color_b })
 
         self.object_list.append(
-            {"type":      "normal",
-             "normal1":   self.normal_1,
-             "normal2":   self.normal_2,
-             "normal3":   self.normal_3 })
+            (1,
+             self.vertex_1,
+             self.vertex_2,
+             self.vertex_3,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
 
         self.object_list.append(
-            {"type":      "triangle",
-             "vertex1":   self.vertex_1,
-             "vertex2":   self.vertex_3,
-             "vertex3":   vertex_4,
-             "r":         self.material_color_r,
-             "g":         self.material_color_g,
-             "b":         self.material_color_b })
-
+            (7,
+             self.normal_1,
+             self.normal_2,
+             self.normal_3))
+        
         self.object_list.append(
-            {"type":      "normal",
-             "normal1":   self.normal_1,
-             "normal2":   self.normal_3,
-             "normal3":   normal_4 })
-
+            (1,
+             self.vertex_1,
+             self.vertex_3,
+             vertex_4,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
+        
+        self.object_list.append(
+            (7,
+             self.normal_1,
+             self.normal_3,
+             normal_4))
+        
     def glr_begin_triangle_fan(self):
         """
         """
@@ -562,19 +512,19 @@ class Raster3DDriver(object):
         normal_3 = self.normal
 
         self.object_list.append(
-            {"type":      "triangle",
-             "vertex1":   self.vertex_1,
-             "vertex2":   self.vertex_2,
-             "vertex3":   vertex_3,
-             "r":         self.material_color_r,
-             "g":         self.material_color_g,
-             "b":         self.material_color_b })
+            (1,
+             self.vertex_1,
+             self.vertex_2,
+             vertex_3,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b) )
 
         self.object_list.append(
-            {"type":      "normal",
-             "normal1":   self.normal_1,
-             "normal2":   self.normal_2,
-             "normal3":   normal_3 })
+            (7,
+             self.normal_1,
+             self.normal_2,
+             normal_3) )
 
         self.vertex_2 = vertex_3
         self.normal_2 = normal_3
@@ -617,33 +567,25 @@ class Raster3DDriver(object):
         """
         """
         self.light_two_sides = True
-
-        self.object_list.append(
-            {"type":       "material_properties",
-             "clrity":     1.0 - self.material_alpha,
-             "two_sided":  True })
+        self.object_list.append((8,  1.0 - self.material_alpha, 2))
         
     def glr_light_two_sides_disable(self):
         """
         """
         self.light_two_sides = False
-
-        self.object_list.append(
-            {"type":       "material_properties",
-             "clrity":     1.0 - self.material_alpha,
-             "two_sided":  False })
+        self.object_list.append((8,  1.0 - self.material_alpha, 0))
         
     def glr_line(self, position1, position2):
         """Draws a single line.
         """
         self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  matrixmultiply43(self.matrix, position1),
-             "position2":  matrixmultiply43(self.matrix, position2),
-             "radius":     self.line_width,
-             "r":          self.material_color_r,
-             "g":          self.material_color_g,
-             "b":          self.material_color_b })
+            (3,
+             matrixmultiply43(self.matrix, position1),
+             matrixmultiply43(self.matrix, position2),
+             self.line_width,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
             
     def glr_text(self, text, scale):
         """Renders a text string.
@@ -657,38 +599,38 @@ class Raster3DDriver(object):
         ## don't bother redering small axes -- they look like junk
         if allclose(length(axis), 0.0):
             return
-
+        
         self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  matrixmultiply43(self.matrix, position),
-             "position2":  matrixmultiply43(self.matrix, position + axis),
-             "radius":     radius,
-             "r":          self.material_color_r,
-             "g":          self.material_color_g,
-             "b":          self.material_color_b })
+            (5,
+             matrixmultiply43(self.matrix, position),
+             matrixmultiply43(self.matrix, position + axis),
+             radius,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
 
     def glr_tube(self, position1, position2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
         """
         self.object_list.append(
-            {"type":       "cylinder",
-             "position1":  matrixmultiply43(self.matrix, position1),
-             "position2":  matrixmultiply43(self.matrix, position2),
-             "radius":     radius,
-             "r":          self.material_color_r,
-             "g":          self.material_color_g,
-             "b":          self.material_color_b })
+            (5,
+             matrixmultiply43(self.matrix, position1),
+             matrixmultiply43(self.matrix, position2),
+             radius,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
 
     def glr_sphere(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
         """
         self.object_list.append(
-            {"type":       "sphere",
-             "position":   matrixmultiply43(self.matrix, position),
-             "radius":     radius,
-             "r":          self.material_color_r,
-             "g":          self.material_color_g,
-             "b":          self.material_color_b })
+            (2,
+             matrixmultiply43(self.matrix, position),
+             radius,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b))
 
     def glr_cross(self, position, color, line_width):
         """Draws atom with a cross of lines.
@@ -698,7 +640,11 @@ class Raster3DDriver(object):
     def glr_Uaxes(self, position, U, prob, color, line_width):
         """Draw the anisotropic axies of the atom at the given probability.
         """
-        pass
+        ## rotate U
+        R  = self.matrix[:3,:3]
+        Ur = matrixmultiply(matrixmultiply(R, U), transpose(R))
+
+        evals, evecs = eigenvectors(Ur)
         
     def glr_Uellipse(self, position, U, prob):
         """Renders the ellipsoid enclosing the given fractional probability
@@ -716,16 +662,16 @@ class Raster3DDriver(object):
             quadric = inverse(Ur)
         except LinAlgError:
             return
-        
+
         self.object_list.append(
-            {"type":         "ellipse",
-             "position":     matrixmultiply43(self.matrix, position),
-             "limit_radius": limit_radius,
-             "quadric":      quadric,
-             "prob":         -GAUSS3C[prob]**2,
-             "r":            self.material_color_r,
-             "g":            self.material_color_g,
-             "b":            self.material_color_b })
+            (14,
+             matrixmultiply43(self.matrix, position),
+             limit_radius,
+             self.material_color_r,
+             self.material_color_g,
+             self.material_color_b,
+             quadric,
+             -GAUSS3C[prob]**2))
     
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of
