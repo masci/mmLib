@@ -251,7 +251,7 @@ class UnitCell(object):
         for atm in struct.iter_all_atoms():
             dist = length(atm.position - centroid)
             max_dist = max(max_dist, dist)
-        max_dist2 = 1.2 * max_dist
+        max_dist2 = 2.0 * max_dist
 
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():

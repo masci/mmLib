@@ -3031,6 +3031,7 @@ class TLSSearchDialog(gtk.Dialog):
         self.sc             = args["struct_context"]
         self.sel_tls_group  = None
         self.tls_info_list  = []
+        self.cancel_flag    = False
 
         gtk.Dialog.__init__(
             self,
@@ -3038,20 +3039,60 @@ class TLSSearchDialog(gtk.Dialog):
             self.main_window.window,
             gtk.DIALOG_DESTROY_WITH_PARENT)
 
-        self.add_button("Accept", gtk.RESPONSE_OK)
-        self.add_button("Cancel", gtk.RESPONSE_CANCEL)
+
+        self.cancel  = gtk.Button(stock=gtk.STOCK_CANCEL)
+        self.back    = gtk.Button(stock=gtk.STOCK_GO_BACK)
+        self.forward = gtk.Button(stock=gtk.STOCK_GO_FORWARD)
+        self.ok      = gtk.Button(stock=gtk.STOCK_OK)
+
+        self.add_action_widget(self.cancel,  gtk.RESPONSE_CANCEL)
+        self.action_area.add(self.back)
+        self.action_area.add(self.forward)
+        self.add_action_widget(self.ok,      gtk.RESPONSE_OK)
 
         self.set_default_size(400, 400)
+
+        self.back.connect("clicked", self.back_clicked)
+        self.forward.connect("clicked", self.forward_clicked)
         
-        self.connect("destroy", self.destroy_cb)
+        self.connect("destroy",  self.destroy_cb)
         self.connect("response", self.response_cb)
 
         self.build_gui()
+        self.switch_page1()
+        self.show_all()
+
+    def switch_page1(self):
+        self.back.set_sensitive(gtk.FALSE)
+        self.forward.set_sensitive(gtk.TRUE)
+        self.ok.set_sensitive(gtk.FALSE)
+        self.notebook.set_current_page(0)
+
+    def switch_page2(self):
+        self.back.set_sensitive(gtk.FALSE)
+        self.forward.set_sensitive(gtk.FALSE)
+        self.ok.set_sensitive(gtk.FALSE)
+        self.notebook.set_current_page(1)
+
+    def switch_page3(self):
+        self.back.set_sensitive(gtk.TRUE)
+        self.forward.set_sensitive(gtk.FALSE)
+        self.ok.set_sensitive(gtk.TRUE)
+        self.notebook.set_current_page(2)
 
     def build_gui(self):
+        self.notebook = gtk.Notebook()
+        self.vbox.pack_start(self.notebook, gtk.TRUE, gtk.TRUE, 0)
+        self.notebook.set_show_tabs(gtk.FALSE)
+        self.notebook.set_show_border(gtk.FALSE)
+
+        self.notebook.append_page(self.build_page1(), gtk.Label(""))
+        self.notebook.append_page(self.build_page2(), gtk.Label(""))
+        self.notebook.append_page(self.build_page3(), gtk.Label(""))
+
+    def build_page1(self):
         ## Selection Table
         frame = gtk.Frame("Rigid Body Search Criteria")
-        self.vbox.pack_start(frame, gtk.FALSE, gtk.FALSE, 0)
         frame.set_border_width(5)
 
         ## compute grid size of the table
@@ -3126,17 +3167,23 @@ class TLSSearchDialog(gtk.Dialog):
         current_row += 1
         self.segment_width.set_text("6")
 
-        ##
-        self.run_button = gtk.Button("Run Analysis")
-        align = gtk.Alignment(1.0, 0.5, 0.0, 0.0) 
-        align.add(self.run_button)
-        table.attach(align, 0, 2, current_row, current_row + 1,
-                     gtk.FILL|gtk.EXPAND, 0, 0, 0)
-        self.run_button.connect("clicked", self.run_tls_analysis, None)
-        
-        ## make the print box
+        return frame
+
+    def build_page2(self):
+        frame = gtk.Frame("Fitting TLS Groups")
+        frame.set_border_width(5)
+
+        self.page2_label = gtk.Label("")
+        frame.add(self.page2_label)
+
+        return frame
+
+    def build_page3(self):
+        frame = gtk.Frame("TLS Groups Fit")
+        frame.set_border_width(5)
+
         sw = gtk.ScrolledWindow()
-        self.vbox.pack_end(sw, gtk.TRUE, gtk.TRUE, 0)
+        frame.add(sw)
         sw.set_border_width(5)
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -3144,25 +3191,41 @@ class TLSSearchDialog(gtk.Dialog):
         self.treeview = DictListTreeView(
             column_list=["Residue Range", "Atoms", "R", "<DP2>"])
         sw.add(self.treeview)
-       
-        self.show_all()
+
+        return frame
 
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
         """
         if response_code==gtk.RESPONSE_CLOSE or \
            response_code==gtk.RESPONSE_CANCEL:
-            pass
+            self.tls_info_list = []
+            self.cancel_flag   = True
+            
         elif response_code==gtk.RESPONSE_OK:
             pass
+
+    def back_clicked(self, button):
+        page_num = self.notebook.get_current_page()
+        if page_num==2:
+            self.tls_info_list = []
+            self.cancel_flag   = False
+            self.switch_page1()
+
+    def forward_clicked(self, button):
+        page_num = self.notebook.get_current_page()
+        if page_num==0:
+            self.switch_page2()
+            self.run_tls_analysis()
+            self.switch_page3()
 
     def destroy_cb(self, *args):
         """Destroy the TLS dialog and everything it has built
         in the GLObject viewer.
         """
-        pass
+        self.cancel_flag = True
     
-    def run_tls_analysis(self, *args):
+    def run_tls_analysis(self):
         """
         """
         ## get the list of chain_ids to fit
@@ -3195,14 +3258,16 @@ class TLSSearchDialog(gtk.Dialog):
 
         self.tls_info_list = []
 
-        self.set_sensitive(gtk.FALSE)
-        
         for tls_info in tls_analysis.iter_fit_TLS_segments(
             chain_ids              = chain_ids,
             residue_width          = residue_width,
             use_side_chains        = use_side_chains,
             include_frac_occupancy = include_frac_occupancy,
             include_single_bond    = include_single_bond):
+
+            ## calculations are canceled
+            if self.cancel_flag==True:
+                break
 
             self.tls_info_list.append(tls_info)
 
@@ -3215,13 +3280,15 @@ class TLSSearchDialog(gtk.Dialog):
             tls_info["Atoms"]         = str(tls_info["num_atoms"])
             
             self.treeview.set_dict_list(self.tls_info_list)
-            
+
+            ## update status 
             ## this takes a long time so process some events
+            self.page2_label.set_text("Fit %d Segments" % (
+                len(self.tls_info_list)))
+
             while gtk.events_pending():
                 gtk.main_iteration(gtk.TRUE)
 
-        self.set_sensitive(gtk.TRUE)
-        
 
 
 ###############################################################################
@@ -4016,5 +4083,9 @@ if __name__=="__main__":
         first_path = None
     
     VIEWER_APP = ViewerApp(first_path)
-    VIEWER_APP.main()
+
+    try:
+        VIEWER_APP.main()
+    except KeyboardInterrupt:
+        sys.exit(1)
 ### </MAIN>
