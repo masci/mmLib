@@ -4,12 +4,19 @@
 ## included as part of this package.
 
 import os
+import types
 import gzip
 
 
 def OpenFile(path, mode):
     """Right now this only supports opening GZip'ed files, in the future
     it might be extended for URLs."""
+
+    ## if path is not a string, assume it is a file object and
+    ## return it
+    if type(path) != types.StringType:
+        return path
+
     (base, ext) = os.path.splitext(path)
 
     if ext == ".gz":
