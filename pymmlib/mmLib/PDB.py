@@ -1094,7 +1094,7 @@ class PDBFile:
     def __init__(self):
         self.pdb_list = PDBRecordList()
 
-    def loadFile(self, fil):
+    def load_file(self, fil):
         """Loads a PDB file from File object fil."""
         fil = OpenFile(fil, "r")
         for ln in fil.readlines():
@@ -1116,19 +1116,19 @@ class PDBFile:
 
         self.pdb_list.sort()
 
-    def saveFile(self, fil):
+    def save_file(self, fil):
         """Saves the PDBFile object in PDB file format to File object fil."""
         fil = OpenFile(fil, "w")
         for pdb_record in self.pdb_list:
             fil.write(str(pdb_record) + "\n")
         fil.flush()
 
-    def selectRecordList(self, *nvlist):
+    def select_record_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the records in the
         PDB file.  The arguments are a variable list of tuples of the form:
           (<column-name>, <column-value>)
         For example:
-          selectRecordList(('_name','ATOM  '),('resName', 'LYS'))
+          select_record_list(('_name','ATOM  '),('resName', 'LYS'))
         returns a list of ATOM records which are part of a LYS residue."""
         ## clever optimization trickies
         (attr, val) = nvlist[0]
@@ -1155,7 +1155,7 @@ class PDBFile:
 
         return rec_list
 
-    def getChainList(self):
+    def get_chain_list(self):
         """Returns a list of all the chain ids in the PDB file."""
         chain_list = []
         for pdb_record in self.pdb_list:
@@ -1174,8 +1174,8 @@ class StructurePDBFileBuilder:
         self.structure = structure
         self.pdb_file  = PDBFile()
 
-        for atm in self.structure.iterAtoms():
-            for alt_atm in atm.iterAltLoc():
+        for atm in self.structure.iter_atoms():
+            for alt_atm in atm.iter_alt_loc():
                 self.__add_atom(alt_atm)
 
         self.pdb_file.pdb_list.sort()
@@ -1235,7 +1235,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     pdbfil = PDBFile()
-    pdbfil.loadFile(path)
-    pdbfil.saveFile(sys.stdout)
+    pdbfil.load_file(path)
+    pdbfil.save_file(sys.stdout)
 ### </testing>
 

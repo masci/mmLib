@@ -11,12 +11,12 @@ from mmLib.FileLoader import LoadStructure, SaveStructure
 def main(path):
     struct = LoadStructure(path)
 
-    for res in struct.iterAminoAcids():
+    for res in struct.iter_amino_acids():
 
         temp_factor = 1.0
         if res.res_name == "LYS": temp_factor = 50.0
 
-        for atm in res.iterAtoms():
+        for atm in res.iter_atoms():
             atm.temp_factor = temp_factor
 
     SaveStructure(sys.stdout, structure = struct, format = "PDB")

@@ -63,14 +63,14 @@ class CCP4Library(Library):
         except KeyError:
             mon = None
             
-        ccp4mon = self.loadMonomer(key, copy.deepcopy(mon))
+        ccp4mon = self.load_monomer(key, copy.deepcopy(mon))
         if not ccp4mon:
             raise KeyError
 
         self.monomer_cache[key] = ccp4mon
         return ccp4mon
     
-    def loadMonomer(self, name, mon):
+    def load_monomer(self, name, mon):
         """Locates and reads the mmCIF monomer description found in the CCP4
         monomer dictionary."""
         path = os.path.join(self.mon_lib_path,
@@ -85,10 +85,10 @@ class CCP4Library(Library):
             mon = Monomer(name = name)
 
         cfile = mmCIF.mmCIFFile()
-        cfile.loadFile(CCP4MonomerFile(path, "r"))
+        cfile.load_file(CCP4MonomerFile(path, "r"))
 
-        ldata = cfile.getData("comp_list")
-        cdata = cfile.getData("comp_%s" % (name))
+        ldata = cfile.get_data("comp_list")
+        cdata = cfile.get_data("comp_%s" % (name))
 
         full_name = ""
         if hasattr(ldata, "chem_comp"):
@@ -115,7 +115,7 @@ class CCP4Library(Library):
 ##
 if __name__ == "__main__":
     lib = CCP4Library("/home/jpaint/ccp4/ccp4-4.2.2")
-    print lib["GLY"].getPolymerBondList(None, None)
+    print lib["GLY"].get_polymer_bond_list(None, None)
 ##
 ## </testing>
 ##

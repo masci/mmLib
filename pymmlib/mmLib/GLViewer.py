@@ -19,27 +19,27 @@ class GLDrawList:
         self.roty = 0.0
         self.rotz = 0.0
 
-    def glCompileList(self, execute = 0):
+    def gl_compile_list(self, execute = 0):
         if self.name != None:
-            glDeleteLists(self.name, 1)
+            gl_delete_lists(self.name, 1)
         
         self.name = glGenLists(1)
 
-        print "glCompileList name = ", self.name
+        print "gl_compile_list name = ", self.name
 
         if execute: glNewList(self.name, GL_COMPILE_AND_EXECUTE)
         else:       glNewList(self.name, GL_COMPILE)
         
-        self.glDraw()
+        self.gl_draw()
         glEndList()
 
-    def glDeleteList(self):
+    def gl_delete_list(self):
         if self.name != None:
-            glDeleteLists(self.name, 1)
+            gl_delete_lists(self.name, 1)
             self.name = None
 
-    def glCallList(self):
-        #print "glCallList = ",self.name
+    def gl_call_list(self):
+        #print "gl_call_list = ",self.name
 
         glPushMatrix()
 
@@ -49,11 +49,11 @@ class GLDrawList:
 	glRotatef(self.roty, self.axes[1,0], self.axes[1,1], self.axes[1,2])
         glRotatef(self.rotz, self.axes[2,0], self.axes[2,1], self.axes[2,2])
         
-        glCallList(self.name)
+        gl_call_list(self.name)
 
         glPopMatrix()
         
-    def glDraw(self):
+    def gl_draw(self):
         pass
 
     def set_origin(self, origin):
@@ -70,7 +70,7 @@ class GLUnitCellDrawList(GLDrawList):
         
         self.unit_cell = unit_cell
 
-    def glDraw(self):
+    def gl_draw(self):
         self.set_material(1.0, 1.0, 1.0, 1.0)
 
         def cell_line(v1, v2):
@@ -80,7 +80,7 @@ class GLUnitCellDrawList(GLDrawList):
             apply(glVertex3f, v2)
             glEnd()
 
-        m = self.unit_cell.calcCartisianUnitCellAxes()
+        m = self.unit_cell.calc_cartisian_unit_cell_axes()
 
         def draw_cell(i, j, k):
             o = i*m[0] + j*m[1] + k*m[2]
@@ -225,7 +225,7 @@ class GLAtomDrawList(GLDrawList, list):
         apply(glVertex3f, atm2.position - self.atom_origin)
         glEnd()
 
-    def glDraw(self):
+    def gl_draw(self):
         ## draw origin
         self.set_material(1.0, 1.0, 1.0, 1.0)
         glutSolidSphere(1.0, 32, 32)
@@ -238,16 +238,16 @@ class GLAtomDrawList(GLDrawList, list):
             self.draw_atom(atm)
 
             ## draw bonds
-            for bond in atm.iterBonds():
+            for bond in atm.iter_bonds():
                 if bond in visited_bonds: continue
                 else:                     visited_bonds.insert(0, bond)
 
-                atm2 = bond.getPartner(atm)
+                atm2 = bond.get_partner(atm)
                 self.draw_bond(atm, atm2)
 
     def set_atom_origin(self, atom_origin):
         self.atom_origin = atom_origin
-        self.glDeleteList()
+        self.gl_delete_list()
 
         
 
@@ -277,7 +277,7 @@ class GLViewer(list):
         assert isinstance(draw_list, GLDrawList)
         list.remove(self, draw_list)
 
-    def glInit(self):
+    def gl_init(self):
         if not self.gldrawable.gl_begin(self.glcontext):
             return
 
@@ -296,7 +296,7 @@ class GLViewer(list):
 		
         self.gldrawable.gl_end()
     
-    def glResize(self, width, height):
+    def gl_resize(self, width, height):
 	if not self.gldrawable.gl_begin(self.glcontext):
             return
 	
@@ -314,7 +314,7 @@ class GLViewer(list):
 	glMatrixMode(GL_MODELVIEW)
 	self.gldrawable.gl_end()
 
-    def glDrawLists(self):
+    def gl_drawLists(self):
         #print "begin"
         
 	if not self.gldrawable.gl_begin(self.glcontext):
@@ -332,8 +332,8 @@ class GLViewer(list):
         #glutSolidSphere(3.0, 12, 12)
 
         for draw_list in self:
-            if draw_list.name == None: draw_list.glCompileList(execute = 1)
-            else:                      draw_list.glCallList()
+            if draw_list.name == None: draw_list.gl_compile_list(execute = 1)
+            else:                      draw_list.gl_call_list()
             
 	if self.gldrawable.is_double_buffered(): self.gldrawable.swap_buffers()
 	else:                                    glFlush()

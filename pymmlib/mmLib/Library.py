@@ -23,7 +23,7 @@ class Monomer:
         self.atom_list         = atom_list
         self.bond_list         = bond_list
 
-    def getPolymerBondList(self, mon1, mon2):
+    def get_polymer_bond_list(self, mon1, mon2):
         """Returns a list of 2-tuples.  Each 2-tuple (mon1_name, mon2_name)
         represents one bond between the atom named mon1_name in mon1 and
         the atom named mon2_name in mon2."""
@@ -59,7 +59,7 @@ class AminoAcid(Monomer):
     def __str__(self):
 	return "AminoAcid(%s)" % (self.name)
 
-    def getPolymerBondList(self, mon1, mon2):
+    def get_polymer_bond_list(self, mon1, mon2):
         return [("C", "N")]
         
 
@@ -98,12 +98,12 @@ class Library:
 
         raise KeyError
         
-    def isAminoAcid(self, res_name):
+    def is_amino_acid(self, res_name):
         return res_name in self.amino_acid_map
 
-    def isNucleicAcid(self, res_name):
+    def is_nucleic_acid(self, res_name):
         return res_name in self.nucleic_acid_map
 
-    def isWater(self, res_name):
+    def is_water(self, res_name):
         return res_name in ["HOH", "WAT"]
 

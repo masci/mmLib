@@ -78,25 +78,25 @@ class mmCIFTable(object):
         assert isinstance(row, mmCIFRow)
         return self.__row_list.index(row)
 
-    def addColumn(self, cname):
+    def add_column(self, cname):
         """Adds a column to the table.  In this case, a column is a
         mmCIF subsection."""
         self.columns.append(cname)
         
-    def columnIndex(self, cname):
+    def column_index(self, cname):
         """Returns the column index of from the column name."""
         return self.columns.index(cname)
 
-    def getColumnList(self):
+    def get_column_list(self):
         """Returns a list of all column names, in order."""
         return self.columns
 
-    def addRow(self, row):
+    def add_row(self, row):
         """Adds a mmCIFRow to the table."""
         assert isinstance(row, mmCIFRow)
         self.append(row)
 
-    def getOneRow(self):
+    def get_one_row(self):
         """Some tables are defined to have only one row.  Return it or
         raise an error."""
         if len(self.__row_list) != 1:
@@ -104,16 +104,16 @@ class mmCIFTable(object):
                 self.name, len(self.__row_list))
         return self.__row_list[0]
 
-    def getRowList(self):
+    def get_row_list(self):
         """Returns a list of all mmCIFRow classes contained in the table."""
         return self.__row_list
 
-    def selectRowList(self, *nvlist):
+    def select_row_list(self, *nvlist):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table.
         The arguments are a variable list of tuples of the form:
           (<column-name>, <column-value>)
         For example:
-          selectRowList(('atom_id','CA'),('entity_id', '1'))
+          select_row_list(('atom_id','CA'),('entity_id', '1'))
         returns a list of rows with atom_id==1 and entity_id==1."""
         ## clever optimization tricks
         (attr, val) = nvlist[0]
@@ -183,18 +183,18 @@ class mmCIFData(object):
         except KeyError:
             return default
 
-    def getName(self):
+    def get_name(self):
         """Returns the name given to the data section in the mmCIF file."""
         return self._name
 
-    def addTable(self, ctable):
+    def add_table(self, ctable):
         """Adds a mmCIFTable class."""
         assert isinstance(ctable, mmCIFTable)
         
         self.__ctable_list.append(ctable)
         setattr(self, ctable.name, ctable)
 
-    def getTable(self, name):
+    def get_table(self, name):
         """Looks up and returns a stored mmCIFTable class by it's name.  This
         name is the section key in the mmCIF file."""
         try:
@@ -241,19 +241,19 @@ class mmCIFFile:
         self.__cdata_list.append(cdata)
         setattr(self, cdata._name, cdata)
 
-    def loadFile(self, fil):
+    def load_file(self, fil):
         fil = OpenFile(fil, "r")
-        for cif_data in mmCIFFileParser().parseFile(fil):
-            self.addData(cif_data)
+        for cif_data in mmCIFFileParser().parse_file(fil):
+            self.add_data(cif_data)
 
-    def saveFile(self, fil):
+    def save_file(self, fil):
         fil = OpenFile(fil, "w")
-        mmCIFFileWriter().writeFile(fil, self.__cdata_list)
+        mmCIFFileWriter().write_file(fil, self.__cdata_list)
 
-    def addData(self, cdata):
+    def add_data(self, cdata):
         self.append(cdata)
 
-    def getData(self, name):
+    def get_data(self, name):
         try:
             return self[name]
         except KeyError:
@@ -283,8 +283,8 @@ class mmCIFDictionary(mmCIFFile):
         else:
             fil = self._path
 
-        for cif_data in mmCIFDictionaryParser().parseFile(fil):
-            self.addData(cif_data)
+        for cif_data in mmCIFDictionaryParser().parse_file(fil):
+            self.add_data(cif_data)
 
 
 
@@ -390,17 +390,17 @@ class mmCIFElementFile:
                 temp += line
                 continue
         
-    def getNextElement(self):
+    def get_next_element(self):
         if not self.elements:
             self.read_elements()
         return self.elements.pop(0)
 
-    def peekNextElement(self):
+    def peek_next_element(self):
         if not self.elements:
             self.read_elements()
         return self.elements[0]
 
-    def replaceElement(self, element):
+    def replace_element(self, element):
         self.elements.insert(0, element)
 
 
@@ -416,14 +416,14 @@ class mmCIFFileParser:
         err = "[line %d] %s" % (self.cife.line_number, err)
         raise self.error, err
 
-    def parseFile(self, fil):
+    def parse_file(self, fil):
         self.done = 0
         self.cife = mmCIFElementFile(fil)
 
         data_list = []
         while not self.done:
             try:
-                (s,t) = self.cife.getNextElement()
+                (s,t) = self.cife.get_next_element()
             except EOFError:
                 self.done = 1
                 break
@@ -440,7 +440,7 @@ class mmCIFFileParser:
     def read_data(self, data):
         while not self.done:
             try:
-                (s,t) = self.cife.getNextElement()
+                (s,t) = self.cife.get_next_element()
             except EOFError:
                 self.done = 1
                 break
@@ -452,7 +452,7 @@ class mmCIFFileParser:
                 self.read_loop(data, s)
 
             elif s[:5] == 'data_':
-                self.cife.replaceElement((s,t))
+                self.cife.replace_element((s,t))
                 break
 
             else:
@@ -461,21 +461,21 @@ class mmCIFFileParser:
     def read_single(self, data, s):
         (tname, cname) = s[1:].split(".")
 
-        table = data.getTable(tname)
+        table = data.get_table(tname)
         if not table:
             table = mmCIFTable(tname)
-            data.addTable(table)
+            data.add_table(table)
             table.append(mmCIFRow())
         else:
-            if cname in table.getColumnList():
+            if cname in table.get_column_list():
                 self.syntax_error('redefined single column %s.%s' % (
                     tname, cname))
 
-        table.addColumn(cname)
+        table.add_column(cname)
         row = table[0]
 
         try:
-            (s,t) = self.cife.getNextElement()
+            (s,t) = self.cife.get_next_element()
         except EOFError:
             self.syntax_error('premature end of file')
 
@@ -491,13 +491,13 @@ class mmCIFFileParser:
         ## read in table column names
         while 1:
             try:
-                (s,t) = self.cife.getNextElement()
+                (s,t) = self.cife.get_next_element()
             except EOFError:
                 self.syntax_error('premature end of file')
 
             ## no more column names, this is data
             if t == "string" or s[0] != '_':
-                self.cife.replaceElement((s,t))
+                self.cife.replace_element((s,t))
                 break
 
             (tname, cname) = s[1:].split(".")
@@ -510,16 +510,16 @@ class mmCIFFileParser:
             cname_list.append(cname)
 
         table = mmCIFTable(table_name, cname_list)
-        data.addTable(table)
+        data.add_table(table)
 
         ## read in table column data
         while 1:
             row = mmCIFRow()
             table.append(row)
             
-            for cname in table.getColumnList():
+            for cname in table.get_column_list():
                 try:
-                    (s,t) = self.cife.getNextElement()
+                    (s,t) = self.cife.get_next_element()
                 except EOFError:
                     self.syntax_error('loop values incomplete')
 
@@ -530,7 +530,7 @@ class mmCIFFileParser:
                 row[cname] = s
 
             try:
-                (s,t) = self.cife.peekNextElement()
+                (s,t) = self.cife.peek_next_element()
             except EOFError:
                 self.done = 1
                 break
@@ -548,11 +548,11 @@ class mmCIFDictionaryParser(mmCIFFileParser):
     """Subclassed from mmCIFFileParser and extended to support the additional
     syntax encountered in the dictionary files.  I wrote this quite a while
     ago, and now that I look at it again, I suspect it's not complete."""
-    def parseFile(self, fil):
+    def parse_file(self, fil):
         self.done = 0
         self.cife = mmCIFElementFile(fil)
         try:
-            (s,t) = self.cife.getNextElement()
+            (s,t) = self.cife.get_next_element()
         except EOFError:
             return None
 
@@ -566,7 +566,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
         
         while not self.done:
             try:
-                (s,t) = self.cife.getNextElement()
+                (s,t) = self.cife.get_next_element()
             except EOFError:
                 self.done = 1
                 break
@@ -600,7 +600,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 
         self.read_data(data)
         try:
-            (s,t) = self.cife.getNextElement()
+            (s,t) = self.cife.get_next_element()
         except EOFError:
             self.done = 1
         else:
@@ -612,7 +612,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
     def read_data(self, data):
         while not self.done:
             try:
-                (s,t) = self.cife.getNextElement()
+                (s,t) = self.cife.get_next_element()
             except EOFError:
                 self.done = 1
                 break
@@ -628,7 +628,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
                 break
 
             elif s[:5] == 'save_':
-                self.cife.replaceElement((s,t))
+                self.cife.replace_element((s,t))
                 break
             
             else:
@@ -639,7 +639,7 @@ class mmCIFDictionaryParser(mmCIFFileParser):
 class mmCIFFileWriter:
     """Writes out a mmCIF file using the data in the mmCIFData list."""  
 
-    def writeFile(self, fil, cif_data_list):
+    def write_file(self, fil, cif_data_list):
         self.fil = fil
 
         ## constant controlls the spacing between columns
@@ -685,7 +685,7 @@ class mmCIFFileWriter:
         return val
 
     def write_cif_data(self):
-        self.writeln("data_%s" % self.cif_data.getName())
+        self.writeln("data_%s" % self.cif_data.get_name())
         self.writeln("")
         
         for cif_table in self.cif_data:
@@ -801,8 +801,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     cif = mmCIFFile()
-    cif.loadFile(path)
-    cif.saveFile(sys.stdout)
+    cif.load_file(path)
+    cif.save_file(sys.stdout)
 
 ##
 ## </testing>

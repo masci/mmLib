@@ -105,7 +105,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
                                      self.get_gl_drawable())
 
         x, y, width, height = glarea.get_allocation()
-        self.glviewer.glResize(width, height)
+        self.glviewer.gl_resize(width, height)
 
         self.queue_draw()
         return gtk.TRUE
@@ -122,11 +122,11 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         return gtk.TRUE
 
     def realize(self, glarea):
-        self.glviewer.glInit()
+        self.glviewer.gl_init()
         return gtk.TRUE
 
     def expose_event(self, glarea, event):
-        self.glviewer.glDrawLists()
+        self.glviewer.gl_drawLists()
         return gtk.TRUE
 
     def set_unit_cell(self, unit_cell):
@@ -138,20 +138,20 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea):
         for draw_list in self.glviewer:
             if isinstance(draw_list, GLAtomDrawList):
                 self.glviewer.remove(draw_list)
-                draw_list.glDeleteList()
+                draw_list.gl_delete_list()
 
         ## create and add new view group
         draw_list = SelectionGLAtomDrawList()
         self.glviewer.append(draw_list)
 
-        for atm in struct_obj.iterAtoms():
+        for atm in struct_obj.iter_atoms():
             draw_list.append(atm)
 
         if sel_struct_obj:
             if isinstance(sel_struct_obj, Atom):
                 draw_list.selected=[sel_struct_obj]
             else:
-                draw_list.selected=[atm for atm in sel_struct_obj.iterAtoms()]
+                draw_list.selected=[atm for atm in sel_struct_obj.iter_atoms()]
 
         self.queue_draw()
 
@@ -196,30 +196,30 @@ class StructurePanel(gtk.VPaned):
 
         if isinstance(sel_struct_obj, Residue):
             self.add_line("Residue.res_name", sel_struct_obj.res_name)
-            self.add_line("Residue.getOffsetResidue(-1)",
-                          sel_struct_obj.getOffsetResidue(-1))
-            self.add_line("Residue.getOffsetResidue(1)",
-                          sel_struct_obj.getOffsetResidue(1))
+            self.add_line("Residue.get_offset_residue(-1)",
+                          sel_struct_obj.get_offset_residue(-1))
+            self.add_line("Residue.get_offset_residue(1)",
+                          sel_struct_obj.get_offset_residue(1))
 
         if isinstance(sel_struct_obj, Fragment):
             bonds = ""
-            for bond in sel_struct_obj.iterBonds():
+            for bond in sel_struct_obj.iter_bonds():
                 bonds += str(bond)
-            self.add_line("Fragment.iterBonds()", bonds)
+            self.add_line("Fragment.iter_bonds()", bonds)
 
         if isinstance(sel_struct_obj, AminoAcidResidue):
-            self.add_line("AminoAcidResidue.calcMainchainBondLength()",
-                          sel_struct_obj.calcMainchainBondLength())
-            self.add_line("AminoAcidResidue.calcMainchainBondAngle()",
-                          sel_struct_obj.calcMainchainBondAngle())
-            self.add_line("AminoAcidResidue.calcTorsionPsi()",
-                          sel_struct_obj.calcTorsionPsi())
-            self.add_line("AminoAcidResidue.calcTorsionPhi()",
-                          sel_struct_obj.calcTorsionPhi())
-            self.add_line("AminoAcidResidue.calcTorsionOmega()",
-                          sel_struct_obj.calcTorsionOmega())
-            self.add_line("AminoAcidResidue.calcTorsionChi()",
-                          sel_struct_obj.calcTorsionChi())
+            self.add_line("AminoAcidResidue.calc_mainchain_bond_length()",
+                          sel_struct_obj.calc_mainchain_bond_length())
+            self.add_line("AminoAcidResidue.calc_mainchain_bond_angle()",
+                          sel_struct_obj.calc_mainchain_bond_angle())
+            self.add_line("AminoAcidResidue.calc_torsion_psi()",
+                          sel_struct_obj.calc_torsion_psi())
+            self.add_line("AminoAcidResidue.calc_torsion_phi()",
+                          sel_struct_obj.calc_torsion_phi())
+            self.add_line("AminoAcidResidue.calc_torsion_omega()",
+                          sel_struct_obj.calc_torsion_omega())
+            self.add_line("AminoAcidResidue.calc_torsion_chi()",
+                          sel_struct_obj.calc_torsion_chi())
 
         if isinstance(sel_struct_obj, Atom):
             self.add_line("Atom.element", sel_struct_obj.element)
@@ -229,8 +229,8 @@ class StructurePanel(gtk.VPaned):
             self.add_line("Atom.U", sel_struct_obj.U)
             self.add_line("Atom.position", sel_struct_obj.position)
             self.add_line("len(Atom.bond_list)", len(sel_struct_obj.bond_list))
-            self.add_line("Atom.calcAnisotropy()",
-                          sel_struct_obj.calcAnisotropy())
+            self.add_line("Atom.calc_anisotropy()",
+                          sel_struct_obj.calc_anisotropy())
 
         self.glviewer.set_unit_cell(self.struct.unit_cell)
         self.glviewer.set_structure(self.struct, sel_struct_obj)
@@ -264,21 +264,21 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return ( self.structure_list.index(node), )
 
         elif isinstance(node, Chain):
-            struct_path = self.structure_list.index(node.getStructure())
-            chain_path = node.getStructure().index(node)
+            struct_path = self.structure_list.index(node.get_structure())
+            chain_path = node.get_structure().index(node)
             return (struct_path, chain_path )
 
         elif isinstance(node, Fragment):
-            struct_path = self.structure_list.index(node.getStructure())
-            chain_path  = node.getStructure().index(node.getChain())
-            frag_path   = node.getChain().index(node)
+            struct_path = self.structure_list.index(node.get_structure())
+            chain_path  = node.get_structure().index(node.get_chain())
+            frag_path   = node.get_chain().index(node)
             return (structure_path, chain_path, frag_path)
 
         elif isinstance(node, Atom):
-            struct_path = self.structure_list.index(node.getStructure())
-            chain_path  = node.getStructure().index(node.getChain())
-            frag_path   = node.getChain().index(node.getFragment)
-            atom_path   = node.getFragment().index(node)
+            struct_path = self.structure_list.index(node.get_structure())
+            chain_path  = node.get_structure().index(node.get_chain())
+            frag_path   = node.get_chain().index(node.get_fragment)
+            atom_path   = node.get_fragment().index(node)
             return (struct_path, chain_path, frag_path, atom_path)
 
     def on_get_iter(self, path):
@@ -313,7 +313,7 @@ class StructureTreeModel(gtk.GenericTreeModel):
                 return None
 
         elif isinstance(node, Chain):
-            struct = node.getStructure()
+            struct = node.get_structure()
             i      = struct.index(node)
             try:
                 return struct[i+1]
@@ -321,10 +321,10 @@ class StructureTreeModel(gtk.GenericTreeModel):
                 return None
 
         elif isinstance(node, Fragment):
-            return node.getOffsetFragment(1)
+            return node.get_offset_fragment(1)
             
         elif isinstance(node, Atom):
-            struct = node.getStructure()
+            struct = node.get_structure()
             frag   = struct[node.chain_id][node.fragment_id]
             i      = frag.index(node)
             try:
@@ -390,13 +390,13 @@ class StructureTreeModel(gtk.GenericTreeModel):
             return self.structure_list
 
         elif isinstance(node, Chain):
-            return node.getStructure()
+            return node.get_structure()
 
         elif isinstance(node, Fragment):
-            return node.getChain()
+            return node.get_chain()
 
         elif isinstance(node, Atom):
-            return node.getFragment()
+            return node.get_fragment()
 
 
 class StructureGUI:
@@ -516,7 +516,7 @@ class MainWindow:
     def open_ok_cb(self, ok_button, file_selector):
         path = file_selector.get_filename()
         file_selector.destroy()
-        self.loadFile(path)
+        self.load_file(path)
         
 
     def open_cancel_cb(self, cancel_button, file_selector):
@@ -534,7 +534,7 @@ class MainWindow:
         self.statusbar.push(0, text)
 
 
-    def loadFile(self, path):
+    def load_file(self, path):
         self.setTitle(path)
         self.setStatusBar("Loading %s, please wait..." % (path))
 
@@ -562,7 +562,7 @@ def main(path = None):
     main_window_list.append(mw)
 
     if path:
-        gobject.timeout_add(25, mw.loadFile, path)
+        gobject.timeout_add(25, mw.load_file, path)
 
     gtk.main()
 

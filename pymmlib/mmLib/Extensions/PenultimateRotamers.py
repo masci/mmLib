@@ -48,7 +48,7 @@ def FindBestRotamer(aa_res):
     except KeyError:
         return None, None
 
-    (chi1, chi2, chi3, chi4) = aa_res.calcTorsionChi()
+    (chi1, chi2, chi3, chi4) = aa_res.calc_torsion_chi()
 
     best_rotamer = None
     min_sum      = None

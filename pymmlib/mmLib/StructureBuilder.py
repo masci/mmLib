@@ -15,7 +15,7 @@ from Structure    import *
 
 class StructureBuilder:
     """Builder class for the mmLib.Structure object hierarchy.
-    StructureBuilder must be subclassed with a working parseFormat()
+    StructureBuilder must be subclassed with a working parse_format()
     method to implement a working builder."""
     
     def __init__(self,
@@ -42,19 +42,19 @@ class StructureBuilder:
         self.atom_cache       = {}
         
         ## invokes the file parser, builds all the atoms
-        self.parseFormat(fil)
+        self.parse_format(fil)
 
         ## build mandatory parts of the structure
-        self.buildStructure()
+        self.build_structure()
         
         ## build optional parts of the structure
-        if "sequence"  in self.build_properties: self.buildSequence()
-        if "bonds"     in self.build_properties: self.buildBonds()
+        if "sequence"  in self.build_properties: self.build_sequence()
+        if "bonds"     in self.build_properties: self.build_bonds()
 
         ## free caches
         del self.atom_cache
 
-    def addAtom(self, name, altLoc, resName, fragmentID, chainID):
+    def add_atom(self, name, altLoc, resName, fragmentID, chainID):
         atm_id = (name, altLoc, fragmentID, chainID)
 
         try:
@@ -72,14 +72,14 @@ class StructureBuilder:
 
         return atm
 
-    def buildStructure(self):
+    def build_structure(self):
         """Construct required parts of the mmLib.Structure hierarchy."""
 
         def fragment_factory(atm):
-            if self.structure.library.isAminoAcid(atm.res_name):
+            if self.structure.library.is_amino_acid(atm.res_name):
                 frag_class = AminoAcidResidue
                 
-            elif self.structure.library.isNucleicAcid(atm.res_name):
+            elif self.structure.library.is_nucleic_acid(atm.res_name):
                 frag_class = NucleicAcidResidue
 
             else:
@@ -95,39 +95,39 @@ class StructureBuilder:
                 chain = self.structure[atm.chain_id]
             except KeyError:
                 chain = Chain(atm.chain_id)
-                self.structure.addChain(chain, delay_sort = True)
+                self.structure.add_chain(chain, delay_sort = True)
 
             ## retrieve/create Fragment
             try:
                 frag = chain[atm.fragment_id]
             except KeyError:
                 frag = fragment_factory(atm)
-                chain.addFragment(frag, delay_sort = True)
+                chain.add_fragment(frag, delay_sort = True)
 
-            frag.addAtom(atm)
+            frag.add_atom(atm)
 
         ## sort structural objects into their correct order
         self.structure.sort()
-        for chain in self.structure.iterChains():
+        for chain in self.structure.iter_chains():
             chain.sort()
         
-    def buildSequence(self):
+    def build_sequence(self):
         """The residue sequence in a chain can be calculated by the
-        algorithm in mmLib.Structure.Chain.calcSequence(), or by the
+        algorithm in mmLib.Structure.Chain.calc_sequence(), or by the
         sequence loaded from the input file.  This function use the
         file data if it exists, otherwise it will try to calculate
         the sequence."""
-        for chain in self.structure.iterChains():
-            chain.calcSequence()
+        for chain in self.structure.iter_chains():
+            chain.calc_sequence()
 
-    def buildBonds(self):
+    def build_bonds(self):
         """Bonds are constructed using a combination of monomer library
-        bond definitions, and data loaded from parseFormat()."""
-        for frag in self.structure.iterFragments():
-            frag.createBonds()
+        bond definitions, and data loaded from parse_format()."""
+        for frag in self.structure.iter_fragments():
+            frag.create_bonds()
 
-    def loadInfo(self, info_map):
-        """Called by the implementation of parseFormat to load descriptive
+    def load_info(self, info_map):
+        """Called by the implementation of parse_format to load descriptive
         information about the structure."""
         
         try: self.structure.id = info_map["id"]
@@ -157,8 +157,8 @@ class StructureBuilder:
         try: self.structure.res_low = info_map["res_low"]
         except KeyError: pass  
 
-    def loadAtom(self, atm_map):
-        """Called by the implementation of parseFormat to load all the
+    def load_atom(self, atm_map):
+        """Called by the implementation of parse_format to load all the
         data for a single atom.  The data is contained in the atm_map
         argument, and is not well documented at this point.  Look at
         this function and you'll figure it out."""
@@ -188,7 +188,7 @@ class StructureBuilder:
         ##
         ## </XXX>
 
-        atm = self.addAtom(name, altLoc, resName, fragmentID, chainID)
+        atm = self.add_atom(name, altLoc, resName, fragmentID, chainID)
 
         ## additional properties
         atm.element     = atm_map["element"]
@@ -211,29 +211,29 @@ class StructureBuilder:
         except KeyError:
             pass
 
-    def loadUnitCell(self, ucell_map):
+    def load_unit_cell(self, ucell_map):
         self.structure.unit_cell = UnitCell(
             ucell_map["a"],     ucell_map["b"],    ucell_map["c"],
             ucell_map["alpha"], ucell_map["beta"], ucell_map["gamma"])
 
-    def loadSite(self, site_id, site_list):
-        """Called by the implementation of parseFormat to load information
+    def load_site(self, site_id, site_list):
+        """Called by the implementation of parse_format to load information
         about one site in the structure.  Sites are groups of residues
         which are of special interest.  This usually means active sites
         of enzymes and such."""
         site = Site(site_id)
         for (chain_id, frag_id) in site_list:
-            site.addFragment(chain_id, frag_id)
+            site.add_fragment(chain_id, frag_id)
         self.structure.sites.append(site)
 
 
 class CopyStructureBuilder(StructureBuilder):
     """Builds a new Structure object by copying from a current Structure
     object.  This builder can take any member of the Structure object which
-    has a iterAtoms() method."""
+    has a iter_atoms() method."""
     
-    def parseFormat(self, fil):
-        for atm in fil.iterAtoms():
+    def parse_format(self, fil):
+        for atm in fil.iter_atoms():
             atm_map = {}
 
             atm_map["name"]        = atm.name
@@ -258,7 +258,7 @@ class CopyStructureBuilder(StructureBuilder):
             except AttributeError:
                 pass
             
-            self.loadAtom(atm_map)
+            self.load_atom(atm_map)
             
 
 class PDBStructureBuilder(StructureBuilder):
@@ -346,9 +346,9 @@ class PDBStructureBuilder(StructureBuilder):
         ucell_map["sgroup"] = getattr(rec, "sgroup")
         ucell_map["z"]      = getattr(rec, "z")
     
-    def parseFormat(self, fil):
+    def parse_format(self, fil):
         pdb_file = PDB.PDBFile()
-        pdb_file.loadFile(fil)
+        pdb_file.load_file(fil)
 
         atm_map       = {}
         site_map      = {}
@@ -362,7 +362,7 @@ class PDBStructureBuilder(StructureBuilder):
             if isinstance(rec, PDB.ATOM):
                 ## load the last atom before moving to this one
                 if atm_map:
-                    self.loadAtom(atm_map)
+                    self.load_atom(atm_map)
                     atm_map = {}
 
                 try:
@@ -388,22 +388,22 @@ class PDBStructureBuilder(StructureBuilder):
         ## if we were in the process of building a atom,
         ## then load the final atm_map 
         if atm_map:
-            self.loadAtom(atm_map)
+            self.load_atom(atm_map)
 
         ## load the SITE records collected during parsing
         for (site_id, site_list) in site_map.items():
-            self.loadSite(site_id, site_list)
+            self.load_site(site_id, site_list)
 
         if ucell_map:
-            self.loadUnitCell(ucell_map)
+            self.load_unit_cell(ucell_map)
 
 
 class mmCIFStructureBuilder(StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file."""
     
-    def parseFormat(self, fil):
+    def parse_format(self, fil):
         cif_file = mmCIF.mmCIFFile()
-        cif_file.loadFile(fil)
+        cif_file.load_file(fil)
         
         for cif_data in cif_file:
             self.__load_CIF_Data(cif_data)
@@ -457,7 +457,7 @@ class mmCIFStructureBuilder(StructureBuilder):
         except KeyError:   print "missing refine.ls_d_res_low"
         except ValueError: print "missing refine.ls_d_res_low"
         
-        self.loadInfo(info_map)
+        self.load_info(info_map)
 
         ## ATOM/HETATM
         for atom_site in cif_data["atom_site"]:
@@ -498,7 +498,7 @@ class mmCIFStructureBuilder(StructureBuilder):
             if cif_data.has_key("atom_site_anisotrop"):
                 ctable = cif_data["atom_site_anisotrop"]
                 try:
-                    (aniso, ) = ctable.selectRowList(("id", atom_site["id"]))
+                    (aniso, ) = ctable.select_row_list(("id", atom_site["id"]))
                 except ValueError:
                     pass
                 else:
@@ -509,7 +509,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                     atm_map["U[1][3]"] = float(cifattr(aniso, "U[1][3]"))
                     atm_map["U[2][3]"] = float(cifattr(aniso, "U[2][3]"))
 
-            self.loadAtom(atm_map)
+            self.load_atom(atm_map)
 
         ## SITE
         if cif_data.has_key("struct_site_gen"):
@@ -537,7 +537,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                 site_map[site_id].append((chain_id, frag_id))
 
             for (site_id, site_list) in site_map.items():
-                self.loadSite(site_id, site_list)
+                self.load_site(site_id, site_list)
 
         ## UNIT CELL
         ucell_map = {}
@@ -546,7 +546,7 @@ class mmCIFStructureBuilder(StructureBuilder):
             ucell_map = {}
             
             try:
-                (cell,) = cif_data["cell"].selectRowList(
+                (cell,) = cif_data["cell"].select_row_list(
                     ("entry_id", entry_id))
             except ValueError:
                 pass
@@ -561,7 +561,7 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         if cif_data.has_key("symmetry"):
             try:
-                (symm,) = cif_data["symmetry"].selectRowList(
+                (symm,) = cif_data["symmetry"].select_row_list(
                     ("entry_id", entry_id))
             except ValueError:
                 pass
@@ -569,7 +569,7 @@ class mmCIFStructureBuilder(StructureBuilder):
                 ucell_map["sgroup"] = symm["space_group_name_H-M"]
         
         if ucell_map:
-            self.loadUnitCell(ucell_map)
+            self.load_unit_cell(ucell_map)
             
 
 ### <TESTING>
@@ -579,7 +579,7 @@ if __name__ == "__main__":
                                  build_properties=()
                                  ).structure
 
-    for atm in struct.iterAtoms():
+    for atm in struct.iter_atoms():
         if atm.alt_loc:
             print atm
 

@@ -13,33 +13,30 @@ from   mmTypes              import *
 from   AtomMath             import *
 from   Library              import Library
 from   UnitCell             import UnitCell
-from   SpaceGroups          import SpaceGroup
-
-
 
 
 class FragmentGroupList(list):
     """Specialized list class which holds a weak reference to the Structure,
-    and sets a getStructure() attribute for all the children added to it.
+    and sets a get_structure() attribute for all the children added to it.
     """
     def __init__(self, struct):
         list.__init__(self)
-        self.getStructure = weakref.ref(struct)
+        self.get_structure = weakref.ref(struct)
 
     def __setitem__(self, x, item):
         assert isinstance(item, FragmentGroup)
         list.__setitem__(self, x, item)
-        item.getStructure = self.getStructure
+        item.get_structure = self.get_structure
 
     def append(self, item):
         assert isinstance(item, FragmentGroup)
         list.append(self, item)
-        item.getStructure = self.getStructure
+        item.get_structure = self.get_structure
 
     def insert(self, x, item):
         assert isinstance(item, FragmentGroup)
         list.insert(self, x, item)
-        item.getStructure = self.getStructure   
+        item.get_structure = self.get_structure   
 
 
 class FragmentGroup(object):
@@ -48,13 +45,13 @@ class FragmentGroup(object):
     """
     def __init__(self):
         self.list         = []
-        self.getStructure = None
+        self.get_structure = None
 
-    def addFragment(self, chain_id, fragment_id):
+    def add_fragment(self, chain_id, fragment_id):
         self.list.append((chain_id, fragment_id))
 
-    def iterFragments(self):
-        struct = self.getStructure()
+    def iter_fragments(self):
+        struct = self.get_structure()
 
         for (chain_id, fragment_id) in self.list:
             try:
@@ -167,7 +164,7 @@ class Structure(object):
         return len(self.__chain_list)
     
     def __getitem__(self, x):
-        """Same as getChain, but raises KeyError if the requested chain_id
+        """Same as get_chain, but raises KeyError if the requested chain_id
         is not found."""
         if type(x) == StringType:
             for chain in self.__chain_list:
@@ -195,21 +192,21 @@ class Structure(object):
 
     def remove(self, chain):
         assert isinstance(chain, Chain)
-        del chain.getStructure
+        del chain.get_structure
         self.__chain_list.remove(chain)
 
     def sort(self):
         self.__chain_list.sort()
 
-    def addChain(self, chain, delay_sort = True):
+    def add_chain(self, chain, delay_sort = True):
         assert isinstance(chain, Chain)
-        chain.getStructure = weakref.ref(self)
+        chain.get_structure = weakref.ref(self)
         self.__chain_list.append(chain)
 
         if not delay_sort:
             self.__chain_list.sort()
 
-    def getChain(self, chain_id):
+    def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
         try:
@@ -217,55 +214,55 @@ class Structure(object):
         except KeyError:
             return NOne
 
-    def iterChains(self):
+    def iter_chains(self):
         """Iterates over all Chain objects in alphabetical order according
         to their chain_id.
         """
         return iter(self)
 
-    def iterFragments(self):
+    def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according the the parent Chain's chain_id, and the
         Fragment's positioin within the chain.
         """
-        for chain in self.iterChains():
-            for frag in chain.iterFragments():
+        for chain in self.iter_chains():
+            for frag in chain.iter_fragments():
                 yield frag
 
-    def iterAminoAcids(self):
-        """Same as iterFragments() but only iterates over Fragments of the
+    def iter_amino_acids(self):
+        """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
         """
-        for chain in self.iterChains():
-            for aa in chain.iterAminoAcids():
+        for chain in self.iter_chains():
+            for aa in chain.iter_amino_acids():
                 yield aa
 
-    def iterNucleicAcids(self):
-        """Same as iterFragments() but only iterates over Fragments of the
+    def iter_nucleic_acids(self):
+        """Same as iter_fragments() but only iterates over Fragments of the
         subclas NucleicAcidResidue.
         """
-        for chain in self.iterChains():
-            for aa in chain.iterNucleicAcids():
+        for chain in self.iter_chains():
+            for aa in chain.iter_nucleic_acids():
                 yield aa
 
-    def iterAtoms(self):
+    def iter_atoms(self):
         """Iterates over all Atom objects.  The iteration is preformed in
         order according to the Chain and Fragment ordering rules the Atom
         object is a part of.
         """
-        for chain in self.iterChains():
-            for atm in chain.iterAtoms():
+        for chain in self.iter_chains():
+            for atm in chain.iter_atoms():
                 yield atm
 
-    def iterBonds(self):
+    def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
-        iterating over all Atom objects in the same order as iterAtoms(),
+        iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects.
         """
         visited = []
 
-        for atm in self.iterAtoms():
-            for bond in atm.iterBonds():
+        for atm in self.iter_atoms():
+            for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
                     visited.insert(0, bond)
@@ -325,11 +322,11 @@ class Chain(object):
             ## "Python way" is to return a object of the same type
             ## so I return a new Chain object with only the fragments
             ## in the slice range, but I don't copy the fragments nor do
-            ## I set the fragments's getChain() function to return the
+            ## I set the fragments's get_chain() function to return the
             ## new Chain object
 
             chain              = Chain(self.chain_id)
-            chain.getStructure = self.getStructure
+            chain.get_structure = self.get_structure
 
             frag_start = self[x.start]
             frag_stop  = self[x.stop]
@@ -360,66 +357,66 @@ class Chain(object):
         return self.__fragment_list.index(frag)
 
     def remove(self, frag):
-        del frag.getChain
+        del frag.get_chain
         self.__fragment_list.remove(frag)
 
     def sort(self):
         self.__fragment_list.sort()
         
-    def addFragment(self, frag, delay_sort = False):
+    def add_fragment(self, frag, delay_sort = False):
         assert isinstance(frag, Fragment)
         assert frag.chain_id == self.chain_id
 
-        frag.getChain = weakref.ref(self)
+        frag.get_chain = weakref.ref(self)
         self.__fragment_list.append(frag)
 
         if not delay_sort:
             self.__fragment_list.sort()
 
-    def getFragment(self, fragment_id):
+    def get_fragment(self, fragment_id):
         """Returns the PDB fragment uniquely identified by its fragment_id."""
         try:
             return self[fragment_id]
         except KeyError:
             return None
 
-    def iterFragments(self):
+    def iter_fragments(self):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according to the Fragment's position within the Chain
         object."""
         return iter(self)
 
-    def iterAminoAcids(self):
-        """Same as iterFragments(), but only iterates over AminoAcidResidue
+    def iter_amino_acids(self):
+        """Same as iter_fragments(), but only iterates over AminoAcidResidue
         objects."""
-        for frag in self.iterFragments():
+        for frag in self.iter_fragments():
             if isinstance(frag, AminoAcidResidue):
                 yield frag
 
-    def iterNucleicAcids(self):
-        """Same as iterFragments(), but only iterates over NucleicAcidResidue
+    def iter_nucleic_acids(self):
+        """Same as iter_fragments(), but only iterates over NucleicAcidResidue
         objects."""
-        for frag in self.iterFragments():
+        for frag in self.iter_fragments():
             if isinstance(frag, NucleicAcidResidue):
                 yield frag
 
-    def iterAtoms(self):
+    def iter_atoms(self):
         """Iterates over all Atom objects within the Chain."""
-        for frag in self.iterFragments():
-            for atm in frag.iterAtoms():
+        for frag in self.iter_fragments():
+            for atm in frag.iter_atoms():
                 yield atm
                 
-    def iterBonds(self):
+    def iter_bonds(self):
         """Iterates over all Bond objects attached to Atom objects within the
         Chain"""
         visited = []
-        for atm in self.iterAtoms():
-            for bond in atm.iterBonds():
+        for atm in self.iter_atoms():
+            for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
                     visited.insert(0, bond)
 
-    def iterSequence(self):
+    def iter_sequence(self):
         """Iterate through the polymer sequence of the chain."""
         for frag_id in self.sequence_list:
             try:
@@ -427,12 +424,12 @@ class Chain(object):
             except KeyError:
                 pass
 
-    def setChainID(self, chain_id):
+    def set_chain_iD(self, chain_id):
         """Sets a new ID for the Chain object, updating the chain_id
         for all objects in the Structure hierarchy."""
         
         ## check for conflicting chain_id in the structure
-        try:             self.getStructure()[chain_id]
+        try:             self.get_structure()[chain_id]
         except KeyError: pass
         else:            raise ValueError, chain_id
 
@@ -449,9 +446,9 @@ class Chain(object):
                 atm.chain_id = chain_id
 
         ## resort the parent structure
-        self.getStructure().sort()
+        self.get_structure().sort()
 
-    def calcSequence(self):
+    def calc_sequence(self):
         """Attempts to calculate the residue sequence contained in the
         Chain object.  This is a simple algorithm: find the longest running
         sequence of the same bio-residue, and that's the sequence."""
@@ -462,7 +459,7 @@ class Chain(object):
 
         ## iterate through all fragments in the chain and create a
         ## list of the continuous residue segments
-        for frag in self.iterFragments():
+        for frag in self.iter_fragments():
             if sequence_class:
                 if isinstance(frag, sequence_class):
                     sequence_list.append(frag.fragment_id)
@@ -544,7 +541,7 @@ class Fragment(object):
             return self.__atom_list[x]
 
         elif type(x) == StringType:
-            alt_loc = self.getChain().getStructure()
+            alt_loc = self.get_chain().get_structure()
             for atom in self.__atom_list:
                 if atom.name == x:
                     if not atom.alt_loc:        return atom
@@ -557,7 +554,7 @@ class Fragment(object):
         self.__atom_list.remove(self[x])
 
     def __iter__(self):
-        alt_loc = self.getChain().getStructure().default_alt_loc
+        alt_loc = self.get_chain().get_structure().default_alt_loc
         for atom in self.__atom_list:
             if   not atom.alt_loc:        yield atom
             elif atom.alt_loc == alt_loc: yield atom
@@ -572,26 +569,26 @@ class Fragment(object):
 
     def remove(self, atom):
         assert isinstance(atom, Atom)
-        del atom.getFragment
+        del atom.get_fragment
         atom.alt_loc_list.remove(atom)
         self.__atom_list.remove(atom)
 
-    def addAtom(self, atom):
+    def add_atom(self, atom):
         assert isinstance(atom, Atom)
         assert atom.chain_id    == self.chain_id
         assert atom.fragment_id == self.fragment_id
         assert atom not in self.__atom_list
         
-        atom.getFragment = weakref.ref(self)
+        atom.get_fragment = weakref.ref(self)
 
         for a in self.__atom_list:
             if atom.name == a.name:
-                a.addAltLoc(atom)
+                a.add_alt_loc(atom)
                 break
 
         self.__atom_list.append(atom)
 
-    def getAtom(self, name):
+    def get_atom(self, name):
         """Returns the matching Atom object contained in the Fragment.
         Returns None if a match is not found."""
         try:
@@ -599,40 +596,40 @@ class Fragment(object):
         except KeyError:
             return None
     
-    def iterAtoms(self):
+    def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment.
         There is no defined order for the iteration."""
         return iter(self)
 
-    def iterBonds(self):
+    def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
-        iterating over all Atom objects in the same order as iterAtoms(),
+        iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects."""
         visited = []
 
-        for atm in self.iterAtoms():
-            for bond in atm.iterBonds():
+        for atm in self.iter_atoms():
+            for bond in atm.iter_bonds():
                 if bond not in visited:
                     yield bond
                     visited.insert(0, bond)
 
-    def getOffsetFragment(self, offset):
+    def get_offset_fragment(self, offset):
         assert type(offset) == IntType
         
-        chain = self.getChain()
+        chain = self.get_chain()
         i     = chain.index(self) + offset
         try:               return chain[i]
         except IndexError: return None
 
-    def getStructure(self):
-        return self.getChain().getStructure()
+    def get_structure(self):
+        return self.get_chain().get_structure()
 
-    def setFragmentID(self, fragment_id):
+    def set_fragment_iD(self, fragment_id):
         """Sets a new ID for the Fragment object, updating the fragment_id
         for all objects in the Structure hierarchy."""
         
         ## check for conflicting chain_id in the structure
-        try:             self.getChain()[fragment_id]
+        try:             self.get_chain()[fragment_id]
         except KeyError: pass
         else:            raise ValueError, fragment_id
 
@@ -646,13 +643,13 @@ class Fragment(object):
             atm.fragment_id = fragment_id
 
         ## resort the parent chain
-        self.getChain().sort()
+        self.get_chain().sort()
 
-    def createBonds(self):
+    def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library."""
         try:
-            mon = self.getStructure().library[self.res_name]
+            mon = self.get_structure().library[self.res_name]
         except KeyError:
             return
 
@@ -663,7 +660,7 @@ class Fragment(object):
             except KeyError:
                 continue
             else:
-                atm1.createBond(atm2, bond_alt_loc = True)
+                atm1.create_bond(atm2, bond_alt_loc = True)
 
 
 class Residue(Fragment):
@@ -685,10 +682,10 @@ class Residue(Fragment):
                                  self.fragment_id,
                                  self.chain_id)
 
-    def getOffsetResidue(self, offset):
+    def get_offset_residue(self, offset):
         assert type(offset) == IntType
         
-        chain = self.getChain()
+        chain = self.get_chain()
 
         try:               i = chain.sequence_list.index(self.fragment_id)
         except ValueError: return None
@@ -697,49 +694,49 @@ class Residue(Fragment):
         except IndexError: return None
         else:              return chain[frag_id]
 
-    def createBonds(self):
+    def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.  This version also constructs the bonds
         between adjectent residues."""
-        Fragment.createBonds(self)
+        Fragment.create_bonds(self)
 
-        next_res = self.getOffsetResidue(1)
+        next_res = self.get_offset_residue(1)
         if not next_res:
             return
 
         try:
-            mon1 = self.getStructure().library[self.res_name]
-            mon2 = self.getStructure().library[next_res.res_name]
+            mon1 = self.get_structure().library[self.res_name]
+            mon2 = self.get_structure().library[next_res.res_name]
         except KeyError:
             return
 
-        for (name1, name2) in mon1.getPolymerBondList(self, next_res):
+        for (name1, name2) in mon1.get_polymer_bond_list(self, next_res):
             try:
                 atm1 = self[name1]
                 atm2 = next_res[name2]
             except KeyError:
                 continue
             else:
-                atm1.createBond(atm2, bond_alt_loc = True)
+                atm1.create_bond(atm2, bond_alt_loc = True)
 
 
 class AminoAcidResidue(Residue):
     """A subclass of Residue representing one amino acid residue in a
     polypeptide chain.
     """
-    def calcMainchainBondLength(self):
+    def calc_mainchain_bond_length(self):
         """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
         CA-(next)N).  The result is returned as a 5-tuple in that order.  Bond
         lengths involving missing atoms are returned as None in the tuple.
         """
-        aN  = self.getAtom('N')
-        aCA = self.getAtom('CA')
-        aC  = self.getAtom('C')
-        aO  = self.getAtom('O')
-        aCB = self.getAtom('CB')
+        aN  = self.get_atom('N')
+        aCA = self.get_atom('CA')
+        aC  = self.get_atom('C')
+        aO  = self.get_atom('O')
+        aCB = self.get_atom('CB')
 
         try:
-            naN = self.getOffsetResidue(1).getAtom('N')
+            naN = self.get_offset_residue(1).get_atom('N')
         except AttributeError:
             naN = None
      
@@ -750,24 +747,24 @@ class AminoAcidResidue(Residue):
         CA_CB = calculateDistance(aCA, aCB)
         return (N_CA, CA_C, C_O, CA_CB, C_nN)
 
-    def calcMainchainBondAngle(self):
+    def calc_mainchain_bond_angle(self):
         """Calculates main chain bond angles (N-CA-C, N-CA-CB, CB-CA-C,
         CA-C-O, CA-C-(next)N, C-(next residue)N-(next residue)CA) and
         returnst the result as a 6-tuple in that order.  Angles involving
         missing atoms are returned as None in the tuple.
         """
-        aN       = self.getAtom('N')
-        aCA      = self.getAtom('CA')
-        aC       = self.getAtom('C')
-        aO       = self.getAtom('O')
-        aCB      = self.getAtom('CB')
+        aN       = self.get_atom('N')
+        aCA      = self.get_atom('CA')
+        aC       = self.get_atom('C')
+        aO       = self.get_atom('O')
+        aCB      = self.get_atom('CB')
 
         naN      = None
         naCA     = None
-        next_res = self.getOffsetResidue(1)
+        next_res = self.get_offset_residue(1)
         if next_res:
-            naN  = next_res.getAtom('N')
-            naCA = next_res.getAtom('CA')
+            naN  = next_res.get_atom('N')
+            naCA = next_res.get_atom('CA')
 
         N_CA_C   = calculateAngle(aN, aCA, aC)
         CA_C_O   = calculateAngle(aCA, aC, aO)
@@ -778,127 +775,127 @@ class AminoAcidResidue(Residue):
 
         return (N_CA_C, N_CA_CB, CB_CA_C, CA_C_O, CA_C_nN, C_nN_nCA) 
 
-    def calcTorsionPsi(self):
+    def calc_torsion_psi(self):
         """Calculates the Psi torsion angle of the amino acid.  Raises a
         CTerminal exception if called on a C-terminal residue which does
         not have a Psi torsion angle.
         """
-        next_res = self.getOffsetResidue(1)
+        next_res = self.get_offset_residue(1)
         if not next_res:
             return None
 
-        aN  = self.getAtom('N')
-        aCA = self.getAtom('CA')
-        aC  = self.getAtom('C')
-        naN = next_res.getAtom('N')
+        aN  = self.get_atom('N')
+        aCA = self.get_atom('CA')
+        aC  = self.get_atom('C')
+        naN = next_res.get_atom('N')
         return calculateTorsionAngle(aN, aCA, aC, naN)
 
-    def calcTorsionPhi(self):
+    def calc_torsion_phi(self):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
         NTerminal exception if called on a N-terminal residue which does
         not have a Phi torsion angle.
         """
-        prev_res = self.getOffsetResidue(-1)
+        prev_res = self.get_offset_residue(-1)
         if not prev_res:
             return None
 
-        paC = prev_res.getAtom('C')
-        aN  = self.getAtom('N')
-        aCA = self.getAtom('CA')
-        aC  = self.getAtom('C')
+        paC = prev_res.get_atom('C')
+        aN  = self.get_atom('N')
+        aCA = self.get_atom('CA')
+        aC  = self.get_atom('C')
         return calculateTorsionAngle(paC, aN, aCA, aC)
 
-    def calcTorsionOmega(self):
+    def calc_torsion_omega(self):
         """Calculates the Omega torsion angle of the amino acid. Raises a
         CTerminal exception if called on a C-terminal residue which does
         not have a Omega torsion angle.
         """
-        next_res = self.getOffsetResidue(1)
+        next_res = self.get_offset_residue(1)
         if not next_res:
             return None
 
-        aCA  = self.getAtom('CA')
-        aC   = self.getAtom('C')
-        naN  = next_res.getAtom('N')
-        naCA = next_res.getAtom('CA')
+        aCA  = self.get_atom('CA')
+        aC   = self.get_atom('C')
+        naN  = next_res.get_atom('N')
+        naCA = next_res.get_atom('CA')
         return calculateTorsionAngle(aCA, aC, naN, naCA)
 
-    def isCis(self):
+    def is_cis(self):
         """Returns true if this is a CIS amino acid, otherwise returns false.
-        It uses calcTorsionOmega.
+        It uses calc_torsion_omega.
         """
-        omega = self.calcTorsionOmega()
+        omega = self.calc_torsion_omega()
         return abs(omega) > (math.pi / 2.0)
 
-    def calcPuckerTorsion(self, conf_id = None):
+    def calc_pucker_torsion(self, conf_id = None):
         """Calculates the Pucker torsion of a ring system.  Returns None
         for Amino Acids which do not have Pucker torsion angles.
         """
-        mon = self.getStructure().library[self.res_name]
+        mon = self.get_structure().library[self.res_name]
         if not mon.pucker_definition:
             return None
 
-        a1 = self.getAtom(mon.pucker_definition[0])
-        a2 = self.getAtom(mon.pucker_definition[1])
-        a3 = self.getAtom(mon.pucker_definition[2])
-        a4 = self.getAtom(mon.pucker_definition[3])
+        a1 = self.get_atom(mon.pucker_definition[0])
+        a2 = self.get_atom(mon.pucker_definition[1])
+        a3 = self.get_atom(mon.pucker_definition[2])
+        a4 = self.get_atom(mon.pucker_definition[3])
         return calculateTorsionAngle(a1, a2, a3, a4)
 
-    def calcTorsionChi1(self):
-        mon = self.getStructure().library[self.res_name]
+    def calc_torsion_chi1(self):
+        mon = self.get_structure().library[self.res_name]
         if not mon.chi1_definition:
             return None
         
-        a1 = self.getAtom(mon.chi1_definition[0])
-        a2 = self.getAtom(mon.chi1_definition[1])
-        a3 = self.getAtom(mon.chi1_definition[2])
-        a4 = self.getAtom(mon.chi1_definition[3])
+        a1 = self.get_atom(mon.chi1_definition[0])
+        a2 = self.get_atom(mon.chi1_definition[1])
+        a3 = self.get_atom(mon.chi1_definition[2])
+        a4 = self.get_atom(mon.chi1_definition[3])
         return calculateTorsionAngle(a1, a2, a3, a4)
 
-    def calcTorsionChi2(self):
-        mon = self.getStructure().library[self.res_name]
+    def calc_torsion_chi2(self):
+        mon = self.get_structure().library[self.res_name]
         if not mon.chi2_definition:
             return None
         
-        a1 = self.getAtom(mon.chi2_definition[0])
-        a2 = self.getAtom(mon.chi2_definition[1])
-        a3 = self.getAtom(mon.chi2_definition[2])
-        a4 = self.getAtom(mon.chi2_definition[3])
+        a1 = self.get_atom(mon.chi2_definition[0])
+        a2 = self.get_atom(mon.chi2_definition[1])
+        a3 = self.get_atom(mon.chi2_definition[2])
+        a4 = self.get_atom(mon.chi2_definition[3])
         return calculateTorsionAngle(a1, a2, a3, a4)
 
-    def calcTorsionChi3(self):
-        mon = self.getStructure().library[self.res_name]
+    def calc_torsion_chi3(self):
+        mon = self.get_structure().library[self.res_name]
         if not mon.chi3_definition:
             return None
         
-        a1 = self.getAtom(mon.chi3_definition[0])
-        a2 = self.getAtom(mon.chi3_definition[1])
-        a3 = self.getAtom(mon.chi3_definition[2])
-        a4 = self.getAtom(mon.chi3_definition[3])
+        a1 = self.get_atom(mon.chi3_definition[0])
+        a2 = self.get_atom(mon.chi3_definition[1])
+        a3 = self.get_atom(mon.chi3_definition[2])
+        a4 = self.get_atom(mon.chi3_definition[3])
         return calculateTorsionAngle(a1, a2, a3, a4)
 
-    def calcTorsionChi4(self):
-        mon = self.getStructure().library[self.res_name]
+    def calc_torsion_chi4(self):
+        mon = self.get_structure().library[self.res_name]
         if not mon.chi4_definition:
             return None
         
-        a1 = self.getAtom(mon.chi4_definition[0])
-        a2 = self.getAtom(mon.chi4_definition[1])
-        a3 = self.getAtom(mon.chi4_definition[2])
-        a4 = self.getAtom(mon.chi4_definition[3])
+        a1 = self.get_atom(mon.chi4_definition[0])
+        a2 = self.get_atom(mon.chi4_definition[1])
+        a3 = self.get_atom(mon.chi4_definition[2])
+        a4 = self.get_atom(mon.chi4_definition[3])
         return calculateTorsionAngle(a1, a2, a3, a4)
 
-    def calcTorsionChi(self):
+    def calc_torsion_chi(self):
         """Calculates CHI side-chain torsion angles according to the
         amino acid specific definitions in the AminoAcids library.
         Returns the 4-tuple (CHI1, CHI2, CHI3, CHI4).  Angles involving
         missing atoms, or angles which do not exist for the amino acid
         are returned as None in the tuple.
         """
-        chi1 = self.calcTorsionChi1()
-        chi2 = self.calcTorsionChi2()
-        chi3 = self.calcTorsionChi3()
-        chi4 = self.calcTorsionChi4()
+        chi1 = self.calc_torsion_chi1()
+        chi2 = self.calc_torsion_chi2()
+        chi3 = self.calc_torsion_chi3()
+        chi4 = self.calc_torsion_chi4()
         return (chi1, chi2, chi3, chi4)
 
 
@@ -982,7 +979,7 @@ class Atom(object):
         return len(self.__alt_loc_list)
 
     def __getitem__(self, x):
-        """This is a alternative to calling getAltLoc, but a KeyError
+        """This is a alternative to calling get_alt_loc, but a KeyError
         exception is raised if the alt_loc Atom is not found.
         """
         if type(x) == StringType:
@@ -1002,7 +999,7 @@ class Atom(object):
     def __contains__(self, x):
         return self[x] in self.__alt_loc_list
 
-    def addAltLoc(self, atom):
+    def add_alt_loc(self, atom):
         assert isinstance(atom, Atom)
         assert atom not in self.__alt_loc_list
 
@@ -1010,7 +1007,7 @@ class Atom(object):
         atom.__alt_loc_list = self.__alt_loc_list
         self.__alt_loc_list.sort()
 
-    def getAltLoc(self, alt_loc):
+    def get_alt_loc(self, alt_loc):
         """Returns the Atom object matching the alt_loc argument."""
         assert type(alt_loc) == StringType
 
@@ -1019,20 +1016,20 @@ class Atom(object):
         except KeyError:
             return None
 
-    def iterAltLoc(self):
+    def iter_alt_loc(self):
         """Iterate over all alt_loc versions of this atom in the
         alphabetical order of the alt_loc labels.  If there are no
         alt_loc versions, do not iterate."""
         return iter(self)
 
-    def createBond(self, atom, bond_alt_loc = False):
+    def create_bond(self, atom, bond_alt_loc = False):
         """Creates a bond between two Atom objects.  If bond_alt_loc
         is True, then the bond is also formed between the alternate
         locations of the same atom."""
         assert isinstance(atom, Atom)
 
         def make_bond(a1, a2):
-            if a1.getBond(a2):
+            if a1.get_bond(a2):
                 return
             bond = Bond(a1, a2)
             a1.bond_list.append(bond)
@@ -1062,34 +1059,34 @@ class Atom(object):
         else:
             make_bond(atom)
 
-    def getBond(self, atom):
+    def get_bond(self, atom):
         """Returns the Bond connecting self with the argument atom."""
         assert isinstance(atom, Atom)
 
         for bond in self.bond_list:
-            if atom == bond.getAtom1() or atom == bond.getAtom2():
+            if atom == bond.get_atom1() or atom == bond.get_atom2():
                 return bond
         return None
 
-    def iterBonds(self):
+    def iter_bonds(self):
         """Iterates over all the Bond edges connected to self."""
         for bond in self.bond_list:
             yield bond
 
-    def iterBondedAtoms(self):
+    def iter_bonded_atoms(self):
         """Iterates over all the Atoms bonded to self."""
-        for bond in self.iterBonds():
-            yield bond.getPartner(self)
+        for bond in self.iter_bonds():
+            yield bond.get_partner(self)
 
-    def getChain(self):
+    def get_chain(self):
         """Return the parent Chain object."""
-        return self.getFragment().getChain()
+        return self.get_fragment().get_chain()
 
-    def getStructure(self):
+    def get_structure(self):
         """Return the parent Structure object,"""
-        return self.getChain().getStructure()
+        return self.get_chain().get_structure()
 
-    def calcAnisotropy(self):
+    def calc_anisotropy(self):
         """Calculates the ansitropy of that atom."""
         ## no Anisotropic values, we have a spherical atom
         if not self.U: return 1.0
@@ -1103,19 +1100,19 @@ class Atom(object):
         ansotropy = min(evals) / max(evals)
         return ansotropy
         
-    def iterAtomsByDistance(self, max_distance = None):
+    def iter_atomsByDistance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the
         farthest up to the cutoff distance max_distance if given.  Yields
         the 2-tuple (dist, atm)."""
         list = []
 
         if max_distance:
-            for atm in self.getStructure().iterAtoms():
+            for atm in self.get_structure().iter_atoms():
                 d = calculateDistance(self, atm)
                 if d <= max_distance:
                     list.append((calculateDistance(self, atm), atm))
         else:
-            for atm in self.getStructure().iterAtoms():
+            for atm in self.get_structure().iter_atoms():
                 list.append((calculateDistance(self, atm), atm))
 
 
@@ -1130,25 +1127,25 @@ class Bond(object):
         assert isinstance(atom2, Atom)
         assert atom1 != atom2
 
-        self.getAtom1 = weakref.ref(atom1)
-        self.getAtom2 = weakref.ref(atom2)
+        self.get_atom1 = weakref.ref(atom1)
+        self.get_atom2 = weakref.ref(atom2)
 
     def __str__(self):
-        return "Bond(%s...%s)" % (self.getAtom1(), self.getAtom2())
+        return "Bond(%s...%s)" % (self.get_atom1(), self.get_atom2())
 
-    def getPartner(self, atm):
-        if   atm == self.getAtom1(): return self.getAtom2()
-        elif atm == self.getAtom2(): return self.getAtom1()
+    def get_partner(self, atm):
+        if   atm == self.get_atom1(): return self.get_atom2()
+        elif atm == self.get_atom2(): return self.get_atom1()
         return None
 
-    def getFragment(self):
-        return self.getAtom1().getFragment()
+    def get_fragment(self):
+        return self.get_atom1().get_fragment()
 
-    def getChain(self):
-        return self.getAtom1().getChain()
+    def get_chain(self):
+        return self.get_atom1().get_chain()
 
-    def getStructure(self):
-        return self.getAtom1().getStructure()
+    def get_structure(self):
+        return self.get_atom1().get_structure()
 
 
 class FragmentList(list):

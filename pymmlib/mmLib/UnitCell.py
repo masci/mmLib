@@ -22,7 +22,7 @@ class UnitCell(object):
         return "UnitCell(a=%f, b=%f, c=%f, alpha=%f, beta=%f, gamma=%f)" % (
             self.a, self.b, self.c, self.alpha, self.beta, self.gamma)
 
-    def calcV(self):
+    def calc_v(self):
         """Calculates the volume of the rhombohedrial created by the
         unit vectors a1/|a1|, a2/|a2|, a3/|a3|."""
         cos_alpha = cos(self.alpha)
@@ -34,13 +34,13 @@ class UnitCell(object):
                          (cos_gamma * cos_gamma) +
                          (2 * cos_alpha * cos_beta * cos_gamma) )
 
-    def calcVolume(self):
+    def calc_volume(self):
         """Calculates the volume of the unit cell."""
-        return self.a * self.b * self.c * self.calcV()
+        return self.a * self.b * self.c * self.calc_v()
 
-    def calcReciprocalUnitCell(self):
+    def calc_reciprocal_unit_cell(self):
         """Corresponding reciprocal unit cell."""
-        V = self.calcVolume()
+        V = self.calc_volume()
 
         sin_alpha = sin(self.alpha)
         sin_beta  = sin(self.beta)
@@ -63,11 +63,11 @@ class UnitCell(object):
 
         return UnitCell(ra, rb, rc, ralpha, rbeta, rgamma)
 
-    def calcFractionalizationMatrix(self):
+    def calc_fractionalization_matrix(self):
         """Cartesian to fractional coordinates."""
-        return transpose(self.calcOrthogonalizationMatrix())
+        return transpose(self.calc_orthogonalization_matrix())
         
-    def calcOrthogonalizationMatrix(self):
+    def calc_orthogonalization_matrix(self):
         """Fractional to cartesian coordinates."""
         sin_alpha = sin(self.alpha)
         sin_beta  = sin(self.beta)
@@ -85,15 +85,15 @@ class UnitCell(object):
         o23 = (self.c * (cos_alpha - cos_beta*cos_gamma)) / sin_gamma
         o31 = 0.0
         o32 = 0.0
-        o33 = (self.c * self.calcV()) / sin_gamma
+        o33 = (self.c * self.calc_v()) / sin_gamma
 
         return array([[o11, o12, o13],
                       [o21, o22, o23],
                       [o31, o32, o33]])
 
-    def calcCartisianUnitCellAxes(self):
+    def calc_cartisian_unit_cell_axes(self):
         return matrixmultiply(
-            self.calcOrthogonalizationMatrix(),
+            self.calc_orthogonalization_matrix(),
             array([[1.0, 0.0, 0.0],
                    [0.0, 1.0, 0.0],
                    [0.0, 0.0, 1.0]]))
@@ -111,12 +111,12 @@ if __name__ == "__main__":
                [0.0, 0.0, 1.0]])
 
     print uc
-    print "volume                   = ",uc.calcV()
-    print "cell volume              = ",uc.calcVolume()
-    print "fractionalization matrix =\n",uc.calcFractionalizationMatrix()
-    print "orthogonalization matrix =\n",uc.calcOrthogonalizationMatrix()
+    print "volume                   = ",uc.calc_v()
+    print "cell volume              = ",uc.calc_volume()
+    print "fractionalization matrix =\n",uc.calc_fractionalization_matrix()
+    print "orthogonalization matrix =\n",uc.calc_orthogonalization_matrix()
     print "orth * e =\n",matrixmultiply(
-        uc.calcOrthogonalizationMatrix(), e)
+        uc.calc_orthogonalization_matrix(), e)
 
     print "================================================="
 
@@ -126,9 +126,9 @@ if __name__ == "__main__":
     print "TEST CASE #2: Reciprocal of above unit cell "
     print
 
-    ruc = uc.calcReciprocalUnitCell()
+    ruc = uc.calc_reciprocal_unit_cell()
     print ruc
-    print "volume      = ",ruc.calcV()
-    print "cell volume = ",ruc.calcVolume()
+    print "volume      = ",ruc.calc_v()
+    print "cell volume = ",ruc.calc_volume()
     
     print "================================================="

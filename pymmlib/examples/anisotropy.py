@@ -20,9 +20,9 @@ def main(path):
     anisou_list = []
 
     ## iterate over all atoms in the structure
-    for poly in struct.iterPolypeptides():
-        for atm in poly.iterAtoms():
-            anisou = atm.calcAnisotropy()	
+    for res in struct.iter_amino_acids():
+        for atm in res.iter_atoms():
+            anisou = atm.calc_anisotropy()	
             anisou_list.append(anisou)
 
     ## this function counts the number of anisotropic values in

@@ -57,7 +57,7 @@ def SaveStructure(fil,
     """Saves a mmPython Structure class into a supported file type."""
     format = decode_format(fil, format)
     if   format == "PDB":
-        return StructurePDBFileBuilder(structure).pdb_file.saveFile(fil)
+        return StructurePDBFileBuilder(structure).pdb_file.save_file(fil)
     elif format == "CIF":
         pass
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))

@@ -66,11 +66,11 @@ class MTZFile:
         return str(self.column_list)
     
 
-    def getDataList(self):
+    def get_data_list(self):
         return self.data_list
 
 
-    def loadFile(self, fil):
+    def load_file(self, fil):
         self.fil = OpenFile(fil, "rb")
 
         ## check MTZ file header
@@ -135,7 +135,7 @@ class MTZFile:
             self.data_list.append(row)
 
     
-    def saveFile(self, fil):
+    def save_file(self, fil):
         pass
 
 
@@ -175,8 +175,8 @@ if __name__ == "__main__":
         sys.exit(1)
     
     mtz = MTZFile()
-    mtz.loadFile(path)
+    mtz.load_file(path)
     print mtz
 
-    for row in mtz.getDataList():
+    for row in mtz.get_data_list():
         print row
