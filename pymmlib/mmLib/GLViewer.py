@@ -622,6 +622,12 @@ class OpenGLRenderMethods(object):
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
         """
+        glaccel.tube(
+            pos1[0], pos1[1], pos1[2],
+            pos2[0], pos2[1], pos2[2],
+            radius)
+        return
+
         tube                = pos2 - pos1
         tube_length         = length(tube)
 
@@ -644,15 +650,10 @@ class OpenGLRenderMethods(object):
 
         glPopMatrix()
 
-    def glr_cpk(self, position, radius, quality):
+    def glr_sphere(self, position, radius, quality):
         """Draw a atom as a CPK sphere.
         """
-        glEnable(GL_LIGHTING)
-        
-        glPushMatrix()
-        glTranslatef(*position)
-        glutSolidSphere(radius, quality, quality)
-        glPopMatrix()
+        glaccel.sphere(position[0], position[1], position[2], radius, quality)
 
     def glr_cross(self, position, color, line_width):
         """Draws atom with a cross of lines.
@@ -730,20 +731,16 @@ class OpenGLRenderMethods(object):
         given the gaussian variance-covariance matrix U at the given position.
         C=1.8724 = 68%
         """
-        Ui = inverse(U)
-
         glaccel.Uellipse(
             position[0], position[1], position[2],
-            Ui[0,0], Ui[1,1], Ui[2,2], Ui[0,1], Ui[0,2], Ui[1,2],
-            GAUSS3C[prob],
-            3)
+            U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
+            GAUSS3C[prob], 3)
 
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of the
         gaussian variance-covariance matrix U at the given position.  This
         is a peanut-shaped surface. (Note: reference the peanut paper!)
         """
-        
         glaccel.Upeanut(
             position[0], position[1], position[2],
             U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
@@ -1515,7 +1512,7 @@ class GLAtomList(GLDrawList):
             self.glr_set_material_rgb(r, g, b, a)
 
             for atm_alt in atm.iter_alt_loc():
-                self.glr_cpk(
+                self.glr_sphere(
                     pos,
                     self.properties["cpk_scale_radius"] * radius,
                     self.properties["sphere_quality"])
@@ -1523,7 +1520,7 @@ class GLAtomList(GLDrawList):
             a = self.properties["cpk_opacity"]
             self.glr_set_material_rgb(r, g, b, a)
 
-            self.glr_cpk(
+            self.glr_sphere(
                 pos,
                 self.properties["cpk_scale_radius"] * radius,
                 self.properties["sphere_quality"])
@@ -1619,7 +1616,7 @@ class GLAtomList(GLDrawList):
                 self.glr_tube(pos, end, stick_radius)
 
             ## draw ball
-            self.glr_cpk(pos, ball_radius, 10)
+            self.glr_sphere(pos, ball_radius, 10)
             
     def draw_cross(self, atm, pos):
         """Draws atom with a cross of lines.
@@ -1661,12 +1658,12 @@ class GLAtomList(GLDrawList):
                         if last_pos==None:
                             last_pos = pos
                         else:
-                            self.glr_cpk(last_pos, trace_radius, 12)
+                            self.glr_sphere(last_pos, trace_radius, 12)
                             self.glr_tube(last_pos, pos, trace_radius)
                             last_pos = pos
 
             if last_pos!=None:
-                self.glr_cpk(last_pos, trace_radius, 10)
+                self.glr_sphere(last_pos, trace_radius, 10)
 
     def draw_symmetry_debug(self):
         """Draws crosses where all the symmetry equivalent atoms should be.
@@ -3069,7 +3066,7 @@ class GLTLSGroup(GLDrawList):
         ## put a small sphere at the center of reaction
         r, g, b = self.properties["Utls_color"]        
         self.glr_set_material_rgb(r, g, b, 1.0)
-        self.glr_cpk(array([0.0, 0.0, 0.0]), 0.05, 12)
+        self.glr_sphere(array([0.0, 0.0, 0.0]), 0.05, 12)
         
         ## T: units (A^2)
         self.glr_Uaxes(
@@ -3521,13 +3518,15 @@ class GLViewer(GLObject):
         lists, they will be compiled while they are drawn, since this is
         a useful optimization.
         """
-
         ## OpenGL Features
         #glEnable(GL_AUTO_NORMAL)
         #glEnable(GL_NORMALIZE)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-
+        
+        ## Enables Smooth Color Shading
+	glShadeModel(GL_SMOOTH)
+        
         ## inital orientation
         R = self.properties["R"]
         t = self.properties["t"]

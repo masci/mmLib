@@ -67,7 +67,8 @@ def extension_list():
                             "/usr/X11R6/include"],
             library_dirs = ["/usr/X11/lib",
                             "/usr/X11R6/lib"],
-            libraries    = ["m", "X11", "Xi", "Xext", "Xmu", "GL", "GLU"]),
+            libraries    = ["m", "X11", "Xi", "Xext", "Xmu", "GL", "GLU",
+                            "glut"]),
     ]
     return elist
 
