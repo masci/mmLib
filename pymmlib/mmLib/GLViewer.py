@@ -1541,7 +1541,7 @@ class GLAtomList(GLDrawList):
         ## ADPs
         self.glo_add_property(
             { "name":       "adp_prob",
-              "desc":       "Contour Probability",
+              "desc":       "Isoprobability Magnitude",
               "catagory":   "ADP",
               "type":       "integer",
               "range":      PROP_PROBABILTY_RANGE,
@@ -1564,14 +1564,14 @@ class GLAtomList(GLDrawList):
               "action":     "recompile_Uaxes" })
         self.glo_add_property(
             { "name":       "ellipse",
-              "desc":       "Show Thermal Ellipseoids",
+              "desc":       "Show Thermal Ellipsoids",
               "catagory":   "Show/Hide",
               "type":       "boolean",
               "default":    False,
               "action":     "recompile_Uellipse" })
         self.glo_add_property(
             { "name":       "ellipse_opacity",
-              "desc":       "Thermal Ellipseoid Opacity",
+              "desc":       "Thermal Ellipsoid Opacity",
               "catagory":   "ADP",
               "type":       "float",
               "range":      PROP_OPACITY_RANGE,
@@ -2095,7 +2095,7 @@ class GLAtomList(GLDrawList):
             self.glr_Uaxes(pos, U, prob, rgb, 1.0)
 
     def draw_Uellipse(self):
-        """Draw the ADP determined probability ellipseoid.
+        """Draw the ADP determined probability ellipsoid.
         """
         opacity = self.properties["ellipse_opacity"]
         prob    = self.properties["adp_prob"]

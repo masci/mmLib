@@ -56,7 +56,8 @@ def goodness_color(x):
 ###############################################################################
 ### GLViewer Rendering components for TLS Groups
 ###
-        
+
+
 class GLTLSAtomList(GLAtomList):
     """OpenGL visualizations of TLS group atoms.
     """
@@ -71,7 +72,7 @@ class GLTLSAtomList(GLAtomList):
         ## Show/Hide
         self.glo_add_property(
             { "name":        "fan_visible",
-              "desc":        "Show Fans from COR to Backbone",
+              "desc":        "Show COR-Backbone Fan",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -79,21 +80,21 @@ class GLTLSAtomList(GLAtomList):
 
         self.glo_add_property(
             { "name":        "L1_animation_visible",
-              "desc":        "Show L1 Screw Animation",
+              "desc":        "Show L<sub>1</sub> Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_animation_visible",
-              "desc":        "Show L2 Screw Animation",
+              "desc":        "Show L<sub>2</sub> Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_animation_visible",
-              "desc":        "Show L3 Screw Animation",
+              "desc":        "Show L<sub>3</sub> Screw Animation",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
@@ -110,7 +111,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "fan_opacity",
-              "desc":        "COR/Backbone Fan Opacity",
+              "desc":        "COR-Backbone Fan Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
@@ -118,21 +119,21 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile_fan" })
         self.glo_add_property(
             { "name":        "L1_scale",
-              "desc":        "Scale L1 Rotation", 
+              "desc":        "Scale L<sub>1</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     1.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_scale",
-              "desc":        "Scale L2 Rotation", 
+              "desc":        "Scale L<sub>2</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     1.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_scale",
-              "desc":        "Scale L3 Rotation", 
+              "desc":        "Scale L<sub>3</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     1.0,
@@ -149,7 +150,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "T",
-              "desc":        "Translation Tensor (A*A)",
+              "desc":        "T<sup>COR</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -157,7 +158,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "rT",
-              "desc":        "Reduced Translation Tensor (A*A)",
+              "desc":        "T<sup>r</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -165,7 +166,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L",
-              "desc":        "Libration Tensor (DEG*DEG)",
+              "desc":        "L<sup>COR</sup> Tensor (DEG<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -173,7 +174,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "S",
-              "desc":        "Skew Tensor (A*DEG)",
+              "desc":        "S<sup>COR</sup> Tensor (A*DEG)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -181,7 +182,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
-              "desc":        "L1 Eigen Vector", 
+              "desc":        "L<sub>1</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -189,7 +190,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_vec",
-              "desc":        "L2 Eigen Vector", 
+              "desc":        "L<sub>2</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -197,7 +198,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_vec",
-              "desc":        "L3 Eigen Vector", 
+              "desc":        "L<sub>3</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -205,7 +206,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_val",
-              "desc":        "L1 Eigen Value", 
+              "desc":        "L<sub>1</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -213,7 +214,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_val",
-              "desc":        "L2 Eigen Value", 
+              "desc":        "L<sub>2</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -221,7 +222,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_val",
-              "desc":        "L3 Eigen Value", 
+              "desc":        "L<sub>3</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -229,7 +230,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_rho",
-              "desc":        "L1 translation from COR", 
+              "desc":        "L<sub>1</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -237,7 +238,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_rho",
-              "desc":        "L2 translation from COR", 
+              "desc":        "L<sub>2</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -245,7 +246,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_rho",
-              "desc":        "L3 translation from COR", 
+              "desc":        "L<sub>3</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -253,7 +254,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
-              "desc":        "L1 screw pitch (A/DEG)", 
+              "desc":        "L<sub>1</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -261,7 +262,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_pitch",
-              "desc":        "L2 screw pitch (A/DEG)", 
+              "desc":        "L<sub>2</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -269,7 +270,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_pitch",
-              "desc":        "L3 screw pitch (A/DEG)", 
+              "desc":        "L<sub>3</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -279,21 +280,21 @@ class GLTLSAtomList(GLAtomList):
         ## Simulation State
         self.glo_add_property(
             { "name":        "L1_rot",
-              "desc":        "L1 Rotation", 
+              "desc":        "L<sub>1</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_rot",
-              "desc":        "L2 Rotation", 
+              "desc":        "L<sub>2</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_rot",
-              "desc":        "L3 Rotation", 
+              "desc":        "L<sub>3</sub> Rotation", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
@@ -472,6 +473,8 @@ class GLTLSGroup(GLDrawList):
         self.glo_link_child_property(
             "fan_visible", "gl_atom_list", "fan_visible")
         self.glo_link_child_property(
+            "fan_opacity", "gl_atom_list", "fan_opacity")
+        self.glo_link_child_property(
             "axes_rT", "gl_atom_list", "U")
         self.glo_link_child_property(
             "ellipse_rT", "gl_atom_list", "ellipse")
@@ -625,7 +628,7 @@ class GLTLSGroup(GLDrawList):
         ## TLS Analysis
         self.glo_add_property(
             { "name":        "COR",
-              "desc":        "TLS Center of Reaction",
+              "desc":        "TLS Center of Reaction", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -633,7 +636,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "T",
-              "desc":        "Translation Tensor (A*A)",
+              "desc":        "T<sup>COR</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -641,7 +644,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "rT",
-              "desc":        "Reduced Translation Tensor (A*A)",
+              "desc":        "T<sup>r</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -649,7 +652,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L",
-              "desc":        "Libration Tensor (DEG*DEG)",
+              "desc":        "L<sup>COR</sup> Tensor (DEG<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -657,7 +660,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "S",
-              "desc":        "Skew Tensor (A*DEG)",
+              "desc":        "S<sup>COR</sup> Tensor (A*DEG)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3,3)",
@@ -665,7 +668,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
-              "desc":        "L1 Eigen Vector",
+              "desc":        "L<sub>1</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -673,7 +676,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_vec",
-              "desc":        "L2 Eigen Vector",
+              "desc":        "L<sub>2</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -681,7 +684,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_vec",
-              "desc":        "L3 Eigen Vector", 
+              "desc":        "L<sub>3</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -689,7 +692,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_val",
-              "desc":        "L1 Eigen Value", 
+              "desc":        "L<sub>1</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -697,7 +700,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_val",
-              "desc":        "L2 Eigen Value", 
+              "desc":        "L<sub>2</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -705,7 +708,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_val",
-              "desc":        "L3 Eigen Value", 
+              "desc":        "L<sub>3</sub> Eigen Value", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -713,7 +716,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_rho",
-              "desc":        "L1 Translation Vector from COR", 
+              "desc":        "L<sub>1</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -721,7 +724,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_rho",
-              "desc":        "L2 Translation Vector from COR", 
+              "desc":        "L<sub>2</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -729,7 +732,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_rho",
-              "desc":        "L3 Translation Vector from COR", 
+              "desc":        "L<sub>3</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "array(3)",
@@ -737,7 +740,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
-              "desc":        "L1 screw pitch (A/DEG)", 
+              "desc":        "L<sub>1</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -745,7 +748,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_pitch",
-              "desc":        "L2 screw pitch (A/DEG)", 
+              "desc":        "L<sub>2</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -753,7 +756,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_pitch",
-              "desc":        "L3 screw pitch (A/DEG)", 
+              "desc":        "L<sub>3</sub> Screw Pitch (A/DEG)", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
               "type":        "float",
@@ -812,35 +815,35 @@ class GLTLSGroup(GLDrawList):
               "action":    ["recompile", "recalc_positions"] })
         self.glo_add_property(
             { "name":        "fan_visible",
-              "desc":        "Show Fans from COR to Backbone",
+              "desc":        "Show COR-Backbone Fan",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "TLS_visible",
-              "desc":        "Show TLS Tensors",
+              "desc":        "Show TLS T<sup>r</sup> Ellipsoid/Screw Axes",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "recompile_tensors" })
         self.glo_add_property(
             { "name":        "U",
-              "desc":        "Show TLS Thermal Axes",
+              "desc":        "Show U<sup>TLS</sup> Thermal Axes",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile_Utls_axes" })
         self.glo_add_property(
             { "name":        "ellipse",
-              "desc":        "Show TLS Thermal Ellipsoids",
+              "desc":        "Show U<sup>TLS</sup> Thermal Ellipsoids",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile_Utls_ellipse" })
         self.glo_add_property(
             { "name":        "rms",
-              "desc":        "Show TLS Thermal Peanuts",
+              "desc":        "Show U<sup>TLS</sup> Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -848,21 +851,21 @@ class GLTLSGroup(GLDrawList):
 
         self.glo_add_property(
             { "name":        "axes_rT",
-              "desc":        "Show Reduced Translation Thermal Axes", 
+              "desc":        "Show T<sup>r</sup> Thermal Axes", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "ellipse_rT",
-              "desc":        "Show Reduced Translation Thermal Ellipsoids", 
+              "desc":        "Show  T<sup>r</sup> Thermal Ellipsoids", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "rms_rT",
-              "desc":        "Show Reduced Translation Thermal Peanuts",
+              "desc":        "Show  T<sup>r</sup> Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -893,7 +896,7 @@ class GLTLSGroup(GLDrawList):
         ## TLS
         self.glo_add_property(
             { "name":        "add_biso",
-              "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
+              "desc":        "Add Atom B<sup>ISO</sup> to U<sup>TLS</sup>",
               "catagory":    "TLS",
               "type":        "boolean",
               "default":     False,
@@ -908,19 +911,12 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile" })
         self.glo_add_property(
             { "name":       "adp_prob",
-              "desc":       "Contour Probability",
+              "desc":       "Isoprobability Magnitude",
               "catagory":   "TLS",
               "type":       "integer",
               "range":      PROP_PROBABILTY_RANGE,
               "default":    50,
               "action":     "recompile" })
-        self.glo_add_property(
-            { "name":       "T_line_width",
-              "desc":       "T Axes Line Width",
-              "catagory":   "TLS",
-              "type":       "float",
-              "default":    1.0,
-              "action":     "recompile_tensors" })
         self.glo_add_property(
             { "name":       "L_axis_scale",
               "desc":       "Scale Screw Axis Length",
@@ -937,7 +933,7 @@ class GLTLSGroup(GLDrawList):
               "action":     "recompile_tensors" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
-              "desc":        "TLS Thermal Ellipseoid Opacity",
+              "desc":        "U<sup>TLS</sup> Thermal Ellipsoid Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
@@ -945,7 +941,7 @@ class GLTLSGroup(GLDrawList):
               "action":      "recompile_Utls_ellipse" })
         self.glo_add_property(
             { "name":        "rms_opacity",
-              "desc":        "TLS Thermal Peanut Opacity",
+              "desc":        "U<sup>TLS</sup> Thermal Peanut Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
@@ -956,33 +952,42 @@ class GLTLSGroup(GLDrawList):
               "desc":        "Screw Surface Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":      PROP_OPACITY_RANGE,
+              "range":       PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_surface" })
+        self.glo_add_property(
+            { "name":        "fan_opacity",
+              "desc":        "COR-Backbone Fan Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_fan" })
         self.glo_add_property(
             { "name":        "time",
               "desc":        "Simulation Time",
               "catagory":    "TLS",
               "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L1_rot",
-              "desc":        "L1 Axis Viewing Libration (DEG)",
+              "desc":        "L<sub>1</sub> Simulated Rotation (DEG)",
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L2_rot",
-              "desc":        "L2 Axis Viewing Libration (DEG)", 
+              "desc":        "L<sub>2</sub> Simulated Rotation (DEG)", 
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L3_rot",
-              "desc":        "L2 Axis Viewing Libration (DEG)",
+              "desc":        "L<sub>3</sub> Simulated Rotation (DEG)",
               "catagory":    "TLS",
               "type":        "float",
               "default":     0.0,
@@ -1197,7 +1202,7 @@ class GLTLSGroup(GLDrawList):
             self.glr_Uaxes(atm.position, Utls, prob, rgbf, 1.0)
 
     def draw_Utls_ellipse(self):
-        """Render the anisotropic thremal ellipseoids at the given probability
+        """Render the anisotropic thremal ellipsoids at the given probability
         contour calculated from the TLS model.
         """
         if self.tls_group.is_null():
@@ -1406,79 +1411,77 @@ class GLTLSChain(GLDrawList):
               "action":    "" })
         self.glo_add_property(
             { "name":        "fan_visible",
-              "desc":        "Show Fans from COR to Backbone",
+              "desc":        "Show COR-Backbone Fan",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "TLS_visible",
-              "desc":        "Show TLS Tensors",
+              "desc":        "Show TLS T<sup>r</sup> Ellipsoid/Screw Axes",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     True,
               "action":      "" })
         self.glo_add_property(
             { "name":        "U",
-              "desc":        "Show TLS Thermal Axes",
+              "desc":        "Show U<sup>TLS</sup> Thermal Axes",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "ellipse",
-              "desc":        "Show TLS Thermal Ellipsoids",
+              "desc":        "Show U<sup>TLS</sup> Thermal Ellipsoids",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "rms",
-              "desc":        "Show TLS Thermal Peanuts",
+              "desc":        "Show U<sup>TLS</sup> Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
-
         self.glo_add_property(
             { "name":        "axes_rT",
-              "desc":        "Show Reduced Translation Thermal Axes", 
+              "desc":        "Show T<sup>r</sup> Thermal Axes", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "ellipse_rT",
-              "desc":        "Show Reduced Translation Thermal Ellipsoids", 
+              "desc":        "Show T<sup>r</sup> Thermal Ellipsoids", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "rms_rT",
-              "desc":        "Show Reduced Translation Thermal Peanuts",
+              "desc":        "Show T<sup>r</sup> Thermal Peanuts",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
-
         self.glo_add_property(
             { "name":        "L1_visible",
-              "desc":        "Show Screw L1 Displacement Surface", 
+              "desc":        "Show L<sub>1</sub> Screw Displacement Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "L2_visible",
-              "desc":        "Show Screw L1 Displacement Surface", 
+              "desc":        "Show L<sub>2</sub> Screw Displacement Surface", 
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":        "L3_visible",
-              "desc":        "Show Screw L1 Displacement Surface",
+              "desc":        "Show L<sub>3</sub> Screw Displacement Surface",
               "catagory":    "Show/Hide",
               "type":        "boolean",
               "default":     False,
@@ -1487,26 +1490,20 @@ class GLTLSChain(GLDrawList):
         ## TLS
         self.glo_add_property(
             { "name":        "add_biso",
-              "desc":        "Add Atom Biso to Utls (Required for REFMAC)",
+              "desc":        "Add Atom B<sup>ISO</sup> to U<sup>TLS</sup>",
               "catagory":    "TLS",
               "type":        "boolean",
               "default":     False,
               "action":      "" })
         self.glo_add_property(
             { "name":       "adp_prob",
-              "desc":       "Contour Probability",
+              "desc":       "Isoprobability Magnitude",
               "catagory":   "TLS",
               "type":       "integer",
               "range":      PROP_PROBABILTY_RANGE,
               "default":    50,
               "action":     "" })
-        self.glo_add_property(
-            { "name":       "T_line_width",
-              "desc":       "T Axes Line Width",
-              "catagory":   "TLS",
-              "type":       "float",
-              "default":    1.0,
-              "action":     "" })
+
         self.glo_add_property(
             { "name":       "L_axis_scale",
               "desc":       "Scale Screw Axis Length",
@@ -1523,7 +1520,7 @@ class GLTLSChain(GLDrawList):
               "action":     "" })
         self.glo_add_property(
             { "name":        "ellipse_opacity",
-              "desc":        "TLS Thermal Ellipseoid Opacity",
+              "desc":        "U<sup>TLS</sup> Thermal Ellipsoid Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
@@ -1531,7 +1528,7 @@ class GLTLSChain(GLDrawList):
               "action":      "" })
         self.glo_add_property(
             { "name":        "rms_opacity",
-              "desc":        "TLS Thermal Peanut Opacity",
+              "desc":        "U<sup>TLS</sup> Thermal Peanut Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":       PROP_OPACITY_RANGE,
@@ -1539,13 +1536,20 @@ class GLTLSChain(GLDrawList):
               "action":      "" })
         self.glo_add_property(
             { "name":        "surface_opacity",
-              "desc":        "Screw Surface Opacity",
+              "desc":        "Screw Displacement Surface Opacity",
               "catagory":    "TLS",
               "type":        "float",
               "range":      PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "" })
-
+        self.glo_add_property(
+            { "name":        "fan_opacity",
+              "desc":        "COR-Backbone Fan Opacity",
+              "catagory":    "TLS",
+              "type":        "float",
+              "range":       PROP_OPACITY_RANGE,
+              "default":     1.0,
+              "action":      "recompile_fan" })
 ##         ## color methods
 ##         self.glo_add_property(
 ##             { "name":        "color_method",
@@ -1587,6 +1591,8 @@ class GLTLSChain(GLDrawList):
         self.glo_link_child_property(
             "fan_visible", child_id, "fan_visible")
         self.glo_link_child_property(
+            "fan_opacity", child_id, "fan_opacity")
+        self.glo_link_child_property(
             "TLS_visible", child_id, "TLS_visible")
 
         self.glo_link_child_property(
@@ -1613,8 +1619,6 @@ class GLTLSChain(GLDrawList):
             "add_biso", child_id, "add_biso")
         self.glo_link_child_property(
             "adp_prob", child_id, "adp_prob")
-        self.glo_link_child_property(
-            "T_line_width", child_id, "T_line_width")
         self.glo_link_child_property(
             "L_axis_scale", child_id, "L_axis_scale")
         self.glo_link_child_property(
@@ -2056,7 +2060,7 @@ class GLPropertyEditor(gtk.Notebook):
         """
         self.gl_object.glo_remove_update_callback(self.properties_update_cb)
 
-    def markup_property_label(self, prop_desc, max_len = 20):
+    def markup_property_label(self, prop_desc, max_len=40):
         """
         """
         listx    = prop_desc.get("desc", prop_desc["name"]).split()
@@ -2093,7 +2097,7 @@ class GLPropertyEditor(gtk.Notebook):
         if prop["type"]=="boolean":
             widget = gtk.CheckButton(prop.get("desc", prop["name"]))
             widget.get_child().set_markup(
-                self.markup_property_label(prop, max_len=40))
+                self.markup_property_label(prop, max_len=50))
 
         ## INTEGER
         elif prop["type"]=="integer":

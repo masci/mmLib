@@ -27,7 +27,7 @@
 
 <h3>Introduction</h3>
 <p>
-The TLSView molecular viewer specializes in the visualization of TLS rigid body displacements of macromolecular structures.  It uses OpenGL for interactive graphics rendering, and supports most of the visualization found it other programs.  It also introduces a new screw-displacement traced surface, and computer animation of conventional visualizations according to rigid body displacement parameters.  The TLS model is a more complex than a simple Euclidean rigid body displacement, and a cursory understanding of the theory behind the TLS model is required to understand the visualizations available in TLSView.  For those in a hurry, it may be enough to know that the standard interpretation of the displacements parameterized in a TLS model can be reduced to six Euclidean displacements: 3 orthogonal translational displacements, and three screw displacements about non-intersecting orthogonal axes.  This is the canonical interpretation of TLS displacement, and it is used by TLSView to animate the displacement of the atoms in a TLS group.
+The TLSView molecular viewer specializes in visualizing TLS rigid body displacements in macromolecular structures.  It uses OpenGL for interactive graphics rendering, and supports most of the macromolecular visualization styles found it other programs.  TLSView includes several new visualizations designed to represent TLS model parameters as physical displacements of the atomic model.  The 20 parameters of a TLS model can be interpreted as six independent rigid body displacements: three orthogonal translational displacements, and three screw displacements.  The screw displacement axes are orthogonal, but do not necessarily intersect at a common point.  This is the canonical interpretation of TLS displacement, and the trajectories of these six independent displacements are used by TLSView to draw static trajectory paths and animate atomic model visualizations.
 </p>
 
 
@@ -49,11 +49,11 @@ Here are links to well-written introductions of Chasles' Theorem, tensors, and t
 </ul>
 
 <p>
-In Euclidean space, a rigid body undergoing displacement is fully described by a 3x3 rotation matrix <var>R</var> and a 3x1 translation vector <var>t</var>.  The displacement can be simplified further and described by a simple screw displacement(see Chasles' Theorem): a rotation about a 3x1 vector up to given rotational magnitude while being translated along the vector by a magnitude proportional to the rotation(screw pitch).  Keep in mind the screw displacement takes a rigid body from one orientation to another, but the literal screw displacement path may not be the path followed by rigid body to get to the second orientation.  Even with this caveat the screw displacement is a useful concept when visualizing the rigid body displacement of a structure in a macromolecular viewer, because the magnitude of the displacements are small compared to the size of the rigid body.
+In Euclidean space, a rigid body undergoing displacement is fully described by a 3x3 rotation matrix <var>R</var> and a 3x1 translation vector <var>t</var>.  The displacement can be simplified further and described by a simple screw displacement(see Chasles' Theorem): a rotation about a 3x1 vector up to given rotational magnitude while being translated along the vector by a magnitude proportional to the rotation(screw pitch).  Keep in mind the screw displacement takes a rigid body from one orientation to another, but the literal screw displacement trajectory is probably not the actual trajectory followed by rigid body to get to the second orientation.  Even with this caveat the screw displacement trajectory is a useful concept when visualizing the rigid body displacement of a structure in a macromolecular viewer, because the magnitude of the displacements are small compared to the size of the rigid body.
 </p>
 
 <p>
-Individual anisotropic ADPs give the mean square deviation(MSD) of a atom from its mean position as measured over time and crystal lattice position during a x-ray experiment.  The TLS rigid body model predicts the anisotropic ADPs for atoms based on their vector position relative the the TLS tensor origin.  The TLS model does this assuming the atoms are all points on a rigid body undergoing displacement.  This is not a Euclidean rigid body displacement, because ADPs are the MSD magnitudes of the atom's position within a Gaussian probability distribution. The re-formulation of the Euclidean rigid body displacement to predict anisotropic ADPs results in a more complex description of rigid body motion requiring 20 unique parameters arranged into three 3x3 tensors: <var>T</var>, <var>L</var>, and <var>S</var>.  The <var>T</var> tensor, or translation tensor, is a symmetric 3x3 tensor(six unique parameters) with elements given in units of Angstroms<sup class=exponent>2</sup> just like the individual atomic anisotropic displacement tensor <var>U</var>.  The <var>T</var> tensor is the anisotropic translational displacement common to all atoms in the rigid body group.  The <var>L</var>, or libration(rotation) tensor, is also a symmetric 3x3 tensor with elements in units of <var>radians<sup class=exponent>2</sup></var>, but commonly converted to <var>degrees<sup class=exponent>2</sup></var> when reported.  The libration tensor describes rotational component of the rigid body displacement.  The <var>T</var> and <var>L</var> tensors can also be thought of as Gaussian variance-covariance tensors, which makes intuitive sense since the anisotropic ADP tensors <var>U<sup>TLS</sup></var> the TLS model predicts are also Gaussian variance-covariance tensors.  The <var>S</var> tensor is not usually symmetric, and isn't as easy to interpret directly like the <var>L</var> and <var>T</var> tensors.  It exists in the TLS model to account for a rotation-translation correlation which occurs when a rigid body undergoes rotation about three orthogonal rotation axes which do not intersect at a common point.
+The positional model used to refine crystallographic atomic coordinates is a probabilistic model.  The atomic coordinates are a atom's mean position as measured over the time of the experiment, and lattice positional differences of all crystallographically equivalent atoms.  Individual atomic ADPs give the mean square deviation(MSD) of the ensemble of crystallographically equivalent atoms from their mean position within the Gaussian model.  Gaussian MSD is also called variance, and is the square of root mean square deviation <var>sigma</var>.  The TLS rigid body model predicts the anisotropic ADPs for atoms based on their vector position relative the the TLS tensor origin.  The TLS model does this assuming the atoms are all points on a rigid body undergoing displacement.  This is not a Euclidean rigid body displacement, because ADPs are the MSD magnitudes of the atom's position.  The re-formulation of the Euclidean rigid body displacement to predict anisotropic ADPs results in a more complex description of rigid body motion requiring 20 unique parameters arranged into three 3x3 tensors: <var>T</var>, <var>L</var>, and <var>S</var>.  The <var>T</var> tensor, or translation tensor, is a symmetric 3x3 tensor(six unique parameters) with elements given in units of Angstroms<sup class=exponent>2</sup> just like the individual atomic anisotropic displacement tensor <var>U</var>.  The <var>T</var> tensor is the anisotropic translational displacement common to all atoms in the rigid body group.  The <var>L</var>, or libration(rotation) tensor, is also a symmetric 3x3 tensor with elements in units of <var>radians<sup class=exponent>2</sup></var>, but commonly converted to <var>degrees<sup class=exponent>2</sup></var> when reported.  The libration tensor describes rotational component of the rigid body displacement.  The TLS displacement parameters do not describe displacement directly, but rather give the probabilistic variance in terms of rotation and translation from the refined mean coordinates.   <var>T</var> and <var>L</var> tensors are Gaussian variance-covariance tensors, which makes intuitive sense since the anisotropic ADP tensors <var>U<sup>TLS</sup></var> the TLS model predicts are also Gaussian variance-covariance tensors.  The <var>S</var> tensor is not usually symmetric, and isn't as easy to interpret directly like the <var>L</var> and <var>T</var> tensors.  It exists in the TLS model to account for a rotation-translation correlation which occurs when a rigid body undergoes rotation about three orthogonal rotation axes which do not intersect at a common point.
 </p>
 
 <p>
@@ -63,7 +63,7 @@ Given the TLS tensors and their origin, a TLS predicted anisotropic ADP may be c
 <table width="100%" border=1>
  <caption>
   <b>Table 1</b>:
-  Linear Equations Relating TLS Tensors to the Individual Anisotropic ADP tensor <var>U<sup>TLS</sup></var> for a Atom at position <var>x,y,z</var> With Respect to the TLS Origin of Calculations
+  Linear Equations Relating TLS Tensors to the Individual Anisotropic ADP tensor <var>U<sup>TLS</sup></var> for a Atom at position <var>x,y,z</var> With Respect to the TLS Origin of Calculations.  The rotational units of units of <var>L</var> and <var>S</var> must be given in radians.
  </caption>
 
  <tr>
@@ -431,7 +431,7 @@ The reduction of a given TLS model to three translational displacements and thre
  </tr>
 
  <tr><td colspan=2>
-   <b>Figure 3</b>: Four visualizations of the same TLS group along a alpha helix segment.  One copy of the structure is located at the refined coordinates and colored by refined temperature factor.  The carbonyl atoms have been omitted for clarity.  The visualizations of TLS screw axes and <var>T<sup>r</sup></var> thermal ellipse are colored green.  Visualizations of TLS displaced atoms are also colored green.  (A) TLS calculated isoprobability thermal ellipsoids contoured at 85%.  (B) Three copies of the structure as displaced by each screw axes to a magnitude of 85% isoprobability.  (C) The trajectory surfaces of the screw displacements along the atom bond vectors. (D) A combination of B and C showing the screw displaced structure folling its trajectory surface.
+   <b>Figure 3</b>: Four visualizations of the same TLS group along a alpha helix segment.  One copy of the structure is shown at the refined coordinates and colored by refined temperature factor.  The carbonyl atoms have been omitted for clarity.  The visualizations of TLS screw axes and <var>T<sup>r</sup></var> thermal ellipse are colored green.  Visualizations of TLS displaced atoms are also colored green.  (A) TLS calculated thermal ellipsoids of TLS group atoms with a isoprobability magnitude of 85%.  (B) Three green copies of the TLS group atoms as displaced by each screw axes to a magnitude of 85% isoprobability.  (C) The trajectory surfaces caused by the TLS screw displacements.  This surface is drawn along the atom bond vectors and shows the route the structure takes as it is incrementally displaced to a isoprobability magnitude of 85%.  Each screw displacement surface passes through the mean atomic coordinates(the crysallographically refined coordinates) and is symmetric with respect to them. (D) The screw displacement surface from figure C combined with the three rod visualizations from figure B.  This figure captures the rod visualizations at one end of their maximum screw displacement during animation in TLSView.  If this were a actual animation, the each rod model would travel from one end of its screw trajectory surface to the other.  The animation uses a <var>sin</var> function for convenience(what else would you use?), but this is not meant to imply classical harmonic motion.
  </td></tr>
 </table>
 </center>
@@ -618,18 +618,210 @@ The hierarchical arrangement of graphics objects allows parent objects to contro
  
  <tr>
   <td>
-   <b>Figure 8</b>: The TLS Analysis Dialog listing the TLS groups of structure 1VJU.
+   <b>Figure 8</b>: The TLS Analysis Dialog listing the TLS groups of structure 4HVP.
   </td>
  </tr>
 </table>
 </center>
 
 <p>
-TLS structure analysis is performed through the TLS Analysis Dialog.  The dialog lists each TLS group visualized for structure.  This list contains a control to show/hide the TLS group visualization, and to turn on and off the TLS screw animation for the TLS visualization.  
-
-
-with visualization controls    and TLS statistics  a show/hide control for the individual TLS visualization, a animation control to turn on and off TLS screw displacement animation, the trace of the <var>T<sup>cor</sup></var>, the trace of 
+The TLS Analysis dialog provides a interface for loading TLS group definitions for a macromolecular structure.  Active TLS groups are listed along with  useful information and  controls over the TLS visualization, although most of the TLS visualization options are manipulated through the <b>Visualization Properties</b> dialog which can be opened automatically by double-clicking on a TLS row.  The <b>Show</b> button will show/hide the entire visualization for the TLS group, and the <b>Animate</b> button turns on/off screw displacement animations.  The <b>TLS Group</b> column describes the TLS group, usually by showing the residue range of the TLS group, but this can also be a text name if the TLS group definition was loaded from a REFMAC5 TLSIN/TLSOUT file.  The trace of the <var>T<sup>cor</sup></var> and <var>L<sup>cor</sup></var> tensors are given, the <b>Source</b> column describes the source of the TLS group.
 </p>
+
+<p>
+TLS groups can be loaded from the output files of a TLS crystallographic refinement, or fit by the method of least squares to the refined structure's isotropic or anisotropic ADPs.  TLSView supports the REFMAC5 TLSIN/TLSOUT file format.  The TLSIN file contains a listing of all TLS groups as defined by chain and residue segment.  The TLSOUT file uses the same format, but includes extra lines for each TLS group giving the origin of calculation, <var>T</var>, <var>L</var>, and <var>S</var> tensor values.  When a TLSIN file is loaded, TLSView attempts to automatically fit TLS parameters to the structure's refined ADPs for the residue ranges given.  When this fit is successful, the Source column indicates the group was "LSQ Fit".  The LSQ fit TLS parameters may be saved to a TLSOUT file by clicking the <b>Save TLSOUT</b> button.
+</p>
+
+<center>
+<table width="75%">
+ <tr>
+  <th><img src="TLS_FIT.png" alt="Figure 9"></th>
+ </tr>
+ 
+ <tr>
+  <td>
+   <b>Figure 9</b>: Illustration of how the TLSView <b>Fit TLS Groups</b> algorithm selects protein segments for testing against the TLS model.  Each segment is fit to the TLS model by least squares using its refined atomic ADPs.  A segment width of four residues is shown in this figure, but the TLSView default is six and can be set through the user interface.
+  </td>
+ </tr>
+</table>
+</center>
+
+<p>
+Fitting TLS parameters to refined ADPs with groups defined in a TLSIN file requires the user to manually select the residues for each TLS group.  This may be useful for proteins which have well defined domains, but does not help search for such regions in a protein.  TLSView implements a simple rigid body search algorithm we call a TLS Running Segment Fit(TLS-RSF) which helps identify rigid regions of a structure.  The dialog for this running this algorithm is available through the <b>Fit TLS Groups</b> button.  It works by performing a least squares fit of TLS parameters to the first <var>w</var> continuous residues of a protein or biopolymer, moving the starting residue for the segment selection up the chain by one, and repeating the TLS fit until the segment reaches the end of the polymer(<b>Figure 9</b>).  The TLS predicted atomic ADPs are then compared with the refined ADPs by a goodness of fit metric function called <b>dP<sup>2</sup></b>.  Some of the TLS parameters fit this way result in <var>T</var> and <var>L</var> tensors with negative eigenvalues in violation of intrinsic TLS model assumptions.  These groups are automatically thrown out, and the valid groups are visualized and colored by their goodness of fit.  The color gradient used ranges from yellow for the best fit group, to black for the poorest fit.  The search dialog is shown in <b>Figure 10</b> and contains options for selecting specific chains, and options to filter out side chain atoms and atoms with partial occupancy.  <b>Figure 11A</b> shows the initial visualization of the TLS groups fit by the TLS-RSF algorithm for a structure of HIV protease(4HVP).  The visualization is cluttered with screw axes from all the overlapping TLS groups.  Once the screw axes are hidden(<b>Figure 11B</b>), the backbone trace is revealed.  It is colored by TLS goodness of fit and shows similar trends in the A and B chains of the 4HVP homo dimer.  Regions where the backbone trace is white could not be fit with a valid TLS model.  These regions could be heavily disordered, or have significant internal motion.
+</p>
+
+<center>
+<table width="75%">
+ <tr>
+  <th><img src="TLS_FIT_DIALOG.png" alt="Figure 10"></th>
+ </tr>
+ 
+ <tr>
+  <td>
+   <b>Figure 10</b>: Option dialog for the TLS-RSF algorithm in TLSView.  This dialog shows chains A and B selected for TLS searching.  The residue segment length of each TLS group is set to six residues.  Side chain atoms and atoms with one bond are included in the TLS parameter least squares fit, but atoms with partial occupancy are omitted.
+  </td>
+ </tr>
+</table>
+</center>
+
+<center>
+<table width="75%">
+ <tr><td><b>(A)</b></td></tr>
+ <tr>
+  <th><img src="4HVP_TLS_FIT_AXES.png" alt="Figure 11A"></th>
+ </tr>
+ <tr><td><b>(B)</b></td></tr>
+ <tr>
+  <th><img src="4HVP_TLS_FIT.png" alt="Figure 11B"></th>
+ </tr>
+ <tr><td><b>(C)</b></td></tr>
+ <tr>
+  <th><img src="4HVP_TLS_FIT_FANS.png" alt="Figure 11C"></th>
+ </tr>
+
+ <tr>
+  <td>
+   <b>Figure 11</b>: Three visualizations of TLS-RSF generated TLS groups fit to the isotropic ADPs of HIV protease(4HVP) using a segment width of eight residues.  Many overlapping TLS groups are shown with this visualization.  Each TLS visualization is colored by its goodness of fit to the TLS model from yellow(best fit) to blue then black(poorest fit).  (A) Shows the default visualization cluttered by a overwhelming number of screw axes.  (B) Shows the same visualization with the TLS screw axes hidden.  Each residue of the backbone trace is colored using fit gradient color of TLS group which fits it best, so continuous regions of good TLS fit may span multiple TLS groups with very different displacements. (C) Drawing a series of connected triangles using the TLS group center of reaction for one triangle vertex, and successive backbone atoms of the TLS segment for the other two triangle vertexes yields a visualization which looks like a paper/bamboo fan.  The fans help identify TLS groups with similar centers of reaction, and therefore are likely to have similar displacements.
+  </td>
+ </tr>
+</table>
+</center>
+
+<h3>User Interface: Visualization Properties For TLS Groups</h3>
+
+<center>
+<table width="75%">
+ <tr>
+  <th><img src="VIS_PROP_TLS_DIALOG.png" alt="Figure 12"></th>
+ </tr>
+ 
+ <tr>
+  <td>
+   <b>Figure 12</b>: Visualization properties of a TLS Chain visualization object.  TLS Chain visualization objects contain all TLS Group visualization objects on a chain.  Setting changed in TLS Chain objects are propagated to all the TLS Group visualization objects.
+  </td>
+ </tr>
+</table>
+</center>
+
+<p>
+</p>
+
+
+<table width="100%" border=1>
+ <caption>
+  <b>Table 5</b>: TLS Visualization Properties
+ </caption>
+
+ <tr>
+  <th>Option</th><th>Description</th>
+ </tr>
+
+ <tr>
+  <td><small>Show COR-Backbone Fan<</small>/td>
+  <td>Draws a series of connected triangles using the TLS group center of reaction as one triangle vertex, and successive backbone atoms of the TLS group residues for the other two triangle vertexes.</td>
+ </tr>
+
+ <tr>
+  <td><small>Show TLS <var>T<sup>r</sup></var>/Screw Axes</small></td>
+  <td>Draws a static visualization of the three translational and three screw displacements of the TLS group.  The thermal ellipsoid of the <var>T<sup>r</sup></var> tensor is drawn at the center of reaction, and the three screw axes drawn with a length proportional to their RMSD rotational magnitude.</td>
+ </tr>
+
+ <tr>
+  <td><small>Show <var>U<sup>TLS</sup></var> Thermal Axes</small></td>
+  <td>Draws <var>U<sup>TLS</sup></var> thermal axes for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show <var>U<sup>TLS</sup></var> Thermal Ellipsoids</small></td>
+  <td>Draws <var>U<sup>TLS</sup></var> thermal ellipsoids for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show <var>U<sup>TLS</sup></var> Thermal Peanuts</small></td>
+  <td>Draws <var>U<sup>TLS</sup></var> thermal peanuts for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show <var>T<sup>r</sup></var> Thermal Axes</small></td>
+  <td>Draws <var>T<sup>r</sup></var> thermal axes for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show <var>T<sup>r</sup></var> Thermal Ellipsoids</small></td>
+  <td>Draws <var>T<sup>r</sup></var> thermal ellipsoids for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show <var>T<sup>r</sup></var> Thermal Peanuts</small></td>
+  <td>Draws <var>T<sup>r</sup></var> thermal peanuts for selected TLS group atoms.</td>
+ <tr>
+
+ <tr>
+  <td><small>Show L1,L2,L3 Screw Displacement Surface</small></td>
+  <td>Draws the screw displacement trajectory surface for the screw axes derived from the first, second, and third eigenvector of the <var>L<sup>cor</sup></var> tensor.</td>
+ <tr>
+
+ <tr>
+  <td><small>Add Atom <var>B<sup>ISO</sup></var> to <var>U<sup>TLS</sup></var></small></td>
+  <td>When viewing TLS groups refined by REFMAC5, it is necessary to add the residual isotropic temperature factor to the TLS calculated anisotropic ADP tensor.  TLS parameters refined using REFMAC often predict non-positive definite <var>U<sup>TLS</sup></var> atomic ADPs which cannot be visualized as a Gaussian probability distributions.  Adding the residual refined <var>B<sup>ISO</sup></var> to the TLS calculated tensor for each atom usually makes the tensor positive definite and accurately represents the refined ADP.</td>
+ <tr>
+
+ <tr>
+  <td><small>TLS Group Visualization Color</small></td>
+  <td>Sets the color used by all of this group's TLS visualizations. </td>
+ <tr>
+
+ <tr>
+  <td><small>Isoprobability Magnitude</small></td>
+  <td>The Gaussian isoprobability magnitude for used by thermal axes, thermal ellipsoid, and screw displacement surface visualizations for the TLS group.</td>
+ <tr>
+
+ <tr>
+  <td><small>Scale Screw Axes Length</small></td>
+  <td>Scale the length of the screw axes by the given real number.</td>
+ <tr>
+
+ <tr>
+  <td><small>Screw Axes Radius</small></td>
+  <td>The radius of the screw axes in Angstroms.</td>
+ <tr>
+
+ <tr>
+  <td><small><var>U<sup>TLS</sup></var> Thermal Ellipsoid Opacity</small></td>
+  <td>Opacity setting for thermal ellipsoids.</td>
+ <tr>
+
+ <tr>
+  <td><small><var>U<sup>TLS</sup></var> Thermal Peanut Opacity</small></td>
+  <td>Opacity setting for thermal peanuts.</td>
+ <tr>
+
+ <tr>
+  <td><small><var>U<sup>TLS</sup></var> Thermal Peanut Opacity</small></td>
+  <td>Opacity setting for thermal peanuts.</td>
+ <tr>
+
+ <tr>
+  <td><small>Screw Displacement Surface Opacity</small></td>
+  <td>Opacity setting for the screw displacement surfaces.</td>
+ <tr>
+
+ <tr>
+  <td><small>COR-Backbone Fan Opacity</small></td>
+  <td>Opacity setting for the COR-Backbone Fan.</td>
+ <tr>
+
+ <tr>
+  <td><small>Simulation Time</small></td>
+  <td>Simulation time setting for the harmonic animation of atom visualization about the three TLS screw axes.  The time range is from 0.0-1.0, and fed as <var>x</var> to the function <var>sin(2*pi*x)</var> to calculate the screw displacement magnitude rendered in the visualization.</td>
+ <tr>
+
+ <tr>
+  <td><small><var>L<sub>1,2,3</sub></var> Simulation Rotation</small></td>
+  <td>The rotation currently used for the three screw displaced visualizations.</td>
+ <tr>
+</table>
+
 
 <hr>
 <p>

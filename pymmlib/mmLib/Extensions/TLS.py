@@ -812,8 +812,13 @@ class TLSGroup(AtomList):
         if min(eigenvalues(self.T))<=small:
             return False
 
+        T_red = self.calc_COR()["rT'"]
+        if min(eigenvalues(T_red))<=small:
+            return False
+
         for atm, Utls in self.iter_atm_Utls():
             if min(eigenvalues(Utls))<=small:
+                print "Utls EEK"
                 return False
 
         return True
@@ -1199,22 +1204,21 @@ class TLSGroup(AtomList):
         ## now calculate the reduction in T for the screw rotation axes
         cTred = cT.copy()
 
-        for i in range(3):
-            for k in range(3):
+        for i in (0, 1, 2):
+            for k in (0, 1, 2):
                 if i==k:
                     continue
                 cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
 
-        for i in range(3):
-            for j in range(3):
-                for k in range(3):
+        for i in (0, 1, 2):
+            for j in (0, 1, 2):
+                for k in (0, 1, 2):
                     if j==i:
                         continue
                     cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
                 
-
-        tls_info["rT'"] = matrixmultiply(transpose(evec_L),
-                                         matrixmultiply(cTred, evec_L))
+        tls_info["rT'"] = matrixmultiply(
+            transpose(evec_L), matrixmultiply(cTred, evec_L))
 
         return tls_info
 
