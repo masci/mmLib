@@ -1295,13 +1295,13 @@ class TLSDialog(gtk.Dialog):
 
         ## remove the individual GLTLSGroup visualization objects
         for tls in self.tls_list:
-            gl_viewer.glv_remove_draw_list(tls["GLTLSGroup"])
+            tls["GLTLSGroup"].glo_remove()
             tls["GLTLSGroup"].glo_remove_update_callback(self.update_cb)
             del tls["GLTLSGroup"]
 
         ## remove the GLTLSChain objects
         for gl_tls_chain in self.gl_tls_chain.values():
-            gl_viewer.glv_remove_draw_list(gl_tls_chain)
+            gl_tls_chain.glo_remove()
 
         ## re-initalize
         self.gl_tls_chain   = {}
@@ -2424,7 +2424,7 @@ class MainWindow(object):
         tab["sc_list"].remove(sc)
 
         ## remove from GLViewer
-        tab["gl_viewer"].glv_remove_draw_list(sc.gl_struct)
+        sc.gl_struct.glo_remove()
 
         ## remove from /Structure menu
         structs = self.item_factory.get_item("/Structures")
@@ -2548,7 +2548,6 @@ class MainWindow(object):
         structs_menu = structs.get_submenu()
 
         for mi in structs_menu.get_children():
-
             label = mi.get_child()
             text  = label.get_text()
 

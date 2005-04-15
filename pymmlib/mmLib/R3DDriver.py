@@ -15,7 +15,7 @@ from Structure      import *
 
 
 ## constants
-MARGIN          = 1.20
+MARGIN          = 1.15
 BASE_LINE_WIDTH = 0.05
 RENDER_PATH     = "render" 
 
@@ -298,7 +298,7 @@ class Raster3DDriver(object):
                     gob[1][0], gob[1][1], gob[1][2], 
                     gob[2],
                     gob[3], gob[4], gob[5],
-                    q[0,0], q[1,1], q[2,2], q[0,1], q[0,2], q[1,2],
+                    q[0,0], q[1,1], q[2,2], q[0,1], q[1,2], q[0,2],
                     gob[7]))
 
     def glr_push_matrix(self):
@@ -696,18 +696,18 @@ class Raster3DDriver(object):
         ## rotate U
         R  = self.matrix[:3,:3]
         Ur = matrixmultiply(matrixmultiply(R, U), transpose(R))
-        
-        max_eigenvalue = max(eigenvalues(Ur))
+
+        Umax = max(eigenvalues(Ur))
         try:
-            limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(max_eigenvalue)
+            limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(Umax)
         except ValueError:
             limit_radius = 2.0
 
         try:
-            quadric = inverse(Ur)
+            Q = inverse(Ur)
         except LinAlgError:
             return
-
+        
         self.object_list.append(
             (14,
              matrixmultiply43(self.matrix, position),
@@ -715,7 +715,7 @@ class Raster3DDriver(object):
              self.material_color_r,
              self.material_color_g,
              self.material_color_b,
-             quadric,
+             Q,
              -GAUSS3C[prob]**2))
     
     def glr_Urms(self, position, U):

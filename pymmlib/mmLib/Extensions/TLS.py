@@ -19,6 +19,7 @@ from mmLib.Viewer    import *
 ###############################################################################
 ## CONSTANTS
 ##
+
 SQRT2 = math.sqrt(2.0)
 
 ###############################################################################
@@ -184,7 +185,7 @@ class TLSGroupDesc(object):
                 warning("iter_tls_atoms():unable to find segment={%s..%s}" % (
                     frag_id1, frag_id2))
 
-            for atm in seg.iter_atoms():
+            for atm in seg.iter_all_atoms():
                 yield atm
 
     def construct_tls_group(self):
@@ -771,7 +772,7 @@ def solve_TLS_Ab(A, b):
     Ut = transpose(U)
 
     ## analize singular values and generate smallness cutoff
-    cutoff = max(W) * 1e-5
+    cutoff = max(W) * 1e-8
 
     ## make W
     dim_W = len(W)
@@ -1255,6 +1256,94 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
     ## coordinate system
     rdict["rT'"] = matrixmultiply(
         transpose(evec_L), matrixmultiply(cTred, evec_L))
+
+    return rdict
+
+###############################################################################
+## TLS + 1 Uiso per Atom
+##
+
+def calc_TLS_Uiso_least_squares_fit(atom_list, origin, weight_dict=None):
+    """Perform a LSQ-TLS fit on the given Segment object using
+    the TLS model with amino acid side chains which can pivot
+    about the CA atom.  This model uses 20 TLS parameters and 6
+    libration parameters per side chain.
+    """
+    ## calculate the number of parameters in the model
+    num_atoms = len(atom_list)
+    params = 20 + num_atoms
+
+    A = zeros((num_atoms * 6, params), Float)
+    b = zeros(num_atoms * 6,  Float)
+
+    i = -1
+    for atm in atom_list:
+        i += 1
+
+        ## set x, y, z as the vector components from the TLS origin
+        x, y, z = atm.position - origin
+
+        ## is this fit weighted?
+        if weight_dict!=None:
+            w = math.sqrt(weight_dict[atm])
+        else:
+            w = 1.0
+
+        ## indecies of the components of U
+        U11 = i * 6
+
+        ## set the b vector
+        U = atm.get_U()
+        assert trace(U)>0.0
+        set_TLS_b(b, U11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
+
+        ## set the A matrix
+        set_TLS_A(A, U11, 0, x, y, z, w)
+
+        ## set A for additional Uiso / atom
+        A[U11,   20+i] = w * 1.0
+        A[U11+1, 20+i] = w * 1.0
+        A[U11+2, 20+i] = w * 1.0
+
+    ## solve by SVD
+    C = solve_TLS_Ab(A, b)
+
+    ## use label indexing to avoid confusion!
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+
+    T = array([ [ C[T11], C[T12], C[T13] ],
+                [ C[T12], C[T22], C[T23] ],
+                [ C[T13], C[T23], C[T33] ] ], Float)
+
+    L = array([ [ C[L11], C[L12], C[L13] ],
+                [ C[L12], C[L22], C[L23] ],
+                [ C[L13], C[L23], C[L33] ] ], Float)
+
+    s11, s22, s33 = calc_s11_s22_s33(C[S2211], C[S1133])
+
+    S = array([ [    s11, C[S12], C[S13] ],
+                [ C[S21],    s22, C[S23] ],
+                [ C[S31], C[S32],    s33 ] ], Float)
+
+    ## calculate the lsq residual
+    utlsw = matrixmultiply(A, C)
+    xw = utlsw - b
+    lsq_residual = dot(xw, xw)
+
+    rdict = {}
+    rdict["T"] = T
+    rdict["L"] = L
+    rdict["S"] = S
+    rdict["lsq_residual"] = lsq_residual
+
+    uiso_residual = {}
+    i = 19
+    for atm in atom_list:
+        i += 1
+        uiso_residual[atm] = C[i]
+    rdict["uiso_residual"] = uiso_residual
 
     return rdict
 
@@ -3523,8 +3612,6 @@ class GLTLSChain(GLDrawList):
     def color_by_group(self):
         """Color TLS Groups by 
         """
-        print "color by group"
-        
         colori = 2
         for gl_tls_group in self.glo_iter_children():
             try:
