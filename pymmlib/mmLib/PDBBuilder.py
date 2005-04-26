@@ -1278,16 +1278,16 @@ class PDBFileBuilder(object):
             self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
 
-            if atm.U[0,0]!=None:
-                siguij_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
-            if atm.U[1,1]!=None:
-                siguij_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
-            if atm.U[2,2]!=None:
-                siguij_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
-            if atm.U[0,1]!=None:
-                siguij_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
-            if atm.U[0,2]!=None:
-                siguij_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
-            if atm.U[1,2]!=None:
-                siguij_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
+            if atm.sig_U[0,0]!=None:
+                siguij_rec["u[0][0]"] = int(round(atm.sig_U[0,0] * 10000.0))
+            if atm.sig_U[1,1]!=None:
+                siguij_rec["u[1][1]"] = int(round(atm.sig_U[1,1] * 10000.0))
+            if atm.sig_U[2,2]!=None:
+                siguij_rec["u[2][2]"] = int(round(atm.sig_U[2,2] * 10000.0))
+            if atm.sig_U[0,1]!=None:
+                siguij_rec["u[0][1]"] = int(round(atm.sig_U[0,1] * 10000.0))
+            if atm.sig_U[0,2]!=None:
+                siguij_rec["u[0][2]"] = int(round(atm.sig_U[0,2] * 10000.0))
+            if atm.sig_U[1,2]!=None:
+                siguij_rec["u[1][2]"] = int(round(atm.sig_U[1,2] * 10000.0))
 

@@ -5,9 +5,6 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-## add in a extra bit of Biso
-ADD_EXTRA_BISO = False
-
 import sys
 import getopt
 
@@ -16,13 +13,29 @@ from mmLib.FileLoader     import *
 from mmLib.Extensions.TLS import *
 
 def usage():
-    print "lsq_tls_fit.py [-t <tlsin>] [-p <pdbout>] <structure file>"
+    print "lsq_tls_fit.py [-s] [-t <tlsin>] [-o <tlsout>]"
+    print "               [-p <pdbout>] <structure file>"
     print
     print "description:"
     print "    Performs a least squares fit of TLS tensors to the"
     print "    tempature factors of the given structure file.  If"
     print "    no TLS groups are defined by the TLSIN file, then"
     print "    one group is created per chain."
+    print
+    print "    -t <tlsin>  Use the TLSIN file for defining groups and"
+    print "                calculating atomic ADPs.  If no tensors exist"
+    print "                in the group, then a least squares fit"
+    print "                is automatically preformed."
+    print
+    print
+    print "    -o <tlsout> Write a TLSOUT file with the LSQ fit tensors."
+    print
+    print "    -p <pdbout> Write a PDB file to the given path containing"
+    print "                the TLS predicted anisotropic tempature factors"
+    print "                unless the -s option is given (see below)."
+    print
+    print "    -s          Set the B factor of TLS group atoms to 0.0."
+    print "                in the pdbout file."
     print
 
 
@@ -37,7 +50,7 @@ def main(path, opt_dict):
         try:
             fil = open(opt_dict["-t"], "r")
         except IOError:
-            print "ERROR: TLSIN File not found %s" % (opt_dict["-t"])
+            print "[ERROR]: TLSIN File not found %s" % (opt_dict["-t"])
             sys.exit(-1)
         
         tls_file = TLSFile()
@@ -45,7 +58,7 @@ def main(path, opt_dict):
         tls_file.load(fil)
 
         for tls_desc in tls_file.tls_desc_list:
-            tls = tls_desc.generate_tls_group(struct)
+            tls = tls_desc.construct_tls_group_with_atoms(struct)
             tls.tls_desc = tls_desc
             tls_group_list.append(tls)
 
@@ -64,30 +77,20 @@ def main(path, opt_dict):
             
             tls_desc = TLSGroupDesc()
             tls_desc.add_range(chain_id1, frag_id1, chain_id1, frag_id2, "ALL")
-            tls = tls_desc.generate_tls_group(struct)
+            tls = tls_desc.construct_tls_group_with_atoms(struct)
             tls_group_list.append(tls)
             tls.tls_desc = tls_desc
 
             print "Creating TLS Group: %s" % (tls.name)
 
-            ##
-            print "Testing TLS/SideChain Model Fit..."
-            tls_group = TLSGroup()
-            rdict = tls_group.calc_segment_TLS_least_squares_fit(chain)
-            print "Residual:       ", rdict["lsq_residual"]
-            print "eigenvalues(T): ", eigenvalues(rdict["T"]) * U2B
-            print "eigenvalues(L): ", eigenvalues(rdict["L"]) * RAD2DEG2
-
-
     ## fit TLS groups and write output
     tls_file = TLSFile()
     tls_file.set_file_format(TLSFileFormatTLSOUT())
 
-    print
-
+    ## preform a LSQ fit if necessary
     for tls in tls_group_list:
 
-        print "[%s]" % (tls.name)
+        print "[TLS GROUP  %s]" % (tls.name)
 
         ## if the TLS group is null, then perform a LSQ-TLS fit
         if tls.is_null():
@@ -99,7 +102,6 @@ def main(path, opt_dict):
 
             tls.origin = tls.calc_centroid()
             lsq_residual = tls.calc_TLS_least_squares_fit()
-            print "LSQ-TLS Residual: %f" % (lsq_residual)
             tls.shift_COR()
 
         tls.tls_desc.set_tls_group(tls)
@@ -114,30 +116,14 @@ def main(path, opt_dict):
     ## atoms in TLS groups
     if opt_dict.has_key("-p"):
 
-        ## dictionary of all atoms in TLS groups
-        atm_Utls = {}
         for tls in tls_group_list:
             for atm, Utls in tls.iter_atm_Utls():
-                atm_Utls[atm] = Utls
-
-        ## set the temp_factor of TLS atoms to 0.0
-        for atm in struct.iter_all_atoms():
-            if not atm_Utls.has_key(atm):
-                print "No TLS Group for Atom: ",atm
-                continue
-            
-            Utls = atm_Utls[atm]
-
-            for aatm in atm.iter_alt_loc():
-                tls_tf = trace(Utls)/3.0
-                ref_tf = trace(aatm.get_U())/3.0
-
-                if ADD_EXTRA_BISO and ref_tf>tls_tf:
-                    aatm.temp_factor = (ref_tf - tls_tf)*U2B
-                    aatm.U = None
+                if opt_dict.has_key("-s"):
+                    atm.temp_factor = 0.0
+                    atm.U = None
                 else:
-                    aatm.temp_factor = 0.0
-                    aatm.U = None
+                    atm.temp_factor = U2B * trace(Utls)/3.0
+                    atm.U = Utls
 
         ## save the struct
         print "Saving XYZIN: %s" % (opt_dict["-p"])
@@ -146,7 +132,7 @@ def main(path, opt_dict):
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "t:p:o:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "st:p:o:")
     except getopt.GetoptError:
         usage()
         sys.exit(1)
