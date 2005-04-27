@@ -17,7 +17,6 @@ from Structure      import *
 ## constants
 MARGIN          = 1.15
 BASE_LINE_WIDTH = 0.05
-RENDER_PATH     = "render" 
 
 
 def matrixmultiply43(M, x):
@@ -34,10 +33,14 @@ class Raster3DDriver(object):
     for the Raster3D ray tracer.
     """
     def __init__(self):
-        self.render_png_path  = "ray.png"
-        self.render_stdin     = None
+        self.render_program_path = "render"
+	self.render_png_path     = "ray.png"
+        self.render_stdin        = None
         
         self.glr_init_state()
+
+    def glr_set_render_program_path(self, render_path):
+        self.render_program_path = render_path
 
     def glr_set_render_stdin(self, stdin):
         self.render_stdin = stdin
@@ -184,14 +187,13 @@ class Raster3DDriver(object):
             stdin = self.render_stdin
         else:
             stdout, stdin, stderr = popen2.popen3(
-                (RENDER_PATH,
+                (self.render_program_path,
                  "-png", self.render_png_path,
                  "-gamma", "1.5"), 32768)
 
         ## XXX: hack
-        r3dfil = open("/tmp/raytrace.r3d","w")
-        renderin = stdin
-        stdin = TeeWrite(renderin, r3dfil)
+        #r3dfil = open("/tmp/raytrace.r3d","w")
+        stdin = TeeWrite(stdin)
 
         ## add required hader for the render program
         self.glr_construct_header()
@@ -200,7 +202,10 @@ class Raster3DDriver(object):
             for ln in self.header_list:
                 stdin.write(ln + "\n")
             self.glr_write_objects(stdin)
-        except IOError:
+        except IOError, err:
+            warning("IOError while executing %s" % (self.render_program_path))
+	    warning(str(err))
+	    warning(stderr.read())
             return
 
         ## close stdin to the render program

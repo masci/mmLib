@@ -419,7 +419,7 @@ def buildlib():
         print "[BUILDLIB] writing %s" % (save_path)
         
         cf = mmLib.mmCIF.mmCIFFile()
-        cf.append(copy.deepcopy(cif_data))
+        cf.append(cif_data)
         cf.save_file(save_path)
 
 
