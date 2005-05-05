@@ -17,12 +17,6 @@ from mmLib.PDB       import *
 from mmLib.Viewer    import *
 
 ###############################################################################
-## CONSTANTS
-##
-
-SQRT2 = math.sqrt(2.0)
-
-###############################################################################
 ## EXCEPTION BASE CLASS
 ##
 
@@ -1048,7 +1042,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
 
     return T, L, S, lsq_residual
 
-def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
+def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     """Calculate new tensors based on the center for reaction.
     This method returns a dictionary of the calculations:
 
@@ -1067,43 +1061,34 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
     rdict = {}
 
     ## set the L tensor eigenvalues and eigenvectors
-    (eval_L, evec_L) = eigenvectors(L_orig)
+    (eval_L, RL) = eigenvectors(L0)
+
+    ## make sure RLt is right-handed
+    if allclose(determinant(RL), -1.0):
+        I = identity(3, Float)
+        I[0,0] = -1.0
+        RL = matrixmultiply(I, RL)
+        
+    RLt = transpose(RL)
 
     rdict["L1_eigen_val"] = eval_L[0]
     rdict["L2_eigen_val"] = eval_L[1]
     rdict["L3_eigen_val"] = eval_L[2]
 
-    rdict["L1_eigen_vec"] = evec_L[0]
-    rdict["L2_eigen_vec"] = evec_L[1]
-    rdict["L3_eigen_vec"] = evec_L[2]
-
-    ## transpose the original the evec_L so it can be used
-    ## to rotate the other tensors
-    evec_L = transpose(evec_L)
+    rdict["L1_eigen_vec"] = RL[0].copy()
+    rdict["L2_eigen_vec"] = RL[1].copy()
+    rdict["L3_eigen_vec"] = RL[2].copy()
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL      = zeros([3,3], Float)
-    cL[0,0] = eval_L[0]
-    cL[1,1] = eval_L[1]
-    cL[2,2] = eval_L[2]
-
+    cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
     rdict["L^"] = cL
-
+    
     ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = matrixmultiply(
-        matrixmultiply(transpose(evec_L), T_orig), evec_L)
-
+    cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
     rdict["T^"] = cT
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = matrixmultiply(
-        matrixmultiply(transpose(evec_L), S_orig), evec_L)
-
-    ## correct for left-handed libration eigenvectors
-    det = determinant(evec_L)
-    if int(det) != 1:
-        cS = -cS
-
+    cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
     rdict["S^"] = cS
 
     ## ^rho: the origin-shift vector in the coordinate system of L
@@ -1131,10 +1116,10 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
     rdict["RHO^"] = crho
 
     ## rho: the origin-shift vector in orthogonal coordinates
-    rho = matrixmultiply(evec_L, crho)
+    rho = matrixmultiply(RLt, crho)
 
     rdict["RHO"] = rho
-    rdict["COR"] = origin + rho.copy()
+    rdict["COR"] = origin + rho
 
     ## set up the origin shift matrix PRHO WRT orthogonal axes
     PRHO = array([ [    0.0,  rho[2], -rho[1]],
@@ -1166,21 +1151,21 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
 
     ## transpose of PRHO and S
     PRHOt = transpose(PRHO)
-    St = transpose(S_orig)
+    St = transpose(S0)
 
     ## calculate S' = S + L*PRHOt
-    Sp = S_orig + matrixmultiply(L_orig, PRHOt)
+    Sp = S0 + matrixmultiply(L0, PRHOt)
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T_orig + \
-         matrixmultiply(PRHO, S_orig) + \
+    Tp = T0 + \
+         matrixmultiply(PRHO, S0) + \
          matrixmultiply(St, PRHOt) + \
-         matrixmultiply(matrixmultiply(PRHO, L_orig), PRHOt)
+         matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
 
     ## L' is just L
-    rdict["L'"] = L_orig.copy()
+    rdict["L'"] = L0.copy()
 
     ## now calculate the TLS motion description using 3 non
     ## intersecting screw axes, with one
@@ -1205,9 +1190,9 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
 
     ## libration axes shifts in the origional orthogonal
     ## coordinate system
-    rdict["L1_rho"] = matrixmultiply(evec_L, cL1rho)
-    rdict["L2_rho"] = matrixmultiply(evec_L, cL2rho)
-    rdict["L3_rho"] = matrixmultiply(evec_L, cL3rho)
+    rdict["L1_rho"] = matrixmultiply(RLt, cL1rho)
+    rdict["L2_rho"] = matrixmultiply(RLt, cL2rho)
+    rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
     if cL[0,0]>LSMALL:
@@ -1246,10 +1231,10 @@ def calc_TLS_center_of_reaction(T_orig, L_orig, S_orig, origin):
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    rdict["rT'"] = matrixmultiply(
-        transpose(evec_L), matrixmultiply(cTred, evec_L))
+    rdict["rT'"] = matrixmultiply(matrixmultiply(RLt, cTred), RL)
 
     return rdict
+
 
 ###############################################################################
 ## SPECIAL
