@@ -405,6 +405,9 @@ def rcsb_report_missing(cif_data):
 USAGE = """
 rcsbdep.py  - RCSB Deposition Preperation
 usage: rcsbdep.py [-f cif path] [-f cif path] ... <mmCIF OUTPUT FILE>
+
+    -e <entry id>  Specify a new entry ID for the structure.
+    -f <cif path>  Input mmCIF File
 """
 
 def usage():
@@ -442,6 +445,13 @@ def merge_cif_table_multi(dest_table, src_table):
             if not dest_table.has_column(col):
                 dest_table.append_column(col)
 
+def null_val(val):
+    """Return True if the value is a mmCIF NULL charactor: ? or .
+    """
+    if val=="?" or val==".":
+        return True
+    return False
+
 def merge_cif_table_single(dest_table, src_table):
     """Merge the row from src_table into the row of dest_table and
     add any missing column names to dest_table.
@@ -457,11 +467,32 @@ def merge_cif_table_single(dest_table, src_table):
         dest_row = dest_table[0]
 
     for key, val in src_row.items():
+
+        ## if the source and destination rows both have values
+        ## for the same field, check for NULL values in the source
+        ## row so the dest row doesn't have a good value overwriten
+        ## by a NULL value
         if dest_row.has_key(key):
-            print "[WARNING] merge overwrite: %s.%s = %s -> %s" % (
-                dest_table.name, key, str(dest_row[key]), str(val))
-    
-        dest_row[key] = val
+
+            ## if the destination value is null, merge the value
+            ## without complaint
+            dval = dest_row[key]
+
+            if null_val(dval):
+                dest_row[key] = val
+
+            else:
+                ## don't merge a null source value into a non-null
+                ## destination value
+                if null_val(val):
+                    pass
+
+                ## if source and destination values are non-null,
+                ## then warn the user but merge anyway
+                else:
+                    print "[WARNING] merge overwrite: %s.%s = %s -> %s" % (
+                        dest_table.name, key, str(dest_row[key]), str(val))
+                    dest_row[key] = val
     
     for col in src_table.columns:
         if not dest_table.has_column(col):

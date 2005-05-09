@@ -765,7 +765,7 @@ def solve_TLS_Ab(A, b):
     Ut = transpose(U)
 
     ## analize singular values and generate smallness cutoff
-    cutoff = max(W) * 1e-8
+    cutoff = max(W) * 1e-12
 
     ## make W
     dim_W = len(W)
@@ -1240,7 +1240,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 ## SPECIAL
 ##
 
-def calc_TLS_least_squares_fit_for_iso(atom_list, origin):
+def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
     """
     """
     ## use label indexing to avoid confusion!
@@ -1315,10 +1315,12 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin):
                      [ X[S31], X[S32],    s33 ] ], Float)
 
         ## calculate the Utls(iso) - Uiso residual
+        ## calculate other fit statistics
         iso_residual = 0.0        
         for atm, Uold in ulist:
             U = calc_Utls(T0, L0, S0, atm.position - origin)
-            iso_residual += (B2U*atm.temp_factor - trace(U)/3.0)**2
+            iso_residual = (B2U*atm.temp_factor - trace(U)/3.0)**2
+
 
         ## check against the previous lsq_residual
         if prev_iso_residual==None:
@@ -1338,6 +1340,7 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin):
         if min(eigenvalues(rdict["rT'"]))<=0.0:
             print "[BREAK] rT<=0.0"
             break
+
 
         ## scale the predicted Utls tensors to have a Uiso of the
         ## original atm.temp_factor
@@ -1373,8 +1376,8 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin):
             U = U * (uiso2 / uiso1)
 
             ## adjust w2
-            sd = math.sqrt((uiso1 - uiso2)**2)
-            w2[i] = 1.0 / sd
+            #sd = math.sqrt((uiso1 - uiso2)**2)
+            #w2[i] = 1.0 / sd
 
             ## rotate Utls back to original orientation
             U = matrixmultiply(transpose(UR), matrixmultiply(U, UR))
@@ -1409,7 +1412,7 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin):
 ## TLS + 1 Uiso per Atom
 ##
 
-def calc_TLS_plus_b_least_squares_fit(atom_list, origin):
+def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
     """Perform a LSQ-TLS fit on the given Segment object using
     the TLS model with amino acid side chains which can pivot
     about the CA atom.  This model uses 20 TLS parameters and 6
@@ -1426,17 +1429,22 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin):
     for atm in atom_list:
         i += 1
         iU11 = i * 6
+
+        if weight_dict==None:
+            w = 1.0
+        else:
+            w = math.sqrt(weight_dict[atm])
         
         ## set the b vector
         U = atm.get_U()
         assert trace(U)>0.0
         set_TLS_b(B, iU11,
                   U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-                  1.0)
+                  w)
 
         ## set the A matrix
         x, y, z = atm.position - origin
-        set_TLS_A(A, iU11, 0, x, y, z, 1.0)
+        set_TLS_A(A, iU11, 0, x, y, z, w)
 
         ## set A for additional Uiso / atom
         A[iU11,   20+i] = 1.0
