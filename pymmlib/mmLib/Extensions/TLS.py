@@ -1328,7 +1328,7 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
         elif prev_iso_residual<=iso_residual:
             print "[BREAK] Diverged"
             break
-        elif (prev_iso_residual-iso_residual)<1e-6:
+        elif (prev_iso_residual-iso_residual)<1e-4:
             print "[BREAK] Converged"
             break
 

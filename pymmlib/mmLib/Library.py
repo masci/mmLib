@@ -125,6 +125,25 @@ ELEMENT_SYMBOL_DICT = {
     "Pa": True, "pa": True, "PA": True,
     "U" : True, "u" : True }
 
+AMINO_ACID3_LIST = [
+    "GLY", "ALA", "VAL", "LEU", "ILE", "PRO", "PHE", "TYR", "TRP",
+    "MET", "CYS", "SER", "THR", "ASP", "GLU", "HIS", "LYS", "ARG",
+    "ASN", "GLN"
+    ]
+
+AMINO_ACID31_DICT = {
+    "GLY":"G", "ALA":"A", "VAL":"V", "LEU":"L", "ILE":"I", "PRO":"P",
+    "PHE":"F", "TYR":"Y", "TRP":"W", "MET":"M", "CYS":"C", "SER":"S",
+    "THR":"T", "ASP":"D", "GLU":"E", "HIS":"H", "LYS":"K", "ARG":"R",
+    "ASN":"N", "GLN":"Q"
+    }
+
+AMINO_ACID13_DICT = {
+    'A': 'ALA', 'C': 'CYS', 'E': 'GLU', 'D': 'ASP', 'G': 'GLY',
+    'F': 'PHE', 'I': 'ILE', 'H': 'HIS', 'K': 'LYS', 'M': 'MET',
+    'L': 'LEU', 'N': 'ASN', 'Q': 'GLN', 'P': 'PRO', 'S': 'SER',
+    'R': 'ARG', 'T': 'THR', 'W': 'TRP', 'V': 'VAL', 'Y': 'TYR'}
+
 ###############################################################################
 ## Library Description Objects
 ##
