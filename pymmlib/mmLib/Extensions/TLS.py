@@ -1281,15 +1281,12 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
             x, y, z = atm.position - origin
 
             ## weight
-            w = w2[i] * (1.0 / atm.temp_factor)
+            w = w2[i]
 
             ## set the b vector
-            set_TLS_b(B, iU11,
-                      U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-                      w)
-
-            ## set the A matrix
             set_TLS_A(A, iU11, 0, x, y, z, w)
+            set_TLS_b(
+                B, iU11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## solve by SVD
         X = solve_TLS_Ab(A, B)
@@ -1314,13 +1311,21 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
                      [ X[S21],    s22, X[S23] ],
                      [ X[S31], X[S32],    s33 ] ], Float)
 
+        ## check for a bad model
+        rdict = calc_TLS_center_of_reaction(T0, L0, S0, origin)
+        if min(eigenvalues(L0))<=0.0:
+            print "[BREAK] L<=0.0"
+            break
+        if min(eigenvalues(rdict["rT'"]))<=0.0:
+            print "[BREAK] rT<=0.0"
+            break
+
         ## calculate the Utls(iso) - Uiso residual
         ## calculate other fit statistics
         iso_residual = 0.0        
         for atm, Uold in ulist:
             U = calc_Utls(T0, L0, S0, atm.position - origin)
-            iso_residual = (B2U*atm.temp_factor - trace(U)/3.0)**2
-
+            iso_residual += (B2U*atm.temp_factor - trace(U)/3.0)**2
 
         ## check against the previous lsq_residual
         if prev_iso_residual==None:
@@ -1334,13 +1339,6 @@ def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
 
         prev_iso_residual = iso_residual
         print "TLS ISO RESIDUAL: ",iso_residual
-
-        ## check for a bad model
-        rdict = calc_TLS_center_of_reaction(T0, L0, S0, origin)
-        if min(eigenvalues(rdict["rT'"]))<=0.0:
-            print "[BREAK] rT<=0.0"
-            break
-
 
         ## scale the predicted Utls tensors to have a Uiso of the
         ## original atm.temp_factor
