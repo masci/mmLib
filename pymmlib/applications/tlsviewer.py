@@ -1536,10 +1536,9 @@ class TLSDialog(gtk.Dialog):
     def timeout_cb(self):
         """Timer which drives the TLS animation.
         """
-        slices = 20
-        slice  = 1.0 / slices 
+        slice  = 1.0 / 50.0
 
-        self.animation_time = (self.animation_time + slice) % 1.0
+        self.animation_time += slice
         
         for tls in self.animation_list:
             tls["GLTLSGroup"].properties.update(time=self.animation_time)

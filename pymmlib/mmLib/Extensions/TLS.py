@@ -563,23 +563,23 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
     """
     tlsout_regex_dict = {
         "group": re.compile(
-        "(?:^TLS\s*$)|(?:^TLS\s+(.*)$)"),
+        "(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
         
         "range": re.compile(
-        "^RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+"\
+        "^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+"\
         "[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         
         "origin": re.compile(
-        "^ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         
         "T": re.compile(
-        "^T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         
         "L": re.compile(
-        "^L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
 
         "S": re.compile(
-        "^S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"\
+        "^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"\
         "\s+(\S+)\s+(\S+).*$")
         }
 
@@ -2590,7 +2590,7 @@ class GLTLSAtomList(GLAtomList):
                self.properties["L3_animation_visible"]==False:
                 continue
 
-            for sign in (1.0, -1.0):
+            for sign in (1.0,):
                 axis  = self.properties[Lx_axis]
                 rho   = self.properties[Lx_rho]
                 pitch = self.properties[Lx_pitch]
@@ -3238,8 +3238,21 @@ class GLTLSGroup(GLDrawList):
               "desc":        "Simulation Time",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
               "default":     0.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "period",
+              "desc":        "Simulation Period",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
+              "action":      "redraw" })
+        self.glo_add_property(
+            { "name":        "amplitude",
+              "desc":        "Simulation Amplitude",
+              "catagory":    "TLS",
+              "type":        "float",
+              "default":     1.0,
               "action":      "redraw" })
         self.glo_add_property(
             { "name":        "L1_rot",
@@ -3318,7 +3331,8 @@ class GLTLSGroup(GLDrawList):
             return
 
         ## time should be in the range 0.0-0.1.0
-        sin_tm = math.sin(2.0 * math.pi * self.properties["time"])
+        sin_tm = math.sin(
+            2.0*math.pi* self.properties["period"] * self.properties["time"])
 
         ## calculate L eignvalue displacements at the given
         ## probability levels
@@ -3342,9 +3356,9 @@ class GLTLSGroup(GLDrawList):
             L3_c    = 0.0
             L3_peak = 0.0
 
-        L1_rot  = L1_c * sin_tm
-        L2_rot  = L2_c * sin_tm
-        L3_rot  = L3_c * sin_tm
+        L1_rot  = self.properties["amplitude"] * L1_c * sin_tm
+        L2_rot  = self.properties["amplitude"] * L2_c * sin_tm
+        L3_rot  = self.properties["amplitude"] * L3_c * sin_tm
 
         self.glo_update_properties(L1_rot=L1_rot, L2_rot=L2_rot, L3_rot=L3_rot)
 
