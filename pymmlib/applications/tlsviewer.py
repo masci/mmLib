@@ -977,7 +977,8 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         ## property tree control
         self.sw1 = gtk.ScrolledWindow()
         self.hpaned.add1(self.sw1)
-        self.sw1.set_size_request(150, -1)
+        self.sw1.set_size_request(175, -1)
+        self.sw1.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         
         self.gl_tree_ctrl = GLPropertyTreeControl(
             gl_object_root,
@@ -1071,10 +1072,11 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 
         if view_type=="orientation":
             vdict = self.make_vdict_orientation()
+            vdict["vname"] = "[O] %s" % (vname)
         elif view_type=="view":
             vdict = self.make_vdict_view()
+            vdict["vname"] = "[V] %s" % (vname)
 
-        vdict["vname"] = vname
         self.view_list.append(vdict)
         self.view_save_file()
         self.view_combo_refresh()
