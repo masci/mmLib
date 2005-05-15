@@ -879,6 +879,13 @@ class GLPropertyEditDialog(gtk.Window):
         self.set_resizable(gtk.FALSE)
         self.connect("response", self.response_cb)
 
+        self.toolbar = gtk.Toolbar()
+        self.vbox.pack_start(self.toolbar, gtk.TRUE, gtk.TRUE, 0)
+
+        self.view_combo = gtk.Combo()
+        self.toolbar.append_widget(self.view_combo, None, None)
+        self.view_combo.connect("activate", self.view_combo_activate, None)
+
         self.gl_prop_editor = GLPropertyEditor(gl_object)
         self.vbox.pack_start(self.gl_prop_editor, gtk.TRUE, gtk.TRUE, 0)
 
@@ -892,17 +899,20 @@ class GLPropertyEditDialog(gtk.Window):
             self.destroy()
         if response_code==100:
             self.gl_prop_editor.update()
+
+    def view_combo_activate(self, entry, junk):
+        pass
     
 
 class GLPropertyBrowserDialog(gtk.Dialog):
     """Dialog for manipulating the properties of a GLViewer.
     """
     def __init__(self, **args):
-        gtk
-
         parent_window  = args["parent_window"]
         gl_object_root = args["glo_root"]
         title          = args.get("title", "")
+
+        self.view_list = []
 
         gl_object_root.glo_set_name(title)
 
@@ -914,14 +924,55 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
         self.connect("response", self.response_cb)
-        self.set_default_size(500, 400)
+        self.set_default_size(600, 400)
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+
+        ## toolbar
+        self.toolbar = gtk.Toolbar()
+        self.vbox.pack_start(self.toolbar, gtk.FALSE, gtk.FALSE, 3)
+
+        self.toolbar.append_space()
+    
+        self.view_combo = gtk.Combo()
+        self.toolbar.append_widget(self.view_combo, None, None)
+
+        b = self.toolbar.append_item(
+            "Jump",
+            "Jump to the Selected View",
+            None, None, None, None)
+        b.connect("clicked", self.view_jump_cb, None, None)
+
+        b = self.toolbar.append_item(
+            "Delete",
+            "Delete to the Selected View",
+            None, None, None, None)
+        b.connect("clicked", self.view_delete_cb, None, None)
+
+        self.toolbar.append_space()
+
+        self.view_entry = gtk.Entry()
+        self.toolbar.append_widget(self.view_entry, None, None)
+
+        b = self.toolbar.append_item(
+            "Save Orientation",
+            "Save the Current Orientation with the Given Label",
+            None, None, None, None)
+        b.connect("clicked", self.view_save_cb, "orientation", None)
+
+        b = self.toolbar.append_item(
+            "Save View",
+            "Save the Current View Orientation with the Given Label",
+            None, None, None, None)
+        b.connect("clicked", self.view_save_cb, "view", None)
+        self.toolbar.append_space()
+        
+        self.view_load_file()
 
         ## widgets
         self.hpaned = gtk.HPaned()
         self.vbox.pack_start(self.hpaned, gtk.TRUE, gtk.TRUE, 0)
-        self.hpaned.set_border_width(2)
+        self.hpaned.set_border_width(3)
 
         ## property tree control
         self.sw1 = gtk.ScrolledWindow()
@@ -940,6 +991,152 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 
         self.show_all()
 
+    def view_jump_cb(self, button, junk1, junk2):
+        vname = self.view_combo.entry.get_text()
+        for vdict in self.view_list:
+            if vname==vdict["vname"]:
+                self.select_view(vdict)
+                break
+
+    def view_delete_cb(self, button, junk1, junk2):
+        vname = self.view_combo.entry.get_text()
+        vname = vname.strip()
+        
+        for vdict in self.view_list:
+            if vname==vdict["vname"]:
+                self.view_list.remove(vdict)
+                self.view_save_file()
+                self.view_combo_refresh()
+                break
+                
+    def select_view(self, vdict):
+        if vdict["vtype"]=="orientation":
+            glo = self.gl_tree_ctrl.gl_object_root
+            glo.properties.update(**vdict)
+
+        elif vdict["vtype"]=="view":
+            glo = self.gl_tree_ctrl.gl_object_root
+            for path, val in vdict.items():
+                if path in ["vtype","vname","width","height"]:
+                    continue
+                glo.glo_update_properties_path(path, val)
+
+    def view_save_file(self, filename="view.dat"):
+        import cPickle
+        data = cPickle.dumps(self.view_list)
+
+        try:
+            fil = open(filename, "wb")
+            fil.write(data)
+            fil.close()
+        except IOError:
+            return
+
+    def view_load_file(self, filename="view.dat"):
+        import cPickle
+
+        try:
+            fil = open(filename, "rb")
+            data = fil.read()
+            fil.close()
+        except IOError:
+            return
+
+        try:
+            view_list = cPickle.loads(data)
+        except cPickle.UnpicklingError:
+            return
+
+        self.view_list = view_list
+        self.view_combo_refresh()
+        
+    def view_save_cb(self, button, view_type, junk2):
+        vname = self.view_entry.get_text()
+        self.view_entry.set_text("")
+        
+        vname = vname.strip()
+        
+        if len(vname)==0:
+            vname = "view"
+
+        ## don't allow duplicate names
+        vname_list = [vdict["vname"] for vdict in self.view_list]
+        if vname in vname_list:
+            nvname = vname
+            i = 1
+            while nvname in vname_list:
+                i += 1
+                nvname = "%s[%d]" % (vname, i)
+            vname = nvname
+
+        if view_type=="orientation":
+            vdict = self.make_vdict_orientation()
+        elif view_type=="view":
+            vdict = self.make_vdict_view()
+
+        vdict["vname"] = vname
+        self.view_list.append(vdict)
+        self.view_save_file()
+        self.view_combo_refresh()
+        
+    def make_vdict_orientation(self):
+        """Return a vdict for the current view.
+        """
+        glo = self.gl_tree_ctrl.gl_object_root
+
+        vdict = {}
+        vdict["vtype"] = "orientation"
+        vdict["R"]     = glo.properties["R"].copy()
+        vdict["cor"]   = glo.properties["cor"].copy()
+        vdict["far"]   = glo.properties["far"]
+        vdict["near"]  = glo.properties["near"]
+        vdict["zoom"]  = glo.properties["zoom"]
+
+        return vdict
+
+    def make_vdict_view(self):
+        """Return a vdict for the current view.
+        """
+        import copy, string
+        
+        glo = self.gl_tree_ctrl.gl_object_root
+
+        vdict = {}
+        vdict["vtype"] = "view"
+
+        def save_props(glox):
+            path = []
+            for gloxx in glox.glo_get_path():
+                path.append(gloxx.glo_get_properties_id())
+            path = path[1:]
+
+            paths = string.join(path, "/")
+            if len(paths)>0:
+                paths += "/"
+            
+            for key, val in glox.properties.items():
+                vdict[paths+key] = copy.deepcopy(val)
+
+        save_props(glo)
+        for glo_child in glo.glo_iter_preorder_traversal():
+            save_props(glo_child)
+
+        return vdict
+        
+    def view_combo_refresh(self):
+        old_vname = self.view_combo.entry.get_text()
+        old_vname = old_vname.strip()
+
+        vname_list = []
+        for vdict in self.view_list:
+            vname_list.append(vdict["vname"])
+        self.view_combo.set_popdown_strings(vname_list)
+
+        if len(old_vname) and old_vname in vname_list:
+            self.view_combo.entry.set_text(old_vname)
+        else:
+            self.view_combo.entry.set_text("")
+    
     def response_cb(self, dialog, response_code):
         if response_code==gtk.RESPONSE_CLOSE:
             self.destroy()
@@ -2097,6 +2294,10 @@ class StructureContext(object):
 
         return "XXXX"
 
+    def set_struct_id(self, struct_id):
+        self.struct_id = struct_id
+        self.struct.structure_id = struct_id
+        
 
 class MainWindow(object):
     """Main viewer window.
@@ -2105,6 +2306,7 @@ class MainWindow(object):
         self.quit_notify_cb      = quit_notify_cb
         
         self.selected_sc         = None
+        self.sc_list             = []
         self.tab_list            = []
 
         ## dialog lists
@@ -2418,6 +2620,7 @@ class MainWindow(object):
         ## before removing
         if self.selected_sc==sc:
             self.set_selected_sc(None)
+        self.sc_list.remove(sc)
         
         tab = self.get_sc_tab(sc)
         tab["sc_list"].remove(sc)
@@ -2450,8 +2653,21 @@ class MainWindow(object):
         ## this Structure/GLStructure pair
         sc = StructureContext()
 
-        sc.struct    = struct
-        sc.struct_id = sc.suggest_struct_id()
+        sc.struct = struct
+        struct_id = sc.suggest_struct_id()
+
+        ## make sure the ID is unique to the window
+        re_struct_id = re.compile('^(\w+)\[(\d)\]$')
+        i = 1
+        for scx in self.sc_list:
+            m = re_struct_id.match(scx.struct_id)
+            assert m!=None
+            
+            if m.group(1)==struct_id:
+                i = max(i, int(m.group(2)) + 1)
+
+        sc.set_struct_id("%s[%d]" % (struct_id, i))
+        self.sc_list.append(sc)
         
         ## get the current notebook tab's GtkGLViewer or create
         ## a new notebook table with a new GtkGLViewer
@@ -2491,8 +2707,8 @@ class MainWindow(object):
 
         try:
             struct = LoadStructure(
-                fil              = path,
-                update_cb        = self.update_cb,
+                fil              = path,                
+             #   update_cb        = self.update_cb,
                 build_properties = ("library_bonds","distance_bonds"))
 
         except IOError:

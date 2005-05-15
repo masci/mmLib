@@ -2315,8 +2315,9 @@ class GLTLSAtomList(GLAtomList):
     """OpenGL visualizations of TLS group atoms.
     """
     def __init__(self, **args):
-        self.tls_group = args["tls_group"]        
+        self.tls_group = args["tls_group"] 
         GLAtomList.__init__(self, **args)
+        self.glo_set_properties_id("GLTLSAtomList")
         self.glo_init_properties(**args)
     
     def glo_install_properties(self):
@@ -2700,6 +2701,7 @@ class GLTLSGroup(GLDrawList):
         self.tls_name  = args["tls_name"]
 
         GLDrawList.__init__(self)
+        self.glo_set_properties_id("GLTLSGroup_%s" % (self.tls_name))
         self.glo_set_name(self.tls_name)
 
         ## add a child GLTLSAtomList for the animated atoms
@@ -3629,6 +3631,7 @@ class GLTLSChain(GLDrawList):
     """
     def __init__(self, **args):
         GLDrawList.__init__(self)
+        self.glo_set_properties_id("GLTLSChain_%s" % (args["chain_id"]))
         self.glo_set_name("TLS Chain %s" % (args["chain_id"]))
         self.glo_add_update_callback(self.update_cb)
         self.glo_init_properties(**args)

@@ -180,7 +180,7 @@ class GLObject(object):
         parent = self.__globject_parent
         while parent:
             path_list.insert(0, parent)
-            parent = parent.__parent
+            parent = parent.__globject_parent
         return path_list
 
     def glo_get_index_path(self):
@@ -189,11 +189,11 @@ class GLObject(object):
         """
         ipath_list = []
         child = self
-        parent = child.__parent
+        parent = child.__globject_parent
         while parent:
-            ipath_list.insert(0, parent.__child_list.index(child))
+            ipath_list.insert(0, parent.__globject_children.index(child))
             child = parent
-            parent = parent.__parent
+            parent = parent.__globject_parent
         return ipath_list
 
     def glo_get_parent_list(self):
@@ -201,8 +201,8 @@ class GLObject(object):
         """
         parent_list = []
         composite = self
-        while composite.__parent:
-            composite = composite.__parent
+        while composite.__globject_parent:
+            composite = composite.__globject_parent
             parent_list.append(composite)
         return parent_list
 
@@ -457,15 +457,24 @@ class GLObject(object):
             for func in self.__globject_properties_callbacks:
                 func(updates, actions)
 
-    def glo_update_properties_path(self, glo_id_path, **args):
+    def glo_update_properties_path(self, glo_id_path, value):
         """
         """
-        child = self.glo_get_child_path(glo_id_path)
+        path = glo_id_path.split("/")
+        prop_name = path[-1]
+        path = path[:-1]
+
+        ## get the child to update
+        child = self
+        for glo_id in path:
+            parent = child
+            child = parent.glo_get_child(glo_id)
+            if child==None:
+                break
         if child==None:
             return False
 
-        child.glo_update_properties(**args)
-        return True
+        child.glo_update_properties(**{prop_name: value})
 
     def glo_add_update_callback(self, func):
         """Adds a function which is called whenever property values change.
@@ -2199,20 +2208,22 @@ class GLStructure(GLDrawList):
         self.struct = args["struct"]
         
         ## add GLObject children
+        self.glo_set_properties_id(
+            "GLStructure_%s" % (self.struct.structure_id))
 
         ## structure axes
         self.gl_axes = GLAxes()
-        self.gl_axes.glo_set_properties_id("gl_axes")
+        self.gl_axes.glo_set_properties_id("GLAxes")
         self.glo_add_child(self.gl_axes)
         self.glo_link_child_property(
-            "axes_visible", "gl_axes", "visible")
+            "axes_visible", "GLAxes", "visible")
 
         ## unit cell
         self.gl_unit_cell = GLUnitCell(unit_cell=self.struct.unit_cell)
-        self.gl_unit_cell.glo_set_properties_id("gl_unit_cell")
+        self.gl_unit_cell.glo_set_properties_id("GLUnitCell")
         self.glo_add_child(self.gl_unit_cell)
         self.glo_link_child_property(
-            "unit_cell_visible", "gl_unit_cell", "visible")
+            "unit_cell_visible", "GLUnitCell", "visible")
 
         ## GLChains 
         for chain in self.struct.iter_chains():
@@ -2295,7 +2306,7 @@ class GLStructure(GLDrawList):
         """Adds a Chain object to the GLStructure.
         """
         gl_chain = GLChain(chain=chain)
-        gl_chain.glo_set_properties_id(str(chain))
+        gl_chain.glo_set_properties_id("GLChain_%s" % (chain.chain_id))
         self.glo_add_child(gl_chain)
 
         chain_pid = gl_chain.glo_get_properties_id()
@@ -2348,6 +2359,8 @@ class GLViewer(GLObject):
     """
     def __init__(self):
         GLObject.__init__(self)
+
+        self.glo_set_properties_id("GLViewer")
         self.glo_set_name("GLViewer")
         self.glo_add_update_callback(self.glv_update_cb)
         self.glo_init_properties()

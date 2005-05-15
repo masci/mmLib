@@ -34,6 +34,7 @@ def main(tlsin, struct_in, struct_out):
         tls = tls_desc.construct_tls_group_with_atoms(struct)
         tls.tls_desc = tls_desc
         tls_group_list.append(tls)
+        print tls.origin
 
     for tls in tls_group_list:
         for atm, Utls in tls.iter_atm_Utls():
