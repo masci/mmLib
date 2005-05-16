@@ -752,7 +752,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             fil.write(tls_desc_str + "\n")
 
 ###############################################################################
-## SOLVE TLS LSQ-FIT BY SVD
+## SOLVE TLS LSQ-FIT BY SVD (Singular Value Decomposition)
 ##
 
 def solve_TLS_Ab(A, b):
@@ -890,6 +890,13 @@ def calc_Utls(T, L, S, position):
     return array([[u11, u12, u13],
                   [u12, u22, u23],
                   [u13, u23, u33]], Float)
+
+def calc_rotational_displacement(L, cor, rho1, rho2, rho3, position, prob):
+    """Returns the amount of rotational displacement from L
+    for a atom at the given position.
+    """
+    pass
+    
 
 def set_TLS_A(A, i, j, x, y, z, w):
     """Sets the six rows of matrix A starting at A[i,j] with the TLS

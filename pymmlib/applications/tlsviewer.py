@@ -993,6 +993,8 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         self.show_all()
 
     def view_jump_cb(self, button, junk1, junk2):
+        """Callback for Jump Button.
+        """
         vname = self.view_combo.entry.get_text()
         for vdict in self.view_list:
             if vname==vdict["vname"]:
@@ -1000,6 +1002,8 @@ class GLPropertyBrowserDialog(gtk.Dialog):
                 break
 
     def view_delete_cb(self, button, junk1, junk2):
+        """Callback for Delete button.
+        """
         vname = self.view_combo.entry.get_text()
         vname = vname.strip()
         
@@ -1011,13 +1015,23 @@ class GLPropertyBrowserDialog(gtk.Dialog):
                 break
                 
     def select_view(self, vdict):
+        """Applies the view dictionary (vdict) to the current
+        viewer.
+        """
         if vdict["vtype"]=="orientation":
             glo = self.gl_tree_ctrl.gl_object_root
             glo.properties.update(**vdict)
 
         elif vdict["vtype"]=="view":
-            glo = self.gl_tree_ctrl.gl_object_root
+            prop_list = []
             for path, val in vdict.items():
+                n = path.count("/")
+                prop_list.append((n, path, val))
+            prop_list.sort()
+            
+            glo = self.gl_tree_ctrl.gl_object_root
+            for n, path, val in prop_list:
+                ## crude filter
                 if path in ["vtype","vname","width","height"]:
                     continue
                 glo.glo_update_properties_path(path, val)
