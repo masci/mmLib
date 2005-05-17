@@ -266,7 +266,7 @@ def run_setup():
         cmdclass = {'install_data': package_install_data},
         
         name         = "pymmlib",
-        version      = "0.9.6",
+        version      = "0.9.7",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
@@ -401,6 +401,7 @@ def buildlib():
     print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
 
     import mmLib.mmCIF
+    import gc
 
     cif_file = mmLib.mmCIF.mmCIFFile()
     cif_file.load_file(TMP_PATH)
@@ -408,7 +409,11 @@ def buildlib():
     if not os.path.isdir(LIB_PATH):
         os.mkdir(LIB_PATH)
 
-    for cif_data in cif_file:
+    while len(cif_file)>0:
+        gc.collect()
+
+        cif_data = cif_file[0]
+        cif_file.remove(cif_data)
 
         mkdir_path = os.path.join(LIB_PATH, cif_data.name[0])
         if not os.path.isdir(mkdir_path):

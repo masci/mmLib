@@ -12,7 +12,8 @@ exception of the applications using the GTK+ GUI.
 
 MONOMER LIBRARY::
 
-mmLib uses a monomer library generated from the RCSB's public component dictionary available on the web at:
+mmLib uses a monomer library generated from the RCSB's public component
+dictionary available on the web at:
 
 http://pdb.rutgers.edu/public-component-erf.cif
 
