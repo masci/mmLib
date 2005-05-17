@@ -1393,7 +1393,7 @@ class TLSDialog(gtk.Dialog):
         """
         index = int(path[0])
         selected_tls = self.tls_list[index]
-        self.main_window.autoselect_gl_prop_browser(selected_tls["GLTLSGroup"])
+        #self.main_window.autoselect_gl_prop_browser(selected_tls["GLTLSGroup"])
 
     def button_release_event_cb(self, tree_view, bevent):
         x = int(bevent.x)
@@ -2632,6 +2632,11 @@ class MainWindow(object):
     def remove_sc(self, sc):
         """Completely removes the Structure (referenced by its sc).
         """
+        ## remove the TLS Analysis dialog if one exists
+        if self.tls_dialog_sc_dict.has_key(sc):
+            dialog = self.tls_dialog_sc_dict[sc]
+            dialog.destroy()
+        
         ## if this StructureContext is the selected context, unselect it
         ## before removing
         if self.selected_sc==sc:
