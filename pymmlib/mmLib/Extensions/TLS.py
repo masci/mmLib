@@ -902,7 +902,10 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     Lorigin  = cor + Lrho
     D        = dmatrixu(Lvec, Lrot)
 
-    return matrixmultiply(D, position - Lorigin) + (Lrot * Lpitch)
+    drot = matrixmultiply(D, position - Lorigin)
+    dscw = (Lrot * Lpitch) * Lvec
+    
+    return drot + dscw
 
 
 def set_TLS_A(A, i, j, x, y, z, w):
@@ -2605,7 +2608,7 @@ class GLTLSAtomList(GLAtomList):
                self.properties["L3_animation_visible"]==False:
                 continue
 
-            for sign in (1.0,):
+            for sign in (1.0,-1.0):
                 axis  = self.properties[Lx_axis]
                 rho   = self.properties[Lx_rho]
                 pitch = self.properties[Lx_pitch]
