@@ -2550,6 +2550,13 @@ class GLTLSAtomList(GLAtomList):
 
         ## Simulation State
         self.glo_add_property(
+            { "name":        "both_phases",
+              "desc":        "Show Simultanius +/- Phases",
+              "catagory":    "TLS",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":        "L1_rot",
               "desc":        "L<sub>1</sub> Rotation", 
               "catagory":    "TLS",
@@ -2592,6 +2599,11 @@ class GLTLSAtomList(GLAtomList):
         ## optimization: if a rotation of 0.0 degrees was already
         ## drawn, then there is no need to draw it again
         zero_rot = False
+
+        if self.properties["both_phases"]==True:
+            phase_tuple = (1.0, -1.0)
+        else:
+            phase_tuple = (1.0,)
         
         for Lx_axis, Lx_rho, Lx_pitch, Lx_rot, Lx_scale in (
             ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot", "L1_scale"),
@@ -2608,7 +2620,7 @@ class GLTLSAtomList(GLAtomList):
                self.properties["L3_animation_visible"]==False:
                 continue
 
-            for sign in (1.0,-1.0):
+            for sign in phase_tuple:
                 axis  = self.properties[Lx_axis]
                 rho   = self.properties[Lx_rho]
                 pitch = self.properties[Lx_pitch]
@@ -2814,7 +2826,10 @@ class GLTLSGroup(GLDrawList):
             "L2_rot", "gl_atom_list", "L2_rot")
         self.glo_link_child_property(
             "L3_rot", "gl_atom_list", "L3_rot")
- 
+
+        self.glo_link_child_property(
+            "both_phases", "gl_atom_list", "both_phases")
+         
         ## initalize properties
         self.glo_add_update_callback(self.tls_update_cb)
 
@@ -3186,6 +3201,13 @@ class GLTLSGroup(GLDrawList):
         self.glo_add_property(
             { "name":        "add_biso",
               "desc":        "Add Atom B<sup>ISO</sup> to U<sup>TLS</sup>",
+              "catagory":    "TLS",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "both_phases",
+              "desc":        "Show Simultanius +/- Phases",
               "catagory":    "TLS",
               "type":        "boolean",
               "default":     False,
@@ -3793,6 +3815,13 @@ class GLTLSChain(GLDrawList):
               "default":     False,
               "action":      "" })
         self.glo_add_property(
+            { "name":        "both_phases",
+              "desc":        "Show Simultanius +/- Phases",
+              "catagory":    "TLS",
+              "type":        "boolean",
+              "default":     False,
+              "action":      "recompile" })
+        self.glo_add_property(
             { "name":       "adp_prob",
               "desc":       "Isoprobability Magnitude",
               "catagory":   "TLS",
@@ -4027,6 +4056,8 @@ class GLTLSChain(GLDrawList):
             "L3_visible", child_id, "L3_visible")
         self.glo_link_child_property(
             "add_biso", child_id, "add_biso")
+        self.glo_link_child_property(
+            "both_phases", child_id, "both_phases")
         self.glo_link_child_property(
             "adp_prob", child_id, "adp_prob")
         self.glo_link_child_property(

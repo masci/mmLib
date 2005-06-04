@@ -2439,7 +2439,7 @@ class GLViewer(GLObject):
         self.glo_add_property(
             { "name":      "GL_AMBIENT",
               "desc":      "Ambient Light",
-              "catagory":  "OpenGL Lighting",
+              "catagory":  "Lighting",
               "type":      "float",
               "range":     "0.0-1.0,0.1",
               "default":   0.2,
@@ -2447,7 +2447,7 @@ class GLViewer(GLObject):
         self.glo_add_property(
             { "name":      "GL_SPECULAR",
               "desc":      "Specular Light",
-              "catagory":  "OpenGL Lighting",
+              "catagory":  "Lighting",
               "type":      "float",
               "range":     "0.0-1.0,0.1",
               "default":   1.0,
@@ -2455,7 +2455,7 @@ class GLViewer(GLObject):
         self.glo_add_property(
             { "name":      "GL_DIFFUSE",
               "desc":      "Diffuse Light",
-              "catagory":  "OpenGL Lighting",
+              "catagory":  "Lighting",
               "type":      "float",
               "range":     "0.0-1.0,0.1",
               "default":   1.0,
@@ -2495,23 +2495,7 @@ class GLViewer(GLObject):
               "desc":      "Enable Fog",
               "catagory":  "OpenGL Performance",
               "type":      "boolean",
-              "default":   False,
-              "action":    "redraw" })
-
-        ## Fog Properties
-        self.glo_add_property(
-            { "name":      "GL_FOG_START",
-              "desc":      "Fog Start Parameter",
-              "catagory":  "Fog",
-              "type":      "float",
-              "default":   20.0,
-              "action":    "redraw" })
-        self.glo_add_property(
-            { "name":      "GL_FOG_END",
-              "desc":      "Fog End Parameter",
-              "catagory":  "Fog",
-              "type":      "float",
-              "default":   50.0,
+              "default":   True,
               "action":    "redraw" })
 
     def glv_update_cb(self, updates, actions):
@@ -2847,9 +2831,7 @@ class GLViewer(GLObject):
             gl_point_smooth    = self.properties["GL_LINE_SMOOTH"],
             gl_polygon_smooth  = self.properties["GL_POLYGON_SMOOTH"],
             gl_blend           = self.properties["GL_BLEND"],
-            gl_fog             = self.properties["GL_FOG"],
-            gl_fog_start       = self.properties["GL_FOG_START"],
-            gl_fog_end         = self.properties["GL_FOG_END"])
+            gl_fog             = self.properties["GL_FOG"])
 
         R = self.properties["R"]
         assert allclose(determinant(R), 1.0)

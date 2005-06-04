@@ -137,11 +137,16 @@ class OpenGLDriver(object):
 
         zoom  = zoom / 2.0
         ratio = float(height) / float(width)
-        glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, -near, -far)
+        depth = near - far
+
+        self.near = near
+        glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, 0.0, depth)
+        #glOrtho(-zoom, zoom, -ratio*zoom, ratio*zoom, -near, -far)
 
         ## reset MODELVIEW matrix
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        glTranslatef(0.0, 0.0, -near)
         
         ## OpenGL Features
         glEnable(GL_NORMALIZE)
@@ -203,8 +208,15 @@ class OpenGLDriver(object):
             if gl_fog:
                 glEnable(GL_FOG)
                 glFogf(GL_FOG_MODE,    GL_LINEAR)
-                glFogf(GL_FOG_START,   gl_fog_start)
-                glFogf(GL_FOG_END,     gl_fog_end)
+                
+                glFogfv(GL_FOG_COLOR,
+                        (bg_color_rgbf[0],
+                         bg_color_rgbf[1],
+                         bg_color_rgbf[2],
+                         0.0) )
+
+                glFogf(GL_FOG_START, 0.0)
+                glFogf(GL_FOG_END,   depth)
             else:
                 glDisable(GL_FOG)
         else:
@@ -213,7 +225,8 @@ class OpenGLDriver(object):
     def glr_render_end(self):
         """
         """
-        pass
+        glTranslatef(0.0, 0.0, self.near)
+        del self.near
 
     def glr_push_matrix(self):
         """
