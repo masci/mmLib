@@ -73,10 +73,3 @@ def end_timing():
     tm = time.time() - _STIME
     return "Computation Time: %5.2f sec" % (tm)
 
-
-###############################################################################
-## Exceptions
-##
-
-class WhatTheFuck(Exception):
-    pass
