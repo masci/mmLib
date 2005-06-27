@@ -1094,8 +1094,9 @@ class TLSGridServerPool(object):
     def iter_segment_processor(self, iter_segment_producer):
         """Consume the seg_info dictionaries produced by the seg_producer
         iterator, and run them concurrently on all avilible
-        TLSGridServerThread threads.  Yield back fit fit_info dict for
-        each segment.
+        TLSGridServerThread threads.
+        Yield back the calculation results in the form of a fit_info
+        dict for each calcuation request.
         """
         open_requests = 0
 
@@ -1701,7 +1702,6 @@ class TLSMDAnalysis(object):
     """
     def __init__(self, struct_path):
         print_global_options()
-        
         self.struct_path     = struct_path
         self.struct          = None
         self.struct_id       = None
@@ -1709,8 +1709,22 @@ class TLSMDAnalysis(object):
         self.chain_processor = None
         self.datafile        = None
 
-    def set_struct_id(self):
-        struct_id = self.struct.structure_id
+    def load_struct(self):
+        """Loads Structure, chooses a unique struct_id string.
+        """
+        print "LOADING STRUCTURE"
+        print "    PATH: %s" % (self.struct_path)
+
+        ## load struct
+        self.struct = LoadStructure(
+            fil = self.struct_path,
+            build_properties = ("library_bonds","distance_bonds"))
+
+        ## set the structure ID
+        if GLOBALS.has_key("STRUCT_ID"):
+            struct_id = GLOBALS["STRUCT_ID"]
+        else:
+            struct_id = self.struct.structure_id
 
         if struct_id==None or struct_id=="XXXX":
             directory, filename = os.path.split(self.struct_path)
@@ -1719,14 +1733,36 @@ class TLSMDAnalysis(object):
 
         self.struct_id = struct_id
 
-    def load_struct(self):
-        """Loads Structure, chooses a unique struct_id string.
-        """
-        self.struct = LoadStructure(
-            fil = self.struct_path,
-            build_properties = ("library_bonds","distance_bonds"))
-        self.set_struct_id()
+        print "    STRUCT ID: %s" % (self.struct_id)
+        print
 
+        ## if there are REFMAC5 TLS groups in the REMARK records of
+        ## the PDB file, then add those in
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatPDB())
+
+        fil = open(self.struct_path, "r")
+        tls_file.load(fil)
+
+        if len(tls_file.tls_desc_list)>0:
+            print "MERGING TLS GROUPS"
+            print "    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list))
+
+            ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
+            for tls_desc in tls_file.tls_desc_list:
+                tls_group = tls_desc.construct_tls_group_with_atoms(
+                    self.struct)
+
+                print "    TLS GROUP: %s" % (tls_group.name)
+                
+                for atm, Utls in tls_group.iter_atm_Utls():
+                    bresi = atm.temp_factor
+                    atm.temp_factor = bresi + (U2B * trace(Utls) / 3.0)
+                    atm.U = (B2U * bresi * identity(3, Float)) + Utls
+            
+        print
+
+        ## open database file
         self.tlsmdfile = TLSMDFile(self.struct_id)
 
     def select_chains(self, chain_ids):

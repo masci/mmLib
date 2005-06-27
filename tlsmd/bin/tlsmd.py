@@ -29,6 +29,7 @@ def usage():
     print "            [-m <tls model> Models: HYBRID(default)/ANISO]"
     print "            [-w <Weighting Model> Models: NONE(default)/IUISO ]"
     print "            [-a <Atoms> ALL(default)/MAINCHAIN ]"
+    print "            [-i <struct_id> Override struct_id in PDB file]"
     print "            struct.pdb"
     print
     print "To run a a tls search in grid computation mode requires a"
@@ -71,6 +72,9 @@ def analysis_main(struct_path, opt_dict):
     if opt_dict.has_key("-j"):
         misc.GLOBALS["JOB_ID"] = opt_dict["-j"]
 
+    if opt_dict.has_key("-i"):
+        misc.GLOBALS["STRUCT_ID"] = opt_dict["-i"]
+        
     ## set the TLS model to use
     if tls_model==None:
         tls_model = "HYBRID"
@@ -134,7 +138,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:w:m:r:f:t:j:x:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:")
     except getopt.GetoptError:
         usage()
 

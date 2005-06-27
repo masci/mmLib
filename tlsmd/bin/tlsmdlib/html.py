@@ -23,6 +23,9 @@ from misc                 import *
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
+GNUPLOT_FONT = "/usr/local/j2sdk1.4.2_03/jre/lib/fonts/LucidaSansOblique.ttf"
+GNUPLOT_FONT_SIZE = 8
+
 JMOL_DIR     = "../../../jmol"
 
 ## constants
@@ -90,6 +93,31 @@ optimal TLS group segments, and how those segments align with
 the optimal TLS group segments as the number of TLS groups used
 increases.
 """
+
+TRANSLATION_GRAPH_CAPTION = """\
+This graph shows the TLS group translational displacement magnitude
+of the three principal components of the reduced T tensor at a
+isoprobability magnitude of 85%.  The line colors are the same as
+those used for the TLS groups in the structure visualization.
+"""
+
+LIBRATION_GRAPH_CAPTION = """\
+This graph shows the displacement caused by the three TLS group screw axes
+on the mainchain atoms of the protein.  The screw displacement axes are
+calculated in terms of a Gaussian variance-covariance tensor, and displacment
+magnituce is shown at a 85% isoprobability magnitude like the translational
+displacement.  Protein segments with hinge-like flexibility show up as peaks in
+this graph.
+"""
+
+FIT_GRAPH_CAPTION = """\
+This graph assesses the quality of the TLS prediction for each TLS group
+spanning the residue chain by graphing the difference in the refined (input)
+mainchain atom B factors from the TLS model predicted B factors.  If the
+TLS model was a perfect fit to the input structure data, this would be
+a line at 0.0.
+"""
+
 
 
 def rgb_f2i(rgb):
@@ -281,10 +309,11 @@ class GNUPlot(object):
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Residual"
-set term png lw 2
+set style line 1 lw 3
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
-plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" with linespoints
+plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" ls 1 with linespoints
 """
         
 class LSQR_vs_TLS_Segments_Plot(GNUPlot):
@@ -317,7 +346,8 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Minimization (Weighted) LSQR Residual"
-set term png lw 2
+set style line 1 lw 3
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
 """
@@ -343,7 +373,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         for tg_info in tg_info_list:
             chain_id = tg_info["chain_id"]
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain_id)
-            x = '"%s" using 1:2 title "Chain %s" with linespoints' % (
+            x = '"%s" using 1:2 title "Chain %s" ls 1 with linespoints' % (
                 filename, chain_id)
             plist.append(x)
         script += "plot " + string.join(plist, ",\\\n\t") + "\n"
@@ -354,7 +384,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 _TRANSLATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set ylabel "Angstroms Displacement"
-set term png
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
 """
@@ -436,7 +466,7 @@ class TranslationAnalysis(GNUPlot):
 _LIBRATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set ylabel "Angstroms Displacement"
-set term png
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
 """
@@ -458,7 +488,7 @@ class LibrationAnalysis(GNUPlot):
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
-            "Libration Displacment Analysis of CA Atoms for "\
+            "Screw Displacment Analysis of backbone Atoms using "\
             "%d TLS Groups" % (ntls))
 
         ## line style
@@ -547,7 +577,7 @@ class LibrationAnalysis(GNUPlot):
 _FIT_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set ylabel "B_o - B_c"
-set term png
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
 """
@@ -632,10 +662,11 @@ class FitAnalysis(GNUPlot):
 _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE = """\
 set xlabel "Median of Bin"
 set ylabel "Number of Atoms"
-set term png
+set style line 1 lc rgb "<rgb>" lw 3
+set term png enhanced
 set output "<pngfile>"
 set title "<title>"
-plot "<txtfile>" using 1:2 with histeps
+plot "<txtfile>" using 1:2 ls 1 with histeps
 """
 
 class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
@@ -709,6 +740,7 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
         script = script.replace(
             "<title>",
             "Histogram of TLS Calculated Biso vs. Observed Biso")
+        script = script.replace("<rgb>", tls["color"]["rgbs"])
 
         self.gnuplot_run(script, basename)
 
@@ -1591,12 +1623,15 @@ class HTMLReport(object):
         spanned by the tc_desc TLS groups.
         """
         x  = ''
-        x += '<center><h3>Translation Analysis</h3></center>\n'
+        x += '<center>'
+        x += '<h3>Translation Analysis of T<sup>r</sup></h3>'
+        x += '</center>\n'
 
         tanalysis = TranslationAnalysis(tg_info, tc_desc, ntls)
         x += '<center>'
         x += '<img src="%s" alt="Translation Analysis">' % (tanalysis.png_path)
         x += '</center>\n'
+        x += '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)
         
         return x
 
@@ -1605,13 +1640,14 @@ class HTMLReport(object):
         spanned by the tc_desc TLS groups.
         """
         x  = ''
-        x += '<center><h3>Libration Analysis</h3></center>\n'
+        x += '<center><h3>Screw Displacment Analysis</h3></center>\n'
 
         libration_analysis = LibrationAnalysis(tg_info, tc_desc, ntls)
         x += '<center>'
         x += '<img src="%s" alt="Libration Analysis">' % (
             libration_analysis.png_path)
         x += '</center>\n'
+        x += '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION)
         
         return x
 
@@ -1620,14 +1656,15 @@ class HTMLReport(object):
         spanned by the tc_desc TLS groups.
         """
         x  = ''
-        x += '<center><h3>Fit Analysis</h3></center>\n'
+        x += '<center><h3>Mainchain TLS Fit Analysis</h3></center>\n'
 
         fit_analysis = FitAnalysis(tg_info, tc_desc, ntls)
         x += '<center>'
         x += '<img src="%s" alt="Fit Analysis">' % (
             fit_analysis.png_path)
         x += '</center>\n'
-        
+        x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
+
         return x
 
     def html_tls_group_analysis(self, tg_info, ntls, tc_desc, tls):
