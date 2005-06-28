@@ -140,6 +140,10 @@ if __name__ == "__main__":
         path = args[0]
     except IndexError:
         usage()
-    else:
-        analysis_main(path, opt_dict)
 
+    try:
+        analysis_main(path, opt_dict)
+    except KeyboardInterrupt:
+        print "Killed"
+
+    sys.exit(0)

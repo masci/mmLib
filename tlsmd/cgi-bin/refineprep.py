@@ -147,8 +147,10 @@ class ErrorPage(Page):
         x += self.html_title(title)
         x += '<br>'
         x += '<center><h3>A Error Occured</h3></center>'
+
         if self.text!=None:
             x += self.text
+            
         x += self.html_foot()
         return x
 
@@ -174,7 +176,8 @@ class RefinePrepPage(Page):
         analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")
         if not os.path.isdir(analysis_dir):
             raise RefinePrepError("Analysis Directory Not Found")
-
+        os.chdir(analysis_dir)
+        
         ## extract ntls selections from CGI form
         chain_ntls = []
         for key in self.form.keys():
@@ -196,13 +199,18 @@ class RefinePrepPage(Page):
         struct_id = webtlsmdd.job_data_get(job_id, "structure_id")
         assert struct_id!=False
         assert struct_id
-        
+
+        ## input structure
         pdbin  = "%s.pdb" % (struct_id)
+        if not os.path.isfile(pdbin):
+            RefinePrepError("Input PDB File %s Not Found" % (pdbin))
 
         ## the per-chain TLSOUT files from TLSMD must be merged
         tlsins = []
         for chain_id, ntls in chain_ntls:
             tlsin = "%s_CHAIN%s_NTLS%d.tlsout" % (struct_id, chain_id, ntls)
+            if not os.path.isfile(tlsin):
+                RefinePrepError("Input TLSIN File %s Not Found" % (tlsin))
             tlsins.append(tlsin)
 
         ## form unique pdbout/tlsout filenames
@@ -223,7 +231,7 @@ class RefinePrepPage(Page):
         pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
         tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
 
-        os.chdir(analysis_dir)
+        ## create the files
         refmac5_prep(pdbin, tlsins, pdbout, tlsout)
 
         x += '<p>%s</p>' % (CAPTION)
