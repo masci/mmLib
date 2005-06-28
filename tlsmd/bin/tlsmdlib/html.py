@@ -309,6 +309,7 @@ class GNUPlot(object):
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Residual"
+set format y "%5.2f"
 set style line 1 lw 3
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
@@ -348,6 +349,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Minimization (Weighted) LSQR Residual"
+set format y "%5.2f"
 set style line 1 lw 3
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
@@ -389,6 +391,7 @@ _TRANSLATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
 set ylabel "Angstroms Displacement"
+set format y "%4.2f"
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -477,7 +480,9 @@ class TranslationAnalysis(GNUPlot):
 
 _LIBRATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
+set xrange [<xrng1>:<xrng2>]
 set ylabel "Angstroms Displacement"
+set format y "%4.2f"
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -499,6 +504,10 @@ class LibrationAnalysis(GNUPlot):
         script = _LIBRATION_ANALYSIS_TEMPLATE
         script = script.replace("<font>", GNUPLOT_FONT)
         script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
+
+        script = script.replace("<xrng1>", tlsopt.tls_list[0]["frag_id1"])
+        script = script.replace("<xrng2>", tlsopt.tls_list[-1]["frag_id2"])
+        
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
@@ -590,7 +599,9 @@ class LibrationAnalysis(GNUPlot):
 
 _FIT_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
+set xrange [<xrng1>:<xrng2>]
 set ylabel "B_{obs} - B_{calc}"
+set format y "%5.2f"
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -612,6 +623,10 @@ class FitAnalysis(GNUPlot):
         script = _FIT_ANALYSIS_TEMPLATE
         script = script.replace("<font>", GNUPLOT_FONT)
         script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
+
+        script = script.replace("<xrng1>", tlsopt.tls_list[0]["frag_id1"])
+        script = script.replace("<xrng2>", tlsopt.tls_list[-1]["frag_id2"])
+        
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
@@ -1216,7 +1231,8 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<table border="1">'
         x += '<tr><th>Num. TLS Groups</th>'
-        x += '<th>Chain %s Sequence Alignment</th></tr>'% (chainopt["chain_id"])
+        x += '<th>Chain %s Sequence Alignment</th></tr>'% (
+            chainopt["chain_id"])
         x += '<tr>'
         
         x += '<td align="right">'
@@ -1720,8 +1736,6 @@ class HTMLReport(Report):
         x += self.html_foot()
         return x
 
-
-
     def write_refinement_prep(self, chainopt_list):
         """Generate form to allow users to select the number of TLS groups
         to use per chain.
@@ -1813,8 +1827,8 @@ class ChainNTLSAnalysisReport(Report):
 
         
         self.chainopt = chainopt
-        self.tlsopt = tlsopt
-        self.ntls    = ntls
+        self.tlsopt   = tlsopt
+        self.ntls     = ntls
 
         self.root  = ".."
         self.dir   = "%s_CHAIN%s_NTLS%d"  % (
@@ -1843,11 +1857,11 @@ class ChainNTLSAnalysisReport(Report):
         x += self.html_title(title)
 
         x += '<center>'
-        x += '<a href="index.html">Back to Index</a>'
+        x += '<a href="../index.html">Back to Index</a>'
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
         path = "%s_CHAIN%s_ANALYSIS.html" % (
             self.struct_id, self.chain_id)
-        x += '<a href="%s">Back to Chain %s Analysis</a>' % (
+        x += '<a href="../%s">Back to Chain %s Analysis</a>' % (
             path, self.chain_id)
         x += '</center>'
         
@@ -1861,7 +1875,7 @@ class ChainNTLSAnalysisReport(Report):
             ## don't write out bypass edges
             if tls["method"]!="TLS":
                 continue
-            x += self.html_tls_group_analysis(tls)
+            x += self.html_tls_fit_histogram(tls)
 
         ## write out the HTML page
         x += self.html_foot()
@@ -1922,13 +1936,14 @@ class ChainNTLSAnalysisReport(Report):
 
         return x
 
-    def html_tls_group_analysis(self, tls):
+    def html_tls_fit_histogram(self, tls):
         """A complete analysis of a single TLS group output as HTML.
         """
         x  = ''
-        x += '<center><h3>TLS Group Spanning Residues '\
-             '%s...%s</h3></center>\n' % (
-            tls["frag_id1"], tls["frag_id2"])
+        x += '<center>'
+        x += '<h3>TLS Group Spanning Residues %s%s-%s%s</h3>' % (
+            self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
+        x += '</center>'
 
         ## histogrm of atomic U_ISO - U_TLS_ISO
         his = UIso_vs_UtlsIso_Hisotgram(
