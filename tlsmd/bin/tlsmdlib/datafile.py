@@ -23,13 +23,10 @@ class TLSMDFile(object):
     GRH: Contains the TLS descriptions of all of the TLS fit subsegments of
          a structure.
     """
-    def __init__(self, prefix, work_path=os.curdir):
-        self.prefix = prefix
-        self.wp     = work_path
-        
+    def __init__(self, tlsdb_file):
+        self.tlsdb_file = tlsdb_file
         ## graph-file uses Berkeley DB
-        self.grh_path  = os.path.join(self.wp, "%s.db" % (self.prefix))
-        self.grh_db    = bsddb.hashopen(self.grh_path, "c")
+        self.grh_db = bsddb.hashopen(self.tlsdb_file, "c")
 
     def grh_db_key(self, chain_id, frag_id1, frag_id2):
         db_key = "%s:%s:%s" % (chain_id, frag_id1, frag_id2)

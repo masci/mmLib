@@ -1704,15 +1704,66 @@ class TLSChainMinimizer(HCSSSP):
 class TLSMDAnalysis(object):
     """Central object for a whole-structure TLS analysis.
     """
-    def __init__(self, struct_path):
+    def __init__(self,
+                 struct_path    = None,
+                 sel_chain_ids  = None,
+                 tlsdb_file     = None,
+                 tlsdb_complete = False,
+                 gridconf_file  = None,
+                 num_threads    = 1):
+
         print_global_options()
+
         self.struct_path     = struct_path
+        if sel_chain_ids!=None:
+            self.sel_chain_ids = sel_chain_ids.split(",")
+        else:
+            self.sel_chain_ids = None
+        self.tlsdb_file      = tlsdb_file
+        self.tlsdb_complete  = tlsdb_complete
+        self.gridconf_file   = gridconf_file
+        self.num_threads     = num_threads
+
         self.struct          = None
         self.struct_id       = None
         self.chains          = None
-        self.chain_processor = None
-        self.datafile        = None
+        self.tlsmdfile       = None
 
+    def run_optimization(self):
+        """Run the TLSMD optimization on the structure.
+        """
+        self.load_struct()
+
+        ## auto name of tlsdb file then open
+        if self.tlsdb_file==None:
+            self.tlsdb_file = "%s.db" % (self.struct_id)
+        self.tlsmdfile = TLSMDFile(self.tlsdb_file)
+
+        ## select chains for analysis
+        self.select_chains()
+
+        ## print these settings
+        self.prnt_settings()
+
+        if not self.tlsdb_complete:
+            self.calc_tls_segments()
+        
+        self.calc_chain_minimization()
+
+    def prnt_settings(self):
+        chain_ids = []
+        for chain in self.chains:
+            chain_ids.append(chain.chain_id)
+        cids = string.join(chain_ids, ",")
+        
+        print "TLSMD ANALYSIS SETTINGS"
+        print "    STRUCTURE FILE ================: %s"%(self.struct_path)
+        print "    STRUCTURE ID ------------------: %s"%(self.struct_id)
+        print "    CHAIN IDs SELECTED FOR ANALYSIS: %s"%(cids)
+        print "    DATABASE FILE PATH ------------: %s"%(self.tlsdb_file)
+        print "    GRID SERVER CONFIG FILE =======: %s"%(self.gridconf_file)
+        print
+        
     def load_struct(self):
         """Loads Structure, chooses a unique struct_id string.
         """
@@ -1764,23 +1815,21 @@ class TLSMDAnalysis(object):
                     atm.temp_factor = bresi + (U2B * trace(Utls) / 3.0)
                     atm.U = (B2U * bresi * identity(3, Float)) + Utls
             
-        print
+            print
 
-        ## open database file
-        self.tlsmdfile = TLSMDFile(self.struct_id)
-
-    def select_chains(self, chain_ids):
+    def select_chains(self):
         """Selects chains for analysis.
         """
         ## select viable chains for TLS analysis
-        chains = []
+        segments = []
         
         for chain in self.struct.iter_chains():
+            ## if self.sel_chain_ids is set, then only use those
+            ## selected chain ids
+            if self.sel_chain_ids!=None:
+                if chain.chain_id not in self.sel_chain_ids:
+                    continue
 
-            ## if chain_id is set, then only select that one chain
-            if chain_ids and chain_ids.count(chain.chain_id)==0:
-                continue
-            
             ## count the number of amino acid residues in the chain
             if chain.count_amino_acids()<MIN_SUBSEGMENT_SIZE:
                 continue
@@ -1789,27 +1838,57 @@ class TLSMDAnalysis(object):
             ## any leading and trailing non-amino acid residues
             frag_id1 = None
             for aa in chain.iter_amino_acids():
-                if frag_id1==None and aa.is_amino_acid():
+                if frag_id1==None:
                     frag_id1 = aa.fragment_id
-            frag_id2 = aa.fragment_id
+                frag_id2 = aa.fragment_id
                 
             segment = chain[frag_id1:frag_id2]
-            chains.append(segment)
+            segments.append(segment)
         
-        self.chains = chains
+        self.chains = segments
         
-    def calc_tls_segments(self, graph_file, num_threads, grid_config_file):
+    def calc_tls_segments(self):
         """Calculates the TLSGraph for each chain in self.chains, optionally
         loading pre-computed graphs from the graph_file.  Any chains
         which need TLSGraphs computed will be strored in the graph_file.
         """
-        if self.chain_processor==None:
-            self.setup_chain_processor(num_threads, grid_config_file)
+        chain_processor = self.launch_chain_processor()
         
         for chain in self.chains:
             print "PROCESSING CHAIN %s" % (chain)
-            self.chain_processor.process_chain(
-                self, chain, MIN_SUBSEGMENT_SIZE)
+            chain_processor.process_chain(self, chain, MIN_SUBSEGMENT_SIZE)
+
+    def launch_chain_processor(self):
+        """Starts up a in-process or grid server pool for graphing
+        this structure.
+        """
+        ## setup the server pool for local in-process running (possibly
+        ## using threads), or using a compute server grid
+        server_pool = TLSGridServerPool()
+
+        if self.gridconf_file!=None:
+            ## open the grid config file and read the URLs of the compute
+            ## server and add them to the server pool
+            fil = open(self.gridconf_file, "r")
+
+            ## each line is a comment starting with # or the URL of a
+            ## grid server
+            for ln in fil.readlines():
+                server_url = ln.strip()
+                if server_url.startswith("#"):
+                    continue
+                server_pool.launch_client_thread(server_url)
+
+        else:
+            ## launch local processing threads -- this is no good; they
+            ## only run on one processor!
+            for x in range(self.num_threads):
+                server_pool.launch_client_thread(None)
+
+        ## run the job to compute the full TLS Graph using the
+        ## server_pool
+        chain_processor = TLSChainProcessor(server_pool)
+        return chain_processor
 
     def calc_chain_minimization(self):
         """Performs the TLS graph minimization on all TLSGraphs.
@@ -1826,34 +1905,3 @@ class TLSMDAnalysis(object):
             print "="*79
             print "MINIMIZING CHAIN %s" % (chain)
             chain.tls_chain_minimizer.prnt_detailed_paths()
-
-    def setup_chain_processor(self, num_threads, grid_config_file):
-        """Starts up a in-process or grid server pool for graphing
-        this structure.
-        """
-        ## setup the server pool for local in-process running (possibly
-        ## using threads), or using a compute server grid
-        server_pool = TLSGridServerPool()
-
-        if grid_config_file:
-            ## open the grid config file and read the URLs of the compute
-            ## server and add them to the server pool
-            fil = open(grid_config_file, "r")
-
-            ## each line is a comment starting with # or the URL of a
-            ## grid server
-            for ln in fil.readlines():
-                server_url = ln.strip()
-                if server_url.startswith("#"):
-                    continue
-                server_pool.launch_client_thread(server_url)
-
-        else:
-            for x in range(num_threads):
-                server_pool.launch_client_thread(None)
-
-        ## run the job to compute the full TLS Graph using the
-        ## server_pool
-        self.chain_processor = TLSChainProcessor(server_pool)
-
-

@@ -25,11 +25,12 @@ def usage():
     print "            [-x <URL of WebTLSMDD XMLRPC Server>]"
     print "            [-j <Job ID of WebTLSMDD Job>]"
     print "            [-r <html report dir>]"
-    print "            [-d <tls database file>]"
-    print "            [-m <tls model> Models: HYBRID(default)/ANISO]"
-    print "            [-w <Weighting Model> Models: NONE(default)/IUISO ]"
-    print "            [-a <Atoms> ALL(default)/MAINCHAIN ]"
-    print "            [-i <struct_id> Override struct_id in PDB file]"
+    print "            [-d <TLS database file>]"
+    print "            [-n] TLS database is complete"
+    print "            [-m <tls model>] Models: HYBRID(default)/ANISO"
+    print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
+    print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
+    print "            [-i <struct_id>] Override struct_id in PDB file"
     print "            struct.pdb"
     print
     print "To run a a tls search in grid computation mode requires a"
@@ -60,9 +61,10 @@ def analysis_main(struct_path, opt_dict):
     basename, ext       = os.path.splitext(filename)
 
     ## set option vars and defaults
-    database_file     = opt_dict.get("-d", "%s.db" % (basename))
-    chain_id          = opt_dict.get("-c")
-    grid_config_file  = opt_dict.get("-f")
+    tlsdb_file        = opt_dict.get("-d")
+    tlsdb_complete    = opt_dict.has_key("-n")
+    chain_ids         = opt_dict.get("-c")
+    gridconf_file     = opt_dict.get("-f")
     num_threads       = int(opt_dict.get("-t", 1))
     tls_model         = opt_dict.get("-m")
 
@@ -107,29 +109,17 @@ def analysis_main(struct_path, opt_dict):
         tlsmd_analysis.set_include_atoms(val)
 
     ## create the analysis processor and load the structure, select chains
-    anal = tlsmd_analysis.TLSMDAnalysis(struct_path)
-    anal.load_struct()
-    anal.select_chains(chain_id)
-
-    anal_chains = []
-    for chain in anal.chains:
-        anal_chains.append(chain.chain_id)
-    chnx = string.join(anal_chains, ", ")
-
-    print "PROGRAM SETTINGS"
-    print "    STRUCTURE FILE ====================: %s"%(anal.struct_path)
-    print "    STRUCTURE ID ----------------------: %s"%(anal.struct_id)
-    print "    CHAIN ID SELECTED FOR ANALYSIS ====: %s"%(chnx)
-    print "    DATABASE FILE PATH ----------------: %s"%(database_file)
-    print "    GRID SERVER CONFIG FILE ===========: %s"%(str(grid_config_file))
-    print
-
-    ## database chains
-    anal.calc_tls_segments(database_file, num_threads, grid_config_file)
-    anal.calc_chain_minimization()
+    anal = tlsmd_analysis.TLSMDAnalysis(
+        struct_path    = struct_path,
+        sel_chain_ids  = chain_ids,
+        tlsdb_file     = tlsdb_file,
+        tlsdb_complete = False,
+        gridconf_file  = gridconf_file,
+        num_threads    = num_threads)
+    anal.run_optimization()
 
     ## generate HTML report if a directory is given
-    if opt_dict.has_key("-r"):
+    if opt_dict.has_key("-r") and len(anal.chains)>0:
         report_dir = opt_dict["-r"]
         report = html.HTMLReport(anal)
         report.write(report_dir)
@@ -138,7 +128,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:n")
     except getopt.GetoptError:
         usage()
 
