@@ -1248,10 +1248,10 @@ class TLSOptimization(object):
         self.tls_list = []
         self.residual = 0.0
 
-    def get_num_groups(self):
-        """Return the number of TLS groups used to describe the Chain.
+    def is_valid(self):
+        """Return True if the optimization is valid; otherwise, return False.
         """
-        return len(self.tls_list)
+        return self.ntls>0
 
     def add_tls_record(self, tls):
         """Adds a tls informatio dictionary.
@@ -1277,12 +1277,10 @@ class TLSChainMinimizer(HCSSSP):
         self.P         = None
         self.T         = None
 
-        ## source and destination fragment IDs
+        ## source and destination fragment IDs; these are the
+        ## begining and ending fragments(residues) of the chain
         self.frag_id_src  = None
         self.frag_id_dest = None
-        
-        #self.frag_id_src  = chain[5].fragment_id
-        #self.frag_id_dest = chain[-5].fragment_id
 
         print "TLSChainMinimizer(chain_id=%s, range={%s..%s})" % (
             chain.chain_id, self.frag_id_src, self.frag_id_dest)
@@ -1296,6 +1294,7 @@ class TLSChainMinimizer(HCSSSP):
         ## residues in Chain.
         self.num_vertex = len(self.chain) + 1
 
+        ## calculate the minimum temperature factor in the chain
         ## XXX: hack
         self.min_temp_factor = None
         for atm in self.chain.iter_atoms():

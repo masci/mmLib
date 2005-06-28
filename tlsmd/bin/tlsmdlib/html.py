@@ -327,7 +327,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
         self.png_path = "%s.png" % (basename)
 
         fil = open(self.txt_path, "w")
-        for h, tlsopt in chainopt["paths"]:
+        for h, tlsopt in chainopt["ntls_list"]:
             fil.write("%10d %f\n" % (h, tlsopt.residual))
         fil.close()
 
@@ -805,8 +805,8 @@ class TLSSegmentAlignmentPlot(object):
         tls_seg_desc = {}
         self.segmentations.append(tls_seg_desc)
         tls_seg_desc["tls_graph_info"] = tls_graph_info
-        tls_seg_desc["ntls"]           = ntls
-        tls_seg_desc["tlsopt"]        = tls_graph_info["segmentation"][ntls]
+        tls_seg_desc["tlsopt"]           = ntls
+        tls_seg_desc["tlsopt"]        = tls_graph_info["tlsopt"][ntls]
         
         ## update the master fragment_list
         self.update_frag_list(
@@ -977,24 +977,26 @@ class HTMLReport(Report):
         chainopt["struct_id"]    = self.struct_id
         chainopt["chain_id"]     = chain.chain_id
         chainopt["max_ntls"]     = 20
-        chainopt["paths"]        = []
-        chainopt["segmentation"] = {}
+        chainopt["ntls_list"]    = []
+        chainopt["tlsopt"]       = {}
 
         ## calculate the maximum interesting ntls
         minimizer = chain.tls_chain_minimizer
 
         ## generate the minimized, segmentd TLS groups for 1 TLS
-        ## group up to max_ntls and store it in chainopt["paths"]
+        ## group up to max_ntls and store it in chainopt["ntls_list"]
         ntls = 0
         
         for h in range(1, chainopt["max_ntls"]+1):
             tlsopt = minimizer.calc_tls_optimization(h)
             if tlsopt==None:
                 continue
+            if not tlsopt.is_valid():
+                continue
 
-            ntls = tlsopt.get_num_groups()
-            chainopt["paths"].append((h, tlsopt))
-            chainopt["segmentation"][h] = tlsopt
+            ntls = tlsopt.ntls
+            chainopt["ntls_list"].append((h, tlsopt))
+            chainopt["tlsopt"][h] = tlsopt
             
             ## assign a unique color to each tls group in a
             ## chain spanning set of tls groupos
@@ -1215,7 +1217,7 @@ class HTMLReport(Report):
         """
         plot = TLSSegmentAlignmentPlot()
         
-        for ntls, tlsopt in chainopt["paths"]:
+        for ntls, tlsopt in chainopt["ntls_list"]:
             plot.add_tls_segmentation(chainopt, ntls)
 
         ## create filename for plot PNG image file
@@ -1238,7 +1240,7 @@ class HTMLReport(Report):
         x += '<td align="right">'
         x += '<table border="0" cellspacing="0" cellpadding="0">'
 
-        for ntls, tlsopt in chainopt["paths"]:
+        for ntls, tlsopt in chainopt["ntls_list"]:
             x += '<tr><td align="right" valign="middle" height="20">'\
                  '<font size="-20">'\
                  '<a href="#NTLS%d">%d</a>'\
@@ -1263,10 +1265,10 @@ class HTMLReport(Report):
         for the given number of segments(h, or ntls)
         """
         ## select the correct TLSChainDescription() for the number of ntls
-        if not chainopt["segmentation"].has_key(ntls):
+        if not chainopt["tlsopt"].has_key(ntls):
             return None
 
-        tlsopt = chainopt["segmentation"][ntls]
+        tlsopt = chainopt["tlsopt"][ntls]
 
         ## write out PDB file
         self.write_tls_pdb_file(chainopt, tlsopt, ntls)
@@ -1661,9 +1663,9 @@ class HTMLReport(Report):
             ## each chain which a a TLSMD segmentation of h groups
             seg_list = []
             for chainopt in chainopt_list:
-                if chainopt["segmentation"].has_key(ntls):
+                if chainopt["tlsopt"].has_key(ntls):
                     seg_list.append((chainopt["chain_id"], 
-                                     chainopt["segmentation"][ntls]))
+                                     chainopt["tlsopt"][ntls]))
 
             ## generate PDB and TLSIN files containing the TLS
             ## predicted anisotropic ADPs for all chains for the
@@ -1699,7 +1701,7 @@ class HTMLReport(Report):
             chain_id_list = []
 
             for chainopt in chainopt_list:
-                if not chainopt["segmentation"].has_key(ntls):
+                if not chainopt["tlsopt"].has_key(ntls):
                     continue
                 
                 chain_id_list.append(chainopt["chain_id"])

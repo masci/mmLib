@@ -113,7 +113,7 @@ def analysis_main(struct_path, opt_dict):
         struct_path    = struct_path,
         sel_chain_ids  = chain_ids,
         tlsdb_file     = tlsdb_file,
-        tlsdb_complete = False,
+        tlsdb_complete = tlsdb_complete,
         gridconf_file  = gridconf_file,
         num_threads    = num_threads)
     anal.run_optimization()
