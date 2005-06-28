@@ -1795,7 +1795,7 @@ class HTMLReport(Report):
             x += '</td><td>'
         
             x += '<select name="NTLS_CHAIN%s">' % (chain_id)
-            for ntls in range(1, chainopt["max_ntls"]+1):
+            for ntls, tlsopt in chainopt["ntls_list"]:
                 x += '<option value="%d">%d</option>' % (ntls, ntls)
             x += '</select>'
 

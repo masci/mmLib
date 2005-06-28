@@ -151,165 +151,6 @@ class TLSGraphChain(object):
     pass
 
 
-class TLSGraphChainIsotropic(TLSGraphChain):
-    """Graph the chain with the isotropic TLS model. 
-    """
-    def __init__(self):
-        self.xmlrpc_chain = None
-        self.A            = None
-        self.b            = None
-        self.o            = None
-        self.f            = None
-    
-    def set_xmlrpc_chain(self, xmlrpc_chain):
-        """Sets a new TLS chain. which generates new self.A, self.b,
-        and self.f arrays.
-        """
-        self.xmlrpc_chain = xmlrpc_chain
-
-        ## XXX: calculate origin using chain centroid
-        n = 0
-        centroid_sum = zeros(3, Float)
-        for atm_desc in xmlrpc_chain:
-            n += 1
-            
-            centroid_sum[0] += atm_desc["x"]
-            centroid_sum[1] += atm_desc["y"]
-            centroid_sum[2] += atm_desc["z"]
-
-        centroid = centroid_sum / float(n)
-        self.o = centroid
-
-        A, b, f = self.generate_Abf(xmlrpc_chain, self.o)
-
-        self.A  = A
-        self.b  = b
-	self.f  = f
-
-        print "[ISO] set_xmlrpc_chain(A=%s, b=%s, f=%d)" % (
-            shape(self.A), shape(self.b), len(f))
-
-        return True
-
-    def generate_Abf(self, xmlrpc_chain, origin):
-        """Return the 3-tuple (A, b, d).  The A matrix is the TLS position
-        dependent coefficents(6 rows per atom), the b vector is the
-        experimental U ADP values from xmlrpc_chain, and the d vector is the
-        fragment number each row belongs to.
-        """
-        A  = zeros((len(xmlrpc_chain), 13), Float)
-        b  = zeros(len(xmlrpc_chain),  Float)
-        f  = []
-
-        i = -1
-        for atm_desc in xmlrpc_chain:
-            i += 1
-
-            ## w is actuall w^2
-            w = math.sqrt(atm_desc["w"])
-
-            ## keep a list containing a 1:1 mapping
-            ## of A,b rows to f frag_ids
-            f.append(atm_desc["frag_id"])
-
-            ## set the U values
-            set_TLSiso_b(b, i, atm_desc["u_iso"], w)
-
-            ## C Matrix
-            x = atm_desc["x"] - origin[0]
-            y = atm_desc["y"] - origin[1]
-            z = atm_desc["z"] - origin[2]
-
-            ## set A coefficents
-            set_TLSiso_A(A, i, 0, x, y, z, w)
-
-        return A, b, f
-
-    def lsq_fit_segment(self, frag_id1, frag_id2):
-        """Performs a LSQ fit of TLS parameters for the protein segment
-        starting with fragment index ifrag_start to (and including) the
-        fragment ifrag_end.
-        """
-        ## all return values here
-        fit_info = {}
-        
-        ## calculate the start/end indexes of the start fragment
-        ## and end fragment so the A matrix and b vector can be sliced
-        ## in the correct placees
-	istart = None
-        iend   = None
-        state  = "find_istart"
-
-        for icur in range(len(self.f)):
-            if state=="find_istart":
-                if fragment_id_ge(self.f[icur], frag_id1):
-                    state  = "find_iend"
-                    istart = icur
-            elif state=="find_iend":
-                if fragment_id_gt(self.f[icur], frag_id2):
-                    iend = icur
-                    break
-                
-	if iend==None:
-	    iend = len(self.f)
-
-        ## now slice A and b
-        Aw = self.A[istart:iend,:]
-        Bw = self.b[istart:iend]
-       
-        ## double-check six rows per atom
-	fit_info["num_atoms"] = len(Bw)
-
-        ## LSQ Fit
-        X = solve_TLS_Ab(Aw, Bw)
-
-        ## calculate the weighted and unweighted TLS-predicted Uij values
-        Uw = matrixmultiply(Aw, X)
-
-        ## calculate the lsq residual
-        Dw = Uw - Bw
-        fit_info["lsq_residual"] = dot(Dw, Dw)
-        
-        ## return information
-        T, L11, L22, L33, L12, L13, L23, S12, S13, S23, S21, S31, S32 = (
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-        
-        fit_info["cor_x"] = self.o[0]
-        fit_info["cor_y"] = self.o[1]
-        fit_info["cor_z"] = self.o[2]
-
-        fit_info["t11"] = X[T]
-        fit_info["t22"] = X[T]
-        fit_info["t33"] = X[T]
-        fit_info["t12"] = 0.0
-        fit_info["t13"] = 0.0
-        fit_info["t23"] = 0.0
-
-        fit_info["l11"] = X[L11]
-        fit_info["l22"] = X[L22]
-        fit_info["l33"] = X[L33]
-        fit_info["l12"] = X[L12]
-        fit_info["l13"] = X[L13]
-        fit_info["l23"] = X[L23]
-
-        fit_info["s2211"] = 0.0
-        fit_info["s1133"] = 0.0
-        fit_info["s12"]   = X[S12]
-        fit_info["s13"]   = X[S13]
-        fit_info["s23"]   = X[S23]
-        fit_info["s21"]   = X[S21]
-        fit_info["s31"]   = X[S31]
-        fit_info["s32"]   = X[S32]
-
-        print "[ISO] lsq_fit_segment_iso("\
-              "frag_id={%s..%s}, "\
-              "num_atoms=%d, lsqr=%6.4f)" % (
-            frag_id1, frag_id2,
-            fit_info["num_atoms"], fit_info["lsq_residual"])
-
-        return fit_info
-
-
 class TLSGraphChainHybrid(TLSGraphChain):
     """Graph the chain with a hybrid isotropic/anisotropic TLS model. 
     """
@@ -903,8 +744,9 @@ class TLSGraphChainPlugin(TLSGraphChain):
 
 
 def NewTLSGraphChain0(tls_model):
-    if tls_model=="ISO":
-        return TLSGraphChainIsotropic()
+    """Generate and return the proper TLSGraphChain subclass for the
+    requested TLS model.
+    """
     if tls_model=="HYBRID":
         return TLSGraphChainHybrid()
     if tls_model=="ANISO":
@@ -915,6 +757,8 @@ def NewTLSGraphChain0(tls_model):
 
 
 def NewTLSGraphChain():
+    """Return the proper TLSGraphChain subclass for the default tls_model.
+    """
     return NewTLSGraphChain0(TLS_MODEL)
 
 
@@ -1270,8 +1114,6 @@ class TLSChainMinimizer(HCSSSP):
         self.analysis   = analysis
         self.min_span   = min_span
 
-        self.tls_record_from_edge_cache = {}
-
         self.minimized = False
         self.D         = None
         self.P         = None
@@ -1463,9 +1305,6 @@ class TLSChainMinimizer(HCSSSP):
         i, j, weight, frag_range = edge
 
         ## retrieve from cache if possible
-        if self.tls_record_from_edge_cache.has_key(frag_range):
-            return copy.copy(self.tls_record_from_edge_cache[frag_range])
-
         frag_id1, frag_id2 = frag_range
 
         tls = self.analysis.tlsmdfile.grh_get_tls_record(
@@ -1482,50 +1321,22 @@ class TLSChainMinimizer(HCSSSP):
 
         ## create TLSGroup
         tls_group = TLSGroup()
+
+        ## add atoms to the group
         for atm in segment.iter_atoms():
             if calc_include_atom(atm):
                 tls_group.append(atm)
 
-        ## ISO/ANISO processing
-        if TLS_MODEL=="ISO":
-            weight_dict = {}
-            for atm in tls_group:
-                weight_dict[atm] = calc_atom_weight(atm)
-            
-            lsq_residual = tls_group.calc_TLS_least_squares_fit(weight_dict)
-            tls_group.shift_COR()
-            tls_info = tls_group.calc_tls_info()
-
-        elif TLS_MODEL=="__HYBRID":
-            weight_dict = {}
-            for atm in tls_group:
-                weight_dict[atm] = calc_atom_weight(atm)
-
-            tls_group.origin = tls_group.calc_centroid()
-            rdict = calc_TLS_least_squares_fit_for_iso(
-                tls_group, tls_group.origin)
-
-            tls_group.T = rdict["T"]
-            tls_group.L = rdict["L"]
-            tls_group.S = rdict["S"]
-            
-            tls_group.shift_COR()
-            tls_info = tls_group.calc_tls_info()
-
-        elif TLS_MODEL=="ANISO" or TLS_MODEL=="HYBRID":
-            self.__add_tensors(tls_group, tls)
-
-            ## some basic sanity checks on the TLS tensors
-            tls_info = tls_group.calc_tls_info()
+        ## take the TLS group tensors from the database set
+        ## the TLSGroup object with them
+        self.__add_tensors(tls_group, tls)
 
         ## helpful additions
+        tls_info                    = tls_group.calc_tls_info()
         tls["tls_group"]            = tls_group
         tls["tls_info"]             = tls_info
         tls["segment"]              = segment
         tls["lsq_residual_per_res"] = tls["lsq_residual"] / (len(segment))
-
-        ## add to cache
-        self.tls_record_from_edge_cache[frag_range] = copy.copy(tls)
 
         return tls
 
