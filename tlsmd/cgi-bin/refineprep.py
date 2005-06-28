@@ -135,7 +135,7 @@ class Page(object):
 
 
 class ErrorPage(Page):
-    def __init__(self, form, text=None):
+    def __init__(self, form, text):
         Page.__init__(self, form)
         self.text = text
     
@@ -272,7 +272,7 @@ def main():
     page = None
     job_id = check_job_id(form)
     if job_id==None:
-        page = ErrorPage("The Job ID seems to be expired.")
+        page = ErrorPage(form, "The Job ID seems to be expired.")
     else:
         page = RefinePrepPage(form)
 
