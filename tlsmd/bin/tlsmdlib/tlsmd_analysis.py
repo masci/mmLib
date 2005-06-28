@@ -1239,11 +1239,12 @@ class TLSChainProcessor(object):
         print "NUM REJECTED TLS GROUPS: %d" % (num_rejected_edges)
 
 
-class TLSChainDescription(object):
+class TLSOptimization(object):
     """Collection object containing one TLS description of a protein chain.
     """
     def __init__(self, chain):
-        self.chain    = None
+        self.chain    = chain
+        self.ntls     = 0
         self.tls_list = []
         self.residual = 0.0
 
@@ -1253,6 +1254,9 @@ class TLSChainDescription(object):
         return len(self.tls_list)
 
     def add_tls_record(self, tls):
+        """Adds a tls informatio dictionary.
+        """
+        self.ntls += 1
         self.tls_list.append(tls)
         self.residual += tls["lsq_residual"]
 
@@ -1429,14 +1433,14 @@ class TLSChainMinimizer(HCSSSP):
            
         return True
 
-    def tls_chain_description(self, num_tls_segments):
-        """Return a TLSChainDescription() object containing the optimal
+    def calc_tls_optimization(self, num_tls_segments):
+        """Return a TLSOptimization() object containing the optimal
         TLS description of self.chain using num_tls_segments.
         """
         if not self.minimized:
             return None
 
-        tls_chain_desc = TLSChainDescription(self.chain)
+        tlsopt = TLSOptimization(self.chain)
         
         for hi, hj, edge in self.HCSSSP_path_iter(
             self.V, self.D, self.P, self.T, num_tls_segments):
@@ -1449,9 +1453,9 @@ class TLSChainMinimizer(HCSSSP):
             
             if len(frag_range)==2:
                 tls = self.__calc_tls_record_from_edge(edge)
-                tls_chain_desc.add_tls_record(tls)
+                tlsopt.add_tls_record(tls)
 
-        return tls_chain_desc
+        return tlsopt
 
     def __calc_tls_record_from_edge(self, edge):
         """Independently calculate the TLS parameters for the segment

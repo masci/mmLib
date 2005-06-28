@@ -23,8 +23,8 @@ from misc                 import *
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
-GNUPLOT_FONT = "/usr/local/j2sdk1.4.2_03/jre/lib/fonts/LucidaSansOblique.ttf"
-GNUPLOT_FONT_SIZE = 8
+GNUPLOT_FONT = "/home/jpaint/tlsmd/fonts/LucidaSansOblique.ttf"
+GNUPLOT_FONT_SIZE = "8"
 
 JMOL_DIR     = "../../../jmol"
 
@@ -310,34 +310,36 @@ _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Residual"
 set style line 1 lw 3
-set term png enhanced
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
 plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" ls 1 with linespoints
 """
         
 class LSQR_vs_TLS_Segments_Plot(GNUPlot):
-    def __init__(self, tg_info):
+    def __init__(self, chainopt):
         ## generate data and png paths
         basename = "%s_CHAIN%s_RESID" % (
-            tg_info["struct_id"] , tg_info["chain_id"])
+            chainopt["struct_id"] , chainopt["chain_id"])
 
         self.txt_path = "%s.txt" % (basename)
         self.png_path = "%s.png" % (basename)
 
         fil = open(self.txt_path, "w")
-        for h, tc_desc in tg_info["paths"]:
-            fil.write("%10d %f\n" % (h, tc_desc.residual))
+        for h, tlsopt in chainopt["paths"]:
+            fil.write("%10d %f\n" % (h, tlsopt.residual))
         fil.close()
 
         ## modify script template
         script = _LSQR_VS_TLS_SEGMENTS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
         script = script.replace("<txtfile>", self.txt_path)
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>", "Least Squares Residual vs. Number of TLS "\
             "Segments for %s Chain %s " % (
-            tg_info["struct_id"], tg_info["chain_id"]))
+            chainopt["struct_id"], chainopt["chain_id"]))
 
         self.gnuplot_run(script, basename)
 
@@ -347,14 +349,14 @@ _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set ylabel "Minimization (Weighted) LSQR Residual"
 set style line 1 lw 3
-set term png enhanced
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
 """
 
 class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
-    def __init__(self, tg_info_list):
-        struct_id = tg_info_list[0]["struct_id"]
+    def __init__(self, chainopt_list):
+        struct_id = chainopt_list[0]["struct_id"]
         
         ## generate data and png paths
         basename = "%s_RESID" % (struct_id)
@@ -362,6 +364,8 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 
         ## prepare gnuplot script
         script = _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>", "Least Squares Residual vs. Number of TLS "\
@@ -370,8 +374,8 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         ## re-use the data files of LSQRvsNTLS from the individual
         ## graphs; to do this the filenames have to be re-constructed
         plist = []
-        for tg_info in tg_info_list:
-            chain_id = tg_info["chain_id"]
+        for chainopt in chainopt_list:
+            chain_id = chainopt["chain_id"]
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain_id)
             x = '"%s" using 1:2 title "Chain %s" ls 1 with linespoints' % (
                 filename, chain_id)
@@ -383,25 +387,33 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 
 _TRANSLATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
+set xrange [<xrng1>:<xrng2>]
 set ylabel "Angstroms Displacement"
-set term png enhanced
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
 """
 
 class TranslationAnalysis(GNUPlot):
-    def __init__(self, tg_info, tc_desc, ntls):      
+    def __init__(self, chainopt, tlsopt, ntls):      
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (
-            tg_info["struct_id"], tg_info["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], ntls)
 
         self.png_path = "%s.png" % (basename)
 
         data_file_list = []
-        for tls in tc_desc.tls_list:
-            filename = self.write_data_file(tg_info, tls)
+        for tls in tlsopt.tls_list:
+            filename = self.write_data_file(chainopt, tls)
             data_file_list.append(filename)
 
         script = _TRANSLATION_ANALYSIS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
+
+        script = script.replace("<xrng1>", tlsopt.tls_list[0]["frag_id1"])
+        script = script.replace("<xrng2>", tlsopt.tls_list[-1]["frag_id2"])
+        
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
@@ -410,7 +422,7 @@ class TranslationAnalysis(GNUPlot):
 
         ## line style
         ls = 0
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (
                 ls, tls["color"]["rgbs"])
@@ -429,7 +441,7 @@ class TranslationAnalysis(GNUPlot):
            
         self.gnuplot_run(script, basename)
 
-    def write_data_file(self, tg_info, tls):
+    def write_data_file(self, chainopt, tls):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
@@ -451,7 +463,7 @@ class TranslationAnalysis(GNUPlot):
         
         ## write data file
         filename  = "%s_CHAIN%s_TLS%s_%s_TRANSLATION.txt" % (
-            tg_info["struct_id"], tg_info["chain_id"],
+            chainopt["struct_id"], chainopt["chain_id"],
             tls["frag_id1"], tls["frag_id2"])
 
         fil = open(filename, "w")
@@ -466,25 +478,27 @@ class TranslationAnalysis(GNUPlot):
 _LIBRATION_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set ylabel "Angstroms Displacement"
-set term png enhanced
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
 """
 
 class LibrationAnalysis(GNUPlot):
-    def __init__(self, tg_info, tc_desc, ntls):      
+    def __init__(self, chainopt, tlsopt, ntls):      
         
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (
-            tg_info["struct_id"], tg_info["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], ntls)
 
         self.png_path = "%s.png" % (basename)
 
         data_file_list = []
-        for tls in tc_desc.tls_list:
-            filename = self.write_data_file(tg_info, tls)
+        for tls in tlsopt.tls_list:
+            filename = self.write_data_file(chainopt, tls)
             data_file_list.append(filename)
 
         script = _LIBRATION_ANALYSIS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
@@ -493,7 +507,7 @@ class LibrationAnalysis(GNUPlot):
 
         ## line style
         ls = 0
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (
                 ls, tls["color"]["rgbs"])
@@ -513,7 +527,7 @@ class LibrationAnalysis(GNUPlot):
            
         self.gnuplot_run(script, basename)
 
-    def write_data_file(self, tg_info, tls):
+    def write_data_file(self, chainopt, tls):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
@@ -542,7 +556,7 @@ class LibrationAnalysis(GNUPlot):
 
         ## write data file
         filename  = "%s_CHAIN%s_TLS%s_%s_LIBRATION.txt" % (
-            tg_info["struct_id"], tg_info["chain_id"],
+            chainopt["struct_id"], chainopt["chain_id"],
             tls["frag_id1"], tls["frag_id2"])
 
         fil = open(filename, "w")
@@ -576,26 +590,28 @@ class LibrationAnalysis(GNUPlot):
 
 _FIT_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
-set ylabel "B_o - B_c"
-set term png enhanced
+set ylabel "B_{obs} - B_{calc}"
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
 """
 
 class FitAnalysis(GNUPlot):
-    def __init__(self, tg_info, tc_desc, ntls):
+    def __init__(self, chainopt, tlsopt, ntls):
         
         basename = "%s_CHAIN%s_NTLS%s_FIT" % (
-            tg_info["struct_id"], tg_info["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], ntls)
 
         self.png_path = "%s.png" % (basename)
 
         data_file_list = []
-        for tls in tc_desc.tls_list:
-            filename = self.write_data_file(tg_info, tls)
+        for tls in tlsopt.tls_list:
+            filename = self.write_data_file(chainopt, tls)
             data_file_list.append(filename)
 
         script = _FIT_ANALYSIS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
@@ -604,7 +620,7 @@ class FitAnalysis(GNUPlot):
 
         ## line style
         ls = 0
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (
                 ls, tls["color"]["rgbs"])
@@ -624,14 +640,14 @@ class FitAnalysis(GNUPlot):
            
         self.gnuplot_run(script, basename)
 
-    def write_data_file(self, tg_info, tls):
+    def write_data_file(self, chainopt, tls):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
         tls_info  = tls["tls_info"]
 
         filename  = "%s_CHAIN%s_TLS%s_%s_FIT.txt" % (
-            tg_info["struct_id"], tg_info["chain_id"],
+            chainopt["struct_id"], chainopt["chain_id"],
             tls["frag_id1"], tls["frag_id2"])
 
         fil = open(filename, "w")
@@ -660,21 +676,21 @@ class FitAnalysis(GNUPlot):
 
 
 _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE = """\
-set xlabel "Median of Bin"
+set xlabel "B_{obs} - B_{calc}"
 set ylabel "Number of Atoms"
 set style line 1 lc rgb "<rgb>" lw 3
-set term png enhanced
+set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
-plot "<txtfile>" using 1:2 ls 1 with histeps
+plot "<txtfile>" using 1:2 ls 1 notitle with histeps
 """
 
 class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
-    def __init__(self, tg_info, ntls, tc_desc, tls):        
+    def __init__(self, chainopt, ntls, tlsopt, tls):        
         ## generate data and png paths
         basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (
-            tg_info["struct_id"],
-            tg_info["chain_id"],
+            chainopt["struct_id"],
+            chainopt["chain_id"],
             tls["frag_id1"],
             tls["frag_id2"])
         
@@ -721,9 +737,9 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
         fil.write("## from the isotropic values predicted from the TLS model.\n")
         fil.write("##\n")
         fil.write("## Structure ----------------: %s\n" % (
-            tg_info["struct_id"]))
+            chainopt["struct_id"]))
         fil.write("## Chain --------------------: %s\n" % (
-            tg_info["chain_id"]))
+            chainopt["chain_id"]))
         fil.write("## Number of TLS Groups -----: %d\n" % (ntls))
         fil.write("## TLS Group Residue Range --: %s-%s\n" % (
             tls["frag_id1"], tls["frag_id2"]))
@@ -735,11 +751,16 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
 
         ## modify script template
         script = _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
         script = script.replace("<txtfile>", self.txt_path)
         script = script.replace("<pngfile>", self.png_path)
-        script = script.replace(
-            "<title>",
-            "Histogram of TLS Calculated Biso vs. Observed Biso")
+
+        title = "Histogram of Observed B_{iso} vs. TLS B_{iso} for TLS Group "\
+                "%s%s-%s%s" % (tls["chain_id"], tls["frag_id1"],
+                               tls["chain_id"], tls["frag_id2"])
+        script = script.replace("<title>", title)
+
         script = script.replace("<rgb>", tls["color"]["rgbs"])
 
         self.gnuplot_run(script, basename)
@@ -770,17 +791,17 @@ class TLSSegmentAlignmentPlot(object):
         self.segmentations.append(tls_seg_desc)
         tls_seg_desc["tls_graph_info"] = tls_graph_info
         tls_seg_desc["ntls"]           = ntls
-        tls_seg_desc["tc_desc"]        = tls_graph_info["segmentation"][ntls]
+        tls_seg_desc["tlsopt"]        = tls_graph_info["segmentation"][ntls]
         
         ## update the master fragment_list
         self.update_frag_list(
-            tls_graph_info["chain"], tls_seg_desc["tc_desc"])
+            tls_graph_info["chain"], tls_seg_desc["tlsopt"])
 
-    def update_frag_list(self, chain, tc_desc):
+    def update_frag_list(self, chain, tlsopt):
         """Add any fragment_ids found in the tls segments to the master
         self.frag_list and sort it.
         """
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             segment = tls["segment"]
 
             for frag in segment.iter_fragments():
@@ -837,9 +858,9 @@ class TLSSegmentAlignmentPlot(object):
         xo, yo = offset
         
         ## iterate over tls segments, draw and color
-        tc_desc = tls_seg_desc["tc_desc"]
+        tlsopt = tls_seg_desc["tlsopt"]
         
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             fid1 = FragmentID(tls["frag_id1"])
             fid2 = FragmentID(tls["frag_id2"])
 
@@ -853,10 +874,59 @@ class TLSSegmentAlignmentPlot(object):
             idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
 
 
-class HTMLReport(object):
+
+class Report(object):
+    """Base class of HTML Report generating objects.
+    """
+    def html_head(self, title):
+        """Header for all HTML pages.
+        """
+        x  = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
+        x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
+        
+        x += '<html>\n'
+        x += '<head>\n'
+        x += '  <title>%s</title>\n' % (title)
+        x += '  <style type="text/css" media=screen>\n'
+        x += '  <!-- \n'
+        x += '  BODY {background-color:white;'
+        x += '        margin-left:5%;margin-right:5%;'
+        x += '        border-left:5%;border-right:5%;'
+        x += '        margin-top:2%;border-top:2%;}\n'
+        x += '  -->\n'
+        x += '  </style>\n'
+
+        x += '</head>\n'
+        x += '<body>\n'
+        return x
+
+    def html_title(self, title):
+        x  = ''
+        x += '<center>'
+        x += '<h1>%s</h1>' % (title)
+        x += '</center>'
+        return x
+
+    def html_foot(self):
+        """Footer for all HTML pages.
+        """
+        x  = ''
+        x += '<br>'
+        x += '<center><small>'
+        x += 'TLSMD Version v%s Released %s ' % (
+            GLOBALS["VERSION"], GLOBALS["RELEASE_DATE"])
+        x += 'by %s <i>%s</i>' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"])
+        x += '</small></center>'
+        x += '</body></html>\n'
+        return x
+
+
+class HTMLReport(Report):
     """Create a through HTML report it its own subdirectory.
     """
     def __init__(self, struct_tls_analysis):
+        Report.__init__(self)
+        
         self.struct          = struct_tls_analysis.struct
         self.struct_path     = struct_tls_analysis.struct_path
         self.struct_id       = struct_tls_analysis.struct_id
@@ -880,47 +950,48 @@ class HTMLReport(object):
         ## change back to original directory
         os.chdir(old_dir)
 
-    def init_chain_tls_graph_info(self, chain):
+    def init_chain_optimization(self, chain):
         """Returns a dictionary with all the calculations on the tls_graph
         needed for the HTML rendering so that no calculations should be
         performed inside the html generating methods.
         """
-        tg_info                 = {}
-
-        tg_info["chain"]        = chain
-        tg_info["struct_id"]    = self.struct_id
-        tg_info["chain_id"]     = chain.chain_id
-        tg_info["max_ntls"]     = 20
-        tg_info["paths"]        = []
-        tg_info["segmentation"] = {}
+        chainopt                 = {}
+        chainopt["struct"]       = self.struct
+        chainopt["struct_path"]  = self.struct_path
+        chainopt["chain"]        = chain
+        chainopt["struct_id"]    = self.struct_id
+        chainopt["chain_id"]     = chain.chain_id
+        chainopt["max_ntls"]     = 20
+        chainopt["paths"]        = []
+        chainopt["segmentation"] = {}
 
         ## calculate the maximum interesting ntls
         minimizer = chain.tls_chain_minimizer
 
         ## generate the minimized, segmentd TLS groups for 1 TLS
-        ## group up to max_ntls and store it in tg_info["paths"]
+        ## group up to max_ntls and store it in chainopt["paths"]
         ntls = 0
         
-        for h in range(1, tg_info["max_ntls"]+1):
-            tc_desc = minimizer.tls_chain_description(h)
-            if tc_desc==None:
+        for h in range(1, chainopt["max_ntls"]+1):
+            tlsopt = minimizer.calc_tls_optimization(h)
+            if tlsopt==None:
                 continue
 
-            ntls = tc_desc.get_num_groups()
-            tg_info["paths"].append((h, tc_desc))
-            tg_info["segmentation"][h] = tc_desc
+            ntls = tlsopt.get_num_groups()
+            chainopt["paths"].append((h, tlsopt))
+            chainopt["segmentation"][h] = tlsopt
             
             ## assign a unique color to each tls group in a
             ## chain spanning set of tls groupos
             tlsi = 0
-            for tls in tc_desc.tls_list:
+            for tls in tlsopt.tls_list:
                 if tls["method"]=="TLS":
                     tls["color"] = self.get_tls_color(tlsi)
                     tlsi += 1
                 else:
                     tls["color"] = self.colors[0]
 
-        return tg_info
+        return chainopt
 
     def init_colors(self):
         """Generated the self.colors dictionary of colors for the report,
@@ -967,8 +1038,6 @@ class HTMLReport(object):
         i = tls_index + 2
         return self.colors[i]
 
-
-
     def write_cwd(self):
         """Write out all the files in the report.
         """
@@ -983,64 +1052,22 @@ class HTMLReport(object):
 
         ## all TLSGraph objects get their calculations out of the
         ## way before writing HTML
-        tg_info_list = []
+        chainopt_list = []
         for chain in self.chains:
-            tg_info = self.init_chain_tls_graph_info(chain)
-            tg_info_list.append(tg_info)
+            chainopt = self.init_chain_optimization(chain)
+            chainopt_list.append(chainopt)
 
         ## write out all TLSGraph reports
-        for tg_info in tg_info_list:
-            self.write_tls_graph(tg_info)
+        for chainopt in chainopt_list:
+            self.write_tls_graph(chainopt)
 
         ## a report page comparing the tls group segments of all
         ## chains aginst eachother
-        self.write_multi_chain_alignment(tg_info_list)
-        self.write_refinement_prep(tg_info_list)
+        self.write_multi_chain_alignment(chainopt_list)
+        self.write_refinement_prep(chainopt_list)
 
         ## write out index page
         self.write_index()
-
-    def html_head(self, title):
-        """Header for all HTML pages.
-        """
-        x  = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
-        x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
-        
-        x += '<html>\n'
-        x += '<head>\n'
-        x += '  <title>%s</title>\n' % (title)
-        x += '  <style type="text/css" media=screen>\n'
-        x += '  <!-- \n'
-        x += '  BODY {background-color:white;'
-        x += '        margin-left:5%;margin-right:5%;'
-        x += '        border-left:5%;border-right:5%;'
-        x += '        margin-top:2%;border-top:2%;}\n'
-        x += '  -->\n'
-        x += '  </style>\n'
-
-        x += '</head>\n'
-        x += '<body>\n'
-        return x
-
-    def html_title(self, title):
-        x  = ''
-        x += '<center>'
-        x += '<h1>%s</h1>' % (title)
-        x += '</center>'
-        return x
-
-    def html_foot(self):
-        """Footer for all HTML pages.
-        """
-        x  = ''
-        x += '<br>'
-        x += '<center><small>'
-        x += 'TLSMD Version v%s Released %s ' % (
-            GLOBALS["VERSION"], GLOBALS["RELEASE_DATE"])
-        x += 'by %s <i>%s</i>' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"])
-        x += '</small></center>'
-        x += '</body></html>\n'
-        return x
 
     def write_index(self):
         """Writes the main index.html file of the report.
@@ -1098,33 +1125,29 @@ class HTMLReport(object):
         x += self.html_foot()
         return x
 
-
-
-
-
-    def write_tls_graph(self, tg_info):
+    def write_tls_graph(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
         path  = "%s_CHAIN%s_ANALYSIS.html" % (
-            self.struct_id, tg_info["chain_id"])
+            self.struct_id, chainopt["chain_id"])
 
-        title = "Chain %s TLS Analysis" % (tg_info["chain_id"])
+        title = "Chain %s TLS Analysis" % (chainopt["chain_id"])
 
         self.pages_chain_motion_analysis.append(
             {"title": title,
              "href":  path })
 
         fil = open(path, "w")
-        fil.write(self.html_tls_graph(tg_info))
+        fil.write(self.html_tls_graph(chainopt))
         fil.close()
 
         
-    def html_tls_graph(self, tg_info):
+    def html_tls_graph(self, chainopt):
         """Generates and returns the HTML string report analysis of a
         single TLS graphed chain.
         """
         title = "Chain %s TLS Analysis of %s" % (
-            tg_info["chain_id"], self.struct_id)
+            chainopt["chain_id"], self.struct_id)
         
         x  = self.html_head(title)
         x += self.html_title(title)
@@ -1132,15 +1155,15 @@ class HTMLReport(object):
         x += '<br>\n'
 
         ## TLS Segments vs. Residual
-        x += self.html_chain_lsq_residual_plot(tg_info)
+        x += self.html_chain_lsq_residual_plot(chainopt)
         
         ## generate a plot comparing all segmentations
-        x += self.html_chain_alignment_plot(tg_info)
+        x += self.html_chain_alignment_plot(chainopt)
 
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
-        for h in range(1, tg_info["max_ntls"]+1):
-            tmp = self.html_tls_graph_path(tg_info, h)
+        for h in range(1, chainopt["max_ntls"]+1):
+            tmp = self.html_tls_graph_path(chainopt, h)
             if tmp!=None:
                 x += tmp
 
@@ -1151,15 +1174,15 @@ class HTMLReport(object):
         x += self.html_foot()
         return x
 
-    def html_chain_lsq_residual_plot(self, tg_info):
+    def html_chain_lsq_residual_plot(self, chainopt):
         """Generates the Gnuplot/PNG image plot, and returns the HTML
         fragment for its display in a web page.
         """
-        gp = LSQR_vs_TLS_Segments_Plot(tg_info)
+        gp = LSQR_vs_TLS_Segments_Plot(chainopt)
 
         x  = ''
         x += '<center><h3>Chain %s Optimization Residual</h3></center>\n' % (
-            tg_info["chain_id"])
+            chainopt["chain_id"])
 
         x += '<center>'
         x += '<table>'
@@ -1172,34 +1195,34 @@ class HTMLReport(object):
         
         return x
 
-    def html_chain_alignment_plot(self, tg_info):
+    def html_chain_alignment_plot(self, chainopt):
         """generate a plot comparing all segmentations
         """
         plot = TLSSegmentAlignmentPlot()
         
-        for ntls, tc_desc in tg_info["paths"]:
-            plot.add_tls_segmentation(tg_info, ntls)
+        for ntls, tlsopt in chainopt["paths"]:
+            plot.add_tls_segmentation(chainopt, ntls)
 
         ## create filename for plot PNG image file
         plot_path = "%s_CHAIN%s_ALIGN.png" % (
-            self.struct_id, tg_info["chain_id"])
+            self.struct_id, chainopt["chain_id"])
         
         plot.plot(plot_path)
 
         x  = ''
         x += '<center><h3>Chain %s TLS Segment Sequence '\
-             'Alignment</h3></center>\n' % (tg_info["chain_id"])
+             'Alignment</h3></center>\n' % (chainopt["chain_id"])
         
         x += '<center>'
         x += '<table border="1">'
         x += '<tr><th>Num. TLS Groups</th>'
-        x += '<th>Chain %s Sequence Alignment</th></tr>'% (tg_info["chain_id"])
+        x += '<th>Chain %s Sequence Alignment</th></tr>'% (chainopt["chain_id"])
         x += '<tr>'
         
         x += '<td align="right">'
         x += '<table border="0" cellspacing="0" cellpadding="0">'
 
-        for ntls, tc_desc in tg_info["paths"]:
+        for ntls, tlsopt in chainopt["paths"]:
             x += '<tr><td align="right" valign="middle" height="20">'\
                  '<font size="-20">'\
                  '<a href="#NTLS%d">%d</a>'\
@@ -1219,31 +1242,32 @@ class HTMLReport(object):
         
         return x
 
-    def html_tls_graph_path(self, tg_info, ntls):
+    def html_tls_graph_path(self, chainopt, ntls):
         """Generates the HTML table describing the path (set of tls groups)
         for the given number of segments(h, or ntls)
         """
         ## select the correct TLSChainDescription() for the number of ntls
-        if not tg_info["segmentation"].has_key(ntls):
+        if not chainopt["segmentation"].has_key(ntls):
             return None
 
-        tc_desc = tg_info["segmentation"][ntls]
+        tlsopt = chainopt["segmentation"][ntls]
 
         ## write out PDB file
-        self.write_tls_pdb_file(tg_info, tc_desc, ntls)
+        self.write_tls_pdb_file(chainopt, tlsopt, ntls)
 
         ## Raster3D Image
         pml_path, png_path = self.raster3d_render_tls_graph_path(
-            tg_info, tc_desc, ntls)
+            chainopt, tlsopt, ntls)
 
         ## JMol Viewer Page
-        jmol_path = self.jmol_html(tg_info, tc_desc, ntls)
+        jmol_path = self.jmol_html(chainopt, tlsopt, ntls)
 
         ## tlsout file
-        tlsout_path = self.write_tlsout_file(tg_info, tc_desc, ntls)
+        tlsout_path = self.write_tlsout_file(chainopt, tlsopt, ntls)
 
         ## detailed analyisis of all TLS groups
-        analysis_path = self.write_group_analysis_page(tg_info, tc_desc, ntls)
+        report = ChainNTLSAnalysisReport(chainopt, tlsopt, ntls)
+        analysis_path = report.url
 
         f1 = '<font size="-5">'
         f2 = '</font>'
@@ -1303,7 +1327,7 @@ class HTMLReport(object):
         x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
         x += ' </tr>\n'
 
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             tls_group = tls["tls_group"]
             tls_info  = tls["tls_info"]
 
@@ -1368,11 +1392,11 @@ class HTMLReport(object):
         
         return x
 
-    def raster3d_render_tls_graph_path(self, tg_info, tc_desc, ntls):
+    def raster3d_render_tls_graph_path(self, chainopt, tlsopt, ntls):
         """Render TLS visualizations using Raster3D.
         """
         basename = "%s_CHAIN%s_NTLS%d" % (
-            self.struct_id, tg_info["chain_id"], ntls)
+            self.struct_id, chainopt["chain_id"], ntls)
 
         png_path = "%s.png"   % (basename)
 
@@ -1380,8 +1404,8 @@ class HTMLReport(object):
         print "Raster3D: rendering %s..." % (basename)
 
         struct_id = self.struct_id
-        chain     = tg_info["chain"]
-        chain_id  = tg_info["chain_id"]
+        chain     = chainopt["chain"]
+        chain_id  = chainopt["chain_id"]
 
         driver = Raster3DDriver()
 
@@ -1431,7 +1455,7 @@ class HTMLReport(object):
                     color        = "0.9,0.9,0.9")
 
         ## add the TLS group visualizations
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             if tls["method"]!="TLS":
                 continue
             
@@ -1471,18 +1495,18 @@ class HTMLReport(object):
 
         return "", png_path
 
-    def write_tls_pdb_file(self, tg_info, tc_desc, ntls):
+    def write_tls_pdb_file(self, chainopt, tlsopt, ntls):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
         basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (
-            self.struct_id, tg_info["chain_id"], ntls)
+            self.struct_id, chainopt["chain_id"], ntls)
         pdb_path = "%s.pdb" % (basename)
 
         ## temporarily set the atom temp_factor and U tensor to the Utls value
         old_temp_factor = {}
         old_U = {}
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             tls_group = tls["tls_group"]
             
             for atm, Utls in tls_group.iter_atm_Utls():
@@ -1499,20 +1523,20 @@ class HTMLReport(object):
             atm.temp_factor = temp_factor
             atm.U = old_U[atm]
 
-    def write_tlsout_file(self, tg_info, tc_desc, ntls):
+    def write_tlsout_file(self, chainopt, tlsopt, ntls):
         """Writes the TLSOUT file for the segmentation.
         """
         basename = "%s_CHAIN%s_NTLS%d" % (
-            self.struct_id, tg_info["chain_id"], ntls)
+            self.struct_id, chainopt["chain_id"], ntls)
         tlsout_path = "%s.tlsout" % (basename)
 
         struct_id = self.struct_id
-        chain_id  = tg_info["chain_id"]
+        chain_id  = chainopt["chain_id"]
 
         tls_file = TLSFile()
         tls_file.set_file_format(TLSFileFormatTLSOUT())
 
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             ## don't write out bypass edges
             if tls["method"]!="TLS":
                 continue
@@ -1529,12 +1553,12 @@ class HTMLReport(object):
 
         return tlsout_path
     
-    def jmol_html(self, tg_info, tc_desc, ntls):
+    def jmol_html(self, chainopt, tlsopt, ntls):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
         """
         jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (
-            self.struct_id, tg_info["chain_id"], ntls)
+            self.struct_id, chainopt["chain_id"], ntls)
 
         ## create the JMol script using cartoons and consisant
         ## coloring to represent the TLS groups
@@ -1547,7 +1571,7 @@ class HTMLReport(object):
         js += 'cartoon on;'
 
         ## loop over TLS groups and color
-        for tls in tc_desc.tls_list:
+        for tls in tlsopt.tls_list:
             js += 'select %s-%s:%s;' % (
                 tls["frag_id1"], tls["frag_id2"], tls["chain_id"])
             js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
@@ -1559,7 +1583,7 @@ class HTMLReport(object):
         x += '<html>'
         x += '<head>'
         x += '<title>Chain %s using %d TLS Groups</title>' % (
-            tg_info["chain_id"], ntls)
+            chainopt["chain_id"], ntls)
         x += '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR)
         x += '</script>'
         x += '</head>'
@@ -1575,122 +1599,12 @@ class HTMLReport(object):
         open(jmol_path, "w").write(x)
         return jmol_path
 
-
-
-    def write_group_analysis_page(self, tg_info, tc_desc, ntls):
-        """Writes analysis details of each TLS group.
-        """
-        ## form the base filename for files generated by this method
-        basename = "%s_CHAIN%s_NTLS%d"  % (
-            self.struct_id, tg_info["chain_id"], ntls)
-
-        title = "Chain %s Analysis using %d TLS Groups" % (
-            tg_info["chain_id"], ntls)
-        
-        x  = self.html_head(title)
-        x += self.html_title(title)
-
-        x += '<center>'
-        x += '<a href="index.html">Back to Index</a>'
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-        path = "%s_CHAIN%s_ANALYSIS.html" % (
-            self.struct_id, tg_info["chain_id"])
-        x += '<a href="%s">Back to Chain %s Analysis</a>' % (
-            path, tg_info["chain_id"])
-        x += '</center>'
-        
-        x += '<br>\n'
-
-        x += self.html_translation_analysis(tg_info, tc_desc, ntls)
-        x += self.html_libration_analysis(tg_info, tc_desc, ntls)
-        x += self.html_fit_analysis(tg_info, tc_desc, ntls)
-        
-        for tls in tc_desc.tls_list:
-            ## don't write out bypass edges
-            if tls["method"]!="TLS":
-                continue
-            x += self.html_tls_group_analysis(tg_info, ntls, tc_desc, tls)
-
-        ## write out the HTML page
-        html_path = "%s.html" % (basename)
-            
-        x += self.html_foot()
-        open(html_path, "w").write(x)
-        return html_path
-
-    def html_translation_analysis(self, tg_info, tc_desc, ntls):
-        """Perform a translation analysis of the protein chain as
-        spanned by the tc_desc TLS groups.
-        """
-        x  = ''
-        x += '<center>'
-        x += '<h3>Translation Analysis of T<sup>r</sup></h3>'
-        x += '</center>\n'
-
-        tanalysis = TranslationAnalysis(tg_info, tc_desc, ntls)
-        x += '<center>'
-        x += '<img src="%s" alt="Translation Analysis">' % (tanalysis.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)
-        
-        return x
-
-    def html_libration_analysis(self, tg_info, tc_desc, ntls):
-        """Perform a libration analysis of the protein chain as
-        spanned by the tc_desc TLS groups.
-        """
-        x  = ''
-        x += '<center><h3>Screw Displacment Analysis</h3></center>\n'
-
-        libration_analysis = LibrationAnalysis(tg_info, tc_desc, ntls)
-        x += '<center>'
-        x += '<img src="%s" alt="Libration Analysis">' % (
-            libration_analysis.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION)
-        
-        return x
-
-    def html_fit_analysis(self, tg_info, tc_desc, ntls):
-        """Perform a fit analysis of the protein chain as
-        spanned by the tc_desc TLS groups.
-        """
-        x  = ''
-        x += '<center><h3>Mainchain TLS Fit Analysis</h3></center>\n'
-
-        fit_analysis = FitAnalysis(tg_info, tc_desc, ntls)
-        x += '<center>'
-        x += '<img src="%s" alt="Fit Analysis">' % (
-            fit_analysis.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
-
-        return x
-
-    def html_tls_group_analysis(self, tg_info, ntls, tc_desc, tls):
-        """A complete analysis of a single TLS group output as HTML.
-        """
-        x  = ''
-        x += '<center><h3>TLS Group Spanning Residues '\
-             '%s...%s</h3></center>\n' % (
-            tls["frag_id1"], tls["frag_id2"])
-
-        ## histogrm of atomic U_ISO - U_TLS_ISO
-        his = UIso_vs_UtlsIso_Hisotgram(tg_info, ntls, tc_desc, tls)
-        x += '<center><img src="%s" alt="iAlt"></center>\n' % (
-            his.png_path)
-
-        return x
-
-
-
-
-    def write_multi_chain_alignment(self, tg_info_list):
+    def write_multi_chain_alignment(self, chainopt_list):
         """Write out the chain residue alignment page.
         """
         ## only write out the comparison page if there is more than one
         ## chain analyzed in the structure
-        if len(tg_info_list)<2:
+        if len(chainopt_list)<2:
             return
         
         path  = "%s_CHAIN_COMP.html" % (self.struct_id)
@@ -1701,10 +1615,10 @@ class HTMLReport(object):
             "href":  path }
 
         fil = open(path, "w")
-        fil.write(self.html_multi_chain_alignment(tg_info_list))
+        fil.write(self.html_multi_chain_alignment(chainopt_list))
         fil.close()
     
-    def html_multi_chain_alignment(self, tg_info_list):
+    def html_multi_chain_alignment(self, chainopt_list):
         """Write out all HTML/PDB/TLSIN files which compare
         chains in the structure.
         """
@@ -1720,20 +1634,20 @@ class HTMLReport(object):
 
         ## figure out the maximum number of ntls in all chains
         max_ntls = 0
-        for tg_info in tg_info_list:
-            max_ntls = max(max_ntls, tg_info["max_ntls"])
+        for chainopt in chainopt_list:
+            max_ntls = max(max_ntls, chainopt["max_ntls"])
 
         ## generate ntls number of plots and add them to the
         ## HTML document
         for ntls in range(1, max_ntls+1):
 
-            ## create a 2-tuple list of (chain_id, tg_info) for
+            ## create a 2-tuple list of (chain_id, chainopt) for
             ## each chain which a a TLSMD segmentation of h groups
             seg_list = []
-            for tg_info in tg_info_list:
-                if tg_info["segmentation"].has_key(ntls):
-                    seg_list.append((tg_info["chain_id"], 
-                                     tg_info["segmentation"][ntls]))
+            for chainopt in chainopt_list:
+                if chainopt["segmentation"].has_key(ntls):
+                    seg_list.append((chainopt["chain_id"], 
+                                     chainopt["segmentation"][ntls]))
 
             ## generate PDB and TLSIN files containing the TLS
             ## predicted anisotropic ADPs for all chains for the
@@ -1745,8 +1659,8 @@ class HTMLReport(object):
             old_temp_factor = {}
             old_U = {}
 
-            for chain_id, tc_desc in seg_list:
-                for tls in tc_desc.tls_list:
+            for chain_id, tlsopt in seg_list:
+                for tls in tlsopt.tls_list:
                     tls_group = tls["tls_group"]
 
                     for atm, Utls in tls_group.iter_atm_Utls():
@@ -1768,12 +1682,12 @@ class HTMLReport(object):
             plot = TLSSegmentAlignmentPlot()
             chain_id_list = []
 
-            for tg_info in tg_info_list:
-                if not tg_info["segmentation"].has_key(ntls):
+            for chainopt in chainopt_list:
+                if not chainopt["segmentation"].has_key(ntls):
                     continue
                 
-                chain_id_list.append(tg_info["chain_id"])
-                plot.add_tls_segmentation(tg_info, ntls)
+                chain_id_list.append(chainopt["chain_id"])
+                plot.add_tls_segmentation(chainopt, ntls)
 
             plot_path = "%s_ALIGN.png" % (basename)
             plot.plot(plot_path)
@@ -1808,7 +1722,7 @@ class HTMLReport(object):
 
 
 
-    def write_refinement_prep(self, tg_info_list):
+    def write_refinement_prep(self, chainopt_list):
         """Generate form to allow users to select the number of TLS groups
         to use per chain.
         """
@@ -1821,10 +1735,10 @@ class HTMLReport(object):
             "href" : path }
 
         fil = open(path, "w")
-        fil.write(self.html_refinement_prep(tg_info_list))
+        fil.write(self.html_refinement_prep(chainopt_list))
         fil.close()
 
-    def html_refinement_prep(self, tg_info_list):
+    def html_refinement_prep(self, chainopt_list):
         title = self.page_refinement_prep["title"]
 
         x  = self.html_head(title)
@@ -1844,7 +1758,7 @@ class HTMLReport(object):
         
         x += '<center><table><tr><td>'
         
-        plot = LSQR_vs_TLS_Segments_All_Chains_Plot(tg_info_list)
+        plot = LSQR_vs_TLS_Segments_All_Chains_Plot(chainopt_list)
         x += '<img src="%s" alt="LSQR Residual">' % (plot.png_path)
 
         x += '</td></tr><tr><td>'
@@ -1857,15 +1771,15 @@ class HTMLReport(object):
         x += '<tr><td align="center">'
 
         x += '<table cellspacing="5">'
-        for tg_info in tg_info_list:
-            chain_id = tg_info["chain_id"]
+        for chainopt in chainopt_list:
+            chain_id = chainopt["chain_id"]
             
             x += '<tr><td>'
             x += 'Number of TLS Groups for Chain %s' % (chain_id)
             x += '</td><td>'
         
             x += '<select name="NTLS_CHAIN%s">' % (chain_id)
-            for ntls in range(1, tg_info["max_ntls"]+1):
+            for ntls in range(1, chainopt["max_ntls"]+1):
                 x += '<option value="%d">%d</option>' % (ntls, ntls)
             x += '</select>'
 
@@ -1884,3 +1798,146 @@ class HTMLReport(object):
         
         x += self.html_foot()
         return x
+
+
+class ChainNTLSAnalysisReport(Report):
+    """Writes a HTML report detailing one given TLS segmentation of a chain.
+    """
+    def __init__(self, chainopt, tlsopt, ntls):
+        Report.__init__(self)
+
+        self.struct      = chainopt["struct"]
+        self.struct_id   = chainopt["struct_id"]
+        self.struct_path = chainopt["struct_path"]
+        self.chain_id    = chainopt["chain_id"]
+
+        
+        self.chainopt = chainopt
+        self.tlsopt = tlsopt
+        self.ntls    = ntls
+
+        self.root  = ".."
+        self.dir   = "%s_CHAIN%s_NTLS%d"  % (
+            self.struct_id, self.chain_id, self.ntls)
+        self.index = "%s.html" % (self.dir)
+        self.url   = "%s/%s" % (self.dir, self.index)
+
+        self.write_report()
+
+    def write_report(self):
+        if not os.path.isdir(self.dir):
+            os.mkdir(self.dir)
+        os.chdir(self.dir)
+
+        self.write_all_files()
+
+        os.chdir(self.root)
+
+    def write_all_files(self):
+        """Writes analysis details of each TLS group.
+        """
+        title = "Chain %s Analysis using %d TLS Groups" % (
+            self.chain_id, self.ntls)
+        
+        x  = self.html_head(title)
+        x += self.html_title(title)
+
+        x += '<center>'
+        x += '<a href="index.html">Back to Index</a>'
+        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
+        path = "%s_CHAIN%s_ANALYSIS.html" % (
+            self.struct_id, self.chain_id)
+        x += '<a href="%s">Back to Chain %s Analysis</a>' % (
+            path, self.chain_id)
+        x += '</center>'
+        
+        x += '<br>\n'
+
+        x += self.html_translation_analysis()
+        x += self.html_libration_analysis()
+        x += self.html_fit_analysis()
+        
+        for tls in self.tlsopt.tls_list:
+            ## don't write out bypass edges
+            if tls["method"]!="TLS":
+                continue
+            x += self.html_tls_group_analysis(tls)
+
+        ## write out the HTML page
+        x += self.html_foot()
+        open(self.index, "w").write(x)
+
+    def html_translation_analysis(self):
+        """Perform a translation analysis of the protein chain as
+        spanned by the tlsopt TLS groups.
+        """
+        x  = ''
+        x += '<center>'
+        x += '<h3>Translation Analysis of T<sup>r</sup></h3>'
+        x += '</center>\n'
+
+        tanalysis = TranslationAnalysis(
+            self.chainopt, self.tlsopt, self.ntls)
+        
+        x += '<center>'
+        x += '<img src="%s" alt="Translation Analysis">' % (tanalysis.png_path)
+        x += '</center>\n'
+        x += '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)
+        
+        return x
+
+    def html_libration_analysis(self):
+        """Perform a libration analysis of the protein chain as
+        spanned by the tlsopt TLS groups.
+        """
+        x  = ''
+        x += '<center><h3>Screw Displacment Analysis</h3></center>\n'
+
+        libration_analysis = LibrationAnalysis(
+            self.chainopt, self.tlsopt, self.ntls)
+
+        x += '<center>'
+        x += '<img src="%s" alt="Libration Analysis">' % (
+            libration_analysis.png_path)
+        x += '</center>\n'
+        x += '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION)
+        
+        return x
+
+    def html_fit_analysis(self):
+        """Perform a fit analysis of the protein chain as
+        spanned by the tlsopt TLS groups.
+        """
+        x  = ''
+        x += '<center><h3>Mainchain TLS Fit Analysis</h3></center>\n'
+
+        fit_analysis = FitAnalysis(
+            self.chainopt, self.tlsopt, self.ntls)
+        
+        x += '<center>'
+        x += '<img src="%s" alt="Fit Analysis">' % (
+            fit_analysis.png_path)
+        x += '</center>\n'
+        x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
+
+        return x
+
+    def html_tls_group_analysis(self, tls):
+        """A complete analysis of a single TLS group output as HTML.
+        """
+        x  = ''
+        x += '<center><h3>TLS Group Spanning Residues '\
+             '%s...%s</h3></center>\n' % (
+            tls["frag_id1"], tls["frag_id2"])
+
+        ## histogrm of atomic U_ISO - U_TLS_ISO
+        his = UIso_vs_UtlsIso_Hisotgram(
+            self.chainopt, self.ntls, self.tlsopt, tls)
+
+        x += '<center><img src="%s" alt="iAlt"></center>\n' % (
+            his.png_path)
+
+        return x
+
+
+
