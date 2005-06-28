@@ -272,7 +272,8 @@ def main():
     page = None
     job_id = check_job_id(form)
     if job_id==None:
-        page = ErrorPage(form, "The Job ID seems to be expired.")
+        page = ErrorPage(form,"<center>The Job ID seems to be expired "\
+                         "or invalid.</center>")
     else:
         page = RefinePrepPage(form)
 
