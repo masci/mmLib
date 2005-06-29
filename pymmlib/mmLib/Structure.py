@@ -1112,6 +1112,24 @@ class Model(object):
             n += 1
         return n
 
+    def set_model_id(self, model_id):
+        """Sets the model_id of all contained objects.
+        """
+        assert type(model_id)==IntType
+
+        if self.structure!=None:
+            chk_model = self.structure.get_model(model_id)
+            if chk_model!=None or chk_model!=self:
+                raise ModelOverwrite()
+
+        self.model_id = model_id
+
+        for chain in self.iter_chains():
+            chain.set_model_id(model_id)
+
+        if self.structure!=None:
+            self.structure.sort()
+
 
 class Segment(object):
     """Segment objects are a container for Fragment objects, but are
@@ -1542,7 +1560,25 @@ class Segment(object):
         """
         return self.model.structure
 
-    
+    def set_model_id(self, model_id):
+        """Sets the model_id of all contained objects.
+        """
+        assert type(model_id)==IntType
+        self.model_id = model_id
+
+        for frag in self.iter_fragments():
+            frag.set_model_id(model_id)
+
+    def set_chain_id(self, chain_id):
+        """Sets the model_id of all contained objects.
+        """
+        assert type(chain_id)==StringType
+        self.chain_id = chain_id
+
+        for frag in self.iter_fragments():
+            frag.set_chain_id(chain_id)
+
+
 class Chain(Segment):
     """Chain objects conatain a ordered list of Fragment objects.
     """
@@ -1652,32 +1688,30 @@ class Chain(Segment):
         Segment.remove_fragment(self, fragment)
         fragment.chain = None
         
+    def set_model_id(self, model_id):
+        """Sets the model_id of all contained objects.
+        """
+        assert type(model_id)==IntType
+        self.model_id = model_id
+
+        for frag in self.iter_fragments():
+            frag.set_model_id(model_id)
+            
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain, updating the chain_id
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        try:
-            self.model.structure[chain_id]
-        except KeyError:
-            pass
-        else:
-            raise ValueError, chain_id
+        if self.model!=None:
+            chk_chain = self.model.get_chain(chain_id)
+            if chk_chain!=None or chk_chain!=self:
+                raise ChainOverwrite()
 
-        ## set the new chain_id in all the additional groups
-
-        ## set the new chain_id for the chain object (self)
-        self.chain_id = chain_id
-
-        ## set the chain_id in all the fragment and atom children
-        for frag in self:
-            frag.chain_id = chain_id
-
-            for atm in frag:
-                atm.chain_id = chain_id
+        Segment.set_chain_id(self, chain_id)
 
         ## resort the parent structure
-        self.model.structure.sort()
+        if self.model!=None:
+            self.model.structure.sort()
 
 
 class Fragment(object):
@@ -2046,30 +2080,6 @@ class Fragment(object):
         """
         return self.chain.model.structure
 
-    def set_fragment_id(self, fragment_id):
-        """Sets a new ID for the Fragment object, updating the fragment_id
-        for all objects in the Structure hierarchy.
-        """
-        ## check for conflicting chain_id in the structure
-        try:
-            self.chain[fragment_id]
-        except KeyError:
-            pass
-        else:
-            raise ValueError, fragment_id
-
-        ## set the new fragment_id in all the additional groups
-
-        ## set the new chain_id for the chain object (se
-        self.fragment_id = fragment_id
-
-        ## set the chain_id in all the fragment and atom children
-        for atm in self.iter_all_atoms():
-            atm.fragment_id = fragment_id
-
-        ## resort the parent chain
-        self.chain.sort()
-
     def create_bonds(self):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.
@@ -2110,7 +2120,56 @@ class Fragment(object):
         """
         return library_is_water(self.res_name)
 
+    def set_model_id(self, model_id):
+        """Sets the model_id of the Fragment and all contained Atom
+        objects.
+        """
+        assert type(model_id)==IntType
+        self.model_id = model_id
 
+        for atm in self.iter_atoms():
+            atm.set_model_id(model_id)
+
+    def set_chain_id(self, chain_id):
+        """Sets the chain_id of the Fragment and all contained Atom
+        objects.
+        """
+        assert type(chain_id)==StringType
+        self.chain_id = chain_id
+
+        for atm in self.iter_atoms():
+            atm.set_chain_id(chain_id)
+
+    def set_fragment_id(self, fragment_id):
+        """Sets the fragment_id of the Fragment and all contained Atom
+        objects.
+        """
+        assert type(fragment_id)==StringType
+
+        if self.chain!=None:
+            chk_frag = self.chain.get_fragment(fragment_id)
+            if chk_frag!=None or chk_frag!=self:
+                raise FragmentOverwrite()
+
+        self.fragment_id = fragment_id
+
+        for atm in self.iter_atoms():
+            atm.set_fragment_id(fragment_id)
+
+        if self.chain!=None:
+            self.chain.sort()
+
+    def set_res_name(self, res_name):
+        """Sets the res_name of the Fragment and all contained Atom
+        objects.
+        """
+        assert type(res_name)==StringType
+        self.res_name = res_name
+
+        for atm in self.iter_atoms():
+            atm.set_res_name(res_name)
+
+            
 class Residue(Fragment):
     """A subclass of Fragment representing one residue in a polymer chain.
     """
@@ -2998,6 +3057,38 @@ class Atom(object):
         listx.sort()
         return iter(listx)
 
+    def set_model_id(self, model_id):
+        """Sets the chain_id of the Atom and all alt_loc Atom
+        objects.
+        """
+        assert type(model_id)==IntType
+        for atm in self.iter_alt_loc():
+            atm.model_id = model_id 
+
+    def set_chain_id(self, chain_id):
+        """Sets the chain_id of the Atom and all alt_loc Atom
+        objects.
+        """
+        assert type(chain_id)==StringType
+        for atm in self.iter_alt_loc():
+            atm.chain_id = chain_id
+
+    def set_fragment_id(self, fragment_id):
+        """Sets the fragment_id of the Atom and all alt_loc Atom
+        objects.
+        """
+        assert type(fragment_id)==StringType
+        for atm in self.iter_alt_loc():
+            atm.fragment_id = fragment_id
+
+    def set_res_name(self, res_name):
+        """Sets the fragment_id of the Atom and all alt_loc Atom
+        objects.
+        """
+        assert type(res_name)==StringType
+        for atm in self.iter_alt_loc():
+            atm.res_name = res_name
+            
 
 class Bond(object):
     """Indicates two atoms are bonded together.

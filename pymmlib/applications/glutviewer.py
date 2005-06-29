@@ -88,10 +88,10 @@ def draw_panel(z, x1, y1, x2, y2, r, g, b, a):
     glNormal3f(0.0, 0.0, 1.0)
 
     glBegin(GL_QUADS)
-    glVertex3f(x1, y1, z)
-    glVertex3f(x2, y1, z)
-    glVertex3f(x2, y2, z)
-    glVertex3f(x1, y2, z)
+    glVertex3f(x1, y1, z - 0.0001)
+    glVertex3f(x2, y1, z - 0.0001)
+    glVertex3f(x2, y2, z - 0.0001)
+    glVertex3f(x1, y2, z - 0.0001)
     glEnd()
 
     ## outline the screen
@@ -100,10 +100,10 @@ def draw_panel(z, x1, y1, x2, y2, r, g, b, a):
     glLineWidth(1.0)
 
     glBegin(GL_LINE_LOOP)
-    glVertex3f(x1, y1, z + 0.01)
-    glVertex3f(x2, y1, z + 0.01)
-    glVertex3f(x2, y2, z + 0.01)
-    glVertex3f(x1, y2, z + 0.01)
+    glVertex3f(x1, y1, z)
+    glVertex3f(x2, y1, z)
+    glVertex3f(x2, y2, z)
+    glVertex3f(x1, y2, z)
     glEnd()
     
 
@@ -117,7 +117,7 @@ class Terminal(object):
         self.visible = True
         self.width   = 0
         self.height  = 0
-        self.zplane  = 5000.0
+        self.zplane  = 0.0
 
         self.term_alpha = 0.90
 
