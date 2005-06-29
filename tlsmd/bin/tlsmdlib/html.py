@@ -19,8 +19,10 @@ from mmLib.Colors         import *
 from mmLib.Viewer         import *
 from mmLib.R3DDriver      import Raster3DDriver
 
+## tlsmdlib
 from misc                 import *
 from captions             import *
+from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
@@ -1211,6 +1213,7 @@ class HTMLReport(Report):
 
         ## JMol Viewer Page
         jmol_path = self.jmol_html(chainopt, tlsopt, ntls)
+        jmol_animate_path = self.jmol_animate_html(chainopt, tlsopt)
 
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chainopt, tlsopt, ntls)
@@ -1238,6 +1241,17 @@ class HTMLReport(Report):
              'return false;">View with JMol</a>' % (
             jmol_path, JMOL_SIZE, JMOL_SIZE)
 
+        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
+
+        x += '<a href="." onClick="'\
+             'window.open('\
+             '&quot;%s&quot;,'\
+             '&quot;&quot;,'\
+             '&quot;width=%d,height=%d,screenX=10,'\
+             'screenY=10,left=10,top=10&quot;);'\
+             'return false;">Animate with JMol</a>' % (
+            jmol_animate_path, JMOL_SIZE, JMOL_SIZE)
+        
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
         x += '<a href="%s">More Info...</a>' % (analysis_path)
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
@@ -1502,7 +1516,7 @@ class HTMLReport(Report):
         tls_file.save(open(tlsout_path, "w"))
 
         return tlsout_path
-    
+
     def jmol_html(self, chainopt, tlsopt, ntls):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
@@ -1548,6 +1562,68 @@ class HTMLReport(Report):
 
         open(jmol_path, "w").write(x)
         return jmol_path
+
+    def jmol_animate_html(self, chainopt, tlsopt):
+        """Writes out the HTML page which will display the
+        structure using the JMol Applet.
+        """
+        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
+            self.struct_id, chainopt["chain_id"], tlsopt.ntls)
+
+        html_path = "%s.html" % (basename)
+        pdb_path  = "%s.pdb" % (basename)
+
+        ## gerate animation PDB file
+        tls_animate = TLSAnimate(self.struct, chainopt, tlsopt)
+        tls_animate.construct_animation(pdb_path)
+        
+        ## create the JMol script using cartoons and consisant
+        ## coloring to represent the TLS groups
+        js  = ''
+        js += 'load %s;' % (pdb_path)
+        js += 'select *;'
+        js += 'cpk off;'
+        js += 'wireframe off;'
+        js += 'select protein;'
+        js += 'cartoon on;'
+
+        ## loop over TLS groups and color
+        for tls in tlsopt.tls_list:
+            chain_ids = [tls_animate.L1_chain.chain_id,
+                         tls_animate.L2_chain.chain_id,
+                         tls_animate.L3_chain.chain_id]
+
+            for chain_id in chain_ids:
+                js += 'select %s-%s:%s;' % (
+                    tls["frag_id1"], tls["frag_id2"], chain_id)
+                js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
+
+        js += 'anim fps 2;'
+        js += 'anim mode loop 0 0;'
+        js += 'anim on;'
+
+        ## write the HTML page to render the script in
+        x  = ''
+        x += '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" '\
+             '"http://www.w3.org/TR/html4/strict.dtd">'
+        x += '<html>'
+        x += '<head>'
+        x += '<title>Chain %s using %d TLS Groups</title>' % (
+            chainopt["chain_id"], tlsopt.ntls)
+        x += '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR)
+        x += '</script>'
+        x += '</head>'
+        x += '<body>'
+        x += '<script type="text/javascript">'
+        x += 'jmolInitialize("%s");' % (JMOL_DIR)
+        x += 'jmolSetAppletColor("white");'
+        x += 'jmolApplet(%d, "%s");' % (JMOL_SIZE, js)
+        x += '</script>'
+        x += '</body>'
+        x += '</html>'
+
+        open(html_path, "w").write(x)
+        return html_path
 
     def write_multi_chain_alignment(self, chainopt_list):
         """Write out the chain residue alignment page.
