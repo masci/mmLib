@@ -1585,7 +1585,7 @@ class HTMLReport(Report):
         js += 'cpk off;'
         js += 'wireframe off;'
         js += 'select protein;'
-        js += 'cartoon on;'
+        js += 'trace on;'
 
         ## loop over TLS groups and color
         for tls in tlsopt.tls_list:
