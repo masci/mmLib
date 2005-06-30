@@ -1059,7 +1059,16 @@ class EditPage(Page):
         x += '</center>'
         return x
 
-        
+
+
+SUBMIT1_INFO = """\
+<p>Fill out the information below to complete the submission of your structure to
+TLSMD.  If you would like to password protect your submission, then make sure to
+fill out the <b>user</b> and <b>password</b> fields, otherwise your submission
+will be publicly accessable.  Entering your email address is optional, we use it
+only as a contact address if there is a problem with processing your submission.</p>
+"""
+
 class SubmitPage(Page):
     def html_page(self):
         title = 'TLSMD: Job Submission'
@@ -1193,7 +1202,8 @@ class SubmitPage(Page):
         webtlsmdd.job_data_set(job_id, "weight", "IUISO")
         webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
 
-        x = self.job_edit_form(job_id)
+        x  = SUBMIT1_INFO
+        x += self.job_edit_form(job_id)
         return x
 
     def submit2(self):
