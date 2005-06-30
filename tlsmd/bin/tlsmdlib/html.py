@@ -1574,8 +1574,15 @@ class HTMLReport(Report):
         pdb_path  = "%s.pdb" % (basename)
 
         ## gerate animation PDB file
-        tls_animate = TLSAnimate(self.struct, chainopt, tlsopt)
-        tls_animate.construct_animation(pdb_path)
+
+        try:
+            print "TLSAnimate: creating animation PDB file..."
+            start_timing()
+            tls_animate = TLSAnimate(self.struct, chainopt, tlsopt)
+            tls_animate.construct_animation(pdb_path)
+            print end_timing()
+        except TLSAnimateFailure:
+            pass
         
         ## create the JMol script using cartoons and consisant
         ## coloring to represent the TLS groups
