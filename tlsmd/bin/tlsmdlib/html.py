@@ -1249,7 +1249,7 @@ class HTMLReport(Report):
              '&quot;&quot;,'\
              '&quot;width=%d,height=%d,screenX=10,'\
              'screenY=10,left=10,top=10&quot;);'\
-             'return false;">Animate with JMol</a>' % (
+             'return false;">Animate Screw Displacement with JMol</a>' % (
             jmol_animate_path, JMOL_SIZE, JMOL_SIZE)
         
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'

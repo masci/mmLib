@@ -1459,7 +1459,7 @@ class TLSChainMinimizer(HCSSSP):
                 edge = (i, i+j, weight, tls)
                 self.E.append(edge)
         
-    def prnt_detailed_paths(self, hops=12):
+    def prnt_detailed_paths(self, hops=20):
         """Debug
         """
         if not self.minimized:
