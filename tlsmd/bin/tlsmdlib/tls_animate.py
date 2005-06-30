@@ -43,7 +43,7 @@ class TLSAnimateFailure(Exception):
     pass
 
 
-class TLSAnimate(object):
+class TLSAnimateAltLoc(object):
     """Create a multi-model PDB file which each model a frame of a TLS
     animation.
     """
@@ -51,7 +51,7 @@ class TLSAnimate(object):
     def __init__(self, struct, chainopt, tlsopt):
 
         ## copy and get the anisotropic ADPs out of the structure
-        self.struct = self.copy_struct(struct)
+        self.struct = self.copy_struct(struct, chainopt["chain_id"])
         
         self.chainopt = chainopt
         self.tlsopt   = tlsopt
@@ -60,20 +60,52 @@ class TLSAnimate(object):
         self.L2_chain = None
         self.L3_chain = None
 
-        self.construct_chain_copies()
+        #self.construct_chain_copies()
 
-    def copy_struct(self, struct):
+    def copy_struct(self, struct, chain_id):
         cp_struct = Structure(structure_id = struct.structure_id)
 
-        for atm in struct.iter_atoms():
-            cp_atom = Atom(
-                chain_id    = atm.chain_id,
-                fragment_id = atm.fragment_id,
-                res_name    = atm.res_name,
-                element     = atm.element,
-                name        = atm.name,
-                position    = atm.position)
-            cp_struct.add_atom(cp_atom, True)
+        for chain in struct.iter_chains():
+            if chain.chain_id==chain_id:
+                for atm in chain.iter_atoms():
+                    cp_atm = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        alt_loc     = "A",
+                        position    = atm.position.copy())
+                    cp_struct.add_atom(cp_atm, True)
+                    cp_atm = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        alt_loc     = "B",
+                        position    = atm.position.copy())
+                    cp_struct.add_atom(cp_atm, True)
+                    cp_atm = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        alt_loc     = "C",
+                        position    = atm.position.copy())
+                    cp_struct.add_atom(cp_atm, True)
+            else:
+                for atm in chain.iter_atoms():
+                    cp_atom = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        position    = atm.position.copy())
+                    cp_struct.add_atom(cp_atom, True)
+
 
         cp_struct.sort()
         return cp_struct
@@ -138,6 +170,9 @@ class TLSAnimate(object):
     def displace_model(self, model, tls, phase):
         """Displace the given model by the tls. 
         """
+        chain_id = tls["chain_id"]
+        chain    = model.get_chain(chain_id)
+        
         tls_group = tls["tls_group"]
         tls_info  = tls["tls_info"]
         cor       = tls_info["COR"]
@@ -145,10 +180,10 @@ class TLSAnimate(object):
         frag_id1  = tls["frag_id1"]
         frag_id2  = tls["frag_id2"]
 
-        for n, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
-            (1, "L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
-            (2, "L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
-            (3, "L3_eigen_val", "L3_eigen_vec", "L3_rho", "L3_pitch") ]:
+        for alt_loc, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
+            ("A", "L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
+            ("B", "L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
+            ("C", "L3_eigen_val", "L3_eigen_vec", "L3_rho", "L3_pitch") ]:
 
             Lval   = tls_info[Lx_val]
             Lvec   = tls_info[Lx_vec]
@@ -161,14 +196,7 @@ class TLSAnimate(object):
             D = dmatrixu(Lvec, Lrot)
             d_screw = (Lrot * Lpitch) * Lvec
             
-            if n==1:
-                chain_id = self.L1_chain.chain_id
-            elif n==2:
-                chain_id = self.L2_chain.chain_id
-            elif n==3:
-                chain_id = self.L3_chain.chain_id
-
-            chain = model.get_chain(chain_id)
+            self.struct.set_default_alt_loc(alt_loc)
 
             for frag in iter_fragment_range(chain, frag_id1, frag_id2):
                 for atm in frag.iter_atoms():
@@ -176,7 +204,7 @@ class TLSAnimate(object):
                     atm.position += d
 
 
-class TLSAnimateUsingChains(object):
+class TLSAnimate(object):
     """Create a multi-model PDB file which each model a frame of a TLS
     animation.
     """
@@ -198,15 +226,37 @@ class TLSAnimateUsingChains(object):
     def copy_struct(self, struct):
         cp_struct = Structure(structure_id = struct.structure_id)
 
-        for atm in struct.iter_atoms():
-            cp_atom = Atom(
-                chain_id    = atm.chain_id,
-                fragment_id = atm.fragment_id,
-                res_name    = atm.res_name,
-                element     = atm.element,
-                name        = atm.name,
-                position    = atm.position)
-            cp_struct.add_atom(cp_atom, True)
+        for frag in struct.iter_fragments():
+            if frag.is_water():
+                continue
+
+            if frag.is_amino_acid():
+                for atm in frag.iter_atoms():
+                    if atm.name not in ["N","CA","C","O"]:
+                        continue
+                    cp_atom = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        temp_factor = atm.temp_factor,
+                        occupancy   = atm.occupancy,
+                        position    = atm.position.copy())
+                    cp_struct.add_atom(cp_atom, True)
+
+            else:
+                for atm in frag.iter_atoms():
+                    cp_atom = Atom(
+                        chain_id    = atm.chain_id,
+                        fragment_id = atm.fragment_id,
+                        res_name    = atm.res_name,
+                        element     = atm.element,
+                        name        = atm.name,
+                        temp_factor = atm.temp_factor,
+                        occupancy   = atm.occupancy,
+                        position    = atm.position.copy())  
+                    cp_struct.add_atom(cp_atom, True)
 
         cp_struct.sort()
         return cp_struct
