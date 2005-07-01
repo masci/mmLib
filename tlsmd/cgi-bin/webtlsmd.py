@@ -755,6 +755,8 @@ class QueuePage(Page):
             if jdict["state"] in ["queued", "running"]:
                 job_list.append(jdict)
 
+        job_list.reverse()
+
         return job_list
 
     def html_job_table(self, job_list):
@@ -829,6 +831,8 @@ class CompletedPage(Page):
         for jdict in jl:
             if jdict["state"] in ["completed", "defunct"]:
                 job_list.append(jdict)
+
+        job_list.reverse()
 
         return job_list
 
