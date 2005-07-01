@@ -3,6 +3,8 @@
 ## This code is part of the TLSMD distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+import re
+import string
 
 WEBTLSMDD              = "http://localhost:10100"
 VERSION                = "0.0.1"
@@ -14,3 +16,27 @@ TLSMD_WORK_DIR         = "/home/jpaint/public_html/webtlsmd/run"
 TLSMD_WORK_URL         = "/~jpaint/webtlsmd/run"
 
 LINK_SPACE             = '&nbsp;&nbsp;&nbsp;&nbsp;'
+
+DOCUMENTATION_URL      = "/~jpaint/cgi-bin/documentation.html"
+DOCUMENTATION_PATH     = "/home/jpaint/tlsmd/cgi-bin/documentation.html"
+
+
+def get_documentation_block(block_name):
+    reblock = re.compile("\s*<!--\s*BLOCK:\s*%s\s*-->.*" % (block_name))
+
+    fil = open(DOCUMENTATION_PATH, "r")
+    inblock = False
+    listx = []
+
+    for ln in fil.readlines():
+        if inblock==False:
+            if reblock.match(ln):
+                inblock = True
+            continue
+        if ln.count("<!-- ENDBLOCK -->")>0:
+            break
+        listx.append(ln)
+
+    return string.join(listx, "")
+            
+        

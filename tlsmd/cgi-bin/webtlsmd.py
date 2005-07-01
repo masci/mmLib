@@ -17,6 +17,7 @@ import cgi
 from mmLib.Structure  import *
 from mmLib.FileLoader import *
 
+
 ## GLOBALS
 from cgiconfig import *
 webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=True)
@@ -707,6 +708,8 @@ class IndexPage(Page):
         x += '</center>'
         x += '</form>'
 
+        x += get_documentation_block("INDEX")
+
         x += self.html_foot()
         return x
 
@@ -1059,58 +1062,6 @@ class EditPage(Page):
         x += '</center>'
         return x
 
-SUBMIT1_INFO = """\
-<p><b><i>User Information</i></b><br>
-Fill out the information below to complete the submission of your structure to
-TLSMD.  If you would like to password protect your submission, then make sure to
-fill out the <b>user</b> and <b>password</b> fields, otherwise your submission
-will be publicly accessible.  Entering your email address is optional, we use it
-only as a contact address if there is a problem with processing your submission.</p>
-
-<p><b><i>Processing Time</b></i><br>
-TLSMD essentially performs a brute-force search over the sequence of a protein
-chain searching for the segments which best fit the TLS rigid-body model.  The time
-required for this search is approximately proportional to <var>n<sup>2</sup></var> where
-<var>n</var> is the number of residues in the chain.  On our current computer, a 300
-residue protein takes about 2 hours to analyze.  For this reason, we ask that 
-users only run the analysis on one chain if your protein is larger than 400 residues,
-and if your protein is larger than 700 residues, make sure to select the <b>Mainchain
-Atoms</b> option in the form below.  If there is a problem with your submission, 
-you may edit or kill the submission through the <b>Edit Job</b> option on the
-TLSMD web site.
-Once submitted, you may monitor its status on the <b>Job Queue</b>, and once it
-is complete it will be moved into the <b>Completed Jobs</b> list.  Both of these
-web pages are accessible from the TLSMD main website.</p>
-
-<p><b><i>Submission Options</i></b><br>
-There are three options controlling the minimization of your structure:
-TLS Model, Least Squares Weighting, and Include Atoms.</p>
-
-<p><b><i>TLS Model</i></b><br>
-The TLS Model option selects either the isotropic form of the TLS equations,
-or the anisotropic form.  If your structure has been refined with either
-isotropic atomic displacement parameters (ADPs)(the parameter formerly known
-as temperature factor), or TLS refinement, then select the isotropic
-model which is the default.  If you are lucky enough to have 1.0 Angstrom data
-and used anisotropic ADPs refinement and you have ANISOU records in your PDB
-file, then select the anisotropic TLS model.</p>
-
-<p><b><i>Least Squares Weighting</i></b><br>
-The TLS model parameters are fit to the individual atomic ADPs of your input model
-using a overdetermined system of linear equations.  In this system of equations,
-each atom can be given a unique weight.  Usually, the weight is the inverse of
-the standard deviation of the parameter (in this case the standard deviation of
-the atomic ADP in your input model); however, the standard deviation of
-ADPs are usually not known.  It is reasonable to assume the ADP errors are
-inversely proportional to their <var>B<sub>iso</sub></var> values, so this is a
-optional least squares weighting choce for the atom in TLSMD.</p>
-
-<p><b><i>Include Atoms</i></b><br>
-This option controls the subset of atoms used when fitting the TLS model
-to your refined structure.  If you have chains with more than 400 residues,
-then please only use the main chain atoms, otherwise your job could take
-a long time to run.</p>
-"""
 
 class SubmitPage(Page):
     def html_page(self):
@@ -1245,7 +1196,7 @@ class SubmitPage(Page):
         webtlsmdd.job_data_set(job_id, "weight", "IUISO")
         webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
 
-        x  = SUBMIT1_INFO
+        x  = get_documentation_block("SUBMIT1")
         x += self.job_edit_form(job_id)
         return x
 
