@@ -66,7 +66,7 @@ def html_nav_bar(page_name=None):
 
     x += '<a href="../webtlsmd/examples">Examples</a>'
     x += LINK_SPACE
-    x += '<a href="../webtlsmd/doc">Documentation</a>'
+    x += '<a href="documentation.html">Documentation</a>'
     x += '</center>'
     x += '<br>'
     return x

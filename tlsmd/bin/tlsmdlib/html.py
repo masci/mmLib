@@ -354,7 +354,7 @@ class TranslationAnalysis(GNUPlot):
         script = script.replace("<pngfile>", self.png_path)
         script = script.replace(
             "<title>",
-            "Translation Displacment Analysis of Atoms for "\
+            "Translation Displacement Analysis of Atoms for "\
             "%d TLS Groups" % (ntls))
 
         ## line style
@@ -1166,7 +1166,7 @@ class HTMLReport(Report):
         
         x += '<center>'
         x += '<table border="1">'
-        x += '<tr><th>Num. TLS Groups</th>'
+        x += '<tr><th>TLS Groups</th>'
         x += '<th>Chain %s Sequence Alignment</th></tr>'% (
             chainopt["chain_id"])
         x += '<tr>'
@@ -1226,12 +1226,17 @@ class HTMLReport(Report):
         f2 = '</font>'
 
         x  = ''
+        x += '<hr>'
         x += '<center style="page-break-before: always">\n'
         x += '<h3><a name="NTLS%d">'\
              'Optimal TLS Group Selection using %d Groups</a></h3>\n' % (
             ntls, ntls)
 
         ## navigation links
+        x += '<a href="%s">More Details...</a>' % (analysis_path)
+
+        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
+         
         x += '<a href="." onClick="'\
              'window.open('\
              '&quot;%s&quot;,'\
@@ -1251,10 +1256,9 @@ class HTMLReport(Report):
              'screenY=10,left=10,top=10&quot;);'\
              'return false;">Animate Screw Displacement with JMol</a>' % (
             jmol_animate_path, JMOL_SIZE, JMOL_SIZE)
-        
+
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-        x += '<a href="%s">More Info...</a>' % (analysis_path)
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
+
         x += '<a href="%s">TLSOUT File</a>' % (tlsout_path)
 
         x += '</center>\n'
@@ -1352,7 +1356,7 @@ class HTMLReport(Report):
             x += '</tr>\n'
 
         x += '</table>\n'
-        x += '<br>\n'
+        x += '<br clear="all">\n'
         
         return x
 
