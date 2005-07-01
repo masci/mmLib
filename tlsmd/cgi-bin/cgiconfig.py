@@ -17,7 +17,6 @@ TLSMD_WORK_URL         = "/~jpaint/webtlsmd/run"
 
 LINK_SPACE             = '&nbsp;&nbsp;&nbsp;&nbsp;'
 
-DOCUMENTATION_URL      = "/~jpaint/cgi-bin/documentation.html"
 DOCUMENTATION_PATH     = "/home/jpaint/tlsmd/doc/documentation.html"
 
 
