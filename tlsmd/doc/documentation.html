@@ -56,13 +56,12 @@ You also get:
 <li> Various plots and graphical images showing the implied inter-domain or other motions.
 <li> An animation of the implied motion via a
      <a href="http://jmol.sourceforge.net/"> Jmol</a>
-     javascript applet
+     java applet
 <li> Modified PDB files and TLS input files that can be used for further crystallographic
      refinement in the
      <a href="http://www.ccp4.ac.uk/">CCP4</a> program <b>Refmac5</b>
-
 <li> These same files can be used for more detailed inspection in the
-     <a href="http://pymmlib.sourceforge.net/">Python Macromolecuar Library's</a> 
+     <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library's</a> 
      <b>TLSView</b> interactive viewer, which offers a wide range of static
      and animated representations of the implied motions.
 </ul>
@@ -80,7 +79,7 @@ If you publish an analysis based on the TLSMD results, please cite
 <!-- BLOCK: SUBMIT1 -->
 <p><font size=+1><b>User Information</b></font><br>
 Fill out the information submission form to complete the submission of your structure to
-TLSMD.  If you would like to password protect your submission, then make sure to
+the TLSMD server.  If you would like to password protect your submission, then make sure to
 fill out the <b>user</b> and <b>password</b> fields, otherwise your submission
 will be publicly accessible.  Entering your email address is optional, we use it
 only as a contact address if there is a problem with processing your submission.</p>
@@ -89,13 +88,14 @@ only as a contact address if there is a problem with processing your submission.
 TLSMD runs a independent analysis on each protein chain present in your input
 PDB file.  The time required to analyze each chain is roughly proportional to the
 square of the number of residues in the chain, and the total analysis time for
-your structure is the sum of the time taken for each chain.  On the current TLSMD server, a single 300 residue protein chain takes about 2 hours to analyze;
-a homo-trimer with two such chains would take 2+2+2=6 hours.  For this reason, we
+your structure is the sum of the time taken for each chain.
+On the current TLSMD server, a single 300 residue protein chain takes about 2 hours to analyze;
+a homo-trimer with three 300 residue chains would take 2+2+2=6 hours.  For this reason, we
 ask users submitting structures with protein chains larger than 600 residues
 to use the <b>Include Atoms: Mainchain Only</b> option on the submission form
 below to decrease the analysis time required for your protein.</p>
 
-<p><font size=+1><b>Cancelling Your Submitted Job</b></font><br>
+<p><font size=+1><b>Canceling Your Submitted Job</b></font><br>
 If there is a problem with your submission, you may edit or kill the
 submission through the <a href="webtlsmd.cgi?page=edit">Edit Job</a> web page on the TLSMD web site. Once submitted, you may monitor its status on the 
 <a href="webtlsmd.cgi?page=queue">Job Queue</a> page, 
@@ -113,19 +113,19 @@ The TLS Model option selects either the isotropic form of the TLS equations,
 or the anisotropic form.  If your structure has been refined with either
 isotropic atomic displacement parameters (ADPs)(the parameter formerly known
 as temperature factor), or TLS refinement, then select the isotropic
-model which is the default.  If you are lucky enough to have 1.0 Angstrom data
+model. This is the default.  If you are lucky enough to have 1.0 Angstrom data
 and used anisotropic ADPs refinement and you have ANISOU records in your PDB
 file, then select the anisotropic TLS model.</p>
 
 <p><b><i>Least Squares Weighting</i></b><br>
 The TLS model parameters are fit to the individual atomic ADPs of your input model
-using a overdetermined system of linear equations.  In this system of equations,
-each atom can be given a unique weight.  Usually, the weight is the inverse of
+using a over-determined system of linear equations.  In this system of equations,
+each atom can be given an individual weight.  Ideally, this weight is the inverse of
 the standard deviation of the parameter (in this case the standard deviation of
-the atomic ADP in your input model); however, the standard deviation of
-ADPs are usually not known.  It is reasonable to assume the ADP errors are
-inversely proportional to their <var>B<sub>iso</sub></var> values, so this is a
-optional least squares weighting choce for the atom in TLSMD.</p>
+the atomic ADP in your input model). However, the standard deviations of the
+ADPs are usually not known.  It is reasonable to approximate the ADP errors as being
+inversely proportional to their <var>B<sub>Io</sub></var> values, so this is an
+optional least squares weighting choice for the atom in TLSMD.</p>
 
 <p><b><i>Include Atoms</i></b><br>
 This option controls the subset of atoms used when fitting the TLS model
@@ -136,5 +136,5 @@ a long time to run.</p>
 
 <center>
 <p><small>
-Last Modified Jume 11, 2005 by Jay Painter <i>jpaint@u.washington.edu</i>
+Last Modified June 11, 2005 by Jay Painter <i>jpaint@u.washington.edu</i>
 </small></p></center></body></html>
