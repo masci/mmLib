@@ -1,43 +1,46 @@
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
 MOTION_ANALYSIS_TEXT = """\
-This analysis explicity shows how each protein chain can be split into
-multiple TLS groups using one to twenty adjecent, continous groups
-along the chain sequence.  It goes on to analyize the implied rigid body
-translational and rotatational motion of each group, as well as its
-quality of fit to the refined atomic displacement parameters (B-factors).
+For each protein chain, this analysis show the optimal division into
+1 TLS group, 2 TLS groups, 3 TLS groups, etc, up to 20 groups.
+It goes on to analyze the implied rigid body translational and rotatational
+motion of each group, as well as its quality of fit to the refined atomic
+displacement parameters (B-factors). If you have multiple chains in your
+structure, they are treated independently.
 """
 
 MULTI_CHAIN_ALIGNMENT_TEXT = """\
 When multiple chains are present in your input structure, a side-by-side
-sequence alignment is generated to show how the TLS group selection of one
-chain aligns with the selection the other chains.  This analysis is only
+sequence alignment is generated to show how the TLS group selection for one
+chain aligns with the selection for the other chains.  This analysis is only
 meaningful when there are multiple chains of the same sequence in the
-asymetric unit.
+asymmetric unit.
 """
 
 REFINEMENT_PREP_TEXT = """\
-The macromolecular refinement program Refmac5 from CCP4 implements a
-refinement mode where a TLS description can be added to individual isotropic
-temperature factors.  Traditionally, one TLS group is assigned for each
-chain because there has been no technique for selecting multiple TLS groups
-from the crystallographic data.  However, this is the calculation TLSMD
-performs.  By using this TLSMD refinement preperation, you can choose
-the number of TLS groups to use per chain, and generate a input PDB
-and TLSIN file for refinement using Refmac5.
+The CCP4 macromolecular refinement program Refmac5 implements a
+refinement mode in which refinement of individual isotropic temperature factors
+is supplemented by refinement of one or more TLS groups.
+It is usually plausible to try assigning a single TLS group to each protein
+molecule, but how one would subdivide the molecules into multiple groups
+has been problematic.  This is one important function served by TLSMD analysis.
+TLSMD will help you choose how many TLS groups to subdivide your protein chains
+into, and it will generate a PDB and TLSIN files for input to further refinement
+using Refmac5.
 """
 
 LSQR_CAPTION = """\
-TLSMD selects TLS groups by the minimization of a residual function.
+TLSMD selects the optimal partition of a chain into <N> TLS groups by minimizing
+an overall residual function.
 This plot shows the value of the residual as a function of the number
-of TLS groups allowed to be used in in the minimization.  Using a given
-number of TLS groups, the residual value in the plot above is the lowest
-found when all possible choices of protein chain continous TLS groups are
-considered.  The details of these TLS groups are analyzed below.
+of TLS groups allowed in the partition.
+Adding additional TLS groups will always make this residual lower, but there
+is an issue of diminishing returns as you go to larger numbers of groups.
+The details of each optimal <N> group partition are analyzed below.
 """
 
 SEG_ALIGN_CAPTION = """\
@@ -51,22 +54,25 @@ TRANSLATION_GRAPH_CAPTION = """\
 This graph shows the TLS group translational displacement magnitude
 of the three principal components of the reduced T tensor at a
 isoprobability magnitude of 85%.  The line colors are the same as
-those used for the TLS groups in the structure visualization.
+those used for the TLS groups in the various structure visualizations.
 """
 
 LIBRATION_GRAPH_CAPTION = """\
-This graph shows the displacement caused by the three TLS group screw axes
-on the mainchain atoms of the protein.  The screw displacement axes are
+This graph shows the displacement of mainchain atoms implied by the three
+screw axes of the TLS group to which they belong.  The screw displacement axes are
 calculated in terms of a Gaussian variance-covariance tensor, and displacment
-magnituce is shown at a 85% isoprobability magnitude like the translational
-displacement.  Protein segments with hinge-like flexibility show up as peaks in
+magnitude is shown at a 85% isoprobability magnitude like the translational
+displacement.  Protein segments undergoing hinge-like motion show up as peaks in
 this graph.
 """
 
 FIT_GRAPH_CAPTION = """\
-This graph assesses the quality of the TLS prediction for each TLS group
-spanning the residue chain by graphing the difference in the refined (input)
-mainchain atom B factors from the TLS model predicted B factors.  If the
-TLS model was a perfect fit to the input structure data, this would be
-a line at 0.0.
+This graph assesses the quality of the TLS prediction for each residue
+by graphing the difference between the refined (input) mainchain atom B factors
+and the corresponding B factors implied by the TLS model alone.  If the
+TLS model were a perfect description of the observed thermal motion
+described by the input structural model, this plot would consist of a
+line at 0. <b>Warning:</b> If the input structural model was itself generated
+by refinement of a similar TLS model, this will introduce a strong bias towards
+low residual differences.
 """
