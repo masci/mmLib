@@ -28,6 +28,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;
 Documentation
 </center>
+
 <br>
 
 <center><h3>Introduction</h3></center>
@@ -118,14 +119,8 @@ and used anisotropic ADPs refinement and you have ANISOU records in your PDB
 file, then select the anisotropic TLS model.</p>
 
 <p><b><i>Least Squares Weighting</i></b><br>
-The TLS model parameters are fit to the individual atomic ADPs of your input model
-using a over-determined system of linear equations.  In this system of equations,
-each atom can be given an individual weight.  Ideally, this weight is the inverse of
-the standard deviation of the parameter (in this case the standard deviation of
-the atomic ADP in your input model). However, the standard deviations of the
-ADPs are usually not known.  It is reasonable to approximate the ADP errors as being
-inversely proportional to their <var>B<sub>Io</sub></var> values, so this is an
-optional least squares weighting choice for the atom in TLSMD.</p>
+The TLS model parameters are fit to the individual atomic ADPs of your input model using a over-determined system of linear equations solved by linear least-squares.  In this system of equations, each atom can be given an individual weight.  Ideally, this weight is the inverse of the standard deviation of the parameter (in this case the standard deviation of the atomic ADP in your input model). However, the standard deviations of the ADPs are usually not known.  It is reasonable to approximate the ADP errors as being inversely proportional to their <var>B<sub>iso</sub></var> values, and this is the default weighting scheme used in TLSMD.  You may also select no weighting.
+</p>
 
 <p><b><i>Include Atoms</i></b><br>
 This option controls the subset of atoms used when fitting the TLS model
