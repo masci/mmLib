@@ -89,7 +89,11 @@ def run_tlsmd(webtlsmdd, jdict):
     logfil.close()
 
 def run_job(webtlsmdd, jdict):
+    job_id = jdict["job_id"]
     log_job_start(jdict)
+
+    webtlsmdd.job_data_set(job_id, "run_start_time", time.time())
+
     old_dir = os.getcwd()
 
     ## change to the job directory, and run TLSMD
@@ -105,6 +109,7 @@ def run_job(webtlsmdd, jdict):
 
     job_id = jdict["job_id"]
     webtlsmdd.job_data_set(job_id, "state", "completed")
+    webtlsmdd.job_data_set(job_id, "run_end_time", time.time())
 
 def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.

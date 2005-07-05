@@ -22,6 +22,17 @@ from mmLib.FileLoader import *
 from cgiconfig import *
 webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=True)
 
+def timestring(secs):
+    tm_struct = time.localtime(secs)
+    return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
+
+
+def timediffstring(begin, end):
+    secs = end - begin
+    hours = secs / float(3600)
+    return "%.2f" % (hours)
+
+
 def html_title(title):
     """Title
     """
@@ -206,7 +217,7 @@ def html_job_edit_form(fdict):
     x += '<tr><td align="right">Submission Date: </td>'
 
     if fdict.has_key("submit_time"):
-        date = time.asctime(time.localtime(fdict["submit_time"]))
+        date = timestring(fdict["submit_time"])
     else:
         date = "No Time"
     x += '<td><b>%s</b></td></tr>' % (date)
@@ -415,7 +426,7 @@ def html_job_info_table(fdict):
     x += '<tr><td align="right">Submission Date: </td>'
 
     if fdict.has_key("submit_time"):
-        date = time.asctime(time.localtime(fdict["submit_time"]))
+        date = timestring(fdict["submit_time"])
     else:
         date = "No Time"
     x += '<td><b>%s</b></td></tr>' % (date)
@@ -740,7 +751,7 @@ class QueuePage(Page):
         x += '<center>'
         x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (
             VERSION,
-            time.asctime(time.localtime(time.time())))
+            timestring(time.time()))
         x += '</center>'
         x += '</body></html>'
         return x
@@ -757,34 +768,91 @@ class QueuePage(Page):
 
         return job_list
 
-    def html_job_table(self, job_list):
+    def html_running_job_table(self, job_list):
+        ## get the job dictionary of the running job
+        run_jdict = None
+        for jdict in job_list:
+            if jdict.get("state")=="running":
+                run_jdict = jdict
+                break
+
+        ## if there is no running job
+        if run_jdict==None:
+            x  = '<center>'
+            x += '<h3>No Running Job</h3>'
+            x += '</center>'
+            return x
+
+        jdict = run_jdict
+
+        x  = '<center>'
+        x += '<table border="1" width="75%">'
+        x += '<tr><th colspan="6">Running Jobs</th></tr>'
+        x += '<tr>'
+        x += '<th>Job ID</th>'
+        x += '<th>Structure ID</th>'
+        x += '<th>User</th>'
+        x += '<th>Submission Date</th>'
+        x += '<th>Currently Processing<br>Chain/TLS Segment</th>'
+        x += '<th>Processing Time (Hours)</th>'
+        x += '</tr>'
+
+        x += '<tr>'
+        x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
+            jdict["job_id"] ,jdict["job_id"])
+        x += '<td>%s</td>' % (jdict["structure_id"])
+        x += '<td>%s</td>' % (jdict["user"])
+        x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
+
+        tls_seg = '<b>%s</b> %s-%s' % (
+            jdict.get("run_chain_id", ""),
+            jdict.get("run_frag_id1", ""),
+            jdict.get("run_frag_id2", ""))
+        x += '<td>%s</td>' % (tls_seg)
+
+        begin = jdict.get("run_start_time")
+        if begin==None:
+            begin = jdict["submit_time"]
+        hours = timediffstring(begin, time.time())
+        x += '<td>%s</td>' % (hours)
+
+        x += '</tr>'
+        x += '</table>'
+        x += '</center>'
+        return x
+
+    def html_queued_job_table(self, job_list):
+        queued_list = []
+        for jdict in job_list:
+            if jdict.get("state")=="queued":
+                queued_list.append(jdict)
+
+        if len(queued_list)==0:
+            x  = '<center>'
+            x += '<h3>No Queued Jobs</h3>'
+            x += '</center>'
+            return x
+
         x  = ''
         x += '<center>'
         x += '<table border="1" width="75%">'
+        x += '<tr><th colspan="4">Queued Jobs</th></tr>'
         x += '<tr>'
         x += '<th>Job ID</th>'
+        x += '<th>Structure ID</th>'
         x += '<th>User</th>'
-        x += '<th>Status</th>'
-        x += '<th>Date</th>'
+        x += '<th>Submission Date</th>'
         x += '</tr>'
 
-        for jdict in job_list:
+        for jdict in queued_list:
             x += '<tr>'
+
             x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
                 jdict["job_id"] ,jdict["job_id"])
-            x += '<td>%s</td>' % (jdict.get("user", ""))
-
-            state = jdict.get("state", "")
-            if state=="running":
-                x += '<td>running %s:%s-%s</td>' % (
-                    jdict.get("run_chain_id", ""),
-                    jdict.get("run_frag_id1", ""),
-                    jdict.get("run_frag_id2", ""))
-            else:
-                x += '<td>%s</td>' % (state)
-
-            date = time.asctime(time.localtime(jdict["submit_time"]))
-            x += '<td>%s</td>' % (date)
+            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict["user"])
+            x += '<td>%s</td>' % (timestring(jdict["submit_time"])
+                                  
             x += '</tr>'
 
         x += '</table>'
@@ -800,10 +868,8 @@ class QueuePage(Page):
         x += html_nav_bar("queue")
 
         job_list = self.get_job_list()
-        if len(job_list)>0:
-            x += self.html_job_table(job_list)
-        else:
-            x += '<center><h3>No Jobs Queued</h3></center>'
+        x += self.html_running_job_table(job_list)
+        x += self.html_queued_job_table(job_list)
 
         x += self.html_foot()
         return x
@@ -815,7 +881,7 @@ class CompletedPage(Page):
         x += '<center>'
         x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (
             VERSION,
-            time.asctime(time.localtime(time.time())))
+            timestring(time.time()))
         x += '</center>'
         x += '</body></html>'
         return x
@@ -858,7 +924,7 @@ class CompletedPage(Page):
             x += '<td>%s</td>' % (jdict.get("state", ""))
 
             if jdict.has_key("submit_time"):
-                date = time.asctime(time.localtime(jdict["submit_time"]))
+                date = timestring(jdict["submit_time"])
             else:
                 date = ""
             x += '<td>%s</td>' % (date)
