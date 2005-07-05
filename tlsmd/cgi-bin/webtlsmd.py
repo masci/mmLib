@@ -794,7 +794,7 @@ class QueuePage(Page):
         x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '<th><font size="-5">Currently Processing</font></th>'
-        x += '<th><font size="-5">Processing Time (Hours)</font></th>'
+        x += '<th><font size="-5">Processing Time<br>Used (Hours)</font></th>'
         x += '</tr>'
 
         x += '<tr>'
