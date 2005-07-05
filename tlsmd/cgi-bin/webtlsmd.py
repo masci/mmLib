@@ -952,7 +952,7 @@ class CompletedPage(Page):
         x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Status</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
-	x += '<th><font size="-5">Processing Time (Hours)</font></th>'
+	x += '<th><font size="-5">Processing Time<br> Used (Hours)</font></th>'
         x += '</tr>'
 
         for jdict in job_list:
@@ -1214,14 +1214,16 @@ class SubmissionFormPage(Page):
         return x
 
     def prepare_submission(self):
-        if self.form.has_key("pdbfile")==False or self.form["pdbfile"].file==None:
+        if self.form.has_key("pdbfile")==False or \
+           self.form["pdbfile"].file==None:
             raise SubmissionException("No PDB file uploaded")
 	
         ## make working directory
         try:
             os.chdir(TLSMD_WORK_DIR)
         except os.error, err:
-            raise SubmissionException('<p>Cannot change to working directory: %s</p>' % (str(err)))
+            raise SubmissionException(
+                '<p>Cannot change to working directory: %s</p>' % (str(err)))
 
         job_id = webtlsmdd.job_new()
         os.umask(022)
@@ -1229,7 +1231,8 @@ class SubmissionFormPage(Page):
             os.mkdir(job_id)
         except os.error, err:
             webtlsmdd.job_delete(job_id)
-            raise SubmissionException('<p>Cannot make directory: %s</p>' % (str(err)))
+            raise SubmissionException(
+                '<p>Cannot make directory: %s</p>' % (str(err)))
 
         job_dir = os.path.join(TLSMD_WORK_DIR, job_id)
         os.chdir(job_dir)
@@ -1252,7 +1255,8 @@ class SubmissionFormPage(Page):
         ## error out if there weren't many lines
         if num_lines<10:
             webtlsmdd.job_delete(job_id)
-            raise SubmissionException('<p>Only Recieved %d lines</p>' % (num_lines))
+            raise SubmissionException(
+                '<p>Only Recieved %d lines</p>' % (num_lines))
 
         webtlsmdd.job_data_set(job_id, "pdb_filename", pdb_filename)
 
