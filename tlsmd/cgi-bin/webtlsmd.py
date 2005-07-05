@@ -91,7 +91,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     analysis_url = webtlsmdd.job_data_get(job_id, "analysis_url")
 
     job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
-    logfile = os.path.joing(job_dir, "log.txt")
+    logfile = os.path.join(job_dir, "log.txt")
     log_url = webtlsmdd.job_data_get(job_id, "log_url")
 
     x  = ''
@@ -99,12 +99,12 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += '<h3>'
 
     if os.path.isfile(analysis_index):
-        x += '<a href="%s">Completed Analysis</a>' % (analysis_url)
+        x += '<a href="%s">View Completed Analysis</a>' % (analysis_url)
 
     x += LINK_SPACE
 
     if os.path.isfile(logfile):
-        x += '<a href="%s">Logfile</a>' % (log_url)
+        x += '<a href="%s">View TLSMD Logfile</a>' % (log_url)
 
     x += '</h3>'
     x += '</center>'
