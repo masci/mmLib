@@ -859,6 +859,43 @@ class QueuePage(Page):
         x += '</center>'
         return x
 
+    def html_limbo_job_table(self, job_list):
+        limbo_list = []
+        for jdict in job_list:
+            if jdict.get("state") not in ["queued", "running", "completed"]:
+                limbo_list.append(jdict)
+
+        if len(limbo_list)==0:
+            return None
+
+        x  = ''
+        x += '<center>'
+	x += '<h3>Partially Completed Jobs</h3>'
+        x += '<table border="1" width="100%">'
+        x += '<tr>'
+        x += '<th><font size="-5">Job ID</font></th>'
+        x += '<th><font size="-5">Struct ID</font></th>'
+        x += '<th><font size="-5">State</font></th>'
+        x += '<th><font size="-5">User</font></th>'
+        x += '<th><font size="-5">Submission Date</font></th>'
+        x += '</tr>'
+
+        for jdict in limbo_list:
+            x += '<tr>'
+
+            x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
+                jdict["job_id"] ,jdict["job_id"])
+            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict["state"])
+            x += '<td>%s</td>' % (jdict["user"])
+            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
+                                  
+            x += '</tr>'
+
+        x += '</table>'
+        x += '</center>'
+        return x
+
     def html_page(self):
         title = 'TLSMD: Job Queue'
         
@@ -871,6 +908,11 @@ class QueuePage(Page):
         x += self.html_running_job_table(job_list)
 	x += '<br>'	
         x += self.html_queued_job_table(job_list)
+
+        limbo = self.html_limbo_job_table(job_list)
+        if limbo!=None:
+            x += '<br>'
+            x += limbo
 
         x += self.html_foot()
         return x
