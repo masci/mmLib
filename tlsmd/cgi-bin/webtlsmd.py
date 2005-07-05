@@ -86,17 +86,27 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
     """
+    analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")
+    analysis_index = os.path.join(analysis_dir, "index.html")
+    analysis_url = webtlsmdd.job_data_get(job_id, "analysis_url")
+
+    job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
+    logfile = os.path.joing(job_dir, "log.txt")
+    log_url = webtlsmdd.job_data_get(job_id, "log_url")
+
     x  = ''
     x += '<center>'
+    x += '<h3>'
 
-    x += '<a href="%s">Completed Analysis</a>' % (
-        webtlsmdd.job_data_get(job_id, "analysis_url"))
+    if os.path.isfile(analysis_index):
+        x += '<a href="%s">Completed Analysis</a>' % (analysis_url)
 
     x += LINK_SPACE
 
-    x += '<a href="%s">Logfile</a>' % (
-        webtlsmdd.job_data_get(job_id, "log_url"))
+    if os.path.isfile(logfile):
+        x += '<a href="%s">Logfile</a>' % (log_url)
 
+    x += '</h3>'
     x += '</center>'
     x += '<br>'
     return x
@@ -1020,22 +1030,6 @@ class EditPage(Page):
             x += self.auth()
         
         x += self.html_foot()
-        return x
-
-    def html_job_nav_bar(self, job_id):
-        x  = ''
-        x += '<center>'
-
-        x += '<a href="%s">Completed Analysis</a>' % (
-            webtlsmdd.job_data_get(job_id, "analysis_url"))
-
-        x += LINK_SPACE
-
-        x += '<a href="%s">Logfile</a>' % (
-            webtlsmdd.job_data_get(job_id, "log_url"))
-
-        x += '</center>'
-
         return x
 
     def check_auth(self):
