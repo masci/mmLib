@@ -763,7 +763,7 @@ class QueuePage(Page):
 
         job_list = []
         for jdict in jl:
-            if jdict["state"] in ["queued", "running"]:
+            if jdict["state"]!="completed":
                 job_list.append(jdict)
 
         return job_list
@@ -1184,7 +1184,7 @@ class SubmissionException(Exception):
 
 class SubmissionFormPage(Page):
     def html_page(self):        
-        title = 'TLSMD: Job Submission Form'
+        title = 'TLSMD: Fill Out Job Submission Form'
         
         x  = ''
         x += self.html_head(title)
@@ -1374,7 +1374,7 @@ class SubmissionPage(Page):
         ## completely remove the job
         if self.form["submit"].value=="Cancel":
             remove_job(webtlsmdd, job_id)
-            return SubmissionException('Job Cancelled')
+            raise SubmissionException('You cancelled the job')
 
         extract_job_edit_form(self.form, webtlsmdd)
 
