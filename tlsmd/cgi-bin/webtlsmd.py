@@ -703,7 +703,7 @@ class IndexPage(Page):
              'action="webtlsmd.cgi" '\
              'method="post">'
         
-        x += '<input type="hidden" name="page" value="submit">'
+        x += '<input type="hidden" name="page" value="submission_form">'
         x += '<center>'
         x += '<table>'
         x += '<tr>'
@@ -1134,30 +1134,39 @@ class EditPage(Page):
         return x
 
 
-class SubmitPage(Page):
-    def html_page(self):
-        title = 'TLSMD: Job Submission'
+class SubmissionFormPage(Page):
+    def html_page(self):        
+        title = 'TLSMD: Job Submission Form'
         
         x  = ''
         x += self.html_head(title)
         x += html_title(title)
 
         if self.form.has_key("pdbfile") and self.form["pdbfile"].file!=None:
-            x += self.submit1()
+            self.prepare_submission()
+
+            x += '<center>'
+            x += '<h3>You must read and fill out this form to complete'
+            x += 'your submission.</h3>'
+            x += '</center>'
+            
+            x += get_documentation_block("SUBMIT1")
+            x += self.job_edit_form(job_id)
+
         else:
             x += html_nav_bar()
-            x += self.submit2()
+            x += '<center><h3>ERROR: No PDB file uploaded</h3></center>'
 
         x += self.html_foot()
         return x
 
     def job_edit_form(self, job_id, show_warnings=False):
         fdict = webtlsmdd.job_get_dict(job_id)
-        fdict["page"] = "submit"
+        fdict["page"] = "submission"
         x = html_job_edit_form(fdict)
         return x
 
-    def submit1(self):
+    def prepare_submission(self):
         ## make working directory
         try:
             os.chdir(TLSMD_WORK_DIR)
@@ -1267,30 +1276,44 @@ class SubmitPage(Page):
         webtlsmdd.job_data_set(job_id, "weight", "IUISO")
         webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
 
-        x  = get_documentation_block("SUBMIT1")
-        x += self.job_edit_form(job_id)
+
+class SubmissionPage(Page):
+    def html_page(self):
+        success, html = self.complete_submission()
+
+        if success==True:
+            title = 'TLSMD: Job Submission Succeeded'
+        else:
+            title = 'TLSMD: Job Submission Failed'
+            
+        x  = self.html_head(title)
+        x += html_title(title)
+        x += html_nav_bar()
+        x += html
+        x += self.html_foot()
         return x
 
-    def submit2(self):
+    def complete_submission(self):
         ## check for submission key
         if not self.form.has_key("submit"):
-            return '<center><h3>Submission Error</h3></center>'
+            return False, '<center><h3>Submission Error</h3></center>'
 
         ## get job_id; verify job exists
         job_id = check_job_id(self.form, webtlsmdd)
         if job_id==None:
-            return '<center><h3>Submission Error</h3></center>'
+            return False, '<center><h3>Submission Error</h3></center>'
 
         ## verify the submission IP address
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
         ip_addr_verify = webtlsmdd.job_data_get(job_id, "ip_addr")
         if ip_addr!=ip_addr_verify:
-            return '<center><h3>Submission IP Address Mismatch</h3></center>'
+            return False, \
+                   '<center><h3>Submission IP Address Mismatch</h3></center>'
 
         ## completely remove the job
         if self.form["submit"].value=="Cancel":
             remove_job(webtlsmdd, job_id)
-            return '<center><h3>Job Cancelled</h3></center>'
+            return False, '<center><h3>Job Cancelled</h3></center>'
 
         extract_job_edit_form(self.form, webtlsmdd)
 
@@ -1298,8 +1321,7 @@ class SubmitPage(Page):
         ## the job state to queued
         webtlsmdd.job_data_set(job_id, "state", "queued")
 
-        x = '<center><h3>Submission Accepted</h3></center>'
-        return x
+        return x, '<center><h3>Submission Accepted</h3></center>'
 
 
 def main():
@@ -1316,8 +1338,11 @@ def main():
     elif form["page"].value=="queue":
         page = QueuePage(form)
 
-    elif form["page"].value=="submit":
-        page = SubmitPage(form)
+    elif form["page"].value=="submission_form":
+        page = SubmissionFormPage(form)
+
+    elif form["page"].value=="submission":
+        page = SubmissionPage(form)
 
     elif form["page"].value=="completed":
         page = CompletedPage(form)
