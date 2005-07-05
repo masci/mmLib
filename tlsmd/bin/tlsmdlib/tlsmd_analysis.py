@@ -1086,21 +1086,21 @@ class TLSChainProcessor(object):
 class TLSOptimization(object):
     """Collection object containing one TLS description of a protein chain.
     """
-    def __init__(self, chain):
-        self.chain    = chain
-        self.ntls     = 0
-        self.tls_list = []
-        self.residual = 0.0
+    def __init__(self, chain, ntls_constraint):
+        self.chain           = chain
+        self.ntls_constraint = ntls_constraint
+        self.ntls            = ntls_constraint
+        self.tls_list        = []
+        self.residual        = 0.0
 
     def is_valid(self):
         """Return True if the optimization is valid; otherwise, return False.
         """
-        return self.ntls>0
+        return len(self.tls_list)>0
 
     def add_tls_record(self, tls):
         """Adds a tls informatio dictionary.
         """
-        self.ntls += 1
         self.tls_list.append(tls)
         self.residual += tls["lsq_residual"]
 
@@ -1193,23 +1193,16 @@ class TLSChainMinimizer(HCSSSP):
                 sys.exit(-1)
 
             ## filter out the bad ones
-            if not self.__minimization_filter(tls):
+            if self.__minimization_filter(tls)==False:
                 continue
 
+            weight = tls["lsq_residual"]
             frag_range = (tls["frag_id1"], tls["frag_id2"])
-
-            edge = (msg["vertex_i"],
-                    msg["vertex_j"],
-                    tls["lsq_residual"],
-                    frag_range)
-            
+                
+            edge = (msg["vertex_i"], msg["vertex_j"], weight, frag_range)
             E.append(edge)
 
         self.E = E
-
-        ## bypass edges are non-TLS edges
-        if ADD_BYPASS:
-            self.__add_bypass_edges()
 
         ## perform the minimization
         start_timing()
@@ -1274,17 +1267,17 @@ class TLSChainMinimizer(HCSSSP):
            
         return True
 
-    def calc_tls_optimization(self, num_tls_segments):
+    def calc_tls_optimization(self, ntls_constraint):
         """Return a TLSOptimization() object containing the optimal
         TLS description of self.chain using num_tls_segments.
         """
         if not self.minimized:
             return None
 
-        tlsopt = TLSOptimization(self.chain)
+        tlsopt = TLSOptimization(self.chain, ntls_constraint)
         
         for hi, hj, edge in self.HCSSSP_path_iter(
-            self.V, self.D, self.P, self.T, num_tls_segments):
+            self.V, self.D, self.P, self.T, ntls_constraint):
 
             if edge==None:
                 continue

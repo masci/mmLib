@@ -783,6 +783,7 @@ class TLSSegmentAlignmentPlot(object):
         iheight = (pheight * num_plots) + (self.spacing * (num_plots-1)) 
 
         ## create new image and 2D drawing object
+        assert pwidth>0 and iheight>0
         image = Image.new("RGBA", (pwidth, iheight), self.bg_color)
         idraw = ImageDraw.Draw(image)
         idraw.setfill(True)
@@ -919,18 +920,16 @@ class HTMLReport(Report):
 
         ## generate the minimized, segmentd TLS groups for 1 TLS
         ## group up to max_ntls and store it in chainopt["ntls_list"]
-        ntls = 0
-        
-        for h in range(1, chainopt["max_ntls"]+1):
-            tlsopt = minimizer.calc_tls_optimization(h)
+        for ntls_constraint in range(1, chainopt["max_ntls"]+1):
+            tlsopt = minimizer.calc_tls_optimization(ntls_constraint)
+
             if tlsopt==None:
                 continue
             if not tlsopt.is_valid():
                 continue
 
-            ntls = tlsopt.ntls
-            chainopt["ntls_list"].append((h, tlsopt))
-            chainopt["tlsopt"][h] = tlsopt
+            chainopt["ntls_list"].append((ntls_constraint, tlsopt))
+            chainopt["tlsopt"][ntls_constraint] = tlsopt
             
             ## assign a unique color to each tls group in a
             ## chain spanning set of tls groupos

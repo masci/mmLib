@@ -122,58 +122,6 @@ invert_symmetric_3(double U[6], double Ui[6])
   return 1;
 }
 
-/* calculates the value of the dP^2(U,V) function, which is the
- * square of the volumetric difference in the two trivariate 
- * Gaussian probability distribution functions defined by the U and
- * V symmetric variance-covariance tensors; this calculation requires
- * inverting U and V matrixes; if this fails, then this funtion returns
- * 0, otherwise it returns 1 with the dp2 value in the return parameter
- *
- */
-static int
-calc_dp2(double U[6], double V[6], double *dp2)
-{
-  double detUi, detVi, detW, pU2, pV2, pUV;
-  double Ui[6], Vi[6], W[6];
-
-  if (!invert_symmetric_3(U, Ui)) {
-    return 0;
-  }
-  if (!invert_symmetric_3(V, Vi)) {
-    return 0;
-  }
-
-  W[0] = Ui[0] + Vi[0];
-  W[1] = Ui[1] + Vi[1];
-  W[2] = Ui[2] + Vi[2];
-  W[3] = Ui[3] + Vi[3];
-  W[4] = Ui[4] + Vi[4];
-  W[5] = Ui[5] + Vi[5];
-
-  detUi = det_symmetric_3(Ui);
-  if (detUi <= 0.0) {
-    return 0;
-  }
-
-  detVi = det_symmetric_3(Vi);
-  if (detVi <= 0.0) {
-    return 0;
-  }
-
-  detW = det_symmetric_3(W);
-  if (detW <= 0.0) {
-    return 0;
-  }
-
-  pU2 = sqrt(detUi / (64.0 * PI3));
-  pV2 = sqrt(detVi / (64.0 * PI3));
-  pUV = sqrt((detUi * detVi) / (8.0 * PI3 * detW));
-
-  *dp2 = pU2 + pV2 - (2.0 * pUV);
-  return 1;
-}
-
-
 /* TLS_ISO_Solver: Isotropic TLS Model solver object 
  */
 
@@ -317,68 +265,6 @@ struct TISO_SegmentFitData {
   struct TLSAtom    *atoms;
 };
 
-
-/* XXX: global pointer to current minimization problem */
-struct TISO_SegmentFitData *g_pFit = NULL;
-
-/* prototype for MINPACK FORTRAN subroutine */
-typedef void (*FCN)();
-
-extern void lmdif1_(
-    FCN, int*, int*, double*, double*, double*, int*, int*, double*, int*);
-
-extern void lmder1_(
-    FCN, int*, int*, double*, double*, double*, int*, int*, double*, int*);
-
-
-double calc_lsqr(int m, double *fvec)
-{
-  int i;
-  double lsqr;
-
-  lsqr = 0.0;
-
-  for (i = 0; i < m; i++) {
-    lsqr += fvec[i] * fvec[i];
-  }
-
-  return lsqr;
-}
-
-void lmdir1_fcn(int *m, int *n,double *x, double *fvec,
-		double **fjac, int *ldfjac, int *iflag)
-{
-  if (*iflag == 1) {
-    /* calculate f(x) = fvec */
-  } else {
-    /* calculate J(x) = fjac */
-  }
-}
-
-
-void
-lmdif1_fcn(int *m, int *n, double *x, double *fvec, int *iflag)
-{
-  int i, j;
-  double dp2;
-  double U[6];
-  struct TISO_SegmentFitData *pFit;
-
-  /* XXX: not thread safe, get context */
-  pFit = g_pFit;
-
-  for (i = pFit->istart, j = 0; i <= pFit->iend; i++, j++) {
-
-    calc_u_tls(x, pFit->atoms[i].x, pFit->atoms[i].y, pFit->atoms[i].z, U);
-
-    if (!calc_dp2(U, pFit->atoms[i].U, &dp2)) {
-      *iflag = -1;
-      return;
-    }
-
-    fvec[j] = dp2;
-  }
-}
 
 
 /* Python interface */
@@ -627,6 +513,8 @@ TLS_ISO_Solver_fit_segment(PyObject *py_self, PyObject *args)
   g_pFit = &fit;
   tol = 1e-6;
   lmdif1_(lmdif1_fcn, &m, &n, params, fvec, &tol, &info, iwa, wa, &lwa);
+
+
 
   /* construct return dictioary with results */
   rdict = PyDict_New();

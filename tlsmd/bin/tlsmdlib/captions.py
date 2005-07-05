@@ -33,6 +33,10 @@ into, and it will generate a PDB and TLSIN files for input to further refinement
 using Refmac5.
 """
 
+REFINEMENT_PREP_INFO = """\
+
+"""
+
 LSQR_CAPTION = """\
 TLSMD selects the optimal partition of a chain into <N> TLS groups by minimizing
 an overall residual function.
