@@ -786,15 +786,15 @@ class QueuePage(Page):
         jdict = run_jdict
 
         x  = '<center>'
-        x += '<table border="1" width="75%">'
+        x += '<table border="1" width="100%">'
         x += '<tr><th colspan="6">Running Jobs</th></tr>'
         x += '<tr>'
-        x += '<th>Job ID</th>'
-        x += '<th>Structure ID</th>'
-        x += '<th>User</th>'
-        x += '<th>Submission Date</th>'
-        x += '<th>Currently Processing<br>Chain/TLS Segment</th>'
-        x += '<th>Processing Time (Hours)</th>'
+        x += '<th><font size="-5">Job ID</font></th>'
+        x += '<th><font size="-5">Structure ID</font></th>'
+        x += '<th><font size="-5">User</font></th>'
+        x += '<th><font size="-5">Submission Date</font></th>'
+        x += '<th><font size="-5">Currently Processing</font></th>'
+        x += '<th><font size="-5">Processing Time (Hours)</font></th>'
         x += '</tr>'
 
         x += '<tr>'
@@ -804,7 +804,7 @@ class QueuePage(Page):
         x += '<td>%s</td>' % (jdict["user"])
         x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
-        tls_seg = '<b>%s</b> %s-%s' % (
+        tls_seg = 'Chain <b>%s</b> Segment <i>%s-%s</i>' % (
             jdict.get("run_chain_id", ""),
             jdict.get("run_frag_id1", ""),
             jdict.get("run_frag_id2", ""))
@@ -835,13 +835,13 @@ class QueuePage(Page):
 
         x  = ''
         x += '<center>'
-        x += '<table border="1" width="75%">'
+        x += '<table border="1" width="100%">'
         x += '<tr><th colspan="4">Queued Jobs</th></tr>'
         x += '<tr>'
-        x += '<th>Job ID</th>'
-        x += '<th>Structure ID</th>'
-        x += '<th>User</th>'
-        x += '<th>Submission Date</th>'
+        x += '<th><font size="-5">Job ID</font></th>'
+        x += '<th><font size="-5">Structure ID</font></th>'
+        x += '<th><font size="-5">User</font></th>'
+        x += '<th><font size="-5">Submission Date</font></th>'
         x += '</tr>'
 
         for jdict in queued_list:
@@ -851,7 +851,7 @@ class QueuePage(Page):
                 jdict["job_id"] ,jdict["job_id"])
             x += '<td>%s</td>' % (jdict["structure_id"])
             x += '<td>%s</td>' % (jdict["user"])
-            x += '<td>%s</td>' % (timestring(jdict["submit_time"])
+            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
 
@@ -869,6 +869,7 @@ class QueuePage(Page):
 
         job_list = self.get_job_list()
         x += self.html_running_job_table(job_list)
+	x += '<br>'	
         x += self.html_queued_job_table(job_list)
 
         x += self.html_foot()
@@ -895,7 +896,6 @@ class CompletedPage(Page):
         for jdict in jl:
             if jdict["state"] in ["completed", "defunct"]:
                 job_list.append(jdict)
-
         job_list.reverse()
 
         return job_list
@@ -903,32 +903,35 @@ class CompletedPage(Page):
     def html_job_table(self, job_list):
         x  = ''
         x += '<center>'
-        x += '<table border="1" width="75%">'
+        x += '<table border="1" width="100%">'
         x += '<tr>'
-        x += '<th>Job ID</th>'
-        x += '<th>Struct ID</th>'
-        x += '<th>User</th>'
-        x += '<th>Status</th>'
-        x += '<th>Date</th>'
+        x += '<th><font size="-5">Job ID</font></th>'
+        x += '<th><font size="-5">Struct ID</font></th>'
+        x += '<th><font size="-5">User</font></th>'
+        x += '<th><font size="-5">Status</font></th>'
+        x += '<th><font size="-5">Submission Date</font></th>'
+	x += '<th><font size="-5">Processing Time (Hours)</font></th>'
         x += '</tr>'
 
         for jdict in job_list:
             x += '<tr>'
-            
             x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
                 jdict["job_id"] ,jdict["job_id"])
-
             x += '<td>%s</td>' % (jdict["structure_id"])
-            
-            x += '<td>%s</td>' % (jdict.get("user", ""))
-            x += '<td>%s</td>' % (jdict.get("state", ""))
+            x += '<td>%s</td>' % (jdict["user"])
+            x += '<td>%s</td>' % (jdict["state"])
+            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
-            if jdict.has_key("submit_time"):
-                date = timestring(jdict["submit_time"])
-            else:
-                date = ""
-            x += '<td>%s</td>' % (date)
-            
+            begin = jdict.get("run_start_time")
+            if begin==None:
+	        begin = jdict["submit_time"]
+            end = jdict.get("run_end_time")
+	    if end==None:
+                hours = "Unknown"
+	    else:
+	        hours = timediffstring(begin, time.time())
+            x += '<td>%s</td>' % (hours)
+
             x += '</tr>'
 
         x += '</table>'
