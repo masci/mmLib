@@ -55,16 +55,9 @@ def html_nav_bar(page_name=None):
     x += LINK_SPACE
 
     if page_name=="queue":
-        x += 'Job Queue'
+        x += 'Job Status'
     else:
-        x += '<a href="webtlsmd.cgi?page=queue">Job Queue</a>'
-
-    x += LINK_SPACE
-
-    if page_name=="completed":
-        x += 'Completed Jobs'
-    else:
-        x += '<a href="webtlsmd.cgi?page=completed">Completed Jobs</a>'
+        x += '<a href="webtlsmd.cgi?page=queue">Job Status</a>'
 
     x += LINK_SPACE
 
@@ -133,6 +126,16 @@ def html_job_edit_form(fdict):
 
     x += '<tr><td colspan="2">'
     x += '<table>'
+
+    ## keep job private
+    x += '<tr>'
+    x += '<td align="center" colspan="2">'
+    x += '<label>'
+    x += '<input type="checkbox" name="private_job" value="TRUE">'
+    x += 'Keep Job Private'
+    x += '</label>'
+    x += '</td>'
+    x += '</tr>'
 
     ## email address
     x += '<tr>'
@@ -417,6 +420,9 @@ def extract_job_edit_form(form, webtlsmdd):
         passwd = form["passwd"].value
         if len(passwd)<10:
             webtlsmdd.job_data_set(job_id, "passwd", passwd)
+
+    if form.has_key("private_job"):
+        webtlsmdd.job_data_set(job_id, "private_job", True)
         
     if form.has_key("email"):
         email = form["email"].value.strip()
@@ -605,18 +611,63 @@ class QueuePage(Page):
         x += '</center>'
         x += '</body></html>'
         return x
-    
+
+    def html_page(self):
+        title = 'TLSMD: Job Status'
+        
+        x  = ''
+        x += self.html_head(title)
+        x += html_title(title)
+        x += html_nav_bar("queue")
+
+        x += self.html_private_form()
+
+        x += '<center><b>'
+        x += 'Click on the Job ID you wish to view.'
+        x += '</b></center>'
+
+        job_list = self.get_job_list()
+        x += self.html_running_job_table(job_list)
+	x += '<br>'	
+        x += self.html_queued_job_table(job_list)
+        x += '<br>'
+        x += self.html_completed_job_table(job_list)
+
+        limbo = self.html_limbo_job_table(job_list)
+        if limbo!=None:
+            x += '<br>'
+            x += limbo
+
+        x += self.html_foot()
+        return x
+
+    def html_private_form(self):
+        x  = ''
+        x += '<form action="webtlsmd.cgi" method="post">'
+        x += '<input type="hidden" name="page" value="explore">'
+
+        x += '<center>'
+        x += '<b>To access a private job, enter its Job ID below</b>'
+        x += '</center>'
+
+        x += '<center>'
+        x += '<input name="text" size="50>'
+        x += '</center>'
+        
+        x += '</form>'
+
+        return x
+
+    def explore_href(self, jdict):
+        if jdict["private_job"]==True:
+            return 'private'
+        return '<a href="webtlsmd.cgi?page=explore&job_id=%s">%s</a>' % (
+            jdict["job_id"] ,jdict["job_id"])
+                        
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
         """
-        jl = webtlsmdd.job_list()
-
-        job_list = []
-        for jdict in jl:
-            if jdict["state"]!="completed":
-                job_list.append(jdict)
-
-        return job_list
+        return webtlsmdd.job_list()
 
     def html_running_job_table(self, job_list):
         ## get the job dictionary of the running job
@@ -647,8 +698,8 @@ class QueuePage(Page):
         x += '</tr>'
 
         x += '<tr>'
-        x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
-            jdict["job_id"] ,jdict["job_id"])
+ 
+        x += '<td>%s</td>' % (self.explore_href(jdict))
         x += '<td>%s</td>' % (jdict["structure_id"])
         x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
@@ -693,9 +744,8 @@ class QueuePage(Page):
 
         for jdict in queued_list:
             x += '<tr>'
-
-            x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
-                jdict["job_id"] ,jdict["job_id"])
+            
+            x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict["structure_id"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
@@ -704,7 +754,7 @@ class QueuePage(Page):
         x += '</table>'
         x += '</center>'
         return x
-
+    
     def html_limbo_job_table(self, job_list):
         limbo_list = []
         for jdict in job_list:
@@ -716,7 +766,7 @@ class QueuePage(Page):
 
         x  = ''
         x += '<center>'
-	x += '<h3>Partially Completed Jobs</h3>'
+	x += '<h3>Partially Submitted Jobs</h3>'
         x += '<table border="1" width="100%">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
@@ -728,8 +778,7 @@ class QueuePage(Page):
         for jdict in limbo_list:
             x += '<tr>'
 
-            x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
-                jdict["job_id"] ,jdict["job_id"])
+            x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict["structure_id"])
             x += '<td>%s</td>' % (jdict["state"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
@@ -740,53 +789,12 @@ class QueuePage(Page):
         x += '</center>'
         return x
 
-    def html_page(self):
-        title = 'TLSMD: Job Queue'
-        
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
-        x += html_nav_bar("queue")
-
-        job_list = self.get_job_list()
-        x += self.html_running_job_table(job_list)
-	x += '<br>'	
-        x += self.html_queued_job_table(job_list)
-
-        limbo = self.html_limbo_job_table(job_list)
-        if limbo!=None:
-            x += '<br>'
-            x += limbo
-
-        x += self.html_foot()
-        return x
-
-
-class CompletedPage(Page):
-    def html_foot(self):
-        x = ''
-        x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (
-            VERSION,
-            timestring(time.time()))
-        x += '</center>'
-        x += '</body></html>'
-        return x
-    
-    def get_job_list(self):
-        """Get a list of all the jobs in the job queue file.
-        """
-        jl = webtlsmdd.job_list()
-
-        job_list = []
-        for jdict in jl:
+    def html_completed_job_table(self, job_list):
+        completed_list = []
+        for jdict in job_list:
             if jdict["state"] in ["completed", "defunct"]:
-                job_list.append(jdict)
-        job_list.reverse()
-
-        return job_list
-
-    def html_job_table(self, job_list):
+                completed_list.append(jdict)
+        
         x  = ''
         x += '<center>'
         x += '<table border="1" width="100%">'
@@ -799,10 +807,10 @@ class CompletedPage(Page):
 	x += '<th><font size="-5">Processing Time<br> Used (Hours)</font></th>'
         x += '</tr>'
 
-        for jdict in job_list:
+        for jdict in completed_list:
             x += '<tr>'
-            x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
-                jdict["job_id"] ,jdict["job_id"])
+            
+            x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict["structure_id"])
             x += '<td>%s</td>' % (jdict["user"])
             x += '<td>%s</td>' % (jdict["state"])
@@ -824,25 +832,8 @@ class CompletedPage(Page):
         x += '</center>'
         return x
 
-    def html_page(self):
-        title = 'TLSMD: Completed Jobs'
-        
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
-        x += html_nav_bar("completed")
 
-        job_list = self.get_job_list()
-        if len(job_list)>0:
-            x += self.html_job_table(job_list)
-        else:
-            x += '<center><h3>No Completed Jobs</h3></center>'
-
-        x += self.html_foot()
-        return x
-
-
-class EditPage(Page):
+class ExploreJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
 	if job_id==None:
@@ -863,7 +854,10 @@ class EditPage(Page):
 	x += html_job_info_table(jdict)
         x += self.html_foot()
 	return x
+
        
+class EditPage(Page):
+    def html_page(self):
         x  = ''
         x += self.html_head(title)
         x += html_title(title)
@@ -1177,6 +1171,7 @@ class SubmissionFormPage(Page):
         webtlsmdd.job_data_set(job_id, "passwd", "")
         webtlsmdd.job_data_set(job_id, "email", "")
         webtlsmdd.job_data_set(job_id, "comment", "")
+        webtlsmdd.job_data_set(job_id, "private_job", False)
 
         aniso_ratio = float(num_aniso_atoms)/float(num_atoms)
         if aniso_ratio>0.90:
@@ -1259,6 +1254,9 @@ def main():
     if not form.has_key("page"):
         page = IndexPage(form)
 
+    elif form["page"].value=="explore":
+        page = ExploreJobPage(form)
+
     elif form["page"].value=="edit":
         page = EditPage(form)
 
@@ -1271,19 +1269,15 @@ def main():
     elif form["page"].value=="submission":
         page = SubmissionPage(form)
 
-    elif form["page"].value=="completed":
-        page = CompletedPage(form)
 
     if page==None:
         page = IndexPage(form)
 
     try:
         print page.html_page()
-
     except xmlrpclib.Fault, err:
         page = ErrorPage(form, "xmlrpclib.Fault: " +str(err))
         print page.html_page()
-
     except socket.error, err:
         page = ErrorPage(form, "socket.error: " + str(err))
         print page.html_page()
