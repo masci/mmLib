@@ -128,8 +128,8 @@ def html_job_edit_form(fdict):
     x += '<table>'
 
     ## keep job private
-    x += '<tr>'
-    x += '<td align="center" colspan="2">'
+    x += '<tr><td></td>'
+    x += '<td>'
     x += '<label>'
     x += '<input type="checkbox" name="private_job" value="TRUE">'
     x += 'Keep Job Private'
@@ -222,7 +222,7 @@ def html_job_edit_form(fdict):
     x += '</td>'
     
     x += '<td align="right">'
-    x += '<input type="submit" name="submit" value="OK">'
+    x += '<input type="submit" name="submit" value="Submit Job Now">'
     x += '</tr>'
     x += '</table>'
 
@@ -519,8 +519,7 @@ class Page(object):
         x += '<center>'
         x += '<p><small><b>Version %s</b> Last Modified %s' % (
             VERSION, LAST_MODIFIED_DATE)
-        x += ' by %s ' % (LAST_MODIFIED_BY)
-        x += '<i>%s</i></small></p>' % (LAST_MODIFIED_BY_EMAIL)
+        x += '</small></p>'
         x += '</center>'
         x += '</body></html>'
         return x
@@ -651,7 +650,7 @@ class QueuePage(Page):
         x += '</center>'
 
         x += '<center>'
-        x += '<input name="text" size="50>'
+        x += '<input type="text" name="job_id" size="50">'
         x += '</center>'
         
         x += '</form>'
@@ -659,7 +658,7 @@ class QueuePage(Page):
         return x
 
     def explore_href(self, jdict):
-        if jdict["private_job"]==True:
+        if jdict.get("private_job", False)==True:
             return 'private'
         return '<a href="webtlsmd.cgi?page=explore&job_id=%s">%s</a>' % (
             jdict["job_id"] ,jdict["job_id"])
@@ -796,6 +795,7 @@ class QueuePage(Page):
                 completed_list.append(jdict)
         
         x  = ''
+	x += '<center><h3>Completed Jobs</h3></center>'
         x += '<center>'
         x += '<table border="1" width="100%">'
         x += '<tr>'
@@ -1144,7 +1144,7 @@ class SubmissionFormPage(Page):
             cb_name = 'CHAIN%s' % (chain.chain_id)
             
             ## create chain description label cb_desc
-            cb_desc = 'Chain %s, %d Residues' % (
+            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (
                 chain.chain_id,
                 chain.count_amino_acids())
 
@@ -1233,7 +1233,7 @@ class SubmissionPage(Page):
             raise SubmissionException('Submission IP Address Mismatch')
 
         ## completely remove the job
-        if self.form["submit"].value=="Cancel":
+        if self.form["submit"].value=="Cancel Job Submission":
             remove_job(webtlsmdd, job_id)
             raise SubmissionException('You cancelled the job')
 
