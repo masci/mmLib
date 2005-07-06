@@ -34,7 +34,7 @@ using Refmac5.
 """
 
 REFINEMENT_PREP_INFO = """\
-
+The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  Select the number of TLS groups to use for each chain and click <b>OK</b> to generate these input files.
 """
 
 LSQR_CAPTION = """\

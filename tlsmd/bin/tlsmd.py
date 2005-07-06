@@ -66,7 +66,6 @@ def analysis_main(struct_path, opt_dict):
     chain_ids         = opt_dict.get("-c")
     gridconf_file     = opt_dict.get("-f")
     num_threads       = int(opt_dict.get("-t", 1))
-    tls_model         = opt_dict.get("-m")
 
     if opt_dict.has_key("-x"):
         misc.GLOBALS["WEBTLSMDD"] = opt_dict["-x"]
@@ -78,27 +77,22 @@ def analysis_main(struct_path, opt_dict):
         misc.GLOBALS["STRUCT_ID"] = opt_dict["-i"]
         
     ## set the TLS model to use
-    if tls_model==None:
-        tls_model = "HYBRID"
-    tls_model = tls_model.upper()
-    if tls_model in ["ANISO", "HYBRID", "ISO"]:
-        tlsmd_analysis.TLS_MODEL = tls_model
-    else:
-        print "[ERROR] Invalid TLS Model: %s" % (tls_model)
-        usage()
+    if opt_dict.has_key("-m"):
+        tls_model = opt_dict.get("-m").upper()
+        if tls_model in ["ANISO", "HYBRID"]:
+            misc.GLOBALS["TLS_MODEL"] = tls_model
+        else:
+            print "[ERROR] Invalid TLS Model: %s" % (tls_model)
+            usage()
 
     ## weighting scheme
     for opt, val in opt_dict.items():
         if opt=="-w":
             val = val.upper()
-
-            if val=="NONE":
-                continue
-            
-            if val in ["IUISO"]:
-                tlsmd_analysis.WEIGHTS.append(val)
+            if val=="IUISO":
+                misc.GLOBALS["WEIGHT_MODEL"] = val
             else:
-                print "[ERROR] Invalid Weight: %s" % (val)
+                print "[ERROR] Invalid Weight Model: %s" % (val)
                 usage()
 
     ## atoms to include
@@ -106,7 +100,7 @@ def analysis_main(struct_path, opt_dict):
         val = opt_dict["-a"].upper()
         if val not in ["ALL", "MAINCHAIN", "CA"]:
             usage()
-        tlsmd_analysis.set_include_atoms(val)
+        misc.GLOBALS["INCLUDE_ATOMS"] = val
 
     ## create the analysis processor and load the structure, select chains
     anal = tlsmd_analysis.TLSMDAnalysis(

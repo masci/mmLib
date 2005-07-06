@@ -49,6 +49,11 @@ SMALL_EIGENVALUE = 1.0e-10
 ## Globals
 ##
 GLOBALS = {
+    "TLS_MODEL":           "HYBRID",
+    "WEIGHT_MODEL":        "UNIT",
+    "INCLUDE_ATOMS":       "ALL",
+    "MIN_SUBSEGMENT_SIZE": 6,
+
     "VERSION":        "0.0.1",
     "RELEASE_DATE":   "June 21, 2005",
     "AUTHOR":         "Jay Painter",

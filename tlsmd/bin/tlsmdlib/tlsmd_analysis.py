@@ -25,7 +25,13 @@ USE_TLSMDMODULE = False
 ##
 
 ## ANISO/ISO TLS Model: set externally!
-TLS_MODEL = None
+TLS_MODEL = "HYBRID"
+
+## LSQ weighting
+WEIGHT_MODEL = "UNIT"
+
+## atom selection options
+INCLUDE_ATOMS = "ALL" 
 
 ## minimum span of residues for TLS subsegments
 MIN_SUBSEGMENT_SIZE = 3
@@ -33,36 +39,31 @@ MIN_SUBSEGMENT_SIZE = 3
 ## use Uiso residual
 USE_UISO_RESIDUAL = True
 
-## LSQ weighting
-WEIGHTS = []
-
-## atom selection options
-INCLUDE_ATOMS = "ALL" 
-
-## add bypass edges to minimization
-ADD_BYPASS = False
-
-def print_global_options():
+def print_globals():
     print "TLSMD GLOBAL OPTIONS"
     print "    TLS_MODEL ==================: %s" % (TLS_MODEL)
     print "    MIN_SUBSEGMENT_SIZE --------: %d" % (MIN_SUBSEGMENT_SIZE)
     print "    USE_UISO_RESIDUAL ==========: %s" % (USE_UISO_RESIDUAL)
-    print "    WEIGHT_MODEL ===============: %s" % (string.join(WEIGHTS, ", "))
+    print "    WEIGHT_MODEL ===============: %s" % (WEIGHT_MODEL)
     print "    INCLUDE ATOMS --------------: %s" % (INCLUDE_ATOMS)
-    print "    ADD_BYPASS =================: %s" % (ADD_BYPASS)
     print
-    
-###############################################################################
-## Atom Selection/Weighting Functions
-##
 
-def set_include_atoms(setting):
-    assert setting in ["ALL", "MAINCHAIN", "CA"]
-
+def set_globals():
+    """Takes settings from misc.GLOBALS dictionary and applies them to
+    the globals in the current module.
+    """
+    global TLS_MODEL
+    global WEIGHT_MODEL
     global INCLUDE_ATOMS
     global MIN_SUBSEGMENT_SIZE
 
-    INCLUDE_ATOMS = setting
+    TLS_MODEL     = GLOBALS["TLS_MODEL"]
+    WEIGHT_MODEL  = GLOBALS["WEIGHT_MODEL"]
+    INCLUDE_ATOMS = GLOBALS["INCLUDE_ATOMS"]
+
+    assert TLS_MODEL     in ["ANISO", "HYBRID"]
+    assert WEIGHT_MODEL  in ["UNIT", "IUISO"]
+    assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
         MIN_SUBSEGMENT_SIZE = 3
@@ -70,6 +71,12 @@ def set_include_atoms(setting):
         MIN_SUBSEGMENT_SIZE = 7
     elif INCLUDE_ATOMS=="CA":
         MIN_SUBSEGMENT_SIZE = 20
+
+    GLOBALS["MIN_SUBSEGMENT_SIZE"] = MIN_SUBSEGMENT_SIZE
+
+###############################################################################
+## Atom Selection/Weighting Functions
+##
 
 def calc_include_atom(atm):
     """Filter out atoms from the model which will cause problems or
@@ -100,7 +107,7 @@ def calc_atom_weight(atm):
     """
     weight = atm.occupancy
 
-    if "IUISO" in WEIGHTS:
+    if WEIGHT_MODEL=="IUISO":
         weight = weight * (1.0 / (B2U * atm.temp_factor))
 
     return weight
@@ -769,23 +776,16 @@ class TLSGraphChainXMLRPCServer(TLSGraphChain):
     def __init__(self):
         self.proxy = None
 
-    def set_tls_model(self, tls_model, weights):
+    def set_tls_model(self, tls_model, weight_model):
         print "TLSGraphChainXMLRPCServer.set_tls_model(%s, %s)" % (
-            tls_model, weights)
+            tls_model, weight_model)
 
         ## select proper TLS model
         self.proxy = NewTLSGraphChain0(tls_model)
 
         ## set weighting scheme
-        global WEIGHTS
-        while True:
-            try:
-                WEIGHTS.remove(WEIGHTS[0])
-            except IndexError:
-                break
-
-        for w in weights:
-            WEIGHTS.append(w)
+        global WEIGHT_MODEL
+        WEIGHT_MODEL = weight_model
         
         return True
 
@@ -803,7 +803,7 @@ class TLSGraphChainXMLRPCServer(TLSGraphChain):
         
         xmlrpc_server.register_function(
             self.set_tls_model, "set_tls_model")
-        
+
         xmlrpc_server.register_function(
             self.set_xmlrpc_chain, "set_xmlrpc_chain")
         
@@ -855,7 +855,7 @@ class TLSGridClientThread(Thread):
         """Connect to the xmlrpc server and return a connection object.
         """
         server = xmlrpclib.ServerProxy(self.server_url)
-        server.set_tls_model(TLS_MODEL, WEIGHTS)
+        server.set_tls_model(TLS_MODEL, WEIGHT_MODEL)
         return server
 
     def run_grid_client(self):
@@ -1515,7 +1515,8 @@ class TLSMDAnalysis(object):
                  gridconf_file  = None,
                  num_threads    = 1):
 
-        print_global_options()
+        set_globals()
+        print_globals()
 
         self.struct_path     = struct_path
         if sel_chain_ids!=None:

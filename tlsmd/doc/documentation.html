@@ -129,6 +129,14 @@ then please only use the main chain atoms, otherwise your job could take
 a long time to run.</p>
 <!-- ENDBLOCK -->
 
+
+<center><h3>Refmac5 TLS Refinement</h3></center>
+<!-- BLOCK: INDEX -->
+<p>
+The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement, and split the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.
+</p>
+<!-- ENDBLOCK -->
+
 <center>
 <p><small>
 Last Modified June 11, 2005 by Jay Painter <i>jpaint@u.washington.edu</i>

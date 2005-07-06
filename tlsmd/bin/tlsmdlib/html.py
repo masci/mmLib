@@ -190,22 +190,16 @@ class FragmentID(object):
     def __str__(self):
         return str(self.res_seq) + self.icode
     def __lt__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) < (other.res_seq, other.icode)
     def __le__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
     def __eq__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) == (other.res_seq, other.icode)
     def __ne__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) != (other.res_seq, other.icode)
     def __gt__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) > (other.res_seq, other.icode)
     def __ge__(self, other):
-        assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
@@ -731,22 +725,23 @@ class TLSSegmentAlignmentPlot(object):
         self.frag_list     = []
         self.segmentations = []
 
-    def add_tls_segmentation(self, tls_graph_info, ntls):
+    def add_tls_segmentation(self, chainopt, ntls):
+        """Add a TLS optimization to the alignment plot.
         """
-        """
+        tlsopt = chainopt["tlsopt"][ntls]
+        
         ## get the list of TLS segments for the specified number of
         ## segments (ntls)
         tls_seg_desc = {}
         self.segmentations.append(tls_seg_desc)
-        tls_seg_desc["tls_graph_info"] = tls_graph_info
-        tls_seg_desc["tlsopt"]           = ntls
-        tls_seg_desc["tlsopt"]        = tls_graph_info["tlsopt"][ntls]
+        tls_seg_desc["chainopt"] = chainopt
+        tls_seg_desc["ntls"]     = ntls
+        tls_seg_desc["tlsopt"]   = tlsopt
         
         ## update the master fragment_list
-        self.update_frag_list(
-            tls_graph_info["chain"], tls_seg_desc["tlsopt"])
+        self.__update_frag_list(chainopt["chain"], tlsopt)
 
-    def update_frag_list(self, chain, tlsopt):
+    def __update_frag_list(self, chain, tlsopt):
         """Add any fragment_ids found in the tls segments to the master
         self.frag_list and sort it.
         """
@@ -764,13 +759,12 @@ class TLSSegmentAlignmentPlot(object):
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
+        if len(self.frag_list)==0 or len(self.segmentations)==0:
+            return False
+        
         nfrag = len(self.frag_list)
-
         target_width = 500
-        if nfrag>0:
-            fw = int(round(float(ALIGN_TARGET_WIDTH) / nfrag))
-        else:
-            fw = 1
+        fw = int(round(float(ALIGN_TARGET_WIDTH) / nfrag))
         fwidth = max(1, fw)
 
         ## calculate with pixel width/fragment
@@ -795,12 +789,13 @@ class TLSSegmentAlignmentPlot(object):
             xo = 0
             yo = (i * pheight) + (i * self.spacing)
 
-            self.plot_segmentation(
+            self.__plot_segmentation(
                 idraw, pwidth, fwidth, (xo, yo), tls_seg_desc)
 
         image.save(path, "png")
+        return True
 
-    def plot_segmentation(self, idraw, pwidth, fwidth, offset, tls_seg_desc):
+    def __plot_segmentation(self, idraw, pwidth, fwidth, offset, tls_seg_desc):
         pheight = self.pheight
         nfrag   = len(self.frag_list)
 
@@ -1035,7 +1030,8 @@ class HTMLReport(Report):
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
-
+        x += self.html_globals()
+        
         ## MOTION ANALYSIS
         x += '<center>'
         x += '<h3>Motion Analysis</h3>'
@@ -1073,6 +1069,41 @@ class HTMLReport(Report):
             self.page_refinement_prep["title"])
             
         x += self.html_foot()
+        return x
+
+    def html_globals(self):
+        x  = ''
+        
+        x += '<center>'
+        x += '<h3>Optimization Parameters</h3>'
+        x += '</center>'
+
+        x += '<table>'
+        x += '<tr>'
+        x += '<td><b>TLS Model</b></td>'
+        x += '<td>%s</td>' % (GLOBALS["TLS_MODEL"])
+        x += '</tr>'
+
+        x += '<tr>'
+        x += '<td><b>Weight Model</b></td>'
+        x += '<td>%s</td>' % (GLOBALS["WEIGHT_MODEL"])
+        x += '</tr>'
+
+
+        x += '<tr>'
+        x += '<td><b>Included Atoms</b></td>'
+        x += '<td>%s</td>' % (GLOBALS["INCLUDE_ATOMS"])
+        x += '</tr>'
+
+        x += '<tr>'
+        x += '<td>'
+        x += '<b>Minimum Subsegment</b>'
+        x += '</td>'
+        x += '<td>%s Residues</td>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"])
+        x += '</tr>'
+
+        x += '</table>'
+
         return x
 
     def write_tls_graph(self, chainopt):
@@ -1761,7 +1792,7 @@ class HTMLReport(Report):
         to use per chain.
         """
         path  = "%s_REFINEMENT_PREP.html" % (self.struct_id)
-        title = "Generate Input Files for REFMAC5 TLS Refienment of %s" % (
+        title = "Refmac5 TLS Refienment of %s" % (
             self.struct_id)
  
         self.page_refinement_prep = {
@@ -1778,6 +1809,9 @@ class HTMLReport(Report):
         x  = self.html_head(title)
         x += self.html_title(title)
 
+        x += '<center><h3>'
+        x += 'Step 1: Select the number of TLS groups for each chain'
+        x += '</h3></center>'
 
         x += '<center>'
         x += '<a href="index.html">Back to Index</a>'
@@ -1789,6 +1823,8 @@ class HTMLReport(Report):
             GLOBALS["REFINEPREP_URL"])
         x += '<input type="hidden" name="job_id" value="%s">' % (
             GLOBALS["JOB_ID"])
+
+        x += '<p>%s</p>' % (REFINEMENT_PREP_INFO)
         
         x += '<center><table><tr><td>'
         
