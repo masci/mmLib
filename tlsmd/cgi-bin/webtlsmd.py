@@ -61,13 +61,6 @@ def html_nav_bar(page_name=None):
 
     x += LINK_SPACE
 
-    if page_name=="edit":
-        x += 'Edit Job'
-    else:
-        x += '<a href="webtlsmd.cgi?page=edit">Edit Job</a>'
-
-    x += LINK_SPACE
-
     if page_name=="completed":
         x += 'Completed Jobs'
     else:
@@ -250,98 +243,12 @@ def html_job_edit_form(fdict):
         else:
             x += '<input type="checkbox" name="%s" value="TRUE">' % (
                 cdict["name"])
-        x += '%s: <small>%s...</small>' % (cdict["desc"], cdict["preview"])
+        x += '%s' % (cdict["desc"])
         x += '</label>'
 
         x += '</td></tr>'
 
     x += '</table></td></tr>'
-
-    x += '<tr>'
-    x += '<th>TLS Model</th>'\
-         '<th>Least Squares Weighting</th>'\
-         '<th>Include Atoms</th>'
-    x += '</tr>'
-
-    x += '<tr>'
-
-    ## TLS Model
-    x += '<td><table>'
-
-    x += '<tr><td><label>'
-    if fdict.get("tls_model")==None or fdict.get("tls_model")=="ISOT":
-        x += '<input type="radio" name="tls_model" value="ISOT" checked>'
-    else:
-        x += '<input type="radio" name="tls_model" value="ISOT">'
-
-    x += 'Isotropic'
-    x += '</label></td></tr>'
-
-    x += '<tr><td><label>'
-    if fdict.get("tls_model")=="ANISO":
-        x += '<input type="radio" name="tls_model" value="ANISO" checked>'
-    else:
-        x += '<input type="radio" name="tls_model" value="ANISO">'
-    x += 'Anisotropic'
-    x += '</label></td></tr>'
-
-    x += '</table></td>'
-
-    ## Least Squares Weighting
-    x += '<td><table>'
-
-    x += '<tr><td><label>'
-    if fdict.get("weight")==None or fdict.get("weight")=="IUISO":
-        x += '<input type="radio" name="weight" value="IUISO" checked>'
-    else:
-        x += '<input type="radio" name="weight" value="IUISO">'
-    x += 'Inverse Atomic B<sub>iso</sub>'
-    x += '</label></td></tr>'
-
-    x += '<tr><td><label>'
-    if fdict.get("weight")=="NONE":
-        x += '<input type="radio" name="weight" value="NONE" checked>'
-    else:
-        x += '<input type="radio" name="weight" value="NONE">'
-    x += 'No Weighting'
-    x += '</label></td></tr>'
-
-    x += '</table></td>'
-
-    ## Include Atoms
-    x += '<td><table>'
-
-    x += '<tr><td><label>'
-    if fdict.get("include_atoms")==None or fdict.get("include_atoms")=="ALL":
-        x += '<input type="radio" name="include_atoms" value="ALL" checked>'
-    else:
-        x += '<input type="radio" name="include_atoms" value="ALL">'
-    x += 'Include All Atoms'
-    x += '</label></td></tr>'
-
-    x += '<tr><td><label>'
-    if fdict.get("include_atoms")=="MAINCHAIN":
-        x += '<input type="radio" name="include_atoms" '\
-             'value="MAINCHAIN" checked>'
-    else:
-        x += '<input type="radio" name="include_atoms" '\
-             'value="MAINCHAIN">'
-    x += 'Main Chain Atoms'
-    x += '</label></td></tr>'
-
-    x += '<tr><td><label>'
-    if fdict.get("include_atoms")=="CA":
-        x += '<input type="radio" name="include_atoms" '\
-             'value="CA" checked>'
-    else:
-        x += '<input type="radio" name="include_atoms" '\
-             'value="CA">'
-    x += 'C-Alpha Atoms'
-    x += '</label></td></tr>'
-
-    x += '</table></td>'
-
-    x += '</tr>'
 
     ## end form
 
@@ -357,8 +264,6 @@ def html_job_edit_form(fdict):
     
     x += '<td align="right">'
     x += '<input type="submit" name="submit" value="OK">'
-    x += LINK_SPACE
-    x += '<input type="submit" name="submit" value="Cancel">'
     x += '</tr>'
     x += '</table>'
 
@@ -1190,12 +1095,6 @@ class SubmissionFormPage(Page):
              x += html_nav_bar()
              x += '<center><h3>ERROR:%s</h3></center>' % (err.html)
         else:
-            x += '<center>'
-            x += '<h3>You must read and fill out this form to complete'
-            x += ' your submission!</h3>'
-            x += '</center>'
-            
-            x += get_documentation_block("SUBMIT1")
             x += self.job_edit_form(job_id)
 
         x += self.html_foot()
@@ -1282,10 +1181,23 @@ class SubmissionFormPage(Page):
             job_id, "structure_id", struct.structure_id)
 
         ## Select Chains for Analysis
+        num_atoms          = 0
+        num_aniso_atoms    = 0
+        largest_chain_seen = 0
+
         chains = []
+
         for chain in struct.iter_chains():
-            if chain.count_amino_acids()<10:
+            naa = chain.count_amino_acids()
+            if naa<10:
                 continue
+
+            largest_chain_seen = max(naa, largest_chain_seen)
+
+            for atm in chain.iter_all_atoms():
+                num_atoms += 1
+                if atm.U!=None:
+                    num_aniso_atoms += 1
 
             ## form name
             cb_name = 'CHAIN%s' % (chain.chain_id)
@@ -1319,9 +1231,18 @@ class SubmissionFormPage(Page):
         webtlsmdd.job_data_set(job_id, "email", "")
         webtlsmdd.job_data_set(job_id, "comment", "")
 
-        webtlsmdd.job_data_set(job_id, "tls_model", "ISOT")
+        aniso_ratio = float(num_aniso_atoms)/float(num_atoms)
+        if aniso_ratio>0.90:
+            webtlsmdd.job_data_set(job_id, "tls_model", "ANISO")
+        else:
+            webtlsmdd.job_data_set(job_id, "tls_model", "ISOT")
+            
         webtlsmdd.job_data_set(job_id, "weight", "IUISO")
-        webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
+
+        if largest_chain_seen<=400:
+            webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
+        else:
+            webtlsmdd.job_data_set(job_id, "include_atoms", "MAINCHAIN")
 
 	return job_id
 

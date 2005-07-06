@@ -165,13 +165,18 @@ class RefinePrepPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form)
         
-        title = 'Input Files for REFMAC5 TLS Refinement'
+        title = 'Input Files for Refmac5 TLS Refinement'
         
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
-        x += '<br>'
 
+        x += '<center>'
+        x += '<h3>'
+        x += 'Step 2: Download the generated XYZIN(PDBIN) and TLSIN files'
+        x += '</h3>'
+        x += '</center>'
+        
         ## get the analysis directory, and make sure it exists
         analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")
         if not os.path.isdir(analysis_dir):
@@ -272,8 +277,9 @@ def main():
     page = None
     job_id = check_job_id(form)
     if job_id==None:
-        page = ErrorPage(form,"<center>The Job ID seems to be expired "\
-                         "or invalid.</center>")
+        page = ErrorPage(
+            form,
+            "<center>The Job ID seems to be expired or invalid.</center>")
     else:
         page = RefinePrepPage(form)
 

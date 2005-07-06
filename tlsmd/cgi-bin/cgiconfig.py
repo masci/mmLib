@@ -8,8 +8,8 @@ import string
 
 WEBTLSMDD              = "http://localhost:10100"
 VERSION                = "0.0.1"
-LAST_MODIFIED_BY       = "Jay Painter"
-LAST_MODIFIED_BY_EMAIL = "jpaint@u.washington.edu"
+LAST_MODIFIED_BY       = ""
+LAST_MODIFIED_BY_EMAIL = ""
 LAST_MODIFIED_DATE     = "Jume 11, 2005"
 
 TLSMD_WORK_DIR         = "/home/jpaint/public_html/webtlsmd/run"
