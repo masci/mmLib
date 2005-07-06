@@ -75,68 +75,6 @@ If you publish an analysis based on the TLSMD results, please cite
 <cite>Painter &amp; Merritt (2005) Acta Cryst. D61, 465-471.</cite></p>
 <!-- ENDBLOCK -->
 
-
-<center><h3>Structure Submission</h3></center>
-<!-- BLOCK: SUBMIT1 -->
-<p><font size=+1><b>User Information</b></font><br>
-Fill out the information submission form to complete the submission of your structure to
-the TLSMD server.  If you would like to password protect your submission, then make sure to
-fill out the <b>user</b> and <b>password</b> fields, otherwise your submission
-will be publicly accessible.  Entering your email address is optional, we use it
-only as a contact address if there is a problem with processing your submission.</p>
-
-<p><font size=+1><b>Processing Time</b></font><br>
-TLSMD runs a independent analysis on each protein chain present in your input
-PDB file.  The time required to analyze each chain is roughly proportional to the
-square of the number of residues in the chain, and the total analysis time for
-your structure is the sum of the time taken for each chain.
-On the current TLSMD server, a single 300 residue protein chain takes about 2 hours to analyze;
-a homo-trimer with three 300 residue chains would take 2+2+2=6 hours.  For this reason, we
-ask users submitting structures with protein chains larger than 600 residues
-to use the <b>Include Atoms: Mainchain Only</b> option on the submission form
-below to decrease the analysis time required for your protein.</p>
-
-<p><font size=+1><b>Canceling Your Submitted Job</b></font><br>
-If there is a problem with your submission, you may edit or kill the
-submission through the <a href="../../cgi-bin/webtlsmd.cgi?page=edit">Edit Job</a> web page on the TLSMD web site. Once submitted, you may monitor its status on the 
-<a href="../../cgi-bin/webtlsmd.cgi?page=queue">Job Queue</a> page, 
-and once it is complete it will be moved into the 
-<a href="../../cgi-bin/webtlsmd.cgi?page=completed">Completed Jobs</a>
-page.  These web pages are accessible from the navigation bar on all
-TLSMD site web pages.</p>
-
-<p><font size=+1><b>Submission Options</b></font><br>
-There are three options controlling the minimization of your structure:
-TLS Model, Least Squares Weighting, and Include Atoms.</p>
-
-<p><b><i>TLS Model</i></b><br>
-The TLS Model option selects either the isotropic form of the TLS equations,
-or the anisotropic form.  If your structure has been refined with either
-isotropic atomic displacement parameters (ADPs)(the parameter formerly known
-as temperature factor), or TLS refinement, then select the isotropic
-model. This is the default.  If you are lucky enough to have 1.0 Angstrom data
-and used anisotropic ADPs refinement and you have ANISOU records in your PDB
-file, then select the anisotropic TLS model.</p>
-
-<p><b><i>Least Squares Weighting</i></b><br>
-The TLS model parameters are fit to the individual atomic ADPs of your input model using a over-determined system of linear equations solved by linear least-squares.  In this system of equations, each atom can be given an individual weight.  Ideally, this weight is the inverse of the standard deviation of the parameter (in this case the standard deviation of the atomic ADP in your input model). However, the standard deviations of the ADPs are usually not known.  It is reasonable to approximate the ADP errors as being inversely proportional to their <var>B<sub>iso</sub></var> values, and this is the default weighting scheme used in TLSMD.  You may also select no weighting.
-</p>
-
-<p><b><i>Include Atoms</i></b><br>
-This option controls the subset of atoms used when fitting the TLS model
-to your refined structure.  If you have chains with more than 600 residues,
-then please only use the main chain atoms, otherwise your job could take
-a long time to run.</p>
-<!-- ENDBLOCK -->
-
-
-<center><h3>Refmac5 TLS Refinement</h3></center>
-<!-- BLOCK: INDEX -->
-<p>
-The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement, and split the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.
-</p>
-<!-- ENDBLOCK -->
-
 <center>
 <p><small>
 Last Modified June 11, 2005 by Jay Painter <i>jpaint@u.washington.edu</i>

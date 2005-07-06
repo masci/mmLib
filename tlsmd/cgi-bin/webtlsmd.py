@@ -87,6 +87,9 @@ def html_job_nav_bar(webtlsmdd, job_id):
     logfile = os.path.join(job_dir, "log.txt")
     log_url = webtlsmdd.job_data_get(job_id, "log_url")
 
+    if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
+        return ''
+
     x  = ''
     x += '<center>'
     x += '<h3>'
@@ -131,41 +134,6 @@ def html_job_edit_form(fdict):
     x += '<tr><td colspan="2">'
     x += '<table>'
 
-    ## user
-    x += '<tr>'
-    x += '<td align="right"><label>User name:</td><td>'
-
-    user = fdict.get("user", "")
-    if len(user)>0:
-        x += '<input type="hidden" name="user" value="%s">' % (user)
-        x += '<b>%s</b>' % (user)
-    else:
-        x += '<input '\
-             'type="text" '\
-             'name="user" '\
-             'value="%s" '\
-             'size="10" '\
-             'maxlength="10">' % (user)
-    x += '</label></td>'
-    x += '</tr>'
-
-    ## password
-    x += '<tr>'
-    x += '<td align="right"><label>Password:</td><td>'
-    passwd = fdict.get("passwd", "")
-    if len(passwd)>0:
-        x += '<input type="hidden" name="passwd" value="%s">' % (passwd)
-        x += '<b>%s</b>' % (passwd)
-    else:
-        x += '<input '\
-             'type="text" '\
-             'name="passwd" '\
-             'value="%s" '\
-             'size="10" '\
-             'maxlength="10">' % (passwd)
-    x += '</label></td>'
-    x += '</tr>'
-
     ## email address
     x += '<tr>'
     x += '<td align="right"><label>EMail Address:</td><td>'
@@ -187,18 +155,6 @@ def html_job_edit_form(fdict):
          'value="%s" '\
          'size="4" '\
          'maxlength="4">' % (fdict.get("structure_id", ""))
-    x += '</label></td>'
-    x += '</tr>'
-
-    ## comment
-    x += '<tr>'
-    x += '<td align="right"><label>Comment:</td><td>'
-    x += '<input '\
-         'type="text" '\
-         'name="comment" '\
-         'value="%s" '\
-         'size="25" '\
-         'maxlength="40">' % (fdict.get("comment", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -288,20 +244,6 @@ def html_job_info_table(fdict):
     x += '<tr><td colspan="2">'
     x += '<table>'
 
-    ## user
-    x += '<tr>'
-    x += '<td align="right"><label>User name:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("user",""))
-    x += '</label></td>'
-    x += '</tr>'
-
-    ## password
-    x += '<tr>'
-    x += '<td align="right"><label>Password:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("passwd", ""))
-    x += '</label></td>'
-    x += '</tr>'
-
     ## email address
     x += '<tr>'
     x += '<td align="right"><label>EMail Address:</td><td>'
@@ -313,13 +255,6 @@ def html_job_info_table(fdict):
     x += '<tr>'
     x += '<td align="right"><label>Structure Code:</td><td>'
     x += '<b>%s</b>' % (fdict.get("structure_id", ""))
-    x += '</label></td>'
-    x += '</tr>'
-
-    ## comment
-    x += '<tr>'
-    x += '<td align="right"><label>Comment:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("comment", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -351,7 +286,7 @@ def html_job_info_table(fdict):
     x += '</tr>'
 
     ## Select Chains for Analysis
-    x += '<tr><th colspan="3">Select Chains for Analysis</th></tr>'
+    x += '<tr><th colspan="3">Selected Chains</th></tr>'
 
     x += '<tr><td colspan="3">'
     x += '<table>'
@@ -359,7 +294,7 @@ def html_job_info_table(fdict):
         x += '<tr><td>'
         if cdict["selected"]==True:
             x += '<tr><td>'
-            x += '%s: <small>%s...</small>' % (cdict["desc"], cdict["preview"])
+            x += '%s' % (cdict["desc"])
             x += '</td></tr>'
 
     x += '</table></td></tr>'
@@ -706,7 +641,6 @@ class QueuePage(Page):
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
-        x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '<th><font size="-5">Currently Processing</font></th>'
         x += '<th><font size="-5">Processing Time<br>Used (Hours)</font></th>'
@@ -716,7 +650,6 @@ class QueuePage(Page):
         x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
             jdict["job_id"] ,jdict["job_id"])
         x += '<td>%s</td>' % (jdict["structure_id"])
-        x += '<td>%s</td>' % (jdict["user"])
         x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
         tls_seg = 'Chain <b>%s</b> Residues <b>%s-%s</b>' % (
@@ -755,7 +688,6 @@ class QueuePage(Page):
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
-        x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '</tr>'
 
@@ -765,7 +697,6 @@ class QueuePage(Page):
             x += '<td><a href="webtlsmd.cgi?page=edit&job_id=%s">%s</a>' % (
                 jdict["job_id"] ,jdict["job_id"])
             x += '<td>%s</td>' % (jdict["structure_id"])
-            x += '<td>%s</td>' % (jdict["user"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
@@ -791,7 +722,6 @@ class QueuePage(Page):
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">State</font></th>'
-        x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '</tr>'
 
@@ -802,7 +732,6 @@ class QueuePage(Page):
                 jdict["job_id"] ,jdict["job_id"])
             x += '<td>%s</td>' % (jdict["structure_id"])
             x += '<td>%s</td>' % (jdict["state"])
-            x += '<td>%s</td>' % (jdict["user"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
@@ -915,8 +844,26 @@ class CompletedPage(Page):
 
 class EditPage(Page):
     def html_page(self):
-        title = 'TLSMD: Edit Job'
-        
+        job_id = check_job_id(self.form, webtlsmdd)
+	if job_id==None:
+	    title = 'TLSMD: View Job'
+	    x  = self.html_head(title)
+	    x += html_title(title)
+	    x += '<center><h3>ERROR: Invalid Job ID</h3></center>'
+	    x += self.html_foot()
+	    return x
+	    
+	title = 'TLSMD: View Job %s' % (job_id)
+        x  = ''
+	x += self.html_head(title)
+	x += html_title(title)
+	x += html_nav_bar()
+	x += html_job_nav_bar(webtlsmdd, job_id)
+        jdict = webtlsmdd.job_get_dict(job_id)
+	x += html_job_info_table(jdict)
+        x += self.html_foot()
+	return x
+       
         x  = ''
         x += self.html_head(title)
         x += html_title(title)
