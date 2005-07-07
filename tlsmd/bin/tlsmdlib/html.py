@@ -1143,8 +1143,8 @@ class HTMLReport(Report):
 
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
-        for h in range(1, chainopt["max_ntls"]+1):
-            tmp = self.html_tls_graph_path(chainopt, h)
+        for ntls_constraint in range(1, chainopt["max_ntls"]+1):
+            tmp = self.html_tls_graph_path(chainopt, ntls_constraint)
             if tmp!=None:
                 x += tmp
 
@@ -1249,8 +1249,7 @@ class HTMLReport(Report):
         tlsout_path = self.write_tlsout_file(chainopt, tlsopt, ntls)
 
         ## detailed analyisis of all TLS groups
-        report = ChainNTLSAnalysisReport(chainopt, tlsopt, ntls)
-        analysis_path = report.url
+        analysis_path = self.chain_ntls_analysis(chainopt, tlsopt)
 
         f1 = '<font size="-5">'
         f2 = '</font>'
@@ -1551,6 +1550,18 @@ class HTMLReport(Report):
 
         return tlsout_path
 
+    def chain_ntls_analysis(self, chainopt, tlsopt):
+        """Generate ntls optimization constraint report and free memory.
+        """
+        report = ChainNTLSAnalysisReport(chainopt, tlsopt, tlsopt.ntls)
+        url = report.url
+        report = None
+
+        import gc
+        gc.collect()
+
+        return url
+
     def jmol_html(self, chainopt, tlsopt, ntls):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
@@ -1612,8 +1623,8 @@ class HTMLReport(Report):
         try:
             print "TLSAnimate: creating animation PDB file..."
             start_timing()
-            tls_animate = TLSAnimate(self.struct, chainopt, tlsopt)
-            tls_animate.construct_animation(pdb_path)
+            tlsa = TLSAnimate(self.struct, chainopt, tlsopt)
+            tlsa.construct_animation(pdb_path)
             print end_timing()
         except TLSAnimateFailure:
             pass
@@ -1630,9 +1641,9 @@ class HTMLReport(Report):
 
         ## loop over TLS groups and color
         for tls in tlsopt.tls_list:
-            chain_ids = [tls_animate.L1_chain.chain_id,
-                         tls_animate.L2_chain.chain_id,
-                         tls_animate.L3_chain.chain_id]
+            chain_ids = [tlsa.L1_chain.chain_id,
+                         tlsa.L2_chain.chain_id,
+                         tlsa.L3_chain.chain_id]
 
             for chain_id in chain_ids:
                 js += 'select %s-%s:%s;' % (
@@ -1662,6 +1673,11 @@ class HTMLReport(Report):
         x += '</script>'
         x += '</body>'
         x += '</html>'
+
+        ## manually free memory
+        tlsa = None
+        import gc
+        gc.collect()
 
         open(html_path, "w").write(x)
         return html_path

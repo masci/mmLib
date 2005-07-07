@@ -48,21 +48,21 @@ def html_nav_bar(page_name=None):
     x += '<center>\n'
 
     if page_name=="home":
-        x += 'Home'
+        x += 'Home\n'
     else:
         x += '<a href="/~jpaint/webtlsmd/index.html">Home</a>\n'
 
     x += LINK_SPACE + '\n'
 
     if page_name=="":
-        x += 'Start a New Job'
+        x += 'Start a New Job\n'
     else:
         x += '<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>\n'
 
     x += LINK_SPACE + '\n'
 
     if page_name=="queue":
-        x += 'Job Status'
+        x += 'Job Status\n'
     else:
         x += '<a href="webtlsmd.cgi?page=queue">Job Status</a>\n'
 
