@@ -1,5 +1,5 @@
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -24,9 +24,9 @@ webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=True)
 
 
 CAPTION = """\
-Download this modified PDB file of your structure, and its corresponding
-TLSIN file begin multi-TLS group refinement using REFMAC5.  See the
-TLSMD documentation for detailed instructions.
+Download both this modified PDB file of your structure, and the corresponding
+TLSIN file. Feed these to REFMAC5 as a start point for  multi-TLS group refinement.
+See the TLSMD documentation for detailed instructions.
 """
 
 
