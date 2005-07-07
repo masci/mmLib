@@ -1792,7 +1792,7 @@ class HTMLReport(Report):
         to use per chain.
         """
         path  = "%s_REFINEMENT_PREP.html" % (self.struct_id)
-        title = "Refmac5 TLS Refienment of %s" % (
+        title = "Refmac5 TLS Refinement of %s" % (
             self.struct_id)
  
         self.page_refinement_prep = {

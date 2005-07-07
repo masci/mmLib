@@ -1113,7 +1113,7 @@ class Submit3Page(Page):
             html = ''
 
             html += '<center><h3>'
-            html += 'Step 3: Finshed!  Job successfully submitted.'
+            html += 'Step 3: Finished!  Job successfully submitted.'
             html += '</h3></center>'
     
             html += '<center>'
