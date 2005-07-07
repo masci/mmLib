@@ -45,36 +45,36 @@ def html_nav_bar(page_name=None):
     """Site navigation bar.
     """
     x  = ''
-    x += '<center>'
+    x += '<center>\n'
 
     if page_name=="home":
         x += 'Home'
     else:
-        x += '<a href="/~jpaint/webtlsmd/index.html">Home</a>'
+        x += '<a href="/~jpaint/webtlsmd/index.html">Home</a>\n'
 
-    x += LINK_SPACE
+    x += LINK_SPACE + '\n'
 
     if page_name=="":
         x += 'Start a New Job'
     else:
-        x += '<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>'
+        x += '<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>\n'
 
-    x += LINK_SPACE
+    x += LINK_SPACE + '\n'
 
     if page_name=="queue":
         x += 'Job Status'
     else:
-        x += '<a href="webtlsmd.cgi?page=queue">Job Status</a>'
+        x += '<a href="webtlsmd.cgi?page=queue">Job Status</a>\n'
 
-    x += LINK_SPACE
+    x += LINK_SPACE + '\n'
 
-    x += '<a href="/~jpaint/webtlsmd/examples/index.html">Examples</a>'
+    x += '<a href="/~jpaint/webtlsmd/examples/index.html">Examples</a>\n'
 
-    x += LINK_SPACE
+    x += LINK_SPACE + '\n'
     
-    x += '<a href="/~jpaint/webtlsmd/documentation.html">Documentation</a>'
-    x += '</center>'
-    x += '<br>'
+    x += '<a href="/~jpaint/webtlsmd/documentation.html">Documentation</a>\n'
+    x += '</center>\n'
+    x += '<br>\n'
     return x
 
 
@@ -596,8 +596,10 @@ class QueuePage(Page):
         x += self.html_private_form()
 
         x += '<center><b>'
-        x += 'Click on the Job ID you wish to view.'
+        x += 'Or click on the Job ID you wish to view'
         x += '</b></center>'
+
+        x += '<br>'
 
         job_list = self.get_job_list()
 
@@ -737,7 +739,6 @@ class QueuePage(Page):
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
-        x += '<th><font size="-5">User</font></th>'
         x += '<th><font size="-5">Status</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
 	x += '<th><font size="-5">Processing Time<br> Used (Hours)</font></th>'
@@ -748,7 +749,6 @@ class QueuePage(Page):
             
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict["structure_id"])
-            x += '<td>%s</td>' % (jdict["user"])
             x += '<td>%s</td>' % (jdict["state"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
