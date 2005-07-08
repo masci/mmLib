@@ -1,6 +1,6 @@
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
-## This code is part of the TLSMD distrobution and governed by
+## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
@@ -33,7 +33,7 @@ JMOL_DIR     = "../../../jmol"
 
 ## constants
 
-## the pixel width of the TLS visualization rendered raytraces
+## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH = 400
 
 ## pixel size of the gnuplot generated images
@@ -236,6 +236,7 @@ class GNUPlot(object):
 
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
+set xrange [1:20]
 set ylabel "Residual"
 set format y "%5.2f"
 set style line 1 lw 3
@@ -276,6 +277,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
+set xrange [1:20]
 set ylabel "Minimization (Weighted) LSQR Residual"
 set format y "%5.2f"
 set style line 1 lw 3
@@ -1109,6 +1111,8 @@ class HTMLReport(Report):
     def write_tls_graph(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
+        print "BEGIN TIMEING CHAIN ID %s" % (chainopt["chain_id"])
+            
         path  = "%s_CHAIN%s_ANALYSIS.html" % (
             self.struct_id, chainopt["chain_id"])
 
@@ -1122,6 +1126,7 @@ class HTMLReport(Report):
         fil.write(self.html_tls_graph(chainopt))
         fil.close()
 
+        print "END TIMEING CHAIN ID %s" % (chainopt["chain_id"])
         
     def html_tls_graph(self, chainopt):
         """Generates and returns the HTML string report analysis of a
@@ -1995,7 +2000,7 @@ class ChainNTLSAnalysisReport(Report):
         spanned by the tlsopt TLS groups.
         """
         x  = ''
-        x += '<center><h3>Mainchain TLS Fit Analysis</h3></center>\n'
+        x += '<center><h3>Main Chain TLS Fit Analysis</h3></center>\n'
 
         fit_analysis = FitAnalysis(
             self.chainopt, self.tlsopt, self.ntls)

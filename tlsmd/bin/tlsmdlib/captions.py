@@ -1,13 +1,13 @@
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2005 by TLSMD Development Group (see AUTHORS file)
-## This code is part of the TLSMD distrobution and governed by
+## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
 MOTION_ANALYSIS_TEXT = """\
 For each protein chain, this analysis show the optimal division into
 1 TLS group, 2 TLS groups, 3 TLS groups, etc, up to 20 groups.
-It goes on to analyze the implied rigid body translational and rotatational
+It goes on to analyze the implied rigid body translational and rotational
 motion of each group, as well as its quality of fit to the refined atomic
 displacement parameters (B-factors). If you have multiple chains in your
 structure, they are treated independently.
@@ -62,7 +62,7 @@ those used for the TLS groups in the various structure visualizations.
 """
 
 LIBRATION_GRAPH_CAPTION = """\
-This graph shows the displacement of mainchain atoms implied by the three
+This graph shows the displacement of main chain atoms implied by the three
 screw axes of the TLS group to which they belong.  The screw displacement axes are
 calculated in terms of a Gaussian variance-covariance tensor, and displacment
 magnitude is shown at a 85% isoprobability magnitude like the translational
@@ -72,7 +72,7 @@ this graph.
 
 FIT_GRAPH_CAPTION = """\
 This graph assesses the quality of the TLS prediction for each residue
-by graphing the difference between the refined (input) mainchain atom B factors
+by graphing the difference between the refined (input) main chain atom B factors
 and the corresponding B factors implied by the TLS model alone.  If the
 TLS model were a perfect description of the observed thermal motion
 described by the input structural model, this plot would consist of a

@@ -28,9 +28,10 @@ def timestring(secs):
 
 
 def timediffstring(begin, end):
-    secs = end - begin
+    secs = int(end - begin)
     hours = secs / float(3600)
-    return "%.2f" % (hours)
+    min = secs % 3600
+    return "%d:2d" % (hours, min)
 
 
 def html_title(title):
@@ -286,12 +287,33 @@ def html_job_info_table(fdict):
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
 
     x += '<tr><td align="right">Submission Date: </td>'
-
     if fdict.has_key("submit_time"):
         date = timestring(fdict["submit_time"])
     else:
-        date = "No Time"
+        date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
+
+    x += '<tr><td align="right">Processing Start Date: </td>'
+    if fdict.has_key("run_start_time"):
+        date = timestring(fdict["run_start_time"])
+    else:
+        date = "---"
+    x += '<td><b>%s</b></td></tr>' % (date)
+
+    x += '<tr><td align="right">Processing End Date: </td>'
+    if fdict.has_key("run_end_time"):
+        date = timestring(fdict["run_end_time"])
+    else:
+        date = "---"
+    x += '<td><b>%s</b></td></tr>' % (date)
+
+    x += '<tr><td align="right">Processing Time(HH:MM): </td>'
+    if fdict.has_key("run_end_time") and fdict.has_key("run_start_time"):
+        date = timestring(fdict["run_end_time"]-fdict["run_start_time"])
+    else:
+        date = "---"
+    x += '<td><b>%s</b></td></tr>' % (date)
+
 
     x += '</table></td>'
 
@@ -669,7 +691,7 @@ class QueuePage(Page):
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '<th><font size="-5">Currently Processing</font></th>'
-        x += '<th><font size="-5">Processing Time<br>Used (Hours)</font></th>'
+        x += '<th><font size="-5">Processing Time<br>Used (HH:MM)</font></th>'
         x += '</tr>'
 
         if jdict!=None:
@@ -741,7 +763,7 @@ class QueuePage(Page):
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">Status</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
-	x += '<th><font size="-5">Processing Time<br> Used (Hours)</font></th>'
+	x += '<th><font size="-5">Processing Time<br> Used (HH:MM)</font></th>'
         x += '</tr>'
 
         for jdict in completed_list:
@@ -1070,6 +1092,7 @@ class Submit2Page(Page):
             cdict = {}
             chains.append(cdict)
             cdict["chain_id"] = chain.chain_id
+            cdict["length"]   = naa
             cdict["name"]     = cb_name
             cdict["desc"]     = cb_desc
             cdict["preview"]  = cb_preview

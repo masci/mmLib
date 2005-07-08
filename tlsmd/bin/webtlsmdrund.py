@@ -57,6 +57,12 @@ def log_error(jdict, err):
     ln += "ERROR: %s" % (err)
     log_write(ln)
 
+def get_cdict(chains, chain_id):
+    for cdict in chains:
+        if chains["chain_id"]==chain_id:
+            return cdict
+    return None
+
 def run_tlsmd(webtlsmdd, jdict):
     job_id = jdict["job_id"]
     tlsmd  = jdict["tlsmd"]
@@ -66,6 +72,10 @@ def run_tlsmd(webtlsmdd, jdict):
 
     logfil = open("log.txt", "w")
 
+    chain_time_dict = {}
+    time_chain_id   = None
+    time_begin      = None
+    
     segments = 0
 
     while True:
@@ -73,9 +83,31 @@ def run_tlsmd(webtlsmdd, jdict):
 	if len(ln)==0:
             break
 
+        ## for recording processing time...
+        if ln.startswith("BEGIN TIMEING CHAIN ID "):
+            if time_chain_id==None:
+                time_chain_id = ln[23]
+                time_begin = time.time()
+
+        if ln.startswith("END TIMEING CHAIN ID "):
+            chain_id = ln[21]
+            if time_chain_id==chain_id:
+                time_taken = time.time() - time.begin()
+
+                if chain_time_dict.has_key(chain_id):
+                    chain_time_dict[chain_id] += time_taken
+                else:
+                    chain_time_dict[chain_id] = time_taken
+
+                time_chain_id = None
+                time_begin    = None
+
         m = RE_PROCESS_CHAIN.match(ln)
         if m!=None:
             segments += 1
+            chain_id, frag_id1, frag_id2 = m.groups()
+
+            ## only update the run-time database periodically
             if segments%100==0:
                 chain_id, frag_id1, frag_id2 = m.groups()
                 webtlsmdd.job_data_set(job_id, "run_chain_id", chain_id)
@@ -87,6 +119,14 @@ def run_tlsmd(webtlsmdd, jdict):
 
     stdout.close()
     logfil.close()
+
+    ## record the time used for each chain
+    chains = webtlsmdd.job_data_get(job_id, "chains")
+    for cdict in chains:
+        chain_id = cdict["chain_id"]
+        if chain_time_dict.has_key(chain_id):
+            cdict["processing_time"] = chain_time_dict[chain_id]
+        webtlsmdd.job_data_set(job_id, "chains", chains)
 
 def run_job(webtlsmdd, jdict):
     job_id = jdict["job_id"]

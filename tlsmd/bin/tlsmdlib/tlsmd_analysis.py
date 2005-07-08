@@ -339,9 +339,9 @@ class TLSGraphChainHybrid(TLSGraphChain):
             fit_info["error"] = errx
 
         if fit_info.has_key("error"):
-            print "[HYBRID] lsq_fit_segment_aniso("\
+            print "[HYBRID] lsq_fit_segment("\
                   "frag_id={%s..%s}, "\
-                  "num_atoms=%d, lsqr=%6.4f, error=%s)" % (
+                  "num_atoms=%d, lsqr=%6.4f, discard=%s)" % (
                 frag_id1, frag_id2,
                 fit_info["num_atoms"], fit_info["lsq_residual"],
                 fit_info["error"]) 
@@ -582,9 +582,9 @@ class TLSGraphChainAnisotropic(TLSGraphChain):
             fit_info["error"] = errx
 
         if fit_info.has_key("error"):
-            print "[ANISO] lsq_fit_segment_aniso("\
+            print "[ANISO] lsq_fit_segment("\
                   "frag_id={%s..%s}, "\
-                  "num_atoms=%d, lsqr=%6.4f, error=%s)" % (
+                  "num_atoms=%d, lsqr=%6.4f, discard=%s)" % (
                 frag_id1, frag_id2,
                 fit_info["num_atoms"], fit_info["lsq_residual"],
                 fit_info["error"]) 
@@ -1659,8 +1659,12 @@ class TLSMDAnalysis(object):
         chain_processor = self.launch_chain_processor()
         
         for chain in self.chains:
-            print "PROCESSING CHAIN %s" % (chain)
+            print "BEGIN TIMEING CHAIN ID %s" % (chain.chain_id)
+
+            print "BUILDING TLS DATABASE FOR %s" % (chain)
             chain_processor.process_chain(self, chain, MIN_SUBSEGMENT_SIZE)
+
+            print "END TIMEING CHAIN ID %s" % (chain.chain_id)
 
     def launch_chain_processor(self):
         """Starts up a in-process or grid server pool for graphing
