@@ -28,10 +28,12 @@ def timestring(secs):
 
 
 def timediffstring(begin, end):
-    secs = int(end - begin)
-    hours = secs / 3600
-    min = secs % 3600
-    return "%d:2d" % (hours, min)
+    secs    = int(end - begin)
+    hours   = secs / 3600
+    min_sec = secs % 3600
+    min     = min_secs / 60
+
+    return "%d:%2d" % (hours, min)
 
 
 def html_title(title):
