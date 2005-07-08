@@ -1659,12 +1659,12 @@ class TLSMDAnalysis(object):
         chain_processor = self.launch_chain_processor()
         
         for chain in self.chains:
-            print "BEGIN TIMEING CHAIN ID %s" % (chain.chain_id)
+            begin_chain_timing(chain.chain_id)
 
             print "BUILDING TLS DATABASE FOR %s" % (chain)
             chain_processor.process_chain(self, chain, MIN_SUBSEGMENT_SIZE)
 
-            print "END TIMEING CHAIN ID %s" % (chain.chain_id)
+            end_chain_timing(chain.chain_id)
 
     def launch_chain_processor(self):
         """Starts up a in-process or grid server pool for graphing

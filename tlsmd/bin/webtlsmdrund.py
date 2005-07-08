@@ -84,20 +84,32 @@ def run_tlsmd(webtlsmdd, jdict):
             break
 
         ## for recording processing time...
-        if ln.startswith("BEGIN TIMEING CHAIN ID "):
-            if time_chain_id==None:
-                time_chain_id = ln[23]
-                time_begin = time.time()
+        if ln.startswith("BEGIN TIMING CHAIN"):
+            if time_chain_id==None and time_begin==None:
+                tmln = ln.strip()
+		try:
+		    time_chain_id = tmln[19]
+		    time_begin = float(tmln[21:])
+		except IndexError:
+		    time_chain_id = None
+		except ValueError:
+		    time_begin = None
 
-        if ln.startswith("END TIMEING CHAIN ID "):
-            chain_id = ln[21]
-            if time_chain_id==chain_id:
-                time_taken = time.time() - time_begin
+        if ln.startswith("END TIMING CHAIN"):
+            tmln = ln.strip()
+            try:
+                chain_id = tmln[17]
+                if time_chain_id==chain_id:
+		    time_taken = float(tmln[19:]) - time_begin
 
-                if chain_time_dict.has_key(chain_id):
-                    chain_time_dict[chain_id] += time_taken
-                else:
-                    chain_time_dict[chain_id] = time_taken
+                    if chain_time_dict.has_key(chain_id):
+                        chain_time_dict[chain_id] += time_taken
+                    else:
+                        chain_time_dict[chain_id] = time_taken
+            except IndexError:
+                pass
+            except ValueError:
+                pass
 
             time_chain_id = None
             time_begin    = None

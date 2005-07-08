@@ -1001,7 +1001,9 @@ class HTMLReport(Report):
         ## way before writing HTML
         chainopt_list = []
         for chain in self.chains:
+            begin_chain_timing(chain.chain_id)
             chainopt = self.init_chain_optimization(chain)
+	    end_chain_timing(chain.chain_id)
             chainopt_list.append(chainopt)
 
         ## write out all TLSGraph reports
@@ -1080,38 +1082,38 @@ class HTMLReport(Report):
         x += '<h3>Optimization Parameters</h3>'
         x += '</center>'
 
-        x += '<table>'
+        x += '<center><table border="1" cellpadding="3">'
         x += '<tr>'
-        x += '<td><b>TLS Model</b></td>'
-        x += '<td>%s</td>' % (GLOBALS["TLS_MODEL"])
+        x += '<td>TLS Model</td>'
+        x += '<td><b>%s</b></td>' % (GLOBALS["TLS_MODEL"])
         x += '</tr>'
 
         x += '<tr>'
-        x += '<td><b>Weight Model</b></td>'
-        x += '<td>%s</td>' % (GLOBALS["WEIGHT_MODEL"])
+        x += '<td>Weight Model</td>'
+        x += '<td><b>%s</b></td>' % (GLOBALS["WEIGHT_MODEL"])
         x += '</tr>'
 
 
         x += '<tr>'
-        x += '<td><b>Included Atoms</b></td>'
-        x += '<td>%s</td>' % (GLOBALS["INCLUDE_ATOMS"])
+        x += '<td>Included Atoms</td>'
+        x += '<td><b>%s</b></td>' % (GLOBALS["INCLUDE_ATOMS"])
         x += '</tr>'
 
         x += '<tr>'
         x += '<td>'
-        x += '<b>Minimum Subsegment</b>'
+        x += 'Minimum Subsegment'
         x += '</td>'
-        x += '<td>%s Residues</td>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"])
+        x += '<td><b>%s Residues</b></td>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"])
         x += '</tr>'
 
-        x += '</table>'
+        x += '</table></center>'
 
         return x
 
     def write_tls_graph(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
-        print "BEGIN TIMEING CHAIN ID %s" % (chainopt["chain_id"])
+        begin_chain_timing(chainopt["chain_id"])
             
         path  = "%s_CHAIN%s_ANALYSIS.html" % (
             self.struct_id, chainopt["chain_id"])
@@ -1126,7 +1128,7 @@ class HTMLReport(Report):
         fil.write(self.html_tls_graph(chainopt))
         fil.close()
 
-        print "END TIMEING CHAIN ID %s" % (chainopt["chain_id"])
+        end_chain_timing(chainopt["chain_id"])
         
     def html_tls_graph(self, chainopt):
         """Generates and returns the HTML string report analysis of a

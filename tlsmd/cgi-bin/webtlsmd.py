@@ -106,12 +106,12 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += '<h3>'
 
     if os.path.isfile(analysis_index):
-        x += '<a href="%s">View Completed Analysis</a>' % (analysis_url)
+	x += '<a href="%s">Click Here: View Completed Analysis</a>' % (analysis_url)
 
     x += LINK_SPACE
 
     if os.path.isfile(logfile):
-        x += '<a href="%s">View TLSMD Logfile</a>' % (log_url)
+        x += '<a href="%s">Download Logfile(Large)</a>' % (log_url)
 
     x += '</h3>'
     x += '</center>'
@@ -331,7 +331,7 @@ def html_job_info_table(fdict):
     x += '<tr><th colspan="3">Selected Chains</th></tr>'
 
     x += '<tr><td colspan="3">'
-    x += '<table>'
+    x += '<table cellpadding="5">'
     x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th></tr>'
     for cdict in fdict["chains"]:
         x += '<tr><td>'
