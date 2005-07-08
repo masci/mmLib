@@ -29,7 +29,7 @@ def timestring(secs):
 
 def timediffstring(begin, end):
     secs = int(end - begin)
-    hours = secs / float(3600)
+    hours = secs / 3600
     min = secs % 3600
     return "%d:2d" % (hours, min)
 
@@ -309,7 +309,7 @@ def html_job_info_table(fdict):
 
     x += '<tr><td align="right">Processing Time(HH:MM): </td>'
     if fdict.has_key("run_end_time") and fdict.has_key("run_start_time"):
-        date = timestring(fdict["run_end_time"]-fdict["run_start_time"])
+        date = timediffstring(fdict["run_end_time"]-fdict["run_start_time"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
