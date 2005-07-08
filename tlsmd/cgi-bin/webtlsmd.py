@@ -26,15 +26,21 @@ def timestring(secs):
     tm_struct = time.localtime(secs)
     return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
 
+def secdiffstring(secs):
+    secs = int(secs)
+    
+    hours = secs / 3600
+    secs = secs - (hours * 3600)
+ 
+    min = secs / 60
+    secs = secs - (min * 60)
+
+    x = "%1d:%2d.%2d" % (hours, min, secs)
+    return x.replace(" ", "0")
 
 def timediffstring(begin, end):
-    secs    = int(end - begin)
-    hours   = secs / 3600
-    min_sec = secs % 3600
-    min     = min_sec / 60
-
-    return "%d:%2d" % (hours, min)
-
+    secs  = int(end - begin)
+    return secdiffstring(secs)
 
 def html_title(title):
     """Title
@@ -311,10 +317,10 @@ def html_job_info_table(fdict):
 
     x += '<tr><td align="right">Processing Time(HH:MM): </td>'
     if fdict.has_key("run_end_time") and fdict.has_key("run_start_time"):
-        date = timediffstring(fdict["run_end_time"]-fdict["run_start_time"])
+        hours = timediffstring(fdict["run_start_time"], fdict["run_end_time"])
     else:
-        date = "---"
-    x += '<td><b>%s</b></td></tr>' % (date)
+        hours = "---"
+    x += '<td><b>%s</b></td></tr>' % (hours)
 
 
     x += '</table></td>'
@@ -326,12 +332,21 @@ def html_job_info_table(fdict):
 
     x += '<tr><td colspan="3">'
     x += '<table>'
+    x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th></tr>'
     for cdict in fdict["chains"]:
         x += '<tr><td>'
         if cdict["selected"]==True:
-            x += '<tr><td>'
-            x += '%s' % (cdict["desc"])
-            x += '</td></tr>'
+            x += '<tr>'
+	    
+            x += '<td>%s</td>' % (cdict["desc"])
+
+            if cdict.has_key("processing_time"):
+                hours = secdiffstring(cdict["processing_time"])
+	    else:
+		hours = "---"
+            x += '<td>%s</td>' % (hours)
+
+	    x += '</tr>' 
 
     x += '</table></td></tr>'
 
@@ -687,13 +702,13 @@ class QueuePage(Page):
 
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
-        x += '<table border="1" width="100%">'
+        x += '<table border="1" cellpadding="3" width="100%">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '<th><font size="-5">Currently Processing</font></th>'
-        x += '<th><font size="-5">Processing Time<br>Used (HH:MM)</font></th>'
+        x += '<th><font size="-5">Processing Time<br>Used (HH:MM.SS)</font></th>'
         x += '</tr>'
 
         if jdict!=None:
@@ -709,11 +724,11 @@ class QueuePage(Page):
                 jdict.get("run_frag_id2", ""))
             x += '<td>%s</td>' % (tls_seg)
 
-            begin = jdict.get("run_start_time")
-            if begin==None:
-                begin = jdict["submit_time"]
-            hours = timediffstring(begin, time.time())
-            x += '<td>%s</td>' % (hours)
+            if jdict.has_key("run_start_time"):
+                 hours = timediffstring(jdict["run_start_time"], time.time())
+            else:
+                 hours = "---"
+            x += '<td align="right">%s</td>' % (hours)
 
             x += '</tr>'
             
@@ -730,7 +745,7 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Queued Jobs</b>'
-        x += '<table border="1" width="100%">'
+        x += '<table border="1" cellpadding="3" width="100%">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
@@ -759,13 +774,13 @@ class QueuePage(Page):
         x  = ''
 	x += '<center><b>Completed Jobs</b></center>'
         x += '<center>'
-        x += '<table border="1" width="100%">'
+        x += '<table border="1" cellpadding="3" width="100%">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">Status</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
-	x += '<th><font size="-5">Processing Time<br> Used (HH:MM)</font></th>'
+	x += '<th><font size="-5">Processing Time<br> Used (HH:MM.SS)</font></th>'
         x += '</tr>'
 
         for jdict in completed_list:
@@ -776,15 +791,11 @@ class QueuePage(Page):
             x += '<td>%s</td>' % (jdict["state"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
-            begin = jdict.get("run_start_time")
-            if begin==None:
-	        begin = jdict["submit_time"]
-            end = jdict.get("run_end_time")
-	    if end==None:
-                hours = "Unknown"
+            if jdict.has_key("run_end_time") and jdict.has_key("run_start_time"):
+                hours = timediffstring(jdict["run_start_time"], jdict["run_end_time"])
 	    else:
-	        hours = timediffstring(begin, time.time())
-            x += '<td>%s</td>' % (hours)
+		hours = "---"
+            x += '<td align="right">%s</td>' % (hours)
 
             x += '</tr>'
 

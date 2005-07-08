@@ -1064,7 +1064,7 @@ class TLSChainProcessor(object):
             if fit_info.has_key("error"):
                 num_rejected_edges += 1
                 print "process_chain(chain_id=%s, frag_id={%s..%s}, "\
-                      "error=%s)" % (
+                      "discard=%s)" % (
                     chain.chain_id,
                     fit_info["frag_id1"], fit_info["frag_id2"],
                     fit_info["error"])
@@ -1078,9 +1078,9 @@ class TLSChainProcessor(object):
                     fit_info["lsq_residual"])
 
         print
-        print "NUM POSSIBLE TLS GROUPS: %d" % (num_edges)
-        print "NUM ACCEPTED TLS GROUPS: %d" % (num_accepted_edges)
-        print "NUM REJECTED TLS GROUPS: %d" % (num_rejected_edges)
+        print "NUM POSSIBLE  TLS GROUPS: %d" % (num_edges)
+        print "NUM ACCEPTED  TLS GROUPS: %d" % (num_accepted_edges)
+        print "NUM DISCARDED TLS GROUPS: %d" % (num_rejected_edges)
 
 
 class TLSOptimization(object):

@@ -92,15 +92,15 @@ def run_tlsmd(webtlsmdd, jdict):
         if ln.startswith("END TIMEING CHAIN ID "):
             chain_id = ln[21]
             if time_chain_id==chain_id:
-                time_taken = time.time() - time.begin()
+                time_taken = time.time() - time_begin
 
                 if chain_time_dict.has_key(chain_id):
                     chain_time_dict[chain_id] += time_taken
                 else:
                     chain_time_dict[chain_id] = time_taken
 
-                time_chain_id = None
-                time_begin    = None
+            time_chain_id = None
+            time_begin    = None
 
         m = RE_PROCESS_CHAIN.match(ln)
         if m!=None:
