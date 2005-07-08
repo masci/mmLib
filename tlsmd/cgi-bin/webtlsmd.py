@@ -31,7 +31,7 @@ def timediffstring(begin, end):
     secs    = int(end - begin)
     hours   = secs / 3600
     min_sec = secs % 3600
-    min     = min_secs / 60
+    min     = min_sec / 60
 
     return "%d:%2d" % (hours, min)
 
