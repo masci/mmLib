@@ -299,7 +299,7 @@ class Structure(object):
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
-        if not self.default_model:
+        if self.default_model==None:
             return None
         if self.default_model.chain_dict.has_key(chain_id):
             return self.default_model.chain_dict[chain_id]
@@ -714,7 +714,7 @@ class Structure(object):
                     if dist>bond_dist:
                         continue
 
-                    if not atm1.get_bond(atm2):
+                    if atm1.get_bond(atm2)==None:
                         atm1.create_bond(atom=atm2, standard_res_bond=False)
         
     def add_bonds_from_library(self):
@@ -814,7 +814,7 @@ class Model(object):
         """
         assert isinstance(chain, Chain)
 
-        if self.chain_dict.has_key(chain.chain_id):
+        if self.chain_dict.has_key(chain.chain_id)==True:
             raise ChainOverwrite()
 
         self.chain_list.append(chain)
@@ -951,7 +951,7 @@ class Model(object):
 
     def iter_non_standard_residues(self):
         for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 yield frag
 
     def has_waters(self):
@@ -1128,7 +1128,7 @@ class Model(object):
             chain.set_model_id(model_id)
 
         if self.structure!=None:
-            self.structure.sort()
+            self.structure.model_list.sort()
 
 
 class Segment(object):
@@ -1415,20 +1415,20 @@ class Segment(object):
 
     def has_non_standard_residues(self):
         for frag in self.fragment_list:
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 return True
         return False
 
     def count_non_standard_residues(self):
         n = 0
         for frag in self.fragment_list:
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 n += 1
         return n
 
     def iter_non_standard_residues(self):
         for frag in self.fragment_list:
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 yield frag
 
     def has_waters(self):
@@ -1459,14 +1459,14 @@ class Segment(object):
         ## add new fragment if necessary 
         if self.fragment_dict.has_key(atom.fragment_id)==False:
             
-            if library_is_amino_acid(atom.res_name):
+            if library_is_amino_acid(atom.res_name)==True:
                 fragment = AminoAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
                     res_name    = atom.res_name)
 
-            elif library_is_nucleic_acid(atom.res_name):
+            elif library_is_nucleic_acid(atom.res_name)==True:
                 fragment = NucleicAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
@@ -1687,15 +1687,6 @@ class Chain(Segment):
         """
         Segment.remove_fragment(self, fragment)
         fragment.chain = None
-        
-    def set_model_id(self, model_id):
-        """Sets the model_id of all contained objects.
-        """
-        assert type(model_id)==IntType
-        self.model_id = model_id
-
-        for frag in self.iter_fragments():
-            frag.set_model_id(model_id)
             
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain, updating the chain_id
@@ -1711,7 +1702,7 @@ class Chain(Segment):
 
         ## resort the parent structure
         if self.model!=None:
-            self.model.structure.sort()
+            self.model.chain_list.sort()
 
 
 class Fragment(object):
@@ -2620,22 +2611,22 @@ class Atom(object):
 
     def __deepcopy__(self, memo):
         atom_cpy = Atom(
-            name            = copy.deepcopy(self.name),
-            alt_loc         = copy.deepcopy(self.alt_loc),
-            res_name        = copy.deepcopy(self.res_name),
-            fragment_id     = copy.deepcopy(self.fragment_id),
-            chain_id        = copy.deepcopy(self.chain_id),
-            model_id        = copy.deepcopy(self.model_id),
-            element         = copy.deepcopy(self.element),
+            name            = self.name,
+            alt_loc         = self.alt_loc,
+            res_name        = self.res_name,
+            fragment_id     = self.fragment_id,
+            chain_id        = self.chain_id,
+            model_id        = copy.copy(self.model_id),
+            element         = self.element,
             position        = copy.deepcopy(self.position),
             sig_position    = copy.deepcopy(self.sig_position),
-            temp_factor     = copy.deepcopy(self.temp_factor),
-            sig_temp_factor = copy.deepcopy(self.sig_temp_factor),
-            occupancy       = copy.deepcopy(self.occupancy),
-            sig_occupancy   = copy.deepcopy(self.sig_occupancy),
-            charge          = copy.deepcopy(self.charge),
-            U               = copy.deepcopy(self.U, memo),
-            sig_U           = copy.deepcopy(self.sig_U, memo))
+            temp_factor     = copy.copy(self.temp_factor),
+            sig_temp_factor = copy.copy(self.sig_temp_factor),
+            occupancy       = copy.copy(self.occupancy),
+            sig_occupancy   = copy.copy(self.sig_occupancy),
+            charge          = copy.copy(self.charge),
+            U               = copy.deepcopy(self.U),
+            sig_U           = copy.deepcopy(self.sig_U))
         
         for bond in self.bond_list:
             bond_cpy = copy.deepcopy(bond, memo)
@@ -2772,7 +2763,7 @@ class Atom(object):
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
-        if not self.altloc:
+        if self.altloc==None:
             yield self
 
         else:
