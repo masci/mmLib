@@ -1154,7 +1154,7 @@ class TLSChainMinimizer(HCSSSP):
         ## the graph spans
         V = []
         for i in range(self.num_vertex):
-            
+
             ## add the vertex label for i at Vi
             if i==0:
                 vertex_label = "N-TERM"

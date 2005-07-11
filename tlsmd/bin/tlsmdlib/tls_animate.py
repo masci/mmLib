@@ -308,11 +308,11 @@ class TLSAnimate(object):
 
         self.L2_chain = copy.deepcopy(self.L1_chain)
         self.L2_chain.set_chain_id(self.next_chain_id())
-        self.struct.add_chain(self.L2_chain)
+        self.struct.add_chain(self.L2_chain, True)
 
         self.L3_chain = copy.deepcopy(self.L1_chain)
         self.L3_chain.set_chain_id(self.next_chain_id())
-        self.struct.add_chain(self.L3_chain)
+        self.struct.add_chain(self.L3_chain, True)
         
     def construct_frame(self, phase):
         """Create a new model in self.struct with the TLS displacements
@@ -324,7 +324,7 @@ class TLSAnimate(object):
         
         model = copy.deepcopy(model1)
         model.set_model_id(self.next_model_id())
-        self.struct.add_model(model)
+        self.struct.add_model(model, True)
 
         ## now displace the new model according to the tls group
         ## screw axes and given phase
