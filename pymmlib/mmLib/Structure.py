@@ -204,7 +204,7 @@ class Structure(object):
             raise ModelOverwrite()
 
         ## set default model if not set
-        if not self.default_model:
+        if self.default_model==None:
             self.default_model = model
 
         self.model_list.append(model)
@@ -212,7 +212,7 @@ class Structure(object):
 
         model.structure = self
 
-        if not delay_sort:
+        if delay_sort==False:
             self.model_list.sort()
 
     def remove_model(self, model):
@@ -359,7 +359,7 @@ class Structure(object):
         The iteration is performed in order according the the parent
         Chain's chain_id, and the Fragment's positioin within the chain.
         """
-        if not self.default_model:
+        if self.default_model==None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -469,7 +469,7 @@ class Structure(object):
         Model.
         """
         for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 return True
         return False
 
@@ -487,7 +487,7 @@ class Structure(object):
         nucleic acid.
         """
         for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
+            if frag.is_standard_residue()==False:
                 yield frag
 
     def has_waters(self):
@@ -557,7 +557,7 @@ class Structure(object):
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
-        if not self.default_model:
+        if self.default_model==None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -821,7 +821,7 @@ class Model(object):
         self.chain_dict[chain.chain_id] = chain
         chain.model = self
 
-        if not delay_sort:
+        if delay_sort==False:
             self.chain_list.sort()
 
     def remove_chain(self, chain):
@@ -1330,7 +1330,7 @@ class Segment(object):
         self.fragment_list.append(fragment)
         self.fragment_dict[fragment.fragment_id] = fragment
 
-        if not delay_sort:
+        if delay_sort==False:
             self.fragment_list.sort()
 
     def remove_fragment(self, fragment):
@@ -1944,9 +1944,9 @@ class Fragment(object):
             ##     sequential order of added atoms
             ##    *place atom in the atom_list and atom_dict 
 
-            if not self.alt_loc_dict.has_key(name):
+            if self.alt_loc_dict.has_key(name)==False:
 
-                if not self.atom_dict.has_key(name):
+                if self.atom_dict.has_key(name)==False:
                     ## CASE:
                     ##     add a atom with alt_loc partners to the
                     ##     fragment for the first time
@@ -2004,7 +2004,7 @@ class Fragment(object):
                     return altloc[alt_loc]
             return None
         else:
-            if not self.atom_dict.has_key(name):
+            if self.atom_dict.has_key(name)==False:
                 return None
             return self.atom_dict[name]
     
@@ -2047,7 +2047,7 @@ class Fragment(object):
         visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
-                if not visited.has_key(bond):
+                if visited.has_key(bond)==False:
                     yield bond
                     visited[bond] = True
 
@@ -2487,7 +2487,7 @@ class Altloc(dict):
         if len(self) == 0:
             return "A"
         for alt_loc in string.uppercase:
-            if not self.has_key(alt_loc):
+            if self.has_key(alt_loc)==False:
                 return alt_loc
         raise AtomOverwrite(
             "exhausted availible alt_loc labels for "+str(atom))
