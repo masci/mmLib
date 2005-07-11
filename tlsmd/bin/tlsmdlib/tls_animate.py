@@ -63,6 +63,9 @@ class TLSAnimateAltLoc(object):
         #self.construct_chain_copies()
 
     def copy_struct(self, struct, chain_id):
+        """Make a copy of the argument structure to use for generating
+        the animation.  Only copy the chain specified in chain_id.
+        """
         cp_struct = Structure(structure_id = struct.structure_id)
 
         for chain in struct.iter_chains():
@@ -224,39 +227,45 @@ class TLSAnimate(object):
         self.construct_chain_copies()
 
     def copy_struct(self, struct):
+        """Make a copy of the argument structure to use for generating
+        the animation.  Only copy the chain specified in chain_id.
+        """
         cp_struct = Structure(structure_id = struct.structure_id)
+        chain_id = self.chainopt["chain_id"]
 
-        for frag in struct.iter_fragments():
-            if frag.is_water():
-                continue
+        chain = struct.get_chain(chain_id)
+        if chain!=None:
+            for frag in chain.iter_fragments():
+                if frag.is_water():
+                    continue
 
-            if frag.is_amino_acid():
-                for atm in frag.iter_atoms():
-                    if atm.name not in ["N","CA","C","O"]:
-                        continue
-                    cp_atom = Atom(
-                        chain_id    = atm.chain_id,
-                        fragment_id = atm.fragment_id,
-                        res_name    = atm.res_name,
-                        element     = atm.element,
-                        name        = atm.name,
-                        temp_factor = atm.temp_factor,
-                        occupancy   = atm.occupancy,
-                        position    = atm.position.copy())
-                    cp_struct.add_atom(cp_atom, True)
+                if frag.is_amino_acid():
+                    for atm in frag.iter_atoms():
+                        if atm.name not in ["N","CA","C","O"]:
+                            continue
+                        cp_atom = Atom(
+                            chain_id    = atm.chain_id,
+                            fragment_id = atm.fragment_id,
+                            res_name    = atm.res_name,
+                            element     = atm.element,
+                            name        = atm.name,
+                            temp_factor = atm.temp_factor,
+                            occupancy   = atm.occupancy,
+                            position    = atm.position.copy())
+                        cp_struct.add_atom(cp_atom, True)
 
-            else:
-                for atm in frag.iter_atoms():
-                    cp_atom = Atom(
-                        chain_id    = atm.chain_id,
-                        fragment_id = atm.fragment_id,
-                        res_name    = atm.res_name,
-                        element     = atm.element,
-                        name        = atm.name,
-                        temp_factor = atm.temp_factor,
-                        occupancy   = atm.occupancy,
-                        position    = atm.position.copy())  
-                    cp_struct.add_atom(cp_atom, True)
+                else:
+                    for atm in frag.iter_atoms():
+                        cp_atom = Atom(
+                            chain_id    = atm.chain_id,
+                            fragment_id = atm.fragment_id,
+                            res_name    = atm.res_name,
+                            element     = atm.element,
+                            name        = atm.name,
+                            temp_factor = atm.temp_factor,
+                            occupancy   = atm.occupancy,
+                            position    = atm.position.copy())
+                        cp_struct.add_atom(cp_atom, True)
 
         cp_struct.sort()
         return cp_struct

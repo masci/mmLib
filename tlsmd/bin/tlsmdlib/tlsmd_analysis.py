@@ -1192,7 +1192,7 @@ class TLSChainMinimizer(HCSSSP):
 
                 sys.exit(-1)
 
-            ## filter out the bad ones
+            ## filter out the bad TLS segments
             if self.__minimization_filter(tls)==False:
                 continue
 
@@ -1203,6 +1203,12 @@ class TLSChainMinimizer(HCSSSP):
             E.append(edge)
 
         self.E = E
+
+
+        ## fill in any un-reachable gaps in the structure by adding
+        ## fake 0.0 cost edges where needed
+        
+        
 
         ## perform the minimization
         start_timing()
