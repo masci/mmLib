@@ -232,16 +232,21 @@ class TLSAnimate(object):
         cp_struct = Structure(structure_id = struct.structure_id)
         chain_id = chainopt["chain_id"]
 
-        chain = struct.get_chain(chain_id)
-        if chain!=None:
+        for chain in struct.iter_chains():
             for frag in chain.iter_fragments():
+
+                ## skip all waters
                 if frag.is_water():
                     continue
 
-                if frag.is_amino_acid():
+                elif frag.chain_id==chain_id and frag.is_amino_acid():
                     for atm in frag.iter_atoms():
+
+                        ## we only want main-chain atoms necessary for
+                        ## generating cartoon/trace
                         if atm.name not in ["N","CA","C","O"]:
                             continue
+                        
                         cp_atom = Atom(
                             chain_id    = atm.chain_id,
                             fragment_id = atm.fragment_id,
@@ -253,7 +258,7 @@ class TLSAnimate(object):
                             position    = atm.position.copy())
                         cp_struct.add_atom(cp_atom, True)
 
-                else:
+                elif frag.is_standard_residue()==False:
                     for atm in frag.iter_atoms():
                         cp_atom = Atom(
                             chain_id    = atm.chain_id,

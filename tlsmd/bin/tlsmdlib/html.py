@@ -1595,6 +1595,8 @@ class HTMLReport(Report):
         js += 'select not protein and not solvent;'
         js += 'color CPK;'
         js += 'wireframe on; wireframe 0.5;'
+        js += 'spacefill 80%;'
+        js += 'spacefill on;'
         
         ## write the HTML page to render the script in
         x  = ''
@@ -1664,7 +1666,10 @@ class HTMLReport(Report):
         ## select non-protein non-solvent and display
         js += 'select not protein and not solvent;'
         js += 'color CPK;'
-        js += 'wireframe on; wireframe 0.5;'
+        js += 'wireframe on;'
+        js += 'wireframe 0.5;'
+        js += 'spacefill 80%;'
+        js += 'spacefill on;'
 
         js += 'anim fps 2;'
         js += 'anim mode loop 0 0;'
