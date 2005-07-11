@@ -213,9 +213,8 @@ class TLSAnimate(object):
     """
     
     def __init__(self, struct, chainopt, tlsopt):
-
         ## copy and get the anisotropic ADPs out of the structure
-        self.struct = self.copy_struct(struct)
+        self.struct = self.copy_struct(struct, chainopt)
         
         self.chainopt = chainopt
         self.tlsopt   = tlsopt
@@ -226,12 +225,12 @@ class TLSAnimate(object):
 
         self.construct_chain_copies()
 
-    def copy_struct(self, struct):
+    def copy_struct(self, struct, chainopt):
         """Make a copy of the argument structure to use for generating
         the animation.  Only copy the chain specified in chain_id.
         """
         cp_struct = Structure(structure_id = struct.structure_id)
-        chain_id = self.chainopt["chain_id"]
+        chain_id = chainopt["chain_id"]
 
         chain = struct.get_chain(chain_id)
         if chain!=None:

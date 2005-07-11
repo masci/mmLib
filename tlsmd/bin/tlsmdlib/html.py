@@ -280,7 +280,6 @@ set xlabel "Number of TLS Segments"
 set xrange [1:20]
 set ylabel "Minimization (Weighted) LSQR Residual"
 set format y "%5.2f"
-set style line 1 lw 3
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -309,7 +308,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         for chainopt in chainopt_list:
             chain_id = chainopt["chain_id"]
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain_id)
-            x = '"%s" using 1:2 title "Chain %s" ls 1 with linespoints' % (
+            x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (
                 filename, chain_id)
             plist.append(x)
         script += "plot " + string.join(plist, ",\\\n\t") + "\n"
@@ -1592,6 +1591,11 @@ class HTMLReport(Report):
                 tls["frag_id1"], tls["frag_id2"], tls["chain_id"])
             js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
 
+        ## select non-protein non-solvent and display
+        js += 'select not protein and not solvent;'
+        js += 'color CPK;'
+        js += 'wireframe on; wireframe 0.5;'
+        
         ## write the HTML page to render the script in
         x  = ''
         x += '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" '\
@@ -1656,6 +1660,11 @@ class HTMLReport(Report):
                 js += 'select %s-%s:%s;' % (
                     tls["frag_id1"], tls["frag_id2"], chain_id)
                 js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
+
+        ## select non-protein non-solvent and display
+        js += 'select not protein and not solvent;'
+        js += 'color CPK;'
+        js += 'wireframe on; wireframe 0.5;'
 
         js += 'anim fps 2;'
         js += 'anim mode loop 0 0;'
