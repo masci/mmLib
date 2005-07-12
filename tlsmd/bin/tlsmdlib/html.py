@@ -1033,11 +1033,14 @@ class HTMLReport(Report):
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
+
+        ## OPTIMIZATION PARAMETERS
         x += self.html_globals()
+        x += '<br>'
         
         ## MOTION ANALYSIS
         x += '<center>'
-        x += '<h3>Motion Analysis</h3>'
+        x += '<h3>TLS and Motion Analysis of Individual Chains</h3>'
         x += '</center>'
         x += '<p>%s</p>' % (MOTION_ANALYSIS_TEXT)
 
@@ -1045,9 +1048,11 @@ class HTMLReport(Report):
             x += '<p><a href="%s">%s</a></p>\n' % (
                 xdict["href"], xdict["title"])
 
+        x += '<br>'
+
         ## MULTI CHAIN ALIGNMENT
         x += '<center>'
-        x += '<h3>Multi-Chain Alignment</h3>'
+        x += '<h3>Multi-Chain TLS Group Alignment</h3>'
         x += '</center>'
         x += '<p>%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)
 
@@ -1061,9 +1066,11 @@ class HTMLReport(Report):
             x += 'was not performed.'
             x += '</u></p>'
 
+        x += '<br>'
+
         ## REFINEMENT PREP
         x += '<center>'
-        x += '<h3>TLS Refinement with CCP4 Refmac5</h3>'
+        x += '<h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3>'
         x += '</center>'
         x += '<p>%s</p>' % (REFINEMENT_PREP_TEXT)
 
@@ -1081,15 +1088,28 @@ class HTMLReport(Report):
         x += '<h3>Optimization Parameters</h3>'
         x += '</center>'
 
-        x += '<center><table border="1" cellpadding="3">'
+        x += '<p>%s</p>' % (OPTIMIZATION_PARAMS_TEXT)
+
+        x += '<table border="1" cellpadding="3">'
         x += '<tr>'
-        x += '<td>TLS Model</td>'
-        x += '<td><b>%s</b></td>' % (GLOBALS["TLS_MODEL"])
+        x += '<td>Form of TLS Model</td>'
+        if GLOBALS["TLS_MODEL"]=="HYBRID":
+            tls_model = 'For Input Structure with Isotropic ADPs'
+        elif GLOBALS["TLS_MODEL"]=="ANISO":
+            tls_model = 'For Input Structure with Anisotropic ADPs'
+        else:
+            tls_model = "Internal Error"
+        x += '<td><b>%s</b></td>' % (tls_model)
         x += '</tr>'
 
         x += '<tr>'
-        x += '<td>Weight Model</td>'
-        x += '<td><b>%s</b></td>' % (GLOBALS["WEIGHT_MODEL"])
+        x += '<td>Least-Squares Weight Model</td>'
+        if GLOBALS["WEIGHT_MODEL"]=="UNIT":
+            weight = 'Unit Weights (All Weights 1.0)'
+        elif GLOBALS["WEIGHT_MODEL"]=="IUISO":
+            weight = 'Input Structure Atoms Weighted by '\
+                     '<var>1.0/B<sub>iso</sub></var>'
+        x += '<td><b>%s</b></td>' % (weight)
         x += '</tr>'
 
 
@@ -1100,12 +1120,12 @@ class HTMLReport(Report):
 
         x += '<tr>'
         x += '<td>'
-        x += 'Minimum Subsegment'
+        x += 'Smallest Chain Subsegment Considered as a TLS Group'
         x += '</td>'
         x += '<td><b>%s Residues</b></td>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"])
         x += '</tr>'
 
-        x += '</table></center>'
+        x += '</table>'
 
         return x
 
@@ -1829,8 +1849,7 @@ class HTMLReport(Report):
         to use per chain.
         """
         path  = "%s_REFINEMENT_PREP.html" % (self.struct_id)
-        title = "Refmac5 TLS Refinement of %s" % (
-            self.struct_id)
+        title = "Use Optimal TLS Groups with Refmac5 TLS Refinement"
  
         self.page_refinement_prep = {
             "title": title,
