@@ -173,9 +173,17 @@ class RefinePrepPage(Page):
 
         x += '<center>'
         x += '<h3>'
-        x += 'Step 2: Download the generated XYZIN(PDBIN) and TLSIN files'
+        x += 'Step 2: Download the generated XYZIN(PDBIN) and TLSIN files below'
         x += '</h3>'
         x += '</center>'
+        
+        x += '<center>'
+        x += '<h3>'
+        x += 'Step 3: Read this '
+        x += '<a href="/~jpaint/webtlsmd/documentation.html#refmac5>How-To</a>'
+        x += '</h3>'
+        x += '</center>'
+
         
         ## get the analysis directory, and make sure it exists
         analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")

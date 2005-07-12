@@ -29,8 +29,9 @@ Documentation
 
 <br>
 
+
 <center><h3>
-How Does TLSMD Work?
+<a name="how">How Does TLSMD Work?</a>
 </h3></center>
 <p>
 TLSMD uses a two-stage optimization algorithm to select the optimal 1-group,
@@ -39,7 +40,9 @@ TLS groups.  This optimization is performed for each chain in a structure indepe
 </p>
 
 <center><h3>
+<a name="refmac5">
 How-To Use TLSMD Selected TLS Groups in Refmac5 TLS Refinement
+</a>
 </h3></center>
 <p>
 The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD can generate a special structure model file (PDBIN also called XYZIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  To generate these input files, click on the <b>Use Optimal TLS Groups with Refmac5 TLS Refinement</b> web page which is on the root <b>TLSMD Rigid Body Analysis</b> page generated for your structure.  After you have generated and downloaded these files, you may use them through either the CCP4i GUI interface, or by writing your own custom shell script which invokes Refmac5.  Examples of both methods are described below.
