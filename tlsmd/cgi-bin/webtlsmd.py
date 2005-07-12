@@ -771,7 +771,7 @@ class QueuePage(Page):
             if jdict["state"] in ["completed", "defunct"]:
                 completed_list.append(jdict)
 
-        self.completed_list.reverse()
+        completed_list.reverse()
         
         x  = ''
 	x += '<center><b>Completed Jobs</b></center>'

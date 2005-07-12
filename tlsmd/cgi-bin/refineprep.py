@@ -177,14 +177,6 @@ class RefinePrepPage(Page):
         x += '</h3>'
         x += '</center>'
         
-        x += '<center>'
-        x += '<h3>'
-        x += 'Step 3: Read this '
-        x += '<a href="/~jpaint/webtlsmd/documentation.html#refmac5>How-To</a>'
-        x += '</h3>'
-        x += '</center>'
-
-        
         ## get the analysis directory, and make sure it exists
         analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")
         if not os.path.isdir(analysis_dir):
@@ -261,6 +253,15 @@ class RefinePrepPage(Page):
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
             tlsout_url, tlsout)
         x += '</table>'
+
+        x += '<br>'
+
+        x += '<center>'
+        x += '<h3>'
+        x += 'Step 3: Read this '
+        x += '<a href="/~jpaint/webtlsmd/documentation.html#refmac5">How-To</a>'
+        x += '</h3>'
+        x += '</center>'
 
         x += self.html_foot()
         return x
