@@ -106,7 +106,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += '<h3>'
 
     if os.path.isfile(analysis_index):
-	x += '<a href="%s">Click Here: View Completed Analysis</a>' % (analysis_url)
+	x += '<a href="%s">Click Here: View Completed TLSMD Analysis</a>' % (analysis_url)
 
     x += LINK_SPACE
 
@@ -731,7 +731,13 @@ class QueuePage(Page):
             x += '<td align="right">%s</td>' % (hours)
 
             x += '</tr>'
-            
+        else:
+	    x += '<tr>'
+	    x += '<td colspan="5" align="center">'
+	    x += 'No Jobs Running'
+	    x += '</td>'
+	    x += '</tr>'
+
         x += '</table>'
         x += '</center>'
         return x
@@ -760,6 +766,13 @@ class QueuePage(Page):
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
+
+        if len(queued_list)==0:
+	    x += '<tr>'
+	    x += '<td colspan="3" align="center">'
+	    x += 'No Jobs Queued'
+	    x += '</td>'
+	    x += '</tr>'
 
         x += '</table>'
         x += '</center>'
@@ -844,14 +857,14 @@ class ExploreJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
 	if job_id==None:
-	    title = 'TLSMD: View Job'
+	    title = 'TLSMD: Explore Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
 	    x += '<center><h3>ERROR: Invalid Job ID</h3></center>'
 	    x += self.html_foot()
 	    return x
 	    
-	title = 'TLSMD: View Job %s' % (job_id)
+	title = 'TLSMD: Explore Job ID %s' % (job_id)
         x  = ''
 	x += self.html_head(title)
 	x += html_title(title)
@@ -1137,6 +1150,14 @@ class Submit2Page(Page):
 
 	return job_id
 
+SUBMIT3_CAP1 = """\
+You may monitor the progress of your TLSMD submission by its Job ID
+on the Job Status page, available by clicking the link on the top
+of this page.  All queued, running and completed jobs are listed on
+the Job Status page.  Through this page you may explore the output
+of your job, and lookup your job by its Job ID if you have chosen to
+keep your job private.
+"""
 
 class Submit3Page(Page):
     def html_page(self):
@@ -1155,8 +1176,18 @@ class Submit3Page(Page):
             html += '</h3></center>'
     
             html += '<center>'
-	    html += '<b>Your job ID is %s</h3>' % (job_id)
+	    html += 'Your job ID is %s</h3>' % (job_id)
 	    html += '</center>'
+	    
+            html += '<p>Visit and bookmark your '
+	    html += '<a href="webtlsmd.cgi?page=explore&job_id=%s">Expolore Job %s</a> ' % (job_id, job_id)
+	    html += 'page, this page is the status page of your job, and it is '
+	    html += 'updated as your job progresses through the queue.  Once your '
+	    html += 'job is complete, a link to the completed TLSMD analysis will appear '
+	    html += 'on it.'
+	    html += '</p>'
+	    
+            html += '<p>%s</p>' % (SUBMIT3_CAP1)
 	    
         x  = self.html_head(title)
         x += html_title(title)
