@@ -31,14 +31,12 @@ Home
 
 <center><h3>Introduction</h3></center>
 <!-- BLOCK: INDEX -->
-<p><font size=+1><b>TLSMD</b></font>
-analyzes a protein crystal structure for evidence of flexibility, in the form
-of local or inter-domain motions.  It does this by partitioning the protein structure into multiple segments which are modeled as rigid bodies undergoing TLS (Translation/Libration/Screw) vibrational motion. It generates all possible segmentations up to a specified maximum number of TLS groups. Each trial segmentation is evaluated by comparison to the observed atomic displacement parameters (ADPs, "thermal parameters") that came out of crystallographic refinement.
+<p>
+<font size=+1><b>TLS(Translation/Libration/Screw)</b></font> is a mathematical model which predicts the thermal parameters of atoms in a crystal structure with the underlying assumption the atoms are connected as a rigid body which is displaced normally from a mean position.  This displacement may be the result of a structure's vibrational modes, or static disorder within the crystal lattice.  The TLS model was originally developed to confirm rigid body displacement for small molecule crystallography, which yields high resolution data and precise anisotropic thermal parameters.  Its success in predicting the thermal parameters for small molecules makes it tempting for use in macromolecular crystallography where it could potentially be used to find domain and loop flexibility in proteins; however, the challenges in applying the TLS model to macromolecular structures are different than those encountered with small molecules.  Most macromolecular structures do not diffract to a high enough resolution to solve for individual atomic anisotropic thermal parameters (six per atom), and isotropic thermal parameters(one per atom) are used instead.  The reduced information content of the isotropic thermal parameters is partially mitigated by the large number of atoms available in a macromolecular structure.  The thermal parameters of protein atoms will always contain significant magnitude which deviates from the rigid body ideal due to the fact that vibrations and conformational changes in proteins are at best approximate rigid body displacements, and the degree to which the thermal parameters of a protein structure will agree with the TLS rigid body model is highly dependent the quality of the crystal lattice quality and conformational changes unique to the protein.  Therefore, it is reasonable to develop a algorithm to search for such regions as a optimization problem without any preconceived requirements on the quality of the fit to the TLS rigid body model.  With this in mind, we have developed a optimization algorithm which, for a given protein chain, finds the optimal partition of the chain into 2, 3, ... N TLS groups along its amino acid sequence.
 </p>
 
 <p><font size=+1><b>TLSMD</b></font>
-generates the optimal 1-group TLS model, the optimal 2-group TLS model, and so
-on up to a default of 20 TLS groups total. For each such model you get statistics describing how well this model accounts for the thermal motion observed in the crystal structure.
+generates the optimal 1-group TLS model(trivial), the optimal 2-group TLS model, and so on up to a default of 20 TLS groups total. For each such model you get statistics describing how well this model accounts for the thermal motion observed in the crystal structure.
 </p>
 
 <p><font size=+1><b>More Information </b></font>
