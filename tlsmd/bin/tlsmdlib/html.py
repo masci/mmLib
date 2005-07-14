@@ -327,9 +327,9 @@ set title "<title>"
 """
 
 class TranslationAnalysis(GNUPlot):
-    def __init__(self, chainopt, tlsopt, ntls):      
+    def __init__(self, chainopt, tlsopt):
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (
-            chainopt["struct_id"], chainopt["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
 
         self.png_path = "%s.png" % (basename)
 
@@ -350,7 +350,7 @@ class TranslationAnalysis(GNUPlot):
         script = script.replace(
             "<title>",
             "Translation Displacement Analysis of Atoms for "\
-            "%d TLS Groups" % (ntls))
+            "%d TLS Groups" % (tlsopt.ntls))
 
         ## line style
         ls = 0
@@ -418,10 +418,10 @@ set title "<title>"
 """
 
 class LibrationAnalysis(GNUPlot):
-    def __init__(self, chainopt, tlsopt, ntls):      
+    def __init__(self, chainopt, tlsopt):      
         
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (
-            chainopt["struct_id"], chainopt["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
 
         self.png_path = "%s.png" % (basename)
 
@@ -441,7 +441,7 @@ class LibrationAnalysis(GNUPlot):
         script = script.replace(
             "<title>",
             "Screw Displacment Analysis of backbone Atoms using "\
-            "%d TLS Groups" % (ntls))
+            "%d TLS Groups" % (tlsopt.ntls))
 
         ## line style
         ls = 0
@@ -537,10 +537,10 @@ set title "<title>"
 """
 
 class FitAnalysis(GNUPlot):
-    def __init__(self, chainopt, tlsopt, ntls):
+    def __init__(self, chainopt, tlsopt):
         
         basename = "%s_CHAIN%s_NTLS%s_FIT" % (
-            chainopt["struct_id"], chainopt["chain_id"], ntls)
+            chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
 
         self.png_path = "%s.png" % (basename)
 
@@ -560,7 +560,7 @@ class FitAnalysis(GNUPlot):
         script = script.replace(
             "<title>",
             "TLS Model Fit Analysis of Backbone Atoms for "\
-            "%d TLS Groups" % (ntls))
+            "%d TLS Groups" % (tlsopt.ntls))
 
         ## line style
         ls = 0
@@ -630,7 +630,7 @@ plot "<txtfile>" using 1:2 ls 1 notitle with histeps
 """
 
 class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
-    def __init__(self, chainopt, ntls, tlsopt, tls):        
+    def __init__(self, chainopt, tlsopt, tls):
         ## generate data and png paths
         basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (
             chainopt["struct_id"],
@@ -684,7 +684,7 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
             chainopt["struct_id"]))
         fil.write("## Chain --------------------: %s\n" % (
             chainopt["chain_id"]))
-        fil.write("## Number of TLS Groups -----: %d\n" % (ntls))
+        fil.write("## Number of TLS Groups -----: %d\n" % (tlsopt.ntls))
         fil.write("## TLS Group Residue Range --: %s-%s\n" % (
             tls["frag_id1"], tls["frag_id2"]))
 
@@ -700,9 +700,9 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
         script = script.replace("<txtfile>", self.txt_path)
         script = script.replace("<pngfile>", self.png_path)
 
-        title = "Histogram of Observed B_{iso} vs. TLS B_{iso} for TLS Group "\
-                "%s%s-%s%s" % (tls["chain_id"], tls["frag_id1"],
-                               tls["chain_id"], tls["frag_id2"])
+        title = "Histogram of Observed B_{iso} - Calculated TLS B_{iso} "\
+                "for TLS Group %s%s-%s%s" % (
+            tls["chain_id"], tls["frag_id1"], tls["chain_id"], tls["frag_id2"])
         script = script.replace("<title>", title)
 
         script = script.replace("<rgb>", tls["color"]["rgbs"])
@@ -1040,7 +1040,7 @@ class HTMLReport(Report):
         
         ## MOTION ANALYSIS
         x += '<center>'
-        x += '<h3>TLS and Motion Analysis of Individual Chains</h3>'
+        x += '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>'
         x += '</center>'
         x += '<p>%s</p>' % (MOTION_ANALYSIS_TEXT)
 
@@ -1284,11 +1284,11 @@ class HTMLReport(Report):
         x += '<hr>'
         x += '<center style="page-break-before: always">\n'
         x += '<h3><a name="NTLS%d">'\
-             'Optimal TLS Group Selection using %d Groups</a></h3>\n' % (
+             'Optimal TLS Group Partition using %d Groups</a></h3>\n' % (
             ntls, ntls)
 
         ## navigation links
-        x += '<a href="%s">More Details...</a>' % (analysis_path)
+        x += '<a href="%s">Motion and Error Analysis</a>' % (analysis_path)
 
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
          
@@ -2002,8 +2002,7 @@ class ChainNTLSAnalysisReport(Report):
         x += '<h3>Translation Analysis of T<sup>r</sup></h3>'
         x += '</center>\n'
 
-        tanalysis = TranslationAnalysis(
-            self.chainopt, self.tlsopt, self.ntls)
+        tanalysis = TranslationAnalysis(self.chainopt, self.tlsopt)
         
         x += '<center>'
         x += '<img src="%s" alt="Translation Analysis">' % (tanalysis.png_path)
@@ -2019,8 +2018,7 @@ class ChainNTLSAnalysisReport(Report):
         x  = ''
         x += '<center><h3>Screw Displacment Analysis</h3></center>\n'
 
-        libration_analysis = LibrationAnalysis(
-            self.chainopt, self.tlsopt, self.ntls)
+        libration_analysis = LibrationAnalysis(self.chainopt, self.tlsopt)
 
         x += '<center>'
         x += '<img src="%s" alt="Libration Analysis">' % (
@@ -2037,8 +2035,7 @@ class ChainNTLSAnalysisReport(Report):
         x  = ''
         x += '<center><h3>Main Chain TLS Fit Analysis</h3></center>\n'
 
-        fit_analysis = FitAnalysis(
-            self.chainopt, self.tlsopt, self.ntls)
+        fit_analysis = FitAnalysis(self.chainopt, self.tlsopt)
         
         x += '<center>'
         x += '<img src="%s" alt="Fit Analysis">' % (
@@ -2053,13 +2050,12 @@ class ChainNTLSAnalysisReport(Report):
         """
         x  = ''
         x += '<center>'
-        x += '<h3>TLS Group Spanning Residues %s%s-%s%s</h3>' % (
+        x += '<h3>Distribution Histogram of TLS Group %s%s-%s%s</h3>' % (
             self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
         x += '</center>'
 
         ## histogrm of atomic U_ISO - U_TLS_ISO
-        his = UIso_vs_UtlsIso_Hisotgram(
-            self.chainopt, self.ntls, self.tlsopt, tls)
+        his = UIso_vs_UtlsIso_Hisotgram(self.chainopt, self.tlsopt, tls)
 
         x += '<center><img src="%s" alt="iAlt"></center>\n' % (
             his.png_path)

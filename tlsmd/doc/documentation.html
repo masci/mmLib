@@ -29,25 +29,25 @@ Documentation
 
 <br>
 
-<center><h3>
-<a name="how">TLSMD is Open Source</a>
-</h3></center>
+<center><h3>TLSMD is Open Source</a></h3></center>
 <p>
 TLSMD is a Open Source project released under the <a href="http://www.opensource.org/licenses/artistic-license.php">Artistic License</a>.  It is hosted at <a href="http://www.sourceforge.net/">SourceForge</a> as a sub-project of the <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library</a>.  We have not made any official release of the TLSMD source code yet, but you may check out the source using anonymous CVS, or browse the source code using ViewCVS by visiting <a href="http://cvs.sourceforge.net/viewcvs.py/pymmlib/tlsmd/">this link</a>.  This program is a ongoing research project of Jay Painter and Ethan Merritt, which is supported by NIH/NIGMS award 62617.  We can be contacted at:
 </p>
-
 <center>
 Ethan Merritt &lt;<i>merritt _at_ u.washington.edu</i>&gt;<br>
 Jay Painter &lt;<i>jpaint _at_ u.washington.edu&gt;</i>
 </center>
 
 <br>
-<center><h3>
-<a name="how">How Does TLSMD Work?</a>
-</h3></center>
+<center><h3><a name="motivation">Motivation</a></h3></center>
 <p>
-TLSMD uses a two-stage optimization algorithm to select the optimal 1-group,
-2-group, 3-group, ..., n-group partition of a protein chain into multiple
+TLS(Translation/Libration/Screw) is a mathematical model which predicts the thermal parameters of atoms in a crystal structure with the underlying assumption the atoms are connected as a rigid body which is displaced normally from a mean position.  This displacement may be the result of a structure's vibrational modes, or static disorder within the crystal lattice.  The TLS model was originally developed to confirm rigid body displacement for small molecule crystallography, which yields high resolution data and precise anisotropic thermal parameters.  Its success in predicting the thermal parameters for small molecules makes it tempting for use in macromolecular crystallography where it could potentially be used to find domain and loop flexibility in proteins; however, the challenges in applying the TLS model to macromolecular structures are different than those encountered with small molecules.  Most macromolecular structures do not diffract to a high enough resolution to solve for individual atomic anisotropic thermal parameters (six per atom), so isotropic thermal parameters(one per atom) are used instead.  The reduced information content of the isotropic thermal parameters is partially mitigated by the large number of atoms available in a macromolecular structure.  The thermal parameters of protein atoms will always contain significant magnitude which deviates from the rigid body ideal due to the fact that vibrations and conformational changes in proteins are at best approximate rigid body displacements, and the degree to which the thermal parameters of a protein structure will agree with the TLS rigid body model is highly dependent on the quality of the crystal lattice, and conformational flexibility unique to the protein.  Therefore, it is reasonable to develop a algorithm to search for such regions as a optimization problem without any preconceived requirements on the quality of the fit to the TLS rigid body model.  With this in mind, we have developed a optimization algorithm which, for a given protein chain, finds the optimal partition of the chain into 2, 3, ... N TLS groups along its amino acid sequence.
+</p>
+
+<br>
+<center><h3><a name="how">How Does TLSMD Work?</a></h3></center>
+<p>
+TLSMD uses a two-stage optimization algorithm to select the optimal 2-group, 3-group, ..., N-group partition of a protein chain into multiple
 TLS groups.  This optimization is performed for each chain in a structure independently, so the TLS groups selected for multiple homologous chains in a input structure may be compared without any bias (unless the structure was refined with NCS restraints or constraints).  The first stage of the optimization feeds every possible residue sequence subsegment of the input protein chain to a subroutine which fits TLS model parameters to the refined ADPs of the atoms it contains<small>(Figure 1)</small>.  A minimum subsegment length is imposed to ensure that there are enough ADP parameters in the subsegment's atoms to unambiguously solve for the TLS model parameters.  The subroutine returns the TLS model parameters and least-squares residual of the input structure's refined ADPs vs. TLS calculated ADPs.  This information is temporarily stored in a database.  Once the database for the chain is complete, it contains every possible sequence continuous TLS group for the chain; all that is needed is to select the TLS groups from the database which best fit the input structure's refined ADPs as measured by the TLS group's least-squares residual.  This selection is performed by the second stage of the TLSMD optimization algorithm.  This is accomplished by posing the optimization problem as a shortest path minimization over a graph.  This problem is similar to finding the shortest driving distance between two cities.  The TLSMD graph is constructed by placing a vertex between every residue in the sequence, as well as a source vertex before the first residue, and a destination vertex after the last residue in the chain<small>(see Figure 2)</small>.  Graph edges are then constructed for each TLS group in the database spanning the vertexes which correspond to the TLS group's residue segment.  The edge cost, or weight, is the least-squares residual of the TLS group it represents.  Once this graph is constructed, a shortest path algorithm (Constrained Bellman-Ford) is used to find the least cost path from the source vertex at the beginning of the chain sequence to the destination vertex at the end of the sequence.  The TLS groups corresponding to the edges used in the minimization path are those presented by TLSMD.
 </p>
 
@@ -74,11 +74,9 @@ TLSView Manual</a>.
 </center>
 
 <br>
-<center><h3>
-<a name="refmac5">
+<center><h3><a name="refmac5">
 How-To Use TLSMD Selected TLS Groups in Refmac5 TLS Refinement
-</a>
-</h3></center>
+</a></h3></center>
 <p>
 The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD can generate a special structure model file (PDBIN also called XYZIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  To generate these input files, click on the <b>Use Optimal TLS Groups with Refmac5 TLS Refinement</b> web page which is on the root <b>TLSMD Rigid Body Analysis</b> page generated for your structure.  After you have generated and downloaded these files, you may use them through either the CCP4i GUI interface<small>(Figure 3)</small>, or by writing your own custom shell script which invokes Refmac5<small>(Figure 4)</small>.
 </p>

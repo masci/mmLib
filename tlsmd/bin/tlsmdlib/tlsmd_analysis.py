@@ -1591,11 +1591,7 @@ class TLSMDAnalysis(object):
         else:
             struct_id = self.struct.structure_id
 
-        if struct_id==None or struct_id=="XXXX":
-            directory, filename = os.path.split(self.struct_path)
-            basename, ext       = os.path.splitext(filename)
-            struct_id           = basename
-
+        self.struct.structure_id = struct_id
         self.struct_id = struct_id
 
         print "    STRUCT ID: %s" % (self.struct_id)
