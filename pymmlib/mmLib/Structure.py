@@ -3219,14 +3219,12 @@ class AlphaHelix(object):
         self.segment      = None
 
     def __str__(self):
-        try:
-            frag1 = self.segment[0]
-            frag2 = self.segment[-1]
-        except IndexError:
-            return "AlphaHelix(%s %d)" % (self.helix_id, self.helix_class)
-
-        return "AlphaHelix(%s %s %s...%s)" % (
-            self.helix_id, self.helix_class, str(frag1), str(frag2))
+        return "AlphaHelix(%s %s %s:%s...%s:%s)" % (
+            self.helix_id, self.helix_class,
+            self.chain_id1,
+            self.fragment_id1,
+            self.chain_id2,
+            self.fragment_id2)
 
     def add_segment(self, segment):
         """Adds the Segment object this AlphaHelix spans.  If the AlphaHelix
@@ -3236,6 +3234,10 @@ class AlphaHelix(object):
         """
         assert segment==None or isinstance(segment, Segment)
         self.segment = segment
+
+        ## just return if the segment is None
+        if segment==None:
+            return
 
         ## reset AlphaHelix description with the description derived
         ## from the new Segment
@@ -3392,7 +3394,10 @@ class Strand(object):
         the source Chain object the Segment was sliced from.
         """
         assert segment==None or isinstance(segment, Segment)
+
         self.segment = segment
+        if segment==None:
+            return
 
         ## reset Strand description with the description derived
         ## from the new Segment
