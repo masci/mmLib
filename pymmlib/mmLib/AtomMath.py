@@ -393,28 +393,28 @@ def calc_inertia_tensor(atom_iter, origin):
         I[1,2] += - x[1]*x[2]
         I[2,1] += - x[1]*x[2]
 
-    eval, evec = eigenvectors(I)
+    evals, evecs = eigenvectors(I)
 
     ## order the tensor such that the largest
     ## principal compent is along the z-axis, and
     ## the second largest is along the y-axis
-    if eval[0]>=eval[1] and eval[0]>=eval[2]:
-        if eval[1]>=eval[2]:
-            R = array((evec[2], evec[1], evec[0]), Float)
+    if evals[0]>=evals[1] and evals[0]>=evals[2]:
+        if evals[1]>=evals[2]:
+            R = array((evecs[2], evecs[1], evecs[0]), Float)
         else:
-            R = array((evec[1], evec[2], evec[0]), Float)
+            R = array((evecs[1], evecs[2], evecs[0]), Float)
 
-    elif eval[1]>=eval[0] and eval[1]>=eval[2]:
-        if eval[0]>=eval[2]:
-            R = array((evec[2], evec[0], evec[1]), Float)
+    elif evals[1]>=evals[0] and evals[1]>=evals[2]:
+        if evals[0]>=evals[2]:
+            R = array((evecs[2], evecs[0], evecs[1]), Float)
         else:
-            R = array((evec[0], evec[2], evec[1]), Float)
+            R = array((evecs[0], evecs[2], evecs[1]), Float)
 
-    elif eval[2]>=eval[0] and eval[2]>=eval[1]:
-        if eval[0]>=eval[1]:
-            R = array((evec[1], evec[0], evec[2]), Float)
+    elif evals[2]>=evals[0] and evals[2]>=evals[1]:
+        if evals[0]>=evals[1]:
+            R = array((evecs[1], evecs[0], evecs[2]), Float)
         else:
-            R = array((evec[0], evec[1], evec[2]), Float)
+            R = array((evecs[0], evecs[1], evecs[2]), Float)
 
     ## make sure the tensor is right-handed
     if allclose(determinant(R), -1.0):
