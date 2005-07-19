@@ -259,7 +259,7 @@ class RefinePrepPage(Page):
         x += '<center>'
         x += '<h3>'
         x += 'Step 3: Read this '
-        x += '<a href="/~jpaint/webtlsmd/documentation.html#refmac5">How-To</a>'
+        x += '<a href="/~tlsmd/documentation.html#refmac5">How-To</a>'
         x += '</h3>'
         x += '</center>'
 

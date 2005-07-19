@@ -233,13 +233,19 @@ class TLSAnimate(object):
         chain_id = chainopt["chain_id"]
 
         for chain in struct.iter_chains():
+
+            if chain.chain_id==chain_id or chain.count_fragments()<200:
+                include_chain = True
+	    else:
+		include_chain = False
+		
             for frag in chain.iter_fragments():
 
                 ## skip all waters
-                if frag.is_water():
+                if frag.is_water()==True:
                     continue
 
-                elif frag.chain_id==chain_id and frag.is_amino_acid():
+                elif frag.is_amino_acid()==True and include_chain:
                     for atm in frag.iter_atoms():
 
                         ## we only want main-chain atoms necessary for

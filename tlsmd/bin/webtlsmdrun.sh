@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export TLSMD_ROOT=/home/jpaint/tlsmd
+export TLSMD_ROOT=/home/tlsmd/tlsmd
 export LOG_ROOT=$TLSMD_ROOT/log
 #export TLSMD_GRID_FILE=$TLSMD_ROOT/data/grid.cfg
 

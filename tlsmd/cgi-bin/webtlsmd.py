@@ -59,7 +59,7 @@ def html_nav_bar(page_name=None):
     if page_name=="home":
         x += 'Home\n'
     else:
-        x += '<a href="/~jpaint/webtlsmd/index.html">Home</a>\n'
+        x += '<a href="/~tlsmd/index.html">Home</a>\n'
 
     x += LINK_SPACE + '\n'
 
@@ -77,11 +77,11 @@ def html_nav_bar(page_name=None):
 
     x += LINK_SPACE + '\n'
 
-    x += '<a href="/~jpaint/webtlsmd/examples/index.html">Examples</a>\n'
+    x += '<a href="/~tlsmd/examples/index.html">Examples</a>\n'
 
     x += LINK_SPACE + '\n'
     
-    x += '<a href="/~jpaint/webtlsmd/documentation.html">Documentation</a>\n'
+    x += '<a href="/~tlsmd/documentation.html">Documentation</a>\n'
     x += '</center>\n'
     x += '<br>\n'
     return x
@@ -126,7 +126,7 @@ def html_job_edit_form(fdict):
     x += '<form '\
          'enctype="multipart/form-data" '\
          'action="webtlsmd.cgi" '\
-         'method="get">'
+         'method="post">'
 
     x += '<input type="hidden" name="page" value="%s">' % (
         fdict.get("page", "index"))
@@ -211,7 +211,7 @@ def html_job_edit_form(fdict):
 
     x += '<tr><td colspan="3">'
     x += '<table>'
-    for cdict in fdict["chains"]:
+    for cdict in fdict.get("chains", []):
         x += '<tr><td>'
         x += '<label>'
         if cdict["selected"]==True:
@@ -333,7 +333,7 @@ def html_job_info_table(fdict):
     x += '<tr><td colspan="3">'
     x += '<table cellpadding="5">'
     x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th></tr>'
-    for cdict in fdict["chains"]:
+    for cdict in fdict.get("chains", []):
         x += '<tr><td>'
         if cdict["selected"]==True:
             x += '<tr>'
@@ -393,7 +393,7 @@ def html_job_info_table(fdict):
         x += '<form '\
              'enctype="multipart/form-data" '\
              'action="webtlsmd.cgi" '\
-             'method="get">'
+             'method="post">'
 
         ## Job ID, user, passwd
         x += '<input type="hidden" name="page" value="%s">' % (
@@ -679,7 +679,7 @@ class QueuePage(Page):
         else:
             page = "explore"
 
-        if jdict.get("private_job", False)==True:
+        if page!="admin" and jdict.get("private_job", False)==True:
             return 'private'
         return '<a href="webtlsmd.cgi?page=%s&job_id=%s">%s</a>' % (
             page, jdict["job_id"] ,jdict["job_id"])
@@ -715,7 +715,7 @@ class QueuePage(Page):
             x += '<tr>'
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
             tls_seg = 'Chain <b>%s</b> Residues <b>%s-%s</b>' % (
@@ -750,7 +750,7 @@ class QueuePage(Page):
 
         x  = ''
         x += '<center>'
-	x += '<b>Queued Jobs</b>'
+	x += '<b>%d Queued Jobs</b>' % (len(queued_list))
         x += '<table border="1" cellpadding="3" width="100%">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
@@ -762,7 +762,7 @@ class QueuePage(Page):
             x += '<tr>'
             
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
@@ -787,7 +787,7 @@ class QueuePage(Page):
         completed_list.reverse()
         
         x  = ''
-	x += '<center><b>Completed Jobs</b></center>'
+	x += '<center><b>%d Completed Jobs</b></center>' % (len(completed_list))
         x += '<center>'
         x += '<table border="1" cellpadding="3" width="100%">'
         x += '<tr>'
@@ -802,7 +802,7 @@ class QueuePage(Page):
             x += '<tr>'
             
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
             x += '<td>%s</td>' % (jdict["state"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
@@ -842,7 +842,7 @@ class QueuePage(Page):
             x += '<tr>'
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (jdict["structure_id"])
+            x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
             x += '<td>%s</td>' % (jdict["state"])
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
@@ -942,6 +942,13 @@ class SubmissionException(Exception):
         self.html = html
 
 
+SUBMIT1_NOTE = """\
+Analysis of large structures is
+omputationally expensive, so you may have to wait hours to days for
+the server to generate a complete analysis depending on how
+heavily it is loaded.
+"""
+
 class Submit1Page(Page):
     def html_page(self):
         title = 'TLSMD: Start a New Job'
@@ -949,6 +956,8 @@ class Submit1Page(Page):
         x  = ''
         x += self.html_head(title)
         x += html_title(title)
+
+        x += '<p><b>Note: </b>%s</p>' % (SUBMIT1_NOTE)
 
         x += '<center><h3>'
         x += 'Step 1: Select your PDB file to upload, then click Next'
@@ -1078,6 +1087,8 @@ class Submit2Page(Page):
 
         ## now load the structure and build the submission form
         struct = LoadStructure(fil=pdb_filename)
+	if not struct.structure_id:
+	    struct.structure_id = "XXXX"
 
         webtlsmdd.job_data_set(
             job_id, "structure_id", struct.structure_id)
@@ -1180,7 +1191,7 @@ class Submit3Page(Page):
 	    html += '</center>'
 	    
             html += '<p>Visit and bookmark your '
-	    html += '<a href="webtlsmd.cgi?page=explore&job_id=%s">Expolore Job %s</a> ' % (job_id, job_id)
+	    html += '<a href="webtlsmd.cgi?page=explore&job_id=%s">Explore Job %s</a> ' % (job_id, job_id)
 	    html += 'page, this page is the status page of your job, and it is '
 	    html += 'updated as your job progresses through the queue.  Once your '
 	    html += 'job is complete, a link to the completed TLSMD analysis will appear '

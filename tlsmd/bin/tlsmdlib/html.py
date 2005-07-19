@@ -26,7 +26,7 @@ from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
-GNUPLOT_FONT = "/home/jpaint/tlsmd/fonts/LucidaSansOblique.ttf"
+GNUPLOT_FONT = "/home/tlsmd/tlsmd/fonts/LucidaSansOblique.ttf"
 GNUPLOT_FONT_SIZE = "10"
 
 JMOL_DIR     = "../../../jmol"
@@ -1875,7 +1875,7 @@ class HTMLReport(Report):
         x += '<br>\n'
 
         x += '<form enctype="multipart/form-data" '\
-             'action="%s" method="get">' % (
+             'action="%s" method="post">' % (
             GLOBALS["REFINEPREP_URL"])
         x += '<input type="hidden" name="job_id" value="%s">' % (
             GLOBALS["JOB_ID"])
