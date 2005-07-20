@@ -22,112 +22,6 @@
 static PyObject *TLSMDMODULE_ERROR = NULL;
 
 
-
-/*
- * Mathmatical Constants
- */
-#define PI     3.1415926535897931
-#define PI2    (PI * PI)
-#define PI3    (PI * PI * PI)
-
-#define RAD2DEG  (180.0   / PI)
-#define RAD2DEG2 (180.0*180.0 / PI2)
-#define DEG2RAD  (PI / 180.0)
-#define DEG2RAD2 (PI2 / (180.0 * 180.0)
-
-
-
-/*
- * Misc. Linear Algebra
- */
-
-/* normalize the vector v
- */
-static void 
-normalize(double v[3])
-{
-  double d;
-
-  d    = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-  v[0] = v[0] / d;
-  v[1] = v[1] / d;
-  v[2] = v[2] / d;
-}
-
-/* compute the length of the vector v
- */
-static double
-length(double v[3])
-{
-  return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-}
-
-/* form the cross product of vectors u and v, and return the
- * result in w
- */
-static void 
-cross(double u[3], double v[3], double w[3])
-{
-  w[0] = u[1]*v[2] - u[2]*v[1];
-  w[1] = u[2]*v[0] - u[0]*v[2];
-  w[2] = u[0]*v[1] - u[1]*v[0];
-}
-
-/* calculate the determinate of a symmetric 3x3 matrix
- */
-static double
-det_symmetric_3(double U[6])
-{
-  return - U[4]*U[4]*U[1] + 2.0*U[3]*U[4]*U[5] - U[0]*U[5]*U[5]
-         - U[3]*U[3]*U[2] + U[0]*U[1]*U[2];
-}
-
-/* invert the symmetric 3x3 matrix in the argument U, and return the
- * result in Ui 
- * matrix format: u11,u22,u33,u12,u13,u23
- */
-static void
-mult_symmetric_3(double U[6], double V[6], double M[6])
-{
-  int i;
-
-  for (i = 0; i < 6; i++) {
-    M[i] = 0.0;
-  }
-
-  M[0] = U[0]*V[0] + U[3]*V[3] + U[4]*V[4];
-  M[1] = U[3]*V[3] + U[1]*V[1] + U[5]*V[5];
-  M[2] = U[4]*V[4] + U[5]*V[5] + U[2]*V[2];
-  M[3] = U[0]*V[3] + U[3]*V[1] + U[4]*V[5];
-  M[4] = U[0]*V[4] + U[3]*V[5] + U[4]*V[2];
-  M[5] = U[3]*V[4] + U[1]*V[5] + U[5]*V[2];
-}
-
-static int
-invert_symmetric_3(double U[6], double Ui[6])
-{
-  double d;
-  double I[6];
-
-  /* calculate determinate */
-  d = - U[4]*U[4]*U[1] + 2.0*U[3]*U[4]*U[5] - U[0]*U[5]*U[5]
-    - U[3]*U[3]*U[2] + U[0]*U[1]*U[2];
-
-  if (d == 0.0) {
-    return 0;
-  }
-
-  Ui[0] = (-U[5]*U[5] + U[1]*U[2]) / d;
-  Ui[1] = (-U[4]*U[4] + U[0]*U[2]) / d;
-  Ui[2] = (-U[3]*U[3] + U[0]*U[1]) / d;
-  Ui[3] = ( U[4]*U[5] - U[3]*U[2]) / d;
-  Ui[4] = (-U[4]*U[1] + U[3]*U[5]) / d;
-  Ui[5] = ( U[3]*U[4] - U[0]*U[5]) / d;
-
-  return 1;
-}
-
-
 /*
  * Anisotropic ADP Parameters: U
  */
@@ -148,6 +42,25 @@ invert_symmetric_3(double U[6], double Ui[6])
 static char *U_PARAM_NAMES[] = {
   "u11", "u22", "u33", "u12", "u13", "u23"
 };
+
+
+/*
+ * Isotropic TLS Model
+ */
+#define ITLS_TISO  0
+#define ITLS_L11   1
+#define ITLS_L22   2
+#define ITLS_L33   3
+#define ITLS_L12   4
+#define ITLS_L13   5
+#define ITLS_L23   6
+#define ITLS_S12   7
+#define ITLS_S13   8
+#define ITLS_S23   9
+#define ITLS_S21   10
+#define ITLS_S31   11
+#define ITLS_S32   12
+
 
 
 
@@ -287,6 +200,8 @@ struct Chain {
   struct Atom *atoms;
   
   double *A;
+  double *x;
+  double *b;
   double *S;
   double *U;
   double *VT;
@@ -300,21 +215,87 @@ new_chain(int num_atoms)
   struct Chain *chain;
 
   chain = malloc(sizeof(Chain));
-  if (chain==NULL) {
+  if (chain==NULL)
     return NULL;
-  }
+  bzero(chain, sizeof(Chain));
 
   chain->atoms = malloc(sizeof(Atom) * num_atoms);
-  if (chain->atoms==NULL) {
-    free(chain);
-    return NULL;
-  }
+  if (chain->atoms==NULL)
+    goto error;
+    
+  chain->A = malloc(sizeof(double) * 20 * num_atoms);
+  if (chain->A==NULL)
+    goto error;
 
+  chain->x = malloc(sizeof(double) * 20);
+  if (chain->x==NULL)
+    goto error;
+
+  chain->b = malloc(sizeof(double) * num_atoms);
+  if (chain->b==NULL)
+    goto error;
   
+  chain->S = malloc(sizeof(double) * 20);
+  if (chain->S==NULL)
+    goto error;
 
+  chain->U = malloc(sizeof(double) * num_atoms * num_atoms);
+  if (chain->U==NULL)
+    goto error;
+
+  chain->VT = malloc(sizeof(double) * 20 * 20);
+  if (chain->VT==NULL)
+    goto error;
+
+  /* calculate the size of the WORK memory block */
+
+
+  return chain;
+
+  /* if malloc() fails */
+ error:
+  if (chain->atoms!=NULL)
+    free(chain->atoms);
+  if (chain->A!=NULL)
+    free(chain->A);
+  if (chain->x!=NULL)
+    free(chain->x);
+  if (chain->b!=NULL)
+    free(chain->b);
+  if (chain->S!=NULL)
+    free(chain->S);
+  if (chain->U!=NULL)
+    free(chain->U);
+  if (chain->VT!=NULL)
+    free(chain->VT);
+  if (chain->WORK!=NULL)
+    free(chain->WORK);
+
+  free(chain);
 }
 
+void
+delete_chain(struct Chain *chain)
+{
+  if (chain->atoms!=NULL)
+    free(chain->atoms);
+  if (chain->A!=NULL)
+    free(chain->A);
+  if (chain->x!=NULL)
+    free(chain->x);
+  if (chain->b!=NULL)
+    free(chain->b);
+  if (chain->S!=NULL)
+    free(chain->S);
+  if (chain->U!=NULL)
+    free(chain->U);
+  if (chain->VT!=NULL)
+    free(chain->VT);
+  if (chain->WORK!=NULL)
+    free(chain->WORK);
 
+  free(chain);
+}
 
 
 
@@ -409,19 +390,27 @@ itls_fit_segment(struct ITLSFitContext *itls_context)
 
 
 /* 
- * TLS_ISO_Solver: Isotropic TLS Model solver object 
+ * PYTHON INTERFACE
+ *
+ * Two Python classes interface to the high-performance LSQ fitting
+ * algorthims:
+ *
+ * ITLSModel: Isotropic TLS Model
+ * ATLSModel: Anisotropic TLS Model 
  */
+
+static PyObject *TLSMDMODULE_ERROR = NULL;
 
 
 /* Python interface */
 typedef struct {
   PyObject_HEAD
-  PyObject       *xmlrpc_chain;
-  struct TLSAtom *atoms;
-} TLS_ISO_Solver_Object;
+  PyObject       *xmlrpc_chain; /* list of dictionaies describing the atoms */
+  struct Chain   *chain;        /* internal version of the chain */
+} ITLSModel_Object;
 
 static void
-TLS_ISO_Solver_dealloc(TLS_ISO_Solver_Object* self)
+ITLSModel_dealloc(ITLSModel_Object* self)
 {
   if (self->atoms) {
     free(self->atoms);
@@ -433,25 +422,25 @@ TLS_ISO_Solver_dealloc(TLS_ISO_Solver_Object* self)
 }
 
 static PyObject *
-TLS_ISO_Solver_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+ITLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  TLS_ISO_Solver_Object *self;
+  ITLSModel_Object *self;
   
-  self = (TLS_ISO_Solver_Object *)type->tp_alloc(type, 0);
+  self = (ITLSModel_Object *)type->tp_alloc(type, 0);
   if (self == NULL) {
     return NULL;
   }
 
   self->xmlrpc_chain = NULL;
-  self->atoms = NULL;
+  self->chain = NULL;
 
   return (PyObject *)self;
 }
 
 static PyObject *
-TLS_ISO_Solver_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
+ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 {
-  TLS_ISO_Solver_Object *self;
+  ITLSModel_Object *self;
   PyObject *xmlrpc_chain;
   PyObject *atm_desc;
   PyObject *tmp;
@@ -460,7 +449,7 @@ TLS_ISO_Solver_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   char *strx;
   double xx;
 
-  self = (TLS_ISO_Solver_Object *) py_self;
+  self = (ITLSModel_Object *) py_self;
 
   if (!PyArg_ParseTuple(args, "O", &xmlrpc_chain)) {
     goto error;
@@ -575,12 +564,12 @@ TLS_ISO_Solver_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 }
 
 static PyObject *
-TLS_ISO_Solver_clear_xmlrpc_chain(PyObject *py_self, PyObject *args)
+ITLSModel_clear_xmlrpc_chain(PyObject *py_self, PyObject *args)
 {
-  TLS_ISO_Solver_Object *self;
+  ITLSModel_Object *self;
   PyObject *tmp;
 
-  self = (TLS_ISO_Solver_Object *) py_self;
+  self = (ITLSModel_Object *) py_self;
 
   tmp = self->xmlrpc_chain;
   self->xmlrpc_chain = NULL;
@@ -597,9 +586,9 @@ TLS_ISO_Solver_clear_xmlrpc_chain(PyObject *py_self, PyObject *args)
 }
 
 static PyObject *
-TLS_ISO_Solver_fit_segment(PyObject *py_self, PyObject *args)
+ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
 {
-  TLS_ISO_Solver_Object *self;
+  ITLSModel_Object *self;
   char *frag_id1;
   char *frag_id2;
   struct TISO_SegmentFitData fit;
@@ -612,7 +601,7 @@ TLS_ISO_Solver_fit_segment(PyObject *py_self, PyObject *args)
   PyObject *py_floatx, *py_intx, *rdict;
 
 
-  self = (TLS_ISO_Solver_Object *) py_self;
+  self = (ITLSModel_Object *) py_self;
 
   if (!PyArg_ParseTuple(args, "ii", &fit.istart, &fit.iend)) {
     goto error;
@@ -688,32 +677,32 @@ TLS_ISO_Solver_fit_segment(PyObject *py_self, PyObject *args)
   return NULL;
 }
 
-static PyMethodDef TLS_ISO_Solver_methods[] = {
+static PyMethodDef ITLSModel_methods[] = {
     {"set_xmlrpc_chain", 
-     (PyCFunction) TLS_ISO_Solver_set_xmlrpc_chain, 
+     (PyCFunction) ITLSModel_set_xmlrpc_chain, 
      METH_VARARGS,
      "Sets the Python list containing one dictionary for each atom." },
 
     {"clear_xmlrpc_chain", 
-     (PyCFunction) TLS_ISO_Solver_clear_xmlrpc_chain, 
+     (PyCFunction) ITLSModel_clear_xmlrpc_chain, 
      METH_VARARGS,
      "Clears the Python list of atom descriptions." },
 
     {"fit_segment", 
-     (PyCFunction) TLS_ISO_Solver_fit_segment, 
+     (PyCFunction) ITLSModel_fit_segment, 
      METH_VARARGS,
      "Performs a TLS/ISO fit to the given atoms." },
 
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject TLS_ISO_Solver_Type = {
+static PyTypeObject ITLSModel_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "TLS_ISO_Solver",          /*tp_name*/
-    sizeof(TLS_ISO_Solver_Object), /*tp_basicsize*/
+    "ITLSModel",          /*tp_name*/
+    sizeof(ITLSModel_Object), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)TLS_ISO_Solver_dealloc, /*tp_dealloc*/
+    (destructor)ITLSModel_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -729,14 +718,14 @@ static PyTypeObject TLS_ISO_Solver_Type = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "TLS_ISO_Solver objects",  /* tp_doc */
+    "ITLSModel objects",  /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
     0,		               /* tp_iternext */
-    TLS_ISO_Solver_methods,    /* tp_methods */
+    ITLSModel_methods,    /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -746,7 +735,7 @@ static PyTypeObject TLS_ISO_Solver_Type = {
     0,                         /* tp_dictoffset */
     0,                         /* tp_init */
     0,                         /* tp_alloc */
-    TLS_ISO_Solver_new,        /* tp_new */
+    ITLSModel_new,        /* tp_new */
 };
 
 
@@ -760,7 +749,7 @@ inittlsmdmodule(void)
   PyObject *m;
   
   
-  if (PyType_Ready(&TLS_ISO_Solver_Type) < 0)
+  if (PyType_Ready(&ITLSModel_Type) < 0)
     return;
 
   m = Py_InitModule("tlsmdmodule", TLSMDMODULE_METHODS);
@@ -770,7 +759,7 @@ inittlsmdmodule(void)
   PyModule_AddObject(m, "error", TLSMDMODULE_ERROR);
 
 
-  /* add the TLS_ISO_Solver class */
-  Py_INCREF(&TLS_ISO_Solver_Type);
-  PyModule_AddObject(m, "TLS_ISO_Solver", (PyObject *)&TLS_ISO_Solver_Type);
+  /* add the ITLSModel class */
+  Py_INCREF(&ITLSModel_Type);
+  PyModule_AddObject(m, "ITLSModel", (PyObject *)&ITLSModel_Type);
 }
