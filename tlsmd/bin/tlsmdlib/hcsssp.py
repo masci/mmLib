@@ -1,6 +1,6 @@
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
-## This code is part of the TLSMD distrobution and governed by
+## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
@@ -14,7 +14,7 @@ class HCSSSP(object):
     """
     def HCSSSP_minimize(self, V, E, hops):
         """Hop-Constrained Single Source Shorted Path minimization,
-        loosely based on the BellmanFord SSSP algorithm using
+        loosely based on the Bellman-Ford SSSP algorithm using
         Dynamic Programming.  Returns the D, P, and T matrixes.
         """
         assert len(V)>0

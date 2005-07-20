@@ -22,10 +22,10 @@
 static PyObject *TLSMDMODULE_ERROR = NULL;
 
 
+
 /*
  * Mathmatical Constants
  */
-
 #define PI     3.1415926535897931
 #define PI2    (PI * PI)
 #define PI3    (PI * PI * PI)
@@ -35,6 +35,11 @@ static PyObject *TLSMDMODULE_ERROR = NULL;
 #define DEG2RAD  (PI / 180.0)
 #define DEG2RAD2 (PI2 / (180.0 * 180.0)
 
+
+
+/*
+ * Misc. Linear Algebra
+ */
 
 /* normalize the vector v
  */
@@ -122,9 +127,10 @@ invert_symmetric_3(double U[6], double Ui[6])
   return 1;
 }
 
-/* TLS_ISO_Solver: Isotropic TLS Model solver object 
- */
 
+/*
+ * Anisotropic ADP Parameters: U
+ */
 
 /* anisotropic U tensor parameter labels and indexes */
 #define U11 0
@@ -136,10 +142,18 @@ invert_symmetric_3(double U[6], double Ui[6])
 
 #define U_NUM_PARAMS 6
 
+/* parameter name/labels used when they are passed in through 
+ * Python dictionaries 
+ */
 static char *U_PARAM_NAMES[] = {
   "u11", "u22", "u33", "u12", "u13", "u23"
 };
 
+
+
+/* 
+ * Anisotropic TLS Model
+ */
 
 /* anisotropic TLS model parameter indexes and labels */
 #define ATLS_T11   0
@@ -172,13 +186,13 @@ static char *ATLS_PARAM_NAMES[] = {
 };
 
 
-void
-calc_tls_dT11()
-{
-}
-
-void
-calc_u_tls(double *TLS, double x, double y, double z, double U[6]) 
+/* calculate the anistropic TLS model prediction of anisiotropic
+ * ADP U at position x, y, z
+ */
+static void
+calc_u_atls(double ATLS[ATLS_NUM_PARAMS], 
+	    double x, double y, double z, 
+	    double U[6]) 
 {
   double xx, yy, zz, xy, yz, xz;
 
@@ -190,65 +204,71 @@ calc_u_tls(double *TLS, double x, double y, double z, double U[6])
   xz = x * z;
     
   U[U11] =         
-            TLS[ATLS_T11]
-    +       TLS[ATLS_L22] * zz
-    +       TLS[ATLS_L33] * yy
-    - 2.0 * TLS[ATLS_L23] * yz
-    - 2.0 * TLS[ATLS_S31] * y
-    + 2.0 * TLS[ATLS_S21] * z;
+            ATLS[ATLS_T11]
+    +       ATLS[ATLS_L22] * zz
+    +       ATLS[ATLS_L33] * yy
+    - 2.0 * ATLS[ATLS_L23] * yz
+    - 2.0 * ATLS[ATLS_S31] * y
+    + 2.0 * ATLS[ATLS_S21] * z;
 
   U[U22] =
-            TLS[ATLS_T22]
-    +       TLS[ATLS_L11] * zz
-    +       TLS[ATLS_L33] * xx
-    - 2.0 * TLS[ATLS_L13] * xz
-    - 2.0 * TLS[ATLS_S12] * z
-    + 2.0 * TLS[ATLS_S32] * x;
+            ATLS[ATLS_T22]
+    +       ATLS[ATLS_L11] * zz
+    +       ATLS[ATLS_L33] * xx
+    - 2.0 * ATLS[ATLS_L13] * xz
+    - 2.0 * ATLS[ATLS_S12] * z
+    + 2.0 * ATLS[ATLS_S32] * x;
 
   U[U33] =
-            TLS[ATLS_T33]
-    +       TLS[ATLS_L11] * yy
-    +       TLS[ATLS_L22] * xx
-    - 2.0 * TLS[ATLS_L12] * xy
-    - 2.0 * TLS[ATLS_S23] * x
-    + 2.0 * TLS[ATLS_S13] * y;
+            ATLS[ATLS_T33]
+    +       ATLS[ATLS_L11] * yy
+    +       ATLS[ATLS_L22] * xx
+    - 2.0 * ATLS[ATLS_L12] * xy
+    - 2.0 * ATLS[ATLS_S23] * x
+    + 2.0 * ATLS[ATLS_S13] * y;
 
   U[U12] =
-            TLS[ATLS_T12]
-    -       TLS[ATLS_L33]   * xy
-    +       TLS[ATLS_L23]   * xz
-    +       TLS[ATLS_L13]   * yz
-    -       TLS[ATLS_L12]   * zz
-    +       TLS[ATLS_S2211] * z
-    +       TLS[ATLS_S31]   * x
-    -       TLS[ATLS_S32]   * y;
+            ATLS[ATLS_T12]
+    -       ATLS[ATLS_L33]   * xy
+    +       ATLS[ATLS_L23]   * xz
+    +       ATLS[ATLS_L13]   * yz
+    -       ATLS[ATLS_L12]   * zz
+    +       ATLS[ATLS_S2211] * z
+    +       ATLS[ATLS_S31]   * x
+    -       ATLS[ATLS_S32]   * y;
 
   U[U13] =
-            TLS[ATLS_T13]
-    -       TLS[ATLS_L22]   * xz
-    +       TLS[ATLS_L23]   * xy
-    -       TLS[ATLS_L13]   * yy
-    +       TLS[ATLS_L12]   * yz
-    +       TLS[ATLS_S1133] * y
-    +       TLS[ATLS_S23]   * z
-    -       TLS[ATLS_S21]   * x;
+            ATLS[ATLS_T13]
+    -       ATLS[ATLS_L22]   * xz
+    +       ATLS[ATLS_L23]   * xy
+    -       ATLS[ATLS_L13]   * yy
+    +       ATLS[ATLS_L12]   * yz
+    +       ATLS[ATLS_S1133] * y
+    +       ATLS[ATLS_S23]   * z
+    -       ATLS[ATLS_S21]   * x;
 
   U[U23] =
-            TLS[ATLS_T23]
-    -       TLS[ATLS_L11]   * yz
-    -       TLS[ATLS_L23]   * xx
-    +       TLS[ATLS_L13]   * xy
-    +       TLS[ATLS_L12]   * xz
-    -      (TLS[ATLS_S2211] + TLS[ATLS_S1133]) * x
-    +       TLS[ATLS_S12]   * y
-    -       TLS[ATLS_S13]   * z;
+            ATLS[ATLS_T23]
+    -       ATLS[ATLS_L11]   * yz
+    -       ATLS[ATLS_L23]   * xx
+    +       ATLS[ATLS_L13]   * xy
+    +       ATLS[ATLS_L12]   * xz
+    -      (ATLS[ATLS_S2211] + ATLS[ATLS_S1133]) * x
+    +       ATLS[ATLS_S12]   * y
+    -       ATLS[ATLS_S13]   * z;
 }
 
-/* anisotropic TLS model */
+
+
+/*
+ * Common routines for the isotropic and ansiotropic TLS segment
+ * fitting engine
+ */
 #define NAME_LEN     8
 #define FRAG_ID_LEN  8
 
-struct TLSAtom {
+/* structure used to store the information of one atom */
+struct Atom {
   char    name[NAME_LEN];
   char    frag_id[FRAG_ID_LEN];
   double  x;
@@ -258,13 +278,139 @@ struct TLSAtom {
   double  U[6];
 };
 
-struct TISO_SegmentFitData {
-  int                istart;
-  int                iend;
-  double             parameters[ATLS_NUM_PARAMS];
-  struct TLSAtom    *atoms;
+/* structure used to store information on the chain the algorithm
+ * is currently fitting; this structure contains the dynamically 
+ * allocated memory used by the LAPACK SVD routine DGESDD and therefore
+ * must be allocated and freed with new_chain/delete_chain
+ */
+struct Chain {
+  struct Atom *atoms;
+  
+  double *A;
+  double *S;
+  double *U;
+  double *VT;
+  double *WORK;
+  int     LWORK;
 };
 
+struct Chain *
+new_chain(int num_atoms)
+{
+  struct Chain *chain;
+
+  chain = malloc(sizeof(Chain));
+  if (chain==NULL) {
+    return NULL;
+  }
+
+  chain->atoms = malloc(sizeof(Atom) * num_atoms);
+  if (chain->atoms==NULL) {
+    free(chain);
+    return NULL;
+  }
+
+  
+
+}
+
+
+
+
+
+/* context structure for fitting one TLS segment using the 
+ * isotropic TLS model
+ */
+struct ITLSFitContext {
+  int                istart;                /* index of first atom in atoms */
+  int                iend;                  /* index of last atom in atoms */
+  struct Atom       *atoms;                 /* pointer to atoms array */
+
+  double             origin_x;              /* origin of TLS tensors */
+  double             origin_y;
+  double             origin_z;
+
+  double             ITLS[ITLS_NUM_PARAMS]; /* isotropic TLS model params */
+  double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
+  double             ilsqr;                 /* least-squares residual of
+					     *  isotropic TLS model */
+};
+
+
+/* calculates the centroid of the atoms indexed between istart and iend
+ * then returns the centroid coordinates in x, y, z
+ */
+void
+calc_centroid(struct Atom *atoms, int istart, int iend, 
+	      double *x, double *y, double *z)
+{
+  int i;
+  double n, cx, cy, cz;
+
+  n  = 0.0;
+  cx = 0.0;
+  cy = 0.0;
+  cz = 0.0;
+
+  for (i = istart; i<=iend; i++) {
+    n  += 1.0;
+    cx += atoms[i].x;
+    cy += atoms[i].y;
+    cz += atoms[i].z;
+  }
+
+  if (n>0.0) {
+    *x = cx / n;
+    *y = cy / n;
+    *z = cz / n;
+  } else {
+    *x = 0.0;
+    *y = 0.0;
+    *z = 0.0;
+  }
+}
+
+
+void
+itls_fit_segment(struct ITLSFitContext *itls_context)
+{
+  int num_atoms;
+  double i, ia, x, y, z;
+
+  /* calculate the number of atoms to be fit */
+  num_atoms = itls_context->iend - itls_context->istart + 1;
+
+  /* calculate the centroid of the atoms which are to
+   * be fit and use it as the origin of the TLS tensors
+   */
+  calc_centroid(itls_context->atoms,
+		itls_context->istart,
+		itls_context->iend,
+		&itls_context->origin_x,
+		&itls_context->origin_y,
+		&itls_context->origin_z);
+
+
+  /* fill in coefficent matrix for both the isotropic TLS model
+   * and the anisotropic TLS model
+   */
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+/* 
+ * TLS_ISO_Solver: Isotropic TLS Model solver object 
+ */
 
 
 /* Python interface */

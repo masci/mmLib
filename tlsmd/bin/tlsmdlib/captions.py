@@ -1,11 +1,11 @@
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2005 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
 OPTIMIZATION_PARAMS_TEXT = """\
-The optimization algorithm at the core of TLSMD has several options which are automatically chosen for you by analyizing your input structure during submission.  Most of these options require detailed explanation which we will present later in publication.  The <i>Included Atoms</i> option is, however, pretty streight forward.  It controlls whether to include all atoms, or just the main-chain atoms in the optimization.  Since TLSMD can take quite a long time to run, structures containing chains longer than 400 residues are automatically set to use only the main-chain protein atoms <b>N</b>, <b>CA</b>, and <b>C</b>.  If no chain in the structure exceeds 400 residues in length, the all protein atoms are used in the optimization.
+The optimization algorithm at the core of TLSMD has several options which are automatically chosen for you by analyzing your input structure during submission.  Most of these options require detailed explanation which we will present later in publication.  The <i>Included Atoms</i> option is, however, pretty straight forward.  It controls whether to include all atoms, or just the main-chain atoms in the optimization.  Since TLSMD can take quite a long time to run, structures containing chains longer than 400 residues are automatically set to use only the main-chain protein atoms <b>N</b>, <b>CA</b>, and <b>C</b>.  If no chain in the structure exceeds 400 residues in length, the all protein atoms are used in the optimization.
 """
 
 MOTION_ANALYSIS_TEXT = """\
@@ -38,7 +38,7 @@ using Refmac5.
 """
 
 REFINEMENT_PREP_INFO = """\
-The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  Select the number of TLS groups to use for each chain and click <b>OK</b> to generate these input files.  You may find the graph below useful in selecting the number of groups to use for each chain.  Often there comes a point in the optimization of a where using more TLS groups does not significantly reduce the least squares residual.  The number of TLS groups at that point is a resonable number to select.
+The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  Select the number of TLS groups to use for each chain and click <b>OK</b> to generate these input files.  You may find the graph below useful in selecting the number of groups to use for each chain.  Often there comes a point in the optimization of a where using more TLS groups does not significantly reduce the least squares residual.  The number of TLS groups at that point is a reasonable number to select.
 """
 
 LSQR_CAPTION = """\
@@ -68,7 +68,7 @@ those used for the TLS groups in the various structure visualizations.
 LIBRATION_GRAPH_CAPTION = """\
 This graph shows the displacement of main chain atoms implied by the three
 screw axes of the TLS group to which they belong.  The screw displacement axes are
-calculated in terms of a Gaussian variance-covariance tensor, and displacment
+calculated in terms of a Gaussian variance-covariance tensor, and displacement
 magnitude is shown at a 85% isoprobability magnitude like the translational
 displacement.  Protein segments undergoing hinge-like motion show up as peaks in
 this graph.

@@ -1,7 +1,7 @@
 #!/home/tlsmd/local/bin/python
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
-## This code is part of the TLSMD distrobution and governed by
+## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
