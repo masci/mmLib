@@ -355,6 +355,168 @@ class TLSGraphChainHybrid(TLSGraphChain):
         return fit_info
 
 
+
+
+
+
+
+class TLSGraphChainFastHybrid(TLSGraphChain):
+    """Graph the chain with a hybrid isotropic/anisotropic TLS model. 
+    """
+    def __init__(self):
+        self.xmlrpc_chain = None
+        self.f            = None
+
+        import tlsmdmodule
+        self.itls_model = tlsmdmodule.ITLSModel()
+    
+    def set_xmlrpc_chain(self, xmlrpc_chain):
+        self.xmlrpc_chain = xmlrpc_chain
+
+        ## create a Numeric Array vector for each atom position (faster)
+        frag_id_list = []
+        
+        for atm_desc in xmlrpc_chain:
+            frag_id_list.append(atm_desc["frag_id"])
+            atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
+
+        ## set the class frag list
+        self.f = frag_id_list
+
+        ## set the C solver
+        self.itls_model.set_xmlrpc_chain(xmlrpc_chain)
+
+        print "[FAST-HYBRID] set_xmlrpc_chain(num_atoms=%d)" % (
+            len(frag_id_list))
+        return True
+
+    def lsq_fit_segment(self, frag_id1, frag_id2):
+        """Performs a LSQ fit of TLS parameters for the protein segment
+        starting with fragment index ifrag_start to (and including) the
+        fragment ifrag_end.
+        """
+        ## all return values here
+        fit_info = {}
+        
+        ## calculate the start/end indexes of the start fragment
+        ## and end fragment so the A matrix and b vector can be sliced
+        ## in the correct placees
+	istart = None
+        iend   = None
+        state  = "find_istart"
+
+        for icur in range(len(self.f)):
+            if state=="find_istart":
+                if fragment_id_ge(self.f[icur], frag_id1):
+                    state  = "find_iend"
+                    istart = icur
+            elif state=="find_iend":
+                if fragment_id_gt(self.f[icur], frag_id2):
+                    iend = icur - 1
+                    break
+                
+	if iend==None:
+	    iend = len(self.f) - 1
+
+        ## are there enough atoms in this chain segment
+        num_atoms = iend - istart + 1
+        fit_info["num_atoms"] = num_atoms
+        if num_atoms<13:
+            fit_info["error"] = "%d Atoms In Segment" % (num_atoms)
+            return fit_info
+
+        ## perform the LSQR fit
+        fdict = self.itls_model.fit_segment(istart, iend)
+
+        fit_info["lsq_residual"] = fdict["ilsqr"]
+
+        T = array([ [ fdict["t11"], fdict["t12"], fdict["t13"] ],
+                    [ fdict["t12"], fdict["t22"], fdict["t23"] ],
+                    [ fdict["t13"], fdict["t23"], fdict["t33"] ] ], Float)
+
+        L = array([ [ fdict["l11"], fdict["l12"], fdict["l13"] ],
+                    [ fdict["l12"], fdict["l22"], fdict["l23"] ],
+                    [ fdict["l13"], fdict["l23"], fdict["l33"] ] ], Float)
+  
+        s11, s22, s33 = calc_s11_s22_s33(fdict["s2211"], fdict["s1133"])
+	
+        S = array([ [          s11, fdict["s12"], fdict["s13"] ],
+                    [ fdict["s21"],          s22, fdict["s23"] ],
+                    [ fdict["s31"], fdict["s32"],        s33 ] ], Float)
+
+        centroid = array([ fdict["x"], fdict["y"], fdict["z"] ], Float)
+
+        ## caculate the tensors shifted to the center of reaction
+        cor_info = calc_TLS_center_of_reaction(T, L, S, centroid)
+
+        cor    = cor_info["COR"]
+        T_cor  = cor_info["T'"]
+        L_cor  = cor_info["L'"]
+        S_cor  = cor_info["S'"]
+        T_red  = cor_info["rT'"]
+
+        ## return information
+        fit_info["cor_x"] = cor[0]
+        fit_info["cor_y"] = cor[1]
+        fit_info["cor_z"] = cor[2]
+
+        fit_info["t11"] = T_cor[0,0]
+        fit_info["t22"] = T_cor[1,1]
+        fit_info["t33"] = T_cor[2,2]
+        fit_info["t12"] = T_cor[0,1]
+        fit_info["t13"] = T_cor[0,2]
+        fit_info["t23"] = T_cor[1,2]
+
+        fit_info["l11"] = L_cor[0,0]
+        fit_info["l22"] = L_cor[1,1]
+        fit_info["l33"] = L_cor[2,2]
+        fit_info["l12"] = L_cor[0,1]
+        fit_info["l13"] = L_cor[0,2]
+        fit_info["l23"] = L_cor[1,2]
+
+        fit_info["s2211"] = S_cor[1,1] - S_cor[0,0]
+        fit_info["s1133"] = S_cor[0,0] - S_cor[2,2]
+        fit_info["s12"]   = S_cor[0,1]
+        fit_info["s13"]   = S_cor[0,2]
+        fit_info["s23"]   = S_cor[1,2]
+        fit_info["s21"]   = S_cor[1,0]
+        fit_info["s31"]   = S_cor[2,0]
+        fit_info["s32"]   = S_cor[2,1]
+
+        if min(eigenvalues(T_red))<=TSMALL:
+            errx = "Invalid Tr Eigenvalue"
+            fit_info["error"] = errx
+
+        elif min(eigenvalues(L_cor))<=LSMALL:
+            errx = "Invalid L Eigenvalue"
+            fit_info["error"] = errx
+
+        if fit_info.has_key("error"):
+            print "[FAST-HYBRID] lsq_fit_segment("\
+                  "frag_id={%s..%s}, "\
+                  "num_atoms=%d, lsqr=%6.4f, discard=%s)" % (
+                frag_id1, frag_id2,
+                fit_info["num_atoms"], fit_info["lsq_residual"],
+                fit_info["error"]) 
+        else:
+            print "[FAST-HYBRID] lsq_fit_segment("\
+                  "frag_id={%s..%s}, "\
+                  "num_atoms=%d, lsqr=%6.4f)" % (
+                frag_id1, frag_id2,
+                fit_info["num_atoms"], fit_info["lsq_residual"])
+
+        return fit_info
+
+
+
+
+
+
+
+
+
+
+
 class TLSGraphChainAnisotropic(TLSGraphChain):
     """Graph the chain using the anisotropic TLS model.
     """
@@ -755,7 +917,7 @@ def NewTLSGraphChain0(tls_model):
     requested TLS model.
     """
     if tls_model=="HYBRID":
-        return TLSGraphChainHybrid()
+        return TLSGraphChainFastHybrid()
     if tls_model=="ANISO":
         return TLSGraphChainAnisotropic()
     if tls_model=="PLUGIN":
