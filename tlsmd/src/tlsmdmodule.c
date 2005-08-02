@@ -373,6 +373,48 @@ struct Chain {
   int    *IWORK;
 };
 
+
+void 
+solve_SVD(double *A,
+	  int m,
+	  int n,
+	  double *x,
+	  double *b,
+	  double *U,
+	  double *S,
+	  double *VT)
+{
+#define FU(_m, _n) U[_m + (m * _n)]
+#define FVT(_m, _n) U[_m + (m * _n)]
+
+  int i, j;
+  double smax, scutoff;
+
+  for (smax = S[0], i = 1; i <= n-1; i++) {
+    smax = MAX(smax, S[i]);
+  }
+  scutoff = smax * 1E-12;
+  for (i = 0; i <= n-1; i++) {
+    if (S[i] > scutoff) {
+      S[i] = 1.0 / S[i];
+    } else {
+      S[i] = 0.0;
+    }
+  }
+
+  /* matrix multiply inverse S(n,n) (diagonal matrix) 
+   * by the transpose of U(m,n) and store the result in U
+   */
+  for (i = 0; i <= m-1; i++) {
+    for (j = 1; j <= n-1; j++) {
+      FU(i,j) = S[j] * FU(i,j);
+    }
+  }
+
+
+
+}
+
 /* frees all memory from a allocated struct Chain 
  */
 void
@@ -406,7 +448,8 @@ delete_chain(struct Chain *chain)
 struct Chain *
 new_chain(int num_atoms)
 {
-  int num_rows, num_cols, nu, nvt;
+  int num_rows, num_cols, nu, nvt, info;
+  double tmp_WORK;
   struct Chain *chain;
 
   /* six parameters per atom */
@@ -489,7 +532,34 @@ new_chain(int num_atoms)
     goto error;
   }
 
-  /* calculate the size of the WORK memory block */
+  /* calculate the ideal size of the WORK memory block */
+  chain->LWORK = -1;
+  dgesdd_("S",  
+	  &num_rows,
+	  &num_cols, 
+	  chain->A, 
+	  &num_rows,
+	  chain->S, 
+	  chain->U,
+	  &num_rows, 
+	  chain->VT,
+	  &nvt,
+	  &tmp_WORK, 
+	  &chain->LWORK,
+	  chain->IWORK,
+	  &info);
+    
+  chain->LWORK = tmp_WORK;
+
+#ifdef _DEBUG
+  printf("new_chain: ideal WORK size %d\n", chain->LWORK);
+#endif
+
+  chain->WORK = malloc(sizeof(double) * chain->LWORK);
+  if (chain->WORK == NULL) {
+    printf("new_chain: chain->WORK\n");
+    goto error;
+  }
 
   return chain;
 
@@ -561,7 +631,10 @@ calc_centroid(struct Atom *atoms, int istart, int iend,
 void
 fit_segment_ITLS(struct ITLSFitContext *itls_context)
 {
-  int num_atoms, num_rows, num_cols, row, ia, istart, iend;
+  int i, j, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
+
+  int nu, nvt;
+
   double ox, oy, oz, lsqr;
 
   double *A, *b;
@@ -614,8 +687,24 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 		atoms[ia].weight);
   }
 
-  /* solve for isotropic TLS model */
 
+  /* solve for isotropic TLS model */
+  nu = MIN(num_rows, num_cols);
+  nvt = MIN(num_rows, num_cols);
+  dgesdd_("S",  
+	  &num_rows,
+	  &num_cols, 
+	  itls_context->chain->A, 
+	  &num_rows,
+	  itls_context->chain->S, 
+	  itls_context->chain->U,
+	  &num_rows, 
+	  itls_context->chain->VT,
+	  &nvt,
+	  itls_context->chain->WORK, 
+	  &itls_context->chain->LWORK,
+	  itls_context->chain->IWORK,
+	  &info);
 
 
   /* fill in coefficent matrix for the anisotropic TLS model */
@@ -636,7 +725,22 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
   }
 
   /* solve for isotropic TLS model */
-
+  nu = MIN(num_rows, num_cols);
+  nvt = MIN(num_rows, num_cols);
+  dgesdd_("S",  
+	  &num_rows,
+	  &num_cols, 
+	  itls_context->chain->A, 
+	  &num_rows,
+	  itls_context->chain->S, 
+	  itls_context->chain->U,
+	  &num_rows, 
+	  itls_context->chain->VT,
+	  &nvt,
+	  itls_context->chain->WORK, 
+	  &itls_context->chain->LWORK,
+	  itls_context->chain->IWORK,
+	  &info);
 }
 
 

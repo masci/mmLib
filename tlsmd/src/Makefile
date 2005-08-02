@@ -13,7 +13,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 $(TARGET): $(OBJ)
-	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) /home/jpaint/build/LAPACK/blas_LINUX.a /home/jpaint/build/LAPACK/lapack_LINUX.a
+	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a -lg2c
 
 clean:
 	rm -f *.o $(TARGET)
