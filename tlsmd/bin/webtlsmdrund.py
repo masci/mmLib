@@ -18,6 +18,7 @@ import xmlrpclib
 ## CONFIGURATION
 VERSION   = "0.0.1"
 WEBTLSMDD = "http://localhost:10100"
+MSMTP     = "/usr/bin/msmtp"
 
 TLSMD_CMD = [
     "%s/bin/tlsmd.py" % (os.environ["TLSMD_ROOT"]),
@@ -163,6 +164,9 @@ def run_job(webtlsmdd, jdict):
     webtlsmdd.job_data_set(job_id, "state", "completed")
     webtlsmdd.job_data_set(job_id, "run_end_time", time.time())
 
+    ## send email now that the job is complete
+    send_mail(job_id)
+
 def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.
     """
@@ -173,7 +177,7 @@ def get_job(webtlsmdd):
         jdict = webtlsmdd.job_get_dict_index(i)
         if jdict==False:
             break
-        if jdict.get("state")=="queued":
+        if jdict.get("state")=="running" or jdict.get("state")=="queued":
             break
         i += 1
     if jdict==False:
@@ -192,6 +196,9 @@ def get_job(webtlsmdd):
     ## Job ID and webtlsmdd URL
     tlsmd.append("-j%s" % (job_id))
     tlsmd.append("-x%s" % (WEBTLSMDD))
+
+    ## override PDB ID
+    tlsmd.append("-i%s" % (jdict["structure_id"]))
 
     ## select TLS model
     tls_model = jdict["tls_model"]
@@ -234,6 +241,52 @@ def main():
 
         run_job(webtlsmdd, jdict)
 
+
+MAIL_MESSAGE = """\
+Subject: Your TLSMD Job <JOB_ID> is Complete
+
+This is a automated message sent to you my the TLS Motion 
+Determination (TLSMD) Server to inform you the analysis of the structure
+you submitted is complete.  The link below will take you directly
+to the completed analysis:
+
+http://skuld.bmsc.washington.edu<ANALYSIS_URL>
+
+"""
+
+def send_mail(job_id):
+    webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=1)
+
+    jdict = webtlsmdd.job_get_dict(job_id)
+    if jdict==False:
+        print "Unable to find Job ID %s" % (job_id)
+        return
+
+    email = jdict.get("email", "")
+    if len(email)==0:
+        print "No email address"
+        return
+
+    analysis_url = jdict.get("analysis_url", "")
+    if len(analysis_url)==0:
+        print "Invalid analysis URL"
+        return
+
+    message = MAIL_MESSAGE
+    message = message.replace("<JOB_ID>", job_id)
+    message = message.replace("<ANALYSIS_URL>", analysis_url)
+
+    ## send mail using msmtp
+    stdout, stdin = popen2.popen4([MSMTP, email])
+    stdin.write(message)
+    stdout.close()
+    stdin.close()
+
+    log_write("Sent Mail to %s" % (email))
+
 if __name__=="__main__":
-    main()
+    if len(sys.argv)==2:
+        send_mail(sys.argv[1])
+    else:
+        main()
 

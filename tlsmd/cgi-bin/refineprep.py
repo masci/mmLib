@@ -9,6 +9,7 @@ import sys
 import time
 import socket
 import string
+import glob
 
 import xmlrpclib
 import cgitb; cgitb.enable()
@@ -208,14 +209,21 @@ class RefinePrepPage(Page):
         ## input structure
         pdbin  = "%s.pdb" % (struct_id)
         if not os.path.isfile(pdbin):
-            RefinePrepError("Input PDB File %s Not Found" % (pdbin))
+            pdbin = None
+            for pdbx in glob.glob("*.pdb"):
+                if len(pdbx)==8:
+                    struct_id = pdbx[:4]
+                    pdbin = pdbx
+                    break
+            if pdbin==None:	
+                raise RefinePrepError("Input PDB File %s Not Found" % (pdbin))
 
         ## the per-chain TLSOUT files from TLSMD must be merged
         tlsins = []
         for chain_id, ntls in chain_ntls:
             tlsin = "%s_CHAIN%s_NTLS%d.tlsout" % (struct_id, chain_id, ntls)
             if not os.path.isfile(tlsin):
-                RefinePrepError("Input TLSIN File %s Not Found" % (tlsin))
+                raise RefinePrepError("Input TLSIN File %s Not Found" % (tlsin))
             tlsins.append(tlsin)
 
         ## form unique pdbout/tlsout filenames

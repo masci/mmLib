@@ -683,7 +683,26 @@ class QueuePage(Page):
             return 'private'
         return '<a href="webtlsmd.cgi?page=%s&job_id=%s">%s</a>' % (
             page, jdict["job_id"] ,jdict["job_id"])
-                        
+    
+    def chain_size_string(self, jdict):
+        if jdict.has_key("chains")==False:
+            return "---"
+
+        listx = []
+        for cdict in jdict["chains"]:
+            listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
+
+	strx = ''
+	while len(listx)>0:
+            l3 = listx[:5]
+	    listx = listx[5:]
+
+	    strx += string.join(l3, " ")
+	    if len(listx)>0:
+                strx += '<br>'
+	
+	return '<font size="-10">%s</font>' % (strx)
+	
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
         """
@@ -706,6 +725,7 @@ class QueuePage(Page):
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
+	x += '<th><font size="-5">Chain:Num Res</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '<th><font size="-5">Currently Processing</font></th>'
         x += '<th><font size="-5">Processing Time<br>Used (HH:MM.SS)</font></th>'
@@ -716,6 +736,7 @@ class QueuePage(Page):
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
+	    x += '<td>%s</td>' % (self.chain_size_string(jdict))
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
             tls_seg = 'Chain <b>%s</b> Residues <b>%s-%s</b>' % (
@@ -733,7 +754,7 @@ class QueuePage(Page):
             x += '</tr>'
         else:
 	    x += '<tr>'
-	    x += '<td colspan="5" align="center">'
+	    x += '<td colspan="6" align="center">'
 	    x += 'No Jobs Running'
 	    x += '</td>'
 	    x += '</tr>'
@@ -755,6 +776,7 @@ class QueuePage(Page):
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
+	x += '<th><font size="-5">Chain:Num Res</font></th>'
         x += '<th><font size="-5">Submission Date</font></th>'
         x += '</tr>'
 
@@ -763,13 +785,14 @@ class QueuePage(Page):
             
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
+            x += '<td>%s</td>' % (self.chain_size_string(jdict))	
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
 
         if len(queued_list)==0:
 	    x += '<tr>'
-	    x += '<td colspan="3" align="center">'
+	    x += '<td colspan="4" align="center">'
 	    x += 'No Jobs Queued'
 	    x += '</td>'
 	    x += '</tr>'
@@ -946,7 +969,11 @@ SUBMIT1_NOTE = """\
 Analysis of large structures is
 omputationally expensive, so you may have to wait hours to days for
 the server to generate a complete analysis depending on how
-heavily it is loaded.
+heavily it is loaded.<br><br>
+<b>We are currently not accepting submissions of structures containing
+chains with more than 700 residues due to the length of time they take
+to process.</b>  We hope to add more computers to our computational 
+cluster to handle large structures at some point in the future.
 """
 
 class Submit1Page(Page):
@@ -1136,6 +1163,11 @@ class Submit2Page(Page):
             cdict["desc"]     = cb_desc
             cdict["preview"]  = cb_preview
             cdict["selected"] = True
+
+        if largest_chain_seen>700:
+            webtlsmdd.job_delete(job_id)
+	    strx = '<p>Your submitted structure contained a chain exceeding the 700 residue limit</p>'
+            raise SubmissionException(strx)
 
         webtlsmdd.job_data_set(job_id, "chains", chains)
 
