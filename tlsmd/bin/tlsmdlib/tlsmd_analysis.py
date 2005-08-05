@@ -235,7 +235,6 @@ class TLSGraphChainHybrid(TLSGraphChain):
             centroid += xmlrpc_chain[ia]["position"]
         centroid /= num_atoms
 
-        print "lsq_fit_segment centroid = ", centroid
 
         ## SOLVE ISOTROPIC AND ANISOTROPIC TLS MODELs
         A_ISOW = zeros((num_atoms, 13), Float)
