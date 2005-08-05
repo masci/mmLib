@@ -1,8 +1,12 @@
 TARGET    =tlsmdmodule.so
 INCLUDES  =-I/home/jpaint/local/include/python2.4
 DEFINES   =-D_UNIX
-CFLAGS 	  =-g -march=pentium4 -O3 -Wall
+CFLAGS 	  =-m64 -fPIC -g -O3 -Wall
 CC 	  =gcc
+
+LAPACK    = /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a
+ATLAS     = -L/home/tlsmd/src/ATLAS/lib/Linux_HAMMER64SSE2/ -llapack -lf77blas -lcblas -latlas
+
 
 SOURCE 	= tlsmdmodule.c
 OBJ	= tlsmdmodule.o
@@ -13,7 +17,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 $(TARGET): $(OBJ)
-	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a -lg2c -lm
+	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(ATLAS) -lg2c -lm
 
 clean:
 	rm -f *.o $(TARGET)
