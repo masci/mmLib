@@ -15,10 +15,13 @@ from misc     import *
 from datafile import TLSMDFile
 from hcsssp   import HCSSSP
 
-## spiffy new C tlsmdmodule for MINPACK minimization
-#sys.path.append("/home/jpaint/tlsmd/src")
-#import tlsmdmodule
-USE_TLSMDMODULE = False
+## spiffy new C tlsmdmodule
+try:
+    import tlsmdmodule
+except ImportError:
+    USE_TLSMDMODULE = False
+else:
+    USE_TLSMDMODULE = True
 
 ###############################################################################
 ## Hacked Global Options
@@ -232,6 +235,8 @@ class TLSGraphChainHybrid(TLSGraphChain):
             centroid += xmlrpc_chain[ia]["position"]
         centroid /= num_atoms
 
+        print "lsq_fit_segment centroid = ", centroid
+
         ## SOLVE ISOTROPIC AND ANISOTROPIC TLS MODELs
         A_ISOW = zeros((num_atoms, 13), Float)
         B_ISOW = zeros(num_atoms, Float)
@@ -252,12 +257,9 @@ class TLSGraphChainHybrid(TLSGraphChain):
             ## w is actually w^2
             w = atm_desc["sqrt_w"]
 
-            ## uiso
-            u_iso = atm_desc["u_iso"]
-
             ## set the A Matrix, B vector
             set_TLSiso_A(A_ISOW, i, 0, x, y, z, w)
-            set_TLSiso_b(B_ISOW, i, u_iso, w)
+            set_TLSiso_b(B_ISOW, i, atm_desc["u_iso"], w)
 
             set_TLS_A(A_ANISOW, i*6, 0, x, y, z, w)
             set_TLS_b(B_ANISOW, i*6,
@@ -270,10 +272,11 @@ class TLSGraphChainHybrid(TLSGraphChain):
         ## calculate the lsq residual from the isotropic model
         D_ISOW = U_ISOW - B_ISOW
         fit_info["lsq_residual"] = dot(D_ISOW, D_ISOW)
+
+
         
         ## everything else comes from the anisotropic model
         X_ANISO = solve_TLS_Ab(A_ANISOW, B_ANISOW)
-        U_ISOW  = matrixmultiply(A_ANISOW, X_ANISO)
 
         T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
              S1133, S2211, S12, S13, S23, S21, S31, S32 = (
@@ -353,11 +356,6 @@ class TLSGraphChainHybrid(TLSGraphChain):
                 fit_info["num_atoms"], fit_info["lsq_residual"])
 
         return fit_info
-
-
-
-
-
 
 
 class TLSGraphChainFastHybrid(TLSGraphChain):
@@ -506,15 +504,6 @@ class TLSGraphChainFastHybrid(TLSGraphChain):
                 fit_info["num_atoms"], fit_info["lsq_residual"])
 
         return fit_info
-
-
-
-
-
-
-
-
-
 
 
 class TLSGraphChainAnisotropic(TLSGraphChain):
@@ -917,7 +906,10 @@ def NewTLSGraphChain0(tls_model):
     requested TLS model.
     """
     if tls_model=="HYBRID":
-        return TLSGraphChainFastHybrid()
+        if USE_TLSMDMODULE==True:
+            return TLSGraphChainFastHybrid()
+        else:
+            return TLSGraphChainHybrid()
     if tls_model=="ANISO":
         return TLSGraphChainAnisotropic()
     if tls_model=="PLUGIN":

@@ -11,17 +11,22 @@
 #include <pthread.h>
 
 
+/* LAPACK */
+extern void
+dgesdd_(char *, int*, int*, double*, int*, double*, double*,
+	int *, double*, int*, double*, int*, int*, int*);
+
+
 /* macros */
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
 
 /* set to 1 for extra debugging informaiton */
-#define _DEBUG 0
+/* #define _DEBUG 0 */
 
 
-/* 
- * Anisotropic ADP Parameters: U
- */
+
+/* Anisotropic ADP Parameters: U */
 
 /* anisotropic U tensor parameter labels and indexes */
 #define U11 0
@@ -41,9 +46,7 @@ static char *U_PARAM_NAMES[] = {
 };
 
 
-/*
- * Isotropic TLS Model
- */
+/* Isotropic TLS Model */
 #define ITLS_T     0
 #define ITLS_L11   1
 #define ITLS_L22   2
@@ -57,9 +60,7 @@ static char *U_PARAM_NAMES[] = {
 #define ITLS_S31   10
 #define ITLS_S23   11
 #define ITLS_S32   12
-
 #define ITLS_NUM_PARAMS 13
-
 static char *ITLS_PARAM_NAMES[] = {
   "t",
   "l11", "l22", "l33", "l12", "l13", "l23",
@@ -67,71 +68,7 @@ static char *ITLS_PARAM_NAMES[] = {
 };
 
 
-/* Sets the one row of matrix A starting at A[i,j] with the istropic
- * TLS model coefficents for a atom located at t position x, y, z with
- * least-squares weight w.  Matrix A is filled to coumn j+12.
- *
- * The matrix A(m,n) is filled in FORTRAN-style, that is, assuming
- * a column-major memory layout.  That's because, athough the
- * matrix is contructed in C, the SVD subroutine from LAPACK is 
- * written in FORTRAN.
- *
- */
-static inline void
-set_ITLS_Ab(double *A, double *b, int m, int n, int row,
-	    double uiso, double x, double y, double z, double w)
-{
-#define FA(_m, _n) A[_m + (m * _n)]
-
-  int i, sz;
-  double xx, yy, zz, xy, xz, yz;
-   
-  xx = x*x;
-  yy = y*y;
-  zz = z*z;
-  xy = x*y;
-  xz = x*z;
-  yz = y*z;
-
-  /* array size sz */
-  sz = m * n;
-
-  /* zero out array A */
-  for (i = 0; i<=sz; i++) {
-    A[i] = 0.0;
-  }
-
-  /* set b */
-  b[row] = w * uiso;
-
-  /* T iso */
-  FA(row, ITLS_T) = w * 1.0;
-
-  /* l11, l22, l33, l12, l13, l23 */
-  FA(row, ITLS_L11) = w * ((zz + yy) / 3.0);
-  FA(row, ITLS_L22) = w * ((xx + zz) / 3.0);
-  FA(row, ITLS_L33) = w * ((xx + yy) / 3.0);
-  FA(row, ITLS_L12) = w * ((-2.0 * xy) / 3.0);
-  FA(row, ITLS_L13) = w * ((-2.0 * xz) / 3.0);
-  FA(row, ITLS_L23) = w * ((-2.0 * yz) / 3.0);
-
-  FA(row, ITLS_S12) = w * ((-2.0 * z) / 3.0);
-  FA(row, ITLS_S21) = w * (( 2.0 * z) / 3.0);
-
-  FA(row, ITLS_S13) = w * (( 2.0 * y) / 3.0);
-  FA(row, ITLS_S31) = w * ((-2.0 * y) / 3.0);
-
-  FA(row, ITLS_S23) = w * ((-2.0 * x) / 3.0);
-  FA(row, ITLS_S32) = w * (( 2.0 * x) / 3.0);
-}
-
-
-
-/* 
- * Anisotropic TLS Model
- */
-
-/* anisotropic TLS model parameter indexes and labels */
+/* Anisotropic TLS model parameter indexes and labels */
 #define ATLS_T11   0
 #define ATLS_T22   1
 #define ATLS_T33   2
@@ -152,14 +89,139 @@ set_ITLS_Ab(double *A, double *b, int m, int n, int row,
 #define ATLS_S21   17
 #define ATLS_S31   18
 #define ATLS_S32   19
-
 #define ATLS_NUM_PARAMS 20
-
 static char *ATLS_PARAM_NAMES[] = {
   "t11", "t22", "t33", "t12", "t13", "t23",
   "l11", "l22", "l33", "l12", "l13", "l23",
   "s2211", "s1133", "s12", "s13", "s23", "s21", "s31", "s32"
 };
+
+
+/* Atom structure 
+ * structure used to store the information of one atom 
+ */
+#define NAME_LEN     8
+#define FRAG_ID_LEN  8
+struct Atom {
+  char    name[NAME_LEN];
+  char    frag_id[FRAG_ID_LEN];
+  double  x;
+  double  y;
+  double  z;
+  double  u_iso;
+  double  U[6];
+  double  sqrt_weight;
+};
+
+
+/* structure used to store information on the chain the algorithm
+ * is currently fitting; this structure contains the dynamically 
+ * allocated memory used by the LAPACK SVD routine DGESDD and therefore
+ * must be allocated and freed with new_chain/delete_chain
+ */
+struct Chain {
+  struct Atom *atoms;
+  int          num_atoms;
+  
+  double *A;
+  double *Aw;
+  double *b;
+  double *bw;
+  double *bc;
+  double *S;
+  double *U;
+  double *VT;
+  double *WORK;
+  int     LWORK;
+  int    *IWORK;
+};
+
+
+/* context structure for fitting one TLS segment using the 
+ * isotropic TLS model
+ */
+struct ITLSFitContext {
+  struct Chain      *chain;                 /* pointer to Chain structure */
+
+  int                istart;                /* index of first atom in 
+					     * chain->atoms */
+  int                iend;                  /* index of last atom in 
+					     * chain->atoms */
+
+  double             origin_x;              /* origin of TLS tensors */
+  double             origin_y;
+  double             origin_z;
+
+  double             ITLS[ITLS_NUM_PARAMS]; /* isotropic TLS model params */
+  double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
+  double             ilsqr;                 /* least-squares residual of
+					     *  isotropic TLS model */
+};
+
+
+/* zero a M(m,n) double matrix */
+inline void
+zero_dmatrix(double *M, int m, int n)
+{
+  int i, sz;
+
+  sz = m * n;
+  for (i = 0; i < sz; i++) {
+    M[i] = 0.0;
+  }
+}
+
+
+/* Sets the one row of matrix A starting at A[i,j] with the istropic
+ * TLS model coefficents for a atom located at t position x, y, z with
+ * least-squares weight w.  Matrix A is filled to coumn j+12.
+ *
+ * The matrix A(m,n) is filled in FORTRAN-style, that is, assuming
+ * a column-major memory layout.  That's because, athough the
+ * matrix is contructed in C, the SVD subroutine from LAPACK is 
+ * written in FORTRAN.
+ *
+ */
+inline void
+set_ITLS_Ab(double *A, double *b, int m, int n, int row,
+	    double uiso, double x, double y, double z, double w)
+{
+#define FA(__i, __j) A[__i + (m * __j)]
+
+  double xx, yy, zz, xy, xz, yz;
+   
+  xx = x*x;
+  yy = y*y;
+  zz = z*z;
+  xy = x*y;
+  xz = x*z;
+  yz = y*z;
+
+  /* set b */
+  b[row] = w * uiso;
+
+  /* T iso */
+  FA(row, ITLS_T) = w * 1.0;
+
+  /* l11, l22, l33, l12, l13, l23 */
+  FA(row, ITLS_L11) = w * ((zz + yy) / 3.0);
+  FA(row, ITLS_L22) = w * ((xx + zz) / 3.0);
+  FA(row, ITLS_L33) = w * ((xx + yy) / 3.0);
+
+  FA(row, ITLS_L12) = w * ((-2.0 * xy) / 3.0);
+  FA(row, ITLS_L13) = w * ((-2.0 * xz) / 3.0);
+  FA(row, ITLS_L23) = w * ((-2.0 * yz) / 3.0);
+
+  FA(row, ITLS_S12) = w * ((-2.0 * z) / 3.0);
+  FA(row, ITLS_S21) = w * (( 2.0 * z) / 3.0);
+
+  FA(row, ITLS_S13) = w * (( 2.0 * y) / 3.0);
+  FA(row, ITLS_S31) = w * ((-2.0 * y) / 3.0);
+
+  FA(row, ITLS_S23) = w * ((-2.0 * x) / 3.0);
+  FA(row, ITLS_S32) = w * (( 2.0 * x) / 3.0);
+}
+
 
 /* Sets the six rows of matrix A starting at A[i,j] with the anistropic
  * TLS model coefficents for a atom located at t position x, y, z with
@@ -170,13 +232,13 @@ static char *ATLS_PARAM_NAMES[] = {
  * matrix is contructed in C, the SVD subroutine from LAPACK is 
  * written in FORTRAN.
  */
-static inline void
+inline void
 set_ATLS_Ab(double *A, double *b, int m, int n, int row,
 	    double U[6], double x, double y, double z, double w)
 {
-#define FA(_m, _n) A[_m + (m * _n)]
+#define FA(__i,__j) A[__i + (m * __j)]
 
-  int i, t, sz, rowU11, rowU22, rowU33, rowU12, rowU13, rowU23;
+  int rowU11, rowU22, rowU33, rowU12, rowU13, rowU23;
   double xx, yy, zz, xy, xz, yz;
   
   xx = x*x;
@@ -185,14 +247,6 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row,
   xy = x*y;
   xz = x*z;
   yz = y*z;
-
-  /* array size sz */
-  sz = m * n;
-
-  /* zero out array A */
-  for (i = 0; i<=sz; i++) {
-    A[i] = 0.0;
-  }
 
   /* calculate row indexes */
   rowU11 = row;
@@ -259,142 +313,39 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row,
   FA(rowU23, ATLS_S1133) = w *  -x;
   FA(rowU23, ATLS_S12)   = w *   y;
   FA(rowU23, ATLS_S13)   = w *  -z;
+
+#undef FA
 }
 
 
-/* calculate the anistropic TLS model prediction of anisiotropic
- * ADP U at position x, y, z
+/* solve for x given the singular value decomposition of a matrix
+ * into U, S, and Vt 
  */
-static void
-calc_ATLS_U(double ATLS[ATLS_NUM_PARAMS], 
-	    double x, double y, double z, 
-	    double U[6]) 
-{
-  double xx, yy, zz, xy, yz, xz;
-
-  xx = x * x;
-  yy = y * y;
-  zz = z * z;
-  xy = x * y;
-  yz = y * z;
-  xz = x * z;
-    
-  U[U11] =         
-            ATLS[ATLS_T11]
-    +       ATLS[ATLS_L22] * zz
-    +       ATLS[ATLS_L33] * yy
-    - 2.0 * ATLS[ATLS_L23] * yz
-    - 2.0 * ATLS[ATLS_S31] * y
-    + 2.0 * ATLS[ATLS_S21] * z;
-
-  U[U22] =
-            ATLS[ATLS_T22]
-    +       ATLS[ATLS_L11] * zz
-    +       ATLS[ATLS_L33] * xx
-    - 2.0 * ATLS[ATLS_L13] * xz
-    - 2.0 * ATLS[ATLS_S12] * z
-    + 2.0 * ATLS[ATLS_S32] * x;
-
-  U[U33] =
-            ATLS[ATLS_T33]
-    +       ATLS[ATLS_L11] * yy
-    +       ATLS[ATLS_L22] * xx
-    - 2.0 * ATLS[ATLS_L12] * xy
-    - 2.0 * ATLS[ATLS_S23] * x
-    + 2.0 * ATLS[ATLS_S13] * y;
-
-  U[U12] =
-            ATLS[ATLS_T12]
-    -       ATLS[ATLS_L33]   * xy
-    +       ATLS[ATLS_L23]   * xz
-    +       ATLS[ATLS_L13]   * yz
-    -       ATLS[ATLS_L12]   * zz
-    +       ATLS[ATLS_S2211] * z
-    +       ATLS[ATLS_S31]   * x
-    -       ATLS[ATLS_S32]   * y;
-
-  U[U13] =
-            ATLS[ATLS_T13]
-    -       ATLS[ATLS_L22]   * xz
-    +       ATLS[ATLS_L23]   * xy
-    -       ATLS[ATLS_L13]   * yy
-    +       ATLS[ATLS_L12]   * yz
-    +       ATLS[ATLS_S1133] * y
-    +       ATLS[ATLS_S23]   * z
-    -       ATLS[ATLS_S21]   * x;
-
-  U[U23] =
-            ATLS[ATLS_T23]
-    -       ATLS[ATLS_L11]   * yz
-    -       ATLS[ATLS_L23]   * xx
-    +       ATLS[ATLS_L13]   * xy
-    +       ATLS[ATLS_L12]   * xz
-    -      (ATLS[ATLS_S2211] + ATLS[ATLS_S1133]) * x
-    +       ATLS[ATLS_S12]   * y
-    -       ATLS[ATLS_S13]   * z;
-}
-
-
-/* Common routines for the isotropic and ansiotropic TLS segment
- * fitting engine
- */
-#define NAME_LEN     8
-#define FRAG_ID_LEN  8
-
-/* structure used to store the information of one atom */
-struct Atom {
-  char    name[NAME_LEN];
-  char    frag_id[FRAG_ID_LEN];
-  double  x;
-  double  y;
-  double  z;
-  double  u_iso;
-  double  U[6];
-  double  weight;
-};
-
-/* structure used to store information on the chain the algorithm
- * is currently fitting; this structure contains the dynamically 
- * allocated memory used by the LAPACK SVD routine DGESDD and therefore
- * must be allocated and freed with new_chain/delete_chain
- */
-struct Chain {
-  struct Atom *atoms;
-  int          num_atoms;
-  
-  double *A;
-  double *x;
-  double *b;
-  double *S;
-  double *U;
-  double *VT;
-  double *WORK;
-  int     LWORK;
-  int    *IWORK;
-};
-
-
-void 
-solve_SVD(double *A,
-	  int m,
+static void 
+solve_SVD(int m,
 	  int n,
 	  double *x,
 	  double *b,
 	  double *U,
 	  double *S,
-	  double *VT)
+	  double *VT,
+	  double *WORK)
 {
-#define FU(_m, _n) U[_m + (m * _n)]
-#define FVT(_m, _n) U[_m + (m * _n)]
+#define FU(__i, __j)   U[__i + (m * __j)]
+#define FVT(__i, __j)  VT[__i + (n * __j)]
 
   int i, j;
-  double smax, scutoff;
+  double smax, scutoff, dtmp;
 
-  for (smax = S[0], i = 1; i <= n-1; i++) {
+  /* invert the diagonal matrix S in place, and filter out any
+   * unusually small singular values
+   */
+
+  for (smax = S[0], i = 1; i < n; i++) {
     smax = MAX(smax, S[i]);
   }
   scutoff = smax * 1E-12;
-  for (i = 0; i <= n-1; i++) {
+  for (i = 0; i < n; i++) {
     if (S[i] > scutoff) {
       S[i] = 1.0 / S[i];
     } else {
@@ -402,32 +353,129 @@ solve_SVD(double *A,
     }
   }
 
-  /* matrix multiply inverse S(n,n) (diagonal matrix) 
-   * by the transpose of U(m,n) and store the result in U
+  /* matrix multiply Ut(n,m)*b(m) and store the result in x
    */
-  for (i = 0; i <= m-1; i++) {
-    for (j = 1; j <= n-1; j++) {
-      FU(i,j) = S[j] * FU(i,j);
+  for (i = 0; i < n; i++) {
+    dtmp = 0.0;
+    for (j = 0; j < m; j++) {
+      dtmp += FU(j,i) * b[j];
     }
+    WORK[i] = dtmp;
   }
 
+  /* matrix multiply inverse-S by Ut*b */
+  for (i = 0; i < n; i++) {
+    WORK[i] *= S[i];
+  }
 
+  /* matrix multiple V*x */
+  for (i = 0; i < n; i++) {
+    dtmp = 0.0;
+    for (j = 0; j < n; j++) {
+      dtmp += FVT(j,i) * WORK[j];
+    }
+    x[i] = dtmp;
+  }
 
+#undef FU
+#undef FVT
 }
+
+
+/* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
+ */
+static void
+calc_bc_lsqr(double *A,
+	     int m,
+	     int n,
+	     double *x,
+	     double *b,
+	     double *bc,
+	     double *lsqr)
+{
+#define FA(__i,__j)   A[__i + (m * __j)]
+
+  int i, j;
+  double dtmp, dltmp;
+
+  dltmp = 0.0;
+
+  /* now we have solved for x; calculate bc (b-calc) */
+  for (i = 0; i < m; i++) {
+    dtmp = 0.0;
+    
+    for (j = 0; j < n; j++) {
+      dtmp += FA(i,j) * x[j];
+    }
+    
+    bc[i] = dtmp;
+
+    /* sum the lsqr residual (b - bc) */
+    dtmp = b[i] - bc[i];
+    dltmp += dtmp * dtmp;
+  }
+
+  /* return the least squares residual in lsqr */
+  *lsqr = dltmp;
+
+#undef FA
+}
+
+
+/* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
+ */
+static void
+calc_lsqr(double *A,
+	  int m,
+	  int n,
+	  double *x,
+	  double *b,
+	  double *lsqr)
+{
+#define FA(__i,__j)   A[__i + (m * __j)]
+
+  int i, j;
+  double bcalc, dtmp, dltmp;
+
+  dltmp = 0.0;
+
+  /* now we have solved for x; calculate bc (b-calc) */
+  for (i = 0; i < m; i++) {
+    
+    bcalc = 0.0;
+    for (j = 0; j < n; j++) {
+      bcalc += FA(i,j) * x[j];
+    }
+
+    /* sum the lsqr residual (b - bc) */
+    dtmp = b[i] - bcalc;
+    dltmp += dtmp * dtmp;
+  }
+
+  /* return the least squares residual in lsqr */
+  *lsqr = dltmp;
+
+#undef FA
+}
+
 
 /* frees all memory from a allocated struct Chain 
  */
-void
+static void
 delete_chain(struct Chain *chain)
 {
   if (chain->atoms != NULL)
     free(chain->atoms);
   if (chain->A != NULL)
     free(chain->A);
-  if (chain->x != NULL)
-    free(chain->x);
+  if (chain->Aw != NULL)
+    free(chain->Aw);
   if (chain->b != NULL)
     free(chain->b);
+  if (chain->bw != NULL)
+    free(chain->bw);
+  if (chain->bc != NULL)
+    free(chain->bc);
   if (chain->S != NULL)
     free(chain->S);
   if (chain->U != NULL)
@@ -445,10 +493,11 @@ delete_chain(struct Chain *chain)
  * enough to accomodate the SVD solution of the TLS equations for
  * up to num_atoms using DGESDD from LAPACK
  */
-struct Chain *
+static struct Chain *
 new_chain(int num_atoms)
 {
-  int num_rows, num_cols, nu, nvt, info;
+  char jobz;
+  int num_rows, num_cols, info;
   double tmp_WORK;
   struct Chain *chain;
 
@@ -464,13 +513,15 @@ new_chain(int num_atoms)
   }
 
   chain->num_atoms = num_atoms;
-  chain->A = NULL;
-  chain->x = NULL;
-  chain->b = NULL;
-  chain->S = NULL;
-  chain->U = NULL;
-  chain->VT = NULL;
-  chain->WORK = NULL;
+  chain->A     = NULL;
+  chain->Aw    = NULL;
+  chain->b     = NULL;
+  chain->bw    = NULL;
+  chain->bc    = NULL;
+  chain->S     = NULL;
+  chain->U     = NULL;
+  chain->VT    = NULL;
+  chain->WORK  = NULL;
   chain->IWORK = NULL;
 
   /* allocate memory blocks */
@@ -486,9 +537,9 @@ new_chain(int num_atoms)
     goto error;
   }
 
-  chain->x = malloc(sizeof(double) * num_cols);
-  if (chain->x == NULL) {
-    printf("new_chain: chain->x\n");
+  chain->Aw = malloc(sizeof(double) * (num_rows * num_cols));
+  if (chain->Aw == NULL) {
+    printf("new_chain: chain->Aw\n");
     goto error;
   }
 
@@ -498,43 +549,50 @@ new_chain(int num_atoms)
     goto error;
   }
 
-  chain->S = malloc(sizeof(double) * MIN(num_rows, num_cols));
+  chain->bw = malloc(sizeof(double) * num_rows);
+  if (chain->bw == NULL) {
+    printf("new_chain: chain->bw\n");
+    goto error;
+  }
+
+  chain->bc = malloc(sizeof(double) * num_rows);
+  if (chain->bc == NULL) {
+    printf("new_chain: chain->bc\n");
+    goto error;
+  }
+
+  chain->S = malloc(sizeof(double) * num_cols);
   if (chain->S == NULL) {
     printf("new_chain: chain->S\n");
     goto error;
   }
 
-  /* nu = min(n,m)
-   * u = Numeric.zeros((nu, m), t)
-   */
-  nu = MIN(num_rows, num_cols);
-  chain->U = malloc(sizeof(double) * (nu * num_rows));
+  /*  U(num_cols, num_rows) */
+  chain->U = malloc(sizeof(double) * (num_cols * num_rows));
   if (chain->U == NULL) {
     printf("new_chain: chain->U\n");
     goto error;
   }
   
-  /* nvt = min(n,m)
-   * vt = Numeric.zeros((n, nvt), t)
-   */
-  nvt = MIN(num_rows, num_cols);
-  chain->VT = malloc(sizeof(double) * (num_cols * nvt));
+  /* V(num_cols, num_cols) */
+  chain->VT = malloc(sizeof(double) * (num_cols * num_cols));
   if (chain->VT == NULL) {
     printf("new_chain: chain->VT\n");
     goto error;
   }
 
-  /* iwork = Numeric.zeros((8*min(m,n),), 'i')
-   */
-  chain->IWORK = malloc(sizeof(int) * (8 * MIN(num_rows, num_cols)));
+  /* iwork = Numeric.zeros((8*min(m,n),), 'i') */
+  chain->IWORK = malloc(sizeof(int) * (8 * num_cols));
   if (chain->IWORK == NULL) {
     printf("new_chain: chain->IWORK\n");
     goto error;
   }
 
   /* calculate the ideal size of the WORK memory block */
+  jobz = 'S';
   chain->LWORK = -1;
-  dgesdd_("S",  
+  info = 0;
+  dgesdd_(&jobz,  
 	  &num_rows,
 	  &num_cols, 
 	  chain->A, 
@@ -543,7 +601,7 @@ new_chain(int num_atoms)
 	  chain->U,
 	  &num_rows, 
 	  chain->VT,
-	  &nvt,
+	  &num_cols,
 	  &tmp_WORK, 
 	  &chain->LWORK,
 	  chain->IWORK,
@@ -573,32 +631,10 @@ new_chain(int num_atoms)
 }
 
 
-/* context structure for fitting one TLS segment using the 
- * isotropic TLS model
- */
-struct ITLSFitContext {
-  struct Chain      *chain;                 /* pointer to Chain structure */
-
-  int                istart;                /* index of first atom in 
-					     * chain->atoms */
-  int                iend;                  /* index of last atom in 
-					     * chain->atoms */
-
-  double             origin_x;              /* origin of TLS tensors */
-  double             origin_y;
-  double             origin_z;
-
-  double             ITLS[ITLS_NUM_PARAMS]; /* isotropic TLS model params */
-  double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
-  double             ilsqr;                 /* least-squares residual of
-					     *  isotropic TLS model */
-};
-
-
 /* calculates the centroid of the atoms indexed between istart and iend
  * then returns the centroid coordinates in x, y, z
  */
-void
+static void
 calc_centroid(struct Atom *atoms, int istart, int iend, 
 	      double *x, double *y, double *z)
 {
@@ -628,16 +664,16 @@ calc_centroid(struct Atom *atoms, int istart, int iend,
   }
 }
 
-void
+static void
 fit_segment_ITLS(struct ITLSFitContext *itls_context)
 {
-  int i, j, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
+  char jobz;
+  int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
+  int natmp;
 
-  int nu, nvt;
+  double origin_x, origin_y, origin_z;
 
-  double ox, oy, oz, lsqr;
-
-  double *A, *b;
+  double *A, *Aw, *b, *bw;
   struct Atom *atoms;
 
   /* calculate the number of atoms to be fit */
@@ -659,88 +695,143 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
   istart = itls_context->istart;
   iend   = itls_context->iend;
 
-  A = itls_context->chain->A;
-  b = itls_context->chain->b;
+  A  = itls_context->chain->A;
+  Aw = itls_context->chain->Aw;
+  b  = itls_context->chain->b;
+  bw = itls_context->chain->bw;
 
-  ox = itls_context->origin_x;
-  oy = itls_context->origin_y;
-  oz = itls_context->origin_z;
+  origin_x = itls_context->origin_x;
+  origin_y = itls_context->origin_y;
+  origin_z = itls_context->origin_z;
 
-#ifdef _DEBUG
-  printf("fit_segment_ITLS(centrod=(%f, %f, %f))\n", ox, oy, oz);
-#endif
 
-  /* fill in coefficent matrix for the isotropic TLS model */
+  /*
+   * ISOTROPIC TLS MODEL
+   */
   num_rows = num_atoms;
   num_cols = ITLS_NUM_PARAMS;
 
+  zero_dmatrix(Aw, num_rows, num_cols);
+
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(A, 
-		b,
+    set_ITLS_Ab(Aw,
+		bw,
 		num_rows,
 		num_cols, 
 		row,
 		atoms[ia].u_iso,
-		atoms[ia].x - ox,
-		atoms[ia].y - oy,
-		atoms[ia].z - oz,
-		atoms[ia].weight);
+		atoms[ia].x - origin_x,
+		atoms[ia].y - origin_y,
+		atoms[ia].z - origin_z,
+		atoms[ia].sqrt_weight);
   }
 
+  /* make a copy of Aw into A because dgesdd_ destroys Aw */
+  sz = num_rows * num_cols;
+  for (i = 0; i < sz; i++) {
+    A[i] = Aw[i];
+  }
 
   /* solve for isotropic TLS model */
-  nu = MIN(num_rows, num_cols);
-  nvt = MIN(num_rows, num_cols);
-  dgesdd_("S",  
+  jobz = 'S';
+  dgesdd_(&jobz,  
 	  &num_rows,
 	  &num_cols, 
-	  itls_context->chain->A, 
+	  itls_context->chain->Aw,
 	  &num_rows,
 	  itls_context->chain->S, 
 	  itls_context->chain->U,
-	  &num_rows, 
+	  &num_rows,
 	  itls_context->chain->VT,
-	  &nvt,
+	  &num_cols,
 	  itls_context->chain->WORK, 
 	  &itls_context->chain->LWORK,
 	  itls_context->chain->IWORK,
 	  &info);
 
+  if (info != 0) {
+    printf("DGESDD ERROR(isotropic): info = %d\n", info);
+  }
 
-  /* fill in coefficent matrix for the anisotropic TLS model */
+  solve_SVD(num_rows,
+	    num_cols,
+	    itls_context->ITLS,
+	    itls_context->chain->bw,
+	    itls_context->chain->U,
+	    itls_context->chain->S,
+	    itls_context->chain->VT,
+	    itls_context->chain->WORK);
+
+  /* now we have solved for x; now we can calculate the 
+   * weighted residual; remember that A is actually a copy of Aw
+   * residual */
+  calc_lsqr(itls_context->chain->A, 
+	    num_rows, 
+	    num_cols,
+	    itls_context->ITLS,
+	    itls_context->chain->bw,
+	    &itls_context->ilsqr);
+
+
+  /*
+   * ANISOTROPIC TLS MODEL
+   */
   num_rows = num_atoms * 6;
   num_cols = ATLS_NUM_PARAMS;
 
+  zero_dmatrix(Aw, num_rows, num_cols);
+
+  natmp = 0;
   for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-    set_ATLS_Ab(A, 
-		b,
+    natmp += 1;
+
+    set_ATLS_Ab(Aw,
+		bw,
 		num_rows,
 		num_cols,
 		row,
 		atoms[ia].U,
-		atoms[ia].x - ox,
-		atoms[ia].y - oy,
-		atoms[ia].z - oz,
-		atoms[ia].weight);
+		atoms[ia].x - origin_x,
+		atoms[ia].y - origin_y,
+		atoms[ia].z - origin_z,
+		atoms[ia].sqrt_weight);
   }
 
   /* solve for isotropic TLS model */
-  nu = MIN(num_rows, num_cols);
-  nvt = MIN(num_rows, num_cols);
-  dgesdd_("S",  
+  jobz = 'S';
+  dgesdd_(&jobz,  
 	  &num_rows,
 	  &num_cols, 
-	  itls_context->chain->A, 
+	  itls_context->chain->Aw, 
 	  &num_rows,
 	  itls_context->chain->S, 
 	  itls_context->chain->U,
 	  &num_rows, 
 	  itls_context->chain->VT,
-	  &nvt,
+	  &num_cols,
 	  itls_context->chain->WORK, 
 	  &itls_context->chain->LWORK,
 	  itls_context->chain->IWORK,
 	  &info);
+
+  if (info != 0) {
+    printf("DGESDD ERROR(anisotropic): info = %d\n", info);
+  }
+
+  solve_SVD(num_rows, 
+	    num_cols,
+	    itls_context->ATLS,
+	    itls_context->chain->bw,
+	    itls_context->chain->U,
+	    itls_context->chain->S,
+	    itls_context->chain->VT,
+	    itls_context->chain->WORK);
+
+#ifdef _DEBUG
+  printf("fit_segment_ITLS(num_atoms=%d lsqr=%f)\n", 
+	 natmp,
+	 itls_context->ilsqr);
+#endif
 }
 
 
@@ -803,7 +894,6 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
   int i, j, num_atoms;
   char *strx;
-  double xx;
 
   self = (ITLSModel_Object *) py_self;
 
@@ -923,7 +1013,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       if (!PyFloat_Check(tmp)) {
 	goto error;
       }
-      self->chain->atoms[i].weight = PyFloat_AsDouble(tmp);
+      self->chain->atoms[i].sqrt_weight = PyFloat_AsDouble(tmp);
 
 #ifdef _DEBUG
       printf("ATOMS[%d]: %s %s\n", 
@@ -946,7 +1036,7 @@ static PyObject *
 ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
 {
   ITLSModel_Object *self;
-  PyObject *py_floatx, *py_intx, *rdict;
+  PyObject *py_floatx, *rdict;
 
   int i;
   struct ITLSFitContext fit_context;
@@ -978,7 +1068,6 @@ ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
 	 fit_context.istart,
 	 fit_context.iend);
 #endif 
-
   fit_segment_ITLS(&fit_context);
 
   /* construct return dictioary with results */
