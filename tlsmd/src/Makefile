@@ -1,11 +1,11 @@
 TARGET    =tlsmdmodule.so
 INCLUDES  =-I/home/jpaint/local/include/python2.4
 DEFINES   =-D_UNIX
-CFLAGS 	  =-m64 -fPIC -g -O3 -Wall
+CFLAGS 	  =-march=pentium4 -fPIC -g -O3 -Wall
 CC 	  =gcc
 
 LAPACK    = /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a
-ATLAS     = -L/home/tlsmd/src/ATLAS/lib/Linux_HAMMER64SSE2/ -llapack -lf77blas -lcblas -latlas
+ATLAS     = -L/home/jpaint/build/ATLAS/lib/Linux_P4SSE2/ -llapack -lf77blas -lcblas -latlas
 
 
 SOURCE 	= tlsmdmodule.c

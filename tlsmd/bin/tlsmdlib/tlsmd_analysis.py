@@ -1347,6 +1347,19 @@ class TLSChainMinimizer(HCSSSP):
 
             ## filter out the bad TLS segments
             if self.__minimization_filter(tls)==False:
+                if True:
+                    ## experimental code
+                    i, j   = msg["vertex_i"], msg["vertex_j"]
+                    
+                    weight = tls["lsq_residual"]
+                    weight = 0.0
+
+                    if j-i <= MIN_SUBSEGMENT_SIZE+2:
+                        edge = (i, j, weight, (None, ))
+                        E.append(edge)
+
+                    ## end
+
                 continue
 
             weight = tls["lsq_residual"]
