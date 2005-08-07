@@ -1,4 +1,4 @@
-#!/home/tlsmd/local/bin/python
+#!/home/jpaint/local/bin/python
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -17,7 +17,7 @@ import xmlrpclib
 
 ## CONFIGURATION
 VERSION   = "0.0.1"
-WEBTLSMDD = "http://localhost:10100"
+WEBTLSMDD = "http://localhost:20100"
 MSMTP     = "/usr/bin/msmtp"
 
 TLSMD_CMD = [

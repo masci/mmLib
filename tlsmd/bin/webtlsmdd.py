@@ -1,4 +1,4 @@
-#!/home/tlsmd/local/bin/python
+#!/home/jpaint/local/bin/python
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -17,7 +17,7 @@ import SimpleXMLRPCServer
 ## CONFIGURATION
 
 HOST = "localhost"
-PORT = 10100
+PORT = 20100
 FILE = os.path.join(os.environ["TLSMD_ROOT"], "data", "webtlsmdd.db")
 
 ###############################################################################

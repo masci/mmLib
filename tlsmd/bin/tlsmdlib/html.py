@@ -26,7 +26,7 @@ from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
-GNUPLOT_FONT = "/home/tlsmd/tlsmd/fonts/LucidaSansOblique.ttf"
+GNUPLOT_FONT = "/home/jpaint/tlsmd/fonts/LucidaSansOblique.ttf"
 GNUPLOT_FONT_SIZE = "10"
 
 JMOL_DIR     = "../../../jmol"
