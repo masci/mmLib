@@ -84,3 +84,8 @@ line at 0. <b>Warning:</b> If the input structural model was itself generated
 by refinement of a similar TLS model, this will introduce a strong bias towards
 low residual differences.
 """
+
+NO_VALID_CONFIGURATIONS = """\
+TLSMD was unable to optimize this chain.  This is due to known limitation
+in this beta version of TLSMD which will be fixed in a upcoming version.
+"""

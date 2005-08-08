@@ -746,31 +746,13 @@ class TLSSegmentAlignmentPlot(object):
         """Add any fragment_ids found in the tls segments to the master
         self.frag_list and sort it.
         """
-        for tls in tlsopt.tls_list:
-            segment = tls["segment"]
-
-            for frag in segment.iter_fragments():
-                fid = FragmentID(frag.fragment_id)
-
-                if fid not in self.frag_list:
-                    self.frag_list.append(fid)
-
-        self.frag_list.sort()
-
-        ## fill in missing fragments so that gaps are visible
-        try:
-            fid1 = self.frag_list[0]
-            fid2 = self.frag_list[-1]
-        except IndexError:
-            return
-
-        for res_seq in range(fid1.res_seq, fid2.res_seq+1):
-            fid = FragmentID(str(res_seq))
+        for frag in chain.iter_fragments():
+            fid = FragmentID(frag.fragment_id)
             if fid not in self.frag_list:
                 self.frag_list.append(fid)
 
         self.frag_list.sort()
-
+       
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
@@ -819,7 +801,23 @@ class TLSSegmentAlignmentPlot(object):
         
         ## iterate over tls segments, draw and color
         tlsopt = tls_seg_desc["tlsopt"]
-        
+
+        ## draw a gray background for the lengt of the chain;
+        ## the colored TLS segments will be drawn on top of this
+        chain = tls_seg_desc["chainopt"]["chain"]
+        fid1 = FragmentID(chain[0].fragment_id)
+        fid2 = FragmentID(chain[-1].fragment_id)
+
+        i1 = self.frag_list.index(fid1)
+        i2 = self.frag_list.index(fid2)
+
+        x1 = i1       * fwidth
+        x2 = (i2 + 1) * fwidth
+
+        idraw.setink((175, 175, 175))
+        idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
+
+        ## draw colored TLS segments
         for tls in tlsopt.tls_list:
             fid1 = FragmentID(tls["frag_id1"])
             fid2 = FragmentID(tls["frag_id2"])
@@ -930,6 +928,8 @@ class HTMLReport(Report):
 
         ## generate the minimized, segmentd TLS groups for 1 TLS
         ## group up to max_ntls and store it in chainopt["ntls_list"]
+        num_valid_configurations = 0
+        
         for ntls_constraint in range(1, chainopt["max_ntls"]+1):
             tlsopt = minimizer.calc_tls_optimization(ntls_constraint)
 
@@ -938,6 +938,8 @@ class HTMLReport(Report):
             if not tlsopt.is_valid():
                 continue
 
+            num_valid_configurations += 1
+            
             chainopt["ntls_list"].append((ntls_constraint, tlsopt))
             chainopt["tlsopt"][ntls_constraint] = tlsopt
             
@@ -950,6 +952,8 @@ class HTMLReport(Report):
                     tlsi += 1
                 else:
                     tls["color"] = self.colors[0]
+
+        chainopt["num_valid_configurations"] = num_valid_configurations
 
         return chainopt
 
@@ -1021,7 +1025,7 @@ class HTMLReport(Report):
 
         ## write out all TLSGraph reports
         for chainopt in chainopt_list:
-            self.write_tls_graph(chainopt)
+            self.write_tls_chain_optimization(chainopt)
 
         ## a report page comparing the tls group segments of all
         ## chains aginst eachother
@@ -1143,7 +1147,7 @@ class HTMLReport(Report):
 
         return x
 
-    def write_tls_graph(self, chainopt):
+    def write_tls_chain_optimization(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
         begin_chain_timing(chainopt["chain_id"])
@@ -1158,12 +1162,12 @@ class HTMLReport(Report):
              "href":  path })
 
         fil = open(path, "w")
-        fil.write(self.html_tls_graph(chainopt))
+        fil.write(self.html_tls_chain_optimization(chainopt))
         fil.close()
 
         end_chain_timing(chainopt["chain_id"])
         
-    def html_tls_graph(self, chainopt):
+    def html_tls_chain_optimization(self, chainopt):
         """Generates and returns the HTML string report analysis of a
         single TLS graphed chain.
         """
@@ -1174,6 +1178,13 @@ class HTMLReport(Report):
         x += self.html_title(title)
         x += '<center><a href="index.html">Back to Index</a></center>'
         x += '<br>\n'
+
+        ## if there were no valid chain configurations found
+        ## then write out a useful error message
+        if chainopt["num_valid_configurations"]==0:
+            x += '<p>%s</p>' % (NO_VALID_CONFIGURATIONS)
+            x += self.html_foot()
+            return x
 
         ## TLS Segments vs. Residual
         x += self.html_chain_lsq_residual_plot(chainopt)

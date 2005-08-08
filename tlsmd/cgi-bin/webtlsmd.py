@@ -967,7 +967,7 @@ class SubmissionException(Exception):
 
 SUBMIT1_NOTE = """\
 Analysis of large structures is
-omputationally expensive, so you may have to wait hours to days for
+computationally expensive, so you may have to wait hours to days for
 the server to generate a complete analysis depending on how
 heavily it is loaded.<br><br>
 """

@@ -49,6 +49,7 @@ def print_globals():
     print "    USE_UISO_RESIDUAL ==========: %s" % (USE_UISO_RESIDUAL)
     print "    WEIGHT_MODEL ===============: %s" % (WEIGHT_MODEL)
     print "    INCLUDE ATOMS --------------: %s" % (INCLUDE_ATOMS)
+    print "    USE_TLSMDMODULE ============: %s" % (USE_TLSMDMODULE)
     print
 
 def set_globals():
@@ -1351,7 +1352,8 @@ class TLSChainMinimizer(HCSSSP):
                     ## experimental code
                     i, j   = msg["vertex_i"], msg["vertex_j"]
                     weight = 0.0
-                    if j-i <= MIN_SUBSEGMENT_SIZE+4:
+                    sz = j - i 
+                    if sz <= MIN_SUBSEGMENT_SIZE+1:
                         edge = (i, j, weight, (None, ))
                         E.append(edge)
                     ## end
