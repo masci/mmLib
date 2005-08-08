@@ -68,6 +68,9 @@ def run_tlsmd(webtlsmdd, jdict):
     job_id = jdict["job_id"]
     tlsmd  = jdict["tlsmd"]
 
+    ## write the tlsmd execution command out to a file
+    open("tlsmdcmd.txt", "w").write(string.join(tlsmd, " ")+'\n')
+
     stdout, stdin = popen2.popen4(tlsmd)
     stdin.close()
 
