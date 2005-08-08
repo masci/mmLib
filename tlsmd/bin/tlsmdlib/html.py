@@ -814,7 +814,7 @@ class TLSSegmentAlignmentPlot(object):
         x1 = i1       * fwidth
         x2 = (i2 + 1) * fwidth
 
-        idraw.setink((175, 175, 175))
+        idraw.setink((225, 225, 225))
         idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
 
         ## draw colored TLS segments
@@ -1337,9 +1337,12 @@ class HTMLReport(Report):
              'return false;">Animate Screw Displacement with JMol</a>' % (
             jmol_animate_path, JMOL_SIZE, JMOL_SIZE)
 
+        x += '<br>'
+        x += '<a href="%s">Download TLSOUT File for TLSView</a>' % (
+            tlsout_path)
         x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-
-        x += '<a href="%s">TLSOUT File</a>' % (tlsout_path)
+        x += '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5</a>' % (
+            "%s_REFINEMENT_PREP.html" % (self.struct_id))
 
         x += '</center>\n'
 
@@ -1457,6 +1460,21 @@ class HTMLReport(Report):
 
         driver = Raster3DDriver()
 
+        ## XXX: Size hack: some structures have too many chains,
+        ## or are just too large
+        show_chain = {}
+        for chx in self.struct.iter_chains():
+            if chx.chain_id==chain_id:
+                show_chain[chx.chain_id] = True
+                continue
+            
+            if chx.count_fragments()>=500:
+                show_chain[chx.chain_id] = False
+                continue
+            
+            show_chain[chx.chain_id] = True
+        ## end size hack
+
         viewer = GLViewer()
         gl_struct = viewer.glv_add_struct(self.struct)
 
@@ -1482,6 +1500,11 @@ class HTMLReport(Report):
         ## setup base structural visualization
         for gl_chain in gl_struct.glo_iter_children():
             if not isinstance(gl_chain, GLChain):
+                continue
+
+            ## chain is hidden
+            if show_chain.get(gl_chain.chain.chain_id, False)==False:
+                gl_chain.properties.update(visible=False)
                 continue
             
             gl_chain.properties.update(
