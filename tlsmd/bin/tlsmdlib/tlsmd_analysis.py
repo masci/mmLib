@@ -1350,14 +1350,10 @@ class TLSChainMinimizer(HCSSSP):
                 if True:
                     ## experimental code
                     i, j   = msg["vertex_i"], msg["vertex_j"]
-                    
-                    weight = tls["lsq_residual"]
                     weight = 0.0
-
-                    if j-i <= MIN_SUBSEGMENT_SIZE+2:
+                    if j-i <= MIN_SUBSEGMENT_SIZE+4:
                         edge = (i, j, weight, (None, ))
                         E.append(edge)
-
                     ## end
 
                 continue
