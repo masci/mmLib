@@ -724,7 +724,7 @@ class TLSSegmentAlignmentPlot(object):
         self.bg_color   = rgb_f2i((1.0, 1.0, 1.0))
         
         self.frag_list     = []
-        self.segmentations = []
+        self.configurations = []
 
     def add_tls_segmentation(self, chainopt, ntls):
         """Add a TLS optimization to the alignment plot.
@@ -734,7 +734,7 @@ class TLSSegmentAlignmentPlot(object):
         ## get the list of TLS segments for the specified number of
         ## segments (ntls)
         tls_seg_desc = {}
-        self.segmentations.append(tls_seg_desc)
+        self.configurations.append(tls_seg_desc)
         tls_seg_desc["chainopt"] = chainopt
         tls_seg_desc["ntls"]     = ntls
         tls_seg_desc["tlsopt"]   = tlsopt
@@ -757,10 +757,24 @@ class TLSSegmentAlignmentPlot(object):
 
         self.frag_list.sort()
 
+        ## fill in missing fragments so that gaps are visible
+        try:
+            fid1 = self.frag_list[0]
+            fid2 = self.frag_list[-1]
+        except IndexError:
+            return
+
+        for res_seq in range(fid1.res_seq, fid2.res_seq+1):
+            fid = FragmentID(str(res_seq))
+            if fid not in self.frag_list:
+                self.frag_list.append(fid)
+
+        self.frag_list.sort()
+
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
-        if len(self.frag_list)==0 or len(self.segmentations)==0:
+        if len(self.frag_list)==0 or len(self.configurations)==0:
             return False
         
         nfrag = len(self.frag_list)
@@ -774,7 +788,7 @@ class TLSSegmentAlignmentPlot(object):
         pwidth  = fwidth * len(self.frag_list)
             
         ## calculate the totoal height of the image
-        num_plots = len(self.segmentations)
+        num_plots = len(self.configurations)
         iheight = (pheight * num_plots) + (self.spacing * (num_plots-1)) 
 
         ## create new image and 2D drawing object
@@ -784,8 +798,8 @@ class TLSSegmentAlignmentPlot(object):
         idraw.setfill(True)
 
         ## draw plots
-        for i in range(len(self.segmentations)):
-            tls_seg_desc = self.segmentations[i]
+        for i in range(len(self.configurations)):
+            tls_seg_desc = self.configurations[i]
             
             xo = 0
             yo = (i * pheight) + (i * self.spacing)
