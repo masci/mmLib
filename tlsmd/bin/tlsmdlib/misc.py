@@ -54,8 +54,8 @@ GLOBALS = {
     "INCLUDE_ATOMS":       "ALL",
     "MIN_SUBSEGMENT_SIZE": 6,
 
-    "VERSION":        "0.0.1",
-    "RELEASE_DATE":   "June 21, 2005",
+    "VERSION":        "0.2.0",
+    "RELEASE_DATE":   "Aug 10, 2005",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",
 

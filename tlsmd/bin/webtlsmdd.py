@@ -133,7 +133,7 @@ class WebTLSMDDaemon2(object):
 
     def store_dict(self, dbkey, dictx):
         self.db[dbkey] = cPickle.dumps(dictx)
-        self.grh_db.sync()
+        self.db.sync()
     
     def retrieve_dict(self, dbkey):
         try:
@@ -146,7 +146,7 @@ class WebTLSMDDaemon2(object):
         """Retrieves the globals dictionary from the database or
         creates one and returns it if one does not exist.
         """
-        gdict = retrieve_dict("GLOBALS")
+        gdict = self.retrieve_dict("GLOBALS")
 
         ## no global dictionary; create one which is consistant with
         ## the TLSMD jobs in the database
@@ -183,7 +183,7 @@ class WebTLSMDDaemon2(object):
         listx = []
         for dbkey in self.db.keys():
             if dbkey.startswith("TLSMD"):
-                jdict = self.retrieve_jdict(db_key)
+                jdict = self.retrieve_jdict(dbkey)
                 job_num = int(dbkey[5:])
                 listx.append((job_num, jdict))
 
@@ -196,7 +196,7 @@ class WebTLSMDDaemon2(object):
         return job_list
 
     def job_new(self):
-        gdict = retrieve_globals()
+        gdict = self.retrieve_globals()
 
         ## assign job_id
         job_id = "TLSMD%d" % (gdict["next_job_num"])
@@ -231,7 +231,7 @@ class WebTLSMDDaemon2(object):
             return False
 
         del self.db[job_id]
-        self.grh_db.sync()
+        self.db.sync()
         return True
 
     def job_data_set(self, job_id, key, value):
@@ -251,7 +251,7 @@ class WebTLSMDDaemon2(object):
 
     def run_server(self, host, port):
         xmlrpc_server = SimpleXMLRPCServer.SimpleXMLRPCServer(
-            (host, port), SimpleXMLRPCServer.SimpleXMLRPCRequestHandler, False)
+            (host, port), SimpleXMLRPCServer.SimpleXMLRPCRequestHandler, True)
 
         xmlrpc_server.register_function(self.job_list,     "job_list")
         xmlrpc_server.register_function(self.job_new,      "job_new")
@@ -268,12 +268,13 @@ class WebTLSMDDaemon2(object):
 
 
 def main():
-    webtlsmdd = WebTLSMDDaemon()
+    database_file = os.environ["TLSMD_DATABASE"]
+    webtlsmdd = WebTLSMDDaemon2(database_file)
     webtlsmdd.run_server(HOST, PORT)
 
 def convert():
     wd1 = WebTLSMDDaemon()
-    wd2 = WebTLSMDDaemon("convert.db")
+    wd2 = WebTLSMDDaemon2("convert.db")
 
     job_list = wd1.job_list()
 
@@ -282,6 +283,8 @@ def convert():
 
 
 if __name__=="__main__":
+#    convert()
+#    sys.exit(0)
     try:
         main()
     except KeyboardInterrupt:
