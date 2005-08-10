@@ -37,7 +37,7 @@ WEIGHT_MODEL = "UNIT"
 INCLUDE_ATOMS = "ALL" 
 
 ## minimum span of residues for TLS subsegments
-MIN_SUBSEGMENT_SIZE = 3
+MIN_SUBSEGMENT_SIZE = 4
 
 ## use Uiso residual
 USE_UISO_RESIDUAL = True
@@ -70,9 +70,9 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 3
+        MIN_SUBSEGMENT_SIZE = 4
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        MIN_SUBSEGMENT_SIZE = 7
+        MIN_SUBSEGMENT_SIZE = 8
     elif INCLUDE_ATOMS=="CA":
         MIN_SUBSEGMENT_SIZE = 20
 
@@ -1252,12 +1252,6 @@ class TLSOptimization(object):
         """
         return len(self.tls_list)>0
 
-    def add_tls_record(self, tls):
-        """Adds a tls informatio dictionary.
-        """
-        self.tls_list.append(tls)
-        self.residual += tls["lsq_residual"]
-
 
 class TLSChainMinimizer(HCSSSP):
     """Finds the minimal TLS description of a given Chain object using
@@ -1349,6 +1343,17 @@ class TLSChainMinimizer(HCSSSP):
             ## filter out the bad TLS segments
             if self.__minimization_filter(tls)==False:
                 if True:
+                    i, j   = msg["vertex_i"], msg["vertex_j"]
+
+                    if tls.has_key("lsq_residual")==False:
+                        weight = 0.0
+                    else:
+                        weight = tls["lsq_residual"] * 100.0
+
+                    edge = (i, j, weight, (None, ))
+                    E.append(edge)
+
+                if False:
                     ## experimental code
                     i, j   = msg["vertex_i"], msg["vertex_j"]
                     weight = 0.0
@@ -1368,11 +1373,9 @@ class TLSChainMinimizer(HCSSSP):
 
         self.E = E
 
-
         ## fill in any un-reachable gaps in the structure by adding
         ## fake 0.0 cost edges where needed
-        
-        
+        ## XXX: FIXME
 
         ## perform the minimization
         start_timing()
@@ -1406,7 +1409,7 @@ class TLSChainMinimizer(HCSSSP):
         """
         if tls.has_key("error"):
             return False
-        
+    
         T,L,S,O = self.__TLSO(tls)
         cdict = calc_TLS_center_of_reaction(T, L, S, O)
 
@@ -1427,7 +1430,7 @@ class TLSChainMinimizer(HCSSSP):
             return False
 
         ## sanity checks on rho
-        max_len = 30.0
+        max_len = 50.0
         if length(cdict["L1_rho"])>max_len or \
            length(cdict["L2_rho"])>max_len or \
            length(cdict["L3_rho"])>max_len:
@@ -1454,10 +1457,12 @@ class TLSChainMinimizer(HCSSSP):
             
             ## check if the edge is a bypass-edge type
             i, j, weight, frag_range = edge
+
+            tlsopt.residual += weight
             
             if len(frag_range)==2:
                 tls = self.__calc_tls_record_from_edge(edge)
-                tlsopt.add_tls_record(tls)
+                tlsopt.tls_list.append(tls)
 
         return tlsopt
 
@@ -1472,9 +1477,6 @@ class TLSChainMinimizer(HCSSSP):
 
         tls = self.analysis.tlsmdfile.grh_get_tls_record(
             self.chain.chain_id, frag_id1, frag_id2)
-
-        frag1    = self.chain[frag_id1]
-        frag2    = self.chain[frag_id2]
 
         segment  = self.chain[frag_id1:frag_id2]
 
@@ -1545,7 +1547,6 @@ class TLSChainMinimizer(HCSSSP):
         """
         for i in range(self.num_vertex):
             for j in range(i, self.num_vertex):
-
 
                 tls = {"method": "BYPASS"}
 

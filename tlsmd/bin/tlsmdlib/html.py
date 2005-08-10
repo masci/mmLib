@@ -716,6 +716,8 @@ class TLSSegmentAlignmentPlot(object):
        Step 2: generate graphs
     """
     def __init__(self):
+        ## border pixels
+        self.border_width = 3
         ## bars are 15 pixels heigh
         self.pheight    = ALIGN_HEIGHT
         ## spacing pixels between stacked bars
@@ -762,20 +764,23 @@ class TLSSegmentAlignmentPlot(object):
         nfrag = len(self.frag_list)
         target_width = 500
         fw = int(round(float(ALIGN_TARGET_WIDTH) / nfrag))
-        fwidth = max(1, fw)
+        one_frag_width = max(1, fw)
 
         ## calculate with pixel width/fragment
         ## adjust the width of the graph as necessary
         pheight = self.pheight
-        pwidth  = fwidth * len(self.frag_list)
+        img_width = (2 * self.border_width) + \
+                    (one_frag_width * len(self.frag_list))
             
         ## calculate the totoal height of the image
         num_plots = len(self.configurations)
-        iheight = (pheight * num_plots) + (self.spacing * (num_plots-1)) 
+        img_height = (2 * self.border_width) + \
+                     (pheight * num_plots) + \
+                     (self.spacing * (num_plots-1)) 
 
         ## create new image and 2D drawing object
-        assert pwidth>0 and iheight>0
-        image = Image.new("RGBA", (pwidth, iheight), self.bg_color)
+        assert img_width>0 and img_height>0
+        image = Image.new("RGBA", (img_width, img_height), self.bg_color)
         idraw = ImageDraw.Draw(image)
         idraw.setfill(True)
 
@@ -783,11 +788,15 @@ class TLSSegmentAlignmentPlot(object):
         for i in range(len(self.configurations)):
             tls_seg_desc = self.configurations[i]
             
-            xo = 0
-            yo = (i * pheight) + (i * self.spacing)
+            xo = self.border_width
+            yo = self.border_width + (i * pheight) + (i * self.spacing)
 
             self.__plot_segmentation(
-                idraw, pwidth, fwidth, (xo, yo), tls_seg_desc)
+                idraw,
+                img_width - 2*self.border_width,
+                one_frag_width,
+                (xo, yo),
+                tls_seg_desc)
 
         image.save(path, "png")
         return True
@@ -814,8 +823,12 @@ class TLSSegmentAlignmentPlot(object):
         x1 = i1       * fwidth
         x2 = (i2 + 1) * fwidth
 
-        idraw.setink((225, 225, 225))
-        idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
+        idraw.setink((128, 128, 128))
+        outline_width = 1
+        idraw.rectangle((x1 + xo - outline_width,
+                         yo - outline_width,
+                         x2 + xo + outline_width,
+                         pheight + yo + outline_width))
 
         ## draw colored TLS segments
         for tls in tlsopt.tls_list:
