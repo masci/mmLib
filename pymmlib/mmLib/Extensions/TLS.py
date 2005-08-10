@@ -1,5 +1,5 @@
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """Utility classes for loading, manipulating, and analyzing TLS parameters.
@@ -787,10 +787,10 @@ def solve_TLS_Ab(A, b):
             #print "SVD: ill conditioned value %d=%f" % (i, W[i])
             Wi[i,i] = 0.0
 
-    ## calculate the inverse of A
-    Ai = matrixmultiply(V, matrixmultiply(Wi, Ut))
-    ## calculate solution
-    x  = matrixmultiply(Ai, b)
+    ## solve for x
+    Utb  = matrixmultiply(Ut, b)
+    WUtb = matrixmultiply(Wi, Utb)
+    x    = matrixmultiply(V, WUtb)
 
     return x
 
@@ -810,7 +810,7 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
-    T, L11, L22, L33, L12, L13, L23, S12, S13, S23, S21, S31, S32 = (
+    T, L11, L22, L33, L12, L13, L23, S12, S21, S13, S31, S23, S32 = (
         j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j)
     
     ## indecies of the components of U
