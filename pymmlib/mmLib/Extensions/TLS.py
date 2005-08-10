@@ -332,8 +332,7 @@ class TLSFileFormatPDB(TLSFileFormat):
         "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
 
         "origin": re.compile(
-        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:\s+(\S+)"\
-        "\s+(\S+)\s+(\S+)\s*$"),
+        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:([\s\-\.0-9]+)$"),
 
         "t11_t22": re.compile(
         "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
@@ -456,10 +455,20 @@ class TLSFileFormatPDB(TLSFileFormat):
             self.tls_scrap = {}
         
         elif re_key == "origin":
-            (x, y, z) = mx.groups()
-            
+            strx = mx.group(1)
+            ## this is nasty -- I wish I could trust the numbers
+	    ## to stay in fixed columns, but I can't
+	    ox = [0.0, 0.0, 0.0]
+	    for i in (0,1,2):
+		j = strx.find(".")
+		if j==-1:
+                    break
+		x = strx[ max(0, j-4) : j+5]
+		strx = strx[j+5:]
+		ox[i] = float(x)
+	    
             try:
-                self.tls_desc.set_origin(float(x), float(y), float(z))
+                self.tls_desc.set_origin(ox[0], ox[1], ox[2])
             except AttributeError:
                 raise TLSFileFormatError()
             except ValueError:
@@ -3607,7 +3616,7 @@ class GLTLSGroup(GLDrawList):
         Lx_pitch      = Lx_pitch * (1.0/DEG2RAD)
         COR           = self.properties["COR"]
         Lx_origin     = COR + Lx_rho
-        steps         = 3
+        steps         = 1
         rot_step      = Lx_s / float(steps)
 
         self.driver.glr_light_two_sides_enable()

@@ -23,11 +23,11 @@ def matrixmultiply43(M, x):
     """M is a 4x4 rotation-translation matrix, x is a 3x1 vector.  Returns
     the 3x1 vector of x transformed by M.
     """
-    x4    = array((x[0],x[1],x[2],1.0), Float)
-    y     = matrixmultiply(M, x4)
-    return array((y[0],y[1],y[2]), Float)
+    return array((M[0,0]*x[0] + M[0,1]*x[1] + M[0,2]*x[2] + M[0,3],
+                  M[1,0]*x[0] + M[1,1]*x[1] + M[1,2]*x[2] + M[1,3],
+                  M[2,0]*x[0] + M[2,1]*x[1] + M[2,2]*x[2] + M[2,3]), Float)
 
-
+ 
 class Raster3DDriver(object):
     """Viewer.py graphics driver for producing a output file
     for the Raster3D ray tracer.
@@ -124,14 +124,14 @@ class Raster3DDriver(object):
     def glr_construct_header(self):
         """Creates the header for the render program.
         """
-        tsz_width   = 3
-        tsz_height  = 3
+        tsz_width   = 16
+        tsz_height  = 16
         
-        tile_width   = int(round(self.width  / float(tsz_width)))
-        tile_height  = int(round(self.height / float(tsz_height)))
+        xtiles   = int(round(self.width  / float(tsz_width)))
+        ytiles  = int(round(self.height / float(tsz_height)))
 
-        pixel_width  = tile_width  * 3
-        pixel_height = tile_height * 3
+        pixel_width  = xtiles * tsz_width
+        pixel_height = ytiles * tsz_height
 
         ## self.zoom is the horizontal number of Angstroms shown in the
         ## image, this must be converted to the Raster3D zoom parameter
@@ -144,7 +144,7 @@ class Raster3DDriver(object):
 
         self.header_list = [
             "mmLib Generated Raster3D Output", 
-            "%d %d     tiles in x,y" % (tile_width, tile_height), 
+            "%d %d     tiles in x,y" % (xtiles, ytiles), 
             "%d %d     pixels (x,y) per tile" % (tsz_width, tsz_height),
             "4         anti-aliasing level 4; 3x3->2x2",
             "%4.2f %4.2f %4.2f background(rgb)" % self.bg_color_rgbf,
@@ -189,11 +189,11 @@ class Raster3DDriver(object):
             stdout, stdin, stderr = popen2.popen3(
                 (self.render_program_path,
                  "-png", self.render_png_path,
-                 "-gamma", "1.5"), 32768)
+                 "-gamma", "1.5"), 32768*4)
 
         ## XXX: hack
         #r3dfil = open("/tmp/raytrace.r3d","w")
-        stdin = TeeWrite(stdin)
+        #stdin = TeeWrite(stdin)
 
         ## add required hader for the render program
         self.glr_construct_header()
