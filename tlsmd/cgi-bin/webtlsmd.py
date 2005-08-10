@@ -59,7 +59,7 @@ def html_nav_bar(page_name=None):
     if page_name=="home":
         x += 'Home\n'
     else:
-        x += '<a href="/~jpaint/index.html">Home</a>\n'
+        x += '<a href="/~tlsmd/index.html">Home</a>\n'
 
     x += LINK_SPACE + '\n'
 
@@ -73,15 +73,15 @@ def html_nav_bar(page_name=None):
     if page_name=="queue":
         x += 'Job Status\n'
     else:
-        x += '<a href="webtlsmd.cgi?page=queue">Job Status</a>\n'
+        x += '<a href="webtlsmd.cgi">Job Status</a>\n'
 
     x += LINK_SPACE + '\n'
 
-    x += '<a href="/~jpaint/examples/index.html">Examples</a>\n'
+    x += '<a href="/~tlsmd/examples/index.html">Examples</a>\n'
 
     x += LINK_SPACE + '\n'
     
-    x += '<a href="/~jpaint/documentation.html">Documentation</a>\n'
+    x += '<a href="/~tlsmd/documentation.html">Documentation</a>\n'
     x += '</center>\n'
     x += '<br>\n'
     return x
@@ -1159,6 +1159,11 @@ class Submit2Page(Page):
             cdict["desc"]     = cb_desc
             cdict["preview"]  = cb_preview
             cdict["selected"] = True
+
+        if largest_chain_seen>700:
+            webtlsmdd.job_delete(job_id)
+	    strx = '<p>Your submitted structure contained a chain exceeding the 700 residue limit</p>'
+            raise SubmissionException(strx)
 
         webtlsmdd.job_data_set(job_id, "chains", chains)
 

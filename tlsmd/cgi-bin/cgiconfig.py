@@ -6,13 +6,13 @@
 import re
 import string
 
-WEBTLSMDD              = "http://localhost:20100"
+WEBTLSMDD              = "http://localhost:10100"
 VERSION                = "0.2.0"
 LAST_MODIFIED_BY       = ""
 LAST_MODIFIED_BY_EMAIL = ""
 LAST_MODIFIED_DATE     = "Aug 10, 2005"
 
-TLSMD_WORK_DIR         = "/home/jpaint/public_html/jobs"
-TLSMD_WORK_URL         = "/~jpaint/jobs"
+TLSMD_WORK_DIR         = "/home/tlsmd/public_html/jobs"
+TLSMD_WORK_URL         = "/~tlsmd/jobs"
 
 LINK_SPACE             = '&nbsp;&nbsp;&nbsp;&nbsp;'

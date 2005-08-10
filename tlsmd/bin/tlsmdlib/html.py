@@ -26,7 +26,7 @@ from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
-GNUPLOT_FONT = "/home/jpaint/tlsmd/fonts/LucidaSansOblique.ttf"
+GNUPLOT_FONT = "/home/tlsmd/tlsmd/fonts/LucidaSansOblique.ttf"
 GNUPLOT_FONT_SIZE = "10"
 
 JMOL_DIR     = "../../../jmol"
@@ -34,7 +34,7 @@ JMOL_DIR     = "../../../jmol"
 ## constants
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 400
+VIS_WIDTH = 800
 
 ## pixel size of the gnuplot generated images
 GNUPLOT_WIDTH = 600
@@ -1555,6 +1555,7 @@ class HTMLReport(Report):
                 L2_visible         = True,
                 L3_visible         = True,
                 L_axis_scale       = 2.0,
+		both_phases        = True,
                 tls_group          = tls["tls_group"],
                 tls_info           = tls["tls_info"],
                 tls_name           = tls_name,

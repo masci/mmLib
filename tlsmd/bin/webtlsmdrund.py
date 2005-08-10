@@ -1,4 +1,4 @@
-#!/home/jpaint/local/bin/python
+#!/home/tlsmd/local/bin/python
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -16,8 +16,8 @@ import xmlrpclib
 
 
 ## CONFIGURATION
-VERSION   = "0.0.1"
-WEBTLSMDD = "http://localhost:20100"
+VERSION   = "0.2.0"
+WEBTLSMDD = "http://localhost:10100"
 MSMTP     = "/usr/bin/msmtp"
 
 TLSMD_CMD = [
@@ -138,11 +138,12 @@ def run_tlsmd(webtlsmdd, jdict):
 
     ## record the time used for each chain
     chains = webtlsmdd.job_data_get(job_id, "chains")
-    for cdict in chains:
-        chain_id = cdict["chain_id"]
-        if chain_time_dict.has_key(chain_id):
-            cdict["processing_time"] = chain_time_dict[chain_id]
-        webtlsmdd.job_data_set(job_id, "chains", chains)
+    if chains!=False:
+        for cdict in chains:
+            chain_id = cdict["chain_id"]
+            if chain_time_dict.has_key(chain_id):
+                cdict["processing_time"] = chain_time_dict[chain_id]
+            webtlsmdd.job_data_set(job_id, "chains", chains)
 
 def run_job(webtlsmdd, jdict):
     job_id = jdict["job_id"]
@@ -173,20 +174,9 @@ def run_job(webtlsmdd, jdict):
 def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.
     """
-    ## retrieve the top queued job
-    jdict = False
-    i = 0
-    while True:
-        jdict = webtlsmdd.job_get_dict_index(i)
-        if jdict==False:
-            break
-        if jdict.get("state")=="running" or jdict.get("state")=="queued":
-            break
-        i += 1
-    if jdict==False:
+    job_id = webtlsmdd.get_next_queued_job_id()
+    if job_id==False:
         return None
-
-    job_id = jdict["job_id"]
 
     ## change state of the job and re-load to catch
     ## any updates which may have happened
@@ -239,13 +229,14 @@ def main():
     while True:
         jdict = get_job(webtlsmdd)
         if jdict==None:
-            time.sleep(1.0)
+            time.sleep(2.0)
             continue
 
         run_job(webtlsmdd, jdict)
 
 
 MAIL_MESSAGE = """\
+To: <EMAIL>
 Subject: Your TLSMD Job <JOB_ID> is Complete
 
 This is a automated message sent to you my the TLS Motion 
@@ -254,6 +245,12 @@ you submitted is complete.  The link below will take you directly
 to the completed analysis:
 
 http://skuld.bmsc.washington.edu<ANALYSIS_URL>
+
+If you experience any problems, please send us some email.
+
+Regards,
+Jay Painter <jpaint@u.washington.edu>
+Ethan Merritt <merritt@u.washington.edu>
 
 """
 
@@ -276,6 +273,7 @@ def send_mail(job_id):
         return
 
     message = MAIL_MESSAGE
+    message = message.replace("<EMAIL>", email)
     message = message.replace("<JOB_ID>", job_id)
     message = message.replace("<ANALYSIS_URL>", analysis_url)
 
