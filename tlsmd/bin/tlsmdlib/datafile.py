@@ -10,7 +10,7 @@ import bsddb
 from misc import *
 
 SAVEKEYS = [
-    "error", "lsq_residual", "method",
+    "error", "lsq_residual", "method", "num_atoms",
     "cor_x", "cor_y", "cor_z",
     "t11", "t22", "t33", "t12", "t13", "t23",
     "l11", "l22", "l33", "l12", "l13", "l23",

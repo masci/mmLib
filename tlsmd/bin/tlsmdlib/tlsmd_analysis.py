@@ -39,14 +39,10 @@ INCLUDE_ATOMS = "ALL"
 ## minimum span of residues for TLS subsegments
 MIN_SUBSEGMENT_SIZE = 4
 
-## use Uiso residual
-USE_UISO_RESIDUAL = True
-
 def print_globals():
     print "TLSMD GLOBAL OPTIONS"
     print "    TLS_MODEL ==================: %s" % (TLS_MODEL)
     print "    MIN_SUBSEGMENT_SIZE --------: %d" % (MIN_SUBSEGMENT_SIZE)
-    print "    USE_UISO_RESIDUAL ==========: %s" % (USE_UISO_RESIDUAL)
     print "    WEIGHT_MODEL ===============: %s" % (WEIGHT_MODEL)
     print "    INCLUDE ATOMS --------------: %s" % (INCLUDE_ATOMS)
     print "    USE_TLSMDMODULE ============: %s" % (USE_TLSMDMODULE)
@@ -649,24 +645,7 @@ class TLSGraphChainAnisotropic(TLSGraphChain):
         ## calculate the lsq residual since silly Numeric Python won't
         ## do it for us
         Dw = Uw - Bw
-
-        if USE_UISO_RESIDUAL:
-            ## this residual attempts not to penalize highly anisotropic
-            ## TLS groups by returning a residual aginst Uiso/Utlsiso
-            u_iso_residual = 0.0
-            
-            for i in range(num_atoms):
-                iU11 = i * 6
-
-                u_iso     = (Bw[iU11] + Bw[iU11+1] + Bw[iU11+2])/3.0
-                u_iso_tls = (Uw[iU11] + Uw[iU11+1] + Uw[iU11+2])/3.0
-
-                u_iso_residual += (u_iso_tls - u_iso)**2
-                
-            fit_info["lsq_residual"] = u_iso_residual
-            
-        else:
-            fit_info["lsq_residual"] = dot(Dw, Dw)
+        fit_info["lsq_residual"] = dot(Dw, Dw)
 
 	## shift TLS tensors to the center of reaction
         T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
@@ -1284,14 +1263,25 @@ class TLSChainMinimizer(HCSSSP):
         ## residues in Chain.
         self.num_vertex = len(self.chain) + 1
 
+        ## calculate the mean number of atoms per residue in the
+	## chain
+	num_atoms = 0
+	for atm in self.chain.iter_atoms():
+            if calc_include_atom(atm):
+                num_atoms += 1
+	self.mean_res_atoms = round(float(num_atoms) / len(self.chain)) 
+
         ## calculate the minimum temperature factor in the chain
         ## XXX: hack
         self.min_temp_factor = None
-        for atm in self.chain.iter_atoms():
+	self.max_temp_factor = None
+        for atm in self.chain.iter_all_atoms():
             if self.min_temp_factor==None:
                 self.min_temp_factor = atm.temp_factor
+		self.max_temp_factor = atm.temp_factor
                 continue
             self.min_temp_factor = min(self.min_temp_factor, atm.temp_factor)
+            self.max_temp_factor = max(self.max_temp_factor, atm.temp_factor)
         
     def run_minimization(self, max_tls_segments=20):
         """Run the HCSSSP minimization on the self.V,self.E graph, resulting
@@ -1343,26 +1333,14 @@ class TLSChainMinimizer(HCSSSP):
             ## filter out the bad TLS segments
             if self.__minimization_filter(tls)==False:
                 if True:
-                    i, j   = msg["vertex_i"], msg["vertex_j"]
-
-                    if tls.has_key("lsq_residual")==False:
-                        weight = 0.0
+                    i, j = msg["vertex_i"], msg["vertex_j"]
+		    num_res = j - i
+                    if tls.has_key("num_atoms"):
+                        weight = tls["num_atoms"] * (B2U * self.max_temp_factor)**2
                     else:
-                        weight = tls["lsq_residual"] * 100.0
-
+                        weight = num_res * self.mean_res_atoms * (B2U * self.max_temp_factor)**2
                     edge = (i, j, weight, (None, ))
                     E.append(edge)
-
-                if False:
-                    ## experimental code
-                    i, j   = msg["vertex_i"], msg["vertex_j"]
-                    weight = 0.0
-                    sz = j - i 
-                    if sz <= MIN_SUBSEGMENT_SIZE+1:
-                        edge = (i, j, weight, (None, ))
-                        E.append(edge)
-                    ## end
-
                 continue
 
             weight = tls["lsq_residual"]
@@ -1488,7 +1466,7 @@ class TLSChainMinimizer(HCSSSP):
         tls_group = TLSGroup()
 
         ## add atoms to the group
-        for atm in segment.iter_atoms():
+        for atm in segment.iter_all_atoms():
             if calc_include_atom(atm):
                 tls_group.append(atm)
 

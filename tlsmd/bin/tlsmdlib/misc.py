@@ -61,7 +61,7 @@ GLOBALS = {
 
     "WEBTLSMDD":      None,
     "JOB_ID":         None,
-    "REFINEPREP_URL": "/~tlsmd/cgi-bin/refineprep.cgi"
+    "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi"
     }
 
 ###############################################################################
