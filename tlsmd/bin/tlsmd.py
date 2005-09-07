@@ -79,7 +79,7 @@ def analysis_main(struct_path, opt_dict):
     ## set the TLS model to use
     if opt_dict.has_key("-m"):
         tls_model = opt_dict.get("-m").upper()
-        if tls_model in ["ANISO", "HYBRID"]:
+        if tls_model in ["ANISO", "HYBRID", "NLANISO", "NLISOT"]:
             misc.GLOBALS["TLS_MODEL"] = tls_model
         else:
             print "[ERROR] Invalid TLS Model: %s" % (tls_model)

@@ -1,4 +1,4 @@
-#!/home/jpaint/local/bin/python
+#!/home/tlsmd/local/bin/python
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
