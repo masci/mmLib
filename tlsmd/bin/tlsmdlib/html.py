@@ -26,7 +26,6 @@ from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
 GNUPLOT_PATH = "gnuplot"
-GNUPLOT_FONT = "/home/tlsmd/tlsmd/fonts/LucidaSansOblique.ttf"
 GNUPLOT_FONT_SIZE = "10"
 
 JMOL_DIR     = "../../../jmol"
@@ -237,6 +236,7 @@ class GNUPlot(object):
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set xrange [1:20]
+set xtics 1
 set ylabel "Residual"
 set format y "%5.2f"
 set style line 1 lw 3
@@ -278,6 +278,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set xrange [1:20]
+set xtics 1
 set ylabel "Minimization (Weighted) LSQR Residual"
 set format y "%5.2f"
 set term png enhanced font "<font>" <fontsize>

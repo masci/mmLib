@@ -42,8 +42,6 @@ TSMALL = 0.1 * B2U
 ## L RMSD <= 0.1 DEG
 LSMALL = (0.1)**2 * DEG2RAD2
 
-## threashold for small/negitive Eigenvalues for T,L,U tensors
-SMALL_EIGENVALUE = 1.0e-10
 
 ###############################################################################
 ## Globals
@@ -63,6 +61,10 @@ GLOBALS = {
     "JOB_ID":         None,
     "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi"
     }
+
+TLSMD_ROOT   = "/home/jpaint/tlsmd"
+GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
+
 
 ###############################################################################
 ## Utility Funcs

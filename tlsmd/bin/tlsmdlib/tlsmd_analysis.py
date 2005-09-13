@@ -893,7 +893,10 @@ class TLSMDAnalysis(object):
 
         ## auto name of tlsdb file then open
         if self.tlsdb_file==None:
-            self.tlsdb_file = "%s.db" % (self.struct_id)
+
+            
+            
+            self.tlsdb_file = "%s_%s_%s.db" % (self.struct_id, TLS_MODEL, WEIGHT_MODEL)
         self.tlsmdfile = TLSMDFile(self.tlsdb_file)
 
         ## select chains for analysis

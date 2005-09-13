@@ -34,234 +34,26 @@ else:
 ## Temp. Hacks
 ##
 
-def temp_calc_cor_aniso(T0, L0, S0, origin):
-    """Calculate new tensors based on the center for reaction.
-    This method returns a dictionary of the calculations:
-
-    T^: T tensor in the coordinate system of L
-    L^: L tensor in the coordinate system of L
-    S^: S tensor in the coordinate system of L
-
-    COR: Center of Reaction
-
-    T',S',L': T,L,S tensors in origonal coordinate system
-              with the origin shifted to the center of reaction.
-    """
-    ## LSMALL is the smallest magnitude of L before it is considered 0.0
-    LSMALL = 1e-6
-
-    rdict = {}
-
-    ## set the L tensor eigenvalues and eigenvectors
-    (eval_L, RL) = eigenvectors(L0)
-
-    ## make sure RLt is right-handed
-    if allclose(determinant(RL), -1.0):
-        I = identity(3, Float)
-        I[0,0] = -1.0
-        RL = matrixmultiply(I, RL)
-        
-    RLt = transpose(RL)
-
-    rdict["L1_eigen_val"] = eval_L[0]
-    rdict["L2_eigen_val"] = eval_L[1]
-    rdict["L3_eigen_val"] = eval_L[2]
-
-    rdict["L1_eigen_vec"] = RL[0].copy()
-    rdict["L2_eigen_vec"] = RL[1].copy()
-    rdict["L3_eigen_vec"] = RL[2].copy()
-
-    ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = zeros((3,3), Float)
-
-    if eval_L[0]>LSMALL:
-        cL[0,0] = eval_L[0]
-    if eval_L[1]>LSMALL:
-        cL[1,1] = eval_L[1]
-    if eval_L[0]>LSMALL:
-        cL[2,2] = eval_L[2]
-
-    rdict["L^"] = cL
-    
-    ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
-    rdict["T^"] = cT
-
-    ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
-    rdict["S^"] = cS
-
-    ## ^rho: the origin-shift vector in the coordinate system of L
-    cL1122 = cL[1,1] + cL[2,2]
-    cL2200 = cL[2,2] + cL[0,0]
-    cL0011 = cL[0,0] + cL[1,1]
-
-    if cL1122>LSMALL and abs(cS[1,2]-cS[2,1])>1E-3:
-        crho0 = (cS[1,2]-cS[2,1]) / cL1122
-    else:
-        crho0 = 0.0
-
-    if cL2200>LSMALL and abs(cS[2,0]-cS[0,2])>1E-3:
-        crho1 = (cS[2,0]-cS[0,2]) / cL2200
-    else:
-        crho1 = 0.0
-
-    if cL0011>LSMALL and abs(cS[0,1]-cS[1,0])>1E-3:
-        crho2 = (cS[0,1]-cS[1,0]) / cL0011
-    else:
-        crho2 = 0.0
-
-    crho = array([crho0, crho1, crho2], Float)
-
-    rdict["RHO^"] = crho
-
-    ## rho: the origin-shift vector in orthogonal coordinates
-    rho = matrixmultiply(RLt, crho)
-
-    rdict["RHO"] = rho
-    rdict["COR"] = origin + rho
-
-    ## set up the origin shift matrix PRHO WRT orthogonal axes
-    PRHO = array([ [    0.0,  rho[2], -rho[1]],
-                   [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], Float)
-
-    ## set up the origin shift matrix cPRHO WRT libration axes
-    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
-                    [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], Float)
-
-    ## calculate tranpose of cPRHO, ans cS
-    cSt = transpose(cS)
-    cPRHOt = transpose(cPRHO)
-
-    ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + matrixmultiply(cL, cPRHOt)
-    rdict["S'^"] = cSp
-
-    ## L'^ = L^ = cL
-    rdict["L'^"] = cL
-
-    ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + \
-          matrixmultiply(cPRHO, cS) + \
-          matrixmultiply(cSt, cPRHOt) + \
-          matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
-    rdict["T'^"] = cTp
-
-    ## transpose of PRHO and S
-    PRHOt = transpose(PRHO)
-    St = transpose(S0)
-
-    ## calculate S' = S + L*PRHOt
-    Sp = S0 + matrixmultiply(L0, PRHOt)
-    rdict["S'"] = Sp
-
-    ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + \
-         matrixmultiply(PRHO, S0) + \
-         matrixmultiply(St, PRHOt) + \
-         matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
-    rdict["T'"] = Tp
-
-    ## L' is just L
-    rdict["L'"] = L0.copy()
-
-    ## now calculate the TLS motion description using 3 non
-    ## intersecting screw axes, with one
-
-    ## libration axis 1 shift in the L coordinate system        
-    if cL[0,0]>LSMALL:
-        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
-    else:
-        cL1rho = zeros(3, Float)
-
-    ## libration axis 2 shift in the L coordinate system
-    if cL[1,1]>LSMALL:
-        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
-    else:
-        cL2rho = zeros(3, Float)
-
-    ## libration axis 2 shift in the L coordinate system
-    if cL[2,2]>LSMALL:
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
-    else:
-        cL3rho = zeros(3, Float)
-
-    if length(cL1rho)>2.0:
-        print "[ERR] cL1rho len %f" % (length(cL1rho))
-    if length(cL2rho)>2.0:
-        print "[ERR] cL2rho len %f" % (length(cL2rho))
-    if length(cL3rho)>2.0:
-        print "[ERR] cL3rho len %f" % (length(cL3rho))
-        
-    ## libration axes shifts in the origional orthogonal
-    ## coordinate system
-    rdict["L1_rho"] = matrixmultiply(RLt, cL1rho)
-    rdict["L2_rho"] = matrixmultiply(RLt, cL2rho)
-    rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
-
-    ## calculate screw pitches (A*R / R*R) = (A/R)
-    if cL[0,0]>LSMALL:
-        rdict["L1_pitch"] = cS[0,0]/cL[0,0]
-    else:
-        rdict["L1_pitch"] = 0.0
-
-    if cL[1,1]>LSMALL:
-        rdict["L2_pitch"] = cS[1,1]/cL[1,1]
-    else:
-        rdict["L2_pitch"] = 0.0
-
-    if cL[2,2]>LSMALL:
-        rdict["L3_pitch"] = cS[2,2]/cL[2,2]
-    else:
-        rdict["L3_pitch"] = 0.0
-
-    ## now calculate the reduction in T for the screw rotation axes
-    cTred = cT.copy()
-
-    for i in (0, 1, 2):
-        for k in (0, 1, 2):
-            if i==k:
-                continue
-            if cL[k,k]>LSMALL:
-                cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
-
-    for i in (0, 1, 2):
-        for j in (0, 1, 2):
-            for k in (0, 1, 2):
-                if j==i:
-                    continue
-                if cL[k,k]>LSMALL:
-                    cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
-
-    ## rotate the newly calculated reduced-T tensor from the carrot
-    ## coordinate system (coordinate system of L) back to the structure
-    ## coordinate system
-    rdict["rT'"] = matrixmultiply(matrixmultiply(RLt, cTred), RL)
-
-    return rdict
-
-## isotropic version
 def cordebug(text):
     #print "[COR] %s" % (str(text))
     pass
 
 def temp_calc_cor(T0, L0, S0, origin):
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
-    LSMALL = 0.01 * DEG2RAD2
+    LSMALL = 0.0001 * DEG2RAD2
 
     rdict = {}
 
     ## set the L tensor eigenvalues and eigenvectors
     (eval_L, RL) = eigenvectors(L0)
+    l00, l11, l22 = eval_L
 
     ## make sure RLt is right-handed
     if allclose(determinant(RL), -1.0):
         I = identity(3, Float)
         I[0,0] = -1.0
         RL = matrixmultiply(I, RL)
-
+        
     try:
         assert allclose(determinant(RL), 1.0)
     except AssertionError:
@@ -272,27 +64,28 @@ def temp_calc_cor(T0, L0, S0, origin):
         print "RL"
         print RL
         print
-        
+
+    if l00<LSMALL:
+        l00 = 0.0
+    if l11<LSMALL:
+        l11 = 0.0
+    if l22<LSMALL:
+        l22 = 0.0
+
     RLt = transpose(RL)
 
-    rdict["L1_eigen_val"] = eval_L[0]
-    rdict["L2_eigen_val"] = eval_L[1]
-    rdict["L3_eigen_val"] = eval_L[2]
+    rdict["L1_eigen_val"] = l00
+    rdict["L2_eigen_val"] = l11
+    rdict["L3_eigen_val"] = l22
 
     rdict["L1_eigen_vec"] = RL[0].copy()
     rdict["L2_eigen_vec"] = RL[1].copy()
     rdict["L3_eigen_vec"] = RL[2].copy()
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = zeros((3,3), Float)
-
-    if eval_L[0]>LSMALL:
-        cL[0,0] = eval_L[0]
-    if eval_L[1]>LSMALL:
-        cL[1,1] = eval_L[1]
-    if eval_L[0]>LSMALL:
-        cL[2,2] = eval_L[2]
-
+    cL = array([[l00, 0.0, 0.0],
+                [0.0, l11, 0.0],
+                [0.0, 0.0, l22]], Float)
     rdict["L^"] = cL
         
     ## carrot-T tensor (T tensor WRT principal axes of L)
@@ -304,9 +97,9 @@ def temp_calc_cor(T0, L0, S0, origin):
     rdict["S^"] = cS
 
     ## ^rho: the origin-shift vector in the coordinate system of L
-    cL1122 = cL[1,1] + cL[2,2]
-    cL2200 = cL[2,2] + cL[0,0]
-    cL0011 = cL[0,0] + cL[1,1]
+    cL1122 = l11 + l22
+    cL2200 = l22 + l00
+    cL0011 = l00 + l11
 
     cordebug("cS[1,2]-cS[2,1]=%8.4f" % (cS[1,2]-cS[2,1]))
     cordebug("cS[2,0]-cS[0,2]=%8.4f" % (cS[2,0]-cS[0,2]))
@@ -386,20 +179,20 @@ def temp_calc_cor(T0, L0, S0, origin):
     cordebug(cSp)
 
     ## libration axis 1 shift in the L coordinate system        
-    if cL[0,0]>LSMALL:
-        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
+    if l00>LSMALL:
+        cL1rho = array([0.0, -cSp[0,2]/l00, cSp[0,1]/l00], Float)
     else:
         cL1rho = zeros(3, Float)
 
     ## libration axis 2 shift in the L coordinate system
-    if cL[1,1]>LSMALL:
-        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
+    if l11>LSMALL:
+        cL2rho = array([cSp[1,2]/l11, 0.0, -cSp[1,0]/l11], Float)
     else:
         cL2rho = zeros(3, Float)
 
     ## libration axis 2 shift in the L coordinate system
-    if cL[2,2]>LSMALL:
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
+    if l22>LSMALL:
+        cL3rho = array([-cSp[2,1]/l22, cSp[2,0]/l22, 0.0], Float)
     else:
         cL3rho = zeros(3, Float)
 
@@ -418,18 +211,18 @@ def temp_calc_cor(T0, L0, S0, origin):
     rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
-    if cL[0,0]>LSMALL:
-        rdict["L1_pitch"] = cS[0,0]/cL[0,0]
+    if l00>LSMALL:
+        rdict["L1_pitch"] = cS[0,0]/l00
     else:
         rdict["L1_pitch"] = 0.0
 
-    if cL[1,1]>LSMALL:
-        rdict["L2_pitch"] = cS[1,1]/cL[1,1]
+    if l11>LSMALL:
+        rdict["L2_pitch"] = cS[1,1]/l11
     else:
         rdict["L2_pitch"] = 0.0
 
-    if cL[2,2]>LSMALL:
-        rdict["L3_pitch"] = cS[2,2]/cL[2,2]
+    if l22>LSMALL:
+        rdict["L3_pitch"] = cS[2,2]/l22
     else:
         rdict["L3_pitch"] = 0.0
 
