@@ -389,6 +389,11 @@ class TranslationAnalysis(GNUPlot):
 
         ## determine Tr translational eigenvalues
         evals = eigenvalues(tls_info["rT'"])
+
+        if min(evals)<0.0:
+            print "EEK!: Tr eigenvalues: ",evals
+            raise SystemExit
+        
         t1    = GAUSS3C[ADP_PROB] * math.sqrt(evals[0])
         t2    = GAUSS3C[ADP_PROB] * math.sqrt(evals[1])
         t3    = GAUSS3C[ADP_PROB] * math.sqrt(evals[2])

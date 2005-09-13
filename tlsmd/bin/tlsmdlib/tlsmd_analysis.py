@@ -593,7 +593,7 @@ class TLSChainMinimizer(HCSSSP):
             return False
     
         T,L,S,O = self.__TLSO(tls)
-        cdict = calc_TLS_center_of_reaction(T, L, S, O)
+        cdict = temp_calc_cor(T, L, S, O)
 
         ## sanity checks on rT
         rT = cdict["rT'"]

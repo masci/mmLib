@@ -1,6 +1,16 @@
-/* tlsmdmodule.c -- fast calculation of TLS segments of a Protein/DNA/RNA
- *                  polymer chain
+/* lineartls.c 
+ * Jay Painter <jpaint@u.washington.edu>
+ * Sept 7, 2005
  *
+ * Copyright 2002 by TLSMD Development Group (see AUTHORS file)
+ * This code is part of the TLSMD distribution and governed by
+ * its license.  Please see the LICENSE file that should have been
+ * included as part of this package.
+ *
+ * Implementation of a Python module for the unconstrained linear 
+ * fitting of TLS parameters given a list of atoms with 
+ * crystallographically refined ADPs.  Uses LAPACK.  Solved linear
+ * equations by SVD.
  */
 #include "Python.h"
 #include "structmember.h"
@@ -13,8 +23,7 @@
 
 /* LAPACK */
 extern void
-dgesdd_(char *, int*, int*, double*, int*, double*, double*,
-	int *, double*, int*, double*, int*, int*, int*);
+dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int*, double*, int*, int*, int*);
 
 
 /* macros */
@@ -183,8 +192,7 @@ zero_dmatrix(double *M, int m, int n)
  *
  */
 inline void
-set_ITLS_Ab(double *A, double *b, int m, int n, int row,
-	    double uiso, double x, double y, double z, double w)
+set_ITLS_Ab(double *A, double *b, int m, int n, int row, double uiso, double x, double y, double z, double w)
 {
 #define FA(__i, __j) A[__i + (m * __j)]
 
@@ -233,8 +241,7 @@ set_ITLS_Ab(double *A, double *b, int m, int n, int row,
  * written in FORTRAN.
  */
 inline void
-set_ATLS_Ab(double *A, double *b, int m, int n, int row,
-	    double U[6], double x, double y, double z, double w)
+set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, double y, double z, double w)
 {
 #define FA(__i,__j) A[__i + (m * __j)]
 
@@ -846,7 +853,7 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
  * ATLSModel: Anisotropic TLS Model 
  */
 
-static PyObject *TLSMDMODULE_ERROR = NULL;
+static PyObject *LINEARTLS_ERROR = NULL;
 
 
 /* Python interface */
@@ -919,7 +926,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
     self->chain = new_chain(num_atoms);
     if (self->chain == NULL) {
-      PyErr_SetString(TLSMDMODULE_ERROR, "unable to allocate struct Chain");
+      PyErr_SetString(LINEARTLS_ERROR, "unable to allocate struct Chain");
       goto error;
     }
     
@@ -929,7 +936,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set name */
       tmp = PyDict_GetItemString(atm_desc, "name");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "name not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "name not in atm_desc");
 	goto error;
       }
       strx = PyString_AsString(tmp);
@@ -941,7 +948,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set frag_id */
       tmp = PyDict_GetItemString(atm_desc, "frag_id");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "frag_id not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "frag_id not in atm_desc");
 	goto error;
       }
       strx = PyString_AsString(tmp);
@@ -953,7 +960,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set x, y, z coordinates */
       tmp = PyDict_GetItemString(atm_desc, "x");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "x not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "x not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
@@ -963,7 +970,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "y");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "y not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "y not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
@@ -973,7 +980,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "z");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "z not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "z not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
@@ -983,7 +990,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "u_iso");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "u_iso not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "u_iso not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
@@ -995,7 +1002,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       for (j = 0; j < U_NUM_PARAMS; j++) {
 	tmp = PyDict_GetItemString(atm_desc, U_PARAM_NAMES[j]);
 	if (tmp == NULL) {
-	  PyErr_SetString(TLSMDMODULE_ERROR, "uXX not in atm_desc");
+	  PyErr_SetString(LINEARTLS_ERROR, "uXX not in atm_desc");
 	  goto error;
 	}
 	if (!PyFloat_Check(tmp)) {
@@ -1007,7 +1014,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* weight */
       tmp = PyDict_GetItemString(atm_desc, "sqrt_w");
       if (tmp == NULL) {
-	PyErr_SetString(TLSMDMODULE_ERROR, "sqrt_w not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "sqrt_w not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
@@ -1159,12 +1166,12 @@ static PyTypeObject ITLSModel_Type = {
 };
 
 
-static PyMethodDef TLSMDMODULE_METHODS[] = {
+static PyMethodDef LINEARTLS_METHODS[] = {
   {NULL, NULL, 0, NULL}
 };
 
 DL_EXPORT(void)
-inittlsmdmodule(void)
+initlineartls(void)
 {
   PyObject *m;
   
@@ -1172,11 +1179,11 @@ inittlsmdmodule(void)
   if (PyType_Ready(&ITLSModel_Type) < 0)
     return;
 
-  m = Py_InitModule("tlsmdmodule", TLSMDMODULE_METHODS);
+  m = Py_InitModule("lineartls", LINEARTLS_METHODS);
   
-  TLSMDMODULE_ERROR = PyErr_NewException("tlsmdmodule.error", NULL, NULL);
-  Py_INCREF(TLSMDMODULE_ERROR);
-  PyModule_AddObject(m, "error", TLSMDMODULE_ERROR);
+  LINEARTLS_ERROR = PyErr_NewException("lineartls.error", NULL, NULL);
+  Py_INCREF(LINEARTLS_ERROR);
+  PyModule_AddObject(m, "error", LINEARTLS_ERROR);
 
 
   /* add the ITLSModel class */
