@@ -64,9 +64,9 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 8
+        MIN_SUBSEGMENT_SIZE = 3
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        MIN_SUBSEGMENT_SIZE = 8
+        MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="CA":
         MIN_SUBSEGMENT_SIZE = 20
 
