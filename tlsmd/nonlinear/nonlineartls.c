@@ -73,7 +73,9 @@ static char *U_PARAM_NAMES[] = {
   "u11", "u22", "u33", "u12", "u13", "u23"
 };
 
-/* isotropic TLS Model */
+/* isotropic TLS Model 
+ * S1 == S21-S12; S2 == S13-S31; S3 == S32-S23
+ */
 #define ITLS_T     0
 #define ITLS_L11   1
 #define ITLS_L22   2
@@ -81,17 +83,14 @@ static char *U_PARAM_NAMES[] = {
 #define ITLS_L12   4
 #define ITLS_L13   5
 #define ITLS_L23   6
-#define ITLS_S12   7
-#define ITLS_S21   8
-#define ITLS_S13   9
-#define ITLS_S31   10
-#define ITLS_S23   11
-#define ITLS_S32   12
-#define ITLS_NUM_PARAMS 13
+#define ITLS_S1    7
+#define ITLS_S2    8
+#define ITLS_S3    9
+#define ITLS_NUM_PARAMS 10
 static char *ITLS_PARAM_NAMES[] = {
   "t",
   "l11", "l22", "l33", "l12", "l13", "l23",
-  "s12", "s21", "s13", "s31", "s23", "s32"
+  "s1", "s2", "s3"
 };
 
 /* anisotropic TLS model parameter indexes and labels */
@@ -130,17 +129,14 @@ static char *ATLS_PARAM_NAMES[] = {
 #define NL_ITLS_LA    4
 #define NL_ITLS_LB    5
 #define NL_ITLS_LC    6
-#define NL_ITLS_S12   7
-#define NL_ITLS_S21   8
-#define NL_ITLS_S13   9
-#define NL_ITLS_S31   10
-#define NL_ITLS_S23   11
-#define NL_ITLS_S32   12
-#define NL_ITLS_NUM_PARAMS 13
+#define NL_ITLS_S1    7
+#define NL_ITLS_S2    8
+#define NL_ITLS_S3    9
+#define NL_ITLS_NUM_PARAMS 10
 static char *NL_ITLS_PARAM_NAMES[] = {
-  "t",
+  "nl_t",
   "nl_lx", "nl_ly", "nl_lz", "nl_la", "nl_lb", "nl_lc",
-  "nl_s12", "nl_s21", "nl_s13", "nl_s31", "nl_s23", "nl_s32"
+  "nl_s1", "nl_s2", "nl_s3"
 };
 
 /* isotropic backward-substitued linear anisotropic parameters */ 
@@ -280,8 +276,7 @@ det_symmetric_3(double U[6])
   return - U[4]*U[4]*U[1] + 2.0*U[3]*U[4]*U[5] - U[0]*U[5]*U[5] - U[3]*U[3]*U[2] + U[0]*U[1]*U[2];
 }
 
-/* invert the symmetric 3x3 matrix in the argument U, and return the
- * result in Ui 
+/* matrix multiply symmetric 3x3 matrix U with V and return the result in M 
  * matrix format: u11,u22,u33,u12,u13,u23
  */
 inline void
@@ -301,6 +296,10 @@ mult_symmetric_3(double U[6], double V[6], double M[6])
   M[5] = U[3]*V[4] + U[1]*V[5] + U[5]*V[2];
 }
 
+
+/* invert the symmetric 3x3 matrix in the argument U, and return the result in Ui
+ * matrix format: u11,u22,u33,u12,u13,u23
+ */
 static int
 invert_symmetric_3(double U[6], double Ui[6])
 {
@@ -595,6 +594,10 @@ calc_pdtensor(double x, double y, double z, double a, double b, double c, double
   T[5] = sb*(cb*cc*(zz - yy*ca2 - xx*sa2) + (-xx + yy)*ca*sa*sc);
 }
 
+
+/* calculates u_iso for a atom at position x,y,z relative to the origin of the 
+ * isotropic TLS mode ITLS
+ */
 inline void
 calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
 {
@@ -604,6 +607,8 @@ calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
   yy = y*y;
   zz = z*z;
 
+  /* note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 */
+
   *u_iso = ITLS[ITLS_T]                     +
            (       ITLS[ITLS_L11] * (zz+yy) + 
 	           ITLS[ITLS_L22] * (xx+zz) +
@@ -611,12 +616,9 @@ calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
 	    -2.0 * ITLS[ITLS_L12] * x*y     +
 	    -2.0 * ITLS[ITLS_L13] * x*z     +
             -2.0 * ITLS[ITLS_L23] * y*z     +
-	    -2.0 * ITLS[ITLS_S12] * z       +
-             2.0 * ITLS[ITLS_S21] * z       +
-	     2.0 * ITLS[ITLS_S13] * y       +
-            -2.0 * ITLS[ITLS_S31] * y       +
-	    -2.0 * ITLS[ITLS_S23] * x       +
-             2.0 * ITLS[ITLS_S32] * x )/3.0;
+	     2.0 * ITLS[ITLS_S1]  * z       +
+	     2.0 * ITLS[ITLS_S2]  * y       +
+             2.0 * ITLS[ITLS_S3]  * x )/3.0;
 }
  
 /* return the anisotropic TLS model predicted ADP in U for a atom 
@@ -816,14 +818,9 @@ set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, dou
   FA(row, NL_ITLS_LB) = ((zz+yy)*dNL[0][4] + (xx+zz)*dNL[1][4] + (xx+yy)*dNL[2][4] - 2.0*xy*dNL[3][4] - 2.0*xz*dNL[4][4] - 2.0*yz*dNL[5][4])/3.0;
   FA(row, NL_ITLS_LC) = ((zz+yy)*dNL[0][5] + (xx+zz)*dNL[1][5] + (xx+yy)*dNL[2][5] - 2.0*xy*dNL[3][5] - 2.0*xz*dNL[4][5] - 2.0*yz*dNL[5][5])/3.0;
 
-  FA(row, NL_ITLS_S12) = -(2.0/3.0)*z;
-  FA(row, NL_ITLS_S21) =  (2.0/3.0)*z;
-
-  FA(row, NL_ITLS_S13) =  (2.0/3.0)*y;
-  FA(row, NL_ITLS_S31) = -(2.0/3.0)*y;
-
-  FA(row, NL_ITLS_S23) = -(2.0/3.0)*x;
-  FA(row, NL_ITLS_S32) =  (2.0/3.0)*x;
+  FA(row, NL_ITLS_S1) =  (2.0/3.0)*z;
+  FA(row, NL_ITLS_S2) =  (2.0/3.0)*y;
+  FA(row, NL_ITLS_S3) =  (2.0/3.0)*x;
 
 #undef FA
 }
@@ -1618,15 +1615,6 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
     fit->ATLS[ATLS_L12] = fit->ITLS[ITLS_L12];
     fit->ATLS[ATLS_L13] = fit->ITLS[ITLS_L13];
     fit->ATLS[ATLS_L23] = fit->ITLS[ITLS_L23];
-    
-    fit->ATLS[ATLS_S2211] = 0.0;
-    fit->ATLS[ATLS_S1133] = 0.0;
-    fit->ATLS[ATLS_S12]   = fit->ITLS[ITLS_S12];
-    fit->ATLS[ATLS_S21]   = fit->ITLS[ITLS_S21];
-    fit->ATLS[ATLS_S13]   = fit->ITLS[ITLS_S13];
-    fit->ATLS[ATLS_S31]   = fit->ITLS[ITLS_S31];
-    fit->ATLS[ATLS_S23]   = fit->ITLS[ITLS_S23];
-    fit->ATLS[ATLS_S32]   = fit->ITLS[ITLS_S32];
   }
 
   /* back-substitue ITLS parameters into anisotropic TLS model and

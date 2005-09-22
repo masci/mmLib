@@ -44,18 +44,14 @@ dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int
 #define U12 3
 #define U13 4
 #define U23 5
-
 #define U_NUM_PARAMS 6
-
-/* parameter name/labels used when they are passed in through 
- * Python dictionaries 
- */
 static char *U_PARAM_NAMES[] = {
   "u11", "u22", "u33", "u12", "u13", "u23"
 };
 
-
-/* Isotropic TLS Model */
+/* Isotropic TLS Model 
+ * S1 == S21-S12; S2 == S13-S31; S3 == S32-S23
+ */
 #define ITLS_T     0
 #define ITLS_L11   1
 #define ITLS_L22   2
@@ -63,19 +59,15 @@ static char *U_PARAM_NAMES[] = {
 #define ITLS_L12   4
 #define ITLS_L13   5
 #define ITLS_L23   6
-#define ITLS_S12   7
-#define ITLS_S21   8
-#define ITLS_S13   9
-#define ITLS_S31   10
-#define ITLS_S23   11
-#define ITLS_S32   12
-#define ITLS_NUM_PARAMS 13
+#define ITLS_S1    7
+#define ITLS_S2    8
+#define ITLS_S3    9
+#define ITLS_NUM_PARAMS 10
 static char *ITLS_PARAM_NAMES[] = {
   "t",
   "l11", "l22", "l33", "l12", "l13", "l23",
-  "s12", "s21", "s13", "s31", "s23", "s32"
+  "s1", "s2", "s3"
 };
-
 
 /* Anisotropic TLS model parameter indexes and labels */
 #define ATLS_T11   0
@@ -114,11 +106,12 @@ static char *ATLS_PARAM_NAMES[] = {
 struct Atom {
   char    name[NAME_LEN];
   char    frag_id[FRAG_ID_LEN];
-  double  x;
-  double  y;
-  double  z;
+  double  x, y, z;
+  double  xtls, ytls, ztls;
   double  u_iso;
+  double  u_iso_tmp;
   double  U[6];
+  double  Utmp[6];
   double  sqrt_weight;
 };
 
@@ -220,14 +213,9 @@ set_ITLS_Ab(double *A, double *b, int m, int n, int row, double uiso, double x, 
   FA(row, ITLS_L13) = w * ((-2.0 * xz) / 3.0);
   FA(row, ITLS_L23) = w * ((-2.0 * yz) / 3.0);
 
-  FA(row, ITLS_S12) = w * ((-2.0 * z) / 3.0);
-  FA(row, ITLS_S21) = w * (( 2.0 * z) / 3.0);
-
-  FA(row, ITLS_S13) = w * (( 2.0 * y) / 3.0);
-  FA(row, ITLS_S31) = w * ((-2.0 * y) / 3.0);
-
-  FA(row, ITLS_S23) = w * ((-2.0 * x) / 3.0);
-  FA(row, ITLS_S32) = w * (( 2.0 * x) / 3.0);
+  FA(row, ITLS_S1)  = w * (( 2.0 * z) / 3.0);
+  FA(row, ITLS_S2)  = w * (( 2.0 * y) / 3.0);
+  FA(row, ITLS_S3)  = w * (( 2.0 * x) / 3.0);
 }
 
 
@@ -329,14 +317,7 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
  * into U, S, and Vt 
  */
 static void 
-solve_SVD(int m,
-	  int n,
-	  double *x,
-	  double *b,
-	  double *U,
-	  double *S,
-	  double *VT,
-	  double *WORK)
+solve_SVD(int m, int n, double *x, double *b, double *U, double *S, double *VT, double *WORK)
 {
 #define FU(__i, __j)   U[__i + (m * __j)]
 #define FVT(__i, __j)  VT[__i + (n * __j)]
@@ -392,13 +373,7 @@ solve_SVD(int m,
 /* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
  */
 static void
-calc_bc_lsqr(double *A,
-	     int m,
-	     int n,
-	     double *x,
-	     double *b,
-	     double *bc,
-	     double *lsqr)
+calc_bc_lsqr(double *A, int m, int n, double *x, double *b, double *bc, double *lsqr)
 {
 #define FA(__i,__j)   A[__i + (m * __j)]
 
@@ -432,12 +407,7 @@ calc_bc_lsqr(double *A,
 /* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
  */
 static void
-calc_lsqr(double *A,
-	  int m,
-	  int n,
-	  double *x,
-	  double *b,
-	  double *lsqr)
+calc_lsqr(double *A, int m, int n, double *x, double *b, double *lsqr)
 {
 #define FA(__i,__j)   A[__i + (m * __j)]
 
@@ -683,8 +653,18 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
 
+  /* optimization */
+  atoms = itls_context->chain->atoms;
+
+  A  = itls_context->chain->A;
+  Aw = itls_context->chain->Aw;
+  b  = itls_context->chain->b;
+  bw = itls_context->chain->bw;
+
   /* calculate the number of atoms to be fit */
   num_atoms = itls_context->iend - itls_context->istart + 1;
+  istart    = itls_context->istart;
+  iend      = itls_context->iend;
 
   /* calculate the centroid of the atoms which are to
    * be fit and use it as the origin of the TLS tensors
@@ -696,21 +676,15 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 		&itls_context->origin_y,
 		&itls_context->origin_z);
 
-  /* optimization */
-  atoms = itls_context->chain->atoms;
-
-  istart = itls_context->istart;
-  iend   = itls_context->iend;
-
-  A  = itls_context->chain->A;
-  Aw = itls_context->chain->Aw;
-  b  = itls_context->chain->b;
-  bw = itls_context->chain->bw;
-
   origin_x = itls_context->origin_x;
   origin_y = itls_context->origin_y;
   origin_z = itls_context->origin_z;
 
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    atoms[ia].xtls = atoms[ia].x - origin_x;
+    atoms[ia].ytls = atoms[ia].y - origin_y;
+    atoms[ia].ztls = atoms[ia].z - origin_z;
+  }
 
   /*
    * ISOTROPIC TLS MODEL
@@ -727,9 +701,9 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 		num_cols, 
 		row,
 		atoms[ia].u_iso,
-		atoms[ia].x - origin_x,
-		atoms[ia].y - origin_y,
-		atoms[ia].z - origin_z,
+		atoms[ia].xtls,
+		atoms[ia].ytls,
+		atoms[ia].ztls,
 		atoms[ia].sqrt_weight);
   }
 
@@ -798,9 +772,9 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 		num_cols,
 		row,
 		atoms[ia].U,
-		atoms[ia].x - origin_x,
-		atoms[ia].y - origin_y,
-		atoms[ia].z - origin_z,
+		atoms[ia].xtls,
+		atoms[ia].ytls,
+		atoms[ia].ztls,
 		atoms[ia].sqrt_weight);
   }
 
