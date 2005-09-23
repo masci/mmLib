@@ -591,6 +591,8 @@ class TLSChainMinimizer(HCSSSP):
         """
         if tls.has_key("error"):
             return False
+
+        return True
     
         T,L,S,O = self.__TLSO(tls)
         cdict = temp_calc_cor(T, L, S, O)

@@ -173,6 +173,31 @@ zero_dmatrix(double *M, int m, int n)
   }
 }
 
+/* calculates u_iso for a atom at position x,y,z relative to the origin of the 
+ * isotropic TLS mode ITLS
+ */
+inline void
+calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
+{
+  double xx, yy, zz;
+
+  xx = x*x;
+  yy = y*y;
+  zz = z*z;
+
+  /* note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 */
+
+  *u_iso = ITLS[ITLS_T]                     +
+           (       ITLS[ITLS_L11] * (zz+yy) + 
+	           ITLS[ITLS_L22] * (xx+zz) +
+	           ITLS[ITLS_L33] * (xx+yy) +
+	    -2.0 * ITLS[ITLS_L12] * x*y     +
+	    -2.0 * ITLS[ITLS_L13] * x*z     +
+            -2.0 * ITLS[ITLS_L23] * y*z     +
+	     2.0 * ITLS[ITLS_S1]  * z       +
+	     2.0 * ITLS[ITLS_S2]  * y       +
+             2.0 * ITLS[ITLS_S3]  * x )/3.0;
+}
 
 /* Sets the one row of matrix A starting at A[i,j] with the istropic
  * TLS model coefficents for a atom located at t position x, y, z with
@@ -752,6 +777,12 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 	    itls_context->ITLS,
 	    itls_context->chain->bw,
 	    &itls_context->ilsqr);
+
+
+  /* construct isotropic tensors */
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso);
+  }
 
 
   /*

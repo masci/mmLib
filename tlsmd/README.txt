@@ -1,6 +1,7 @@
 TLS Minimized Domains 0.2.0
+Jay Painter <jpaint@u.washington.edu> 
+Sept 22, 2005
 ------------------------------------------------------------------------------
-
 TLS Minimal Domains (TLSMD) is a program which computes optimal 
 TLS (rigid-body) descriptions from the isotropically or anisotropically 
 refined ADPs of a protein crystal structure.   This is accomplished in a
@@ -23,6 +24,3 @@ Constrained Bellman-Ford is then used to determine the least cost path
 from the source vertex at the beginning of the chain, to the destination
 vertex at the end of the protein chain.
 
-------------------------------------------------------------------------------
-Jay Painter <jpaint@u.washington.edu> <jpaint@gmail.com>
-Aug 10, 2005
