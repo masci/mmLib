@@ -198,6 +198,76 @@ calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
 	     2.0 * ITLS[ITLS_S2]  * y       +
              2.0 * ITLS[ITLS_S3]  * x )/3.0;
 }
+ 
+/* return the anisotropic TLS model predicted ADP in U for a atom 
+ * located at coordinates x,y,z with respect to the ATLS origin
+ */
+inline void
+calc_anisotropic_Utls(double *ATLS, double x, double y, double z, double U[6]) 
+{
+  double xx, yy, zz, xy, yz, xz;
+
+  xx = x * x;
+  yy = y * y;
+  zz = z * z;
+  xy = x * y;
+  yz = y * z;
+  xz = x * z;
+    
+  U[U11] =         
+            ATLS[ATLS_T11]
+    +       ATLS[ATLS_L22] * zz
+    +       ATLS[ATLS_L33] * yy
+    - 2.0 * ATLS[ATLS_L23] * yz
+    - 2.0 * ATLS[ATLS_S31] * y
+    + 2.0 * ATLS[ATLS_S21] * z;
+
+  U[U22] =
+            ATLS[ATLS_T22]
+    +       ATLS[ATLS_L11] * zz
+    +       ATLS[ATLS_L33] * xx
+    - 2.0 * ATLS[ATLS_L13] * xz
+    - 2.0 * ATLS[ATLS_S12] * z
+    + 2.0 * ATLS[ATLS_S32] * x;
+
+  U[U33] =
+            ATLS[ATLS_T33]
+    +       ATLS[ATLS_L11] * yy
+    +       ATLS[ATLS_L22] * xx
+    - 2.0 * ATLS[ATLS_L12] * xy
+    - 2.0 * ATLS[ATLS_S23] * x
+    + 2.0 * ATLS[ATLS_S13] * y;
+
+  U[U12] =
+            ATLS[ATLS_T12]
+    -       ATLS[ATLS_L33]   * xy
+    +       ATLS[ATLS_L23]   * xz
+    +       ATLS[ATLS_L13]   * yz
+    -       ATLS[ATLS_L12]   * zz
+    +       ATLS[ATLS_S2211] * z
+    +       ATLS[ATLS_S31]   * x
+    -       ATLS[ATLS_S32]   * y;
+
+  U[U13] =
+            ATLS[ATLS_T13]
+    -       ATLS[ATLS_L22]   * xz
+    +       ATLS[ATLS_L23]   * xy
+    -       ATLS[ATLS_L13]   * yy
+    +       ATLS[ATLS_L12]   * yz
+    +       ATLS[ATLS_S1133] * y
+    +       ATLS[ATLS_S23]   * z
+    -       ATLS[ATLS_S21]   * x;
+
+  U[U23] =
+            ATLS[ATLS_T23]
+    -       ATLS[ATLS_L11]   * yz
+    -       ATLS[ATLS_L23]   * xx
+    +       ATLS[ATLS_L13]   * xy
+    +       ATLS[ATLS_L12]   * xz
+    -      (ATLS[ATLS_S2211] + ATLS[ATLS_S1133]) * x
+    +       ATLS[ATLS_S12]   * y
+    -       ATLS[ATLS_S13]   * z;
+}
 
 /* Sets the one row of matrix A starting at A[i,j] with the istropic
  * TLS model coefficents for a atom located at t position x, y, z with
@@ -778,12 +848,16 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 	    itls_context->chain->bw,
 	    &itls_context->ilsqr);
 
-
   /* construct isotropic tensors */
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso);
+    calc_isotropic_uiso(itls_context->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
+    atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[3] = 0.0;
+    atoms[ia].Utmp[4] = 0.0;
+    atoms[ia].Utmp[5] = 0.0;
   }
-
 
   /*
    * ANISOTROPIC TLS MODEL
@@ -793,23 +867,10 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 
   zero_dmatrix(Aw, num_rows, num_cols);
 
-  natmp = 0;
   for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-    natmp += 1;
-
-    set_ATLS_Ab(Aw,
-		bw,
-		num_rows,
-		num_cols,
-		row,
-		atoms[ia].U,
-		atoms[ia].xtls,
-		atoms[ia].ytls,
-		atoms[ia].ztls,
-		atoms[ia].sqrt_weight);
+    set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
   }
 
-  /* solve for isotropic TLS model */
   jobz = 'S';
   dgesdd_(&jobz,  
 	  &num_rows,
@@ -846,6 +907,147 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 #endif
 }
 
+
+static void
+fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
+{
+  char jobz;
+  int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
+  double origin_x, origin_y, origin_z;
+
+  double *A, *Aw, *b, *bw;
+  struct Atom *atoms;
+  
+  int n;
+  double lsqr, prev_lsqr, delta, Utls[6], scale;
+
+
+  /* optimization */
+  atoms = fit->chain->atoms;
+
+  A  = fit->chain->A;
+  Aw = fit->chain->Aw;
+  b  = fit->chain->b;
+  bw = fit->chain->bw;
+
+  /* calculate the number of atoms to be fit */
+  num_atoms = fit->iend - fit->istart + 1;
+  istart    = fit->istart;
+  iend      = fit->iend;
+
+  /* calculate the centroid of the atoms which are to
+   * be fit and use it as the origin of the TLS tensors
+   */
+  calc_centroid(fit->chain->atoms, fit->istart, fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
+
+  origin_x = fit->origin_x;
+  origin_y = fit->origin_y;
+  origin_z = fit->origin_z;
+
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    atoms[ia].xtls = atoms[ia].x - origin_x;
+    atoms[ia].ytls = atoms[ia].y - origin_y;
+    atoms[ia].ztls = atoms[ia].z - origin_z;
+  }
+
+  /* ISOTROPIC TLS MODEL */
+  num_rows = num_atoms;
+  num_cols = ITLS_NUM_PARAMS;
+
+  zero_dmatrix(Aw, num_rows, num_cols);
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    set_ITLS_Ab(Aw, bw,	num_rows, num_cols, row,atoms[ia].u_iso, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+  }
+
+  /* make a copy of Aw into A because dgesdd_ destroys Aw */
+  sz = num_rows * num_cols;
+  for (i = 0; i < sz; i++) {
+    A[i] = Aw[i];
+  }
+
+  /* solve for isotropic TLS model */
+  jobz = 'S';
+  dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw,&num_rows, fit->chain->S, fit->chain->U, &num_rows, fit->chain->VT, &num_cols, fit->chain->WORK, 
+	  &fit->chain->LWORK, fit->chain->IWORK, &info);
+  if (info != 0) {
+    printf("DGESDD ERROR(isotropic): info = %d\n", info);
+  }
+
+  solve_SVD(num_rows, num_cols, fit->ITLS, fit->chain->bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
+
+  /* now we have solved for x; now we can calculate the 
+   * weighted residual; remember that A is actually a copy of Aw
+   * residual 
+   */
+  calc_lsqr(fit->chain->A, num_rows, num_cols, fit->ITLS, fit->chain->bw, &fit->ilsqr);
+
+  /* construct isotropic tensors */
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    calc_isotropic_uiso(fit->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
+    atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
+    atoms[ia].Utmp[3] = 0.0;
+    atoms[ia].Utmp[4] = 0.0;
+    atoms[ia].Utmp[5] = 0.0;
+  }
+
+  /* ANISOTROPIC TLS MODEL */
+  num_rows = num_atoms * 6;
+  num_cols = ATLS_NUM_PARAMS;
+
+  lsqr = 0.0;
+  prev_lsqr = 0.0;
+
+  for (n = 0; n < 100; n++ ) {
+    zero_dmatrix(Aw, num_rows, num_cols);
+
+    for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
+      set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+    }
+
+    jobz = 'S';
+    dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw, &num_rows, fit->chain->S, fit->chain->U, &num_rows, fit->chain->VT,
+	    &num_cols, fit->chain->WORK, &fit->chain->LWORK, fit->chain->IWORK, &info);
+    if (info != 0) {
+      printf("DGESDD ERROR(anisotropic): info = %d\n", info);
+    }
+    
+    solve_SVD(num_rows, num_cols, fit->ATLS, fit->chain->bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
+   
+    /* calculate least squares residual */
+    lsqr = 0.0;
+    for (ia = istart; ia <= iend; ia++) {
+      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
+      delta = (Utls[0] + Utls[1] + Utls[2])/3.0 - atoms[ia].u_iso_tmp;
+      lsqr += delta*delta;
+    }
+
+    printf("iter tls: iteration %d  %f\n", n, lsqr);
+
+    /* skip on first iteration */
+    if (n > 0) {
+      delta = prev_lsqr - lsqr;
+      if (delta < 1E-4) {
+	printf("iter tls: delta right on %f\n", delta);
+	break;
+      }
+    }
+    prev_lsqr = lsqr;
+
+    /* calculate and scale a new target anisotropic tensor for each atom */
+    for (ia = fit->istart; ia <= fit->iend; ia++) {
+      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
+
+      scale = 3.0 * atoms[ia].u_iso_tmp/(Utls[0] + Utls[1] + Utls[2]);
+
+      for (i = 0; i < 6; i++) {
+	atoms[ia].Utmp[i] = scale * Utls[i];
+      }
+    }
+ 
+  }
+}
 
 
 /* 
