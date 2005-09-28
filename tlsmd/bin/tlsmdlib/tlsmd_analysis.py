@@ -64,7 +64,7 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 3
+        MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="MAINCHAIN":
         MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="CA":
@@ -75,6 +75,8 @@ def set_globals():
 ###############################################################################
 ## Atom Selection/Weighting Functions
 ##
+
+MAINCHAIN_ATOMS = ["N","CA","C","O"]
 
 def calc_include_atom(atm, reject_messages=False):
     """Filter out atoms from the model which will cause problems or
@@ -90,11 +92,26 @@ def calc_include_atom(atm, reject_messages=False):
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
 
+    for atmb in atm.iter_bonded_atoms():
+        delta = atm.temp_factor - atmb.temp_factor
+        flag = True
+	
+	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
+            if delta > 3.0: flag = False
+	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
+            if delta > 4.0: flag = False
+	else:
+            if delta > 6.0: flag = False
+
+        if flag == False:
+            print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
+            return False
+        
     if INCLUDE_ATOMS=="ALL":
         return True
 
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        if atm.name not in ["N", "CA", "C", "O"]:
+        if atm.name not in MAINCHAIN_ATOMS:
             if reject_messages==True:
                 print "calc_include_atom(%s): rejected non-mainchain atom" % (atm)
             return False
@@ -104,7 +121,7 @@ def calc_include_atom(atm, reject_messages=False):
             if reject_messages==True:
                 print "calc_include_atom(%s): rejected non-CA atom" % (atm)
             return False
-        
+    
     return True
 
 def calc_atom_weight(atm):
@@ -149,6 +166,67 @@ def iter_chain_subsegment_descs(chain, min_span):
         msg["frag_id2"]     = chain[vertex_j-1].fragment_id
 
         yield msg
+
+def chain_to_xmlrpc_list(chain):
+    """Converts the Atoms of a Chain/Segment to a list of dictionaries 
+    for transfer over xmlrpc.  Only the information required to fit
+    TLS groups to the Atoms is set in the Atom dictionaries to
+    reduce traffic over the xmlrpc calls.
+    """
+    xmlrpc_chain = []
+
+    for atm in chain.iter_all_atoms():
+        if atm.include==False:
+            continue
+
+        atm_desc = {}
+        xmlrpc_chain.append(atm_desc)
+
+        atm_desc["name"]    = atm.name
+        atm_desc["frag_id"] = atm.fragment_id
+
+        atm_desc["x"] = atm.position[0]
+        atm_desc["y"] = atm.position[1]
+        atm_desc["z"] = atm.position[2]
+
+        atm_desc["u_iso"] = B2U * atm.temp_factor
+
+        U = atm.get_U()
+        atm_desc["u11"] = U[0,0]
+        atm_desc["u22"] = U[1,1]
+        atm_desc["u33"] = U[2,2]
+        atm_desc["u12"] = U[0,1]
+        atm_desc["u13"] = U[0,2]
+        atm_desc["u23"] = U[1,2]
+
+        ## calculate weight
+        atm_desc["w"] = calc_atom_weight(atm)
+        atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
+
+    return xmlrpc_chain
+
+def find_istart_iend(xmlrpc_chain, frag_id1, frag_id2):
+    istart = None
+    iend   = None
+    state  = "find_istart"
+
+    for icur in range(len(xmlrpc_chain)):
+        if state=="find_istart":
+            if fragment_id_ge(xmlrpc_chain[icur]["frag_id"], frag_id1):
+                state  = "find_iend"
+                istart = icur
+        elif state=="find_iend":
+            if fragment_id_gt(xmlrpc_chain[icur]["frag_id"], frag_id2):
+                iend = icur - 1
+                break
+
+    if istart==None:
+        return None
+
+    if iend==None:
+        iend = len(xmlrpc_chain) - 1
+
+    return istart, iend
 
 
 ###############################################################################
@@ -305,54 +383,13 @@ class TLSChainProcessor(object):
     def __init__(self, server_pool):
         self.server_pool = server_pool
 
-    def convert_chain_for_xmlrpc(self, chain):
-        """Converts the Atoms of a Chain/Segment to a list of dictionaries 
-        for transfer over xmlrpc.  Only the information required to fit
-        TLS groups to the Atoms is set in the Atom dictionaries to
-        reduce traffic over the xmlrpc calls.
-        """
-        print "convert_chain_for_xmlrpc(chain_id=%s)" % (chain.chain_id)
-        
-        xmlrpc_chain = []
-
-        for atm in chain.iter_all_atoms():
-
-            if calc_include_atom(atm, True)==False:
-                continue
-
-            atm_desc = {}
-            xmlrpc_chain.append(atm_desc)
-
-            atm_desc["name"]    = atm.name
-            atm_desc["frag_id"] = atm.fragment_id
-
-            atm_desc["x"] = atm.position[0]
-            atm_desc["y"] = atm.position[1]
-            atm_desc["z"] = atm.position[2]
-
-            atm_desc["u_iso"] = B2U * atm.temp_factor
-
-            U = atm.get_U()
-            atm_desc["u11"] = U[0,0]
-            atm_desc["u22"] = U[1,1]
-            atm_desc["u33"] = U[2,2]
-            atm_desc["u12"] = U[0,1]
-            atm_desc["u13"] = U[0,2]
-            atm_desc["u23"] = U[1,2]
-
-            ## calculate weight
-            atm_desc["w"] = calc_atom_weight(atm)
-
-        return xmlrpc_chain
-
     def iter_lsq_fit_messages(self, analysis, chain, min_span, xmlrpc_chain):
         """Iterate over (and create) the message dictionaries sent
         to consumer threads which are the the graph edge definitions
         of the TLS segments we need LSQ TLS fit data on.
         """
         for msg in iter_chain_subsegment_descs(chain, min_span):
-            if analysis.tlsmdfile.grh_get_tls_record(
-                msg["chain_id"], msg["frag_id1"], msg["frag_id2"])!=None:
+            if analysis.tlsmdfile.grh_get_tls_record(msg["chain_id"], msg["frag_id1"], msg["frag_id2"])!=None:
                 continue
 
             msg["method"] = "TLS"
@@ -366,7 +403,7 @@ class TLSChainProcessor(object):
         print "PROCESSING CHAIN: ",chain.chain_id
 
         ## convert the Chain object to a list of atoms
-        xmlrpc_chain = self.convert_chain_for_xmlrpc(chain)
+        xmlrpc_chain = chain_to_xmlrpc_list(chain)
 
         ## create a iterator for the protein chain which yields
         ## a series of messages to call lsq_tls_fit on all the
@@ -375,11 +412,9 @@ class TLSChainProcessor(object):
         ## XXX: come up with a unique ID for the structure which
         ##      is included in the messages, so the return messages
         ##      from the pool can be checked
-        iter_msg = self.iter_lsq_fit_messages(
-            analysis, chain, min_span, xmlrpc_chain)
+        iter_msg = self.iter_lsq_fit_messages(analysis, chain, min_span, xmlrpc_chain)
 
-        iter_segment_fit_info = self.server_pool.iter_segment_processor(
-            iter_msg)
+        iter_segment_fit_info = self.server_pool.iter_segment_processor(iter_msg)
 
         ## iterate over the fit_info dictionaries which hold the
         ## information on the TLS fits comming back from the grid servers
@@ -400,16 +435,14 @@ class TLSChainProcessor(object):
             
             if fit_info.has_key("error"):
                 num_rejected_edges += 1
-                print "process_chain(chain_id=%s, frag_id={%s..%s}, "\
-                      "discard=%s)" % (
+                print "process_chain(chain_id=%s, frag_id={%s..%s}, discard=%s)" % (
                     chain.chain_id,
                     fit_info["frag_id1"], fit_info["frag_id2"],
                     fit_info["error"])
     
             else:
                 num_accepted_edges += 1
-                print "process_chain(chain_id=%s, frag_id={%s..%s}, "\
-                      "lsqr=%6.4f)" % (
+                print "process_chain(chain_id=%s, frag_id={%s..%s}, lsqr=%6.4f)" % (
                     chain.chain_id,
                     fit_info["frag_id1"], fit_info["frag_id2"],
                     fit_info["lsq_residual"])
@@ -471,7 +504,7 @@ class TLSChainMinimizer(HCSSSP):
 	## chain
 	num_atoms = 0
 	for atm in self.chain.iter_atoms():
-            if calc_include_atom(atm):
+            if atm.include==True:
                 num_atoms += 1
 	self.mean_res_atoms = round(float(num_atoms) / len(self.chain)) 
 
@@ -492,6 +525,8 @@ class TLSChainMinimizer(HCSSSP):
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
+        self.hinge_plot()
+
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
         V = []
@@ -589,6 +624,11 @@ class TLSChainMinimizer(HCSSSP):
         """Returns False if the tls group descibed by the tls database
         record should not be included in the minimization.
         """
+        if tls.has_key("lsq_residual")==False:
+            return False
+    
+        return True
+    
         if tls.has_key("error"):
             return False
 
@@ -664,8 +704,7 @@ class TLSChainMinimizer(HCSSSP):
 
         segment  = self.chain[frag_id1:frag_id2]
 
-        print "calc_tls_record_from_edge("\
-              "chain_id=%s frag_id={%s..%s})" % (
+        print "calc_tls_record_from_edge(chain_id=%s frag_id={%s..%s})" % (
             self.chain.chain_id, frag_id1, frag_id2)
 
         ## create TLSGroup
@@ -673,7 +712,7 @@ class TLSChainMinimizer(HCSSSP):
 
         ## add atoms to the group
         for atm in segment.iter_all_atoms():
-            if calc_include_atom(atm)==True:
+            if atm.include==True:
                 tls_group.append(atm)
 
         ## take the TLS group tensors from the database set
@@ -858,6 +897,49 @@ class TLSChainMinimizer(HCSSSP):
             curr_v = prev_vertex
             h -= 1
 
+    def hinge_plot(self):
+        fil = open("hinge.txt", "w")
+        
+        from lineartls import ITLSModel
+
+        xmlrpc_chain = chain_to_xmlrpc_list(self.chain)
+
+        itlsmodel = ITLSModel()
+        itlsmodel.set_xmlrpc_chain(xmlrpc_chain)
+
+        grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
+        chain_id = self.chain.chain_id
+
+        win = 12
+
+        ifrag = 0
+        ifrag_end = len(self.chain) - 2*win + 1
+
+        for ifrag in range(ifrag, ifrag_end):
+
+            ifrag1a = ifrag
+            ifrag2a = ifrag+win-1
+
+            ifrag1b = ifrag+win
+            ifrag2b = ifrag+2*win-1
+            
+            frag_id1a = self.chain[ifrag1a].fragment_id
+            frag_id2a = self.chain[ifrag2a].fragment_id
+            frag_id1b = self.chain[ifrag1b].fragment_id
+            frag_id2b = self.chain[ifrag2b].fragment_id
+
+            istarta, ienda = find_istart_iend(xmlrpc_chain, frag_id1a, frag_id2a)
+            istartb, iendb = find_istart_iend(xmlrpc_chain, frag_id1b, frag_id2b)
+            
+            hdict = itlsmodel.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
+
+            print "CHAIN %s %s-%s:%s-%s %f" % (chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b, hdict["hdelta"])
+
+            fil.write("%s %f\n" % (frag_id2a, hdict["hdelta"]))
+
+        fil.close()
+
+
 
 class TLSMDAnalysis(object):
     """Central object for a whole-structure TLS analysis.
@@ -895,9 +977,6 @@ class TLSMDAnalysis(object):
 
         ## auto name of tlsdb file then open
         if self.tlsdb_file==None:
-
-            
-            
             self.tlsdb_file = "%s_%s_%s.db" % (self.struct_id, TLS_MODEL, WEIGHT_MODEL)
         self.tlsmdfile = TLSMDFile(self.tlsdb_file)
 
@@ -906,6 +985,8 @@ class TLSMDAnalysis(object):
 
         ## print these settings
         self.prnt_settings()
+
+        self.set_atom_include_flags()
 
         if not self.tlsdb_complete:
             self.calc_tls_segments()
@@ -1005,6 +1086,14 @@ class TLSMDAnalysis(object):
         
         self.chains = segments
         
+    def set_atom_include_flags(self):
+        """Sets that atm.include attribute for each atom in the chains
+	being analyzed by tlsmd.
+	"""
+	for chain in self.chains:
+	    for atm in chain.iter_all_atoms():
+                atm.include = calc_include_atom(atm)
+	
     def calc_tls_segments(self):
         """Calculates the TLSGraph for each chain in self.chains, optionally
         loading pre-computed graphs from the graph_file.  Any chains

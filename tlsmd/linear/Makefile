@@ -1,7 +1,7 @@
 TARGET    =lineartls.so
 INCLUDES  =-I/home/jpaint/local/include/python2.4
 DEFINES   =-D_UNIX
-CFLAGS 	  =-march=pentium4 -fPIC -g -O3 -Wall
+CFLAGS 	  =-fPIC -g -O3 -Wall
 CC 	  =gcc
 
 LAPACK    = /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a
@@ -18,7 +18,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 $(TARGET): $(OBJ)
-	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(ATLAS) -lg2c -lm
+	$(CC) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(LAPACK) -lg2c -lm
 
 clean:
 	rm -f *.o $(TARGET)
