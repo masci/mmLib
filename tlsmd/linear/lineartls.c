@@ -100,8 +100,9 @@ static char *ATLS_PARAM_NAMES[] = {
 #define NAME_LEN     8
 #define FRAG_ID_LEN  8
 struct Atom {
-  char    name[NAME_LEN];
-  char    frag_id[FRAG_ID_LEN];
+  char    name[NAME_LEN];             /* atom name */
+  char    frag_id[FRAG_ID_LEN];       /* fragment id (residue name) */
+  int     ifrag;                      /* fragment index */
   double  x, y, z;
   double  xtls, ytls, ztls;
   double  u_iso;
@@ -156,13 +157,18 @@ struct ITLSFitContext {
 struct IHingeContext {
   struct Chain      *chain;                 /* pointer to Chain structure */
 
-  int                istarta;                /* index of first atom in chain->atoms */
-  int                ienda;                  /* index of last atom in chain->atoms */
+  int                istarta;               /* index of first atom in chain->atoms */
+  int                ienda;                 /* index of last atom in chain->atoms */
+  int                istartb;               /* index of first atom in chain->atoms */
+  int                iendb;                 /* index of last atom in chain->atoms */
 
-  int                istartb;                /* index of first atom in chain->atoms */
-  int                iendb;                  /* index of last atom in chain->atoms */
+  double             msd_a;
+  double             msd_b;
+  double             msd_c;
 
-  double             hdelta;                /* hinge delta residual */
+  double             hdelta_ab;             /* hinge delta residual */
+  double             hdelta_abo;            /* hinge delta residual */
+  double             hdelta_c;
 };
 
 /* zero a M(m,n) double matrix */
@@ -962,7 +968,8 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
 
   /* solve for isotropic TLS model */
   jobz = 'S';
-  dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw,&num_rows, fit->chain->S, fit->chain->U, &num_rows, fit->chain->VT, &num_cols, fit->chain->WORK, 
+  dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw,&num_rows, fit->chain->S, fit->chain->U, 
+	  &num_rows, fit->chain->VT, &num_cols, fit->chain->WORK, 
 	  &fit->chain->LWORK, fit->chain->IWORK, &info);
   if (info != 0) {
     printf("DGESDD ERROR(isotropic): info = %d\n", info);
@@ -1044,13 +1051,21 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
   }
 }
 
+
 static void
 calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 {
   char jobz;
   int num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
-  double ox, oy, oz, oxa, oya, oza, oxb, oyb, ozb;
-  double ITLSA[ITLS_NUM_PARAMS], ITLSB[ITLS_NUM_PARAMS], u_iso_a, u_iso_b, delta, hdelta;
+  double ox, oy, oz, oxa, oya, oza, oxb, oyb, ozb, oxc, oyc, ozc;
+  double ITLSA[ITLS_NUM_PARAMS], u_iso_a;
+  double ITLSB[ITLS_NUM_PARAMS], u_iso_b;
+  double ITLSC[ITLS_NUM_PARAMS], u_iso_c;
+  double delta, dela, delb, delc;
+  double hdelta_ab, hdelta_abo;
+  double hdelta_a, hdelta_b, hdelta_c;
+  double msd_a, msd_b, msd_c;
+  double weight;
 
   double *A, *b;
   struct Atom *atoms;
@@ -1077,7 +1092,8 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
   zero_dmatrix(A, num_rows, num_cols);
 
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(A, b, num_rows,	num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, atoms[ia].sqrt_weight);
+    weight = 1.0;
+    set_ITLS_Ab(A, b, num_rows,	num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, weight);
   }
 
   /* solve for isotropic TLS model */
@@ -1119,7 +1135,8 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
   zero_dmatrix(A, num_rows, num_cols);
 
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(A, b, num_rows,	num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, atoms[ia].sqrt_weight);
+    weight = 1.0;
+    set_ITLS_Ab(A, b, num_rows,	num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, weight);
   }
 
   /* solve for isotropic TLS model */
@@ -1145,26 +1162,120 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 
   solve_SVD(num_rows, num_cols, ITLSB, b, hinge->chain->U, hinge->chain->S, hinge->chain->VT, hinge->chain->WORK);
 
-  /* calculate hinge delta */
-  hdelta = 0.0;
+  /* isotropic segment C */
+  istart = hinge->istarta;
+  iend   = hinge->iendb;
 
+  num_atoms = iend - istart + 1;
+  calc_centroid(atoms, istart, iend, &ox, &oy, &oz);
+
+  oxc = ox;
+  oyc = oy;
+  ozc = oz;
+
+  num_rows = num_atoms;
+  num_cols = ITLS_NUM_PARAMS;
+  zero_dmatrix(A, num_rows, num_cols);
+
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    weight = 1.0;
+    set_ITLS_Ab(A, b, num_rows,	num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, weight);
+  }
+
+  /* solve for isotropic TLS model */
+  jobz = 'S';
+  dgesdd_(&jobz,  
+	  &num_rows,
+	  &num_cols, 
+	  A,
+	  &num_rows,
+	  hinge->chain->S, 
+	  hinge->chain->U,
+	  &num_rows,
+	  hinge->chain->VT,
+	  &num_cols,
+	  hinge->chain->WORK, 
+	  &hinge->chain->LWORK,
+	  hinge->chain->IWORK,
+	  &info);
+
+  if (info != 0) {
+    printf("DGESDD ERROR(isotropic): info = %d\n", info);
+  }
+
+  solve_SVD(num_rows, num_cols, ITLSC, b, hinge->chain->U, hinge->chain->S, hinge->chain->VT, hinge->chain->WORK);
+
+
+  /* calculate hinge delta */
+  hdelta_a = 0.0;
+  for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
+    calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
+    delta = atoms[ia].u_iso - u_iso_a;
+    hdelta_a += delta*delta;
+  }
+  msd_a = hdelta_a / (hinge->ienda - hinge->istarta + 1);
+
+  hdelta_b = 0.0;
+  for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
+    calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
+    delta = atoms[ia].u_iso - u_iso_b;
+    hdelta_b += delta*delta;
+  }
+  msd_b = hdelta_b / (hinge->iendb - hinge->istartb + 1);
+
+  hdelta_c = 0.0;
+  for (ia = hinge->istarta; ia <= hinge->iendb; ia++) {
+    calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
+    delta = atoms[ia].u_iso - u_iso_c;
+    hdelta_c += delta*delta;
+  }
+  msd_c = hdelta_c / (hinge->iendb - hinge->istarta + 1);
+
+  /* calculate inter-segment deltas */
+  hdelta_ab = 0.0;
+  hdelta_abo = 0.0;
+
+  /* segment a atoms */
   for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
+    calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
 
-    delta = u_iso_a - u_iso_b;
-    hdelta += delta*delta;
+    dela = atoms[ia].u_iso - u_iso_a;
+    delb = atoms[ia].u_iso - u_iso_b;
+    delc = atoms[ia].u_iso - u_iso_c;
+
+    delta = u_iso_b - u_iso_a;
+    hdelta_ab += delta*delta;
+
+    delta = delb*delb - dela*dela - delc*delc;
+    hdelta_abo += delta;
   }
 
+  /* segment b atoms */
   for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
+    calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
+
+    dela = atoms[ia].u_iso - u_iso_a;
+    delb = atoms[ia].u_iso - u_iso_b;
+    delc = atoms[ia].u_iso - u_iso_c;
 
     delta = u_iso_a - u_iso_b;
-    hdelta += delta*delta;
+    hdelta_ab += delta*delta;
+
+    delta = dela*dela - delb*delb - delc*delc;
+    hdelta_abo += delta;
   }
   
-  hinge->hdelta = hdelta;
+  hinge->msd_a = msd_a;
+  hinge->msd_b = msd_b;
+  hinge->msd_c = msd_c;
+
+  hinge->hdelta_ab = hdelta_ab;
+  hinge->hdelta_abo = hdelta_abo;
+  hinge->hdelta_c = hdelta_c;
 }
 
 
@@ -1281,6 +1392,17 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 	goto error;
       }
       strncpy(self->chain->atoms[i].frag_id, strx, FRAG_ID_LEN);
+
+      /* set x, y, z coordinates */
+      tmp = PyDict_GetItemString(atm_desc, "ifrag");
+      if (tmp == NULL) {
+	PyErr_SetString(LINEARTLS_ERROR, "ifrag not in atm_desc");
+	goto error;
+      }
+      if (!PyInt_Check(tmp)) {
+	goto error;
+      }
+      self->chain->atoms[i].ifrag = PyInt_AsLong(tmp);
 
       /* set x, y, z coordinates */
       tmp = PyDict_GetItemString(atm_desc, "x");
@@ -1449,7 +1571,8 @@ ITLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
   }
 
   hinge.chain  = self->chain;
-  hinge.hdelta = 0.0;
+  hinge.hdelta_ab = 0.0;
+  hinge.hdelta_abo = 0.0;
   if (!PyArg_ParseTuple(args, "iiii", &hinge.istarta, &hinge.ienda, &hinge.istartb, &hinge.iendb)) {
     goto error;
   }
@@ -1459,11 +1582,31 @@ ITLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
   /* construct return dictioary with results */
   rdict = PyDict_New();
 
-  /* set minimization exit status */
-  py_floatx = PyFloat_FromDouble(hinge.hdelta);
-  PyDict_SetItemString(rdict, "hdelta", py_floatx);
+  /* return msds of segments */
+  py_floatx = PyFloat_FromDouble(hinge.msd_a);
+  PyDict_SetItemString(rdict, "msd_a", py_floatx);
   Py_DECREF(py_floatx);
 
+  py_floatx = PyFloat_FromDouble(hinge.msd_b);
+  PyDict_SetItemString(rdict, "msd_b", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.msd_c);
+  PyDict_SetItemString(rdict, "msd_c", py_floatx);
+  Py_DECREF(py_floatx);
+
+  /* return various hinge delta values */
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_ab);
+  PyDict_SetItemString(rdict, "hdelta_ab", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_abo);
+  PyDict_SetItemString(rdict, "hdelta_abo", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_c);
+  PyDict_SetItemString(rdict, "hdelta_c", py_floatx);
+  Py_DECREF(py_floatx);
   return rdict;
 
  error:

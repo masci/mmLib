@@ -64,7 +64,7 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 5
+        MIN_SUBSEGMENT_SIZE = 4
     elif INCLUDE_ATOMS=="MAINCHAIN":
         MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="CA":
@@ -92,20 +92,20 @@ def calc_include_atom(atm, reject_messages=False):
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
 
-    for atmb in atm.iter_bonded_atoms():
-        delta = atm.temp_factor - atmb.temp_factor
-        flag = True
+##     for atmb in atm.iter_bonded_atoms():
+##         delta = atm.temp_factor - atmb.temp_factor
+##         flag = True
 	
-	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
-            if delta > 3.0: flag = False
-	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
-            if delta > 4.0: flag = False
-	else:
-            if delta > 6.0: flag = False
+## 	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
+##             if delta > 3.0: flag = False
+## 	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
+##             if delta > 4.0: flag = False
+## 	else:
+##             if delta > 6.0: flag = False
 
-        if flag == False:
-            print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
-            return False
+##         if flag == False:
+##             print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
+##             return False
         
     if INCLUDE_ATOMS=="ALL":
         return True
@@ -184,6 +184,9 @@ def chain_to_xmlrpc_list(chain):
 
         atm_desc["name"]    = atm.name
         atm_desc["frag_id"] = atm.fragment_id
+
+        frag = atm.get_fragment()
+        atm_desc["ifrag"] = chain.index(frag)
 
         atm_desc["x"] = atm.position[0]
         atm_desc["y"] = atm.position[1]
@@ -898,6 +901,9 @@ class TLSChainMinimizer(HCSSSP):
             h -= 1
 
     def hinge_plot(self):
+	"""Spiffy new hinge-prediction algorithm.OB
+	"""
+        msd = open("msd.txt", "w")
         fil = open("hinge.txt", "w")
         
         from lineartls import ITLSModel
@@ -918,9 +924,9 @@ class TLSChainMinimizer(HCSSSP):
         for ifrag in range(ifrag, ifrag_end):
 
             ifrag1a = ifrag
-            ifrag2a = ifrag+win-1
+            ifrag2a = ifrag+win-1  
 
-            ifrag1b = ifrag+win
+            ifrag1b = ifrag+win   
             ifrag2b = ifrag+2*win-1
             
             frag_id1a = self.chain[ifrag1a].fragment_id
@@ -933,12 +939,15 @@ class TLSChainMinimizer(HCSSSP):
             
             hdict = itlsmodel.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
 
-            print "CHAIN %s %s-%s:%s-%s %f" % (chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b, hdict["hdelta"])
+            print "CHAIN %s %s-%s:%s-%s %f %f %f" % (
+                chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b, hdict["hdelta_ab"], hdict["hdelta_abo"], hdict["hdelta_c"])
 
-            fil.write("%s %f\n" % (frag_id2a, hdict["hdelta"]))
+            fil.write("%s %f %f %f\n" % (frag_id2a, hdict["hdelta_ab"], hdict["hdelta_abo"], hdict["hdelta_c"]))
+
+            msd.write("%s %f %f %f\n" % (frag_id2a, hdict["msd_a"],hdict["msd_b"], hdict["msd_c"]))
 
         fil.close()
-
+        msd.close()
 
 
 class TLSMDAnalysis(object):
