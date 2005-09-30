@@ -583,7 +583,7 @@ class TLSGraphChainFastHybrid(TLSGraphChain):
         fit_info["s31"]   = S_cor[2,0]
         fit_info["s32"]   = S_cor[2,1]
 
-        if min(eigenvalues(T_red))<0.0
+        if min(eigenvalues(T_red))<0.0:
             errx = "Invalid Tr Eigenvalue"
             fit_info["error"] = errx
 

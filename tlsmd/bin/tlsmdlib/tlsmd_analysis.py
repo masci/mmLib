@@ -64,7 +64,7 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 4
+        MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="MAINCHAIN":
         MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="CA":
@@ -527,7 +527,7 @@ class TLSChainMinimizer(HCSSSP):
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
-        self.hinge_plot()
+        #self.hinge_plot()
 
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
