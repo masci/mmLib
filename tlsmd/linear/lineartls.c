@@ -1459,15 +1459,15 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       }
 
       /* weight */
-      tmp = PyDict_GetItemString(atm_desc, "sqrt_w");
+      tmp = PyDict_GetItemString(atm_desc, "weight");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "sqrt_w not in atm_desc");
+	PyErr_SetString(LINEARTLS_ERROR, "weight not in atm_desc");
 	goto error;
       }
       if (!PyFloat_Check(tmp)) {
 	goto error;
       }
-      self->chain->atoms[i].sqrt_weight = PyFloat_AsDouble(tmp);
+      self->chain->atoms[i].sqrt_weight = sqrt(PyFloat_AsDouble(tmp));
 
 #ifdef _DEBUG
       printf("ATOMS[%d]: %s %s\n", 

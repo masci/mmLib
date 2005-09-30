@@ -289,7 +289,7 @@ class TLSGraphChainHybrid(TLSGraphChain):
             frag_id_list.append(atm_desc["frag_id"])
             
             atm_desc["position"] = array((atm_desc["x"], atm_desc["y"], atm_desc["z"]), Float)
-            atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
+            atm_desc["sqrt_weight"] = math.sqrt(atm_desc["weight"])
 
         ## set the class frag list
         self.f = frag_id_list
@@ -365,9 +365,7 @@ class TLSGraphChainHybrid(TLSGraphChain):
 
             ## calculate atom position relative to the centroid
             x, y, z = atm_desc["position"] - centroid
-            
-            ## w is actually w^2
-            w = atm_desc["sqrt_w"]
+            w = atm_desc["sqrt_weight"]
 
             ## set the A Matrix, B vector
             set_TLSiso_A(A_ISOW, i, 0, x, y, z, w)
@@ -442,11 +440,11 @@ class TLSGraphChainHybrid(TLSGraphChain):
         fit_info["s31"]   = S_cor[2,0]
         fit_info["s32"]   = S_cor[2,1]
 
-        if min(eigenvalues(T_red))<=TSMALL:
+        if min(eigenvalues(T_red))<0.0:
             errx = "Invalid Tr Eigenvalue"
             fit_info["error"] = errx
 
-        elif min(eigenvalues(L_cor))<=LSMALL:
+        elif min(eigenvalues(L_cor))<0.0:
             errx = "Invalid L Eigenvalue"
             fit_info["error"] = errx
 
@@ -478,7 +476,6 @@ class TLSGraphChainFastHybrid(TLSGraphChain):
         
         for atm_desc in xmlrpc_chain:
             frag_id_list.append(atm_desc["frag_id"])
-            atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
 
         ## set the class frag list
         self.f = frag_id_list
@@ -586,11 +583,11 @@ class TLSGraphChainFastHybrid(TLSGraphChain):
         fit_info["s31"]   = S_cor[2,0]
         fit_info["s32"]   = S_cor[2,1]
 
-        if min(eigenvalues(T_red))<=TSMALL:
+        if min(eigenvalues(T_red))<0.0
             errx = "Invalid Tr Eigenvalue"
             fit_info["error"] = errx
 
-        elif min(eigenvalues(L_cor))<=LSMALL:
+        elif min(eigenvalues(L_cor))<0.0:
             errx = "Invalid L Eigenvalue"
             fit_info["error"] = errx
 
@@ -660,8 +657,7 @@ class TLSGraphChainAnisotropic(TLSGraphChain):
             i += 1
             iU11 = i * 6
 
-            ## w is actually w^2
-            sqrt_w  = math.sqrt(atm_desc["w"])
+            w  = atm_desc["sqrt_weight"]
 
             ## keep a list containing a 1:1 mapping
             ## of A,b rows to f frag_ids
@@ -677,10 +673,10 @@ class TLSGraphChainAnisotropic(TLSGraphChain):
             ## set the b vector
             set_TLS_b(b, iU11,
                       atm_desc["u11"], atm_desc["u22"], atm_desc["u33"],
-                      atm_desc["u12"], atm_desc["u13"], atm_desc["u23"], sqrt_w)
+                      atm_desc["u12"], atm_desc["u13"], atm_desc["u23"], w)
 
             ## set the A matrix
-            set_TLS_A(A, iU11, 0, x, y, z, sqrt_w)
+            set_TLS_A(A, iU11, 0, x, y, z, w)
 
         return A, b, f
 
@@ -807,11 +803,11 @@ class TLSGraphChainAnisotropic(TLSGraphChain):
         fit_info["s31"]   = S_cor[2,0]
         fit_info["s32"]   = S_cor[2,1]
 
-        if min(eigenvalues(T_red))<=TSMALL:
+        if min(eigenvalues(T_red))<0.0:
             errx = "Invalid Tr Eigenvalue"
             fit_info["error"] = errx
 
-        elif min(eigenvalues(L_cor))<=LSMALL:
+        elif min(eigenvalues(L_cor))<0.0:
             errx = "Invalid L Eigenvalue"
             fit_info["error"] = errx
 
@@ -851,7 +847,6 @@ class TLSGraphChainNonlinear(TLSGraphChain):
         
         for atm_desc in xmlrpc_chain:
             frag_id_list.append(atm_desc["frag_id"])
-            atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
 
         ## set the class frag list
         self.f = frag_id_list

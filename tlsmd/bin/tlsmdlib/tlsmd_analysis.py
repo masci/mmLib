@@ -203,8 +203,7 @@ def chain_to_xmlrpc_list(chain):
         atm_desc["u23"] = U[1,2]
 
         ## calculate weight
-        atm_desc["w"] = calc_atom_weight(atm)
-        atm_desc["sqrt_w"] = math.sqrt(atm_desc["w"])
+        atm_desc["weight"] = calc_atom_weight(atm)
 
     return xmlrpc_chain
 
@@ -916,7 +915,7 @@ class TLSChainMinimizer(HCSSSP):
         grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
         chain_id = self.chain.chain_id
 
-        win = 12
+        win = 20
 
         ifrag = 0
         ifrag_end = len(self.chain) - 2*win + 1
