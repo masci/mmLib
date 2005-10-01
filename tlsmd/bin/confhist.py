@@ -55,7 +55,6 @@ class SubSegConfs(object):
         recurse over all possible configurations
         """
         nvertex = self.p - 1
-
         istart  = self.I[i]
         iend    = self.n - (self.m * (self.p - 1 - i))
 
@@ -105,7 +104,7 @@ class ConfResidHistorgram(SubSegConfs):
 
         self.clen = len(self.chain)
 
-        self.ntop = 40
+        self.ntop = 10
         self.top  = []
 
         self.rmat = self.calc_rmat()
@@ -163,17 +162,18 @@ class ConfResidHistorgram(SubSegConfs):
         segments = []
 
         i = 0
-        j = 0
-        
+        j = 0        
         for v in self.I:
             i = j
             j = v
-
             segments.append((i,j-1))
 
         i = j
         j = self.n
         segments.append((i,j-1))
+
+        if self.total%10000==0:
+            print "[%d] %s" % (self.total, str(segments))
 
         self.calc_configuration_residual(segments)
 
@@ -184,6 +184,8 @@ class ConfResidHistorgram(SubSegConfs):
             lsqr += self.rmat[i,j]
 
         self.bin_value(lsqr)
+
+        return
 
         if len(self.top) < self.ntop:
             desc = "%s: %f" % (str(segments), lsqr)
@@ -210,12 +212,16 @@ def protein_segment(chain):
 
 def main():
     dbfile = sys.argv[1]
-    struct = LoadStructure(fil=sys.argv[2])
-    chain_id = sys.argv[3]
 
+    print "=========================================================="
+    print "Loading Structure..."
+    struct = LoadStructure(fil=sys.argv[2])
+    print "=========================================================="
+
+    chain_id = sys.argv[3]
     seg = protein_segment(struct.get_chain(chain_id))
 
-    crh = ConfResidHistorgram(dbfile, seg, 5, 5)
+    crh = ConfResidHistorgram(dbfile, seg, 10, 5)
     crh.go()
     crh.prnt_top()
     crh.prnt_histogram()
