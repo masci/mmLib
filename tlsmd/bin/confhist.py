@@ -12,6 +12,10 @@ from mmLib.Structure   import *
 from mmLib.FileLoader  import *
 from tlsmdlib.datafile import *
 
+
+def prnt_sep():
+    print "======================================================================================="
+
 class SubSegConfs(object):
     def __init__(self, n, m, p):
         """
@@ -114,6 +118,7 @@ class ConfResidHistorgram(SubSegConfs):
         """
         create a residual matrix
         """
+        prnt_sep()
         print "Generating a residual matrix..."
 
         rmat = zeros((self.clen, self.clen), Float)
@@ -141,9 +146,9 @@ class ConfResidHistorgram(SubSegConfs):
         """
         initalize histogram
         """
-        self.nbins = 30
+        self.nbins = 100
         self.hrange_max = self.rmat[0,self.clen-1]
-        self.hrange_min = 0.7
+        self.hrange_min = 6.0
         self.bsize = (self.hrange_max - self.hrange_min) / self.nbins
         self.bins = [0 for x in range(self.nbins)]
 
@@ -152,7 +157,8 @@ class ConfResidHistorgram(SubSegConfs):
         self.bins[bin] += 1
 
     def prnt_histogram(self):
-        print "Histogram"
+        prnt_sep()
+        print "Histogram Output"
         for i in range(len(self.bins)):
             bin_min = self.hrange_min + (i * self.bsize)
             bin_max = self.hrange_min + ((i+1) * self.bsize)
@@ -213,16 +219,20 @@ def protein_segment(chain):
 def main():
     dbfile = sys.argv[1]
 
-    print "=========================================================="
+    prnt_sep()
     print "Loading Structure..."
     struct = LoadStructure(fil=sys.argv[2])
-    print "=========================================================="
+
 
     chain_id = sys.argv[3]
     seg = protein_segment(struct.get_chain(chain_id))
 
-    crh = ConfResidHistorgram(dbfile, seg, 10, 5)
+    crh = ConfResidHistorgram(dbfile, seg, 5, 5)
+
+    prnt_sep()
+    print "Analyizing all configurations..."
     crh.go()
+
     crh.prnt_top()
     crh.prnt_histogram()
 
