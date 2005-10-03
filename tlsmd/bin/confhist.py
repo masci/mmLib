@@ -7,11 +7,11 @@
 
 import os
 import sys
+import copy
 
 from mmLib.Structure   import *
 from mmLib.FileLoader  import *
 from tlsmdlib.datafile import *
-
 
 def prnt_sep():
     print "======================================================================================="
@@ -38,6 +38,7 @@ class SubSegConfs(object):
     def calc_configurations(self):
         """
         calculate the number of configurations there should be
+        XXX: this is wrong!
         """
         n = self.n
         m = self.m
@@ -98,7 +99,53 @@ class SubSegConfs(object):
         override for more interesting behavior
         """
         print "I ",self.I
+
+class ChainPartitonPointHistogram(object):
+    def __init__(self, chain):
+        self.chain = chain
+        self.num_partitions = 0
+        self.pp_names = ["" for i in range(len(chain)+1)]
+        self.pp_freqs = [0  for i in range(len(chain)+1)]
+
+        for i in range(1, len(chain)):
+            self.pp_names[i] = "%s:%s" % (chain[i-1], chain[i])
+
+    def count(self, i):
+        self.pp_freqs[i] += 1
+
+    def prnt(self):
+        fil = open("cphistogram.txt","w")
+
+        print "ChainPartitonPointHistogram"
+        for i in range(len(self.chain)+1):
+            print "[%s]: %10d" % (self.pp_names[i], self.pp_freqs[i])
+            fil.write("%d %f\n" % (i, self.pp_freqs[i]))
+
+        fil.close()
+
+class Histogram(object):
+    def __init__(self, nbins, hmax, hmin = 0.0):
+        self.nbins = nbins
+        self.hmax = hmax
+        self.hmin = hmin
+        self.bsize = (self.hmax - self.hmin) / self.nbins
+        self.bins = [0 for x in range(self.nbins)]
         
+    def count(self, val):
+        bin = int((val - self.hmin) / self.bsize)
+        self.bins[bin] += 1
+
+    def prnt(self):
+        fil = open("histogram.txt","w")
+
+        print "Histogram"
+        for i in range(len(self.bins)):
+            bin_min = self.hmin + (i * self.bsize)
+            bin_max = self.hmin + ((i+1) * self.bsize)
+            print "[%f-%f]: %d" % (bin_min, bin_max, self.bins[i])
+            fil.write("%d %f\n" % (i, self.bins[i]))
+
+        fil.close()
 
 class ConfResidHistorgram(SubSegConfs):
     def __init__(self, dbfile, chain, m, p):
@@ -107,12 +154,13 @@ class ConfResidHistorgram(SubSegConfs):
         SubSegConfs.__init__(self, len(self.chain), m, p)
 
         self.clen = len(self.chain)
-
-        self.ntop = 10
+        self.ntop = 500
         self.top  = []
 
         self.rmat = self.calc_rmat()
-        self.init_histogram()
+
+        self.histogram    = Histogram(100, self.rmat[0,self.clen-1])
+        self.cp_histogram = ChainPartitonPointHistogram(self.chain)
 
     def calc_rmat(self):
         """
@@ -142,28 +190,6 @@ class ConfResidHistorgram(SubSegConfs):
 
         return rmat
 
-    def init_histogram(self):
-        """
-        initalize histogram
-        """
-        self.nbins = 100
-        self.hrange_max = self.rmat[0,self.clen-1]
-        self.hrange_min = 6.0
-        self.bsize = (self.hrange_max - self.hrange_min) / self.nbins
-        self.bins = [0 for x in range(self.nbins)]
-
-    def bin_value(self, val):
-        bin = int((val - self.hrange_min) / self.bsize)
-        self.bins[bin] += 1
-
-    def prnt_histogram(self):
-        prnt_sep()
-        print "Histogram Output"
-        for i in range(len(self.bins)):
-            bin_min = self.hrange_min + (i * self.bsize)
-            bin_max = self.hrange_min + ((i+1) * self.bsize)
-            print "[%f-%f]: %d" % (bin_min, bin_max, self.bins[i])
-
     def process_configuration(self):
         segments = []
 
@@ -189,9 +215,11 @@ class ConfResidHistorgram(SubSegConfs):
         for i, j in segments:
             lsqr += self.rmat[i,j]
 
-        self.bin_value(lsqr)
+        if lsqr<0.95:
+            for i in self.I:
+                self.cp_histogram.count(i)
 
-        return
+        self.histogram.count(lsqr)
 
         if len(self.top) < self.ntop:
             desc = "%s: %f" % (str(segments), lsqr)
@@ -202,6 +230,12 @@ class ConfResidHistorgram(SubSegConfs):
             self.top.append((lsqr, desc))
             self.top.sort()
 
+    def prnt(self):
+        prnt_sep()
+        self.histogram.prnt()
+        prnt_sep()
+        self.cp_histogram.prnt()
+        
     def prnt_top(self):
         for lsqr, desc in self.top:
             print desc
@@ -210,11 +244,12 @@ def protein_segment(chain):
     i = None
     j = None
 
-    for frag in chain.iter_amino_acids():
-        if i==None: i = chain.index(frag)
-        j = chain.index(frag)
+    seg = Segment(chain_id = chain.chain_id)
 
-    return chain[i:j]
+    for frag in chain.iter_amino_acids():
+        seg.add_fragment(frag)
+
+    return seg
 
 def main():
     dbfile = sys.argv[1]
@@ -233,9 +268,7 @@ def main():
     print "Analyizing all configurations..."
     crh.go()
 
-    crh.prnt_top()
-    crh.prnt_histogram()
-
+    crh.prnt()
 
 if __name__=="__main__":
     main()
