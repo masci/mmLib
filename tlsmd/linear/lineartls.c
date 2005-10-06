@@ -20,18 +20,13 @@
 #include <malloc.h>
 #include <pthread.h>
 
-
 /* LAPACK */
 extern void
 dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int*, double*, int*, int*, int*);
 
-
 /* macros */
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
-
-/* set to 1 for extra debugging informaiton */
-/* #define _DEBUG 0 */
 
 /* anisotropic U tensor parameter labels and indexes */
 #define U11 0
@@ -93,6 +88,23 @@ static char *ATLS_PARAM_NAMES[] = {
   "s2211", "s1133", "s12", "s13", "s23", "s21", "s31", "s32"
 };
 
+/* Anisotropic TLS model parameter indexes and labels */
+#define XTLS_T     0
+#define XTLS_L11   1
+#define XTLS_L22   2
+#define XTLS_L33   3
+#define XTLS_L12   4
+#define XTLS_L13   5
+#define XTLS_L23   6
+#define XTLS_S2211 7
+#define XTLS_S1133 8
+#define XTLS_S12   9
+#define XTLS_S13   10
+#define XTLS_S23   11
+#define XTLS_S21   12
+#define XTLS_S31   13
+#define XTLS_S32   14
+#define XTLS_NUM_PARAMS 15
 
 /* Atom structure 
  * structure used to store the information of one atom 
@@ -110,6 +122,7 @@ struct Atom {
   double  U[6];
   double  Utmp[6];
   double  sqrt_weight;
+  double  sqrt_weight_tmp;
 };
 
 
@@ -135,11 +148,8 @@ struct Chain {
   int    *IWORK;
 };
 
-
-/* context structure for fitting one TLS segment using the 
- * isotropic TLS model
- */
-struct ITLSFitContext {
+/* context structure for fitting one TLS segment using the  isotropic TLS model */
+struct TLSFitContext {
   struct Chain      *chain;                 /* pointer to Chain structure */
 
   int                istart;                /* index of first atom in chain->atoms */
@@ -151,7 +161,10 @@ struct ITLSFitContext {
 
   double             ITLS[ITLS_NUM_PARAMS]; /* isotropic TLS model params */
   double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
+  double             XTLS[XTLS_NUM_PARAMS]; /* experimental TLS model */
+
   double             ilsqr;                 /* least-squares residual of isotropic TLS model */
+  double             alsqr;                 /* least-squares residual of anisotropic TLS model */
 };
 
 struct IHingeContext {
@@ -417,6 +430,86 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
 #undef FA
 }
 
+/* experimental TLS model */
+inline void
+set_XTLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, double y, double z, double w)
+{
+#define FA(__i,__j) A[__i + (m * __j)]
+
+  int rowU11, rowU22, rowU33, rowU12, rowU13, rowU23;
+  double xx, yy, zz, xy, xz, yz;
+  
+  xx = x*x;
+  yy = y*y;
+  zz = z*z;
+  xy = x*y;
+  xz = x*z;
+  yz = y*z;
+
+  /* calculate row indexes */
+  rowU11 = row;
+  rowU22 = row + 1;
+  rowU33 = row + 2;
+  rowU12 = row + 3;
+  rowU13 = row + 4;
+  rowU23 = row + 5;
+
+  /* set b  */
+  b[rowU11] = w * U[0];
+  b[rowU22] = w * U[1];
+  b[rowU33] = w * U[2];
+  b[rowU12] = w * U[3];
+  b[rowU13] = w * U[4];
+  b[rowU23] = w * U[5];
+
+  /* set A */
+  FA(rowU11, XTLS_T) = w * 1.0;
+
+  FA(rowU11, XTLS_L22) = w *        zz;
+  FA(rowU11, XTLS_L33) = w *        yy;
+  FA(rowU11, XTLS_L23) = w * -2.0 * yz;
+  FA(rowU11, XTLS_S31) = w * -2.0 *  y;
+  FA(rowU11, XTLS_S21) = w *  2.0 *  z;
+
+  FA(rowU22, XTLS_L11) = w *        zz;
+  FA(rowU22, XTLS_L33) = w *        xx;
+  FA(rowU22, XTLS_L13) = w * -2.0 * xz;
+  FA(rowU22, XTLS_S12) = w * -2.0 *  z;
+  FA(rowU22, XTLS_S32) = w *  2.0 *  x;
+
+  FA(rowU33, XTLS_L11) = w *        yy;
+  FA(rowU33, XTLS_L22) = w *        xx;
+  FA(rowU33, XTLS_L12) = w * -2.0 * xy;
+  FA(rowU33, XTLS_S23) = w * -2.0 *  x;
+  FA(rowU33, XTLS_S13) = w *  2.0 *  y;
+
+  FA(rowU12, XTLS_L33)   = w * -xy;
+  FA(rowU12, XTLS_L23)   = w *  xz;
+  FA(rowU12, XTLS_L13)   = w *  yz;
+  FA(rowU12, XTLS_L12)   = w * -zz;
+  FA(rowU12, XTLS_S2211) = w *   z;
+  FA(rowU12, XTLS_S31)   = w *   x;
+  FA(rowU12, XTLS_S32)   = w *  -y;
+    
+  FA(rowU13, XTLS_L22)   = w * -xz;
+  FA(rowU13, XTLS_L23)   = w *  xy;
+  FA(rowU13, XTLS_L13)   = w * -yy;
+  FA(rowU13, XTLS_L12)   = w *  yz;
+  FA(rowU13, XTLS_S1133) = w *   y;
+  FA(rowU13, XTLS_S23)   = w *   z;
+  FA(rowU13, XTLS_S21)   = w *  -x;
+    
+  FA(rowU23, XTLS_L11)   = w * -yz;
+  FA(rowU23, XTLS_L23)   = w * -xx;
+  FA(rowU23, XTLS_L13)   = w *  xy;
+  FA(rowU23, XTLS_L12)   = w *  xz;
+  FA(rowU23, XTLS_S2211) = w *  -x;
+  FA(rowU23, XTLS_S1133) = w *  -x;
+  FA(rowU23, XTLS_S12)   = w *   y;
+  FA(rowU23, XTLS_S13)   = w *  -z;
+
+#undef FA
+}
 
 /* solve for x given the singular value decomposition of a matrix
  * into U, S, and Vt 
@@ -691,10 +784,6 @@ new_chain(int num_atoms)
     
   chain->LWORK = tmp_WORK;
 
-#ifdef _DEBUG
-  printf("new_chain: ideal WORK size %d\n", chain->LWORK);
-#endif
-
   chain->WORK = malloc(sizeof(double) * chain->LWORK);
   if (chain->WORK == NULL) {
     printf("new_chain: chain->WORK\n");
@@ -746,7 +835,7 @@ calc_centroid(struct Atom *atoms, int istart, int iend, double *x, double *y, do
 }
 
 static void
-fit_segment_ITLS(struct ITLSFitContext *itls_context)
+linear_isotropic_fit_segment(struct TLSFitContext *fit)
 {
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
@@ -754,174 +843,6 @@ fit_segment_ITLS(struct ITLSFitContext *itls_context)
 
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
-
-  /* optimization */
-  atoms = itls_context->chain->atoms;
-
-  A  = itls_context->chain->A;
-  Aw = itls_context->chain->Aw;
-  b  = itls_context->chain->b;
-  bw = itls_context->chain->bw;
-
-  /* calculate the number of atoms to be fit */
-  num_atoms = itls_context->iend - itls_context->istart + 1;
-  istart    = itls_context->istart;
-  iend      = itls_context->iend;
-
-  /* calculate the centroid of the atoms which are to
-   * be fit and use it as the origin of the TLS tensors
-   */
-  calc_centroid(itls_context->chain->atoms,
-		itls_context->istart,
-		itls_context->iend,
-		&itls_context->origin_x,
-		&itls_context->origin_y,
-		&itls_context->origin_z);
-
-  origin_x = itls_context->origin_x;
-  origin_y = itls_context->origin_y;
-  origin_z = itls_context->origin_z;
-
-  for (ia = istart; ia <= iend; ia++) {
-    atoms[ia].xtls = atoms[ia].x - origin_x;
-    atoms[ia].ytls = atoms[ia].y - origin_y;
-    atoms[ia].ztls = atoms[ia].z - origin_z;
-  }
-
-  /*
-   * ISOTROPIC TLS MODEL
-   */
-  num_rows = num_atoms;
-  num_cols = ITLS_NUM_PARAMS;
-
-  zero_dmatrix(Aw, num_rows, num_cols);
-
-  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(Aw,
-		bw,
-		num_rows,
-		num_cols, 
-		row,
-		atoms[ia].u_iso,
-		atoms[ia].xtls,
-		atoms[ia].ytls,
-		atoms[ia].ztls,
-		atoms[ia].sqrt_weight);
-  }
-
-  /* make a copy of Aw into A because dgesdd_ destroys Aw */
-  sz = num_rows * num_cols;
-  for (i = 0; i < sz; i++) {
-    A[i] = Aw[i];
-  }
-
-  /* solve for isotropic TLS model */
-  jobz = 'S';
-  dgesdd_(&jobz,  
-	  &num_rows,
-	  &num_cols, 
-	  itls_context->chain->Aw,
-	  &num_rows,
-	  itls_context->chain->S, 
-	  itls_context->chain->U,
-	  &num_rows,
-	  itls_context->chain->VT,
-	  &num_cols,
-	  itls_context->chain->WORK, 
-	  &itls_context->chain->LWORK,
-	  itls_context->chain->IWORK,
-	  &info);
-
-  if (info != 0) {
-    printf("DGESDD ERROR(isotropic): info = %d\n", info);
-  }
-
-  solve_SVD(num_rows,
-	    num_cols,
-	    itls_context->ITLS,
-	    itls_context->chain->bw,
-	    itls_context->chain->U,
-	    itls_context->chain->S,
-	    itls_context->chain->VT,
-	    itls_context->chain->WORK);
-
-  /* now we have solved for x; now we can calculate the 
-   * weighted residual; remember that A is actually a copy of Aw
-   * residual */
-  calc_lsqr(itls_context->chain->A, 
-	    num_rows, 
-	    num_cols,
-	    itls_context->ITLS,
-	    itls_context->chain->bw,
-	    &itls_context->ilsqr);
-
-  /* construct isotropic tensors */
-  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    calc_isotropic_uiso(itls_context->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
-    atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[3] = 0.0;
-    atoms[ia].Utmp[4] = 0.0;
-    atoms[ia].Utmp[5] = 0.0;
-  }
-
-  /*
-   * ANISOTROPIC TLS MODEL
-   */
-  num_rows = num_atoms * 6;
-  num_cols = ATLS_NUM_PARAMS;
-
-  zero_dmatrix(Aw, num_rows, num_cols);
-
-  for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-    set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
-  }
-
-  jobz = 'S';
-  dgesdd_(&jobz,  
-	  &num_rows,
-	  &num_cols, 
-	  itls_context->chain->Aw, 
-	  &num_rows,
-	  itls_context->chain->S, 
-	  itls_context->chain->U,
-	  &num_rows, 
-	  itls_context->chain->VT,
-	  &num_cols,
-	  itls_context->chain->WORK, 
-	  &itls_context->chain->LWORK,
-	  itls_context->chain->IWORK,
-	  &info);
-
-  if (info != 0) {
-    printf("DGESDD ERROR(anisotropic): info = %d\n", info);
-  }
-
-  solve_SVD(num_rows, 
-	    num_cols,
-	    itls_context->ATLS,
-	    itls_context->chain->bw,
-	    itls_context->chain->U,
-	    itls_context->chain->S,
-	    itls_context->chain->VT,
-	    itls_context->chain->WORK);
-}
-
-
-static void
-fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
-{
-  char jobz;
-  int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
-  double origin_x, origin_y, origin_z;
-
-  double *A, *Aw, *b, *bw;
-  struct Atom *atoms;
-  
-  int n;
-  double lsqr, prev_lsqr, delta, Utls[6], scale;
-
 
   /* optimization */
   atoms = fit->chain->atoms;
@@ -939,13 +860,13 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
   /* calculate the centroid of the atoms which are to
    * be fit and use it as the origin of the TLS tensors
    */
-  calc_centroid(fit->chain->atoms, fit->istart, fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
+  calc_centroid(fit->chain->atoms, fit->istart,fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
 
   origin_x = fit->origin_x;
   origin_y = fit->origin_y;
   origin_z = fit->origin_z;
 
-  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+  for (ia = istart; ia <= iend; ia++) {
     atoms[ia].xtls = atoms[ia].x - origin_x;
     atoms[ia].ytls = atoms[ia].y - origin_y;
     atoms[ia].ztls = atoms[ia].z - origin_z;
@@ -956,8 +877,9 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
   num_cols = ITLS_NUM_PARAMS;
 
   zero_dmatrix(Aw, num_rows, num_cols);
+
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(Aw, bw,	num_rows, num_cols, row,atoms[ia].u_iso, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+    set_ITLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].u_iso, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
   }
 
   /* make a copy of Aw into A because dgesdd_ destroys Aw */
@@ -968,24 +890,39 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
 
   /* solve for isotropic TLS model */
   jobz = 'S';
-  dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw,&num_rows, fit->chain->S, fit->chain->U, 
-	  &num_rows, fit->chain->VT, &num_cols, fit->chain->WORK, 
-	  &fit->chain->LWORK, fit->chain->IWORK, &info);
+  dgesdd_(&jobz,  
+	  &num_rows,
+	  &num_cols, 
+	  Aw,
+	  &num_rows,
+	  fit->chain->S, 
+	  fit->chain->U,
+	  &num_rows,
+	  fit->chain->VT,
+	  &num_cols,
+	  fit->chain->WORK, 
+	  &fit->chain->LWORK,
+	  fit->chain->IWORK,
+	  &info);
+
   if (info != 0) {
     printf("DGESDD ERROR(isotropic): info = %d\n", info);
   }
 
-  solve_SVD(num_rows, num_cols, fit->ITLS, fit->chain->bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
+  solve_SVD(num_rows, num_cols, fit->ITLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
 
   /* now we have solved for x; now we can calculate the 
    * weighted residual; remember that A is actually a copy of Aw
    * residual 
    */
-  calc_lsqr(fit->chain->A, num_rows, num_cols, fit->ITLS, fit->chain->bw, &fit->ilsqr);
+  calc_lsqr(A, num_rows, num_cols, fit->ITLS, bw, &fit->ilsqr);
 
   /* construct isotropic tensors */
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
     calc_isotropic_uiso(fit->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
+
+    atoms[ia].sqrt_weight_tmp = atoms[ia].sqrt_weight * sqrt(1.0 / fabs(atoms[ia].u_iso - atoms[ia].u_iso_tmp));
+
     atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
     atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
     atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
@@ -996,61 +933,139 @@ fit_segment_ITLS_iterative(struct ITLSFitContext *fit)
 
   /* ANISOTROPIC TLS MODEL */
   num_rows = num_atoms * 6;
-  num_cols = ATLS_NUM_PARAMS;
+  num_cols = XTLS_NUM_PARAMS;
 
-  lsqr = 0.0;
-  prev_lsqr = 0.0;
+  zero_dmatrix(Aw, num_rows, num_cols);
 
-  for (n = 0; n < 100; n++ ) {
-    zero_dmatrix(Aw, num_rows, num_cols);
-
-    for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-      set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
-    }
-
-    jobz = 'S';
-    dgesdd_(&jobz, &num_rows, &num_cols, fit->chain->Aw, &num_rows, fit->chain->S, fit->chain->U, &num_rows, fit->chain->VT,
-	    &num_cols, fit->chain->WORK, &fit->chain->LWORK, fit->chain->IWORK, &info);
-    if (info != 0) {
-      printf("DGESDD ERROR(anisotropic): info = %d\n", info);
-    }
-    
-    solve_SVD(num_rows, num_cols, fit->ATLS, fit->chain->bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
-   
-    /* calculate least squares residual */
-    lsqr = 0.0;
-    for (ia = istart; ia <= iend; ia++) {
-      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
-      delta = (Utls[0] + Utls[1] + Utls[2])/3.0 - atoms[ia].u_iso_tmp;
-      lsqr += delta*delta;
-    }
-
-    printf("iter tls: iteration %d  %f\n", n, lsqr);
-
-    /* skip on first iteration */
-    if (n > 0) {
-      delta = prev_lsqr - lsqr;
-      if (delta < 1E-4) {
-	printf("iter tls: delta right on %f\n", delta);
-	break;
-      }
-    }
-    prev_lsqr = lsqr;
-
-    /* calculate and scale a new target anisotropic tensor for each atom */
-    for (ia = fit->istart; ia <= fit->iend; ia++) {
-      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
-
-      scale = 3.0 * atoms[ia].u_iso_tmp/(Utls[0] + Utls[1] + Utls[2]);
-
-      for (i = 0; i < 6; i++) {
-	atoms[ia].Utmp[i] = scale * Utls[i];
-      }
-    }
- 
+  for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
+    set_XTLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight_tmp);
   }
+
+  jobz = 'S';
+  dgesdd_(&jobz,  
+	  &num_rows,
+	  &num_cols, 
+	  Aw, 
+	  &num_rows,
+	  fit->chain->S, 
+	  fit->chain->U,
+	  &num_rows, 
+	  fit->chain->VT,
+	  &num_cols,
+	  fit->chain->WORK, 
+	  &fit->chain->LWORK,
+	  fit->chain->IWORK,
+	  &info);
+
+  if (info != 0) {
+    printf("DGESDD ERROR(anisotropic): info = %d\n", info);
+  }
+
+  solve_SVD(num_rows, num_cols,fit->XTLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
+
+  /* copy XTLS params into ATLS */
+  fit->ATLS[ATLS_T11] = fit->XTLS[XTLS_T];
+  fit->ATLS[ATLS_T22] = fit->XTLS[XTLS_T];
+  fit->ATLS[ATLS_T33] = fit->XTLS[XTLS_T];
+  fit->ATLS[ATLS_T12] = 0.0;
+  fit->ATLS[ATLS_T13] = 0.0;
+  fit->ATLS[ATLS_T23] = 0.0;
+
+  fit->ATLS[ATLS_L11] = fit->XTLS[XTLS_L11];
+  fit->ATLS[ATLS_L22] = fit->XTLS[XTLS_L22];
+  fit->ATLS[ATLS_L33] = fit->XTLS[XTLS_L33];
+  fit->ATLS[ATLS_L12] = fit->XTLS[XTLS_L12];
+  fit->ATLS[ATLS_L13] = fit->XTLS[XTLS_L13];
+  fit->ATLS[ATLS_L23] = fit->XTLS[XTLS_L23];
+
+  fit->ATLS[ATLS_S2211] = fit->XTLS[XTLS_S2211];
+  fit->ATLS[ATLS_S1133] = fit->XTLS[XTLS_S1133];
+
+  fit->ATLS[ATLS_S12] = fit->XTLS[XTLS_S12];
+  fit->ATLS[ATLS_S13] = fit->XTLS[XTLS_S13];
+  fit->ATLS[ATLS_S23] = fit->XTLS[XTLS_S23];
+  fit->ATLS[ATLS_S21] = fit->XTLS[XTLS_S21];
+  fit->ATLS[ATLS_S31] = fit->XTLS[XTLS_S31];
+  fit->ATLS[ATLS_S32] = fit->XTLS[XTLS_S32];
 }
 
+static void
+linear_anisotropic_fit_segment(struct TLSFitContext *fit)
+{
+  char jobz;
+  int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
+  double origin_x, origin_y, origin_z;
+
+  double *A, *Aw, *b, *bw;
+  struct Atom *atoms;
+
+  /* optimization */
+  atoms = fit->chain->atoms;
+
+  A  = fit->chain->A;
+  Aw = fit->chain->Aw;
+  b  = fit->chain->b;
+  bw = fit->chain->bw;
+
+  /* calculate the number of atoms to be fit */
+  num_atoms = fit->iend - fit->istart + 1;
+  istart    = fit->istart;
+  iend      = fit->iend;
+
+  /* calculate the centroid of the atoms which are to
+   * be fit and use it as the origin of the TLS tensors
+   */
+  calc_centroid(fit->chain->atoms, fit->istart,fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
+
+  origin_x = fit->origin_x;
+  origin_y = fit->origin_y;
+  origin_z = fit->origin_z;
+
+  for (ia = istart; ia <= iend; ia++) {
+    atoms[ia].xtls = atoms[ia].x - origin_x;
+    atoms[ia].ytls = atoms[ia].y - origin_y;
+    atoms[ia].ztls = atoms[ia].z - origin_z;
+  }
+
+  /* ANISOTROPIC TLS MODEL */
+  num_rows = num_atoms * 6;
+  num_cols = ATLS_NUM_PARAMS;
+
+  zero_dmatrix(Aw, num_rows, num_cols);
+
+  for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
+    set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].U, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+  }
+
+  /* make a copy of Aw into A because dgesdd_ destroys Aw */
+  sz = num_rows * num_cols;
+  for (i = 0; i < sz; i++) {
+    A[i] = Aw[i];
+  }
+
+  jobz = 'S';
+  dgesdd_(&jobz,  
+	  &num_rows,
+	  &num_cols, 
+	  Aw, 
+	  &num_rows,
+	  fit->chain->S, 
+	  fit->chain->U,
+	  &num_rows, 
+	  fit->chain->VT,
+	  &num_cols,
+	  fit->chain->WORK, 
+	  &fit->chain->LWORK,
+	  fit->chain->IWORK,
+	  &info);
+
+  if (info != 0) {
+    printf("DGESDD ERROR(anisotropic): info = %d\n", info);
+  }
+
+  solve_SVD(num_rows, num_cols, fit->ATLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
+  calc_lsqr(A, num_rows, num_cols, fit->ATLS, bw, &fit->alsqr);
+}
 
 static void
 calc_isotropic_hinge_delta(struct IHingeContext *hinge)
@@ -1285,8 +1300,7 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
  * Two Python classes interface to the high-performance LSQ fitting
  * algorthims:
  *
- * ITLSModel: Isotropic TLS Model
- * ATLSModel: Anisotropic TLS Model 
+ * LinearTLSModel: Linear Fit of TLS Models
  */
 
 static PyObject *LINEARTLS_ERROR = NULL;
@@ -1297,10 +1311,10 @@ typedef struct {
   PyObject_HEAD
   PyObject       *xmlrpc_chain; /* list of dictionaies describing the atoms */
   struct Chain   *chain;        /* internal version of the chain */
-} ITLSModel_Object;
+} LinearTLSModel_Object;
 
 static void
-ITLSModel_dealloc(ITLSModel_Object* self)
+LinearTLSModel_dealloc(LinearTLSModel_Object* self)
 {
   if (self->chain) {
     delete_chain(self->chain);
@@ -1312,11 +1326,11 @@ ITLSModel_dealloc(ITLSModel_Object* self)
 }
 
 static PyObject *
-ITLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+LinearTLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  ITLSModel_Object *self;
+  LinearTLSModel_Object *self;
   
-  self = (ITLSModel_Object *)type->tp_alloc(type, 0);
+  self = (LinearTLSModel_Object *)type->tp_alloc(type, 0);
   if (self == NULL) {
     return NULL;
   }
@@ -1328,9 +1342,9 @@ ITLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
+LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 {
-  ITLSModel_Object *self;
+  LinearTLSModel_Object *self;
   PyObject *xmlrpc_chain;
   PyObject *atm_desc;
   PyObject *tmp;
@@ -1338,7 +1352,7 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   int i, j, num_atoms;
   char *strx;
 
-  self = (ITLSModel_Object *) py_self;
+  self = (LinearTLSModel_Object *) py_self;
 
   if (!PyArg_ParseTuple(args, "O", &xmlrpc_chain)) {
     goto error;
@@ -1468,14 +1482,6 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 	goto error;
       }
       self->chain->atoms[i].sqrt_weight = sqrt(PyFloat_AsDouble(tmp));
-
-#ifdef _DEBUG
-      printf("ATOMS[%d]: %s %s\n", 
-	     i, 
-	     self->chain->atoms[i].name, 
-	     self->chain->atoms[i].frag_id);
-#endif /* _DEBUG */
-
     }
   }
 
@@ -1487,17 +1493,17 @@ ITLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 }
 
 static PyObject *
-ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
+LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 {
-  ITLSModel_Object *self;
+  LinearTLSModel_Object *self;
   PyObject *py_floatx, *rdict;
 
   int i;
-  struct ITLSFitContext fit_context;
+  struct TLSFitContext fit_context;
 
-  self = (ITLSModel_Object *) py_self;
+  self = (LinearTLSModel_Object *) py_self;
 
-  /* fill in fields in the ITLSFitContext structure */
+  /* fill in fields in the TLSFitContext structure */
   if (self->chain==NULL) {
     goto error;
   }
@@ -1517,12 +1523,7 @@ ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
   }
 
   /* fit the segment */
-#ifdef _DEBUG
-  printf("ITLSModel_fit_segment(istart=%d, iend=%d)\n",
-	 fit_context.istart,
-	 fit_context.iend);
-#endif 
-  fit_segment_ITLS(&fit_context);
+  linear_isotropic_fit_segment(&fit_context);
 
   /* construct return dictioary with results */
   rdict = PyDict_New();
@@ -1557,15 +1558,82 @@ ITLSModel_fit_segment(PyObject *py_self, PyObject *args)
 }
 
 static PyObject *
-ITLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
+LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args)
 {
-  ITLSModel_Object *self;
+  LinearTLSModel_Object *self;
+  PyObject *py_floatx, *rdict;
+
+  int i;
+  struct TLSFitContext fit_context;
+
+  self = (LinearTLSModel_Object *) py_self;
+
+  /* fill in fields in the TLSFitContext structure */
+  if (self->chain==NULL) {
+    goto error;
+  }
+
+  fit_context.chain = self->chain;
+  fit_context.origin_x = 0.0;
+  fit_context.origin_y = 0.0;
+  fit_context.origin_z = 0.0;
+  for (i = 0; i <= ITLS_NUM_PARAMS; i++) {
+    fit_context.ITLS[i] = 0.0;
+  }
+  for (i = 0; i <= ATLS_NUM_PARAMS; i++) {
+    fit_context.ATLS[i] = 0.0;
+  }
+  fit_context.ilsqr = 0.0;
+
+  if (!PyArg_ParseTuple(args, "ii", &fit_context.istart, &fit_context.iend)) {
+    goto error;
+  }
+
+  /* fit the segment */
+  linear_anisotropic_fit_segment(&fit_context);
+
+  /* construct return dictioary with results */
+  rdict = PyDict_New();
+
+  /* set minimization exit status */
+  py_floatx = PyFloat_FromDouble(fit_context.origin_x);
+  PyDict_SetItemString(rdict, "x", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(fit_context.origin_y);
+  PyDict_SetItemString(rdict, "y", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(fit_context.origin_z);
+  PyDict_SetItemString(rdict, "z", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(fit_context.alsqr);
+  PyDict_SetItemString(rdict, "alsqr", py_floatx);
+  Py_DECREF(py_floatx);
+  
+  for (i = 0; i < ATLS_NUM_PARAMS; i++) {
+    py_floatx = PyFloat_FromDouble(fit_context.ATLS[i]);
+    PyDict_SetItemString(rdict, ATLS_PARAM_NAMES[i], py_floatx);
+    Py_DECREF(py_floatx);
+  }
+    
+  return rdict;
+
+ error:
+  return NULL;
+}
+
+static PyObject *
+LinearTLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
+{
+  LinearTLSModel_Object *self;
   PyObject *py_floatx, *rdict;
   struct IHingeContext hinge;
 
-  self = (ITLSModel_Object *) py_self;
+  self = (LinearTLSModel_Object *) py_self;
 
-  /* fill in fields in the ITLSFitContext structure */
+  /* fill in fields in the TLSFitContext structure */
   if (self->chain==NULL) {
     goto error;
   }
@@ -1613,32 +1681,37 @@ ITLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
   return NULL;
 }
 
-static PyMethodDef ITLSModel_methods[] = {
+static PyMethodDef LinearTLSModel_methods[] = {
     {"set_xmlrpc_chain", 
-     (PyCFunction) ITLSModel_set_xmlrpc_chain, 
+     (PyCFunction) LinearTLSModel_set_xmlrpc_chain, 
      METH_VARARGS,
      "Sets the Python list containing one dictionary for each atom." },
 
-    {"fit_segment",
-     (PyCFunction) ITLSModel_fit_segment, 
+    {"isotropic_fit_segment",
+     (PyCFunction) LinearTLSModel_isotropic_fit_segment, 
      METH_VARARGS,
-     "Performs a TLS/ISO fit to the given atoms." },
+     "Performs a linear fit of the isotropic TLS model to the given atoms." },
+
+    {"anisotropic_fit_segment",
+     (PyCFunction) LinearTLSModel_anisotropic_fit_segment, 
+     METH_VARARGS,
+     "Performs a linear fit of the anisotropic TLS model to the given atoms." },
 
     {"calc_isotropic_hinge_delta",
-     (PyCFunction) ITLSModel_calc_isotropic_hinge_delta, 
+     (PyCFunction) LinearTLSModel_calc_isotropic_hinge_delta, 
      METH_VARARGS,
      "Calculates the value of the hinge-delta function." },
 
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject ITLSModel_Type = {
+static PyTypeObject LinearTLSModel_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "ITLSModel",          /*tp_name*/
-    sizeof(ITLSModel_Object), /*tp_basicsize*/
+    "LinearTLSModel",          /*tp_name*/
+    sizeof(LinearTLSModel_Object), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)ITLSModel_dealloc, /*tp_dealloc*/
+    (destructor)LinearTLSModel_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -1654,14 +1727,14 @@ static PyTypeObject ITLSModel_Type = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "ITLSModel objects",  /* tp_doc */
+    "LinearTLSModel objects",  /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
     0,		               /* tp_iternext */
-    ITLSModel_methods,    /* tp_methods */
+    LinearTLSModel_methods,    /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -1671,7 +1744,7 @@ static PyTypeObject ITLSModel_Type = {
     0,                         /* tp_dictoffset */
     0,                         /* tp_init */
     0,                         /* tp_alloc */
-    ITLSModel_new,        /* tp_new */
+    LinearTLSModel_new,        /* tp_new */
 };
 
 
@@ -1685,7 +1758,7 @@ initlineartls(void)
   PyObject *m;
   
   
-  if (PyType_Ready(&ITLSModel_Type) < 0)
+  if (PyType_Ready(&LinearTLSModel_Type) < 0)
     return;
 
   m = Py_InitModule("lineartls", LINEARTLS_METHODS);
@@ -1695,7 +1768,7 @@ initlineartls(void)
   PyModule_AddObject(m, "error", LINEARTLS_ERROR);
 
 
-  /* add the ITLSModel class */
-  Py_INCREF(&ITLSModel_Type);
-  PyModule_AddObject(m, "ITLSModel", (PyObject *)&ITLSModel_Type);
+  /* add the LinearTLSModel class */
+  Py_INCREF(&LinearTLSModel_Type);
+  PyModule_AddObject(m, "LinearTLSModel", (PyObject *)&LinearTLSModel_Type);
 }

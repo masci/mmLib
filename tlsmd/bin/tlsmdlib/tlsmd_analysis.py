@@ -92,20 +92,20 @@ def calc_include_atom(atm, reject_messages=False):
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
 
-##     for atmb in atm.iter_bonded_atoms():
-##         delta = atm.temp_factor - atmb.temp_factor
-##         flag = True
+    for atmb in atm.iter_bonded_atoms():
+        delta = atm.temp_factor - atmb.temp_factor
+        flag = True
 	
-## 	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
-##             if delta > 3.0: flag = False
-## 	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
-##             if delta > 4.0: flag = False
-## 	else:
-##             if delta > 6.0: flag = False
+	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
+            if delta > 6.0: flag = False
+	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
+            if delta > 8.0: flag = False
+	else:
+            if delta > 12.0: flag = False
 
-##         if flag == False:
-##             print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
-##             return False
+        if flag == False:
+            print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
+            return False
         
     if INCLUDE_ATOMS=="ALL":
         return True
@@ -421,8 +421,6 @@ class TLSChainProcessor(object):
         ## iterate over the fit_info dictionaries which hold the
         ## information on the TLS fits comming back from the grid servers
         num_edges          = 0
-        num_rejected_edges = 0
-        num_accepted_edges = 0
         
         for fit_info in iter_segment_fit_info:
             assert fit_info["chain_id"]==chain.chain_id
@@ -435,24 +433,11 @@ class TLSChainProcessor(object):
             ## save the fit_info record the graph state file
             analysis.tlsmdfile.grh_append_tls_record(fit_info)
             
-            if fit_info.has_key("error"):
-                num_rejected_edges += 1
-                print "process_chain(chain_id=%s, frag_id={%s..%s}, discard=%s)" % (
-                    chain.chain_id,
-                    fit_info["frag_id1"], fit_info["frag_id2"],
-                    fit_info["error"])
-    
-            else:
-                num_accepted_edges += 1
-                print "process_chain(chain_id=%s, frag_id={%s..%s}, lsqr=%6.4f)" % (
-                    chain.chain_id,
-                    fit_info["frag_id1"], fit_info["frag_id2"],
-                    fit_info["lsq_residual"])
+            print "process_chain(chain_id=%s, frag_id={%s..%s}, lsqr=%6.4f)" % (
+                chain.chain_id, fit_info["frag_id1"], fit_info["frag_id2"], fit_info["lsq_residual"])
 
         print
-        print "NUM POSSIBLE  TLS GROUPS: %d" % (num_edges)
-        print "NUM ACCEPTED  TLS GROUPS: %d" % (num_accepted_edges)
-        print "NUM DISCARDED TLS GROUPS: %d" % (num_rejected_edges)
+        print "NUMBER OF PROCESSED TLS GROUPS: %d" % (num_edges)
 
 
 class TLSOptimization(object):
@@ -490,8 +475,7 @@ class TLSChainMinimizer(HCSSSP):
         self.frag_id_src  = None
         self.frag_id_dest = None
 
-        print "TLSChainMinimizer(chain_id=%s, range={%s..%s})" % (
-            chain.chain_id, self.frag_id_src, self.frag_id_dest)
+        print "TLSChainMinimizer(chain_id=%s, range={%s..%s})" % (chain.chain_id, self.frag_id_src, self.frag_id_dest)
 
         if self.frag_id_src==None and self.frag_id_dest==None:
             self.chain = chain
@@ -558,22 +542,15 @@ class TLSChainMinimizer(HCSSSP):
         
         E = []
         for msg in iter_chain_subsegment_descs(self.chain, self.min_span):
-            tls = grh_get_tls_record(
-                self.chain.chain_id,
-                msg["frag_id1"],
-                msg["frag_id2"])
+            tls = grh_get_tls_record(self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
             
             if tls==None:
-                print "build_graph(): [ERROR] no TLS group %s{%s..%s}" % (
-                    self.chain.chain_id,
-                    msg["frag_id1"],
-                    msg["frag_id2"])
-
+                print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
                 sys.exit(-1)
 
             ## filter out the bad TLS segments
-            if self.__minimization_filter(tls)==False:
-                if True:
+            if tls.has_key("lsq_residual")==False:
+                if False:
                     i, j = msg["vertex_i"], msg["vertex_j"]
 		    num_res = j - i
                     if tls.has_key("num_atoms"):
@@ -600,8 +577,7 @@ class TLSChainMinimizer(HCSSSP):
         start_timing()
 
         if len(self.E)>0:
-            print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (
-                self.chain.chain_id)
+            print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (self.chain.chain_id)
         
             D, P, T = self.HCSSSP_minimize(self.V, self.E, max_tls_segments)
 
@@ -610,8 +586,7 @@ class TLSChainMinimizer(HCSSSP):
             self.P = P
             self.T = T
         else:
-            print "run_minimization(chain_id=%s): Unable to minimize" % (
-                self.chain.chain_id)
+            print "run_minimization(chain_id=%s): Unable to minimize" % (self.chain.chain_id)
             self.minimized = False
 
         ## free memory taken up from edges
@@ -622,50 +597,6 @@ class TLSChainMinimizer(HCSSSP):
 
         print "run_minimization(): ",end_timing()
 
-    def __minimization_filter(self, tls):
-        """Returns False if the tls group descibed by the tls database
-        record should not be included in the minimization.
-        """
-        if tls.has_key("lsq_residual")==False:
-            return False
-    
-        return True
-    
-        if tls.has_key("error"):
-            return False
-
-        return True
-    
-        T,L,S,O = self.__TLSO(tls)
-        cdict = temp_calc_cor(T, L, S, O)
-
-        ## sanity checks on rT
-        rT = cdict["rT'"]
-        evals = eigenvalues(rT)
-        
-        min_rT = U2B * min(evals)
-        if min_rT < (0.1 * self.min_temp_factor):
-            print "[FILTER] small rT chain=%s frag_rng={%s..%s}" % (
-                tls["chain_id"], tls["frag_id1"], tls["frag_id2"])
-            return False
-
-        aniso = min(evals)/max(evals)
-        if aniso<0.05:
-            print "[FILTER] anisotropic rT chain=%s frag_rng={%s..%s}" % (
-                tls["chain_id"], tls["frag_id1"], tls["frag_id2"])
-            return False
-
-        ## sanity checks on rho
-        max_len = 50.0
-        if length(cdict["L1_rho"])>max_len or \
-           length(cdict["L2_rho"])>max_len or \
-           length(cdict["L3_rho"])>max_len:
-            print "[FILTER] length(rho) chain=%s frag_rng={%s..%s}" % (
-                tls["chain_id"], tls["frag_id1"], tls["frag_id2"])
-            return False
-           
-        return True
-
     def calc_tls_optimization(self, ntls_constraint):
         """Return a TLSOptimization() object containing the optimal
         TLS description of self.chain using num_tls_segments.
@@ -675,8 +606,7 @@ class TLSChainMinimizer(HCSSSP):
 
         tlsopt = TLSOptimization(self.chain, ntls_constraint)
         
-        for hi, hj, edge in self.HCSSSP_path_iter(
-            self.V, self.D, self.P, self.T, ntls_constraint):
+        for hi, hj, edge in self.HCSSSP_path_iter(self.V, self.D, self.P, self.T, ntls_constraint):
 
             if edge==None:
                 continue
@@ -701,25 +631,23 @@ class TLSChainMinimizer(HCSSSP):
         ## retrieve from cache if possible
         frag_id1, frag_id2 = frag_range
 
-        tls = self.analysis.tlsmdfile.grh_get_tls_record(
-            self.chain.chain_id, frag_id1, frag_id2)
+        tls = self.analysis.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
+        segment = self.chain[frag_id1:frag_id2]
 
-        segment  = self.chain[frag_id1:frag_id2]
-
-        print "calc_tls_record_from_edge(chain_id=%s frag_id={%s..%s})" % (
-            self.chain.chain_id, frag_id1, frag_id2)
+        print "calc_tls_record_from_edge(chain_id=%s frag_id={%s..%s})" % (self.chain.chain_id, frag_id1, frag_id2)
 
         ## create TLSGroup
         tls_group = TLSGroup()
 
         ## add atoms to the group
         for atm in segment.iter_all_atoms():
-            if atm.include==True:
-                tls_group.append(atm)
+            tls_group.append(atm)
 
         ## take the TLS group tensors from the database set
         ## the TLSGroup object with them
         self.__add_tensors(tls_group, tls)
+
+        tls_group.shift_COR()
 
         ## helpful additions
         tls_info                    = tls_group.calc_tls_info()
@@ -765,89 +693,6 @@ class TLSChainMinimizer(HCSSSP):
 
         return T,L,S,O
         
-    def __add_bypass_edges(self):
-        """Modify the graph before minimization to include the possibility
-        of short segments of the protein which are not described well
-        by the TLS model.
-        """
-        for i in range(self.num_vertex):
-            for j in range(i, self.num_vertex):
-
-                tls = {"method": "BYPASS"}
-
-                weight = (j-i) * 100.0
-                edge = (i, j, weight, tls)
-                self.E.append(edge)
-        
-    def __add_bypass_edges_old(self):
-        """Modify the graph before minimization to include the possibility
-        of short segments of the protein which are not described well
-        by the TLS model.
-        """
-        ## compute the mean weight/residue for all edges
-        nres = 0
-        mean = 0.0
-        edge_mean_list = []
-
-        for i,j,weight,tls in self.E:
-            ## weight/residue for this edge
-            edge_mean = weight / (j-i)
-            edge_mean_list.append(edge_mean)
-
-            ## for overall mean weight/residue
-            nres += j-i
-            mean += weight
-
-        mean = mean / float(nres)
-
-        ## write out histogram file
-        num_bins = 100
-        bins     = [0 for i in range(num_bins)]
-
-        min_mean = min(edge_mean_list)
-        max_mean = max(edge_mean_list)
-
-        bin_range = max_mean - min_mean
-        bin_width = bin_range / num_bins
-
-        ## calculate the histogram if it's worth it to do so
-        if bin_width>0.0:
-            for edge_mean in edge_mean_list:
-                bin_i = int((edge_mean - min_mean) / bin_width)
-
-                try:
-                    bins[bin_i] += 1
-                except IndexError:
-                    pass
-
-            ## bin calculations for the mean value
-            mean_bin_i = int( (mean - min_mean) / bin_width ) 
-
-            hist = open("mean_weight_per_residue_histogram.dat", "w")
-
-            hist.write("## min mean weight/residue:    %f\n" % (min_mean))
-            hist.write("## max mean weight/residue:    %f\n" % (max_mean))
-            hist.write("## mean weight/residue:        %f\n" % (mean))
-            hist.write("## bin of mean weight/residue: %d\n" % (mean_bin_i)) 
-
-            for i in range(len(bins)):
-                hist.write("%10d   %10d\n" % (i+1, bins[i]))
-
-            hist.close()
-
-        ## create bypass edges with a weight equal to
-        ## the average
-        max_bypass_len = 20
-    
-        for i in range(self.num_vertex - max_bypass_len):
-            for j in range(1, max_bypass_len+1):
-
-                tls = {"method": "bypass"}
-
-                weight = j * 100.0
-                edge = (i, i+j, weight, tls)
-                self.E.append(edge)
-        
     def prnt_detailed_paths(self, hops=20):
         """Debug
         """
@@ -858,9 +703,7 @@ class TLSChainMinimizer(HCSSSP):
         for h in range(1, hops+1):
             print
             print "MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h)
-            print "NODE LABEL              HOPS      COST"\
-                  "      PREVIOUS NODE          EDGE"
-
+            print "NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE"
             self.__detailed_path(self.V, self.D, self.P, self.T, h)
 
     def __detailed_path(self, V, D, P, T, hop_constraint):
@@ -893,8 +736,7 @@ class TLSChainMinimizer(HCSSSP):
                 edge_label = ""
                  
             print "%s   %3d     %10.4f   %s   %s" % (
-                vertex_label, h, D[h,curr_v], prev_vertex_label,
-                edge_label)
+                vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
 
             curr_v = prev_vertex
             h -= 1
@@ -1052,8 +894,7 @@ class TLSMDAnalysis(object):
 
             ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
             for tls_desc in tls_file.tls_desc_list:
-                tls_group = tls_desc.construct_tls_group_with_atoms(
-                    self.struct)
+                tls_group = tls_desc.construct_tls_group_with_atoms(self.struct)
 
                 print "    TLS GROUP: %s" % (tls_group.name)
                 
@@ -1153,8 +994,7 @@ class TLSMDAnalysis(object):
         """Performs the TLS graph minimization on all TLSGraphs.
         """
         for chain in self.chains:
-            chain.tls_chain_minimizer = TLSChainMinimizer(
-                self, chain, MIN_SUBSEGMENT_SIZE)
+            chain.tls_chain_minimizer = TLSChainMinimizer(self, chain, MIN_SUBSEGMENT_SIZE)
             
             chain.tls_chain_minimizer.run_minimization()
             if not chain.tls_chain_minimizer.minimized:

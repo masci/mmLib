@@ -119,7 +119,7 @@ class ChainPartitonPointHistogram(object):
         print "ChainPartitonPointHistogram"
         for i in range(len(self.chain)+1):
             print "[%s]: %10d" % (self.pp_names[i], self.pp_freqs[i])
-            fil.write("%d %f\n" % (i, self.pp_freqs[i]))
+            fil.write("%d %d %f\n" % (i, int(self.chain[i-1].fragment_id), self.pp_freqs[i]))
 
         fil.close()
 
@@ -147,6 +147,18 @@ class Histogram(object):
 
         fil.close()
 
+class TopList(list):
+    def __init__(self, ntop):
+        list.__init__(self)
+        self.ntop = ntop
+        self.tmax = None
+
+    def add(self, val):
+        if val < self.tmax:
+            list.append(self, val)
+            list.sort(self)
+            self.tmax = list.__getitem__(self, -1)
+
 class ConfResidHistorgram(SubSegConfs):
     def __init__(self, dbfile, chain, m, p):
         self.datafile = TLSMDFile(dbfile)
@@ -154,10 +166,10 @@ class ConfResidHistorgram(SubSegConfs):
         SubSegConfs.__init__(self, len(self.chain), m, p)
 
         self.clen = len(self.chain)
-        self.ntop = 500
+        self.ntop = 25
         self.top  = []
 
-        self.rmat = self.calc_rmat()
+        self.rmat, self.rmatflag = self.calc_rmat()
 
         self.histogram    = Histogram(100, self.rmat[0,self.clen-1])
         self.cp_histogram = ChainPartitonPointHistogram(self.chain)
@@ -170,6 +182,7 @@ class ConfResidHistorgram(SubSegConfs):
         print "Generating a residual matrix..."
 
         rmat = zeros((self.clen, self.clen), Float)
+        rmatflag = zeros((self.clen, self.clen), Int)
 
         for i in range(self.clen):
             for j in range(i + self.m - 1, self.clen):
@@ -178,17 +191,15 @@ class ConfResidHistorgram(SubSegConfs):
                 frag_id2 = self.chain.fragment_list[j].fragment_id
 
                 data = self.datafile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
-                if data == None:
-                    print "EEK! %s-%s" % (frag_id1, frag_id2)
-
-                try:
+                if data == None or data.has_key("lsq_residual") == False:
+                    print "No Database Record: %s-%s" % (frag_id1, frag_id2)
+                else:
                     rmat[i,j] = data["lsq_residual"]
-                except KeyError:
-                    pass
+                    rmatflag[i,j] = 1
 
         print "Done."
 
-        return rmat
+        return rmat, rmatflag
 
     def process_configuration(self):
         segments = []
@@ -213,27 +224,28 @@ class ConfResidHistorgram(SubSegConfs):
         lsqr = 0.0
 
         for i, j in segments:
+            if self.rmatflag[i,j]==0:
+                return
             lsqr += self.rmat[i,j]
-
-        if lsqr<0.95:
-            for i in self.I:
-                self.cp_histogram.count(i)
 
         self.histogram.count(lsqr)
 
         if len(self.top) < self.ntop:
-            desc = "%s: %f" % (str(segments), lsqr)
-            self.top.append((lsqr, desc))
+            self.top.append((lsqr, copy.copy(self.I)))
         elif lsqr < self.top[-1][0]:
             del self.top[-1]
-            desc = "%s: %f" % (str(segments), lsqr)
-            self.top.append((lsqr, desc))
+            self.top.append((lsqr, copy.copy(self.I)))
             self.top.sort()
 
     def prnt(self):
         prnt_sep()
         self.histogram.prnt()
         prnt_sep()
+
+        for lsqr, I in self.top:
+            for i in I:
+                self.cp_histogram.count(i)
+
         self.cp_histogram.prnt()
         
     def prnt_top(self):
@@ -262,7 +274,7 @@ def main():
     chain_id = sys.argv[3]
     seg = protein_segment(struct.get_chain(chain_id))
 
-    crh = ConfResidHistorgram(dbfile, seg, 5, 5)
+    crh = ConfResidHistorgram(dbfile, seg, 5, 7)
 
     prnt_sep()
     print "Analyizing all configurations..."

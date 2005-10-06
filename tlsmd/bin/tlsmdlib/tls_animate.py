@@ -169,19 +169,19 @@ class TLSAnimate(object):
         frag_id1  = tls["frag_id1"]
         frag_id2  = tls["frag_id2"]
 
-        for n, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
-            (1, "L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
-            (2, "L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
-            (3, "L3_eigen_val", "L3_eigen_vec", "L3_rho", "L3_pitch") ]:
+        for n, Lx_rmsd, Lx_vec, Lx_rho, Lx_pitch in [
+            (1, "L1_rmsd", "L1_eigen_vec", "L1_rho", "L1_pitch"),
+            (2, "L2_rmsd", "L2_eigen_vec", "L2_rho", "L2_pitch"),
+            (3, "L3_rmsd", "L3_eigen_vec", "L3_rho", "L3_pitch") ]:
 
-            Lval   = tls_info[Lx_val]
+            Lrmsd  = tls_info[Lx_rmsd]
             Lvec   = tls_info[Lx_vec]
             Lrho   = tls_info[Lx_rho]
             Lpitch = tls_info[Lx_pitch]
 
             ## pre-calculations for screw displacement
             Lorigin = cor + Lrho
-            Lrot = GAUSS3C[ADP_PROB] * math.sqrt(Lval) * phase
+            Lrot = GAUSS3C[ADP_PROB] * Lrmsd * phase
             D = dmatrixu(Lvec, Lrot)
             d_screw = (Lrot * Lpitch) * Lvec
             
