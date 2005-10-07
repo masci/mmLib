@@ -715,9 +715,9 @@ class HET(PDBRecord):
     - not one of the standard amino acids, and 
     - not one of the nucleic acids (C, G, A, T, U, and I), and 
     - not one of the modified versions of nucleic acids (+C, +G, +A,
-      +T, +U, and +I), and 
+    +T, +U, and +I), and 
     - not an unknown amino acid or nucleic acid where UNK is used to
-      indicate the unknown residue name. 
+    indicate the unknown residue name. 
     Het records also describe heterogens for which the chemical identity
     is unknown, in which case the group is assigned the hetID UNK.
     """

@@ -102,14 +102,9 @@ def main(path, opt_dict):
             if len(tls)<20:
                 print "ERROR: Not Enough Atoms in TLS Group."
                 continue
-
-            weight_dict = {}
-            for atm in tls:
-                weight_dict[atm] = 1.0 / (U2B * trace(atm.get_U()/3.0))
                 
             tls.origin = tls.calc_centroid()
-            lsq_residual = tls.calc_TLS_least_squares_fit(weight_dict)
-            tls.shift_COR()
+            lsq_residual = tls.calc_TLS_least_squares_fit()
 
         tls.tls_desc.set_tls_group(tls)
         tls_file.tls_desc_list.append(tls.tls_desc)

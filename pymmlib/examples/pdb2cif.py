@@ -61,8 +61,7 @@ if __name__ == '__main__':
     if infil == "-": infil = sys.stdin
     if outfil == "-": outfil = sys.stdout
 
-    struct = LoadStructure(
-        fil=infil, format="PDB",build_properties=("calc_sequence",))
+    struct = LoadStructure(fil=infil, format="PDB")
 
     SaveStructure(
         fil = outfil, 

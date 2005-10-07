@@ -280,11 +280,11 @@ def make_doc():
     """This is a special function to generate the documentation with
     Epidoc.  It once used happydoc.
     """
-    #os.system("happydoc -d doc/happy -t 'PyMMLib Documentation' --no-comments --no-private-names mmLib")
+    happy = "/home/jpaint/build/HappyDoc-r2_1/happydoc"
+    os.system("%s -d doc/api_reference -t 'mmLib Documentation' --no-comments --no-private-names mmLib" % (happy))
+    return
 
-    os.system(
-        'epydoc --html --output doc/api_reference '\
-        '--name "mmLib Documentation" mmLib mmLib/Extensions') 
+    os.system('epydoc --html --output doc/api_reference --name "mmLib Documentation" mmLib mmLib/Extensions') 
 
 
 def check_deps():

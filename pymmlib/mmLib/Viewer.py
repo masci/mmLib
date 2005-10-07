@@ -1416,6 +1416,21 @@ class GLAtomList(GLDrawList):
               "range":      PROP_OPACITY_RANGE,
               "default":    1.0,
               "action":     "recompile_Urms" })
+        self.glo_add_property(
+            { "name":       "show_sig_u",
+              "desc":       "Show +/- SIGUIJ Ellipsoids",
+              "catagory":   "ADP",
+              "type":       "boolean",
+              "default":    False,
+              "action":     "recompile_Uellipse" })
+        self.glo_add_property(
+            { "name":       "sig_u_opacity",
+              "desc":       "SIGUIJ Ellipsoid Opacity",
+              "catagory":   "ADP",
+              "type":       "float",
+              "range":      PROP_OPACITY_RANGE,
+              "default":    0.5,
+              "action":     "recompile_Uellipse" })
 
     def gldl_install_draw_methods(self):
         self.gldl_draw_method_install(
@@ -1964,6 +1979,9 @@ class GLAtomList(GLDrawList):
         
         opacity = self.properties["ellipse_opacity"]
         prob    = self.properties["adp_prob"]
+
+        show_sig_u    = self.properties["show_sig_u"]
+        sig_u_opacity = self.properties["sig_u_opacity"]
         
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
@@ -1971,8 +1989,17 @@ class GLAtomList(GLDrawList):
                 continue
 
             r, g, b = self.glal_calc_color_Uellipse(atm) 
+            
+            if show_sig_u==True and atm.sig_U!=None:
+                glr_set_material_rgba(r, g, b,sig_u_opacity)
+                glr_Uellipse(pos, U - atm.sig_U, prob)
+
             glr_set_material_rgba(r, g, b, opacity)
             glr_Uellipse(pos, U, prob)
+
+            if show_sig_u==True and atm.sig_U!=None:
+                glr_set_material_rgba(r, g, b,sig_u_opacity)
+                glr_Uellipse(pos, U + atm.sig_U, prob)
 
     def glal_draw_Urms(self):
         """Draw the ADP determined RMS displacement surface.

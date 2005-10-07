@@ -13,7 +13,7 @@ static PyObject *GLAccelError = NULL;
 
 /* normalize the vector v
  */
-static void 
+inline void 
 normalize(float v[3])
 {
   float d;
@@ -26,7 +26,7 @@ normalize(float v[3])
 
 /* compute the length of the vector v
  */
-static float
+inline float
 length(float v[3])
 {
   return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
@@ -35,7 +35,7 @@ length(float v[3])
 /* form the cross product of vectors u and v, and return the
  * result in w
  */
-static void 
+inline void 
 cross(float u[3], float v[3], float w[3])
 {
   w[0] = u[1]*v[2] - u[2]*v[1];
@@ -47,7 +47,7 @@ cross(float u[3], float v[3], float w[3])
  * result in Ui 
  * matrix format: u11,u22,u33,u12,u13,u23
  */
-static int
+inline int
 invert_symmetric_3(float U[6], float Ui[6])
 {
   float d;
@@ -74,7 +74,7 @@ invert_symmetric_3(float U[6], float Ui[6])
  * coordinate system with the vector u.  R is a column-major 4x4 matrix
  * suited for use as a argument for glMultMatrixf().
  */
-static void
+inline void
 gl_rmatrixz(float u[3], float R[16])
 {
   float d;
@@ -152,10 +152,7 @@ glaccel_tube(PyObject *self, PyObject *args)
   float        R[16];
   GLUquadric  *tube_quad;
 
-  if (!PyArg_ParseTuple(args, "fffffff", 
-			&v1[0], &v1[1], &v1[2], 
-			&v2[0], &v2[1], &v2[2], 
-			&radius)) {
+  if (!PyArg_ParseTuple(args, "fffffff", &v1[0], &v1[1], &v1[2], &v2[0], &v2[1], &v2[2], &radius)) {
     return NULL;
   }
   
@@ -203,10 +200,7 @@ glaccel_rod(PyObject *self, PyObject *args)
   float        R[16];
   GLUquadric  *rod_quad;
 
-  if (!PyArg_ParseTuple(args, "fffffff", 
-			&v1[0], &v1[1], &v1[2], 
-			&v2[0], &v2[1], &v2[2], 
-			&radius)) {
+  if (!PyArg_ParseTuple(args, "fffffff", &v1[0], &v1[1], &v1[2], &v2[0], &v2[1], &v2[2], &radius)) {
     return NULL;
   }
   
@@ -252,8 +246,7 @@ peanut_func(float U[6], float v[3], float w[3])
 {
   float d;
 
-  d =     U[0]*v[0]*v[0] +     U[1]*v[1]*v[1] + U[2]*v[2]*v[2]
-    + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
+  d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
   /* abort before we take the sqare root of a negitive
    * number */
@@ -277,16 +270,16 @@ peanut_normal(float U[6], float v[3], float n[3])
 {
   float d;
 
-  d =     U[0]*v[0]*v[0] +     U[1]*v[1]*v[1] + U[2]*v[2]*v[2]
-    + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
+  d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
   /* abort before we take the sqare root of a negitive
    * number */
   if (d < 0.0) {
-    n[0] = 0.0;
-    n[1] = 0.0;
-    n[2] = 0.0;
-    
+    n[0] = v[0];
+    n[1] = v[1];
+    n[2] = v[2];
+    normalize(n);
+
     return;
   }
 
@@ -364,13 +357,9 @@ glaccel_Upeanut(PyObject *self, PyObject *args)
   float        U[6];
   float        v1[3], v2[3], v3[3];
 
-  if (!PyArg_ParseTuple(args, "fffffffffi", 
-			&x, &y, &z,
-			&U[0], &U[1], &U[2], &U[3], &U[4], &U[5],
-			&depth)) {
+  if (!PyArg_ParseTuple(args, "fffffffffi", &x, &y, &z,	&U[0], &U[1], &U[2], &U[3], &U[4], &U[5], &depth)) {
     return NULL;
   }
-
   
   glPushMatrix();
   glTranslatef(x, y, z);
@@ -499,24 +488,20 @@ glaccel_Upeanut(PyObject *self, PyObject *args)
 
 
 
-/* functions for the rendering of atomic thermal ellipsoids
- */
+/* functions for the rendering of atomic thermal ellipsoids */
 
-static void
+inline void
 ellipse_func(float U[6], float C, float v[3], float w[3]) 
 {
   float d;
 
-  d =     U[0]*v[0]*v[0] +     U[1]*v[1]*v[1] + U[2]*v[2]*v[2]
-    + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
+  d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
-  /* abort before we take the sqare root of a negitive
-   * number */
+  /* abort before we take the sqare root of a negitive number */
   if (d < 0.0) {
     w[0] = 0.0;
     w[1] = 0.0;
     w[2] = 0.0;
-
     return;
   }
 
@@ -527,23 +512,21 @@ ellipse_func(float U[6], float C, float v[3], float w[3])
   w[2] = d * v[2];
 }
 
-static void
+inline void
 ellipse_normal(float U[6], float C, float v[3], float n[3])
 {
   float d;
 
-  d =     U[0]*v[0]*v[0] +     U[1]*v[1]*v[1] + U[2]*v[2]*v[2]
-    + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
-
+  d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
   d = 1.0 / d;
 
-  /* abort before we take the sqare root of a negitive
-   * number */
+  /* abort before we take the sqare root of a negitive  number */
   if (d < 0.0) {
-    n[0] = 0.0;
-    n[1] = 0.0;
-    n[2] = 0.0;
-    
+    n[0] = v[0];
+    n[1] = v[1];
+    n[2] = v[2];
+    normalize(n);
+
     return;
   }
 
@@ -556,7 +539,7 @@ ellipse_normal(float U[6], float C, float v[3], float n[3])
   normalize(n);
 }
 
-static void
+inline void
 ellipse_triangle(float U[6], float C, float v1[3], float v2[3], float v3[3])
 {
   float v[3], n[3];
@@ -578,8 +561,7 @@ ellipse_triangle(float U[6], float C, float v1[3], float v2[3], float v3[3])
 }
 
 static void
-ellipse_tesselate(float U[6], float C, 
-		  float v1[3], float v2[3], float v3[3], int depth)
+ellipse_tesselate(float U[6], float C, float v1[3], float v2[3], float v3[3], int depth)
 {
   float v12[3], v23[3], v31[3];
 
@@ -623,10 +605,7 @@ glaccel_Uellipse(PyObject *self, PyObject *args)
   float        C;
   float        v1[3], v2[3], v3[3];
 
-  if (!PyArg_ParseTuple(args, "ffffffffffi", 
-			&x, &y, &z,
-			&U[0], &U[1], &U[2], &U[3], &U[4], &U[5],
-			&C, &depth)) {
+  if (!PyArg_ParseTuple(args, "ffffffffffi", &x, &y, &z, &U[0], &U[1], &U[2], &U[3], &U[4], &U[5], &C, &depth)) {
     return NULL;
   }
 

@@ -57,6 +57,21 @@ def rmatrixu(u, theta):
     """Return a rotation matrix caused by a right hand rotation of theta
     radians around vector u.
     """
+    x, y, z = normalize(u)
+    sa = math.sin(theta)
+    ca = math.cos(theta)
+
+    R = array([[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
+               [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
+               [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], Float)
+    
+    assert allclose(determinant(R), 1.0)
+    return R
+
+def rmatrixu_bla(u, theta):
+    """Return a rotation matrix caused by a right hand rotation of theta
+    radians around vector u.
+    """
     u    = normalize(u)
     U    = array([ [   0.0, -u[2],  u[1] ],
                    [  u[2],   0.0, -u[0] ],
@@ -340,7 +355,6 @@ def calc_anisotropy(U):
     evals = eigenvalues(U)
     return min(evals) / max(evals)
 
-
 ##
 ## Calculations on groups of atoms
 ##
@@ -424,6 +438,7 @@ def calc_inertia_tensor(atom_iter, origin):
 
     assert allclose(determinant(R), 1.0)
     return R
+
 
 
 ### <TESTING>

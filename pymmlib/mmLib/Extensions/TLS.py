@@ -325,41 +325,18 @@ class TLSFileFormatPDB(TLSFileFormat):
     records are only written by REFMAC5.
     """
     pdb_regex_dict = {
-        "group": re.compile(
-        "\s*TLS GROUP :\s+(\d+)\s*$"),
-
-        "range": re.compile(
-        "\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
-
-        "origin": re.compile(
-        "\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:([\s\-\.0-9]+)$"),
-
-        "t11_t22": re.compile(
-        "\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
-
-        "t33_t12": re.compile(
-        "\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
-
-        "t13_t23": re.compile(
-        "\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
-
-        "l11_l22": re.compile(
-        "\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
-
-        "l33_l12": re.compile(
-        "\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
-
-        "l13_l23": re.compile(
-        "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
-
-        "s11_s12_s13": re.compile(
-        "\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
-
-        "s21_s22_s23": re.compile(
-        "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
-
-        "s31_s32_s33": re.compile(
-        "\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
+        "group":       re.compile("\s*TLS GROUP :\s+(\d+)\s*$"),
+        "range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
+        "origin":      re.compile("\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:([\s\-\.0-9]+)$"),
+        "t11_t22":     re.compile("\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
+        "t33_t12":     re.compile("\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
+        "t13_t23":     re.compile("\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
+        "l11_l22":     re.compile("\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
+        "l33_l12":     re.compile("\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
+        "l13_l23":     re.compile( "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
+        "s11_s12_s13": re.compile("\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
+        "s21_s22_s23": re.compile( "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
+        "s31_s32_s33": re.compile("\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
         }
 
     def load_supported(self):
@@ -571,25 +548,12 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
     """Read/Write REFMAC5 TLSIN/TLSOUT files.
     """
     tlsout_regex_dict = {
-        "group": re.compile(
-        "(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        
-        "range": re.compile(
-        "^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+"\
-        "[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
-        
-        "origin": re.compile(
-        "^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-        
-        "T": re.compile(
-        "^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-        
-        "L": re.compile(
-        "^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
-
-        "S": re.compile(
-        "^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"\
-        "\s+(\S+)\s+(\S+).*$")
+        "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
         }
 
     def convert_frag_id_load(self, frag_id):
@@ -774,7 +738,7 @@ def solve_TLS_Ab(A, b):
     Ut = transpose(U)
 
     ## analize singular values and generate smallness cutoff
-    cutoff = max(W) * 1e-12
+    cutoff = max(W) * 1E-8
 
     ## make W
     dim_W = len(W)
@@ -794,6 +758,12 @@ def solve_TLS_Ab(A, b):
 
     return x
 
+def calc_rmsd(msd):
+    """Calculate RMSD from a given MSD."""
+    if msd < 0.0:
+        return 0.0
+    return math.sqrt(msd)
+
 ###############################################################################
 ## ISOTROPIC TLS MODEL
 ##
@@ -810,8 +780,8 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
-    T, L11, L22, L33, L12, L13, L23, S12, S21, S13, S31, S23, S32 = (
-        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j)
+    T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
     
     ## indecies of the components of U
     UISO = i
@@ -835,14 +805,9 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     A[UISO, L13] = w * ((-2.0 * xz) / 3.0)
     A[UISO, L23] = w * ((-2.0 * yz) / 3.0)
 
-    A[UISO, S12] = w * ((-2.0 * z) / 3.0)
-    A[UISO, S21] = w * (( 2.0 * z) / 3.0)
-
-    A[UISO, S13] = w * (( 2.0 * y) / 3.0)
-    A[UISO, S31] = w * ((-2.0 * y) / 3.0)
-
-    A[UISO, S23] = w * ((-2.0 * x) / 3.0)
-    A[UISO, S32] = w * (( 2.0 * x) / 3.0)
+    A[UISO, S1]  = w * (( 2.0 * z) / 3.0)
+    A[UISO, S2]  = w * (( 2.0 * y) / 3.0)
+    A[UISO, S3]  = w * (( 2.0 * x) / 3.0)
 
 
 ###############################################################################
@@ -872,29 +837,12 @@ def calc_Utls(T, L, S, position):
     yz = y*z
     xz = x*z
 
-    u11 = T[0,0] \
-          + L[1,1]*zz + L[2,2]*yy - 2.0*L[1,2]*yz \
-          + 2.0*S[1,0]*z - 2.0*S[2,0]*y
-
-    u22 = T[1,1] \
-          + L[0,0]*zz + L[2,2]*xx - 2.0*L[2,0]*xz \
-          - 2.0*S[0,1]*z + 2.0*S[2,1]*x
-
-    u33 = T[2,2] \
-          + L[0,0]*yy + L[1,1]*xx - 2.0*L[0,1]*xy \
-          - 2.0*S[1,2]*x + 2.0*S[0,2]*y
-
-    u12 = T[0,1] \
-          - L[2,2]*xy + L[1,2]*xz + L[2,0]*yz - L[0,1]*zz \
-          - S[0,0]*z + S[1,1]*z + S[2,0]*x - S[2,1]*y
-
-    u13 = T[0,2] \
-          - L[1,1]*xz + L[1,2]*xy - L[2,0]*yy + L[0,1]*yz \
-          + S[0,0]*y - S[2,2]*y + S[1,2]*z - S[1,0]*x
-
-    u23 = T[1,2] \
-          - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz \
-          - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
+    u11 = T[0,0] + L[1,1]*zz + L[2,2]*yy - 2.0*L[1,2]*yz + 2.0*S[1,0]*z - 2.0*S[2,0]*y
+    u22 = T[1,1] + L[0,0]*zz + L[2,2]*xx - 2.0*L[2,0]*xz - 2.0*S[0,1]*z + 2.0*S[2,1]*x
+    u33 = T[2,2] + L[0,0]*yy + L[1,1]*xx - 2.0*L[0,1]*xy - 2.0*S[1,2]*x + 2.0*S[0,2]*y
+    u12 = T[0,1] - L[2,2]*xy + L[1,2]*xz + L[2,0]*yz - L[0,1]*zz - S[0,0]*z + S[1,1]*z + S[2,0]*x - S[2,1]*y
+    u13 = T[0,2] - L[1,1]*xz + L[1,2]*xy - L[2,0]*yy + L[0,1]*yz + S[0,0]*y - S[2,2]*y + S[1,2]*z - S[1,0]*x
+    u23 = T[1,2] - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
 
     return array([[u11, u12, u13],
                   [u12, u22, u23],
@@ -904,10 +852,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     """Returns the amount of rotational displacement from L
     for a atom at the given position.
     """
-    if Lval<=0.0:
-        return
-
-    Lrot     = GAUSS3C[prob] * math.sqrt(Lval)
+    Lrot     = GAUSS3C[prob] * calc_rmsd(Lval)
     Lorigin  = cor + Lrho
     D        = dmatrixu(Lvec, Lrot)
 
@@ -916,17 +861,14 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     
     return drot + dscw
 
-
 def set_TLS_A(A, i, j, x, y, z, w):
     """Sets the six rows of matrix A starting at A[i,j] with the TLS
     coefficents for a atom located at position x,y,z with least-squares
     weight w.  Matrix A is filled to row i+6 and column j+20.
     """
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,
-        12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
 
     ## indecies of the components of U
     U11 =       i
@@ -1006,10 +948,9 @@ def set_TLS_b(b, i, u11, u22, u33, u12, u13, u23, w):
     b[i+5] = w * u23
 
 def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
-    """Perform a LSQ-TLS fit on the given Segment object using
-    the TLS model with amino acid side chains which can pivot
-    about the CA atom.  This model uses 20 TLS parameters and 6
-    libration parameters per side chain.
+    """Perform a LSQ-TLS fit on the given AtomList.  The TLS tensors
+    are calculated at the given origin, with weights of weight_dict[atm].
+    Return values are T, L, S, lsq_residual. 
     """    
     ## calculate the number of parameters in the model
     num_atoms = len(atom_list)
@@ -1031,9 +972,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
 
         ## set the b vector
         U = atm.get_U()
-        set_TLS_b(B, iU11,
-                  U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-                  w)
+        set_TLS_b(B, iU11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
         x, y, z = atm.position - origin
@@ -1043,8 +982,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     X = solve_TLS_Ab(A, B)
 
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = array([ [ X[T11], X[T12], X[T13] ],
@@ -1082,13 +1020,14 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
               with the origin shifted to the center of reaction.
     """
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
-    LSMALL = 1e-6
+    LSMALL = 0.5 * DEG2RAD2
 
     rdict = {}
 
     ## set the L tensor eigenvalues and eigenvectors
-    (eval_L, RL) = eigenvectors(L0)
-
+    (L_evals, RL) = eigenvectors(L0)
+    L1, L2, L3 = L_evals
+    
     ## make sure RLt is right-handed
     if allclose(determinant(RL), -1.0):
         I = identity(3, Float)
@@ -1097,9 +1036,13 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         
     RLt = transpose(RL)
 
-    rdict["L1_eigen_val"] = eval_L[0]
-    rdict["L2_eigen_val"] = eval_L[1]
-    rdict["L3_eigen_val"] = eval_L[2]
+    rdict["L1_eigen_val"] = L1
+    rdict["L2_eigen_val"] = L2
+    rdict["L3_eigen_val"] = L3
+
+    rdict["L1_rmsd"] = calc_rmsd(L1)
+    rdict["L2_rmsd"] = calc_rmsd(L2)
+    rdict["L3_rmsd"] = calc_rmsd(L3)
 
     rdict["L1_eigen_vec"] = RL[0].copy()
     rdict["L2_eigen_vec"] = RL[1].copy()
@@ -1107,43 +1050,37 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     ## carrot-L tensor (tensor WRT principal axes of L)
     cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
-    rdict["L^"] = cL
     
     ## carrot-T tensor (T tensor WRT principal axes of L)
     cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
-    rdict["T^"] = cT
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
     cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
-    rdict["S^"] = cS
 
     ## ^rho: the origin-shift vector in the coordinate system of L
-    cL1122 = cL[1,1] + cL[2,2]
-    cL2200 = cL[2,2] + cL[0,0]
-    cL0011 = cL[0,0] + cL[1,1]
+    L23 = L2 + L3
+    L13 = L1 + L3
+    L12 = L1 + L2
 
-    if cL1122>LSMALL:
-        crho0 = (cS[1,2]-cS[2,1]) / cL1122
-    else:
-        crho0 = 0.0
-
-    if cL2200>LSMALL:
-        crho1 = (cS[2,0]-cS[0,2]) / cL2200
+    if abs(L23)>LSMALL:
+        crho1 = (cS[1,2] - cS[2,1]) / L23
     else:
         crho1 = 0.0
 
-    if cL0011>LSMALL:
-        crho2 = (cS[0,1]-cS[1,0]) / cL0011
+    if abs(L13)>LSMALL:
+        crho2 = (cS[2,0] - cS[0,2]) / L13
     else:
         crho2 = 0.0
 
-    crho = array([crho0, crho1, crho2], Float)
+    if abs(L12)>LSMALL:
+        crho3 = (cS[0,1] - cS[1,0]) / L12
+    else:
+        crho3 = 0.0
 
-    rdict["RHO^"] = crho
+    crho = array([crho1, crho2, crho3], Float)
 
     ## rho: the origin-shift vector in orthogonal coordinates
     rho = matrixmultiply(RLt, crho)
-
     rdict["RHO"] = rho
     rdict["COR"] = origin + rho
 
@@ -1163,17 +1100,9 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     ## calculate S'^ = S^ + L^*pRHOt
     cSp = cS + matrixmultiply(cL, cPRHOt)
-    rdict["S'^"] = cSp
-
-    ## L'^ = L^ = cL
-    rdict["L'^"] = cL
 
     ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + \
-          matrixmultiply(cPRHO, cS) + \
-          matrixmultiply(cSt, cPRHOt) + \
-          matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
-    rdict["T'^"] = cTp
+    cTp = cT + matrixmultiply(cPRHO, cS) + matrixmultiply(cSt, cPRHOt) + matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
 
     ## transpose of PRHO and S
     PRHOt = transpose(PRHO)
@@ -1184,12 +1113,9 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + \
-         matrixmultiply(PRHO, S0) + \
-         matrixmultiply(St, PRHOt) + \
-         matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
+    Tp = T0 + matrixmultiply(PRHO, S0) + matrixmultiply(St, PRHOt) + matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
-
+    
     ## L' is just L
     rdict["L'"] = L0.copy()
 
@@ -1197,20 +1123,20 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## intersecting screw axes, with one
 
     ## libration axis 1 shift in the L coordinate system        
-    if cL[0,0]>LSMALL:
-        cL1rho = array([0.0, -cSp[0,2]/cL[0,0], cSp[0,1]/cL[0,0]], Float)
+    if abs(L1)>LSMALL:
+        cL1rho = array([0.0, -cSp[0,2]/L1, cSp[0,1]/L1], Float)
     else:
         cL1rho = zeros(3, Float)
 
     ## libration axis 2 shift in the L coordinate system
-    if cL[1,1]>LSMALL:
-        cL2rho = array([cSp[1,2]/cL[1,1], 0.0, -cSp[1,0]/cL[1,1]], Float)
+    if abs(L2)>LSMALL:
+        cL2rho = array([cSp[1,2]/L2, 0.0, -cSp[1,0]/L2], Float)
     else:
         cL2rho = zeros(3, Float)
 
     ## libration axis 2 shift in the L coordinate system
-    if cL[2,2]>LSMALL:
-        cL3rho = array([-cSp[2,1]/cL[2,2], cSp[2,0]/cL[2,2], 0.0], Float)
+    if abs(L3)>LSMALL:
+        cL3rho = array([-cSp[2,1]/L3, cSp[2,0]/L3, 0.0], Float)
     else:
         cL3rho = zeros(3, Float)
 
@@ -1221,18 +1147,18 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
-    if cL[0,0]>LSMALL:
-        rdict["L1_pitch"] = cS[0,0]/cL[0,0]
+    if abs(L1)>LSMALL:
+        rdict["L1_pitch"] = cS[0,0]/L1
     else:
         rdict["L1_pitch"] = 0.0
 
-    if cL[1,1]>LSMALL:
-        rdict["L2_pitch"] = cS[1,1]/cL[1,1]
+    if L2>LSMALL:
+        rdict["L2_pitch"] = cS[1,1]/L2
     else:
         rdict["L2_pitch"] = 0.0
 
-    if cL[2,2]>LSMALL:
-        rdict["L3_pitch"] = cS[2,2]/cL[2,2]
+    if L3>LSMALL:
+        rdict["L3_pitch"] = cS[2,2]/L3
     else:
         rdict["L3_pitch"] = 0.0
 
@@ -1243,7 +1169,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         for k in (0, 1, 2):
             if i==k:
                 continue
-            if cL[k,k]>LSMALL:
+            if abs(cL[k,k])>LSMALL:
                 cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
 
     for i in (0, 1, 2):
@@ -1251,185 +1177,20 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
             for k in (0, 1, 2):
                 if j==i:
                     continue
-                if cL[k,k]>LSMALL:
+                if abs(cL[k,k])>LSMALL:
                     cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
 
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    rdict["rT'"] = matrixmultiply(matrixmultiply(RLt, cTred), RL)
+    Tr = matrixmultiply(matrixmultiply(RLt, cTred), RL)
+    rdict["rT'"] = Tr
 
-    return rdict
-
-
-###############################################################################
-## SPECIAL
-##
-
-def calc_TLS_least_squares_fit_for_iso(atom_list, origin, weight_dict=None):
-    """
-    """
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-         S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
+    Tr1, Tr2, Tr3 = eigenvalues(Tr)
+    rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
+    rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
+    rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
     
-    ## calculate the number of parameters in the model
-    num_atoms = len(atom_list)
-
-    A = zeros((num_atoms * 6, 20), Float)
-    B = zeros(num_atoms * 6,  Float)
-
-    w2    = []
-    ulist = []
-    for atm in atom_list:
-        w2.append(1.0)
-        ulist.append([atm, atm.temp_factor * B2U * identity(3, Float)])
-
-    ## previous 
-    iteration = 0
-
-    T = None
-    L = None
-    S = None
-    
-    prev_lsq_residual = None
-    prev_iso_residual = None
-
-    while True:
-
-        i = -1
-        for atm, U in ulist:
-            i += 1
-            iU11 = i * 6
-            
-            ## set x, y, z as the vector components from the TLS origin
-            x, y, z = atm.position - origin
-
-            ## weight
-            w = w2[i]
-
-            ## set the b vector
-            set_TLS_A(A, iU11, 0, x, y, z, w)
-            set_TLS_b(
-                B, iU11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
-
-        ## solve by SVD
-        X = solve_TLS_Ab(A, B)
-
-        ## calculate the lsq residual (weighted)
-        UTLS = matrixmultiply(A, X)
-        D = UTLS - B
-        lsq_residual = dot(D, D)
-
-        ## form tensors
-        T0 = array([ [ X[T11], X[T12], X[T13] ],
-                     [ X[T12], X[T22], X[T23] ],
-                     [ X[T13], X[T23], X[T33] ] ], Float)
-
-        L0 = array([ [ X[L11], X[L12], X[L13] ],
-                     [ X[L12], X[L22], X[L23] ],
-                     [ X[L13], X[L23], X[L33] ] ], Float)
-
-        s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
-
-        S0 = array([ [    s11, X[S12], X[S13] ],
-                     [ X[S21],    s22, X[S23] ],
-                     [ X[S31], X[S32],    s33 ] ], Float)
-
-        ## check for a bad model
-        rdict = calc_TLS_center_of_reaction(T0, L0, S0, origin)
-        if min(eigenvalues(L0))<=0.0:
-            print "[BREAK] L<=0.0"
-            break
-        if min(eigenvalues(rdict["rT'"]))<=0.0:
-            print "[BREAK] rT<=0.0"
-            break
-
-        ## calculate the Utls(iso) - Uiso residual
-        ## calculate other fit statistics
-        iso_residual = 0.0        
-        for atm, Uold in ulist:
-            U = calc_Utls(T0, L0, S0, atm.position - origin)
-            iso_residual += (B2U*atm.temp_factor - trace(U)/3.0)**2
-
-        ## check against the previous lsq_residual
-        if prev_iso_residual==None:
-            prev_iso_residual = iso_residual
-        elif prev_iso_residual<=iso_residual:
-            print "[BREAK] Diverged"
-            break
-        elif (prev_iso_residual-iso_residual)<1e-4:
-            print "[BREAK] Converged"
-            break
-
-        prev_iso_residual = iso_residual
-        print "TLS ISO RESIDUAL: ",iso_residual
-
-        ## scale the predicted Utls tensors to have a Uiso of the
-        ## original atm.temp_factor
-        ill_conditioned = False
-        sum_aniso = 0.0        
-        i = -1
-        for atm, Uold in ulist:
-            i += 1
-
-            ## we must rotate the U tensor to its primary axes before
-            ## scaling to atm.temp_factor
-            U = calc_Utls(T0, L0, S0, atm.position - origin)
-            (evals, UR) = eigenvectors(U)
-            
-            ## check for ill-conditioned results
-            if min(evals)<=0.0:
-                print "[BREAK] min(evals)<=0.0"
-                ill_conditioned = True
-                break
-
-            aniso = min(evals)/max(evals)
-            if aniso<=0.1:
-                print "[BREAK] aniso<=0.1"
-                ill_conditioned = True
-                break
-            sum_aniso += min(evals)/max(evals)
-
-            U = matrixmultiply(UR, matrixmultiply(U, transpose(UR)))
-
-            ## scale Utls
-            uiso1 = trace(U)/3.0
-            uiso2 = atm.temp_factor * B2U
-            U = U * (uiso2 / uiso1)
-
-            ## adjust w2
-            #sd = math.sqrt((uiso1 - uiso2)**2)
-            #w2[i] = 1.0 / sd
-
-            ## rotate Utls back to original orientation
-            U = matrixmultiply(transpose(UR), matrixmultiply(U, UR))
-            assert allclose(trace(U)/3.0, atm.temp_factor*B2U)
-
-            ## update U for the next round of fitting
-            ulist[i][1] = U
-
-        ## set T,L,S
-        if ill_conditioned:
-            break
-
-        ## finalize
-        T, L, S = T0, L0, S0
-        iteration += 1
-
-        ## print stats
-        print "MEAN ANISO: ",sum_aniso/len(ulist)
-
-    if T==None:
-        T, L, S = T0, L0, S0
-
-    rdict = {}
-    rdict["T"] = T
-    rdict["L"] = L
-    rdict["S"] = S
-    rdict["lsq_residual"] = iso_residual
-
     return rdict
 
 ###############################################################################
@@ -1548,8 +1309,7 @@ def set_L_A(A, i, j, x, y, z, w):
     x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
     Using weight w.
     """
-    L11, L22, L33, L12, L13, L23 = (
-        j, j+1, j+2, j+3, j+4, j+5)
+    L11, L22, L33, L12, L13, L23 = (j, j+1, j+2, j+3, j+4, j+5)
 
     ## indecies of the components of U
     U11 =       i
@@ -1950,55 +1710,11 @@ class TLSGroup(AtomList):
         to the three TLS tensors: self.T, self.L, and self.S using the
         origin given by self.origin.
         """
-        T, L, S, lsq_residual = calc_TLS_least_squares_fit(
-            self, self.origin, weight_dict)
+        T, L, S, lsq_residual = calc_TLS_least_squares_fit(self, self.origin, weight_dict)
 
         self.T = T
         self.L = L
         self.S = S
-
-        return lsq_residual
-
-    def debug_TLS_least_squares_fit_rotation(self):
-        """Incrimentally rotates the TLS group atoms and fits TLS tensors
-        to them to check for coordinate system bias.
-        """
-        ## <double-check>
-        a = 0.0
-        while a<=math.pi:
-            a += math.pi / 16.0
-            
-            R = rmatrix(0.0, a, a)
-            Ri = transpose(R)
-
-            old_pos = {}
-            old_U = {}
-            for atm in self:
-                old_pos[atm] = atm.position
-                old_U[atm] = atm.U
-                
-                atm.position = matrixmultiply(R, atm.position)
-                if atm.U!=None:
-                    atm.U = matrixmultiply(
-                        R, matrixmultiply(atm.U, transpose(R)))
-
-            for atm in self:
-                assert allclose(old_pos[atm], matrixmultiply(Ri, atm.position))
-
-            centroid = self.calc_centroid()
-
-            rdict = calc_TLS_least_squares_fit(self, weight_dict)
-            if not allclose(lsq_residual, rdict["lsq_residual"]):
-                print "[EEK] a=%f lsqr=%f(%f)" % (
-                    a * RAD2DEG,
-                    rdict["lsq_residual"],
-                    lsq_residual)
-            else:
-                print "a=%f" % (a * RAD2DEG)
-
-            for atm in self:
-                atm.position = old_pos[atm]
-                atm.U = old_U[atm]
 
         return lsq_residual
 
@@ -2049,8 +1765,6 @@ class TLSGroup(AtomList):
         tls_info["exp_mean_temp_factor"] = self.calc_adv_temp_factor()
         tls_info["exp_mean_anisotropy"]  = self.calc_adv_anisotropy()
 
-        tls_info["R"] = self.calc_R()
-        
         ## model temp factors
         n = 0
         mean_max_tf = 0.0
@@ -2101,7 +1815,7 @@ class TLSGroup(AtomList):
             Rd += abs(U[0,1])
             Rd += abs(U[0,2])
             Rd += abs(U[1,2])
-            
+
         return Rn / Rd
 
     def calc_mean_S(self):
@@ -2126,7 +1840,7 @@ class TLSGroup(AtomList):
 
         MSD = MSD / float(num)
 
-        return mean_S, math.sqrt(MSD)
+        return mean_S, calc_rmsd(MSD)
 
     def calc_sum_DP2(self):
         """Calculates the sum of DP2(U,Utls) for all Atoms in the
@@ -2164,7 +1878,7 @@ class TLSGroup(AtomList):
         
         MSD = MSD / float(num)
 
-        return mean_DP2, math.sqrt(MSD)
+        return mean_DP2, calc_rmsd(MSD)
 
 
 class TLSStructureAnalysis(object):
@@ -2619,14 +2333,11 @@ class GLTLSAtomList(GLAtomList):
             ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot", "L2_scale"),
             ("L3_eigen_vec", "L3_rho", "L3_pitch", "L3_rot", "L3_scale") ):
 
-            if Lx_axis=="L1_eigen_vec" and \
-               self.properties["L1_animation_visible"]==False:
+            if Lx_axis=="L1_eigen_vec" and self.properties["L1_animation_visible"]==False:
                 continue
-            if Lx_axis=="L2_eigen_vec" and \
-               self.properties["L2_animation_visible"]==False:
+            if Lx_axis=="L2_eigen_vec" and self.properties["L2_animation_visible"]==False:
                 continue
-            if Lx_axis=="L3_eigen_vec" and \
-               self.properties["L3_animation_visible"]==False:
+            if Lx_axis=="L3_eigen_vec" and self.properties["L3_animation_visible"]==False:
                 continue
 
             for sign in phase_tuple:
@@ -2634,16 +2345,11 @@ class GLTLSAtomList(GLAtomList):
                 rho   = self.properties[Lx_rho]
                 pitch = self.properties[Lx_pitch]
 
-                rot   = sign * \
-                        self.properties[Lx_rot] * \
-                        self.properties[Lx_scale]
-
+                rot   = sign * self.properties[Lx_rot] *  self.properties[Lx_scale]
                 screw = axis * (rot * pitch)
                 
                 if allclose(rot, 0.0):
-                    if zero_rot:
-                        continue
-                    zero_rot = True
+                    continue
                     
                 self.driver.glr_push_matrix()
 
@@ -3381,34 +3087,15 @@ class GLTLSGroup(GLDrawList):
             return
 
         ## time should be in the range 0.0-0.1.0
-        sin_tm = math.sin(
-            2.0*math.pi* self.properties["period"] * self.properties["time"])
+        sin_tm = math.sin(2.0 * math.pi * self.properties["period"] * self.properties["time"])
 
         ## calculate L eignvalue displacements at the given
         ## probability levels
         C = GAUSS3C[self.properties["adp_prob"]]
 
-        try:
-            L1_c = C * math.sqrt(self.properties["L1_eigen_val"])
-        except ValueError:
-            L1_c    = 0.0
-            L1_peak = 0.0
-
-        try:
-            L2_c = C * math.sqrt(self.properties["L2_eigen_val"])
-        except ValueError:
-            L2_c    = 0.0
-            L2_peak = 0.0
-
-        try:
-            L3_c = C * math.sqrt(self.properties["L3_eigen_val"])
-        except ValueError:
-            L3_c    = 0.0
-            L3_peak = 0.0
-
-        L1_rot  = self.properties["amplitude"] * L1_c * sin_tm
-        L2_rot  = self.properties["amplitude"] * L2_c * sin_tm
-        L3_rot  = self.properties["amplitude"] * L3_c * sin_tm
+        L1_rot  = self.properties["amplitude"] * C * calc_rmsd(self.properties["L1_eigen_val"]) * sin_tm
+        L2_rot  = self.properties["amplitude"] * C * calc_rmsd(self.properties["L2_eigen_val"]) * sin_tm
+        L3_rot  = self.properties["amplitude"] * C * calc_rmsd(self.properties["L3_eigen_val"]) * sin_tm
 
         self.glo_update_properties(L1_rot=L1_rot, L2_rot=L2_rot, L3_rot=L3_rot)
 
@@ -3489,7 +3176,7 @@ class GLTLSGroup(GLDrawList):
 
             C = GAUSS3C[self.properties["adp_prob"]]
             
-            L_rot = C * (L_scale * math.sqrt(L_eigen_val))
+            L_rot = C * (L_scale * calc_rmsd(L_eigen_val))
             L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
@@ -3604,13 +3291,12 @@ class GLTLSGroup(GLDrawList):
                     bond_list.append(bond)
         
         ## this just won't work...
-        if Lx_eigen_val==0.0:
+        if allclose(Lx_eigen_val, 0.0):
             return
 
         C = GAUSS3C[self.properties["adp_prob"]]
-        try:
-            Lx_s = C * math.sqrt(Lx_eigen_val * DEG2RAD2)
-        except ValueError:
+        Lx_s = C * calc_rmsd(Lx_eigen_val * DEG2RAD2)
+        if allclose(Lx_s, 0.0):
             return
 
         Lx_pitch      = Lx_pitch * (1.0/DEG2RAD)
