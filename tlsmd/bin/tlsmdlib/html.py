@@ -1496,12 +1496,8 @@ class HTMLReport(Report):
         for gl_tls_group in gl_struct.glo_iter_children():
             if not isinstance(gl_tls_group, GLTLSGroup):
                 continue
-
-            gl_tls_group.gl_atom_list.properties.update(
-                trace_radius = 0.075)
-            
-            gl_tls_group.glo_update_properties(
-                time = 0.25)
+            gl_tls_group.gl_atom_list.properties.update(trace_radius = 0.075)
+            gl_tls_group.glo_update_properties(time = 0.25)
 
         driver.glr_set_render_png_path(png_path)
         viewer.glv_render_one(driver)
@@ -1557,9 +1553,7 @@ class HTMLReport(Report):
             tls_file.tls_desc_list.append(tls_desc)
             
             tls_desc.set_tls_group(tls["tls_group"])
-            tls_desc.add_range(
-                chain_id, tls["frag_id1"],
-                chain_id, tls["frag_id2"], "ALL")
+            tls_desc.add_range(chain_id, tls["frag_id1"], chain_id, tls["frag_id2"], "ALL")
 
         tls_file.save(open(tlsout_path, "w"))
 
@@ -1771,8 +1765,7 @@ class HTMLReport(Report):
                     for atm, Utls in tls_group.iter_atm_Utls():
                         old_temp_factor[atm] = atm.temp_factor
                         old_U[atm] = atm.U
-                        atm.temp_factor = U2B * (
-                            Utls[0,0] + Utls[1,1] + Utls[2,2]) / 3.0
+                        atm.temp_factor = U2B * (Utls[0,0] + Utls[1,1] + Utls[2,2]) / 3.0
                         atm.U = Utls
 
             ## save the structure file

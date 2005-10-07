@@ -16,6 +16,7 @@
 #include "structmember.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <malloc.h>
 #include <pthread.h>
@@ -55,9 +56,9 @@ static char *U_PARAM_NAMES[] = {
 #define ITLS_S3    9
 #define ITLS_NUM_PARAMS 10
 static char *ITLS_PARAM_NAMES[] = {
-  "t",
-  "l11", "l22", "l33", "l12", "l13", "l23",
-  "s1", "s2", "s3"
+  "it",
+  "il11", "il22", "il33", "il12", "il13", "il23",
+  "is1", "is2", "is3"
 };
 
 /* Anisotropic TLS model parameter indexes and labels */
@@ -87,24 +88,6 @@ static char *ATLS_PARAM_NAMES[] = {
   "l11", "l22", "l33", "l12", "l13", "l23",
   "s2211", "s1133", "s12", "s13", "s23", "s21", "s31", "s32"
 };
-
-/* Anisotropic TLS model parameter indexes and labels */
-#define XTLS_T     0
-#define XTLS_L11   1
-#define XTLS_L22   2
-#define XTLS_L33   3
-#define XTLS_L12   4
-#define XTLS_L13   5
-#define XTLS_L23   6
-#define XTLS_S2211 7
-#define XTLS_S1133 8
-#define XTLS_S12   9
-#define XTLS_S13   10
-#define XTLS_S23   11
-#define XTLS_S21   12
-#define XTLS_S31   13
-#define XTLS_S32   14
-#define XTLS_NUM_PARAMS 15
 
 /* Atom structure 
  * structure used to store the information of one atom 
@@ -161,7 +144,6 @@ struct TLSFitContext {
 
   double             ITLS[ITLS_NUM_PARAMS]; /* isotropic TLS model params */
   double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
-  double             XTLS[XTLS_NUM_PARAMS]; /* experimental TLS model */
 
   double             ilsqr;                 /* least-squares residual of isotropic TLS model */
   double             alsqr;                 /* least-squares residual of anisotropic TLS model */
@@ -426,87 +408,6 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
   FA(rowU23, ATLS_S1133) = w *  -x;
   FA(rowU23, ATLS_S12)   = w *   y;
   FA(rowU23, ATLS_S13)   = w *  -z;
-
-#undef FA
-}
-
-/* experimental TLS model */
-inline void
-set_XTLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, double y, double z, double w)
-{
-#define FA(__i,__j) A[__i + (m * __j)]
-
-  int rowU11, rowU22, rowU33, rowU12, rowU13, rowU23;
-  double xx, yy, zz, xy, xz, yz;
-  
-  xx = x*x;
-  yy = y*y;
-  zz = z*z;
-  xy = x*y;
-  xz = x*z;
-  yz = y*z;
-
-  /* calculate row indexes */
-  rowU11 = row;
-  rowU22 = row + 1;
-  rowU33 = row + 2;
-  rowU12 = row + 3;
-  rowU13 = row + 4;
-  rowU23 = row + 5;
-
-  /* set b  */
-  b[rowU11] = w * U[0];
-  b[rowU22] = w * U[1];
-  b[rowU33] = w * U[2];
-  b[rowU12] = w * U[3];
-  b[rowU13] = w * U[4];
-  b[rowU23] = w * U[5];
-
-  /* set A */
-  FA(rowU11, XTLS_T) = w * 1.0;
-
-  FA(rowU11, XTLS_L22) = w *        zz;
-  FA(rowU11, XTLS_L33) = w *        yy;
-  FA(rowU11, XTLS_L23) = w * -2.0 * yz;
-  FA(rowU11, XTLS_S31) = w * -2.0 *  y;
-  FA(rowU11, XTLS_S21) = w *  2.0 *  z;
-
-  FA(rowU22, XTLS_L11) = w *        zz;
-  FA(rowU22, XTLS_L33) = w *        xx;
-  FA(rowU22, XTLS_L13) = w * -2.0 * xz;
-  FA(rowU22, XTLS_S12) = w * -2.0 *  z;
-  FA(rowU22, XTLS_S32) = w *  2.0 *  x;
-
-  FA(rowU33, XTLS_L11) = w *        yy;
-  FA(rowU33, XTLS_L22) = w *        xx;
-  FA(rowU33, XTLS_L12) = w * -2.0 * xy;
-  FA(rowU33, XTLS_S23) = w * -2.0 *  x;
-  FA(rowU33, XTLS_S13) = w *  2.0 *  y;
-
-  FA(rowU12, XTLS_L33)   = w * -xy;
-  FA(rowU12, XTLS_L23)   = w *  xz;
-  FA(rowU12, XTLS_L13)   = w *  yz;
-  FA(rowU12, XTLS_L12)   = w * -zz;
-  FA(rowU12, XTLS_S2211) = w *   z;
-  FA(rowU12, XTLS_S31)   = w *   x;
-  FA(rowU12, XTLS_S32)   = w *  -y;
-    
-  FA(rowU13, XTLS_L22)   = w * -xz;
-  FA(rowU13, XTLS_L23)   = w *  xy;
-  FA(rowU13, XTLS_L13)   = w * -yy;
-  FA(rowU13, XTLS_L12)   = w *  yz;
-  FA(rowU13, XTLS_S1133) = w *   y;
-  FA(rowU13, XTLS_S23)   = w *   z;
-  FA(rowU13, XTLS_S21)   = w *  -x;
-    
-  FA(rowU23, XTLS_L11)   = w * -yz;
-  FA(rowU23, XTLS_L23)   = w * -xx;
-  FA(rowU23, XTLS_L13)   = w *  xy;
-  FA(rowU23, XTLS_L12)   = w *  xz;
-  FA(rowU23, XTLS_S2211) = w *  -x;
-  FA(rowU23, XTLS_S1133) = w *  -x;
-  FA(rowU23, XTLS_S12)   = w *   y;
-  FA(rowU23, XTLS_S13)   = w *  -z;
 
 #undef FA
 }
@@ -839,7 +740,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
 {
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
-  double origin_x, origin_y, origin_z;
+  double ox, oy, oz;
 
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
@@ -861,16 +762,9 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
    * be fit and use it as the origin of the TLS tensors
    */
   calc_centroid(fit->chain->atoms, fit->istart,fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
-
-  origin_x = fit->origin_x;
-  origin_y = fit->origin_y;
-  origin_z = fit->origin_z;
-
-  for (ia = istart; ia <= iend; ia++) {
-    atoms[ia].xtls = atoms[ia].x - origin_x;
-    atoms[ia].ytls = atoms[ia].y - origin_y;
-    atoms[ia].ztls = atoms[ia].z - origin_z;
-  }
+  ox = fit->origin_x;
+  oy = fit->origin_y;
+  oz = fit->origin_z;
 
   /* ISOTROPIC TLS MODEL */
   num_rows = num_atoms;
@@ -879,7 +773,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   zero_dmatrix(Aw, num_rows, num_cols);
 
   for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    set_ITLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].u_iso, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+    set_ITLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].u_iso, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, atoms[ia].sqrt_weight);
   }
 
   /* make a copy of Aw into A because dgesdd_ destroys Aw */
@@ -916,77 +810,6 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
    * residual 
    */
   calc_lsqr(A, num_rows, num_cols, fit->ITLS, bw, &fit->ilsqr);
-
-  /* construct isotropic tensors */
-  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    calc_isotropic_uiso(fit->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
-
-    atoms[ia].sqrt_weight_tmp = atoms[ia].sqrt_weight * sqrt(1.0 / fabs(atoms[ia].u_iso - atoms[ia].u_iso_tmp));
-
-    atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[3] = 0.0;
-    atoms[ia].Utmp[4] = 0.0;
-    atoms[ia].Utmp[5] = 0.0;
-  }
-
-  /* ANISOTROPIC TLS MODEL */
-  num_rows = num_atoms * 6;
-  num_cols = XTLS_NUM_PARAMS;
-
-  zero_dmatrix(Aw, num_rows, num_cols);
-
-  for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-    set_XTLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight_tmp);
-  }
-
-  jobz = 'S';
-  dgesdd_(&jobz,  
-	  &num_rows,
-	  &num_cols, 
-	  Aw, 
-	  &num_rows,
-	  fit->chain->S, 
-	  fit->chain->U,
-	  &num_rows, 
-	  fit->chain->VT,
-	  &num_cols,
-	  fit->chain->WORK, 
-	  &fit->chain->LWORK,
-	  fit->chain->IWORK,
-	  &info);
-
-  if (info != 0) {
-    printf("DGESDD ERROR(anisotropic): info = %d\n", info);
-  }
-
-  solve_SVD(num_rows, num_cols,fit->XTLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
-
-  /* copy XTLS params into ATLS */
-  fit->ATLS[ATLS_T11] = fit->XTLS[XTLS_T];
-  fit->ATLS[ATLS_T22] = fit->XTLS[XTLS_T];
-  fit->ATLS[ATLS_T33] = fit->XTLS[XTLS_T];
-  fit->ATLS[ATLS_T12] = 0.0;
-  fit->ATLS[ATLS_T13] = 0.0;
-  fit->ATLS[ATLS_T23] = 0.0;
-
-  fit->ATLS[ATLS_L11] = fit->XTLS[XTLS_L11];
-  fit->ATLS[ATLS_L22] = fit->XTLS[XTLS_L22];
-  fit->ATLS[ATLS_L33] = fit->XTLS[XTLS_L33];
-  fit->ATLS[ATLS_L12] = fit->XTLS[XTLS_L12];
-  fit->ATLS[ATLS_L13] = fit->XTLS[XTLS_L13];
-  fit->ATLS[ATLS_L23] = fit->XTLS[XTLS_L23];
-
-  fit->ATLS[ATLS_S2211] = fit->XTLS[XTLS_S2211];
-  fit->ATLS[ATLS_S1133] = fit->XTLS[XTLS_S1133];
-
-  fit->ATLS[ATLS_S12] = fit->XTLS[XTLS_S12];
-  fit->ATLS[ATLS_S13] = fit->XTLS[XTLS_S13];
-  fit->ATLS[ATLS_S23] = fit->XTLS[XTLS_S23];
-  fit->ATLS[ATLS_S21] = fit->XTLS[XTLS_S21];
-  fit->ATLS[ATLS_S31] = fit->XTLS[XTLS_S31];
-  fit->ATLS[ATLS_S32] = fit->XTLS[XTLS_S32];
 }
 
 static void
@@ -994,7 +817,7 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
 {
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
-  double origin_x, origin_y, origin_z;
+  double ox, oy, oz;
 
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
@@ -1016,16 +839,9 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
    * be fit and use it as the origin of the TLS tensors
    */
   calc_centroid(fit->chain->atoms, fit->istart,fit->iend, &fit->origin_x, &fit->origin_y, &fit->origin_z);
-
-  origin_x = fit->origin_x;
-  origin_y = fit->origin_y;
-  origin_z = fit->origin_z;
-
-  for (ia = istart; ia <= iend; ia++) {
-    atoms[ia].xtls = atoms[ia].x - origin_x;
-    atoms[ia].ytls = atoms[ia].y - origin_y;
-    atoms[ia].ztls = atoms[ia].z - origin_z;
-  }
+  ox = fit->origin_x;
+  oy = fit->origin_y;
+  oz = fit->origin_z;
 
   /* ANISOTROPIC TLS MODEL */
   num_rows = num_atoms * 6;
@@ -1034,7 +850,7 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
   zero_dmatrix(Aw, num_rows, num_cols);
 
   for (ia = istart, row = 0; ia <= iend; ia++, row += 6) {
-    set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].U, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, atoms[ia].sqrt_weight);
+    set_ATLS_Ab(Aw, bw, num_rows, num_cols, row, atoms[ia].U, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, atoms[ia].sqrt_weight);
   }
 
   /* make a copy of Aw into A because dgesdd_ destroys Aw */
@@ -1252,6 +1068,8 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 
   /* segment a atoms */
   for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
+    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue; 
+
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
     calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
@@ -1269,6 +1087,8 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 
   /* segment b atoms */
   for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
+    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue;
+
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
     calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
@@ -1545,9 +1365,9 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   PyDict_SetItemString(rdict, "ilsqr", py_floatx);
   Py_DECREF(py_floatx);
   
-  for (i = 0; i < ATLS_NUM_PARAMS; i++) {
-    py_floatx = PyFloat_FromDouble(fit_context.ATLS[i]);
-    PyDict_SetItemString(rdict, ATLS_PARAM_NAMES[i], py_floatx);
+  for (i = 0; i < ITLS_NUM_PARAMS; i++) {
+    py_floatx = PyFloat_FromDouble(fit_context.ITLS[i]);
+    PyDict_SetItemString(rdict, ITLS_PARAM_NAMES[i], py_floatx);
     Py_DECREF(py_floatx);
   }
     

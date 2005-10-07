@@ -88,9 +88,9 @@ static char *U_PARAM_NAMES[] = {
 #define ITLS_S3    9
 #define ITLS_NUM_PARAMS 10
 static char *ITLS_PARAM_NAMES[] = {
-  "t",
-  "l11", "l22", "l33", "l12", "l13", "l23",
-  "s1", "s2", "s3"
+  "it", 
+  "il11", "il22", "il33", "il12", "il13", "il23", 
+  "is1", "is2", "is3"
 };
 
 /* anisotropic TLS model parameter indexes and labels */
@@ -178,6 +178,11 @@ static char *NL_ITLS_PARAM_NAMES[] = {
 #define NL_ATLS_S31   18
 #define NL_ATLS_S32   19
 #define NL_ATLS_NUM_PARAMS 20
+static char *NL_ATLS_PARAM_NAMES[] = {
+  "nl_t11", "nl_t22", "nl_t33", "nl_t12", "nl_t13", "nl_t23",
+  "nl_lx", "nl_ly", "nl_lz", "nl_la", "nl_lb", "nl_lc",
+  "nl_s2211", "nl_s1133", "nl_s12", "nl_s13",  "nl_s23", "nl_s21", "nl_s31", "nl_s32"
+};
 
 /* Atom Structure */
 #define NAME_LEN     8
@@ -1163,7 +1168,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-4;
+  tol = 1E-6;
 
   /* lmder1(fcn,                  m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(anisotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ATLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1344,8 +1349,6 @@ isotropic_anisotropic_backsub_fit(struct TLSFit *fit)
 
   LWORK = tmp_WORK;
   WORK = malloc(sizeof(double) * LWORK);
-
-
 
   /* calculate initial target U tensors */
   for (ia = fit->istart; ia <= fit->iend; ia++) {
@@ -1578,7 +1581,7 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-8;
+  tol = 1E-6;
 
   /* lmder1(fcn,                m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(isotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ITLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1594,37 +1597,6 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
   free(fjac);
   free(ipvt);
   free(wa);
-
-  /* back-substitute isotropic TLS parameters into anisotropic TLS model
-   * to solve for TLS parameters which do not exist in the isotropic TLS
-   * model
-   */
-
-  /* simple iso->aniso guess */
-  if (0) {
-    fit->ATLS[ATLS_T11] = fit->ITLS[ITLS_T];
-    fit->ATLS[ATLS_T22] = fit->ITLS[ITLS_T];
-    fit->ATLS[ATLS_T33] = fit->ITLS[ITLS_T];
-    fit->ATLS[ATLS_T12] = 0.0;
-    fit->ATLS[ATLS_T13] = 0.0;
-    fit->ATLS[ATLS_T23] = 0.0;
-    
-    fit->ATLS[ATLS_L11] = fit->ITLS[ITLS_L11];
-    fit->ATLS[ATLS_L22] = fit->ITLS[ITLS_L22];
-    fit->ATLS[ATLS_L33] = fit->ITLS[ITLS_L33];
-    fit->ATLS[ATLS_L12] = fit->ITLS[ITLS_L12];
-    fit->ATLS[ATLS_L13] = fit->ITLS[ITLS_L13];
-    fit->ATLS[ATLS_L23] = fit->ITLS[ITLS_L23];
-  }
-
-  /* back-substitue ITLS parameters into anisotropic TLS model and
-   * solve for mission parameters
-   */
-  if (0) {
-    isotropic_anisotropic_backsub_fit(fit);
-  }
-
-  anisotropic_nonlinear_fit(fit);
 
   return info;
 }
@@ -1775,14 +1747,6 @@ NLTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 	}
 	self->atoms[i].U[j] = PyFloat_AsDouble(tmp);
       }
-
-#ifdef _DEBUG
-      printf("ATOMS[%d]: %s %s\n", 
-	     i, 
-	     self->atoms[i].name, 
-	     self->atoms[i].frag_id);
-#endif /* _DEBUG */
-
     }
   }
 
@@ -1844,6 +1808,12 @@ NLTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args)
   Py_DECREF(py_intx);
   
   /* TLS parmeters */
+  for (i = 0; i < NL_ATLS_NUM_PARAMS; i++) {
+    py_floatx = PyFloat_FromDouble(fit.NL_ATLS[i]);
+    PyDict_SetItemString(rdict, NL_ATLS_PARAM_NAMES[i], py_floatx);
+    Py_DECREF(py_floatx);
+  }
+
   for (i = 0; i < ATLS_NUM_PARAMS; i++) {
     py_floatx = PyFloat_FromDouble(fit.ATLS[i]);
     PyDict_SetItemString(rdict, ATLS_PARAM_NAMES[i], py_floatx);
@@ -1901,9 +1871,9 @@ NLTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   Py_DECREF(py_intx);
   
   /* TLS parameters */
-  for (i = 0; i < ATLS_NUM_PARAMS; i++) {
-    py_floatx = PyFloat_FromDouble(fit.ATLS[i]);
-    PyDict_SetItemString(rdict, ATLS_PARAM_NAMES[i], py_floatx);
+  for (i = 0; i < ITLS_NUM_PARAMS; i++) {
+    py_floatx = PyFloat_FromDouble(fit.ITLS[i]);
+    PyDict_SetItemString(rdict, ITLS_PARAM_NAMES[i], py_floatx);
     Py_DECREF(py_floatx);
   }
 

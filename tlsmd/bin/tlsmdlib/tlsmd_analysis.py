@@ -36,7 +36,7 @@ WEIGHT_MODEL = "UNIT"
 INCLUDE_ATOMS = "ALL" 
 
 ## minimum span of residues for TLS subsegments
-MIN_SUBSEGMENT_SIZE = 4
+MIN_SUBSEGMENT_SIZE = 5
 
 def print_globals():
     print "TLSMD GLOBAL OPTIONS"
@@ -64,9 +64,9 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 5
+        MIN_SUBSEGMENT_SIZE = 10
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        MIN_SUBSEGMENT_SIZE = 5
+        MIN_SUBSEGMENT_SIZE = 10
     elif INCLUDE_ATOMS=="CA":
         MIN_SUBSEGMENT_SIZE = 20
 
@@ -97,11 +97,11 @@ def calc_include_atom(atm, reject_messages=False):
         flag = True
 	
 	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
-            if delta > 6.0: flag = False
-	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
-            if delta > 8.0: flag = False
-	else:
             if delta > 12.0: flag = False
+	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
+            if delta > 16.0: flag = False
+	else:
+            if delta > 24.0: flag = False
 
         if flag == False:
             print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
@@ -206,29 +206,6 @@ def chain_to_xmlrpc_list(chain):
         atm_desc["weight"] = calc_atom_weight(atm)
 
     return xmlrpc_chain
-
-def find_istart_iend(xmlrpc_chain, frag_id1, frag_id2):
-    istart = None
-    iend   = None
-    state  = "find_istart"
-
-    for icur in range(len(xmlrpc_chain)):
-        if state=="find_istart":
-            if fragment_id_ge(xmlrpc_chain[icur]["frag_id"], frag_id1):
-                state  = "find_iend"
-                istart = icur
-        elif state=="find_iend":
-            if fragment_id_gt(xmlrpc_chain[icur]["frag_id"], frag_id2):
-                iend = icur - 1
-                break
-
-    if istart==None:
-        return None
-
-    if iend==None:
-        iend = len(xmlrpc_chain) - 1
-
-    return istart, iend
 
 
 ###############################################################################
@@ -385,6 +362,9 @@ class TLSChainProcessor(object):
     def __init__(self, server_pool):
         self.server_pool = server_pool
 
+        self.xmlprc_list = None
+        self.chain = None
+
     def iter_lsq_fit_messages(self, analysis, chain, min_span, xmlrpc_chain):
         """Iterate over (and create) the message dictionaries sent
         to consumer threads which are the the graph edge definitions
@@ -415,12 +395,11 @@ class TLSChainProcessor(object):
         ##      is included in the messages, so the return messages
         ##      from the pool can be checked
         iter_msg = self.iter_lsq_fit_messages(analysis, chain, min_span, xmlrpc_chain)
-
         iter_segment_fit_info = self.server_pool.iter_segment_processor(iter_msg)
 
         ## iterate over the fit_info dictionaries which hold the
         ## information on the TLS fits comming back from the grid servers
-        num_edges          = 0
+        num_edges = 0
         
         for fit_info in iter_segment_fit_info:
             assert fit_info["chain_id"]==chain.chain_id
@@ -432,9 +411,13 @@ class TLSChainProcessor(object):
 
             ## save the fit_info record the graph state file
             analysis.tlsmdfile.grh_append_tls_record(fit_info)
-            
-            print "process_chain(chain_id=%s, frag_id={%s..%s}, lsqr=%6.4f)" % (
-                chain.chain_id, fit_info["frag_id1"], fit_info["frag_id2"], fit_info["lsq_residual"])
+
+            if fit_info.has_key("lsq_residual"):
+                print "process_chain(chain_id=%s, frag_id={%s..%s}, lsqr=%6.4f)" % (
+                    chain.chain_id, fit_info["frag_id1"], fit_info["frag_id2"], fit_info["lsq_residual"])
+            else:
+                print "process_chain(chain_id=%s, frag_id={%s..%s}, error=%s)" % (
+                    chain.chain_id, fit_info["frag_id1"], fit_info["frag_id2"], fit_info["error"])
 
         print
         print "NUMBER OF PROCESSED TLS GROUPS: %d" % (num_edges)
@@ -526,10 +509,7 @@ class TLSChainMinimizer(HCSSSP):
                 vertex_label = "C-TERM"
 
             else:
-                vertex_label = "%s{%s:%s}" % (
-                    self.chain.chain_id,
-                    self.chain[i-1].fragment_id,
-                    self.chain[i].fragment_id)
+                vertex_label = "%s{%s:%s}" % (self.chain.chain_id, self.chain[i-1].fragment_id, self.chain[i].fragment_id)
 
             vertex_label = "V%d[%s]" % (i, vertex_label)
             V.append(vertex_label)
@@ -622,6 +602,35 @@ class TLSChainMinimizer(HCSSSP):
 
         return tlsopt
 
+    def __calc_nonlinear_fit(self, tls_group, segment):
+        """Use the non-linear TLS model to calculate tensor values.
+        """
+        import nonlineartls
+        tls_model = nonlineartls.NLTLSModel()
+
+        xlist = chain_to_xmlrpc_list(segment)
+        tls_model.set_xmlrpc_chain(xlist)
+        tls = tls_model.anisotropic_fit_segment(0, len(xlist)-1)
+        
+        tls_group.origin = array([tls["x"], tls["y"], tls["z"]], Float)
+
+        tls_group.T = array(
+            [ [tls["t11"], tls["t12"], tls["t13"]],
+              [tls["t12"], tls["t22"], tls["t23"]],
+              [tls["t13"], tls["t23"], tls["t33"]] ], Float)
+        
+        tls_group.L = array(
+            [ [tls["l11"], tls["l12"], tls["l13"]],
+              [tls["l12"], tls["l22"], tls["l23"]],
+              [tls["l13"], tls["l23"], tls["l33"]] ], Float)
+        
+        s11, s22, s33 = calc_s11_s22_s33(tls["s2211"], tls["s1133"]) 
+        
+        tls_group.S = array(
+            [ [       s11, tls["s12"], tls["s13"]],
+              [tls["s21"],        s22, tls["s23"]],
+              [tls["s31"], tls["s32"],       s33] ], Float)
+
     def __calc_tls_record_from_edge(self, edge):
         """Independently calculate the TLS parameters for the segment
         to verify correctness (internal check).
@@ -643,12 +652,9 @@ class TLSChainMinimizer(HCSSSP):
         for atm in segment.iter_all_atoms():
             tls_group.append(atm)
 
-        ## take the TLS group tensors from the database set
-        ## the TLSGroup object with them
-        self.__add_tensors(tls_group, tls)
-
-        tls_group.shift_COR()
-
+        ## use the constrained TLS model to calculate tensor values
+        self.__calc_nonlinear_fit(tls_group, segment)
+        
         ## helpful additions
         tls_info                    = tls_group.calc_tls_info()
         tls["tls_group"]            = tls_group
@@ -658,41 +664,6 @@ class TLSChainMinimizer(HCSSSP):
 
         return tls
 
-    def __add_tensors(self, tls_group, tls):
-        """Adds the TLS tensors from the tls database dictionary to the
-        tls_group.
-        """
-        T,L,S,O = self.__TLSO(tls)
-        tls_group.T      = T
-        tls_group.L      = L
-        tls_group.S      = S
-        tls_group.origin = O
-        
-    def __TLSO(self, tls):
-        """Builds Numeric Array tensors from the tls database dictionary.
-        """
-        O = array(
-            [tls["cor_x"], tls["cor_y"], tls["cor_z"]], Float)
-
-        T = array(
-            [ [tls["t11"], tls["t12"], tls["t13"]],
-              [tls["t12"], tls["t22"], tls["t23"]],
-              [tls["t13"], tls["t23"], tls["t33"]] ], Float)
-        
-        L = array(
-            [ [tls["l11"], tls["l12"], tls["l13"]],
-              [tls["l12"], tls["l22"], tls["l23"]],
-              [tls["l13"], tls["l23"], tls["l33"]] ], Float)
-        
-        s11, s22, s33 = calc_s11_s22_s33(tls["s2211"], tls["s1133"]) 
-        
-        S = array(
-            [ [       s11, tls["s12"], tls["s13"]],
-              [tls["s21"],        s22, tls["s23"]],
-              [tls["s31"], tls["s32"],       s33] ], Float)
-
-        return T,L,S,O
-        
     def prnt_detailed_paths(self, hops=20):
         """Debug
         """
@@ -742,22 +713,22 @@ class TLSChainMinimizer(HCSSSP):
             h -= 1
 
     def hinge_plot(self):
-	"""Spiffy new hinge-prediction algorithm.OB
+	"""Spiffy new hinge-prediction algorithm.
 	"""
+        import lineartls
+
         msd = open("msd.txt", "w")
         fil = open("hinge.txt", "w")
-        
-        from lineartls import ITLSModel
 
-        xmlrpc_chain = chain_to_xmlrpc_list(self.chain)
+        xchain = XChain(chain_to_xmlrpc_list(self.chain))
 
-        itlsmodel = ITLSModel()
-        itlsmodel.set_xmlrpc_chain(xmlrpc_chain)
+        tls_model = lineartls.LinearTLSModel()
+        tls_model.set_xmlrpc_chain(xmlrpc_chain)
 
         grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
         chain_id = self.chain.chain_id
 
-        win = 20
+        win = 14
 
         ifrag = 0
         ifrag_end = len(self.chain) - 2*win + 1
@@ -775,10 +746,12 @@ class TLSChainMinimizer(HCSSSP):
             frag_id1b = self.chain[ifrag1b].fragment_id
             frag_id2b = self.chain[ifrag2b].fragment_id
 
-            istarta, ienda = find_istart_iend(xmlrpc_chain, frag_id1a, frag_id2a)
-            istartb, iendb = find_istart_iend(xmlrpc_chain, frag_id1b, frag_id2b)
+            istarta = xchain.get_istart(frag_id1a)
+            ienda   = xchain.get_iend(frag_id2a)
+            istartb = xchain.get_istart(frag_id1b)
+            ienda   = xchain.get_iend(frag_id2b)
             
-            hdict = itlsmodel.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
+            hdict = tls_model.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
 
             print "CHAIN %s %s-%s:%s-%s %f %f %f" % (
                 chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b, hdict["hdelta_ab"], hdict["hdelta_abo"], hdict["hdelta_c"])

@@ -16,6 +16,99 @@ from hcsssp   import HCSSSP
 import lineartls
 import nonlineartls
 
+###############################################################################
+## Utility Class
+##
+
+END_SPACE = 2
+
+class XChain(object):
+    def __init__(self, xmlrpc_chain):
+        self.xmlrpc_chain = xmlrpc_chain
+        self.num_atoms = len(xmlrpc_chain)
+
+        ## construct a list of fragment IDs
+        last_frag_id = None
+        frag_id_list = []
+        for atm_desc in xmlrpc_chain:
+            frag_id = atm_desc["frag_id"]
+            if frag_id!=last_frag_id:
+                frag_id_list.append(frag_id)
+                last_frag_id = frag_id
+
+        self.frag_id_list = frag_id_list
+        self.num_frags = len(frag_id_list)
+
+        ## construct a 1:1 list of frag_id_list with istart/iend indexes
+        istart_list = [None for x in range(len(frag_id_list))]
+        iend_list = [None for x in range(len(frag_id_list))]
+
+        for i in range(len(frag_id_list)):
+            frag_id = frag_id_list[i]
+
+            istart, iend = self.__find_istart_iend(frag_id, frag_id)
+            istart_list[i] = istart
+            iend_list[i] = iend
+
+            assert xmlrpc_chain[istart]["frag_id"]==frag_id
+            assert xmlrpc_chain[iend]["frag_id"]==frag_id
+
+        self.istart_list = istart_list
+        self.iend_list = iend_list
+
+    def get_istartx(self, frag_id):
+        try:
+            i = self.frag_id_list.index(frag_id)
+        except IndexError:
+            return None
+        return self.istart_list[i]
+
+    def get_iendx(self, frag_id):
+        try:
+            i = self.frag_id_list.index(frag_id)
+        except IndexError:
+            return None
+        return self.iend_list[i]
+    
+    def get_istart(self, frag_id):
+        try:
+            i = self.frag_id_list.index(frag_id)
+        except IndexError:
+            return None
+        
+        return self.istart_list[i+END_SPACE]
+
+    def get_iend(self, frag_id):
+        try:
+            i = self.frag_id_list.index(frag_id)
+        except IndexError:
+            return None
+        return self.iend_list[i-END_SPACE]
+
+
+    def __find_istart_iend(self, frag_id1, frag_id2):
+        istart = None
+        iend   = None
+        state  = "find_istart"
+
+        for icur in range(len(self.xmlrpc_chain)):
+            if state=="find_istart":
+                if fragment_id_ge(self.xmlrpc_chain[icur]["frag_id"], frag_id1):
+                    state  = "find_iend"
+                    istart = icur
+            elif state=="find_iend":
+                if fragment_id_gt(self.xmlrpc_chain[icur]["frag_id"], frag_id2):
+                    iend = icur - 1
+                    break
+
+        if istart==None:
+            return None, None
+
+        if iend==None:
+            iend = len(self.xmlrpc_chain) - 1
+
+        return istart, iend
+
 
 ###############################################################################
 ## Unconsrained Linear TLS Parameter Fitting Engines
@@ -26,35 +119,14 @@ class TLSGraphChain(object):
     with the residue(fragment) indexes and U ADP tensor of each atom.
     Subsegments of the protein chain then can be fit with TLS tensors.
     """
-    pass
-
-class TLSGraphChainLinear(TLSGraphChain):
-    """Graph the chain using the linear TLS parameter fit engine. 
-    """
     def __init__(self, name):
-        TLSGraphChain.__init__(self)
-        
-        self.name         = name
-        self.xmlrpc_chain = None
-        self.f            = None
-        self.tls_model    = lineartls.LinearTLSModel()
+        self.name = name
+        self.tls_model = None
     
     def set_xmlrpc_chain(self, xmlrpc_chain):
-        self.xmlrpc_chain = xmlrpc_chain
-
-        ## create a Numeric Array vector for each atom position (faster)
-        frag_id_list = []
-        
-        for atm_desc in xmlrpc_chain:
-            frag_id_list.append(atm_desc["frag_id"])
-
-        ## set the class frag list
-        self.f = frag_id_list
-
-        ## set the C solver
+        self.xchain = XChain(xmlrpc_chain)
         self.tls_model.set_xmlrpc_chain(xmlrpc_chain)
-
-        print "[%s] set_xmlrpc_chain(num_atoms=%d)" % (self.name, len(frag_id_list))
+        print "[%s] set_xmlrpc_chain(num_atoms=%d)" % (self.name, len(xmlrpc_chain))
         return True
 
     def lsq_fit_segment(self, frag_id1, frag_id2):
@@ -68,26 +140,11 @@ class TLSGraphChainLinear(TLSGraphChain):
         ## calculate the start/end indexes of the start fragment
         ## and end fragment so the A matrix and b vector can be sliced
         ## in the correct placees
-	istart = None
-        iend   = None
-        state  = "find_istart"
-
-        for icur in range(len(self.f)):
-            if state=="find_istart":
-                if fragment_id_ge(self.f[icur], frag_id1):
-                    state  = "find_iend"
-                    istart = icur
-            elif state=="find_iend":
-                if fragment_id_gt(self.f[icur], frag_id2):
-                    iend = icur - 1
-                    break
-
-        if istart==None:
+        istart = self.xchain.get_istart(frag_id1)
+        iend = self.xchain.get_iend(frag_id2)
+        if istart==None or iend==None:
             fit_info["error"] = "No Atoms In Segment"
             return fit_info
-
-	if iend==None:
-	    iend = len(self.f) - 1
 
         ## are there enough atoms in this chain segment
         num_atoms = iend - istart + 1
@@ -102,20 +159,18 @@ class TLSGraphChainLinear(TLSGraphChain):
         ## return information
         fit_info["lsq_residual"] = fdict["lsq_residual"]
 
-        fit_info["cor_x"] = fdict["x"]
-        fit_info["cor_y"] = fdict["y"]
-        fit_info["cor_z"] = fdict["z"]
-
-        for key in ["t11","t22","t33","t12","t13","t23",
-                    "l11","l22","l33","l12","l13","l23",
-                    "s2211", "s1133", "s12","s13","s23","s21","s31","s32"]:
-            fit_info[key] = fdict[key]
-
         print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%8.6f)" % (
             self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"])
 
         return fit_info
 
+
+class TLSGraphChainLinear(TLSGraphChain):
+    """Graph the chain using the linear TLS parameter fit engine. 
+    """
+    def __init__(self, name):
+        TLSGraphChain.__init__(self, name)        
+        self.tls_model = lineartls.LinearTLSModel()
 
 class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
     """Linear fit of TLS parameters to isotropically refined ADPs.
@@ -149,98 +204,9 @@ class TLSGraphChainNonlinear(TLSGraphChain):
     """Abstract class.
     """
     def __init__(self, name):
-        TLSGraphChain.__init__(self)
-        
-        self.name         = name
-        self.xmlrpc_chain = None
-        self.f            = None
-
-        ## the non-linear fit engine is implemented in C/FORTRAN
-        import nonlineartls
+        TLSGraphChain.__init__(self, name)
         self.tls_model = nonlineartls.NLTLSModel()
     
-    def set_xmlrpc_chain(self, xmlrpc_chain):
-        self.xmlrpc_chain = xmlrpc_chain
-
-        ## create a Numeric Array vector for each atom position (faster)
-        frag_id_list = []
-        
-        for atm_desc in xmlrpc_chain:
-            frag_id_list.append(atm_desc["frag_id"])
-
-        ## set the class frag list
-        self.f = frag_id_list
-
-        ## set the C solver
-        self.tls_model.set_xmlrpc_chain(xmlrpc_chain)
-
-        print "[%s] set_xmlrpc_chain(num_atoms=%d)" % (self.name, len(frag_id_list))
-        return True
-
-    def lsq_fit_segment(self, frag_id1, frag_id2):
-        """Performs a LSQ fit of TLS parameters for the protein segment
-        starting with fragment index ifrag_start to (and including) the
-        fragment ifrag_end.
-        """
-        ## all return values here
-        fit_info = {}
-        
-        ## calculate the start/end indexes of the start fragment
-        ## and end fragment so the A matrix and b vector can be sliced
-        ## in the correct placees
-	istart = None
-        iend   = None
-        state  = "find_istart"
-
-        for icur in range(len(self.f)):
-            if state=="find_istart":
-                if fragment_id_ge(self.f[icur], frag_id1):
-                    state  = "find_iend"
-                    istart = icur
-            elif state=="find_iend":
-                if fragment_id_gt(self.f[icur], frag_id2):
-                    iend = icur - 1
-                    break
-
-        if istart==None:
-            fit_info["error"] = "No Atoms In Segment"
-            return fit_info
-
-	if iend==None:
-	    iend = len(self.f) - 1
-
-        ## are there enough atoms in this chain segment
-        num_atoms = iend - istart + 1
-        fit_info["num_atoms"] = num_atoms
-        if num_atoms<20:
-            fit_info["error"] = "data/parameter raito = %d/20 less than 1.0" % (num_atoms)
-            return fit_info
-
-        ## perform the LSQR fit
-        fdict = self.fit_segment(istart, iend)
-        
-        ## return information
-        fit_info["lsq_residual"] = fdict["lsq_residual"]
-
-        fit_info["cor_x"] = fdict["x"]
-        fit_info["cor_y"] = fdict["y"]
-        fit_info["cor_z"] = fdict["z"]
-
-        for key in ["t11","t22","t33","t12","t13","t23",
-                    "l11","l22","l33","l12","l13","l23",
-                    "s2211", "s1133", "s12","s13","s23","s21","s31","s32"]:
-            fit_info[key] = fdict[key]
-
-        print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%6.4f)" % (
-            self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"])
-
-        return fit_info
-
-    def fit_segment(self, istart, iend):
-        """Implement me.
-        """
-        pass
-
     
 class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
     """Nonlinear fit of TLS parameters to isotropically refined ADPs.
@@ -318,7 +284,7 @@ class TLSGraphChainXMLRPCServer(TLSGraphChain):
         
         xmlrpc_server.register_function(self.set_tls_model,    "set_tls_model")
         xmlrpc_server.register_function(self.set_xmlrpc_chain, "set_xmlrpc_chain")
-        xmlrpc_server.register_function(self.lsq_fit_segment,   "lsq_fit_segment")
+        xmlrpc_server.register_function(self.lsq_fit_segment,  "lsq_fit_segment")
         
         xmlrpc_server.serve_forever()
 
