@@ -146,7 +146,9 @@ struct TLSFitContext {
   double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
 
   double             ilsqr;                 /* least-squares residual of isotropic TLS model */
+  double             ilsqr_mainchain;       /* least-squares residual of mainchain atoms */
   double             alsqr;                 /* least-squares residual of anisotropic TLS model */
+  double             alsqr_mainchain;       /* least-squares residual of mainchain atoms */
 };
 
 struct IHingeContext {
@@ -741,7 +743,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
   double ox, oy, oz;
-
+  double u_iso_calc, delta;
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
 
@@ -810,6 +812,17 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
    * residual 
    */
   calc_lsqr(A, num_rows, num_cols, fit->ITLS, bw, &fit->ilsqr);
+
+  /* calculate the residual of the mainchain atoms */
+  fit->ilsqr_mainchain = 0.0;
+
+  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
+    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue;
+
+    calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_calc);
+    delta = atoms[ia].u_iso - u_iso_calc;
+    fit->ilsqr_mainchain += (atoms[ia].sqrt_weight*atoms[ia].sqrt_weight)*delta*delta;
+  }
 }
 
 static void
@@ -818,7 +831,7 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
   double ox, oy, oz;
-
+  double Utls[6], delta;
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
 
@@ -1363,6 +1376,10 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 
   py_floatx = PyFloat_FromDouble(fit_context.ilsqr);
   PyDict_SetItemString(rdict, "ilsqr", py_floatx);
+  Py_DECREF(py_floatx);
+  
+  py_floatx = PyFloat_FromDouble(fit_context.ilsqr_mainchain);
+  PyDict_SetItemString(rdict, "ilsqr_mainchain", py_floatx);
   Py_DECREF(py_floatx);
   
   for (i = 0; i < ITLS_NUM_PARAMS; i++) {
