@@ -20,9 +20,11 @@ import nonlineartls
 ## Utility Class
 ##
 
-END_SPACE = 2
+END_SPACE = 0
 
 class XChain(object):
+    """
+    """
     def __init__(self, xmlrpc_chain):
         self.xmlrpc_chain = xmlrpc_chain
         self.num_atoms = len(xmlrpc_chain)
@@ -84,7 +86,6 @@ class XChain(object):
         except IndexError:
             return None
         return self.iend_list[i-END_SPACE]
-
 
     def __find_istart_iend(self, frag_id1, frag_id2):
         istart = None

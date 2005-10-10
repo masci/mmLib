@@ -222,7 +222,9 @@ struct TLSFit {
   double             ITLS[ITLS_NUM_PARAMS];
 
   double             alsqr;
+  double             alsqr_mainchain;
   double             ilsqr;
+  double             ilsqr_mainchain;
 };
 
 /* global pointer to current minimization problem */
@@ -239,6 +241,17 @@ zero_dmatrix(double *M, int m, int n)
   for (i = 0; i < sz; i++) {
     M[i] = 0.0;
   }
+}
+
+/* return 1 if the atom is a mainchain atom */
+inline int
+atom_is_mainchain(struct Atom *atoms, int ia)
+{
+  if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) {
+    return 1;
+  }
+
+  return 0;
 }
 
 /* normalize the vector v
@@ -716,6 +729,8 @@ calc_isotropic_lsqr(struct TLSFit *fit)
   
   return lsqr;
 }
+
+
 
 /* calculate the least squares residual of the anisotropic TLS model */
 inline double

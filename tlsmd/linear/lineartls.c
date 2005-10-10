@@ -146,6 +146,7 @@ struct TLSFitContext {
   double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
 
   double             ilsqr;                 /* least-squares residual of isotropic TLS model */
+  double             ilsqr_res_norm;        /* residue-normalized residual */
   double             ilsqr_mainchain;       /* least-squares residual of mainchain atoms */
   double             alsqr;                 /* least-squares residual of anisotropic TLS model */
   double             alsqr_mainchain;       /* least-squares residual of mainchain atoms */
@@ -178,6 +179,17 @@ zero_dmatrix(double *M, int m, int n)
   for (i = 0; i < sz; i++) {
     M[i] = 0.0;
   }
+}
+
+/* return 1 if the atom is a mainchain atom */
+inline int
+atom_is_mainchain(struct Atom *atoms, int ia)
+{
+  if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) {
+    return 1;
+  }
+
+  return 0;
 }
 
 /* calculates u_iso for a atom at position x,y,z relative to the origin of the 
@@ -474,40 +486,6 @@ solve_SVD(int m, int n, double *x, double *b, double *U, double *S, double *VT, 
 /* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
  */
 static void
-calc_bc_lsqr(double *A, int m, int n, double *x, double *b, double *bc, double *lsqr)
-{
-#define FA(__i,__j)   A[__i + (m * __j)]
-
-  int i, j;
-  double dtmp, dltmp;
-
-  dltmp = 0.0;
-
-  /* now we have solved for x; calculate bc (b-calc) */
-  for (i = 0; i < m; i++) {
-    dtmp = 0.0;
-    
-    for (j = 0; j < n; j++) {
-      dtmp += FA(i,j) * x[j];
-    }
-    
-    bc[i] = dtmp;
-
-    /* sum the lsqr residual (b - bc) */
-    dtmp = b[i] - bc[i];
-    dltmp += dtmp * dtmp;
-  }
-
-  /* return the least squares residual in lsqr */
-  *lsqr = dltmp;
-
-#undef FA
-}
-
-
-/* calculates bc = A*x and least-squares residual (b - bc)*(b-bc)t
- */
-static void
 calc_lsqr(double *A, int m, int n, double *x, double *b, double *lsqr)
 {
 #define FA(__i,__j)   A[__i + (m * __j)]
@@ -743,7 +721,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   char jobz;
   int i, sz, num_atoms, num_rows, num_cols, row, ia, istart, iend, info;
   double ox, oy, oz;
-  double u_iso_calc, delta;
+  double u_iso_tls, delta;
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
 
@@ -768,7 +746,6 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   oy = fit->origin_y;
   oz = fit->origin_z;
 
-  /* ISOTROPIC TLS MODEL */
   num_rows = num_atoms;
   num_cols = ITLS_NUM_PARAMS;
 
@@ -816,12 +793,12 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   /* calculate the residual of the mainchain atoms */
   fit->ilsqr_mainchain = 0.0;
 
-  for (ia = istart, row = 0; ia <= iend; ia++, row++) {
-    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue;
-
-    calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_calc);
-    delta = atoms[ia].u_iso - u_iso_calc;
-    fit->ilsqr_mainchain += (atoms[ia].sqrt_weight*atoms[ia].sqrt_weight)*delta*delta;
+  for (ia = istart; ia <= iend; ia++) {
+    if (atom_is_mainchain(atoms, ia)) {
+      calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
+      delta = atoms[ia].u_iso - u_iso_tls;
+      fit->ilsqr_mainchain += (atoms[ia].sqrt_weight * atoms[ia].sqrt_weight) * delta * delta;
+    }
   }
 }
 
@@ -894,6 +871,19 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
 
   solve_SVD(num_rows, num_cols, fit->ATLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
   calc_lsqr(A, num_rows, num_cols, fit->ATLS, bw, &fit->alsqr);
+
+  /* calculate the residual of the mainchain atoms */
+  fit->alsqr_mainchain = 0.0;
+
+  for (ia = istart; ia <= iend; ia++) {
+    if (atom_is_mainchain(atoms, ia)) {
+      calc_anisotropic_Utls(fit->ATLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
+      for (i = 0; i < 6; i++) {
+	delta = atoms[ia].U[i] - Utls[i];
+	fit->alsqr_mainchain += (atoms[ia].sqrt_weight * atoms[ia].sqrt_weight) * delta * delta;
+      }
+    }
+  }
 }
 
 static void
@@ -1081,8 +1071,10 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 
   /* segment a atoms */
   for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
-    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue; 
-
+    if (!atom_is_mainchain(atoms, ia)) {
+      continue;
+    }
+    
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
     calc_isotropic_uiso(ITLSC, atoms[ia].x-oxc, atoms[ia].y-oyc, atoms[ia].z-ozc, &u_iso_c);
@@ -1100,7 +1092,9 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
 
   /* segment b atoms */
   for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
-    if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) continue;
+    if (!atom_is_mainchain(atoms, ia)) {
+      continue;
+    }
 
     calc_isotropic_uiso(ITLSA, atoms[ia].x-oxa, atoms[ia].y-oya, atoms[ia].z-oza, &u_iso_a);
     calc_isotropic_uiso(ITLSB, atoms[ia].x-oxb, atoms[ia].y-oyb, atoms[ia].z-ozb, &u_iso_b);
@@ -1447,6 +1441,10 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args)
 
   py_floatx = PyFloat_FromDouble(fit_context.alsqr);
   PyDict_SetItemString(rdict, "alsqr", py_floatx);
+  Py_DECREF(py_floatx);
+  
+  py_floatx = PyFloat_FromDouble(fit_context.alsqr_mainchain);
+  PyDict_SetItemString(rdict, "alsqr_mainchain", py_floatx);
   Py_DECREF(py_floatx);
   
   for (i = 0; i < ATLS_NUM_PARAMS; i++) {

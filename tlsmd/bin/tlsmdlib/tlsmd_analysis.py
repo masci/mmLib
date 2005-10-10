@@ -64,9 +64,9 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 10
+        MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        MIN_SUBSEGMENT_SIZE = 10
+        MIN_SUBSEGMENT_SIZE = 5
     elif INCLUDE_ATOMS=="CA":
         MIN_SUBSEGMENT_SIZE = 20
 
@@ -92,20 +92,20 @@ def calc_include_atom(atm, reject_messages=False):
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
 
-    for atmb in atm.iter_bonded_atoms():
-        delta = atm.temp_factor - atmb.temp_factor
-        flag = True
+##     for atmb in atm.iter_bonded_atoms():
+##         delta = atm.temp_factor - atmb.temp_factor
+##         flag = True
 	
-	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
-            if delta > 12.0: flag = False
-	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
-            if delta > 16.0: flag = False
-	else:
-            if delta > 24.0: flag = False
+## 	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
+##             if delta > 12.0: flag = False
+## 	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
+##             if delta > 16.0: flag = False
+## 	else:
+##             if delta > 24.0: flag = False
 
-        if flag == False:
-            print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
-            return False
+##         if flag == False:
+##             print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
+##             return False
         
     if INCLUDE_ATOMS=="ALL":
         return True
