@@ -1021,20 +1021,52 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     """
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
     LSMALL = 0.5 * DEG2RAD2
-
+    
     rdict = {}
+
+    rdict["T'"] = T0.copy()
+    rdict["L'"] = L0.copy()
+    rdict["S'"] = S0.copy()
+
+    rdict["rT'"] = T0.copy()
+
+    rdict["L1_eigen_val"] = 0.0
+    rdict["L2_eigen_val"] = 0.0
+    rdict["L3_eigen_val"] = 0.0
+
+    rdict["L1_rmsd"] = 0.0
+    rdict["L2_rmsd"] = 0.0
+    rdict["L3_rmsd"] = 0.0
+
+    rdict["L1_eigen_vec"] = zeros(3, Float)
+    rdict["L2_eigen_vec"] = zeros(3, Float)
+    rdict["L3_eigen_vec"] = zeros(3, Float)
+    
+    rdict["RHO"] = zeros(3, Float)
+    rdict["COR"] = origin
+
+    rdict["L1_rho"] = zeros(3, Float)
+    rdict["L2_rho"] = zeros(3, Float)
+    rdict["L3_rho"] = zeros(3, Float)
+    
+    rdict["L1_pitch"] = 0.0
+    rdict["L2_pitch"] = 0.0
+    rdict["L3_pitch"] = 0.0
+    
+    rdict["Tr1_rmsd"] = 0.0
+    rdict["Tr2_rmsd"] = 0.0
+    rdict["Tr3_rmsd"] = 0.0
 
     ## set the L tensor eigenvalues and eigenvectors
     (L_evals, RL) = eigenvectors(L0)
     L1, L2, L3 = L_evals
-    
-    ## make sure RLt is right-handed
-    if allclose(determinant(RL), -1.0):
-        I = identity(3, Float)
-        I[0,0] = -1.0
-        RL = matrixmultiply(I, RL)
-        
-    RLt = transpose(RL)
+
+    if allclose(L1, 0.0):
+        L1 = 0.0
+    if allclose(L2, 0.0):
+        L2 = 0.0
+    if allclose(L3, 0.0):
+        L3 = 0.0
 
     rdict["L1_eigen_val"] = L1
     rdict["L2_eigen_val"] = L2
@@ -1047,6 +1079,19 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L1_eigen_vec"] = RL[0].copy()
     rdict["L2_eigen_vec"] = RL[1].copy()
     rdict["L3_eigen_vec"] = RL[2].copy()
+
+    ## begin tensor transformations which depend upon
+    ## the eigenvectors of L0 being well-determined
+    ## make sure RLt is right-handed
+    if allclose(determinant(RL), -1.0):
+        I = identity(3, Float)
+        I[0,0] = -1.0
+        RL = matrixmultiply(I, RL)
+
+    if not allclose(determinant(RL), 1.0):
+        return rdict
+    
+    RLt = transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
     cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
@@ -1115,9 +1160,6 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
     Tp = T0 + matrixmultiply(PRHO, S0) + matrixmultiply(St, PRHOt) + matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
-    
-    ## L' is just L
-    rdict["L'"] = L0.copy()
 
     ## now calculate the TLS motion description using 3 non
     ## intersecting screw axes, with one
