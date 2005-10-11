@@ -274,7 +274,7 @@ def main():
     chain_id = sys.argv[3]
     seg = protein_segment(struct.get_chain(chain_id))
 
-    crh = ConfResidHistorgram(dbfile, seg, 5, 7)
+    crh = ConfResidHistorgram(dbfile, seg, 15, 5)
 
     prnt_sep()
     print "Analyizing all configurations..."

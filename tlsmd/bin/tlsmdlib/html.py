@@ -1354,21 +1354,17 @@ class HTMLReport(Report):
             tls_group = tls["tls_group"]
             tls_info  = tls["tls_info"]
 
-            L     = tls_group.L * RAD2DEG2
-            L_ev  = [ev for ev in eigenvalues(L)]
-            L_ev.sort()
-            L_ev.reverse()
+            L1 = tls_info["L1_eigen_val"] * RAD2DEG2
+            L2 = tls_info["L2_eigen_val"] * RAD2DEG2
+            L3 = tls_info["L3_eigen_val"] * RAD2DEG2
             
-            T_red    = tls_info["rT'"]
-            T_red_ev = [ev for ev in eigenvalues(T_red)]
-            T_red_ev.sort()
-            T_red_ev.reverse()
-
+            Tr1 = tls_info["Tr1_eigen_val"] * U2B
+            Tr2 = tls_info["Tr2_eigen_val"] * U2B
+            Tr3 = tls_info["Tr3_eigen_val"] * U2B
+            
             x += '<tr>\n'
 
-            x += '<td align="center" valign="middle"><img src="%s" alt="%s"></td>\n' % (
-                tls["color"]["thumbnail_path"], tls["color"]["name"])
-
+            x += '<td align="center" valign="middle"><img src="%s" alt="%s"></td>\n' % (tls["color"]["thumbnail_path"], tls["color"]["name"])
             x += '<td>%s%s-%s%s</td>\n' % (f1, tls["frag_id1"], tls["frag_id2"], f2)
             x += '<td>%s%d%s</td>\n'    % (f1, len(tls["segment"]), f2)
             x += '<td>%s%d%s</td>\n'    % (f1, len(tls_group), f2)
@@ -1376,8 +1372,8 @@ class HTMLReport(Report):
             x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["exp_mean_anisotropy"], f2)
             x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual"], f2)
             x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual_per_res"], f2)
-            x += '<td>%s%5.1f<br>%5.1f<br>%5.1f%s</td>\n' % (f1, T_red_ev[0]*U2B, T_red_ev[1]*U2B, T_red_ev[2]*U2B, f2)
-            x += '<td>%s%5.2f<br>%5.2f<br>%5.2f%s</td>\n' % (f1, L_ev[0], L_ev[1], L_ev[2], f2)
+            x += '<td>%s%5.1f<br>%5.1f<br>%5.1f%s</td>\n' % (f1, Tr1, Tr2, Tr3, f2)
+            x += '<td>%s%5.2f<br>%5.2f<br>%5.2f%s</td>\n' % (f1, L1, L2, L3, f2)
             x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["tls_mean_temp_factor"], f2)
             x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["tls_mean_anisotropy"], f2)
             x += '</tr>\n'
@@ -1390,6 +1386,8 @@ class HTMLReport(Report):
     def raster3d_render_tls_graph_path(self, chainopt, tlsopt, ntls):
         """Render TLS visualizations using Raster3D.
         """
+        return
+    
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chainopt["chain_id"], ntls)
         png_path = "%s.png"   % (basename)
 

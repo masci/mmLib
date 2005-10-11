@@ -1052,6 +1052,10 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L1_pitch"] = 0.0
     rdict["L2_pitch"] = 0.0
     rdict["L3_pitch"] = 0.0
+
+    rdict["Tr1_eigen_val"] = 0.0
+    rdict["Tr2_eigen_val"] = 0.0
+    rdict["Tr3_eigen_val"] = 0.0
     
     rdict["Tr1_rmsd"] = 0.0
     rdict["Tr2_rmsd"] = 0.0
@@ -1229,6 +1233,18 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["rT'"] = Tr
 
     Tr1, Tr2, Tr3 = eigenvalues(Tr)
+
+    if allclose(Tr1, 0.0) or type(Tr1)==complex:
+        Tr1 = 0.0
+    if allclose(Tr2, 0.0) or type(Tr2)==complex:
+        Tr2 = 0.0
+    if allclose(Tr3, 0.0) or type(Tr3)==complex:
+        Tr3 = 0.0
+
+    rdict["Tr1_eigen_val"] = Tr1
+    rdict["Tr2_eigen_val"] = Tr2
+    rdict["Tr3_eigen_val"] = Tr3
+    
     rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
     rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
     rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
