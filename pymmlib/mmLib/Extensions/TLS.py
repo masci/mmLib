@@ -1061,11 +1061,11 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     (L_evals, RL) = eigenvectors(L0)
     L1, L2, L3 = L_evals
 
-    if allclose(L1, 0.0):
+    if allclose(L1, 0.0) or type(L1)==complex:
         L1 = 0.0
-    if allclose(L2, 0.0):
+    if allclose(L2, 0.0) or type(L2)==complex:
         L2 = 0.0
-    if allclose(L3, 0.0):
+    if allclose(L3, 0.0) or type(L3)==complex:
         L3 = 0.0
 
     rdict["L1_eigen_val"] = L1
@@ -1827,11 +1827,6 @@ class TLSGroup(AtomList):
         tls_info["tls_mean_max_temp_factor"] = mean_max_tf / float(n)
         tls_info["tls_mean_temp_factor"]     = mean_tf     / float(n)
         tls_info["tls_mean_anisotropy"]      = mean_aniso  / float(n)        
-
-        ## TLS FIT
-        tls_info["valid_model"] = self.check_valid_model()
-        if not tls_info["valid_model"]:
-            return tls_info
 
         return tls_info
 
