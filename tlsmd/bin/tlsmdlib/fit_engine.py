@@ -20,14 +20,13 @@ import nonlineartls
 ## Utility Class
 ##
 
-END_SPACE = 0
-
 class XChain(object):
     """
     """
     def __init__(self, xmlrpc_chain):
         self.xmlrpc_chain = xmlrpc_chain
         self.num_atoms = len(xmlrpc_chain)
+        self.buffer_space = 0
 
         ## construct a list of fragment IDs
         last_frag_id = None
@@ -58,34 +57,34 @@ class XChain(object):
         self.istart_list = istart_list
         self.iend_list = iend_list
 
-    def get_istartx(self, frag_id):
+    def get_istart(self, frag_id):
         try:
             i = self.frag_id_list.index(frag_id)
         except IndexError:
             return None
         return self.istart_list[i]
 
-    def get_iendx(self, frag_id):
+    def get_iend(self, frag_id):
         try:
             i = self.frag_id_list.index(frag_id)
         except IndexError:
             return None
         return self.iend_list[i]
     
-    def get_istart(self, frag_id):
+    def get_istart_buffer(self, frag_id):
         try:
             i = self.frag_id_list.index(frag_id)
         except IndexError:
             return None
         
-        return self.istart_list[i+END_SPACE]
+        return self.istart_list[i+self.buffer_space]
 
-    def get_iend(self, frag_id):
+    def get_iend_buffer(self, frag_id):
         try:
             i = self.frag_id_list.index(frag_id)
         except IndexError:
             return None
-        return self.iend_list[i-END_SPACE]
+        return self.iend_list[i-self.buffer_space]
 
     def __find_istart_iend(self, frag_id1, frag_id2):
         istart = None

@@ -1386,8 +1386,6 @@ class HTMLReport(Report):
     def raster3d_render_tls_graph_path(self, chainopt, tlsopt, ntls):
         """Render TLS visualizations using Raster3D.
         """
-        return
-    
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chainopt["chain_id"], ntls)
         png_path = "%s.png"   % (basename)
 
@@ -1432,10 +1430,8 @@ class HTMLReport(Report):
             bg_color  = "White")
 
         ## turn off axes and unit cell visualization
-        gl_struct.glo_update_properties_path(
-            "gl_axes/visible", False)
-        gl_struct.glo_update_properties_path(
-            "gl_unit_cell/visible", False)
+        gl_struct.glo_update_properties_path("gl_axes/visible", False)
+        gl_struct.glo_update_properties_path("gl_unit_cell/visible", False)
 
         ## setup base structural visualization
         for gl_chain in gl_struct.glo_iter_children():
@@ -1470,8 +1466,7 @@ class HTMLReport(Report):
             if tls["method"]!="TLS":
                 continue
             
-            tls_name = "TLS_%s_%s" % (
-                tls["frag_id1"], tls["frag_id2"])
+            tls_name = "TLS_%s_%s" % (tls["frag_id1"], tls["frag_id2"])
             
             gl_tls_group = GLTLSGroup(
                 oatm_visible       = False,

@@ -730,8 +730,6 @@ calc_isotropic_lsqr(struct TLSFit *fit)
   return lsqr;
 }
 
-
-
 /* calculate the least squares residual of the anisotropic TLS model */
 inline double
 calc_anisotropic_lsqr(struct TLSFit *fit)
