@@ -647,25 +647,20 @@ class GLPropertyEditor(gtk.Notebook):
 
             elif prop_desc["type"]=="integer":
                 if prop_desc.get("read_only", False)==True:
-                    text = "<small>%d</small>" % (
-                        self.gl_object.properties[name])
+                    text = "<small>%d</small>" % (self.gl_object.properties[name])
                     widget.set_markup(text)
                 else:
                     if prop_desc.get("range")!=None:
-                        widget.set_value(
-                            float(self.gl_object.properties[name]))
+                        widget.set_value( float(self.gl_object.properties[name]))
                     elif prop_desc.get("spin")!=None:
-                        widget.set_value(
-                            float(self.gl_object.properties[name]))
+                        widget.set_value(float(self.gl_object.properties[name]))
                     else:
                         text = str(self.gl_object.properties[name])
                         widget.set_text(text)
 
             elif prop_desc["type"]=="float":
                 if prop_desc.get("read_only", False)==True:
-                    widget.set_markup(
-                        "<small>%12.6f</small>" % (
-                        self.gl_object.properties[name]))
+                    widget.set_markup("<small>%12.6f</small>" % (self.gl_object.properties[name]))
                 else:
                     if prop_desc.get("range")!=None:
                         widget.set_value(self.gl_object.properties[name])
@@ -680,8 +675,7 @@ class GLPropertyEditor(gtk.Notebook):
                     markup_vector3(self.gl_object.properties[name]))
 
             elif prop_desc["type"]=="array(3,3)":
-                widget.set_markup(
-                    markup_matrix3(self.gl_object.properties[name]))
+                widget.set_markup(markup_matrix3(self.gl_object.properties[name]))
 
             elif prop_desc["type"]=="enum_string":
                 widget.set_string(self.gl_object.properties[name])
@@ -980,9 +974,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         self.sw1.set_size_request(175, -1)
         self.sw1.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         
-        self.gl_tree_ctrl = GLPropertyTreeControl(
-            gl_object_root,
-            self.gl_tree_ctrl_selected)
+        self.gl_tree_ctrl = GLPropertyTreeControl(gl_object_root, self.gl_tree_ctrl_selected)
 
         self.sw1.add(self.gl_tree_ctrl)
 
@@ -1569,8 +1561,7 @@ class TLSDialog(gtk.Dialog):
             tls = {}
             tls["pdb_path"]  = path
             tls["tls_desc"]  = tls_desc
-            tls["tls_group"] = tls_desc.construct_tls_group_with_atoms(
-                self.sc.struct)
+            tls["tls_group"] = tls_desc.construct_tls_group_with_atoms(self.sc.struct)
             tls["name"]      = self.markup_tls_name(tls_desc)
             tls["tls_info"]  = tls["tls_group"].calc_tls_info()
             tls["lsq_fit"]   = False
@@ -1600,21 +1591,11 @@ class TLSDialog(gtk.Dialog):
         tls_list = []        
         for tls_desc in tls_file.tls_desc_list:
             tls = {}
-            tls_group          = tls_desc.construct_tls_group()
+            tls_group          = tls_desc.construct_tls_group_with_atoms(self.sc.struct)
             tls["tls_group"]   = tls_group
             tls["tlsout_path"] = path
             tls["tls_desc"]    = tls_desc
             tls["name"]        = self.markup_tls_name(tls_desc)
-
-            ## add the atoms
-            if tls_group.is_null():
-                for atm in tls_desc.iter_atoms(self.sc.struct):
-                    if calc_include_atom(atm)==True:
-                        tls_group.append(atm)
-            else:
-                ## add all the atoms defined in the group
-                for atm in tls_desc.iter_atoms(self.sc.struct):
-                    tls_group.append(atm)
 
             if len(tls_group)==0:
                 print "[ERROR] no atoms in TLS group"
@@ -1842,8 +1823,7 @@ class TLSSearchDialog(gtk.Dialog):
 
         current_row = 0
         def attach1(_widget, _cr):
-            table.attach(_widget, 0, 2, _cr, _cr+1,
-                         gtk.FILL|gtk.EXPAND, 0, 0, 0)
+            table.attach(_widget, 0, 2, _cr, _cr+1, gtk.FILL|gtk.EXPAND, 0, 0, 0)
         
         ## Chain Checkbuttons
         self.chain_checks = {}
@@ -1880,8 +1860,7 @@ class TLSSearchDialog(gtk.Dialog):
         self.include_disordered.set_active(gtk.FALSE)
 
         ##
-        self.include_single_bond = gtk.CheckButton(
-            "Include Atoms with One Bond")
+        self.include_single_bond = gtk.CheckButton("Include Atoms with One Bond")
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.include_single_bond)
         attach1(align, current_row)
@@ -1892,14 +1871,12 @@ class TLSSearchDialog(gtk.Dialog):
         label = gtk.Label("TLS Segment Residue Width")
         align = gtk.Alignment(0.0, 0.5, 0.0, 0.0)
         align.add(label)
-        table.attach(align, 0, 1, current_row, current_row + 1,
-                     gtk.FILL, 0, 0, 0)
+        table.attach(align, 0, 1, current_row, current_row + 1, gtk.FILL, 0, 0, 0)
         
         self.segment_width = gtk.Entry()
         align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
         align.add(self.segment_width)
-        table.attach(align, 1, 2, current_row, current_row + 1,
-                     gtk.EXPAND|gtk.FILL, 0, 0, 0)
+        table.attach(align, 1, 2, current_row, current_row + 1, gtk.EXPAND|gtk.FILL, 0, 0, 0)
         current_row += 1
         self.segment_width.set_text("6")
 
@@ -1923,12 +1900,7 @@ class TLSSearchDialog(gtk.Dialog):
         sw.set_border_width(5)
         sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-     
-        self.treeview = DictListTreeView(
-            column_list = [
-            "Residue Range", "Atoms", "LSQ-Residual",
-            "LSQ-Residual/Atom", "<DP2>"])
-
+        self.treeview = DictListTreeView(column_list = ["Residue Range", "Atoms", "LSQ-Residual", "LSQ-Residual/Atom", "<DP2>"])
         sw.add(self.treeview)
 
         return frame
@@ -1936,8 +1908,7 @@ class TLSSearchDialog(gtk.Dialog):
     def response_cb(self, dialog, response_code):
         """Responses to dialog events.
         """
-        if response_code==gtk.RESPONSE_CLOSE or \
-           response_code==gtk.RESPONSE_CANCEL:
+        if response_code==gtk.RESPONSE_CLOSE or response_code==gtk.RESPONSE_CANCEL:
             self.tls_info_list = []
             self.cancel_flag   = True
             
@@ -2057,8 +2028,7 @@ class TLSSearchDialog(gtk.Dialog):
 
             ## update status 
             ## this takes a long time so process some events
-            self.page2_label.set_text("Fit %d Segments" % (
-                len(self.tls_info_list)))
+            self.page2_label.set_text("Fit %d Segments" % (len(self.tls_info_list)))
 
             while gtk.events_pending():
                 gtk.main_iteration(gtk.TRUE)
@@ -2177,16 +2147,10 @@ class StructDetailsDialog(gtk.Dialog):
         treeview.set_rules_hint(gtk.TRUE)
         treeview.set_search_column(0)
 
-        column = gtk.TreeViewColumn(
-            "mmLib.Structure Method",
-            gtk.CellRendererText(),
-            text=0)
+        column = gtk.TreeViewColumn("mmLib.Structure Method", gtk.CellRendererText(), text=0)
         treeview.append_column(column)
     
-        column = gtk.TreeViewColumn(
-            "Return Value",
-            gtk.CellRendererText(),
-            text=1)
+        column = gtk.TreeViewColumn("Return Value", gtk.CellRendererText(), text=1)
         treeview.append_column(column)
 
         self.show_all()
@@ -2203,10 +2167,8 @@ class StructDetailsDialog(gtk.Dialog):
 
         if isinstance(struct_obj, Residue):
             self.add_line("Residue.res_name", struct_obj.res_name)
-            self.add_line("Residue.get_offset_residue(-1)",
-                          struct_obj.get_offset_residue(-1))
-            self.add_line("Residue.get_offset_residue(1)",
-                          struct_obj.get_offset_residue(1))
+            self.add_line("Residue.get_offset_residue(-1)", struct_obj.get_offset_residue(-1))
+            self.add_line("Residue.get_offset_residue(1)", struct_obj.get_offset_residue(1))
 
         if isinstance(struct_obj, Fragment):
             bonds = ""

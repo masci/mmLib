@@ -738,7 +738,7 @@ def solve_TLS_Ab(A, b):
     Ut = transpose(U)
 
     ## analize singular values and generate smallness cutoff
-    cutoff = max(W) * 1E-8
+    cutoff = max(W) * 1E-10
 
     ## make W
     dim_W = len(W)
@@ -1065,12 +1065,57 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     (L_evals, RL) = eigenvectors(L0)
     L1, L2, L3 = L_evals
 
+    good_L_eigens = []
+
     if allclose(L1, 0.0) or type(L1)==complex:
         L1 = 0.0
+    else:
+        good_L_eigens.append(0)
+        
     if allclose(L2, 0.0) or type(L2)==complex:
         L2 = 0.0
+    else:
+        good_L_eigens.append(1)
+
     if allclose(L3, 0.0) or type(L3)==complex:
         L3 = 0.0
+    else:
+        good_L_eigens.append(2)
+
+    ## no good L eigen values
+    if len(good_L_eigens)==0:
+        return rdict
+
+    ## one good eigen value -- reconstruct RL about it
+    elif len(good_L_eigens)==1:
+        i = good_L_eigens[0]
+        evec = RL[i]
+
+        RZt = transpose(rmatrixz(evec))
+        xevec = matrixmultiply(RZt, array([1.0, 0.0, 0.0], Float))
+        yevec = matrixmultiply(RZt, array([0.0, 1.0, 0.0], Float))
+
+        if i==0:
+            RL[1] = xevec
+            RL[2] = yevec
+        elif i==1:
+            RL[0] = xevec
+            RL[2] = yevec
+        elif i==2:
+            RL[0] = xevec
+            RL[1] = yevec
+
+    ## two good eigen values -- reconstruct RL about them
+    elif len(good_L_eigens)==2:
+        i = good_L_eigens[0]
+        j = good_L_eigens[1]
+
+        xevec = normalize(cross(RL[i], RL[j]))
+        for k in range(3):
+            if k==i: continue
+            if k==j: continue
+            RL[k] = xevec
+            break
 
     rdict["L1_eigen_val"] = L1
     rdict["L2_eigen_val"] = L2
@@ -1111,17 +1156,18 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     L13 = L1 + L3
     L12 = L1 + L2
 
-    if abs(L23)>LSMALL:
+    ## shift for L1
+    if not allclose(L1, 0.0) and abs(L23)>LSMALL:
         crho1 = (cS[1,2] - cS[2,1]) / L23
     else:
         crho1 = 0.0
 
-    if abs(L13)>LSMALL:
+    if not allclose(L2, 0.0) and abs(L13)>LSMALL:
         crho2 = (cS[2,0] - cS[0,2]) / L13
     else:
         crho2 = 0.0
 
-    if abs(L12)>LSMALL:
+    if not allclose(L3, 0.0) and abs(L12)>LSMALL:
         crho3 = (cS[0,1] - cS[1,0]) / L12
     else:
         crho3 = 0.0
@@ -2402,7 +2448,9 @@ class GLTLSAtomList(GLAtomList):
                 screw = axis * (rot * pitch)
                 
                 if allclose(rot, 0.0):
-                    continue
+                    if zero_rot==True:
+                        continue
+                    zero_rot = True
                     
                 self.driver.glr_push_matrix()
 
@@ -3207,9 +3255,9 @@ class GLTLSGroup(GLDrawList):
         r, g, b = self.gldl_property_color_rgbf("tls_color")
         self.driver.glr_set_material_rgb(r, g, b)
         self.driver.glr_translate(self.properties["COR"])
+        
         ## T: units (A^2)
-        self.driver.glr_Uellipse(
-            (0.0,0.0,0.0), self.properties["rT"], self.properties["adp_prob"])
+        self.driver.glr_Uellipse((0.0,0.0,0.0), self.properties["rT"], self.properties["adp_prob"])
 
         ## L: units (DEG^2)
         L_scale = self.properties["L_axis_scale"]
@@ -3223,13 +3271,13 @@ class GLTLSGroup(GLDrawList):
             L_eigen_val = self.properties[Lx_eigen_val]
             L_rho       = self.properties[Lx_rho]
             L_pitch     = self.properties[Lx_pitch]
-            
+
+            C = GAUSS3C[self.properties["adp_prob"]]
+            L_rot = C * (L_scale * calc_rmsd(L_eigen_val))
+
             if L_eigen_val<=0.0:
                 continue
 
-            C = GAUSS3C[self.properties["adp_prob"]]
-            
-            L_rot = C * (L_scale * calc_rmsd(L_eigen_val))
             L_v   = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
@@ -3238,8 +3286,7 @@ class GLTLSGroup(GLDrawList):
             self.driver.glr_line((0.0, 0.0, 0.0), L_rho)
 
             ## draw axis
-            self.driver.glr_axis(
-                L_rho - (0.5*L_v), L_v, self.properties["L_axis_radius"])
+            self.driver.glr_axis(L_rho - (0.5*L_v), L_v, self.properties["L_axis_radius"])
 
             ## draw disks with translational displacement
             L_screw_dis = L_eigen_vec * L_rot * L_pitch

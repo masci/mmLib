@@ -57,6 +57,9 @@ def rmatrixu(u, theta):
     """Return a rotation matrix caused by a right hand rotation of theta
     radians around vector u.
     """
+    if allclose(theta, 0.0) or allclose(dot(u,u), 0.0):
+        return identity(3, Float)
+
     x, y, z = normalize(u)
     sa = math.sin(theta)
     ca = math.cos(theta)
@@ -64,8 +67,13 @@ def rmatrixu(u, theta):
     R = array([[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
                [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
                [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], Float)
+
+    try:
+        assert allclose(determinant(R), 1.0)
+    except AssertionError:
+        print "rmatrixu(%s, %f) determinant(R)=%f" % (u, theta, determinant(R))
+        raise
     
-    assert allclose(determinant(R), 1.0)
     return R
 
 def rmatrixu_bla(u, theta):
@@ -98,11 +106,11 @@ def dmatrixu(u, theta):
     """
     return rmatrixu(u, theta) - identity(3, Float)
 
-def rmatrixz(u):
+def rmatrixz(vec):
     """Return a rotation matrix which transforms the coordinate system
-    such that the vector u is aligned along the z axis.
+    such that the vector vec is aligned along the z axis.
     """
-    u, v, w = normalize(u)
+    u, v, w = normalize(vec)
 
     d = math.sqrt(u*u + v*v)
 
@@ -119,7 +127,13 @@ def rmatrixz(u):
                     [   d, 0.0,     w] ], Float)
 
     R = matrixmultiply(Rxz2z, Rxz)
-    assert allclose(determinant(R), 1.0)
+
+    try:
+        assert allclose(determinant(R), 1.0)
+    except AssertionError:
+        print "rmatrixz(%s) determinant(R)=%f" % (vec, determinant(R))
+        raise
+
     return R
 
 ##
