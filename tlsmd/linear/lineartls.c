@@ -29,6 +29,9 @@ dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
 
+#define SQRT2 1.4142135623730951
+
+
 /* anisotropic U tensor parameter labels and indexes */
 #define U11 0
 #define U22 1
@@ -149,6 +152,7 @@ struct TLSFitContext {
   double             ilsqr_res_norm;        /* residue-normalized residual */
   double             ilsqr_mainchain;       /* least-squares residual of mainchain atoms */
   double             alsqr;                 /* least-squares residual of anisotropic TLS model */
+  double             alsqr_res_norm;        /* residue-normalized residual */
   double             alsqr_mainchain;       /* least-squares residual of mainchain atoms */
 };
 
@@ -348,7 +352,9 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
 #define FA(__i,__j) A[__i + (m * __j)]
 
   int rowU11, rowU22, rowU33, rowU12, rowU13, rowU23;
-  double xx, yy, zz, xy, xz, yz;
+  double xx, yy, zz, xy, xz, yz, w2;
+
+  w2 = w * SQRT2;
   
   xx = x*x;
   yy = y*y;
@@ -369,9 +375,9 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
   b[rowU11] = w * U[0];
   b[rowU22] = w * U[1];
   b[rowU33] = w * U[2];
-  b[rowU12] = w * U[3];
-  b[rowU13] = w * U[4];
-  b[rowU23] = w * U[5];
+  b[rowU12] = w2 * U[3];
+  b[rowU13] = w2 * U[4];
+  b[rowU23] = w2 * U[5];
 
   /* set A */
   FA(rowU11, ATLS_T11) = w * 1.0;
@@ -395,33 +401,33 @@ set_ATLS_Ab(double *A, double *b, int m, int n, int row, double U[6], double x, 
   FA(rowU33, ATLS_S23) = w * -2.0 *  x;
   FA(rowU33, ATLS_S13) = w *  2.0 *  y;
 
-  FA(rowU12, ATLS_T12)   = w * 1.0;
-  FA(rowU12, ATLS_L33)   = w * -xy;
-  FA(rowU12, ATLS_L23)   = w *  xz;
-  FA(rowU12, ATLS_L13)   = w *  yz;
-  FA(rowU12, ATLS_L12)   = w * -zz;
-  FA(rowU12, ATLS_S2211) = w *   z;
-  FA(rowU12, ATLS_S31)   = w *   x;
-  FA(rowU12, ATLS_S32)   = w *  -y;
+  FA(rowU12, ATLS_T12)   = w2 * 1.0;
+  FA(rowU12, ATLS_L33)   = w2 * -xy;
+  FA(rowU12, ATLS_L23)   = w2 *  xz;
+  FA(rowU12, ATLS_L13)   = w2 *  yz;
+  FA(rowU12, ATLS_L12)   = w2 * -zz;
+  FA(rowU12, ATLS_S2211) = w2 *   z;
+  FA(rowU12, ATLS_S31)   = w2 *   x;
+  FA(rowU12, ATLS_S32)   = w2 *  -y;
     
-  FA(rowU13, ATLS_T13)   = w * 1.0;
-  FA(rowU13, ATLS_L22)   = w * -xz;
-  FA(rowU13, ATLS_L23)   = w *  xy;
-  FA(rowU13, ATLS_L13)   = w * -yy;
-  FA(rowU13, ATLS_L12)   = w *  yz;
-  FA(rowU13, ATLS_S1133) = w *   y;
-  FA(rowU13, ATLS_S23)   = w *   z;
-  FA(rowU13, ATLS_S21)   = w *  -x;
+  FA(rowU13, ATLS_T13)   = w2 * 1.0;
+  FA(rowU13, ATLS_L22)   = w2 * -xz;
+  FA(rowU13, ATLS_L23)   = w2 *  xy;
+  FA(rowU13, ATLS_L13)   = w2 * -yy;
+  FA(rowU13, ATLS_L12)   = w2 *  yz;
+  FA(rowU13, ATLS_S1133) = w2 *   y;
+  FA(rowU13, ATLS_S23)   = w2 *   z;
+  FA(rowU13, ATLS_S21)   = w2 *  -x;
     
-  FA(rowU23, ATLS_T23)   = w * 1.0;
-  FA(rowU23, ATLS_L11)   = w * -yz;
-  FA(rowU23, ATLS_L23)   = w * -xx;
-  FA(rowU23, ATLS_L13)   = w *  xy;
-  FA(rowU23, ATLS_L12)   = w *  xz;
-  FA(rowU23, ATLS_S2211) = w *  -x;
-  FA(rowU23, ATLS_S1133) = w *  -x;
-  FA(rowU23, ATLS_S12)   = w *   y;
-  FA(rowU23, ATLS_S13)   = w *  -z;
+  FA(rowU23, ATLS_T23)   = w2 * 1.0;
+  FA(rowU23, ATLS_L11)   = w2 * -yz;
+  FA(rowU23, ATLS_L23)   = w2 * -xx;
+  FA(rowU23, ATLS_L13)   = w2 *  xy;
+  FA(rowU23, ATLS_L12)   = w2 *  xz;
+  FA(rowU23, ATLS_S2211) = w2 *  -x;
+  FA(rowU23, ATLS_S1133) = w2 *  -x;
+  FA(rowU23, ATLS_S12)   = w2 *   y;
+  FA(rowU23, ATLS_S13)   = w2 *  -z;
 
 #undef FA
 }
@@ -682,6 +688,13 @@ new_chain(int num_atoms)
   return NULL;
 }
 
+inline int
+calc_istart_iend(struct Atom *atoms, char *frag_id1, char *frag_id2, int *istart, int *iend)
+{
+  int ia;
+
+  return 1;
+}
 
 /* calculates the centroid of the atoms indexed between istart and iend
  * then returns the centroid coordinates in x, y, z
@@ -724,6 +737,9 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   double u_iso_tls, delta;
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
+
+  int ia_res_start, num_res_atoms;
+  double lsqr_res;
 
   /* optimization */
   atoms = fit->chain->atoms;
@@ -800,6 +816,29 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
       fit->ilsqr_mainchain += (atoms[ia].sqrt_weight * atoms[ia].sqrt_weight) * delta * delta;
     }
   }
+
+  /* calculate a residue-normalized residual */
+  fit->ilsqr_res_norm = 0.0;
+
+  ia_res_start = istart;
+  lsqr_res = 0.0;
+  num_res_atoms = 0;
+
+  for (ia = istart; ia <= iend; ia++) {
+    /* new residue */
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      fit->ilsqr_res_norm += lsqr_res / num_res_atoms;
+      ia_res_start = ia;
+      lsqr_res = 0.0;
+      num_res_atoms = 0;
+    }
+    
+    calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
+    
+    num_res_atoms++;
+    delta = (atoms[ia].u_iso - u_iso_tls) * atoms[ia].sqrt_weight;
+    lsqr_res += delta * delta;
+  }  
 }
 
 static void
@@ -884,6 +923,7 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
       }
     }
   }
+  
 }
 
 static void
@@ -1372,6 +1412,10 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   PyDict_SetItemString(rdict, "ilsqr", py_floatx);
   Py_DECREF(py_floatx);
   
+  py_floatx = PyFloat_FromDouble(fit_context.ilsqr_res_norm);
+  PyDict_SetItemString(rdict, "ilsqr_res_norm", py_floatx);
+  Py_DECREF(py_floatx);
+
   py_floatx = PyFloat_FromDouble(fit_context.ilsqr_mainchain);
   PyDict_SetItemString(rdict, "ilsqr_mainchain", py_floatx);
   Py_DECREF(py_floatx);
@@ -1443,6 +1487,10 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args)
   PyDict_SetItemString(rdict, "alsqr", py_floatx);
   Py_DECREF(py_floatx);
   
+  py_floatx = PyFloat_FromDouble(fit_context.alsqr_res_norm);
+  PyDict_SetItemString(rdict, "alsqr_res_norm", py_floatx);
+  Py_DECREF(py_floatx);
+
   py_floatx = PyFloat_FromDouble(fit_context.alsqr_mainchain);
   PyDict_SetItemString(rdict, "alsqr_mainchain", py_floatx);
   Py_DECREF(py_floatx);

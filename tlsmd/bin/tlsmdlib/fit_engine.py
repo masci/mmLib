@@ -180,7 +180,7 @@ class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
 
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.isotropic_fit_segment(istart, iend)
-        fdict["lsq_residual"] = fdict["ilsqr"]
+        fdict["lsq_residual"] = fdict["ilsqr_res_norm"]
         return fdict
 
 
