@@ -23,10 +23,15 @@ PORT = 10100
 
 ###############################################################################
 
+def debug(text):
+    return
+    open("debug.txt", "a").write(text)
+
 class WebTLSMDDaemon2(object):
     def __init__(self, db_file):
         self.db_file = db_file
         self.db = bsddb.hashopen(self.db_file, "c")
+        self.retrieve_globals()
 
     def store_dict(self, dbkey, dictx):
         self.db[dbkey] = cPickle.dumps(dictx)
@@ -61,6 +66,10 @@ class WebTLSMDDaemon2(object):
 
             self.store_globals(gdict)
 
+        debug("DATABASE GLOBALS\n")
+	for key, value in gdict.items():
+	    debug("%20s : %s\n" % (key, value))
+
         return gdict
 
     def store_globals(self, gdict):
@@ -71,17 +80,40 @@ class WebTLSMDDaemon2(object):
         self.store_dict(jdict["job_id"], jdict)
     
     def retrieve_jdict(self, job_id):
-        return self.retrieve_dict(job_id)
+        jdict = self.retrieve_dict(job_id)
+        for key, val in jdict.items():
+            if val==None:
+                debug("ERROR: JDICT for %s has key/value %s:None" % (jdict["job_id"], str(key)))
+        return jdict
 
     def job_list(self):
         """Returns a ordered list of all jdicts in the database
         """
+	debug("calling job_list\n")
+
         ## retrieve all jdicts from database and 
         listx = []
         for dbkey in self.db.keys():
             if dbkey.startswith("TLSMD"):
+                debug("retrieving %s\n" % (dbkey))
+
                 jdict = self.retrieve_jdict(dbkey)
-                job_num = int(dbkey[5:])
+                debug(str(jdict))
+
+                job_id = jdict["job_id"]
+                job_nums = job_id[5:]
+		j = job_nums.find("_")
+		if j>0:
+                    job_nums = job_nums[:j]
+	
+                debug("job num = %s\n" % (job_nums))
+	
+		try:
+                    job_num = int(job_nums)
+                except ValueError:
+                    debug("ERROR: unable to determine job number for JOBID %s\n" % (dbkey))
+		    continue
+		    
                 listx.append((job_num, jdict))
 
         listx.sort()
@@ -90,22 +122,25 @@ class WebTLSMDDaemon2(object):
         for job_num, jdict in listx:
             job_list.append(jdict)
 
+	debug(str(job_list))
         return job_list
 
-    def job_new(self):
+    def job_new(self, security_code):
         gdict = self.retrieve_globals()
         job_num = gdict["next_job_num"]
 	gdict["next_job_num"] =  job_num + 1
 	self.store_globals(gdict)
 
         ## assign job_id
-        job_id = "TLSMD%d" % (job_num)
-
+	if security_code=="":
+	    job_id = "TLSMD%d" % (job_num)
+        else:
+            job_id = "TLSMD%d_%s" % (job_num, security_code)
+	    
         ## create job dictionary
         jdict = {}
         jdict["job_id"] = job_id
-        self.store_jdict(jdict)
-
+	self.store_jdict(jdict)
         return job_id
 
     def job_exists(self, job_id):

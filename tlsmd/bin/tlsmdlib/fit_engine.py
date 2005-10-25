@@ -183,7 +183,6 @@ class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
         fdict["lsq_residual"] = fdict["ilsqr_res_norm"]
         return fdict
 
-
 class TLSGraphChainLinearAnisotropic(TLSGraphChainLinear):
     """Linear fit of TLS parameters to anisotropically refined ADPs.
     """
@@ -207,7 +206,6 @@ class TLSGraphChainNonlinear(TLSGraphChain):
         TLSGraphChain.__init__(self, name)
         self.tls_model = nonlineartls.NLTLSModel()
     
-    
 class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
     """Nonlinear fit of TLS parameters to isotropically refined ADPs.
     """
@@ -218,7 +216,6 @@ class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
         fdict = self.tls_model.isotropic_fit_segment(istart, iend)
         fdict["lsq_residual"] = fdict["ilsqr"]
         return fdict
-
 
 class TLSGraphChainNonlinearAnisotropic(TLSGraphChainNonlinear):
     """Nonlinear fit of TLS parameters to anisotropically refined ADPs.
@@ -253,7 +250,6 @@ def NewTLSGraphChain(tls_model):
         return TLSGraphChainNonlinearAnisotropic()
 
     raise Exception()
-
 
 class TLSGraphChainXMLRPCServer(TLSGraphChain):
     """Runs this object as a xmlrpc server servicing requests for

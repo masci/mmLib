@@ -4,9 +4,7 @@ DEFINES   =-D_UNIX
 CFLAGS 	  =-fPIC -g -O3 -Wall
 CC 	  =gcc
 
-LAPACK    = /home/jpaint/build/LAPACK/lapack_LINUX.a /home/jpaint/build/LAPACK/blas_LINUX.a
-ATLAS     = -L/home/jpaint/build/ATLAS/lib/Linux_P4SSE2/ -llapack -lf77blas -lcblas -latlas
-VANHUFFEL = /home/jpaint/build/vanhuffel/libvanhuffel.a
+LAPACK    = /home/jpaint/src/LAPACK/lapack_LINUX.a /home/jpaint/src/LAPACK/blas_LINUX.a
 
 
 SOURCE 	= lineartls.c

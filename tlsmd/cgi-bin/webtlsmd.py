@@ -9,6 +9,7 @@ import sys
 import time
 import socket
 import string
+import random
 
 import xmlrpclib
 import cgitb; cgitb.enable()
@@ -594,13 +595,27 @@ class ErrorPage(Page):
 
 
 class QueuePage(Page):
+    def __init__(self, form):
+        Page.__init__(self, form)
+        if self.form.has_key("admin"):
+            self.admin = self.verify_admin(self.form["admin"].value)
+        else:
+            self.admin = False
+
+    def verify_admin(self, passcode):
+        try:
+            code = open("/home/tlsmd/database/cgi-admin", "r").read().strip()
+	except IOError:
+            return False
+        return code==passcode
+
     def html_head_nocgi(self, title):
         x  = ''
         x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
         x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
         x += '<html>'
         x += '<head>'
-        x += '  <meta http-equiv="refresh" content="60">'
+        x += '  <meta http-equiv="refresh" content="120">'
         x += '  <title>%s</title>' % (title)
         x += '  <style type="text/css" media=screen>'
         x += '  <!-- '
@@ -674,14 +689,19 @@ class QueuePage(Page):
         return x
 
     def explore_href(self, jdict):
-        if self.form.has_key("admin"):
+        if self.admin==True:
             page = "admin"
         else:
             page = "explore"
 
-        if page!="admin" and jdict.get("private_job", False)==True:
+        if self.admin==False and jdict.get("private_job", False)==True:
             return 'private'
-        return '<a href="webtlsmd.cgi?page=%s&job_id=%s">%s</a>' % (
+ 
+        if self.admin==True:
+            return '<a href="webtlsmd.cgi?page=%s&job_id=%s"><font size="-2">%s</font></a><br><font size="-3">%s</font>' % (
+                   page, jdict["job_id"] ,jdict["job_id"], jdict.get("email", "No EMail"))
+    
+        return '<a href="webtlsmd.cgi?page=%s&job_id=%s"><font size="-2">%s</font></a>' % (
             page, jdict["job_id"] ,jdict["job_id"])
     
     def chain_size_string(self, jdict):
@@ -1040,6 +1060,12 @@ class Submit2Page(Page):
         x = html_job_edit_form(fdict)
         return x
 
+    def generate_security_code(self):
+        l = list(5 * string.ascii_letters) 
+        random.shuffle(l)
+	code = "".join(random.sample(l,8)) 
+	return code
+
     def prepare_submission(self):
         if self.form.has_key("pdbfile")==False or \
            self.form["pdbfile"].file==None:
@@ -1052,7 +1078,7 @@ class Submit2Page(Page):
             raise SubmissionException(
                 '<p>Cannot change to working directory: %s</p>' % (str(err)))
 
-        job_id = webtlsmdd.job_new()
+        job_id = webtlsmdd.job_new(self.generate_security_code())
         os.umask(022)
         try:
             os.mkdir(job_id)
@@ -1181,11 +1207,7 @@ class Submit2Page(Page):
             webtlsmdd.job_data_set(job_id, "tls_model", "ISOT")
             
         webtlsmdd.job_data_set(job_id, "weight", "IUISO")
-
-        if largest_chain_seen<=400:
-            webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
-        else:
-            webtlsmdd.job_data_set(job_id, "include_atoms", "MAINCHAIN")
+        webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
 
 	return job_id
 
