@@ -333,7 +333,7 @@ class TLSFileFormatPDB(TLSFileFormat):
         "t13_t23":     re.compile("\s*T13:\s*(\S+)\s+T23:\s*(\S+)\s*$"),
         "l11_l22":     re.compile("\s*L11:\s*(\S+)\s+L22:\s*(\S+)\s*$"),
         "l33_l12":     re.compile("\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
-        "l13_l23":     re.compile( "\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
+        "l13_l23":     re.compile("\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
         "s11_s12_s13": re.compile("\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
         "s21_s22_s23": re.compile( "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
         "s31_s32_s33": re.compile("\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
@@ -780,8 +780,7 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
-    T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (
-        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
+    T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
     
     ## indecies of the components of U
     UISO = i
@@ -808,6 +807,25 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     A[UISO, S1]  = w * (( 2.0 * z) / 3.0)
     A[UISO, S2]  = w * (( 2.0 * y) / 3.0)
     A[UISO, S3]  = w * (( 2.0 * x) / 3.0)
+
+def calc_itls_uiso(T, L, S, position):
+    """Calculate the TLS predicted uiso from the isotropic TLS model for the atom at position.
+    """
+    x, y, z = position
+    
+    xx = x*x
+    yy = y*y
+    zz = z*z
+
+    ## note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 
+    u_tls = T + (L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy) - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
+    return u_tls
+
+def iter_itls_uiso(atom_iter, T, L, S, O):
+    """Iterates the pair (atom, u_iso)
+    """
+    for atm in atom_iter:
+        yield calc_itls_uiso(T, L, S, atm.position - O)
 
 
 ###############################################################################
