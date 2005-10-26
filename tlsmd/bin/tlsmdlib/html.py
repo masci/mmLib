@@ -202,7 +202,6 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
-
 class GNUPlot(object):
     """Provides useful methods for subclasses which need to run gnuplot.
     """
@@ -220,7 +219,9 @@ class GNUPlot(object):
         ## if a basename is given, then write the GnuPlot script
         ## as a file
         if basename!=None:
-            open("%s.plot" % (basename), "w").write(script)
+            path = "%s.plot" % (basename)
+            print "GNUPLot: Saving %s" % (path)
+            open(path, "w").write(script)
         
         ## run gnuplot
         stdout, stdin, stderr = popen2.popen3((GNUPLOT_PATH, ), 32768)
@@ -567,17 +568,20 @@ class FitAnalysis(GNUPlot):
         tls_group = tls["tls_group"]
         tls_info  = tls["tls_info"]
 
-        filename  = "%s_CHAIN%s_TLS%s_%s_FIT.txt" % (
-            chainopt["struct_id"], chainopt["chain_id"], tls["frag_id1"], tls["frag_id2"])
+        T = tls_group.itls_T
+        L = tls_group.itls_L
+        S = tls_group.itls_S
+        O = tls_group.origin
 
+        filename  = "%s_CHAIN%s_TLS%s_%s_FIT.txt" % (chainopt["struct_id"], chainopt["chain_id"], tls["frag_id1"], tls["frag_id2"])
         fil = open(filename, "w")
 
-        for atm, U in tls_group.iter_atm_Utls():
+        for atm in tls_group:
             if atm.name not in ["N", "CA", "C"]:
                 continue
-
-            utls_temp_factor = U2B * trace(U)/3.0
-            bdiff = atm.temp_factor - utls_temp_factor
+            
+            b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+            bdiff = atm.temp_factor - b_iso_tls
             
             try:
                 fidf = float(str(atm.fragment_id))
@@ -617,13 +621,18 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
         ## write out the data file
         tls_group = tls["tls_group"]
 
+        T = tls_group.itls_T
+        L = tls_group.itls_L
+        S = tls_group.itls_S
+        O = tls_group.origin
+
         ## create a histogram of (Uiso - Utls_iso)
         bdiff_min = 0.0
         bdiff_max = 0.0
 
-        for atm, Utls in tls_group.iter_atm_Utls():
-            u_tls_iso = (trace(Utls) / 3.0) * U2B
-            bdiff = atm.temp_factor - u_tls_iso
+        for atm in tls_group:
+            b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+            bdiff = atm.temp_factor - b_iso_tls
 
             bdiff_min = min(bdiff_min, bdiff)
             bdiff_max = max(bdiff_max, bdiff)
@@ -641,9 +650,9 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
             bin_names.append(bin_mean)
 
         ## count the bins
-        for atm, Utls in tls_group.iter_atm_Utls():
-            u_tls_iso = (trace(Utls) / 3.0) * U2B
-            bdiff = atm.temp_factor - u_tls_iso
+        for atm in tls_group:
+            b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+            bdiff = atm.temp_factor - b_iso_tls
             bin = int((bdiff - bdiff_min)/ bin_width)
             bins[bin] += 1
 
@@ -813,7 +822,121 @@ class TLSSegmentAlignmentPlot(object):
             idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
 
 
+def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
+    chain = chainopt["chain"]
 
+    num_tls = len(tlsopt.tls_list)
+    num_res = chain.count_fragments()
+
+    cmtx = zeros((num_tls, num_res), Float)
+
+    for i in range(len(tlsopt.tls_list)):
+        tls = tlsopt.tls_list[i]
+        tls_group = tls["tls_group"]
+
+        T = tls_group.itls_T
+        L = tls_group.itls_L
+        S = tls_group.itls_S
+        O = tls_group.origin
+
+        for j in range(len(chain)):
+            frag = chain[j]
+
+            ## calcuate a atom-normalized rmsd deviation for each residue
+            n = 0
+            delta2 = 0.0
+            for atm in frag.iter_all_atoms():
+                if atm.include==False: continue
+
+                n += 1
+                b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+                delta = atm.temp_factor - b_iso_tls
+                delta2 += delta**2
+
+            msd = delta2 / n
+            rmsd = math.sqrt(msd)
+
+            ## set the cross prediction matrix
+            cmtx[i,j] = rmsd
+
+    return cmtx
+     
+_CROSS_PREDICTION_ANALYSIS_TEMPLATE = """\
+set xlabel "Residue"
+set xrange [<xrng1>:<xrng2>]
+set ylabel "sqrt((B_{obs} - B_{calc})^2)"
+set format y "%5.2f"
+set yrange [0.0:40.0]
+set term png enhanced font "<font>" <fontsize>
+set output "<pngfile>"
+set title "<title>"
+"""
+
+class CrossPredictionAnalysis(GNUPlot):
+    def __init__(self, chainopt, tlsopt):
+        basename = "%s_CHAIN%s_NTLS%s_CROSSPREDICT" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
+        self.png_path = "%s.png" % (basename)
+
+        ## write data file
+        CMTX = calc_cross_prediction_matrix_rmsd(chainopt, tlsopt)
+        m, n = shape(CMTX)
+
+        chain = chainopt["chain"]
+
+        data_path = "%s.txt" % (basename)
+        fil = open(data_path, "w")
+        
+        for j in range(n):
+            frag = chain[j]
+
+            x = ''
+            x += '%5s' % (frag.fragment_id)
+            x += '  %5d' % (j)
+
+            ## tls group rmsds start at column 3
+            for i in range(m):
+                x += '  %6.2f' % (CMTX[i,j])
+
+            x += '\n'
+            fil.write(x)
+                
+        fil.close()
+
+        ## Gnuplot Script
+        script = _CROSS_PREDICTION_ANALYSIS_TEMPLATE
+        script = script.replace("<font>", GNUPLOT_FONT)
+        script = script.replace("<fontsize>", GNUPLOT_FONT_SIZE)
+
+        script = script.replace("<xrng1>", tlsopt.tls_list[0]["frag_id1"])
+        script = script.replace("<xrng2>", tlsopt.tls_list[-1]["frag_id2"])
+        
+        script = script.replace("<pngfile>", self.png_path)
+        script = script.replace("<title>", "TLS Group Cross-Prediction RMSD per Residue ")
+
+        ## line style
+        line_titles = []
+        ls = 0
+        for tls in tlsopt.tls_list:
+            ls += 1
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+
+            title = "%s - %s" % (tls["frag_id1"], tls["frag_id2"])
+            line_titles.append(title)
+
+        ## plot list
+        plist = []
+        ls = 0
+        for i in range(len(tlsopt.tls_list)):
+            ls += 1
+            
+            x = '"%s" using 1:%d smooth bezier title "%s" ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
+            plist.append(x)
+
+        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        
+        self.gnuplot_run(script, basename)
+
+    
 class Report(object):
     """Base class of HTML Report generating objects.
     """
@@ -1940,6 +2063,7 @@ class ChainNTLSAnalysisReport(Report):
         x += self.html_translation_analysis()
         x += self.html_libration_analysis()
         x += self.html_fit_analysis()
+        x += self.html_cross_prediction_analysis()
         
         for tls in self.tlsopt.tls_list:
             ## don't write out bypass edges
@@ -1998,6 +2122,19 @@ class ChainNTLSAnalysisReport(Report):
         x += '<img src="%s" alt="Fit Analysis">' % (fit_analysis.png_path)
         x += '</center>\n'
         x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
+
+        return x
+
+    def html_cross_prediction_analysis(self):
+        x  = ''
+        x += '<center><h3>TLS Group Cross-Prediction Analysis</h3></center>\n'
+
+        analysis = CrossPredictionAnalysis(self.chainopt, self.tlsopt)
+        
+        x += '<center>'
+        x += '<img src="%s" alt="Cross Prediction Analysis">' % (analysis.png_path)
+        x += '</center>\n'
+        x += '<p>Nothing Here Yet</p>'
 
         return x
 

@@ -191,7 +191,7 @@ class TLSGraphChainLinearAnisotropic(TLSGraphChainLinear):
 
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.anisotropic_fit_segment(istart, iend)
-        fdict["lsq_residual"] = fdict["alsqr"]
+        fdict["lsq_residual"] = fdict["alsqr_res_norm"]
         return fdict
 
 

@@ -812,8 +812,8 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   for (ia = istart; ia <= iend; ia++) {
     if (atom_is_mainchain(atoms, ia)) {
       calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
-      delta = atoms[ia].u_iso - u_iso_tls;
-      fit->ilsqr_mainchain += (atoms[ia].sqrt_weight * atoms[ia].sqrt_weight) * delta * delta;
+      delta = atoms[ia].sqrt_weight * (atoms[ia].u_iso - u_iso_tls);
+      fit->ilsqr_mainchain += delta * delta;
     }
   }
 
@@ -836,7 +836,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
     calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
     
     num_res_atoms++;
-    delta = (atoms[ia].u_iso - u_iso_tls) * atoms[ia].sqrt_weight;
+    delta =  atoms[ia].sqrt_weight * (atoms[ia].u_iso - u_iso_tls);
     lsqr_res += delta * delta;
   }  
 }
@@ -850,6 +850,9 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
   double Utls[6], delta;
   double *A, *Aw, *b, *bw;
   struct Atom *atoms;
+
+  int ia_res_start, num_res_atoms;
+  double lsqr_res;
 
   /* optimization */
   atoms = fit->chain->atoms;
@@ -918,12 +921,36 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
     if (atom_is_mainchain(atoms, ia)) {
       calc_anisotropic_Utls(fit->ATLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
       for (i = 0; i < 6; i++) {
-	delta = atoms[ia].U[i] - Utls[i];
-	fit->alsqr_mainchain += (atoms[ia].sqrt_weight * atoms[ia].sqrt_weight) * delta * delta;
+	delta = atoms[ia].sqrt_weight * (atoms[ia].U[i] - Utls[i]);
+	fit->alsqr_mainchain += delta * delta;
       }
     }
   }
-  
+
+  /* calculate a residue-normalized residual */
+  fit->alsqr_res_norm = 0.0;
+
+  ia_res_start = istart;
+  lsqr_res = 0.0;
+  num_res_atoms = 0;
+
+  for (ia = istart; ia <= iend; ia++) {
+    /* new residue */
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      fit->alsqr_res_norm += lsqr_res / num_res_atoms;
+      ia_res_start = ia;
+      lsqr_res = 0.0;
+      num_res_atoms = 0;
+    }
+    
+    calc_anisotropic_Utls(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
+    
+    num_res_atoms++;
+    for (i = 0; i < 6; i++) {
+      delta = atoms[ia].sqrt_weight * (atoms[ia].U[i] - Utls[i]);
+      lsqr_res += delta * delta;
+    }
+  }
 }
 
 static void

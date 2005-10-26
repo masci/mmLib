@@ -605,12 +605,18 @@ class TLSChainMinimizer(HCSSSP):
     def __calc_nonlinear_fit(self, tls_group, segment):
         """Use the non-linear TLS model to calculate tensor values.
         """
+        import lineartls
         import nonlineartls
-        tls_model = nonlineartls.NLTLSModel()
+
+        ltls = lineartls.LinearTLSModel()
+        nltls = nonlineartls.NLTLSModel()
 
         xlist = chain_to_xmlrpc_list(segment)
-        tls_model.set_xmlrpc_chain(xlist)
-        tls = tls_model.anisotropic_fit_segment(0, len(xlist)-1)
+        ltls.set_xmlrpc_chain(xlist)
+        nltls.set_xmlrpc_chain(xlist)
+
+        ## anisotropic model
+        tls = nltls.anisotropic_fit_segment(0, len(xlist)-1)
         
         tls_group.origin = array([tls["x"], tls["y"], tls["z"]], Float)
 
@@ -630,6 +636,16 @@ class TLSChainMinimizer(HCSSSP):
             [ [       s11, tls["s12"], tls["s13"]],
               [tls["s21"],        s22, tls["s23"]],
               [tls["s31"], tls["s32"],       s33] ], Float)
+
+        ## isotropic model
+        itls = nltls.isotropic_fit_segment(0, len(xlist)-1)
+
+        tls_group.itls_T = itls["it"]
+        tls_group.itls_L = array(
+            [ [itls["il11"], itls["il12"], itls["il13"]],
+              [itls["il12"], itls["il22"], itls["il23"]],
+              [itls["il13"], itls["il23"], itls["il33"]] ], Float)
+        tls_group.itls_S = array([itls["is1"], itls["is2"], itls["is3"]], Float)
 
     def __calc_tls_record_from_edge(self, edge):
         """Independently calculate the TLS parameters for the segment
