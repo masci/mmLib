@@ -227,6 +227,23 @@ struct TLSFit {
   double             ilsqr_mainchain;
 };
 
+struct IHingeContext {
+  struct Atom       *atoms;                 /* pointer to Atom array */
+
+  int                istarta;               /* index of first atom in chain->atoms */
+  int                ienda;                 /* index of last atom in chain->atoms */
+  int                istartb;               /* index of first atom in chain->atoms */
+  int                iendb;                 /* index of last atom in chain->atoms */
+
+  double             msd_a;
+  double             msd_b;
+  double             msd_c;
+
+  double             hdelta_ab;             /* hinge delta residual */
+  double             hdelta_abo;            /* hinge delta residual */
+  double             hdelta_c;
+};
+
 /* global pointer to current minimization problem */
 struct TLSFit *g_pFit = NULL;
 
@@ -1181,7 +1198,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-6;
+  tol = 1E-10;
 
   /* lmder1(fcn,                  m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(anisotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ATLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1594,7 +1611,7 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-6;
+  tol = 1E-10;
 
   /* lmder1(fcn,                m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(isotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ITLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1614,6 +1631,108 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
   return info;
 }
 
+static void
+calc_isotropic_hinge_delta(struct IHingeContext *hinge)
+{
+  int i, num_atoms, ia;
+  double u_iso_a, u_iso_b;
+  double delta, dela, delb;
+  double hdelta_ab, hdelta_abo;
+  double hdelta_a, hdelta_b;
+  double msd_a, msd_b;
+  struct TLSFit fita, fitb;
+  struct Atom *atoms;
+
+  atoms = hinge->atoms;  
+
+  /* fit segments A and B */
+  fita.atoms  = hinge->atoms;
+  fita.istart = hinge->istarta;
+  fita.iend   = hinge->ienda;
+  isotropic_nonlinear_fit(&fita);
+
+  fitb.atoms  = hinge->atoms;
+  fitb.istart = hinge->istartb;
+  fitb.iend   = hinge->iendb;
+  isotropic_nonlinear_fit(&fitb);
+
+  /* calculate hinge delta */
+  num_atoms = 0;
+  hdelta_a = 0.0;
+  for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
+    num_atoms++;
+
+    calc_isotropic_uiso(fita.ITLS, atoms[ia].x - fita.ox, atoms[ia].y - fita.oy, atoms[ia].z - fita.oz, &u_iso_a);
+    delta = atoms[ia].u_iso - u_iso_a;
+    hdelta_a += delta*delta;
+  }
+  msd_a = hdelta_a / (num_atoms);
+
+  num_atoms = 0;
+  hdelta_b = 0.0;
+  for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
+    num_atoms++;
+
+    calc_isotropic_uiso(fitb.ITLS, atoms[ia].x - fitb.ox, atoms[ia].y - fitb.oy, atoms[ia].z - fitb.oz, &u_iso_b);
+    delta = atoms[ia].u_iso - u_iso_b;
+    hdelta_b += delta*delta;
+  }
+  msd_b = hdelta_b / (num_atoms);
+
+  /* calculate inter-segment deltas */
+  num_atoms  = 0;
+  hdelta_ab  = 0.0;
+  hdelta_abo = 0.0;
+
+  /* segment a atoms */
+  for (ia = hinge->istarta; ia <= hinge->ienda; ia++) {
+    num_atoms++;
+
+    calc_isotropic_uiso(fita.ITLS, atoms[ia].x - fita.ox, atoms[ia].y - fita.oy, atoms[ia].z - fita.oz, &u_iso_a);
+    calc_isotropic_uiso(fitb.ITLS, atoms[ia].x - fitb.ox, atoms[ia].y - fitb.oy, atoms[ia].z - fitb.oz, &u_iso_b);
+
+    dela = atoms[ia].u_iso - u_iso_a;
+    delb = atoms[ia].u_iso - u_iso_b;
+
+    delta = u_iso_b - u_iso_a;
+    hdelta_ab += delta*delta;
+
+    delta = delb*delb;
+    hdelta_abo += delta;
+  }
+
+  /* segment b atoms */
+  for (ia = hinge->istartb; ia <= hinge->iendb; ia++) {
+    num_atoms++;
+
+    calc_isotropic_uiso(fita.ITLS, atoms[ia].x - fita.ox, atoms[ia].y - fita.oy, atoms[ia].z - fita.oz, &u_iso_a);
+    calc_isotropic_uiso(fitb.ITLS, atoms[ia].x - fitb.ox, atoms[ia].y - fitb.oy, atoms[ia].z - fitb.oz, &u_iso_b);
+
+    dela = atoms[ia].u_iso - u_iso_a;
+    delb = atoms[ia].u_iso - u_iso_b;
+
+    delta = u_iso_a - u_iso_b;
+    hdelta_ab += delta*delta;
+
+    delta = dela*dela;
+    hdelta_abo += delta;
+  }
+  
+  hinge->msd_a = msd_a;
+  hinge->msd_b = msd_b;
+  hinge->msd_c = 0.0;
+
+  hinge->hdelta_ab = hdelta_ab / (num_atoms);
+  hinge->hdelta_abo = hdelta_abo / (num_atoms);
+  hinge->hdelta_c = 0.0;
+
+  hinge->msd_c = 0.0;
+  for (i = 1; i < 7; i++) {
+    delta = fita.ITLS[i] - fitb.ITLS[i];
+    hinge->msd_c += delta*delta;
+  }
+
+}
 
 /*
  *  PYTHON INTERFACE
@@ -1919,6 +2038,61 @@ NLTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   return NULL;
 }
 
+static PyObject *
+NLTLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
+{
+  NLTLSModel_Object *self;
+  PyObject *py_floatx, *rdict;
+  struct IHingeContext hinge;
+
+  self = (NLTLSModel_Object *) py_self;
+
+  /* fill in fields in the TLSFitContext structure */
+  if (self->atoms==NULL) {
+    goto error;
+  }
+
+  hinge.atoms = self->atoms;
+  if (!PyArg_ParseTuple(args, "iiii", &hinge.istarta, &hinge.ienda, &hinge.istartb, &hinge.iendb)) {
+    goto error;
+  }
+
+  calc_isotropic_hinge_delta(&hinge);
+
+  /* construct return dictioary with results */
+  rdict = PyDict_New();
+
+  /* return msds of segments */
+  py_floatx = PyFloat_FromDouble(hinge.msd_a);
+  PyDict_SetItemString(rdict, "msd_a", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.msd_b);
+  PyDict_SetItemString(rdict, "msd_b", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.msd_c);
+  PyDict_SetItemString(rdict, "msd_c", py_floatx);
+  Py_DECREF(py_floatx);
+
+  /* return various hinge delta values */
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_ab);
+  PyDict_SetItemString(rdict, "hdelta_ab", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_abo);
+  PyDict_SetItemString(rdict, "hdelta_abo", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(hinge.hdelta_c);
+  PyDict_SetItemString(rdict, "hdelta_c", py_floatx);
+  Py_DECREF(py_floatx);
+  return rdict;
+
+ error:
+  return NULL;
+}
+
 static PyMethodDef NLTLSModel_methods[] = {
     {"set_xmlrpc_chain", 
      (PyCFunction) NLTLSModel_set_xmlrpc_chain, 
@@ -1939,6 +2113,11 @@ static PyMethodDef NLTLSModel_methods[] = {
      (PyCFunction) NLTLSModel_isotropic_fit_segment, 
      METH_VARARGS,
      "Performs nonlinear fit of the isotropic TLS model to the given atoms." },
+
+    {"calc_isotropic_hinge_delta",
+     (PyCFunction) NLTLSModel_calc_isotropic_hinge_delta, 
+     METH_VARARGS,
+     "Calculates the value of the hinge-delta function." },
 
     {NULL}  /* Sentinel */
 };
