@@ -196,7 +196,7 @@ def get_job(webtlsmdd):
     ## select TLS model
     tls_model = jdict["tls_model"]
     if tls_model=="ISOT":
-        tlsmd.append("-mHYBRID")
+        tlsmd.append("-mISOT")
     else:
         tlsmd.append("-mANISO")
 

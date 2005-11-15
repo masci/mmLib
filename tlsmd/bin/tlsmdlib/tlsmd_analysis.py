@@ -27,7 +27,7 @@ MIN_ISOTROPIC_ATOMS   = 40
 MIN_ANISOTROPIC_ATOMS = 10
 
 ## ANISO/ISO TLS Model: set externally!
-TLS_MODEL = "HYBRID"
+TLS_MODEL = "ISOT"
 
 ## LSQ weighting
 WEIGHT_MODEL = "UNIT"
@@ -59,7 +59,7 @@ def set_globals():
     WEIGHT_MODEL  = GLOBALS["WEIGHT_MODEL"]
     INCLUDE_ATOMS = GLOBALS["INCLUDE_ATOMS"]
 
-    assert TLS_MODEL     in ["ANISO", "HYBRID", "NLANISO", "NLISOT"]
+    assert TLS_MODEL     in ["ANISO", "ISOT", "NLANISO", "NLISOT"]
     assert WEIGHT_MODEL  in ["UNIT", "IUISO"]
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
@@ -464,6 +464,13 @@ class TLSChainMinimizer(HCSSSP):
             self.chain = chain
         else:
             self.chain = chain[self.frag_id_src:self.frag_id_dest]
+
+        ## this is useful: for each fragment in the minimization
+        ## set a attribute for its index position
+        ichain = 0
+        for frag in self.chain.iter_fragments():
+            frag.ichain = ichain
+            ichain = ichain + 1
         
         ## Initalize the vertex list based on the number of of
         ## residues in Chain.
@@ -476,25 +483,13 @@ class TLSChainMinimizer(HCSSSP):
             if atm.include==True:
                 num_atoms += 1
 	self.mean_res_atoms = round(float(num_atoms) / len(self.chain)) 
-
-        ## calculate the minimum temperature factor in the chain
-        ## XXX: hack
-        self.min_temp_factor = None
-	self.max_temp_factor = None
-        for atm in self.chain.iter_all_atoms():
-            if self.min_temp_factor==None:
-                self.min_temp_factor = atm.temp_factor
-		self.max_temp_factor = atm.temp_factor
-                continue
-            self.min_temp_factor = min(self.min_temp_factor, atm.temp_factor)
-            self.max_temp_factor = max(self.max_temp_factor, atm.temp_factor)
         
-    def run_minimization(self, max_tls_segments=20):
+    def run_minimization(self, max_tls_segments=NPARTS):
         """Run the HCSSSP minimization on the self.V,self.E graph, resulting
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
-        #self.hinge_plot()
+#        self.hinge_plot()
 
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
@@ -528,18 +523,9 @@ class TLSChainMinimizer(HCSSSP):
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
                 sys.exit(-1)
 
-            ## filter out the bad TLS segments
             if tls.has_key("lsq_residual")==False:
-                if False:
-                    i, j = msg["vertex_i"], msg["vertex_j"]
-		    num_res = j - i
-                    if tls.has_key("num_atoms"):
-                        weight = tls["num_atoms"] * (B2U * self.max_temp_factor)**2
-                    else:
-                        weight = num_res * self.mean_res_atoms * (B2U * self.max_temp_factor)**2
-                    edge = (i, j, weight, (None, ))
-                    E.append(edge)
-                continue
+                print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
+                sys.exit(-1)
 
             weight = tls["lsq_residual"]
             frag_range = (tls["frag_id1"], tls["frag_id2"])
@@ -638,7 +624,7 @@ class TLSChainMinimizer(HCSSSP):
               [tls["s31"], tls["s32"],       s33] ], Float)
 
         ## isotropic model
-        itls = nltls.isotropic_fit_segment(0, len(xlist)-1)
+        itls = ltls.isotropic_fit_segment(0, len(xlist)-1)
 
         tls_group.itls_T = itls["it"]
         tls_group.itls_L = array(
@@ -680,7 +666,7 @@ class TLSChainMinimizer(HCSSSP):
 
         return tls
 
-    def prnt_detailed_paths(self, hops=20):
+    def prnt_detailed_paths(self, hops=NPARTS):
         """Debug
         """
         if not self.minimized:
@@ -732,19 +718,21 @@ class TLSChainMinimizer(HCSSSP):
 	"""Spiffy new hinge-prediction algorithm.
 	"""
         import lineartls
+        import nonlineartls
 
-        msd = open("msd.txt", "w")
-        fil = open("hinge.txt", "w")
+        fil = open("hinge_chain_%s.txt" % (self.chain.chain_id), "w")
 
         xchain = XChain(chain_to_xmlrpc_list(self.chain))
 
         tls_model = lineartls.LinearTLSModel()
-        tls_model.set_xmlrpc_chain(xmlrpc_chain)
+        #tls_model = nonlineartls.NLTLSModel()
+
+        tls_model.set_xmlrpc_chain(xchain.xmlrpc_chain)
 
         grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
         chain_id = self.chain.chain_id
 
-        win = 14
+        win = 12
 
         ifrag = 0
         ifrag_end = len(self.chain) - 2*win + 1
@@ -752,7 +740,7 @@ class TLSChainMinimizer(HCSSSP):
         for ifrag in range(ifrag, ifrag_end):
 
             ifrag1a = ifrag
-            ifrag2a = ifrag+win-1  
+            ifrag2a = ifrag+win-1
 
             ifrag1b = ifrag+win   
             ifrag2b = ifrag+2*win-1
@@ -765,19 +753,26 @@ class TLSChainMinimizer(HCSSSP):
             istarta = xchain.get_istart(frag_id1a)
             ienda   = xchain.get_iend(frag_id2a)
             istartb = xchain.get_istart(frag_id1b)
-            ienda   = xchain.get_iend(frag_id2b)
+            iendb   = xchain.get_iend(frag_id2b)
+
+            print "HINGE WINDOW: %s %s-%s:%s-%s" % (chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b)
             
             hdict = tls_model.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
 
-            print "CHAIN %s %s-%s:%s-%s %f %f %f" % (
-                chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b, hdict["hdelta_ab"], hdict["hdelta_abo"], hdict["hdelta_c"])
+            msd_ab  = hdict["hdelta_ab"]
+            msd_abo = hdict["hdelta_abo"]
+            msd_Lab = hdict["msd_c"]
 
-            fil.write("%s %f %f %f\n" % (frag_id2a, hdict["hdelta_ab"], hdict["hdelta_abo"], hdict["hdelta_c"]))
+            print "SEGMENT A(%d-%d): msd=%f rmsd=%f" % (istarta, ienda, U2B**2 * hdict["msd_a"],  U2B * math.sqrt(hdict["msd_a"]))
+            print "SEGMENT B(%d-%d): msd=%f rmsd=%f" % (istartb, iendb, U2B**2 * hdict["msd_b"],  U2B * math.sqrt(hdict["msd_b"]))
+            print "HINGE VALS: msd_ab=%f rmsd_ab=%f" % (U2B**2 * msd_ab, U2B * math.sqrt(msd_ab)) 
+            print "HINGE VALS: msd_abo=%f rmsd_abo=%f" % (U2B**2 * msd_abo, U2B * math.sqrt(msd_abo))
+            print "L TENSOR: msd_Lab=%f rmsd_Lab=%f" % (RAD2DEG2**2 *  msd_Lab, RAD2DEG2 * math.sqrt(msd_Lab))
+            print
 
-            msd.write("%s %f %f %f\n" % (frag_id2a, hdict["msd_a"],hdict["msd_b"], hdict["msd_c"]))
+            fil.write("%s %f %f\n" % (frag_id2a, U2B**2 * msd_abo, U2B * math.sqrt(msd_abo)))
 
         fil.close()
-        msd.close()
 
 
 class TLSMDAnalysis(object):

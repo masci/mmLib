@@ -42,17 +42,19 @@ TSMALL = 0.1 * B2U
 ## L RMSD <= 0.1 DEG
 LSMALL = (0.1)**2 * DEG2RAD2
 
+NPARTS = 10
+
 
 ###############################################################################
 ## Globals
 ##
 GLOBALS = {
-    "TLS_MODEL":           "HYBRID",
+    "TLS_MODEL":           "ISOT",
     "WEIGHT_MODEL":        "UNIT",
     "INCLUDE_ATOMS":       "ALL",
     "MIN_SUBSEGMENT_SIZE": 6,
 
-    "VERSION":        "0.2.0",
+    "VERSION":        "0.3.0",
     "RELEASE_DATE":   "Aug 10, 2005",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",

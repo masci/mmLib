@@ -178,9 +178,12 @@ class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
     def __init__(self):
         TLSGraphChainLinear.__init__(self, "ISOT")
 
+    def set_xmlrpc_chain(self, xmlrpc_chain):
+        TLSGraphChainLinear.set_xmlrpc_chain(self, xmlrpc_chain)
+
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.isotropic_fit_segment(istart, iend)
-        fdict["lsq_residual"] = fdict["ilsqr_res_norm"]
+        fdict["lsq_residual"] = fdict["ilsqr"]
         return fdict
 
 class TLSGraphChainLinearAnisotropic(TLSGraphChainLinear):
@@ -191,7 +194,7 @@ class TLSGraphChainLinearAnisotropic(TLSGraphChainLinear):
 
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.anisotropic_fit_segment(istart, iend)
-        fdict["lsq_residual"] = fdict["alsqr_res_norm"]
+        fdict["lsq_residual"] = fdict["alsqr"]
         return fdict
 
 
@@ -237,7 +240,7 @@ def NewTLSGraphChain(tls_model):
     """Generate and return the proper TLSGraphChain subclass for the
     requested TLS model.
     """
-    if tls_model=="HYBRID" or tls_model=="ISOT":
+    if tls_model=="ISOT":
         return TLSGraphChainLinearIsotropic()
 
     elif tls_model=="ANISO":

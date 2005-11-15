@@ -49,12 +49,12 @@ class HCSSSP(object):
         ## now run the minimization
         for h in range(1, hops+1):
             for edge in self.E:
-                self.HCSSSP_relax(D, P, T, edge, h)
+                self.HCSSSP_minimize_relax(D, P, T, edge, h)
 
         ## now the matrix Dij and Pij are complete
         return D, P, T
             
-    def HCSSSP_relax(self, D, P, T, edge, hop_constraint):
+    def HCSSSP_minimize_relax(self, D, P, T, edge, hop_constraint):
         """Relax vertixes for the current number of hops using the cost array
         from the costs calculated using the previous number of hops.
 
@@ -77,6 +77,72 @@ class HCSSSP(object):
         ## in the current cost vector being the minimum cost using at most
         ## one more hop(edge)
         if Dc[vertex_j] > (Dp[vertex_i] + weight):
+            Dc[vertex_j]               = Dp[vertex_i] + weight
+            P[hop_constraint,vertex_j] = vertex_i
+            T[hop_constraint][vertex_j]= edge
+            
+    def HCSSSP_maximize(self, V, E, hops):
+        """Hop-Constrained Single Source Shorted Path minimization,
+        loosely based on the Bellman-Ford SSSP algorithm using
+        Dynamic Programming.  Returns the D, P, and T matrixes.
+        """
+        assert len(V)>0
+        assert len(E)>0
+
+        num_vertex = len(V)
+
+        ## a 2D cost matrix; the value at Dij describes the minimum
+        ## cost to reach vertex j by traversing i edges
+        D = zeros((hops+1, num_vertex), Float)
+
+        ## like BellmanFord, initalizae the source vertex distance to 0.0
+        for i in range(hops+1):
+            D[i,0] = 0.0
+
+        ## a 2D previous vertex matrix; the value at Pij is the
+        ## previous vertex of the path used to achieve cost Dij,
+        ## except the previous vertex it describes is not the one
+        ## in row i, but the one in row i-1 (the previous row)
+        P = zeros((hops+1, num_vertex), Int) - 1
+
+        ## a 2D "travel" matrix containing the edge used by the path
+        ## through the previous matrix -- this is a Python 2D matrix and
+        ## not a Numerical Python 2d array
+        T = []
+        for i in range(hops+1):
+            T.append([None for j in range(num_vertex)])
+
+        ## now run the minimization
+        for h in range(1, hops+1):
+            for edge in self.E:
+                self.HCSSSP_maximize_relax(D, P, T, edge, h)
+
+        ## now the matrix Dij and Pij are complete
+        return D, P, T
+            
+    def HCSSSP_maximize_relax(self, D, P, T, edge, hop_constraint):
+        """Relax vertixes for the current number of hops using the cost array
+        from the costs calculated using the previous number of hops.
+
+        Current D for the given number of hops h is D[h], the D
+        arrary for the previous number of hops is D[h-1]
+        """
+        vertex_i = edge[0]
+        vertex_j = edge[1]
+        weight   = edge[2]
+
+        ## get the cost vector for the current hop constaint (which we are
+        ## in the process of calculating), and the cost vector for
+        ## the previous hop constraint (which we assume has been calculated
+        ## previously)
+        Dp = D[hop_constraint - 1]
+        Dc = D[hop_constraint]
+
+        ## perform relaxation for the current number of hops aginst the
+        ## cost vector for the previous number of hops; this results
+        ## in the current cost vector being the minimum cost using at most
+        ## one more hop(edge)
+        if Dc[vertex_j] < (Dp[vertex_i] + weight):
             Dc[vertex_j]               = Dp[vertex_i] + weight
             P[hop_constraint,vertex_j] = vertex_i
             T[hop_constraint][vertex_j]= edge

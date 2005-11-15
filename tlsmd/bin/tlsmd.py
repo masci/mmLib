@@ -27,7 +27,7 @@ def usage():
     print "            [-r <html report dir>]"
     print "            [-d <TLS database file>]"
     print "            [-n] TLS database is complete"
-    print "            [-m <tls model>] Models: HYBRID(default)/ANISO"
+    print "            [-m <tls model>] Models: ISOT(default)/ANISO/NLISOT/NLANISO"
     print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
     print "            [-i <struct_id>] Override struct_id in PDB file"
@@ -79,7 +79,7 @@ def analysis_main(struct_path, opt_dict):
     ## set the TLS model to use
     if opt_dict.has_key("-m"):
         tls_model = opt_dict.get("-m").upper()
-        if tls_model in ["ANISO", "HYBRID", "NLANISO", "NLISOT"]:
+        if tls_model in ["ANISO", "ISOT", "NLANISO", "NLISOT"]:
             misc.GLOBALS["TLS_MODEL"] = tls_model
         else:
             print "[ERROR] Invalid TLS Model: %s" % (tls_model)
