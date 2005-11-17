@@ -139,23 +139,6 @@ static char *NL_ITLS_PARAM_NAMES[] = {
   "nl_s1", "nl_s2", "nl_s3"
 };
 
-/* isotropic backward-substitued linear anisotropic parameters */ 
-#define BS_ATLS_T11   0
-#define BS_ATLS_T22   1
-#define BS_ATLS_T33   2
-#define BS_ATLS_T12   3
-#define BS_ATLS_T13   4
-#define BS_ATLS_T23   5
-#define BS_ATLS_S2211 6
-#define BS_ATLS_S1133 7
-#define BS_ATLS_S12   8
-#define BS_ATLS_S13   9
-#define BS_ATLS_S23   10
-#define BS_ATLS_S21   11
-#define BS_ATLS_S31   12
-#define BS_ATLS_S32   13
-#define BS_ATLS_NUM_PARAMS 14
-
 /* anisotropic non-linear TLS model parameter indexes and labels */
 #define NL_ATLS_T11   0
 #define NL_ATLS_T22   1
@@ -1198,7 +1181,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-10;
+  tol = 1E-3;
 
   /* lmder1(fcn,                  m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(anisotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ATLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1218,271 +1201,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
   return info;
 }
 
-/* linear anisotropic TLS model solver which back-substitues TLS parameters 
- * solved by the nonlinear isotopic TLS model into the linear model
- */
-inline void
-set_backsub_ATLS_Ab(double *ITLS, double *A, double *b, int m, int n, int row, double U[6], double x, double y, double z)
-{
-#define FA(__i,__j) A[__i + (m * __j)]
-
-  int iU11, iU22, iU33, iU12, iU13, iU23;
-  double xx, yy, zz, xy, xz, yz;
-  
-  xx = x*x;
-  yy = y*y;
-  zz = z*z;
-  xy = x*y;
-  xz = x*z;
-  yz = y*z;
-
-  /* calculate row indexes */
-  iU11 = row;
-  iU22 = row + 1;
-  iU33 = row + 2;
-  iU12 = row + 3;
-  iU13 = row + 4;
-  iU23 = row + 5;
-
-  /* set b: fixed TLS parameters must be subtracted out */
-  b[iU11] = U[0] - (ITLS[ITLS_L22]*zz + ITLS[ITLS_L33]*yy - 2.0*ITLS[ITLS_L23]*yz);
-  b[iU22] = U[1] - (ITLS[ITLS_L11]*zz + ITLS[ITLS_L33]*xx - 2.0*ITLS[ITLS_L13]*xz);
-  b[iU33] = U[2] - (ITLS[ITLS_L11]*yy + ITLS[ITLS_L22]*xx - 2.0*ITLS[ITLS_L12]*xy);
-
-  b[iU12] = U[3] - (-ITLS[ITLS_L33]*xy + ITLS[ITLS_L23]*xz + ITLS[ITLS_L13]*yz - ITLS[ITLS_L12]*zz);
-  b[iU13] = U[4] - (-ITLS[ITLS_L22]*xz + ITLS[ITLS_L23]*xy - ITLS[ITLS_L13]*yy + ITLS[ITLS_L12]*yz);
-  b[iU23] = U[5] - (-ITLS[ITLS_L11]*yz - ITLS[ITLS_L23]*xx + ITLS[ITLS_L13]*xy + ITLS[ITLS_L12]*xz);
-
-  /* set A */
-  FA(iU11, BS_ATLS_T11)   = 1.0;
-  FA(iU11, BS_ATLS_S31)   = -2.0 *  y;
-  FA(iU11, BS_ATLS_S21)   =  2.0 *  z;
-
-  FA(iU22, BS_ATLS_T22)   = 1.0;
-  FA(iU22, BS_ATLS_S12)   = -2.0 *  z;
-  FA(iU22, BS_ATLS_S32)   =  2.0 *  x;
-
-  FA(iU33, BS_ATLS_T33)   = 1.0;
-  FA(iU33, BS_ATLS_S23)   =-2.0 *  x;
-  FA(iU33, BS_ATLS_S13)   = 2.0 *  y;
-
-  FA(iU12, BS_ATLS_T12)   = 1.0;
-  FA(iU12, BS_ATLS_S2211) =   z;
-  FA(iU12, BS_ATLS_S31)   =   x;
-  FA(iU12, BS_ATLS_S32)   =  -y;
-
-  FA(iU13, BS_ATLS_T13)   = 1.0;
-  FA(iU13, BS_ATLS_S1133) =   y;
-  FA(iU13, BS_ATLS_S23)   =   z;
-  FA(iU13, BS_ATLS_S21)   =  -x;
-
-  FA(iU23, BS_ATLS_T23)   = 1.0;
-  FA(iU23, BS_ATLS_S2211) =  -x;
-  FA(iU23, BS_ATLS_S1133) =  -x;
-  FA(iU23, BS_ATLS_S12)   =   y;
-  FA(iU23, BS_ATLS_S13)   =  -z;
-
-#undef FA
-}
-
-/* solve for x given the singular value decomposition of a matrix
- * into U, S, and Vt 
- */
-static void 
-solve_SVD(int m, int n, double *x, double *b, double *U, double *S, double *VT, double *WORK)
-{
-#define FU(__i, __j)   U[__i + (m * __j)]
-#define FVT(__i, __j)  VT[__i + (n * __j)]
-
-  int i, j;
-  double smax, scutoff, dtmp;
-
-  /* invert the diagonal matrix S in place, and filter out any
-   * unusually small singular values
-   */
-
-  for (smax = S[0], i = 1; i < n; i++) {
-    smax = MAX(smax, S[i]);
-  }
-  scutoff = smax * 1E-10;
-  for (i = 0; i < n; i++) {
-    if (S[i] > scutoff) {
-      S[i] = 1.0 / S[i];
-    } else {
-      S[i] = 0.0;
-    }
-  }
-
-  /* matrix multiply Ut(n,m)*b(m) and store the result in x
-   */
-  for (i = 0; i < n; i++) {
-    dtmp = 0.0;
-    for (j = 0; j < m; j++) {
-      dtmp += FU(j,i) * b[j];
-    }
-    WORK[i] = dtmp;
-  }
-
-  /* matrix multiply inverse-S by Ut*b */
-  for (i = 0; i < n; i++) {
-    WORK[i] *= S[i];
-  }
-
-  /* matrix multiple V*x */
-  for (i = 0; i < n; i++) {
-    dtmp = 0.0;
-    for (j = 0; j < n; j++) {
-      dtmp += FVT(j,i) * WORK[j];
-    }
-    x[i] = dtmp;
-  }
-
-#undef FU
-#undef FVT
-}
-
-/* back-substitute isotropic TLS parameters into anisotropic TLS model
- * to solve for TLS parameters which do not exist in the isotropic TLS
- * model
- */
-static void
-isotropic_anisotropic_backsub_fit(struct TLSFit *fit)
-{
-  int i, ia, row, num_rows, num_cols, *IWORK, LWORK, info;
-  double *A, *b, *U, *S, *VT, *WORK, tmp_WORK, BS_ATLS[BS_ATLS_NUM_PARAMS];
-  char jobz;
-  struct Atom *atoms;
-
-  int n;
-  double delta, prev_lsqr, lsqr, Utls[6], scale;
-
-
-  atoms = fit->atoms;
-
-  num_rows = fit->num_atoms * 6;
-  num_cols = BS_ATLS_NUM_PARAMS;
-
-  /* allocate working memory */
-  A = malloc(sizeof(double) * (num_rows * num_cols));
-  b = malloc(sizeof(double) * num_rows);
-  S = malloc(sizeof(double) * num_cols);
-  U = malloc(sizeof(double) * (num_cols * num_rows));
-  VT = malloc(sizeof(double) * (num_cols * num_cols));
-  IWORK = malloc(sizeof(int) * (8 * num_cols));
-
-  /* calculate the ideal size of WORK and allocate */
-  jobz  = 'S';
-  LWORK = -1;
-  info  = 0;
-
-  dgesdd_(&jobz, &num_rows, &num_cols, A, &num_rows, S, U, &num_rows, VT, &num_cols, &tmp_WORK,  &LWORK, IWORK, &info);
-
-  LWORK = tmp_WORK;
-  WORK = malloc(sizeof(double) * LWORK);
-
-  /* calculate initial target U tensors */
-  for (ia = fit->istart; ia <= fit->iend; ia++) {
-    calc_isotropic_uiso(fit->ITLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, &atoms[ia].u_iso_tmp);
-
-    atoms[ia].Utmp[0] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[1] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[2] = atoms[ia].u_iso_tmp;
-    atoms[ia].Utmp[3] = 0.0;
-    atoms[ia].Utmp[4] = 0.0;
-    atoms[ia].Utmp[5] = 0.0;
-  }
-  
-  /* iteratively fit the TLS tensors */
-  lsqr = 0.0;
-  prev_lsqr = 0.0;
-
-  for (n = 0; n < 100; n++ ) {
-
-    zero_dmatrix(A, num_rows, num_cols);
-
-    row = 0;
-    for (ia = fit->istart; ia <= fit->iend; ia++) {
-      set_backsub_ATLS_Ab(fit->ITLS, A, b, num_rows, num_cols, row, atoms[ia].Utmp, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls);
-      row += 6;
-    }
-    
-    /* solve for isotropic TLS model */
-    jobz = 'S';
-    dgesdd_(&jobz, &num_rows, &num_cols, A, &num_rows, S, U, &num_rows, VT, &num_cols, WORK,  &LWORK, IWORK, &info);
-    if (info != 0) {
-      printf("DGESDD ERROR(isotropic_anisotropic_backsub_fit): info = %d\n", info);
-    }
-    solve_SVD(num_rows, num_cols, BS_ATLS, b, U, S, VT, WORK);
-
-    /* copy parameters from fit->ITLS and BS_ATLS to fit->ATLS to complete 
-     * anisotropic TLS description
-     */
-    fit->ATLS[ATLS_T11] = BS_ATLS[BS_ATLS_T11];
-    fit->ATLS[ATLS_T22] = BS_ATLS[BS_ATLS_T22];
-    fit->ATLS[ATLS_T33] = BS_ATLS[BS_ATLS_T33];
-    fit->ATLS[ATLS_T12] = BS_ATLS[BS_ATLS_T12];
-    fit->ATLS[ATLS_T13] = BS_ATLS[BS_ATLS_T13];
-    fit->ATLS[ATLS_T23] = BS_ATLS[BS_ATLS_T23];
-    
-    fit->ATLS[ATLS_L11] = fit->ITLS[ITLS_L11];
-    fit->ATLS[ATLS_L22] = fit->ITLS[ITLS_L22];
-    fit->ATLS[ATLS_L33] = fit->ITLS[ITLS_L33];
-    fit->ATLS[ATLS_L12] = fit->ITLS[ITLS_L12];
-    fit->ATLS[ATLS_L13] = fit->ITLS[ITLS_L13];
-    fit->ATLS[ATLS_L23] = fit->ITLS[ITLS_L23];
-    
-    fit->ATLS[ATLS_S2211] = BS_ATLS[BS_ATLS_S2211];
-    fit->ATLS[ATLS_S1133] = BS_ATLS[BS_ATLS_S1133];
-    fit->ATLS[ATLS_S12]   = BS_ATLS[BS_ATLS_S12];
-    fit->ATLS[ATLS_S21]   = BS_ATLS[BS_ATLS_S21];
-    fit->ATLS[ATLS_S13]   = BS_ATLS[BS_ATLS_S13];
-    fit->ATLS[ATLS_S31]   = BS_ATLS[BS_ATLS_S31];
-    fit->ATLS[ATLS_S23]   = BS_ATLS[BS_ATLS_S23];
-    fit->ATLS[ATLS_S32]   = BS_ATLS[BS_ATLS_S32];
-
-    /* calculate least squares residual */
-    lsqr = 0.0;
-    for (ia = fit->istart; ia <= fit->iend; ia++) {
-      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
-
-      delta = (Utls[0] + Utls[1] + Utls[2])/3.0 - atoms[ia].u_iso_tmp;
-      lsqr += delta*delta;
-    }
-    printf("iter tls: iteration %d  %f\n", n, lsqr);
-
-    /* first iteration of this loop only */
-    if (n > 0) {
-      delta = prev_lsqr - lsqr;
-      if (delta < 1E-4) {
-	printf("iter tls: delta right on %f\n", delta);
-	break;
-      }
-    }
-    prev_lsqr = lsqr;
-
-    /* calculate and scale a new target anisotropic tensor for each atom */
-    for (ia = fit->istart; ia <= fit->iend; ia++) {
-      calc_anisotropic_Utls(fit->ATLS, atoms[ia].xtls, atoms[ia].ytls, atoms[ia].ztls, Utls);
-
-      scale = 3.0 * atoms[ia].u_iso_tmp/(Utls[0] + Utls[1] + Utls[2]);
-
-      for (i = 0; i < 6; i++) {
-	atoms[ia].Utmp[i] = scale * Utls[i];
-      }
-    }
-  }
-  
-  /* free working memory */
-  free(A);
-  free(b);
-  free(U);
-  free(S);
-  free(VT);
-  free(IWORK);
-  free(WORK);
-}
-
-/* calculate Jacobian matrix */
+/* calculate isotropic TLS model Jacobian matrix */
 inline void
 isotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ITLS, double *A, int lda)
 {
@@ -1507,7 +1226,7 @@ isotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ITLS, double *A, int lda)
   }
 }
 
-/* calculate function residuals */
+/* calculate isotropic TLS model function residuals */
 inline void
 isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
 {
@@ -1524,7 +1243,7 @@ isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
   for (ia = istart; ia <= iend; ia++) {
     atom = &g_pFit->atoms[ia];
     calc_isotropic_uiso(ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso);
-
+    
     R[i] = u_iso - atom->u_iso;
     i++;
   }
@@ -1611,7 +1330,7 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-10;
+  tol = 1E-3;
 
   /* lmder1(fcn,                m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(isotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ITLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);

@@ -95,16 +95,12 @@ def calc_include_atom(atm, reject_messages=False):
 ##     for atmb in atm.iter_bonded_atoms():
 ##         delta = atm.temp_factor - atmb.temp_factor
 ##         flag = True
-	
-## 	if atm.name in MAINCHAIN_ATOMS and atmb.name in MAINCHAIN_ATOMS:
-##             if delta > 12.0: flag = False
-## 	elif atm.name in MAINCHAIN_ATOMS or atmb.name in MAINCHAIN_ATOMS:
-##             if delta > 16.0: flag = False
-## 	else:
-##             if delta > 24.0: flag = False
+
+##         if delta > 15.0: flag = False
 
 ##         if flag == False:
-##             print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
+##             if reject_messages==True:
+##                 print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
 ##             return False
         
     if INCLUDE_ATOMS=="ALL":
@@ -209,7 +205,7 @@ def chain_to_xmlrpc_list(chain):
 
 
 ###############################################################################
-## XMLRPC Client Threads which dispach jobs to the chain graphers
+## XMLRPC Client Threads which dispach jobs to the parameter fit engines
 ##
 
 class TLSGridClientThread(Thread):
@@ -282,8 +278,7 @@ class TLSGridClientThread(Thread):
         """Calls the xmlrpc server's set_xmlrpc_chain() method.
         """
         if self.debug==True:
-            print "TLSGridServerThread.call_set_xmlrpc_chain(%s)" % (
-                self.get_ident())
+            print "TLSGridServerThread.call_set_xmlrpc_chain(%s)" % ( self.get_ident())
 
         xmlrpc_chain = msg["xmlrpc_chain"]
         self.compute_server.set_xmlrpc_chain(xmlrpc_chain)
@@ -292,14 +287,12 @@ class TLSGridClientThread(Thread):
         """Calls the xmlrpc server's lsq_fit_segment() method.
         """
         if self.debug==True:
-            print "TLSGridServerThread.call_lsq_fit_segment(%s)" % (
-                self.get_ident())
+            print "TLSGridServerThread.call_lsq_fit_segment(%s)" % (self.get_ident())
         
 	frag_id1 = msg["frag_id1"]
 	frag_id2 = msg["frag_id2"]
 
-        fit_info = self.compute_server.lsq_fit_segment(
-            frag_id1, frag_id2)
+        fit_info = self.compute_server.lsq_fit_segment(frag_id1, frag_id2)
 
         ## merge the fit_info data with the original message
         for key in fit_info.keys():
@@ -424,7 +417,7 @@ class TLSChainProcessor(object):
 
 
 class TLSOptimization(object):
-    """Collection object containing one TLS description of a protein chain.
+    """Collection object containing one multi-TLS group partition of a protein chain.
     """
     def __init__(self, chain, ntls_constraint):
         self.chain           = chain
@@ -591,14 +584,10 @@ class TLSChainMinimizer(HCSSSP):
     def __calc_nonlinear_fit(self, tls_group, segment):
         """Use the non-linear TLS model to calculate tensor values.
         """
-        import lineartls
         import nonlineartls
-
-        ltls = lineartls.LinearTLSModel()
         nltls = nonlineartls.NLTLSModel()
 
         xlist = chain_to_xmlrpc_list(segment)
-        ltls.set_xmlrpc_chain(xlist)
         nltls.set_xmlrpc_chain(xlist)
 
         ## anisotropic model
@@ -624,13 +613,15 @@ class TLSChainMinimizer(HCSSSP):
               [tls["s31"], tls["s32"],       s33] ], Float)
 
         ## isotropic model
-        itls = ltls.isotropic_fit_segment(0, len(xlist)-1)
-
+        itls = nltls.isotropic_fit_segment(0, len(xlist)-1)
+        
         tls_group.itls_T = itls["it"]
+        
         tls_group.itls_L = array(
             [ [itls["il11"], itls["il12"], itls["il13"]],
               [itls["il12"], itls["il22"], itls["il23"]],
               [itls["il13"], itls["il23"], itls["il33"]] ], Float)
+
         tls_group.itls_S = array([itls["is1"], itls["is2"], itls["is3"]], Float)
 
     def __calc_tls_record_from_edge(self, edge):
@@ -658,9 +649,20 @@ class TLSChainMinimizer(HCSSSP):
         self.__calc_nonlinear_fit(tls_group, segment)
         
         ## helpful additions
-        tls_info                    = tls_group.calc_tls_info()
+        tls_info  = tls_group.calc_tls_info()
+        itls_info = calc_itls_center_of_reaction(tls_group.itls_T, tls_group.itls_L, tls_group.itls_S, tls_group.origin)
+
+        tls["tls_info"]  = tls_info
+        tls["itls_info"] = itls_info
+
+        if GLOBALS["TLS_MODEL"] in ["ISOT", "NLISOT"]:
+            tls_group.model = "ISOT"
+            tls["model_tls_info"] = itls_info
+        elif GLOBALS["TLS_MODEL"] in ["ANISO", "NLANISO"]:
+            tls_group.model = "ANISO"
+            tls["model_tls_info"] = tls_info
+
         tls["tls_group"]            = tls_group
-        tls["tls_info"]             = tls_info
         tls["segment"]              = segment
         tls["lsq_residual_per_res"] = tls["lsq_residual"] / (len(segment))
 
@@ -703,13 +705,11 @@ class TLSChainMinimizer(HCSSSP):
             if edge!=None:
                 i, j, weight, frag_range = edge
                 wr = weight / (j - i)
-                edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (
-                    i, j, weight, frag_range, wr)
+                edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (i, j, weight, frag_range, wr)
             else:
                 edge_label = ""
                  
-            print "%s   %3d     %10.4f   %s   %s" % (
-                vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
+            print "%s   %3d     %10.4f   %s   %s" % (vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
 
             curr_v = prev_vertex
             h -= 1

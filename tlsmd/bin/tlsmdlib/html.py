@@ -25,10 +25,9 @@ from captions             import *
 from tls_animate          import TLSAnimate, TLSAnimateFailure
 
 ## program paths
-GNUPLOT_PATH = "gnuplot"
+GNUPLOT_PATH      = "gnuplot"
 GNUPLOT_FONT_SIZE = "10"
-
-JMOL_DIR     = "../../../jmol"
+JMOL_DIR          = "../../../jmol"
 
 ## constants
 
@@ -273,7 +272,6 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
         self.gnuplot_run(script, basename)
 
 
-
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
 set xrange [1:<nparts>]
@@ -330,6 +328,7 @@ class TranslationAnalysis(GNUPlot):
 
         self.png_path = "%s.png" % (basename)
 
+
         data_file_list = []
         for tls in tlsopt.tls_list:
             filename = self.write_data_file(chainopt, tls)
@@ -369,7 +368,7 @@ class TranslationAnalysis(GNUPlot):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
-        tls_info  = tls["tls_info"]
+        tls_info  = tls["model_tls_info"]
 
         ## generate a sorted list of fragment IDs from the TLS group atoms
         fid_list = []
@@ -450,7 +449,7 @@ class LibrationAnalysis(GNUPlot):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
-        tls_info  = tls["tls_info"]
+        tls_info  = tls["model_tls_info"]
         cor       = tls_info["COR"]
 
         frag_dict = {}
@@ -557,7 +556,6 @@ class FitAnalysis(GNUPlot):
         """Generate the data file and return the filename.
         """
         tls_group = tls["tls_group"]
-        tls_info  = tls["tls_info"]
 
         T = tls_group.itls_T
         L = tls_group.itls_L
@@ -1371,10 +1369,7 @@ class HTMLReport(Report):
         x += '<h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3>'
         x += '</center>'
         x += '<p>%s</p>' % (REFINEMENT_PREP_TEXT)
-
-        x += '<p><a href="%s">%s</a></p>\n' % (
-            self.page_refinement_prep["href"],
-            self.page_refinement_prep["title"])
+        x += '<p><a href="%s">%s</a></p>\n' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"])
             
         x += self.html_foot()
         return x
@@ -1391,22 +1386,23 @@ class HTMLReport(Report):
         x += '<table border="1" cellpadding="3">'
         x += '<tr>'
         x += '<td>Form of TLS Model</td>'
-        if GLOBALS["TLS_MODEL"]=="HYBRID":
+
+        if GLOBALS["TLS_MODEL"] in ["ISOT", "NLISOT"]:
             tls_model = 'For Input Structure with Isotropic ADPs'
-        elif GLOBALS["TLS_MODEL"]=="ANISO":
+        elif GLOBALS["TLS_MODEL"] in ["ANISO", "NLANISO"]:
             tls_model = 'For Input Structure with Anisotropic ADPs'
-        else:
-            tls_model = "Internal Error"
+
         x += '<td><b>%s</b></td>' % (tls_model)
         x += '</tr>'
 
         x += '<tr>'
         x += '<td>Least-Squares Weight Model</td>'
+
         if GLOBALS["WEIGHT_MODEL"]=="UNIT":
             weight = 'Unit Weights (All Weights 1.0)'
         elif GLOBALS["WEIGHT_MODEL"]=="IUISO":
-            weight = 'Input Structure Atoms Weighted by '\
-                     '<var>1.0/B<sub>iso</sub></var>'
+            weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
+            
         x += '<td><b>%s</b></td>' % (weight)
         x += '</tr>'
 
@@ -1432,9 +1428,7 @@ class HTMLReport(Report):
         """
         begin_chain_timing(chainopt["chain_id"])
             
-        path  = "%s_CHAIN%s_ANALYSIS.html" % (
-            self.struct_id, chainopt["chain_id"])
-
+        path  = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, chainopt["chain_id"])
         title = "Chain %s TLS Analysis" % (chainopt["chain_id"])
 
         self.pages_chain_motion_analysis.append(
@@ -1530,8 +1524,7 @@ class HTMLReport(Report):
         x += '<table border="0" cellspacing="0" cellpadding="0">'
 
         for ntls, tlsopt in chainopt["ntls_list"]:
-            x += '<tr><td align="right" valign="middle" height="20"><font size="-20"><a href="#NTLS%d">%d</a></font></td></tr>' % (
-                ntls, ntls)
+            x += '<tr><td align="right" valign="middle" height="20"><font size="-20"><a href="#NTLS%d">%d</a></font></td></tr>' % (ntls, ntls)
 
         x += '</table>'
         x += '</td>'
@@ -1560,8 +1553,7 @@ class HTMLReport(Report):
         self.write_tls_pdb_file(chainopt, tlsopt, ntls)
 
         ## Raster3D Image
-        pml_path, png_path = self.raster3d_render_tls_graph_path(
-            chainopt, tlsopt, ntls)
+        pml_path, png_path = self.raster3d_render_tls_graph_path(chainopt, tlsopt, ntls)
 
         ## JMol Viewer Page
         jmol_path = self.jmol_html(chainopt, tlsopt, ntls)
@@ -1579,9 +1571,7 @@ class HTMLReport(Report):
         x  = ''
         x += '<hr>'
         x += '<center style="page-break-before: always">\n'
-        x += '<h3><a name="NTLS%d">'\
-             'Optimal TLS Group Partition using %d Groups</a></h3>\n' % (
-            ntls, ntls)
+        x += '<h3><a name="NTLS%d">Optimal TLS Group Partition using %d Groups</a></h3>\n' % (ntls, ntls)
 
         ## navigation links
         x += '<a href="%s">Motion and Error Analysis</a>' % (analysis_path)
@@ -1652,14 +1642,15 @@ class HTMLReport(Report):
         for tls in tlsopt.tls_list:
             tls_group = tls["tls_group"]
             tls_info  = tls["tls_info"]
+            mtls_info = tls["model_tls_info"]
 
-            L1 = tls_info["L1_eigen_val"] * RAD2DEG2
-            L2 = tls_info["L2_eigen_val"] * RAD2DEG2
-            L3 = tls_info["L3_eigen_val"] * RAD2DEG2
+            L1 = mtls_info["L1_eigen_val"] * RAD2DEG2
+            L2 = mtls_info["L2_eigen_val"] * RAD2DEG2
+            L3 = mtls_info["L3_eigen_val"] * RAD2DEG2
             
-            Tr1 = tls_info["Tr1_eigen_val"] * U2B
-            Tr2 = tls_info["Tr2_eigen_val"] * U2B
-            Tr3 = tls_info["Tr3_eigen_val"] * U2B
+            Tr1 = mtls_info["Tr1_eigen_val"] * U2B
+            Tr2 = mtls_info["Tr2_eigen_val"] * U2B
+            Tr3 = mtls_info["Tr3_eigen_val"] * U2B
             
             x += '<tr>\n'
 
@@ -1778,7 +1769,7 @@ class HTMLReport(Report):
                 L_axis_scale       = 2.0,
 		both_phases        = True,
                 tls_group          = tls["tls_group"],
-                tls_info           = tls["tls_info"],
+                tls_info           = tls["model_tls_info"],
                 tls_name           = tls_name,
                 tls_color          = tls["color"]["name"])
 

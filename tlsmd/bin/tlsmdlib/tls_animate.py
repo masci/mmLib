@@ -163,7 +163,7 @@ class TLSAnimate(object):
     def displace_model(self, model, tls, phase):
         """Displace the given model by the tls. 
         """
-        tls_info  = tls["tls_info"]
+        tls_info  = tls["model_tls_info"]
         cor       = tls_info["COR"]
 
         frag_id1  = tls["frag_id1"]
