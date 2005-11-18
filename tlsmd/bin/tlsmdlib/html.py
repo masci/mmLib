@@ -1608,7 +1608,7 @@ class HTMLReport(Report):
         x += '</center>\n'
 
         ## raytraced image
-        x += '<center><img src="%s" alt="iAlt"></center><br>\n' % (png_path)
+        x += '<center><img src="%s" style="max-height: 600px; max-width: 800px;" alt="iAlt"></center><br>\n' % (png_path)
 
         ## TLS group table
         x += '<table width="100%" border=1>\n'
