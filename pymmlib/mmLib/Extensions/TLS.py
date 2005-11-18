@@ -827,6 +827,274 @@ def iter_itls_uiso(atom_iter, T, L, S, O):
     for atm in atom_iter:
         yield calc_itls_uiso(T, L, S, atm.position - O)
 
+def calc_itls_center_of_reaction(iT, iL, iS, origin):
+    """iT is a single float; iL[3,3]; iS[3]
+    """
+    ## construct TLS tensors from isotropic TLS description
+    T0 = array([[iT,  0.0, 0.0],
+                [0.0,  iT, 0.0],
+                [0.0, 0.0,  iT]], Float)
+    
+    L0 = iL.copy()
+        
+    S0 = array([ [  0.0,   0.0, iS[1]],
+                 [iS[0],   0.0,  0.0],
+                 [  0.0, iS[2],  0.0] ], Float)
+
+
+    ## LSMALL is the smallest magnitude of L before it is considered 0.0
+    LSMALL = 0.5 * DEG2RAD2
+    
+    rdict = {}
+
+    rdict["T'"] = T0.copy()
+    rdict["L'"] = L0.copy()
+    rdict["S'"] = S0.copy()
+
+    rdict["rT'"] = T0.copy()
+
+    rdict["L1_eigen_val"] = 0.0
+    rdict["L2_eigen_val"] = 0.0
+    rdict["L3_eigen_val"] = 0.0
+
+    rdict["L1_rmsd"] = 0.0
+    rdict["L2_rmsd"] = 0.0
+    rdict["L3_rmsd"] = 0.0
+
+    rdict["L1_eigen_vec"] = zeros(3, Float)
+    rdict["L2_eigen_vec"] = zeros(3, Float)
+    rdict["L3_eigen_vec"] = zeros(3, Float)
+    
+    rdict["RHO"] = zeros(3, Float)
+    rdict["COR"] = origin
+
+    rdict["L1_rho"] = zeros(3, Float)
+    rdict["L2_rho"] = zeros(3, Float)
+    rdict["L3_rho"] = zeros(3, Float)
+    
+    rdict["L1_pitch"] = 0.0
+    rdict["L2_pitch"] = 0.0
+    rdict["L3_pitch"] = 0.0
+
+    rdict["Tr1_eigen_val"] = 0.0
+    rdict["Tr2_eigen_val"] = 0.0
+    rdict["Tr3_eigen_val"] = 0.0
+    
+    rdict["Tr1_rmsd"] = 0.0
+    rdict["Tr2_rmsd"] = 0.0
+    rdict["Tr3_rmsd"] = 0.0
+
+    ## set the L tensor eigenvalues and eigenvectors
+    (L_evals, RL) = eigenvectors(L0)
+    L1, L2, L3 = L_evals
+
+    good_L_eigens = []
+
+    if allclose(L1, 0.0) or type(L1)==complex:
+        L1 = 0.0
+    else:
+        good_L_eigens.append(0)
+        
+    if allclose(L2, 0.0) or type(L2)==complex:
+        L2 = 0.0
+    else:
+        good_L_eigens.append(1)
+
+    if allclose(L3, 0.0) or type(L3)==complex:
+        L3 = 0.0
+    else:
+        good_L_eigens.append(2)
+
+    ## no good L eigen values
+    if len(good_L_eigens)==0:
+        Tr1, Tr2, Tr3 = eigenvalues(T0)
+
+        if allclose(Tr1, 0.0) or type(Tr1)==complex:
+            Tr1 = 0.0
+        if allclose(Tr2, 0.0) or type(Tr2)==complex:
+            Tr2 = 0.0
+        if allclose(Tr3, 0.0) or type(Tr3)==complex:
+            Tr3 = 0.0
+
+        rdict["Tr1_eigen_val"] = Tr1
+        rdict["Tr2_eigen_val"] = Tr2
+        rdict["Tr3_eigen_val"] = Tr3
+
+        rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
+        rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
+        rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
+        return rdict
+
+    ## one good eigen value -- reconstruct RL about it
+    elif len(good_L_eigens)==1:
+        i = good_L_eigens[0]
+        evec = RL[i]
+
+        RZt = transpose(rmatrixz(evec))
+        xevec = matrixmultiply(RZt, array([1.0, 0.0, 0.0], Float))
+        yevec = matrixmultiply(RZt, array([0.0, 1.0, 0.0], Float))
+
+        if i==0:
+            RL[1] = xevec
+            RL[2] = yevec
+        elif i==1:
+            RL[0] = xevec
+            RL[2] = yevec
+        elif i==2:
+            RL[0] = xevec
+            RL[1] = yevec
+
+    ## two good eigen values -- reconstruct RL about them
+    elif len(good_L_eigens)==2:
+        i = good_L_eigens[0]
+        j = good_L_eigens[1]
+
+        xevec = normalize(cross(RL[i], RL[j]))
+        for k in range(3):
+            if k==i: continue
+            if k==j: continue
+            RL[k] = xevec
+            break
+
+    rdict["L1_eigen_val"] = L1
+    rdict["L2_eigen_val"] = L2
+    rdict["L3_eigen_val"] = L3
+
+    rdict["L1_rmsd"] = calc_rmsd(L1)
+    rdict["L2_rmsd"] = calc_rmsd(L2)
+    rdict["L3_rmsd"] = calc_rmsd(L3)
+
+    rdict["L1_eigen_vec"] = RL[0].copy()
+    rdict["L2_eigen_vec"] = RL[1].copy()
+    rdict["L3_eigen_vec"] = RL[2].copy()
+
+    ## begin tensor transformations which depend upon
+    ## the eigenvectors of L0 being well-determined
+    ## make sure RLt is right-handed
+    if allclose(determinant(RL), -1.0):
+        I = identity(3, Float)
+        I[0,0] = -1.0
+        RL = matrixmultiply(I, RL)
+
+    if not allclose(determinant(RL), 1.0):
+        return rdict
+    
+    RLt = transpose(RL)
+
+    ## carrot-L tensor (tensor WRT principal axes of L)
+    cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
+    
+    ## carrot-T tensor (T tensor WRT principal axes of L)
+    cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
+
+    ## carrot-S tensor (S tensor WRT principal axes of L)
+    cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
+
+    ## ^rho: the origin-shift vector in the coordinate system of L
+    L23 = L2 + L3
+    L13 = L1 + L3
+    L12 = L1 + L2
+
+    ## shift for L1
+    if not allclose(L1, 0.0) and abs(L23)>LSMALL:
+        crho1 = (cS[1,2] - cS[2,1]) / L23
+    else:
+        crho1 = 0.0
+
+    if not allclose(L2, 0.0) and abs(L13)>LSMALL:
+        crho2 = (cS[2,0] - cS[0,2]) / L13
+    else:
+        crho2 = 0.0
+
+    if not allclose(L3, 0.0) and abs(L12)>LSMALL:
+        crho3 = (cS[0,1] - cS[1,0]) / L12
+    else:
+        crho3 = 0.0
+
+    crho = array([crho1, crho2, crho3], Float)
+
+    ## rho: the origin-shift vector in orthogonal coordinates
+    rho = matrixmultiply(RLt, crho)
+    rdict["RHO"] = rho
+    rdict["COR"] = origin + rho
+
+    ## set up the origin shift matrix PRHO WRT orthogonal axes
+    PRHO = array([ [    0.0,  rho[2], -rho[1]],
+                   [-rho[2],     0.0,  rho[0]],
+                   [ rho[1], -rho[0],     0.0] ], Float)
+
+    ## set up the origin shift matrix cPRHO WRT libration axes
+    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+                    [-crho[2],     0.0,  crho[0]],
+                    [ crho[1], -crho[0],     0.0] ], Float)
+
+    ## calculate tranpose of cPRHO, ans cS
+    cSt = transpose(cS)
+    cPRHOt = transpose(cPRHO)
+
+    ## calculate S'^ = S^ + L^*pRHOt
+    cSp = cS + matrixmultiply(cL, cPRHOt)
+
+    ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
+    cTp = cT + matrixmultiply(cPRHO, cS) + matrixmultiply(cSt, cPRHOt) + matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+
+    ## transpose of PRHO and S
+    PRHOt = transpose(PRHO)
+    St = transpose(S0)
+
+    ## calculate S' = S + L*PRHOt
+    Sp = S0 + matrixmultiply(L0, PRHOt)
+    rdict["S'"] = Sp
+
+    ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
+    Tp = T0 + matrixmultiply(PRHO, S0) + matrixmultiply(St, PRHOt) + matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
+    rdict["T'"] = Tp
+
+    ## now calculate the TLS motion description using 3 non
+    ## intersecting screw axes, with one
+
+    ## libration axis 1 shift in the L coordinate system
+    ## you cannot determine axis shifts from the isotropic TLS parameters
+    cL1rho = zeros(3, Float)
+    cL2rho = zeros(3, Float)
+    cL3rho = zeros(3, Float)
+
+    ## libration axes shifts in the origional orthogonal
+    ## coordinate system
+    rdict["L1_rho"] = matrixmultiply(RLt, cL1rho)
+    rdict["L2_rho"] = matrixmultiply(RLt, cL2rho)
+    rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
+
+    ## calculate screw pitches (A*R / R*R) = (A/R)
+    ## no screw pitches either
+    rdict["L1_pitch"] = 0.0
+    rdict["L2_pitch"] = 0.0
+    rdict["L3_pitch"] = 0.0
+
+    ## rotate the newly calculated reduced-T tensor from the carrot
+    ## coordinate system (coordinate system of L) back to the structure
+    ## coordinate system
+    Tr = Tp.copy()
+    rdict["rT'"] = Tr
+
+    Tr1, Tr2, Tr3 = eigenvalues(Tr)
+
+    if allclose(Tr1, 0.0) or type(Tr1)==complex:
+        Tr1 = 0.0
+    if allclose(Tr2, 0.0) or type(Tr2)==complex:
+        Tr2 = 0.0
+    if allclose(Tr3, 0.0) or type(Tr3)==complex:
+        Tr3 = 0.0
+
+    rdict["Tr1_eigen_val"] = Tr1
+    rdict["Tr2_eigen_val"] = Tr2
+    rdict["Tr3_eigen_val"] = Tr3
+    
+    rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
+    rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
+    rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
+    
+    return rdict
 
 ###############################################################################
 ## ANISOTROPIC TLS MODEL

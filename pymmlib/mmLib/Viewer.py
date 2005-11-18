@@ -68,8 +68,7 @@ class GLObject(object):
         if self.__globject_properties_name!=None:
             return self.__globject_properties_name
         elif self.__globject_properties_id!=None:
-            return "%s(%s)" % (self.__class__.__name__,
-                               self.__globject_properties_id)
+            return "%s(%s)" % (self.__class__.__name__, self.__globject_properties_id)
         else:
             return self.__class__.__name__
 
@@ -262,22 +261,18 @@ class GLObject(object):
 
         ## is the proprty marked read-only, this is only a hint to
         ## the user interface, not a actual read-only property
-        prop_desc["read_only"] = prop_desc.get(
-            "read_only", False)
+        prop_desc["read_only"] = prop_desc.get("read_only", False)
 
         ## the property triggers update callbacks when the
         ## value is changed
-        prop_desc["update_on_changed"] = prop_desc.get(
-            "update_on_changed", True)
+        prop_desc["update_on_changed"] = prop_desc.get("update_on_changed", True)
 
         ## the property triggers update callbacks when the
         ## property is set with comparison to the old value
-        prop_desc["update_on_set"] = prop_desc.get(
-            "update_on_set", False)
+        prop_desc["update_on_set"] = prop_desc.get("update_on_set", False)
 
         ## the property triggers update callbacks on initalization
-        prop_desc["update_on_init"] = prop_desc.get(
-            "update_on_init", True)
+        prop_desc["update_on_init"] = prop_desc.get("update_on_init", True)
 
         self.__globject_properties.append(prop_desc)
 
@@ -301,9 +296,7 @@ class GLObject(object):
         """
         prop_desc = self.glo_get_property_desc(name)
         if prop_desc==None:
-            raise ValueError,\
-                  "GLObject.glo_link_child_property(x, y, z) "\
-                  "parent has no property: %s" % (name)
+            raise ValueError, "GLObject.glo_link_child_property(x, y, z) parent has no property: %s" % (name)
 
         link_dict = {"gl_object": child_gl_object_id,
                      "name":      child_name}
@@ -378,8 +371,7 @@ class GLObject(object):
                 for linked_prop in linked_props:
                     child = self.glo_get_child(linked_prop["gl_object"])
                     child_name = linked_prop["name"]
-                    child.glo_update_properties(
-                        **{ child_name: self.properties[name] })
+                    child.glo_update_properties(**{ child_name: self.properties[name] })
                     
         if len(updates)>0:
             for func in self.__globject_properties_callbacks:
@@ -450,8 +442,7 @@ class GLObject(object):
                     for linked_prop in linked_props:
                         child = self.glo_get_child(linked_prop["gl_object"])
                         child_name = linked_prop["name"]                    
-                        child.glo_update_properties(
-                        **{ child_name: self.properties[name] })
+                        child.glo_update_properties(**{ child_name: self.properties[name] })
 
         if len(updates)>0:
             for func in self.__globject_properties_callbacks:
