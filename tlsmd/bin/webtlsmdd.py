@@ -50,7 +50,7 @@ class WebTLSMDDaemon2(object):
         """
         gdict = self.retrieve_dict("GLOBALS")
 
-        ## no global dictionary; create one which is consistant with
+        ## no global dictionary; create one which is consistent with
         ## the TLSMD jobs in the database
         if gdict==None:
             gdict = {}

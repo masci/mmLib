@@ -10,7 +10,7 @@ from LinearAlgebra import *
 class HCSSSP(object):
     """Hop Constrained Single Source Shortest Path graph(V,E) minimization
     based on the Bellman-Ford Algorithm but modified to work with a
-    2-dimentional cost(D) matrix, path(P) matrix, and travel(T) matrix.
+    2-dimensional cost(D) matrix, path(P) matrix, and travel(T) matrix.
     """
     def HCSSSP_minimize(self, V, E, hops):
         """Hop-Constrained Single Source Shorted Path minimization,
@@ -22,14 +22,14 @@ class HCSSSP(object):
 
         num_vertex = len(V)
 
-        ## initalize D/P
+        ## initialize D/P
         infinity = 1e10
 
         ## a 2D cost matrix; the value at Dij describes the minimum
         ## cost to reach vertex j by traversing i edges
         D = zeros((hops+1, num_vertex), Float) + infinity
 
-        ## like BellmanFord, initalizae the source vertex distance to 0.0
+        ## like BellmanFord, initialize the source vertex distance to 0.0
         for i in range(hops+1):
             D[i,0] = 0.0
 
@@ -55,17 +55,17 @@ class HCSSSP(object):
         return D, P, T
             
     def HCSSSP_minimize_relax(self, D, P, T, edge, hop_constraint):
-        """Relax vertixes for the current number of hops using the cost array
+        """Relax vertices for the current number of hops using the cost array
         from the costs calculated using the previous number of hops.
 
         Current D for the given number of hops h is D[h], the D
-        arrary for the previous number of hops is D[h-1]
+        array for the previous number of hops is D[h-1]
         """
         vertex_i = edge[0]
         vertex_j = edge[1]
         weight   = edge[2]
 
-        ## get the cost vector for the current hop constaint (which we are
+        ## get the cost vector for the current hop constraint (which we are
         ## in the process of calculating), and the cost vector for
         ## the previous hop constraint (which we assume has been calculated
         ## previously)
@@ -95,7 +95,7 @@ class HCSSSP(object):
         ## cost to reach vertex j by traversing i edges
         D = zeros((hops+1, num_vertex), Float)
 
-        ## like BellmanFord, initalizae the source vertex distance to 0.0
+        ## like BellmanFord, initialize the source vertex distance to 0.0
         for i in range(hops+1):
             D[i,0] = 0.0
 
@@ -121,24 +121,24 @@ class HCSSSP(object):
         return D, P, T
             
     def HCSSSP_maximize_relax(self, D, P, T, edge, hop_constraint):
-        """Relax vertixes for the current number of hops using the cost array
+        """Relax vertices for the current number of hops using the cost array
         from the costs calculated using the previous number of hops.
 
         Current D for the given number of hops h is D[h], the D
-        arrary for the previous number of hops is D[h-1]
+        array for the previous number of hops is D[h-1]
         """
         vertex_i = edge[0]
         vertex_j = edge[1]
         weight   = edge[2]
 
-        ## get the cost vector for the current hop constaint (which we are
+        ## get the cost vector for the current hop constraint (which we are
         ## in the process of calculating), and the cost vector for
         ## the previous hop constraint (which we assume has been calculated
         ## previously)
         Dp = D[hop_constraint - 1]
         Dc = D[hop_constraint]
 
-        ## perform relaxation for the current number of hops aginst the
+        ## perform relaxation for the current number of hops against the
         ## cost vector for the previous number of hops; this results
         ## in the current cost vector being the minimum cost using at most
         ## one more hop(edge)

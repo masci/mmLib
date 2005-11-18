@@ -111,7 +111,7 @@ class XChain(object):
 
 
 ###############################################################################
-## Unconsrained Linear TLS Parameter Fitting Engines
+## Unconstrained Linear TLS Parameter Fitting Engines
 ##
 
 class TLSGraphChain(object):
@@ -139,7 +139,7 @@ class TLSGraphChain(object):
         
         ## calculate the start/end indexes of the start fragment
         ## and end fragment so the A matrix and b vector can be sliced
-        ## in the correct placees
+        ## in the correct places
         istart = self.xchain.get_istart(frag_id1)
         iend = self.xchain.get_iend(frag_id2)
         if istart==None or iend==None:

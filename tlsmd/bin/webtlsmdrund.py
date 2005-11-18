@@ -203,7 +203,7 @@ def get_job(webtlsmdd):
     ## select LSQ weighting
     tlsmd.append("-w%s" % (jdict["weight"]))
 
-    ## select chain IDs to analyize
+    ## select chain IDs to analyze
     cids = []
     for cdict in jdict["chains"]:
         if cdict["selected"]==True:
@@ -239,7 +239,7 @@ MAIL_MESSAGE = """\
 To: <EMAIL>
 Subject: Your TLSMD Job <JOB_ID> is Complete
 
-This is a automated message sent to you my the TLS Motion 
+This is a automated message sent to you by the TLS Motion 
 Determination (TLSMD) Server to inform you the analysis of the structure
 you submitted is complete.  The link below will take you directly
 to the completed analysis:

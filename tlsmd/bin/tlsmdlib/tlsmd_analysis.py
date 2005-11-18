@@ -133,7 +133,7 @@ def calc_atom_weight(atm):
 def iter_ij(num_vertex, min_span):
     """Iterates over the i,j vertex indexes defining the edges
     to be built for the graph.  num_vertex gives the number
-    of consecutive vertixes to create, min_span is the minimum
+    of consecutive vertices to create, min_span is the minimum
     number of residues (fragments) a edge should span.
     """
     for i in range(num_vertex):
@@ -205,12 +205,12 @@ def chain_to_xmlrpc_list(chain):
 
 
 ###############################################################################
-## XMLRPC Client Threads which dispach jobs to the parameter fit engines
+## XMLRPC Client Threads which dispatch jobs to the parameter fit engines
 ##
 
 class TLSGridClientThread(Thread):
     """One instance of this class connects to a single xmlrpc server
-    on the compute grid.controlls a single compute
+    on the compute grid.controls a single compute
     server on the grid.  It uses blocking xmlrpc calls within its own
     thread.
     """
@@ -306,7 +306,7 @@ class TLSGridClientThread(Thread):
 class TLSGridServerPool(object):
     """Launches a pool of threads using the TLSGridClientThread() class as
     the controlling object for each of these threads.  Each thread in the
-    pool waits for jobs placed in this object's self.requeust_queue, and
+    pool waits for jobs placed in this object's self.request_queue, and
     the results are placed by these threads back into self.result_queue.
     """
     def __init__(self):
@@ -325,7 +325,7 @@ class TLSGridServerPool(object):
 
     def iter_segment_processor(self, iter_segment_producer):
         """Consume the seg_info dictionaries produced by the seg_producer
-        iterator, and run them concurrently on all avilible
+        iterator, and run them concurrently on all available
         TLSGridServerThread threads.
         Yield back the calculation results in the form of a fit_info
         dict for each calcuation request.
@@ -391,7 +391,7 @@ class TLSChainProcessor(object):
         iter_segment_fit_info = self.server_pool.iter_segment_processor(iter_msg)
 
         ## iterate over the fit_info dictionaries which hold the
-        ## information on the TLS fits comming back from the grid servers
+        ## information on the TLS fits coming back from the grid servers
         num_edges = 0
         
         for fit_info in iter_segment_fit_info:
@@ -465,7 +465,7 @@ class TLSChainMinimizer(HCSSSP):
             frag.ichain = ichain
             ichain = ichain + 1
         
-        ## Initalize the vertex list based on the number of of
+        ## Initialize the vertex list based on the number of of
         ## residues in Chain.
         self.num_vertex = len(self.chain) + 1
 
@@ -683,7 +683,7 @@ class TLSChainMinimizer(HCSSSP):
 
     def __detailed_path(self, V, D, P, T, hop_constraint):
         """Print out the path from the source vertex (vertex 0) to
-        the destination vertex (end vertex) given the hop_constarint.
+        the destination vertex (end vertex) given the hop_constraint.
         """
         num_vertex = len(D[0])
         

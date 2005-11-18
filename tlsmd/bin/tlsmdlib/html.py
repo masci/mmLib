@@ -108,7 +108,7 @@ def calc_inertia_tensor(atom_iter):
 
 
 def calc_orientation(struct, chain):
-    """Orient the structure based on a moment-of-intertia like tensor
+    """Orient the structure based on a moment-of-inertia like tensor
     centered at the centroid of the structure.
     """
     ori = {}
@@ -162,7 +162,7 @@ def calc_orientation(struct, chain):
     ori["pheight"]  = pheight 
     ori["hzoom"]    = hzoom
 
-    ## calculate near, far clipping blane
+    ## calculate near, far clipping plane
     ori["near"] = max_z
     ori["far"]  = min_z
     
@@ -206,7 +206,7 @@ class GNUPlot(object):
     """
     def gnuplot_mkscript(self, template, replace_dict):
         """Replaces key strings in the template with the values in
-        the replac_dict.  Returns the modificed template.
+        the replace_dict.  Returns the modified template.
         """
         for key, val in replace_dict.items():
             template = template.replace(key, val)
@@ -424,7 +424,7 @@ class LibrationAnalysis(GNUPlot):
         script = script.replace("<xrng2>", tlsopt.tls_list[-1]["frag_id2"])
         
         script = script.replace("<pngfile>", self.png_path)
-        script = script.replace("<title>", "Screw Displacment Analysis of backbone Atoms using %d TLS Groups" % (tlsopt.ntls))
+        script = script.replace("<title>", "Screw displacement analysis of backbone atoms using %d TLS Groups" % (tlsopt.ntls))
 
         ## line style
         ls = 0
@@ -598,7 +598,7 @@ set title "<title>"
 plot "<txtfile>" using 1:2 ls 1 notitle with histeps
 """
 
-class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
+class UIso_vs_UtlsIso_Histogram(GNUPlot):
     def __init__(self, chainopt, tlsopt, tls):
         ## generate data and png paths
         basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (
@@ -648,7 +648,7 @@ class UIso_vs_UtlsIso_Hisotgram(GNUPlot):
         ## write out the gnuplot input file
         fil = open(self.txt_path, "w")
         fil.write("## Histogram of atoms in the TLS group binned by\n")
-        fil.write("## the difference of their isotropic tempature factors\n")
+        fil.write("## the difference of their isotropic temperature factors\n")
         fil.write("## from the isotropic values predicted from the TLS model.\n")
         fil.write("##\n")
         fil.write("## Structure ----------------: %s\n" % (chainopt["struct_id"]))
@@ -684,7 +684,7 @@ class TLSSegmentAlignmentPlot(object):
     def __init__(self):
         ## border pixels
         self.border_width = 3
-        ## bars are 15 pixels heigh
+        ## bars are 15 pixels height
         self.pheight    = ALIGN_HEIGHT
         ## spacing pixels between stacked bars
         self.spacing    = ALIGN_SPACING
@@ -738,7 +738,7 @@ class TLSSegmentAlignmentPlot(object):
         img_width = (2 * self.border_width) + \
                     (one_frag_width * len(self.frag_list))
             
-        ## calculate the totoal height of the image
+        ## calculate the total height of the image
         num_plots = len(self.configurations)
         img_height = (2 * self.border_width) + \
                      (pheight * num_plots) + \
@@ -985,7 +985,7 @@ def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
         for j in range(len(chain)):
             frag = chain[j]
 
-            ## calcuate a atom-normalized rmsd deviation for each residue
+            ## calculate a atom-normalized rmsd deviation for each residue
             n = 0
             delta2 = 0.0
             for atm in frag.iter_all_atoms():
@@ -1306,7 +1306,7 @@ class HTMLReport(Report):
             self.write_tls_chain_optimization(chainopt)
 
         ## a report page comparing the tls group segments of all
-        ## chains aginst eachother
+        ## chains against each other
         self.write_multi_chain_alignment(chainopt_list)
         self.write_refinement_prep(chainopt_list)
 
@@ -1358,7 +1358,7 @@ class HTMLReport(Report):
                 self.page_multi_chain_alignment["title"])
         else:
             x += '<p><u>Only one chain was analyized in this '
-            x += 'structure, so the multi-chain alignment analyisis '
+            x += 'structure, so the multi-chain alignment analysis '
             x += 'was not performed.'
             x += '</u></p>'
 
@@ -1562,7 +1562,7 @@ class HTMLReport(Report):
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chainopt, tlsopt, ntls)
 
-        ## detailed analyisis of all TLS groups
+        ## detailed analysis of all TLS groups
         analysis_path = self.chain_ntls_analysis(chainopt, tlsopt)
 
         f1 = '<font size="-5">'
@@ -1860,7 +1860,7 @@ class HTMLReport(Report):
         """
         jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chainopt["chain_id"], ntls)
 
-        ## create the JMol script using cartoons and consisant
+        ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js  = ''
         js += 'load %s;' % (self.struct_path)
@@ -1912,7 +1912,7 @@ class HTMLReport(Report):
         html_path = "%s.html" % (basename)
         pdb_path  = "%s.pdb" % (basename)
 
-        ## gerate animation PDB file
+        ## generate animation PDB file
 
         try:
             print "TLSAnimate: creating animation PDB file..."
@@ -1923,7 +1923,7 @@ class HTMLReport(Report):
         except TLSAnimateFailure:
             pass
         
-        ## create the JMol script using cartoons and consisant
+        ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js  = ''
         js += 'load %s;' % (pdb_path)
@@ -2265,7 +2265,7 @@ class ChainNTLSAnalysisReport(Report):
         spanned by the tlsopt TLS groups.
         """
         x  = ''
-        x += '<center><h3>Screw Displacment Analysis</h3></center>\n'
+        x += '<center><h3>Screw Displacement Analysis</h3></center>\n'
 
         libration_analysis = LibrationAnalysis(self.chainopt, self.tlsopt)
 
@@ -2327,8 +2327,8 @@ class ChainNTLSAnalysisReport(Report):
             self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
         x += '</center>'
 
-        ## histogrm of atomic U_ISO - U_TLS_ISO
-        his = UIso_vs_UtlsIso_Hisotgram(self.chainopt, self.tlsopt, tls)
+        ## histogram of atomic U_ISO - U_TLS_ISO
+        his = UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
 
         x += '<center><img src="%s" alt="iAlt"></center>\n' % (his.png_path)
 
