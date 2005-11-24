@@ -1074,25 +1074,16 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    Tr = Tp.copy()
-    rdict["rT'"] = Tr
+    Tiso = trace(Tp) / 3.0
+    rdict["rT'"] = Tiso * identity(3, Float)
 
-    Tr1, Tr2, Tr3 = eigenvalues(Tr)
-
-    if allclose(Tr1, 0.0) or type(Tr1)==complex:
-        Tr1 = 0.0
-    if allclose(Tr2, 0.0) or type(Tr2)==complex:
-        Tr2 = 0.0
-    if allclose(Tr3, 0.0) or type(Tr3)==complex:
-        Tr3 = 0.0
-
-    rdict["Tr1_eigen_val"] = Tr1
-    rdict["Tr2_eigen_val"] = Tr2
-    rdict["Tr3_eigen_val"] = Tr3
+    rdict["Tr1_eigen_val"] = Tiso
+    rdict["Tr2_eigen_val"] = Tiso
+    rdict["Tr3_eigen_val"] = Tiso
     
-    rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
-    rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
-    rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
+    rdict["Tr1_rmsd"] = calc_rmsd(Tiso)
+    rdict["Tr2_rmsd"] = calc_rmsd(Tiso)
+    rdict["Tr3_rmsd"] = calc_rmsd(Tiso)
     
     return rdict
 
