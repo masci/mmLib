@@ -31,8 +31,8 @@ dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int
 
 #define PI    3.1415926535897931
 #define SQRT2 1.4142135623730951
-#define U2B   (8.0*PI*PI)
-#define B2U   (1.0/U2B)
+#define U2B   ((8.0*PI*PI))
+#define B2U   ((1.0/U2B))
 
 
 /* anisotropic U tensor parameter labels and indexes */
@@ -112,6 +112,7 @@ struct Atom {
   double  Utmp[6];
   double  sqrt_weight;
   double  sqrt_weight_tmp;
+  int     pinned;
 };
 
 
@@ -152,13 +153,11 @@ struct TLSFitContext {
   double             ATLS[ATLS_NUM_PARAMS]; /* ansiotropic TLS model params */
 
   double             ilsqr;                 /* least-squares residual of isotropic TLS model */
-  double             ilsqr_res_norm;        /* residue-normalized residual */
-  double             ilsqr_mainchain;       /* least-squares residual of mainchain atoms */
   double             u_iso_sum;
 
   double             alsqr;                 /* least-squares residual of anisotropic TLS model */
-  double             alsqr_res_norm;        /* residue-normalized residual */
-  double             alsqr_mainchain;       /* least-squares residual of mainchain atoms */
+
+  double             gammaq;
 };
 
 struct IHingeContext {
@@ -178,6 +177,123 @@ struct IHingeContext {
   double             hdelta_c;
 };
 
+
+/* partial gamma functions */
+
+
+/* Returns the value ln[gamma(XX)] for XX>0.  Full accuracy is obtained for XX>1.
+ * For 0<XX<1, the reflection formula can be used first.
+ */
+static void
+gammaln(double xx, double *retval)
+{
+  int j;
+  double x, ser, tmp;
+  
+  double cof[6] = {76.18009173, -86.50532033, 24.01409822, -1.231739516, 0.120858003E-2, -0.536382E-5};
+  double stp  = 2.50662827465;
+  double half = 0.5;
+  double one  = 1.0;
+  double fpf  = 5.0;
+
+  x = xx - one;
+  tmp = x + fpf;
+  tmp = (x + half) * log(tmp) - tmp;
+  ser = one;
+
+  for (j = 0; j < 6; j++) {
+    x += one;
+    ser += cof[j] / x;
+  }
+
+  *retval = tmp + log(stp*ser);
+}
+
+static void
+gser(double a, double x, double *gamser, double *gln)
+{
+  int i;
+  double ap, sum, del;
+
+  int itmax = 100;
+  double eps = 3.0E-7;
+ 
+  if (x <= 0.0) {
+    if (x < 0.0) return;
+    *gamser = 0.0;
+    return;
+  }
+
+  ap = a;
+  sum = 1.0 / a;
+  del = sum;
+
+  for (i = 0; i < itmax; i++) {
+    ap += 1.0;
+    del = del * x/ap;
+    sum += del;
+
+    if (fabs(del) < fabs(sum)*eps) break;
+  }
+
+  gammaln(a, gln);
+  *gamser = sum * exp(-x + a*log(x) - *gln);
+}
+
+static void
+gcf(double a, double x, double *gamser, double *gln)
+{
+  int n;
+  double gold, a0, a1, b0, b1, fac, an, ana, g, anf;
+  
+  int itmax = 100;
+  double eps = 3.0E-7;
+
+  g    = 0.0;
+  gold = 0.0;
+  a0   = 1.0;
+  a1   = x;
+  b0   = 0.0;
+  b1   = 1.0;
+  fac  = 1.0;
+
+  for (n = 1; n <= itmax; n++) {
+    an = n;
+    ana = an - a;
+    a0 = (a1 + a0*ana) * fac;
+    b0 = (b1 + b0*ana) * fac;
+    anf = an * fac;
+    a1 = x*a0 + anf*a1;
+    b1 = x*b0 + anf*b1;
+
+    if (a1 != 0.0) {
+      fac = 1.0 / a1;
+      g = b1*fac;
+      if (fabs((g-gold)/g) < eps) break;
+      gold = g;
+    }
+  }
+
+  gammaln(a, gln);
+  *gamser = exp(-x + a*log(x) - *gln) * g;
+}
+
+static void 
+gammaq(double a, double x, double *retval)
+{
+  double gamser, gammcf, gln;
+  
+  if (x < 0.0 || a < 0.0) return;
+
+  if (x < a+1.0) {
+    gser(a, x, &gamser, &gln);
+    *retval = 1.0 - gamser;
+  } else {
+    gcf(a, x, &gammcf, &gln);
+    *retval = gammcf;
+  }
+}
+
 /* zero a M(m,n) double matrix */
 inline void
 zero_dmatrix(double *M, int m, int n)
@@ -194,9 +310,11 @@ zero_dmatrix(double *M, int m, int n)
 inline int
 atom_is_mainchain(struct Atom *atoms, int ia)
 {
-  if (strcmp(atoms[ia].name,"N")!=0 && strcmp(atoms[ia].name,"CA")!=0 && strcmp(atoms[ia].name,"C")!=0 && strcmp(atoms[ia].name,"0")!=0) {
-    return 1;
-  }
+  if (strcmp(atoms[ia].name,"N")==0)  return 1;
+  if (strcmp(atoms[ia].name,"CA")==0) return 1;
+  if (strcmp(atoms[ia].name,"C")==0)  return 1;
+  if (strcmp(atoms[ia].name,"O")==0)  return 1;
+  if (strcmp(atoms[ia].name,"CB")==0) return 1;
 
   return 0;
 }
@@ -454,7 +572,7 @@ solve_SVD(int m, int n, double *x, double *b, double *U, double *S, double *VT, 
   for (smax = S[0], i = 1; i < n; i++) {
     smax = MAX(smax, S[i]);
   }
-  scutoff = smax * 1E-12;
+  scutoff = smax * 1E-10;
   for (i = 0; i < n; i++) {
     if (S[i] > scutoff) {
       S[i] = 1.0 / S[i];
@@ -803,14 +921,15 @@ linear_isotropic_fit_parameters_filter_outliers(struct TLSFitContext *fit)
 
   atoms = fit->chain->atoms;
 
+  /* set all atoms to unit weights */
   orig_num_atoms = 0;
   for (ia = fit->istart; ia <= fit->iend; ia++) {
     orig_num_atoms++;
     atoms[ia].sqrt_weight = 1.0;
   }
 
-  min_atoms = orig_num_atoms - ((orig_num_atoms) / 8);
-  min_atoms = MAX(20, min_atoms);
+  min_atoms = 0.90 * orig_num_atoms;
+  min_atoms = MAX(10, min_atoms);
 
   for (i = 1; ; i++) {
     linear_isotropic_fit_parameters(fit);
@@ -842,7 +961,7 @@ linear_isotropic_fit_parameters_filter_outliers(struct TLSFitContext *fit)
       if (atoms[ia].sqrt_weight < 1.0) continue;
 
       calc_isotropic_uiso(fit->ITLS, atoms[ia].x - fit->ox, atoms[ia].y - fit->oy, atoms[ia].z - fit->oz, &u_iso);
-      delta = atoms[ia].u_iso - u_iso;
+      delta = fabs(atoms[ia].u_iso - u_iso);
 
       if (delta > max_delta) {
 	max_delta = delta;
@@ -851,8 +970,10 @@ linear_isotropic_fit_parameters_filter_outliers(struct TLSFitContext *fit)
     }
 
     printf("iteration %d: rejecting atom %s:%s with delta=%f at rmsd=%f\n", i, atoms[ia_max_delta].frag_id, atoms[ia_max_delta].name, U2B*max_delta, U2B*rmsd);
-    atoms[ia_max_delta].sqrt_weight = 0.00;
+    atoms[ia_max_delta].sqrt_weight = 0.0;
   }
+
+  /* don't restore atom weights */
 }
 
 static void
@@ -917,13 +1038,14 @@ linear_isotropic_fit_parameters_infit(struct TLSFitContext *fit)
 static void
 linear_isotropic_fit_segment(struct TLSFitContext *fit)
 {
-  int ia, istart, iend;
+  int ia, istart, iend, num_atoms, num_residues, ia_res_start;
   double ox, oy, oz;
-  double u_iso_tls, delta;
+  double u_iso_tls, delta, u_iso_sum, chi2, sqrt_weight, tmp;
   struct Atom *atoms;
 
-  int ia_res_start, num_res_atoms;
-  double lsqr_res;
+  int pin_residues;
+  int num_pin_residues = 1;
+
 
   /* optimization */
   atoms  = fit->chain->atoms;
@@ -937,49 +1059,88 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   oy = fit->oy;
   oz = fit->oz;
 
-  /* calculate residual */
-  fit->ilsqr = 0.0;
-  fit->ilsqr_mainchain = 0.0;
-  fit->u_iso_sum = 0.0;
-
+  /* save original atom weights */
   for (ia = istart; ia <= iend; ia++) {
-    calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
-
-    /* u_iso sum */
-    fit->u_iso_sum += u_iso_tls;
-
-    /* weighted least-squares residual */
-    delta = atoms[ia].sqrt_weight * (atoms[ia].u_iso - u_iso_tls);
-    fit->ilsqr += delta * delta;
-
-    /* weighted least-squares residual of main chain atoms */
-    if (atom_is_mainchain(atoms, ia)) {
-      fit->ilsqr_mainchain += delta * delta;
-    }
+    atoms[ia].sqrt_weight_tmp = atoms[ia].sqrt_weight;
+    atoms[ia].pinned = 0;
   }
 
-  /* calculate a residue-normalized residual */
-  fit->ilsqr_res_norm = 0.0;
+  /* temporarily up-weight the residues at the beginning and end of the segment */
+  pin_residues = 1;
+  ia_res_start = istart;
+  for (ia = istart; ia <= iend; ia++) {
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      pin_residues++;
+      ia_res_start = ia;
+      if (pin_residues > num_pin_residues) break;
+    }
+
+    if (!atom_is_mainchain(atoms, ia)) continue;
+    atoms[ia].sqrt_weight *= 100.0;
+    atoms[ia].pinned = 1;
+  }
+
+  pin_residues = 1;
+  ia_res_start = iend;
+  for (ia = iend; ia >= istart; ia--) {
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      pin_residues++;
+      ia_res_start = ia;
+      if (pin_residues > num_pin_residues) break;
+    }
+
+    if (!atom_is_mainchain(atoms, ia)) continue;
+    atoms[ia].sqrt_weight *= 100.0;
+    atoms[ia].pinned = 1;
+  }
+
+  /* calculate residual */
+  num_atoms = 0;
+  num_residues = 1;
+
+  chi2 = 0.0;
+  u_iso_sum = 0.0;
 
   ia_res_start = istart;
-  lsqr_res = 0.0;
-  num_res_atoms = 0;
 
   for (ia = istart; ia <= iend; ia++) {
-    /* new residue */
+    /* count the number of new residues */
     if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
-      fit->ilsqr_res_norm += lsqr_res / num_res_atoms;
+      num_residues++;
       ia_res_start = ia;
-      lsqr_res = 0.0;
-      num_res_atoms = 0;
     }
-    
+
+    /* skip 0-weight atoms */
+    if (atoms[ia].sqrt_weight == 0.0) continue;
+
+    num_atoms++;
     calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
-    
-    num_res_atoms++;
-    delta =  atoms[ia].sqrt_weight * (atoms[ia].u_iso - u_iso_tls);
-    lsqr_res += delta * delta;
-  }  
+    delta = u_iso_tls - atoms[ia].u_iso;
+
+    /* u_iso sum */
+    u_iso_sum += u_iso_tls;
+
+    if (atoms[ia].pinned) {
+      sqrt_weight = atoms[ia].sqrt_weight_tmp;
+    } else {
+      sqrt_weight = atoms[ia].sqrt_weight;
+    }
+
+    /* calculate chi squared */
+    tmp = sqrt_weight * delta;
+    chi2 += tmp * tmp;
+  }
+
+  fit->u_iso_sum = u_iso_sum;
+  fit->ilsqr = num_residues * (chi2 / (num_atoms - ITLS_NUM_PARAMS));
+
+  fit->gammaq = 0.0;
+  /* gammaq(0.5 * (num_atoms - ITLS_NUM_PARAMS), 0.5 * chi2, &fit->gammaq);*/
+
+  /* restore weights */
+  for (ia = istart; ia <= iend; ia++) {
+    atoms[ia].sqrt_weight = atoms[ia].sqrt_weight_tmp;
+  }
 }
 
 
@@ -1058,44 +1219,6 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
 
   solve_SVD(num_rows, num_cols, fit->ATLS, bw, fit->chain->U, fit->chain->S, fit->chain->VT, fit->chain->WORK);
   calc_lsqr(A, num_rows, num_cols, fit->ATLS, bw, &fit->alsqr);
-
-  /* calculate the residual of the mainchain atoms */
-  fit->alsqr_mainchain = 0.0;
-
-  for (ia = istart; ia <= iend; ia++) {
-    if (atom_is_mainchain(atoms, ia)) {
-      calc_anisotropic_Utls(fit->ATLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
-      for (i = 0; i < 6; i++) {
-	delta = atoms[ia].sqrt_weight * (atoms[ia].U[i] - Utls[i]);
-	fit->alsqr_mainchain += delta * delta;
-      }
-    }
-  }
-
-  /* calculate a residue-normalized residual */
-  fit->alsqr_res_norm = 0.0;
-
-  ia_res_start = istart;
-  lsqr_res = 0.0;
-  num_res_atoms = 0;
-
-  for (ia = istart; ia <= iend; ia++) {
-    /* new residue */
-    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
-      fit->alsqr_res_norm += lsqr_res / num_res_atoms;
-      ia_res_start = ia;
-      lsqr_res = 0.0;
-      num_res_atoms = 0;
-    }
-    
-    calc_anisotropic_Utls(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
-    
-    num_res_atoms++;
-    for (i = 0; i < 6; i++) {
-      delta = atoms[ia].sqrt_weight * (atoms[ia].U[i] - Utls[i]);
-      lsqr_res += delta * delta;
-    }
-  }
 }
 
 /**********************************************************************************************************************************************************/
@@ -1200,6 +1323,7 @@ calc_isotropic_hinge_delta(struct IHingeContext *hinge)
   hinge->hdelta_c   = 0.0;
 }
 
+/**********************************************************************************************************************************************************/
 
 /* 
  * PYTHON INTERFACE
@@ -1454,14 +1578,6 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   PyDict_SetItemString(rdict, "ilsqr", py_floatx);
   Py_DECREF(py_floatx);
   
-  py_floatx = PyFloat_FromDouble(fit_context.ilsqr_res_norm);
-  PyDict_SetItemString(rdict, "ilsqr_res_norm", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(fit_context.ilsqr_mainchain);
-  PyDict_SetItemString(rdict, "ilsqr_mainchain", py_floatx);
-  Py_DECREF(py_floatx);
-  
   py_floatx = PyFloat_FromDouble(fit_context.u_iso_sum);
   PyDict_SetItemString(rdict, "u_iso_sum", py_floatx);
   Py_DECREF(py_floatx);
@@ -1472,6 +1588,10 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
     Py_DECREF(py_floatx);
   }
     
+  py_floatx = PyFloat_FromDouble(fit_context.gammaq);
+  PyDict_SetItemString(rdict, "gammaq", py_floatx);
+  Py_DECREF(py_floatx);
+
   return rdict;
 
  error:
@@ -1532,14 +1652,6 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args)
 
   py_floatx = PyFloat_FromDouble(fit_context.alsqr);
   PyDict_SetItemString(rdict, "alsqr", py_floatx);
-  Py_DECREF(py_floatx);
-  
-  py_floatx = PyFloat_FromDouble(fit_context.alsqr_res_norm);
-  PyDict_SetItemString(rdict, "alsqr_res_norm", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(fit_context.alsqr_mainchain);
-  PyDict_SetItemString(rdict, "alsqr_mainchain", py_floatx);
   Py_DECREF(py_floatx);
   
   for (i = 0; i < ATLS_NUM_PARAMS; i++) {
@@ -1611,6 +1723,30 @@ LinearTLSModel_calc_isotropic_hinge_delta(PyObject *py_self, PyObject *args)
   return NULL;
 }
 
+static PyObject *
+LinearTLSModel_gammaq(PyObject *py_self, PyObject *args)
+{
+  LinearTLSModel_Object *self;
+  PyObject *py_floatx;
+  double a, x, gammaq_val;
+
+  self = (LinearTLSModel_Object *) py_self;
+
+  if (!PyArg_ParseTuple(args, "dd", &a, &x)) {
+    goto error;
+  }
+
+  printf("a=%f x=%f\n",a, x);
+  
+  gammaq(a, x, &gammaq_val);
+
+  py_floatx = PyFloat_FromDouble(gammaq_val);
+  return py_floatx;
+
+ error:
+  return NULL;
+}
+
 static PyMethodDef LinearTLSModel_methods[] = {
     {"set_xmlrpc_chain", 
      (PyCFunction) LinearTLSModel_set_xmlrpc_chain, 
@@ -1631,6 +1767,11 @@ static PyMethodDef LinearTLSModel_methods[] = {
      (PyCFunction) LinearTLSModel_calc_isotropic_hinge_delta, 
      METH_VARARGS,
      "Calculates the value of the hinge-delta function." },
+
+    {"gammaq",
+     (PyCFunction) LinearTLSModel_gammaq, 
+     METH_VARARGS,
+     "Calculates the incomplete gamma function Q." },
 
     {NULL}  /* Sentinel */
 };

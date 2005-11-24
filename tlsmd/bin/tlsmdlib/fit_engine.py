@@ -122,6 +122,7 @@ class TLSGraphChain(object):
     def __init__(self, name):
         self.name = name
         self.tls_model = None
+        self.model_parameters = 0
     
     def set_xmlrpc_chain(self, xmlrpc_chain):
         self.xchain = XChain(xmlrpc_chain)
@@ -149,8 +150,8 @@ class TLSGraphChain(object):
         ## are there enough atoms in this chain segment
         num_atoms = iend - istart + 1
         fit_info["num_atoms"] = num_atoms
-        if num_atoms<20:
-            fit_info["error"] = "data/parameter raito = %d/20 less than 1.0" % (num_atoms)
+        if num_atoms<self.model_parameters:
+            fit_info["error"] = "data/parameter raito = %d/%d less than 1.0" % (num_atoms, self.model_parameters)
             return fit_info
 
         ## perform the LSQR fit
@@ -159,8 +160,8 @@ class TLSGraphChain(object):
         ## return information
         fit_info["lsq_residual"] = fdict["lsq_residual"]
 
-        print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%8.6f)" % (
-            self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"])
+        print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%8.6f, gammaq=%6.4f)" % (
+            self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"], fdict["gammaq"])
 
         return fit_info
 
@@ -177,6 +178,7 @@ class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
     """
     def __init__(self):
         TLSGraphChainLinear.__init__(self, "ISOT")
+        self.model_parameters = 10
 
     def set_xmlrpc_chain(self, xmlrpc_chain):
         TLSGraphChainLinear.set_xmlrpc_chain(self, xmlrpc_chain)
@@ -191,7 +193,8 @@ class TLSGraphChainLinearAnisotropic(TLSGraphChainLinear):
     """
     def __init__(self):
         TLSGraphChainLinear.__init__(self, "ANISO")
-
+        self.model_parameters = 20
+        
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.anisotropic_fit_segment(istart, iend)
         fdict["lsq_residual"] = fdict["alsqr"]
@@ -214,7 +217,8 @@ class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
     """
     def __init__(self):
         TLSGraphChainNonlinear.__init__(self, "NLISOT")
-
+        self.model_parameters = 10
+        
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.isotropic_fit_segment(istart, iend)
         fdict["lsq_residual"] = fdict["ilsqr"]
@@ -225,6 +229,7 @@ class TLSGraphChainNonlinearAnisotropic(TLSGraphChainNonlinear):
     """
     def __init__(self):
         TLSGraphChainNonlinear.__init__(self, "NLANISO")
+        self.model_parameters = 20
 
     def fit_segment(self, istart, iend):
         fdict = self.tls_model.anisotropic_fit_segment(istart, iend)

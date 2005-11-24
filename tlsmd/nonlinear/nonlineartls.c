@@ -51,8 +51,8 @@ static PyObject *NONLINEARTLS_ERROR = NULL;
 #define DEG2RAD  (PI / 180.0)
 #define DEG2RAD2 (DEG2RAD*DEG2RAD)
 
-#define U2B (8.0*PI2)
-#define B2U (1.0/U2B)
+#define U2B ((8.0*PI2))
+#define B2U ((1.0/U2B))
 
 #define LSMALL (0.0001 * DEG2RAD2)
 
@@ -175,6 +175,8 @@ struct Atom {
   char    name[NAME_LEN];
   char    frag_id[FRAG_ID_LEN];
   double  x, y, z;
+  double  weight;
+  double  sqrt_weight;
   double  xtls, ytls, ztls;
   double  u_iso;
   double  u_iso_tmp;
@@ -638,7 +640,7 @@ calc_isotropic_uiso(double *ITLS, double x, double y, double z, double *u_iso)
 	     2.0 * ITLS[ITLS_S2]  * y       +
              2.0 * ITLS[ITLS_S3]  * x )/3.0;
 }
- 
+
 /* return the anisotropic TLS model predicted ADP in U for a atom 
  * located at coordinates x,y,z with respect to the ATLS origin
  */
@@ -724,7 +726,7 @@ calc_isotropic_lsqr(struct TLSFit *fit)
 
     calc_isotropic_uiso(fit->ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso);
     delta = u_iso - atom->u_iso;
-    lsqr += delta*delta;
+    lsqr += delta * delta;
   }
   
   return lsqr;
@@ -765,6 +767,8 @@ calc_isotropic_tls_parameters(double NL_ITLS[NL_ITLS_NUM_PARAMS], double ITLS[IT
   for (i = 0; i < ITLS_NUM_PARAMS; i++) {
     ITLS[i] = NL_ITLS[i];
   }
+
+  ITLS[ITLS_T] = NL_ITLS[NL_ITLS_T] * NL_ITLS[NL_ITLS_T];
 
   lx = fabs(NL_ITLS[NL_ITLS_LX]);
   ly = fabs(NL_ITLS[NL_ITLS_LY]);
@@ -812,7 +816,7 @@ calc_anisotropic_tls_parameters(double NL_ATLS[ATLS_NUM_PARAMS], double ATLS[ATL
 }
 
 inline void
-set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, double z, double dNL[6][6])
+set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, double z, double Trmsd, double dNL[6][6])
 {
 #define FA(__i, __j) A[__i + (m * __j)]
 
@@ -826,7 +830,7 @@ set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, dou
   yz = y*z;
 
   /* T iso */
-  FA(row, NL_ITLS_T) = 1.0;
+  FA(row, NL_ITLS_T) = 2.0 * Trmsd;
 
   /* Uiso = 1/3((zz+yy)L11 + 1/3(xx+zz)L22 + 1/3(xx+yy)L33 -2xyL12 -2xzL13 -2yzL23) */
   FA(row, NL_ITLS_LX) = ((zz+yy)*dNL[0][0] + (xx+zz)*dNL[1][0] + (xx+yy)*dNL[2][0] - 2.0*xy*dNL[3][0] - 2.0*xz*dNL[4][0] - 2.0*yz*dNL[5][0])/3.0;
@@ -1181,7 +1185,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-3;
+  tol = 1E-8;
 
   /* lmder1(fcn,                  m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(anisotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ATLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1221,7 +1225,7 @@ isotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ITLS, double *A, int lda)
   row = 0;
   for (ia = istart; ia <= iend; ia++) {
     atom = &g_pFit->atoms[ia];
-    set_isotropic_jacobian(A, m, n, row, atom->xtls, atom->ytls, atom->ztls, dNL);
+    set_isotropic_jacobian(A, m, n, row, atom->xtls, atom->ytls, atom->ztls, NL_ITLS[NL_ITLS_T], dNL);
     row += 1;
   }
 }
@@ -1231,7 +1235,7 @@ inline void
 isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
 {
   int i, ia, istart, iend;
-  double ITLS[ITLS_NUM_PARAMS], u_iso;
+  double ITLS[ITLS_NUM_PARAMS], u_iso_tls;
   struct Atom *atom;
 
   istart = g_pFit->istart;
@@ -1242,9 +1246,9 @@ isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
   i = 0;
   for (ia = istart; ia <= iend; ia++) {
     atom = &g_pFit->atoms[ia];
-    calc_isotropic_uiso(ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso);
-    
-    R[i] = u_iso - atom->u_iso;
+    calc_isotropic_uiso(ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso_tls);
+
+    R[i] = u_iso_tls - atom->u_iso;
     i++;
   }
 }
@@ -1330,7 +1334,7 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-3;
+  tol = 1E-8;
 
   /* lmder1(fcn,                m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(isotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ITLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1586,6 +1590,16 @@ NLTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 	goto error;
       }
       self->atoms[i].u_iso = PyFloat_AsDouble(tmp);
+
+      tmp = PyDict_GetItemString(atm_desc, "weight");
+      if (tmp == NULL) {
+	goto error;
+      }
+      if (!PyFloat_Check(tmp)) {
+	goto error;
+      }
+      self->atoms[i].weight = PyFloat_AsDouble(tmp);
+      self->atoms[i].sqrt_weight = sqrt(self->atoms[i].weight);
 
       /* get U tensor parameters */
       for (j = 0; j < U_NUM_PARAMS; j++) {

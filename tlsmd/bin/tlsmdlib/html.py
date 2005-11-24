@@ -506,7 +506,6 @@ _FIT_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
 set ylabel "B_{obs} - B_{calc}"
-set yrange [0.0:6.0]
 set format y "%5.2f"
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
@@ -868,9 +867,8 @@ def calc_accounted_biso(chainopt, tlsopt):
 _B_ACCOUNT_ANALYSIS_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
-set ylabel "B"
+set ylabel "B_{obs} - B_{tls}"
 set format y "%5.2f"
-set yrange [0.0:20.0]
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -1009,7 +1007,6 @@ set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
 set ylabel "RMSD B^2"
 set format y "%5.2f"
-set yrange [0.0:20.0]
 set term png enhanced font "<font>" <fontsize>
 set output "<pngfile>"
 set title "<title>"
@@ -1301,14 +1298,14 @@ class HTMLReport(Report):
 	    end_chain_timing(chain.chain_id)
             chainopt_list.append(chainopt)
 
-        ## write out all TLSGraph reports
-        for chainopt in chainopt_list:
-            self.write_tls_chain_optimization(chainopt)
-
         ## a report page comparing the tls group segments of all
         ## chains against each other
         self.write_multi_chain_alignment(chainopt_list)
         self.write_refinement_prep(chainopt_list)
+
+        ## write out all TLSGraph reports
+        for chainopt in chainopt_list:
+            self.write_tls_chain_optimization(chainopt)
 
         ## write out index page
         self.write_index()

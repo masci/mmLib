@@ -64,11 +64,9 @@ def set_globals():
     assert INCLUDE_ATOMS in ["ALL", "MAINCHAIN", "CA"]
 
     if INCLUDE_ATOMS=="ALL":
-        MIN_SUBSEGMENT_SIZE = 5
+        MIN_SUBSEGMENT_SIZE = 4
     elif INCLUDE_ATOMS=="MAINCHAIN":
-        MIN_SUBSEGMENT_SIZE = 5
-    elif INCLUDE_ATOMS=="CA":
-        MIN_SUBSEGMENT_SIZE = 20
+        MIN_SUBSEGMENT_SIZE = 4
 
     GLOBALS["MIN_SUBSEGMENT_SIZE"] = MIN_SUBSEGMENT_SIZE
 
@@ -76,7 +74,7 @@ def set_globals():
 ## Atom Selection/Weighting Functions
 ##
 
-MAINCHAIN_ATOMS = ["N","CA","C","O"]
+MAINCHAIN_ATOMS = ["N","CA","C","O","CB"]
 
 def calc_include_atom(atm, reject_messages=False):
     """Filter out atoms from the model which will cause problems or
@@ -91,17 +89,6 @@ def calc_include_atom(atm, reject_messages=False):
         if reject_messages==True:
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
-
-##     for atmb in atm.iter_bonded_atoms():
-##         delta = atm.temp_factor - atmb.temp_factor
-##         flag = True
-
-##         if delta > 15.0: flag = False
-
-##         if flag == False:
-##             if reject_messages==True:
-##                 print "calc_include_atom(%s): large temp_factor delta=%6.2f with %s" % (atm, delta, atmb)
-##             return False
         
     if INCLUDE_ATOMS=="ALL":
         return True
@@ -125,8 +112,19 @@ def calc_atom_weight(atm):
     """
     weight = atm.occupancy
 
+    ## sigma estimation
     if WEIGHT_MODEL=="IUISO":
-        weight = weight * (1.0 / (B2U * atm.temp_factor))
+
+        ## estimate B-factor error at 20% of its magnitude at a B-value of 60.0
+        if atm.name in MAINCHAIN_ATOMS:
+            #sigma = (0.10/60.0) *  atm.temp_factor**2 + 1.0
+            sigma = 1.5
+        else:
+            #sigma = (0.30/60.0) *  atm.temp_factor**2 + 5.0
+            sigma = 2.5 + 0.10 * atm.temp_factor
+
+        sigma_u = B2U * sigma
+        weight = weight * (1.0/sigma_u**2)
 
     return weight
 
