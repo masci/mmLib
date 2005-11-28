@@ -2435,7 +2435,7 @@ class GLTLSAtomList(GLAtomList):
         GLAtomList.__init__(self, **args)
         self.glo_set_properties_id("GLTLSAtomList")
         self.glo_init_properties(**args)
-    
+
     def glo_install_properties(self):
         GLAtomList.glo_install_properties(self)
 
@@ -2700,7 +2700,7 @@ class GLTLSAtomList(GLAtomList):
         zero_rot = False
 
         if self.properties["both_phases"]==True:
-            phase_tuple = (1.0, -1.0)
+            phase_tuple = (1.0, 0.66, 0.33, 0.0, -0.33, -0.66, -1.0)
         else:
             phase_tuple = (1.0,)
         

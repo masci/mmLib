@@ -622,8 +622,7 @@ class GLDrawList(GLObject):
         try:
             colorx = self.properties[prop_name]
         except KeyError:
-            raise KeyError, "gldl_property_color_rgbf: bad prop_name %s" % (
-                prop_name)
+            raise KeyError, "gldl_property_color_rgbf: bad prop_name %s" % (prop_name)
         
         try:
             return COLOR_RGBF[colorx.lower()]
@@ -640,8 +639,7 @@ class GLDrawList(GLObject):
             except ValueError:
                 return (1.0, 0.0, 0.0)
 
-        raise TypeError, "gldl_property_color_rgbf: bad colorx %s" % (
-            str(colorx))
+        raise TypeError, "gldl_property_color_rgbf: bad colorx %s" % (str(colorx))
 
     def gldl_install_draw_methods(self):
         """Override in children to install draw methods for a GLDrawList.
@@ -1557,14 +1555,12 @@ class GLAtomList(GLDrawList):
                     self.driver.glr_push_matrix()
 
                     if self.properties["atom_origin"]!=None:
-                        self.driver.glr_translate(
-                            -self.properties["atom_origin"])
+                        self.driver.glr_translate(-self.properties["atom_origin"])
 
                     self.driver.glr_mult_matrix_Rt(symop.R, symop.t)
 
                     if self.properties["atom_origin"]!=None:
-                        self.driver.glr_translate(
-                            self.properties["atom_origin"])
+                        self.driver.glr_translate(self.properties["atom_origin"])
                     
                     yield True
                     self.driver.glr_pop_matrix()
@@ -1784,8 +1780,7 @@ class GLAtomList(GLDrawList):
         elif setting=="Color By Anisotropy":
             return self.glal_calc_color_range(atom.calc_anisotropy())
 
-        raise ValueError, "glal_calc_color: bad color setting %s" % (
-            str(setting))
+        raise ValueError, "glal_calc_color: bad color setting %s" % (str(setting))
 
     def glal_calc_color_label(self):
         """Returns the label color.
@@ -2089,10 +2084,7 @@ class GLAtomList(GLDrawList):
     def glal_draw_cross(self, atm, pos):
         """Draws atom with a cross of lines.
         """
-        self.driver.glr_cross(
-            pos,
-            self.glal_calc_color(atm),
-            self.properties["line_width"])
+        self.driver.glr_cross(pos, self.glal_calc_color(atm), self.properties["line_width"])
 
     def glal_draw_trace(self):
         """Draws trace over all polymer backbone atoms.
@@ -2115,7 +2107,7 @@ class GLAtomList(GLDrawList):
             for frag in chain.iter_fragments():
 
                 if frag.is_amino_acid()==True:
-                    backbone_atoms = ("N", "CA", "C")
+                    backbone_atoms = ("CA",)
                 elif frag.is_nucleic_acid()==True:
                     backbone_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
                 else:
@@ -2137,48 +2129,34 @@ class GLAtomList(GLDrawList):
                     ## trace them all in the backbone trace
                     
                     if last_atm.alt_loc=="" and atm.alt_loc=="":
-                        lpos = self.glal_calc_position(
-                            last_atm.position)
-                        pos = self.glal_calc_position(
-                            atm.position)
-
+                        lpos = self.glal_calc_position(last_atm.position)
+                        pos = self.glal_calc_position(atm.position)
                         glr_sphere(lpos, trace_radius, 12)
                         glr_tube(lpos, pos, trace_radius)
 
                     elif last_atm.alt_loc=="" and atm.alt_loc!="":
-                        lpos = self.glal_calc_position(
-                            last_atm.position)
+                        lpos = self.glal_calc_position(last_atm.position)
 
                         for aa in atm.iter_alt_loc():
-                            pos = self.glal_calc_position(
-                                aa.position)
-
+                            pos = self.glal_calc_position(aa.position)
                             glr_sphere(lpos, trace_radius, 12)
                             glr_tube(lpos, pos, trace_radius)
 
                     elif last_atm.alt_loc!="" and atm.alt_loc=="":
-                        pos = self.glal_calc_position(
-                            atm.position)
+                        pos = self.glal_calc_position(atm.position)
 
                         for laa in last_atm.iter_alt_loc():
-                            lpos = self.glal_calc_position(
-                                laa.position)
-
+                            lpos = self.glal_calc_position(laa.position)
                             glr_sphere(lpos, trace_radius, 12)
                             glr_tube(lpos, pos, trace_radius)
 
                     elif last_atm.alt_loc!="" and atm.alt_loc!="":
                         for aa in atm.iter_alt_loc():
                             for laa in last_atm.iter_alt_loc():
-
                                 if aa.alt_loc!=laa.alt_loc:
                                     continue
-
-                                lpos = self.glal_calc_position(
-                                    laa.position)
-                                pos = self.glal_calc_position(
-                                    aa.position)
-
+                                lpos = self.glal_calc_position(laa.position)
+                                pos = self.glal_calc_position(aa.position)
                                 glr_sphere(lpos, trace_radius, 12)
                                 glr_tube(lpos, pos, trace_radius)
 

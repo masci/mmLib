@@ -118,8 +118,7 @@ class Raster3DDriver(object):
         self.phong            = 3
 
         ## initial material state
-        self.object_list.append(
-            (8, 0.0, 0, self.front_clip, self.back_clip))
+        self.object_list.append((8, 0.0, 0, self.front_clip, self.back_clip))
                 
     def glr_construct_header(self):
         """Creates the header for the render program.

@@ -1578,6 +1578,20 @@ class Segment(object):
         for frag in self.iter_fragments():
             frag.set_chain_id(chain_id)
 
+    def is_homolog(self, segment2):
+        """Returns True if there are no dissagreements in the
+        sequences of this segment and segment2.
+        """
+        hdict = {}
+
+        for fragment in self.fragment_list:
+            hdict[fragment.fragment_id] = fragment.res_name
+
+        for fragment in segment2.fragment_list:
+            if hdict.get(fragment.fragment_id, fragment.res_name)!=fragment.res_name:
+                return False
+
+        return True
 
 class Chain(Segment):
     """Chain objects conatain a ordered list of Fragment objects.

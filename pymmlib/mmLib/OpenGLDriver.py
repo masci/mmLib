@@ -155,11 +155,7 @@ class OpenGLDriver(object):
         glDepthFunc(GL_LESS)
         
         ## background color
-        glClearColor(bg_color_rgbf[0],
-                     bg_color_rgbf[1],
-                     bg_color_rgbf[2],
-                     0.0)
-        
+        glClearColor(bg_color_rgbf[0], bg_color_rgbf[1], bg_color_rgbf[2], 0.0)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
             
         ## lighting
@@ -208,13 +204,7 @@ class OpenGLDriver(object):
             if gl_fog:
                 glEnable(GL_FOG)
                 glFogf(GL_FOG_MODE,    GL_LINEAR)
-                
-                glFogfv(GL_FOG_COLOR,
-                        (bg_color_rgbf[0],
-                         bg_color_rgbf[1],
-                         bg_color_rgbf[2],
-                         0.0) )
-
+                glFogfv(GL_FOG_COLOR, (bg_color_rgbf[0], bg_color_rgbf[1], bg_color_rgbf[2], 0.0))
                 glFogf(GL_FOG_START, 0.0)
                 glFogf(GL_FOG_END,   depth)
             else:
