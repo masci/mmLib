@@ -89,13 +89,13 @@ def calc_orientation(struct, chain):
     def iter_protein_atoms(sobjx):
         for fragx in sobjx.iter_amino_acids():
             for atmx in fragx.iter_atoms():
-                yield atmx
+                if atmx.name=="CA": yield atmx
                 
-    #str_centroid, str_R = calc_inertia_tensor(iter_protein_atoms(struct))
-    chn_centroid, chn_R = calc_inertia_tensor(iter_protein_atoms(chain))
-    str_centroid, str_R = chn_centroid, chn_R
+    centroid, R = calc_inertia_tensor(iter_protein_atoms(chain))
 
     ## now calculate a rectangular box
+    first_atm = True
+
     min_x = 0.0
     max_x = 0.0
     min_y = 0.0
@@ -103,44 +103,138 @@ def calc_orientation(struct, chain):
     min_z = 0.0
     max_z = 0.0
 
-    for atm in chain.iter_all_atoms():
-        x     = matrixmultiply(str_R, atm.position - chn_centroid)
-        min_x = min(min_x, x[0])
-        max_x = max(max_x, x[0])
-        min_y = min(min_y, x[1])
-        max_y = max(max_y, x[1])
-        min_z = min(min_z, x[2])
-        max_z = max(max_z, x[2])
+    for atm in iter_protein_atoms(chain):
+        x  = matrixmultiply(R, atm.position - centroid)
 
-    ## add slop splace around the edges
-    slop   = 2.0
+        if first_atm==True:
+            first_atm = False
 
-    min_x -= slop
-    max_x += slop
-    min_y -= slop
-    max_y += slop
-    min_z -= slop
-    max_z += slop
+            min_x = max_x = x[0]
+            min_y = max_y = x[1]
+            min_z = max_z = x[2]
+        else:
+            min_x = min(min_x, x[0])
+            max_x = max(max_x, x[0])
+            min_y = min(min_y, x[1])
+            max_y = max(max_y, x[1])
+            min_z = min(min_z, x[2])
+            max_z = max(max_z, x[2])
 
-    ## calculate the zoom based on a target width
-    target_pwidth = VIS_WIDTH
+    ## border around the structure
+    border = 2.0
+    min_x -= border
+    max_x += border
+    min_y -= border
+    max_y += border
+    min_z -= border
+    max_z += border
 
-    hwidth  = max(abs(min_x),abs(max_x))
-    hheight = max(abs(min_y),abs(max_y))
-    pheight = target_pwidth * (hheight / hwidth)
-    hzoom   = 2.0 * hwidth
+    ## determine the center of the image as a xy offset from the centroid
+    width  = max_x - min_x
+    height = max_y - min_y
+    zoom   = width
 
-    ori["R"]        = str_R
-    ori["centroid"] = chn_centroid
-    ori["pwidth"]   = target_pwidth
+    xcenter = min_x + (width / 2.0)
+    ycenter = min_y + (height / 2.0)
+
+    xydelta  = array((xcenter, ycenter, 0.0), Float)
+
+    pwidth = VIS_WIDTH
+    pheight = pwidth * (height / width)
+
+    ori["R"]        = R
+    ori["centroid"] = centroid + matrixmultiply(transpose(R), xydelta)
+    ori["pwidth"]   = pwidth
     ori["pheight"]  = pheight 
-    ori["hzoom"]    = hzoom
+    ori["hzoom"]    = zoom
 
     ## calculate near, far clipping plane
     ori["near"] = max_z
     ori["far"]  = min_z
     
     return ori
+
+
+def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
+    """Generate HTML for a table containing the details of the ntls-group partitioning of the given chain.
+    """
+    f1 = '<font size="-5">'
+    f2 = '</font>'
+
+    x = ''
+
+    ## TLS group table
+    x += '<table width="100%" border=0 style="background-color:#eeeeee">\n'
+
+    x += '<tr>\n'
+    x += '<th align="center" colspan="12">'
+    x += 'Analysis of TLS Group Chain Segments'
+    x += '</th>\n'
+    x += '</tr>\n'
+
+    x += '<tr>\n'
+    x += '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>\n'
+    x += '<th colspan="6" style="background-color:#bbbbbb">TLS Predictions</th>\n'
+    x += '</tr>\n'
+
+    x += ' <tr align="left" style="background-color:#bbbbbb">\n'
+    x += '  <th>%sColor%s</th>\n' % (f1, f2)
+    x += '  <th>%sSegment%s</th>\n' % (f1, f2)
+    x += '  <th>%sResidues%s</th>\n' % (f1, f2)
+    x += '  <th>%sAtoms%s</th>\n'  % (f1, f2)
+    x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
+    x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
+    x += '  <th>%sLSQR%s</th>\n' % (f1, f2)
+    x += '  <th>%sLSQR/Res%s</th>\n' % (f1, f2)
+    x += '  <th>%seval(T<sup>r</sup>) <var>B</var>%s</th>\n' % (f1, f2)
+    x += '  <th>%seval(L) <var>DEG<sup>2</sup></var>%s</th>\n' % (f1, f2)
+    x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
+    x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
+    x += ' </tr>\n'
+
+    bgcolor_flag = True
+
+    for tls in tlsopt.tls_list:
+        tls_group = tls["tls_group"]
+        tls_info  = tls["tls_info"]
+        mtls_info = tls["model_tls_info"]
+
+        L1 = mtls_info["L1_eigen_val"] * RAD2DEG2
+        L2 = mtls_info["L2_eigen_val"] * RAD2DEG2
+        L3 = mtls_info["L3_eigen_val"] * RAD2DEG2
+
+        Tr1 = mtls_info["Tr1_eigen_val"] * U2B
+        Tr2 = mtls_info["Tr2_eigen_val"] * U2B
+        Tr3 = mtls_info["Tr3_eigen_val"] * U2B
+
+        if bgcolor_flag:
+            x += '<tr style="background-color:#dddddd">\n'
+        else:
+            x += '<tr>\n'
+        bgcolor_flag = not bgcolor_flag
+
+        ## path to color thumbnail
+        if report_root:
+            cpath = os.path.join(report_root, tls["color"]["thumbnail_path"])
+        else:
+            cpath = tls["color"]["thumbnail_path"]
+
+        x += '<td align="center" valign="middle"><img src="%s" alt="%s"></td>\n' % (cpath, tls["color"]["name"])
+        x += '<td>%s%s-%s%s</td>\n' % (f1, tls["frag_id1"], tls["frag_id2"], f2)
+        x += '<td>%s%d%s</td>\n'    % (f1, len(tls["segment"]), f2)
+        x += '<td>%s%d%s</td>\n'    % (f1, len(tls_group), f2)
+        x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["exp_mean_temp_factor"], f2)
+        x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["exp_mean_anisotropy"], f2)
+        x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual"], f2)
+        x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual_per_res"], f2)
+        x += '<td>%s%5.1f, %5.1f, %5.1f%s</td>\n' % (f1, Tr1, Tr2, Tr3, f2)
+        x += '<td>%s%5.2f, %5.2f, %5.2f%s</td>\n' % (f1, L1, L2, L3, f2)
+        x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["tls_mean_temp_factor"], f2)
+        x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["tls_mean_anisotropy"], f2)
+        x += '</tr>\n'
+
+    x += '</table>\n'
+    return x
 
 
 class Report(object):
@@ -541,7 +635,7 @@ class HTMLReport(Report):
         x  = ''
         x += '<center><h3>Chain %s TLS Segment Sequence Alignment</h3></center>\n' % (chainopt["chain_id"])
         x += '<center>'
-        x += '<table border="0" style="background-color:#eeeeee">'
+        x += '<table border="0" style="background-color:#dddddd">'
         x += '<tr><th>TLS Groups</th>'
         x += '<th>Chain %s Sequence Alignment</th></tr>'% (chainopt["chain_id"])
         x += '<tr>'
@@ -639,14 +733,18 @@ class HTMLReport(Report):
         x += '</th></tr>'
 
         ## BMean Plot
-        ntls_analysis.bmean_plot.width = 600
-        ntls_analysis.bmean_plot.height = 200
+        ntls_analysis.bmean_plot.width = 800
+        ntls_analysis.bmean_plot.height = 300
+        ntls_analysis.bmean_plot.tls_group_titles = False
         ntls_analysis.bmean_plot.output_png()
         
         x += '<tr><th>'
         x += '<center><img src="%s" alt="iAlt"></center><br>\n' % (ntls_analysis.bmean_plot.png_path)
         x += '</th></tr>'
         x += '</table>'
+
+        ## now the table
+        x += html_tls_group_table(chainopt, tlsopt, ntls)
 
         x += '<br clear="all">\n'
         
@@ -1221,84 +1319,7 @@ class ChainNTLSAnalysisReport(Report):
         open(self.index, "w").write(x)
 
     def html_tls_group_table(self):
-        chainopt = self.chainopt
-        tlsopt = self.tlsopt
-        ntls = self.ntls
-
-        
-        f1 = '<font size="-10">'
-        f2 = '</font>'
-
-        x = ''
-        
-        ## TLS group table
-        x += '<table width="100%" border=0 style="background-color:#eeeeee">\n'
-
-        x += '<tr>\n'
-        x += '<th align="center" colspan="12">'
-        x += 'Analysis of TLS Group Chain Segments'
-        x += '</th>\n'
-        x += '</tr>\n'
-
-        x += '<tr>\n'
-        x += '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>\n'
-        x += '<th colspan="6" style="background-color:#bbbbbb">TLS Predictions</th>\n'
-        x += '</tr>\n'
-
-        x += ' <tr align="left" style="background-color:#bbbbbb">\n'
-        x += '  <th>%sColor%s</th>\n' % (f1, f2)
-        x += '  <th>%sSegment%s</th>\n' % (f1, f2)
-        x += '  <th>%sResidues%s</th>\n' % (f1, f2)
-        x += '  <th>%sAtoms%s</th>\n'  % (f1, f2)
-        x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
-        x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
-        x += '  <th>%sLSQR%s</th>\n' % (f1, f2)
-        x += '  <th>%sLSQR/Res%s</th>\n' % (f1, f2)
-        x += '  <th>%seval(T<sup>r</sup>) <var>B</var>%s</th>\n' % (f1, f2)
-        x += '  <th>%seval(L) <var>DEG<sup>2</sup></var>%s</th>\n' % (f1, f2)
-        x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
-        x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
-        x += ' </tr>\n'
-
-        bgcolor_flag = True
-
-        for tls in tlsopt.tls_list:
-            tls_group = tls["tls_group"]
-            tls_info  = tls["tls_info"]
-            mtls_info = tls["model_tls_info"]
-
-            L1 = mtls_info["L1_eigen_val"] * RAD2DEG2
-            L2 = mtls_info["L2_eigen_val"] * RAD2DEG2
-            L3 = mtls_info["L3_eigen_val"] * RAD2DEG2
-            
-            Tr1 = mtls_info["Tr1_eigen_val"] * U2B
-            Tr2 = mtls_info["Tr2_eigen_val"] * U2B
-            Tr3 = mtls_info["Tr3_eigen_val"] * U2B
-
-            if bgcolor_flag:
-                x += '<tr style="background-color:#dddddd">\n'
-            else:
-                x += '<tr>\n'
-            bgcolor_flag = not bgcolor_flag
-
-            cpath = os.path.join("..", tls["color"]["thumbnail_path"])
-            
-            x += '<td align="center" valign="middle"><img src="%s" alt="%s"></td>\n' % (cpath, tls["color"]["name"])
-            x += '<td>%s%s-%s%s</td>\n' % (f1, tls["frag_id1"], tls["frag_id2"], f2)
-            x += '<td>%s%d%s</td>\n'    % (f1, len(tls["segment"]), f2)
-            x += '<td>%s%d%s</td>\n'    % (f1, len(tls_group), f2)
-            x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["exp_mean_temp_factor"], f2)
-            x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["exp_mean_anisotropy"], f2)
-            x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual"], f2)
-            x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual_per_res"], f2)
-            x += '<td>%s%5.1f<br>%5.1f<br>%5.1f%s</td>\n' % (f1, Tr1, Tr2, Tr3, f2)
-            x += '<td>%s%5.2f<br>%5.2f<br>%5.2f%s</td>\n' % (f1, L1, L2, L3, f2)
-            x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["tls_mean_temp_factor"], f2)
-            x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["tls_mean_anisotropy"], f2)
-            x += '</tr>\n'
-
-        x += '</table>\n'
-        return x
+        return html_tls_group_table(self.chainopt, self.tlsopt, self.ntls, "..")
 
     def html_translation_analysis(self):
         """Perform a translation analysis of the protein chain as

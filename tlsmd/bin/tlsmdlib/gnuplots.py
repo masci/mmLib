@@ -4,26 +4,19 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-###############################################################################
-## Report Directory Generation
-##
-
 import popen2
-
 ## mmLib
 from mmLib.Colors         import *
-
 ## tlsmdlib
 from misc                 import *
-
 
 class GNUPlot(object):
     """Provides useful methods for subclasses which need to run gnuplot.
     """
     def __init__(self, **args):
-        self.gnuplot_path = "gnuplot"
-        self.font_path    = GNUPLOT_FONT
-        self.font_size    = 10
+        self.gnuplot_path = args.get("gnuplot_path", "gnuplot")
+        self.font_path    = args.get("font_path", GNUPLOT_FONT)
+        self.font_size    = args.get("fontsize", 10)
         self.width        = args.get("width", 800)
         self.height       = args.get("height", 400)
         self.plot_path    = None
@@ -402,8 +395,7 @@ class FitAnalysis(GNUPlot):
         fil = open(filename, "w")
 
         for atm in tls_group:
-            if atm.name not in ["N", "CA", "C"]:
-                continue
+            if atm.name!="CA": continue
             
             b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
@@ -623,6 +615,7 @@ class BMeanPlot(GNUPlot):
         GNUPlot.__init__(self, **args)
         self.chainopt = chainopt
         self.tlsopt = tlsopt
+        self.tls_group_titles = True
         self.output_png()
 
     def make_script(self):
@@ -682,7 +675,11 @@ class BMeanPlot(GNUPlot):
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 1\n' % (ls, tls["color"]["rgbs"])
 
-            title = "%s-%s TLS" % (tls["frag_id1"], tls["frag_id2"])
+            if self.tls_group_titles:
+                title = 'title "%s-%s TLS"' % (tls["frag_id1"], tls["frag_id2"])
+            else:
+                title = 'notitle'
+                
             line_titles.append(title)
 
         ## plot list
@@ -697,7 +694,7 @@ class BMeanPlot(GNUPlot):
         ## second the TLS calculated bfactors
         for i in range(len(tlsopt.tls_list)):
             ls += 1
-            x = '"%s" using 1:%d title "%s" ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
+            x = '"%s" using 1:%d %s ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
             plist.append(x)
 
         script += "plot " + string.join(plist, ",\\\n\t") + "\n"

@@ -768,8 +768,6 @@ calc_isotropic_tls_parameters(double NL_ITLS[NL_ITLS_NUM_PARAMS], double ITLS[IT
     ITLS[i] = NL_ITLS[i];
   }
 
-  ITLS[ITLS_T] = NL_ITLS[NL_ITLS_T] * NL_ITLS[NL_ITLS_T];
-
   lx = fabs(NL_ITLS[NL_ITLS_LX]);
   ly = fabs(NL_ITLS[NL_ITLS_LY]);
   lz = fabs(NL_ITLS[NL_ITLS_LZ]);
@@ -816,7 +814,7 @@ calc_anisotropic_tls_parameters(double NL_ATLS[ATLS_NUM_PARAMS], double ATLS[ATL
 }
 
 inline void
-set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, double z, double Trmsd, double dNL[6][6])
+set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, double z, double dNL[6][6])
 {
 #define FA(__i, __j) A[__i + (m * __j)]
 
@@ -830,7 +828,7 @@ set_isotropic_jacobian(double *A, int m, int n, int row, double x, double y, dou
   yz = y*z;
 
   /* T iso */
-  FA(row, NL_ITLS_T) = 2.0 * Trmsd;
+  FA(row, NL_ITLS_T) = 1.0;
 
   /* Uiso = 1/3((zz+yy)L11 + 1/3(xx+zz)L22 + 1/3(xx+yy)L33 -2xyL12 -2xzL13 -2yzL23) */
   FA(row, NL_ITLS_LX) = ((zz+yy)*dNL[0][0] + (xx+zz)*dNL[1][0] + (xx+yy)*dNL[2][0] - 2.0*xy*dNL[3][0] - 2.0*xz*dNL[4][0] - 2.0*yz*dNL[5][0])/3.0;
@@ -1225,7 +1223,7 @@ isotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ITLS, double *A, int lda)
   row = 0;
   for (ia = istart; ia <= iend; ia++) {
     atom = &g_pFit->atoms[ia];
-    set_isotropic_jacobian(A, m, n, row, atom->xtls, atom->ytls, atom->ztls, NL_ITLS[NL_ITLS_T], dNL);
+    set_isotropic_jacobian(A, m, n, row, atom->xtls, atom->ytls, atom->ztls, dNL);
     row += 1;
   }
 }
