@@ -123,6 +123,7 @@ class TLSGraphChain(object):
         self.name = name
         self.tls_model = None
         self.model_parameters = 0
+        self.verbose = GLOBALS["VERBOSE"]
     
     def set_xmlrpc_chain(self, xmlrpc_chain):
         self.xchain = XChain(xmlrpc_chain)
@@ -160,8 +161,9 @@ class TLSGraphChain(object):
         ## return information
         fit_info["lsq_residual"] = fdict["lsq_residual"]
 
-        print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%8.6f, gammaq=%6.4f)" % (
-            self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"], fdict["gammaq"])
+        if self.verbose:
+            print "[%s] lsq_fit_segment(frag_id={%s..%s}, num_atoms=%d, lsqr=%8.6f, gammaq=%6.4f)" % (
+                self.name, frag_id1, frag_id2, fit_info["num_atoms"], fit_info["lsq_residual"], fdict["gammaq"])
 
         return fit_info
 

@@ -42,9 +42,6 @@ TSMALL = 0.1 * B2U
 ## L RMSD <= 0.1 DEG
 LSMALL = (0.1)**2 * DEG2RAD2
 
-NPARTS = 10
-
-
 ###############################################################################
 ## Globals
 ##
@@ -53,6 +50,7 @@ GLOBALS = {
     "WEIGHT_MODEL":        "UNIT",
     "INCLUDE_ATOMS":       "ALL",
     "MIN_SUBSEGMENT_SIZE": 6,
+    "VERBOSE"            : False,
 
     "VERSION":        "0.3.0",
     "RELEASE_DATE":   "Aug 10, 2005",
@@ -64,9 +62,16 @@ GLOBALS = {
     "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi"
     }
 
+## Font used by Python Imaging Library and GNUPlot
 TLSMD_ROOT   = "/home/jpaint/tlsmd"
 GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 
+## the isoprobability contour level for all
+## visualizations
+ADP_PROB = 85
+
+## number of TLS partitons for each chain
+NPARTS = 10
 
 ###############################################################################
 ## Utility Funcs
@@ -87,3 +92,45 @@ def begin_chain_timing(chain_id):
 
 def end_chain_timing(chain_id):
     print "END TIMING CHAIN %s %f" % (chain_id, time.time())
+
+def rgb_f2i(rgb):
+    """Transforms the float 0.0-1.0 RGB color values to
+    integer 0-255 RGB values.
+    """
+    r, g, b = rgb
+    ri = int(255.0 * r)
+    gi = int(255.0 * g)
+    bi = int(255.0 * b)
+    return (ri, gi, bi)
+
+class FragmentID(object):
+    """A fragment ID class acts a lot like a string, but separates the
+    res_seq and icode internally.
+    """
+    def __init__(self, frag_id):
+        self.res_seq = 1
+        self.icode = ""
+        try:
+            self.res_seq = int(frag_id)
+        except ValueError:
+            try:
+                self.res_seq = int(frag_id[:-1])
+            except ValueError:
+                pass
+            else:
+                self.icode = frag_id[-1]
+    def __str__(self):
+        return str(self.res_seq) + self.icode
+    def __lt__(self, other):
+        return (self.res_seq, self.icode) < (other.res_seq, other.icode)
+    def __le__(self, other):
+        return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
+    def __eq__(self, other):
+        return (self.res_seq, self.icode) == (other.res_seq, other.icode)
+    def __ne__(self, other):
+        return (self.res_seq, self.icode) != (other.res_seq, other.icode)
+    def __gt__(self, other):
+        return (self.res_seq, self.icode) > (other.res_seq, other.icode)
+    def __ge__(self, other):
+        return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
+

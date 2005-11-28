@@ -21,6 +21,7 @@ def usage():
     print
     print "Command Line Usage:"
     print "  tlsmd.py  [-t <num threads>]"
+    print "            [-v ] verbose output "
     print "            [-f <grid server config file>]"
     print "            [-x <URL of WebTLSMDD XMLRPC Server>]"
     print "            [-j <Job ID of WebTLSMDD Job>]"
@@ -66,6 +67,9 @@ def analysis_main(struct_path, opt_dict):
     chain_ids         = opt_dict.get("-c")
     gridconf_file     = opt_dict.get("-f")
     num_threads       = int(opt_dict.get("-t", 1))
+
+    if opt_dict.has_key("-v"):
+        misc.GLOBALS["VERBOSE"] = True
 
     if opt_dict.has_key("-x"):
         misc.GLOBALS["WEBTLSMDD"] = opt_dict["-x"]
@@ -122,7 +126,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:n")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:nv")
     except getopt.GetoptError:
         usage()
 

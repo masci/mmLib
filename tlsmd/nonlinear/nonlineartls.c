@@ -1093,7 +1093,7 @@ anisotropic_lmder1_fcn_R(int m, int n, double *NL_ATLS, double *R)
     atom = &g_pFit->atoms[ia];
     calc_anisotropic_Utls(ATLS, atom->xtls, atom->ytls, atom->ztls, U);
     for (j = 0; j < 6; j++) {
-      R[i] = U[j] - atom->U[j];
+      R[i] = atom->sqrt_weight * (U[j] - atom->U[j]);
       i++;
     }
   }
@@ -1185,7 +1185,7 @@ anisotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-8;
+  tol = 1E-3;
 
   /* lmder1(fcn,                  m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(anisotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ATLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);
@@ -1248,7 +1248,7 @@ isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
     atom = &g_pFit->atoms[ia];
     calc_isotropic_uiso(ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso_tls);
 
-    R[i] = u_iso_tls - atom->u_iso;
+    R[i] = atom->sqrt_weight * (u_iso_tls - atom->u_iso);
     i++;
   }
 }
@@ -1334,7 +1334,7 @@ isotropic_nonlinear_fit(struct TLSFit *fit)
 
   /* perform minimization */
   g_pFit = fit;
-  tol = 1E-8;
+  tol = 1E-3;
 
   /* lmder1(fcn,                m,       n,       x,            fvec, fjac, ldfjac,  tol,  info,  ipvt, wa, lwa) */
   lmder1_(isotropic_lmder1_fcn, &fit->m, &fit->n, fit->NL_ITLS, fvec, fjac, &fit->m, &tol, &info, ipvt, wa, &lwa);

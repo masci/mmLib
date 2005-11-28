@@ -104,6 +104,7 @@ struct Atom {
   char    name[NAME_LEN];             /* atom name */
   char    frag_id[FRAG_ID_LEN];       /* fragment id (residue name) */
   int     ifrag;                      /* fragment index */
+  int     ignore;                     /* ignore this atom */
   double  x, y, z;
   double  xtls, ytls, ztls;
   double  u_iso;
@@ -1035,16 +1036,33 @@ linear_isotropic_fit_parameters_infit(struct TLSFitContext *fit)
   }
 }
 
+/* return 1 if the atom is a mainchain atom */
+inline int
+pin_atom(struct Atom *atoms, int ia)
+{
+  if (strcmp(atoms[ia].name,"CA")==0) return 1;
+  if (strcmp(atoms[ia].name,"C")==0)  return 1;
+  if (strcmp(atoms[ia].name,"N")==0)  return 1;
+  if (strcmp(atoms[ia].name,"O")==0)  return 1;
+  if (strcmp(atoms[ia].name,"CB")==0)  return 1;
+
+  return 0;
+}
+
 static void
 linear_isotropic_fit_segment(struct TLSFitContext *fit)
 {
-  int ia, istart, iend, num_atoms, num_residues, ia_res_start;
+#define USE_PINNED 0
+
+  int ia, istart, iend, num_atoms, num_residues, ia_res_start, num_pinned_atoms;
   double ox, oy, oz;
-  double u_iso_tls, delta, u_iso_sum, chi2, sqrt_weight, tmp;
+  double u_iso_tls, delta, u_iso_sum, chi2, sqrt_weight, sum_weight, lad, tmp;
   struct Atom *atoms;
 
-  int pin_residues;
-  int num_pin_residues = 1;
+  int num_pinned_residues;
+
+  int max_pinned_residues = 1;
+  double pinned_atom_weight_mult = 1.0;
 
 
   /* optimization */
@@ -1052,55 +1070,14 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   istart = fit->istart;
   iend   = fit->iend;
 
-  /* fit TLS parameters */
-  linear_isotropic_fit_parameters(fit);
-
   ox = fit->ox;
   oy = fit->oy;
   oz = fit->oz;
 
-  /* save original atom weights */
-  for (ia = istart; ia <= iend; ia++) {
-    atoms[ia].sqrt_weight_tmp = atoms[ia].sqrt_weight;
-    atoms[ia].pinned = 0;
-  }
-
-  /* temporarily up-weight the residues at the beginning and end of the segment */
-  pin_residues = 1;
-  ia_res_start = istart;
-  for (ia = istart; ia <= iend; ia++) {
-    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
-      pin_residues++;
-      ia_res_start = ia;
-      if (pin_residues > num_pin_residues) break;
-    }
-
-    if (!atom_is_mainchain(atoms, ia)) continue;
-    atoms[ia].sqrt_weight *= 100.0;
-    atoms[ia].pinned = 1;
-  }
-
-  pin_residues = 1;
-  ia_res_start = iend;
-  for (ia = iend; ia >= istart; ia--) {
-    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
-      pin_residues++;
-      ia_res_start = ia;
-      if (pin_residues > num_pin_residues) break;
-    }
-
-    if (!atom_is_mainchain(atoms, ia)) continue;
-    atoms[ia].sqrt_weight *= 100.0;
-    atoms[ia].pinned = 1;
-  }
-
-  /* calculate residual */
+  /* initialize atoms in the segment */
   num_atoms = 0;
+  sum_weight = 0.0;
   num_residues = 1;
-
-  chi2 = 0.0;
-  u_iso_sum = 0.0;
-
   ia_res_start = istart;
 
   for (ia = istart; ia <= iend; ia++) {
@@ -1110,10 +1087,70 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
       ia_res_start = ia;
     }
 
-    /* skip 0-weight atoms */
-    if (atoms[ia].sqrt_weight == 0.0) continue;
+    atoms[ia].ignore = 0;
+    atoms[ia].sqrt_weight_tmp = atoms[ia].sqrt_weight;
+    atoms[ia].pinned = 0;
 
     num_atoms++;
+    sum_weight += atoms[ia].sqrt_weight;
+  }
+
+#if USE_PINNED
+  /* temporarily up-weight the residues at the beginning and end of the segment */
+  num_pinned_atoms = 1;
+
+  /* pin residues at the begnning of the segment */
+  num_pinned_residues = 1;
+  ia_res_start = istart;
+
+  for (ia = istart; ia <= iend; ia++) {
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      num_pinned_residues++;
+      if (num_pinned_residues > max_pinned_residues) break;
+      ia_res_start = ia;
+    }
+
+    if (!pin_atom(atoms, ia)) continue;
+
+    num_pinned_atoms++;
+    atoms[ia].sqrt_weight *= pinned_atom_weight_mult;
+    atoms[ia].pinned = 1;
+  }
+
+  /* pin residues at the end of the segment */
+  num_pinned_residues = 1;
+  ia_res_start = iend;
+
+  for (ia = iend; ia >= istart; ia--) {
+    if (strcmp(atoms[ia_res_start].frag_id, atoms[ia].frag_id)!=0) {
+      num_pinned_residues++;
+      if (num_pinned_residues > max_pinned_residues) break;
+      ia_res_start = ia;
+    }
+
+    if (!pin_atom(atoms, ia)) continue;
+   
+    num_pinned_atoms++;
+    atoms[ia].sqrt_weight *= pinned_atom_weight_mult;
+    atoms[ia].pinned = 1;
+  }
+#endif
+
+  /* fit TLS parameters */
+  linear_isotropic_fit_parameters(fit);
+
+  ox = fit->ox;
+  oy = fit->oy;
+  oz = fit->oz;
+
+  /* calculate residual */
+  lad = 0.0;
+  chi2 = 0.0;
+  u_iso_sum = 0.0;
+
+  for (ia = istart; ia <= iend; ia++) {
+    if (atoms[ia].ignore) continue;
+
     calc_isotropic_uiso(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, &u_iso_tls);
     delta = u_iso_tls - atoms[ia].u_iso;
 
@@ -1121,7 +1158,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
     u_iso_sum += u_iso_tls;
 
     if (atoms[ia].pinned) {
-      sqrt_weight = atoms[ia].sqrt_weight_tmp;
+      sqrt_weight = atoms[ia].sqrt_weight;
     } else {
       sqrt_weight = atoms[ia].sqrt_weight;
     }
@@ -1129,18 +1166,23 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
     /* calculate chi squared */
     tmp = sqrt_weight * delta;
     chi2 += tmp * tmp;
+
+    /* least absolute deviation */
+    lad += sqrt_weight * fabs(delta);
   }
 
   fit->u_iso_sum = u_iso_sum;
   fit->ilsqr = num_residues * (chi2 / (num_atoms - ITLS_NUM_PARAMS));
 
+  /* gammaq(0.5 * (num_atoms - ITLS_NUM_PARAMS), 0.5 * chi2, &fit->gammaq); */
   fit->gammaq = 0.0;
-  /* gammaq(0.5 * (num_atoms - ITLS_NUM_PARAMS), 0.5 * chi2, &fit->gammaq);*/
 
   /* restore weights */
+#if USE_PINNED
   for (ia = istart; ia <= iend; ia++) {
     atoms[ia].sqrt_weight = atoms[ia].sqrt_weight_tmp;
   }
+#endif
 }
 
 
