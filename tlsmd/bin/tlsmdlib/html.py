@@ -1305,8 +1305,8 @@ class ChainNTLSAnalysisReport(Report):
         x += self.html_bmean()
         x += self.html_translation_analysis()
         x += self.html_libration_analysis()
-        x += self.html_fit_analysis()
-        x += self.html_cross_prediction_analysis()
+        x += self.html_ca_differance()
+        x += self.html_rmsd_plot()
         
         for tls in self.tlsopt.tls_list:
             ## don't write out bypass edges
@@ -1355,17 +1355,17 @@ class ChainNTLSAnalysisReport(Report):
         
         return x
 
-    def html_fit_analysis(self):
+    def html_ca_differance(self):
         """Perform a fit analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
         x  = ''
-        x += '<center><h3>Deviation of Observed Mainchain B-Factors From Rigid Body</h3></center>\n'
+        x += '<center><h3>Deviation of Observed Mainchain B-Factors From Rigid Body Model</h3></center>\n'
 
-        fit_analysis = FitAnalysis(self.chainopt, self.tlsopt)
+        plot = CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
         
         x += '<center>'
-        x += '<img src="%s" alt="Fit Analysis">' % (fit_analysis.png_path)
+        x += '<img src="%s" alt="CA Differance">' % (plot.png_path)
         x += '</center>\n'
         x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
 
@@ -1384,14 +1384,14 @@ class ChainNTLSAnalysisReport(Report):
 
         return x
 
-    def html_cross_prediction_analysis(self):
+    def html_rmsd_plot(self):
         x  = ''
-        x += '<center><h3>TLS Group Cross-Prediction Analysis</h3></center>\n'
+        x += '<center><h3>Residue RMSD Analysis</h3></center>\n'
 
-        analysis = CrossPredictionAnalysis(self.chainopt, self.tlsopt)
+        rmsd_plot = RMSDPlot(self.chainopt, self.tlsopt)
         
         x += '<center>'
-        x += '<img src="%s" alt="Cross Prediction Analysis">' % (analysis.png_path)
+        x += '<img src="%s" alt="RMSD">' % (rmsd_plot.png_path)
         x += '</center>\n'
         x += '<p>Nothing Here Yet</p>'
 
