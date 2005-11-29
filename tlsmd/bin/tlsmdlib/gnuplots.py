@@ -673,7 +673,7 @@ class BMeanPlot(GNUPlot):
         
         for tls in tlsopt.tls_list:
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 1\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 2\n' % (ls, tls["color"]["rgbs"])
 
             if self.tls_group_titles:
                 title = 'title "%s-%s TLS"' % (tls["frag_id1"], tls["frag_id2"])

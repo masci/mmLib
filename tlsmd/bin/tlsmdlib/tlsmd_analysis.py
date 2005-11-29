@@ -102,11 +102,10 @@ def calc_include_atom(atm, reject_messages=False):
 def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
-    ## estimate B-factor error at 20% of its magnitude at a B-value of 60.0
     if atm.name in MAINCHAIN_ATOMS:
         sigma = 1.0 + (0.05 * atm.temp_factor)
     else:
-        sigma = 3.0 + (0.20 / 60.0) * atm.temp_factor**2
+        sigma = 3.0 + (0.50 / 60.0) * atm.temp_factor**2
 
     sigma_u = B2U * sigma
     weight = 1.0 / sigma_u**2

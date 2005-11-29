@@ -18,7 +18,7 @@ from captions             import *
 
 ## target pixel width, height, and spacing of sequence
 ## alignment plots
-ALIGN_TARGET_WIDTH = 800
+ALIGN_TARGET_WIDTH = 640
 ALIGN_HEIGHT       = 15
 ALIGN_SPACING      = 5
 
@@ -28,15 +28,20 @@ class TLSSegmentAlignmentPlot(object):
                and hash all chain+frag_id->tls color
        Step 2: generate graphs
     """
-    def __init__(self):
+    def __init__(self, **args):
         ## border pixels
-        self.border_width = 7
+        self.border_width = args.get("border_width", 10)
+
         ## bars are 15 pixels height
         self.pheight    = ALIGN_HEIGHT
+        
         ## spacing pixels between stacked bars
+
         self.spacing    = ALIGN_SPACING
+
         ## background color
         self.bg_color   = rgb_f2i((0.90, 0.90, 0.90))
+
         ## height of the x-axis scale
         self.xscale_height = 20
         
