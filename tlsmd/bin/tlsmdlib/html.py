@@ -90,8 +90,12 @@ def calc_orientation(struct, chain):
         for fragx in sobjx.iter_amino_acids():
             for atmx in fragx.iter_atoms():
                 if atmx.name=="CA": yield atmx
-                
-    centroid, R = calc_inertia_tensor(iter_protein_atoms(chain))
+
+    centroids, Rs = calc_inertia_tensor(iter_protein_atoms(struct))
+    centroidc, Rc = calc_inertia_tensor(iter_protein_atoms(chain))
+
+    R = Rs
+    centroid = centroidc
 
     ## now calculate a rectangular box
     first_atm = True
@@ -809,28 +813,24 @@ class HTMLReport(Report):
             if show_chain.get(gl_chain.chain.chain_id, False)==False:
                 gl_chain.properties.update(visible=False)
                 continue
-            
-            gl_chain.properties.update(
-                oatm_visible       = False,
-                side_chain_visible = False,
-                hetatm_visible     = True,
-                color              = "0.20,0.20,0.20",
-                lines              = False,
-                ball_stick         = False,
-                trace              = True,
-                trace_radius       = 0.20,
-                trace_color         = "0.20,0.20,0.20", )
 
-            ## make chains other than the one we are analyizing visible,
-            ## but pale
-            if gl_chain.chain.chain_id!=chain_id:
+            if gl_chain.chain.chain_id==chain_id:
+                gl_chain.properties.update(
+                    oatm_visible       = False,
+                    side_chain_visible = False,
+                    hetatm_visible     = True,
+                    color              = "0.20,0.20,0.20",
+                    lines              = False,
+                    ball_stick         = False,
+                    trace              = True,
+                    trace_radius       = 0.20,
+                    trace_color         = "0.20,0.20,0.20", )
+            else:
                 gl_chain.properties.update(
                     visible       = True,
                     ball_stick    = False,
-                    trace         = True,
-                    trace_radius  = 0.40,
-                    trace_color   = "0.9,0.9,0.9")
-
+                    cpk           = True)
+                
         ## add the TLS group visualizations
         for tls in tlsopt.tls_list:
             if tls["method"]!="TLS":

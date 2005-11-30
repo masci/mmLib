@@ -72,7 +72,7 @@ def calc_include_atom(atm, reject_messages=False):
     """Filter out atoms from the model which will cause problems or
     cont contribute to the TLS analysis.
     """
-    if atm.occupancy<0.5:
+    if atm.occupancy<0.1:
         if reject_messages==True:
             print "calc_include_atom(%s): rejected because of low occupancy" % (atm)
 	return False
@@ -103,9 +103,10 @@ def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
     if atm.name in MAINCHAIN_ATOMS:
-        sigma = 1.0 + (0.05 * atm.temp_factor)
+        sigma = 1.0 + (0.10 * atm.temp_factor)
+        sigma = 2.0
     else:
-        sigma = 3.0 + (0.50 / 60.0) * atm.temp_factor**2
+        sigma = 5.0 + (0.50 / 60.0) * atm.temp_factor**2
 
     sigma_u = B2U * sigma
     weight = 1.0 / sigma_u**2
@@ -869,7 +870,6 @@ class TLSMDAnalysis(object):
         ## select viable chains for TLS analysis
         segments = []
         
-        
         for chain in self.struct.iter_chains():
             ## if self.sel_chain_ids is set, then only use those
             ## selected chain ids
@@ -890,15 +890,7 @@ class TLSMDAnalysis(object):
                 frag_id2 = aa.fragment_id
                 
             segment = chain[frag_id1:frag_id2]
-
-            import copy
-
-            segment2 = Segment(chain_id = segment.chain_id)
-            for atm in segment.iter_all_atoms():
-                if calc_include_atom(atm):
-                    segment2.add_atom(copy.deepcopy(atm))
-
-            segments.append(segment2)
+            segments.append(segment)
         
         self.chains = segments
         
