@@ -1073,7 +1073,7 @@ linear_anisotropic_fit_parameters(struct TLSFitContext *fit)
 static void
 linear_anisotropic_fit_segment(struct TLSFitContext *fit)
 {
-  int i, num_atoms, num_residues, ia, istart, iend, ia_res_start;
+  int num_atoms, num_residues, ia, istart, iend, ia_res_start;
   double ox, oy, oz;
   double Utls[6], delta, sum_weight, chi2, tmp; 
   struct Atom *atoms;
@@ -1109,15 +1109,12 @@ linear_anisotropic_fit_segment(struct TLSFitContext *fit)
   chi2 = 0.0;
 
   for (ia = istart; ia <= iend; ia++) {
-    calc_anisotropic_Utls(fit->ITLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
+    calc_anisotropic_Utls(fit->ATLS, atoms[ia].x-ox, atoms[ia].y-oy, atoms[ia].z-oz, Utls);
 
-    for (i = 0; i < 6; i++) {
-      delta = Utls[i] - atoms[ia].U[i];
-
-      /* calculate chi squared */
-      tmp = atoms[ia].sqrt_weight * delta;
-      chi2 += tmp * tmp;
-    }
+    /* calculate a isotropic residual */
+    delta = ((Utls[0] + Utls[1] + Utls[2]) / 3.0) - ((atoms[ia].U[0] + atoms[ia].U[1] + atoms[ia].U[2]) / 3.0);
+    tmp = atoms[ia].sqrt_weight * delta;
+    chi2 += tmp * tmp;
   }
 
   fit->alsqr = num_residues * (chi2 / sum_weight);

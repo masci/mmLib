@@ -90,7 +90,7 @@ def calc_orientation(struct, chain):
     def iter_protein_atoms(sobjx):
         for fragx in sobjx.iter_amino_acids():
             for atmx in fragx.iter_atoms():
-                if atmx.name=="CA": yield atmx
+                if atmx.name in ["N","CA","C","O","CB"]: yield atmx
 
     centroids, Rs = calc_inertia_tensor(iter_protein_atoms(struct))
     centroidc, Rc = calc_inertia_tensor(iter_protein_atoms(chain))
