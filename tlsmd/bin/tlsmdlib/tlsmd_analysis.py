@@ -103,8 +103,7 @@ def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
     if atm.name in MAINCHAIN_ATOMS:
-        sigma = 1.0 + (0.10 * atm.temp_factor)
-        sigma = 2.0
+        sigma = 2.0 + (0.05 * atm.temp_factor)
     else:
         sigma = 5.0 + (0.50 / 60.0) * atm.temp_factor**2
 
@@ -417,6 +416,20 @@ class TLSOptimization(object):
         self.tls_list        = []
         self.residual        = 0.0
 
+    def add_tls_segment(self, tls):
+        """The argument tls is a dictionary containing a bunch of great information
+        about the TLS segment which is part of the optimal partitioning.
+        """
+        self.tls_list.append(tls)
+        self.residual += tls["lsq_residual"]
+
+    def normalize_residual(self):
+        """Devide the residual by the number of residues in the chain and
+        convert from A^2 units to B units.
+        """
+        nres = len(self.chain)
+        self.residual = U2B * math.sqrt(self.residual / nres)
+
     def is_valid(self):
         """Return True if the optimization is valid; otherwise, return False.
         """
@@ -548,13 +561,14 @@ class TLSChainMinimizer(HCSSSP):
             if edge==None: continue
             
             i, j, cost, frag_range = edge
-            tlsopt.residual += cost
             
             ## check if the edge is a bypass-edge type
             if len(frag_range)==2:
                 print "    Fitting Chain Segment %s-%s" % (frag_range[0], frag_range[1])
                 tls = self.__calc_tls_record_from_edge(edge)
-                tlsopt.tls_list.append(tls)
+                tlsopt.add_tls_segment(tls)
+
+        tlsopt.normalize_residual()
 
         return tlsopt
 

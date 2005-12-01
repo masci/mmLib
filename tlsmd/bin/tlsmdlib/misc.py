@@ -59,7 +59,9 @@ GLOBALS = {
 
     "WEBTLSMDD":      None,
     "JOB_ID":         None,
-    "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi"
+    "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi",
+
+    "START_TIME":     time.time()
     }
 
 ## Font used by Python Imaging Library and GNUPlot

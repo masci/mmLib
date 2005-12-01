@@ -18,7 +18,7 @@ from captions             import *
 
 ## target pixel width, height, and spacing of sequence
 ## alignment plots
-ALIGN_TARGET_WIDTH = 640
+ALIGN_TARGET_WIDTH = 500
 ALIGN_HEIGHT       = 15
 ALIGN_SPACING      = 5
 

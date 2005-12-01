@@ -9,6 +9,7 @@
 ##
 
 import popen2
+import time
 
 ## Python Imaging Library imports
 import Image
@@ -30,7 +31,7 @@ from gnuplots             import *
 JMOL_DIR = "../../../jmol"
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 600
+VIS_WIDTH = 550
 
 ## the JMol viewer is a square window, generated with this pixel size
 JMOL_SIZE = 600
@@ -247,41 +248,42 @@ class Report(object):
     def html_head(self, title):
         """Header for all HTML pages.
         """
-        x  = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
-        x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
-        
+        x  = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n\n'
         x += '<html>\n'
         x += '<head>\n'
         x += '  <title>%s</title>\n' % (title)
-        x += '  <style type="text/css" media=screen>\n'
+        x += '  <style type="text/css" media="screen">\n'
         x += '  <!-- \n'
-        x += '  BODY {background-color:white;'
-        x += '        margin-left:5%;margin-right:5%;'
-        x += '        border-left:5%;border-right:5%;'
-        x += '        margin-top:2%;border-top:2%;}\n'
+        x += '  BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}\n'
         x += '  -->\n'
         x += '  </style>\n'
-
         x += '</head>\n'
         x += '<body>\n'
         return x
 
     def html_title(self, title):
-        x  = ''
-        x += '<center>'
-        x += '<h1>%s</h1>' % (title)
-        x += '</center>'
+        timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
+        
+        x  = '<table border="0" width="100%" style="background-color:#eeeeee"><tr>'
+        x += '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr)
+        x += '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"])
+        x += '</tr></table>'
+
+        x += '<center><font size="+3">%s</font></center>' % (title)
+        
         return x
 
     def html_foot(self):
         """Footer for all HTML pages.
         """
-        x  = ''
-        x += '<br>'
-        x += '<center><small>'
-        x += 'TLSMD Version v%s Released %s ' % (GLOBALS["VERSION"], GLOBALS["RELEASE_DATE"])
-        x += 'by %s <i>%s</i>' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"])
-        x += '</small></center>'
+        timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
+        
+        x  = '<table border="0" width="100%" style="background-color:#eeeeee"><tr>'
+        x += '<td align="left"><font size="-5">%s</font></td>' % (timestr)
+        x += '<td align="right"><font size="-5">Released by %s <i>%s</i> on %s' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"], GLOBALS["RELEASE_DATE"])
+        x += '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"])
+        x += '</tr></table>'
+        
         x += '</body></html>\n'
         return x
 
@@ -637,11 +639,11 @@ class HTMLReport(Report):
         plot.plot(plot_path)
 
         x  = ''
-        x += '<center><h3>Chain %s TLS Segment Sequence Alignment</h3></center>\n' % (chainopt["chain_id"])
+        x += '<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>\n' % (chainopt["chain_id"])
         x += '<center>'
         x += '<table border="0" style="background-color:#dddddd">'
-        x += '<tr><th>TLS Groups</th>'
-        x += '<th>Chain %s Sequence Alignment</th></tr>'% (chainopt["chain_id"])
+        x += '<tr><th># of TLS<br>Groups</th>'
+        x += '<th>Segment/Sequence Alignment</th></tr>'
         x += '<tr>'
         
         x += '<td align="right">'
@@ -737,8 +739,8 @@ class HTMLReport(Report):
         x += '</th></tr>'
 
         ## BMean Plot
-        ntls_analysis.bmean_plot.width = 800
-        ntls_analysis.bmean_plot.height = 300
+        ntls_analysis.bmean_plot.width = 640
+        ntls_analysis.bmean_plot.height = 250
         ntls_analysis.bmean_plot.tls_group_titles = False
         ntls_analysis.bmean_plot.output_png()
         

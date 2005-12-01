@@ -21,8 +21,8 @@ class GNUPlot(object):
         self.gnuplot_path = args.get("gnuplot_path", "gnuplot")
         self.font_path    = args.get("font_path", GNUPLOT_FONT)
         self.font_size    = args.get("fontsize", 10)
-        self.width        = args.get("width", 800)
-        self.height       = args.get("height", 400)
+        self.width        = args.get("width", 640)
+        self.height       = args.get("height", 480)
         self.plot_path    = None
         self.png_path     = None
 
