@@ -892,7 +892,7 @@ class TLSMDAnalysis(object):
                     continue
 
             ## count the number of amino acid residues in the chain
-            if chain.count_amino_acids()<MIN_SUBSEGMENT_SIZE:
+            if chain.count_amino_acids()<10:
                 continue
 
             ## ok, use the chain but use a segment and cut off

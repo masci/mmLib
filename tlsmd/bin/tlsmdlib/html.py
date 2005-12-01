@@ -280,7 +280,7 @@ class Report(object):
         
         x  = '<table border="0" width="100%" style="background-color:#eeeeee"><tr>'
         x += '<td align="left"><font size="-5">%s</font></td>' % (timestr)
-        x += '<td align="right"><font size="-5">Released by %s <i>%s</i> on %s' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"], GLOBALS["RELEASE_DATE"])
+        x += '<td align="center"><font size="-5">Released by %s <i>%s</i> on %s</font></td>' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"], GLOBALS["RELEASE_DATE"])
         x += '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"])
         x += '</tr></table>'
         
@@ -434,12 +434,13 @@ class HTMLReport(Report):
         ## a report page comparing the tls group segments of all
         ## chains against each other
         self.write_multi_chain_alignment(chainopt_list)
-        self.write_refinement_prep(chainopt_list)
 
         ## write out all TLSGraph reports
         for chainopt in chainopt_list:
             self.write_tls_chain_optimization(chainopt)
 
+        self.write_refinement_prep(chainopt_list)
+ 
         ## write out index page
         self.write_index()
 

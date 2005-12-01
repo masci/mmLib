@@ -138,8 +138,8 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain_id)
             x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (filename, chain_id)
             plist.append(x)
+            
         script += "plot " + string.join(plist, ",\\\n\t") + "\n"
-
         return script
 
 
@@ -741,7 +741,7 @@ def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
 _RMSD_PLOT_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
-set ylabel "RMSD B^2"
+set ylabel "RMSD B"
 set format y "%5.2f"
 set title "<title>"
 set datafile missing "?"

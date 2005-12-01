@@ -42,7 +42,7 @@ The optimized TLS groups calculated by TLSMD from a isotropically refined struct
 """
 
 LSQR_CAPTION = """\
-TLSMD selects the optimal partition of a chain into <N> TLS groups by minimizing
+TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups by minimizing
 an overall residual function.
 This plot shows the value of the residual as a function of the number
 of TLS groups allowed in the partition.
