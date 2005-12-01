@@ -48,7 +48,7 @@ This plot shows the value of the residual as a function of the number
 of TLS groups allowed in the partition.
 Adding additional TLS groups will always make this residual lower, but there
 is an issue of diminishing returns as you go to larger numbers of groups.
-The details of each optimal <N> group partition are analyzed below.
+The individual TLS segments are analyzed below.
 """
 
 SEG_ALIGN_CAPTION = """\

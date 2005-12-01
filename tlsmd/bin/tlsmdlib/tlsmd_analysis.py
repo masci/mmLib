@@ -90,12 +90,6 @@ def calc_include_atom(atm, reject_messages=False):
             if reject_messages==True:
                 print "calc_include_atom(%s): rejected non-mainchain atom" % (atm)
             return False
-
-    elif INCLUDE_ATOMS=="CA":
-        if atm.name!="CA":
-            if reject_messages==True:
-                print "calc_include_atom(%s): rejected non-CA atom" % (atm)
-            return False
     
     return True
 
