@@ -13,7 +13,6 @@ from mmLib.Colors         import *
 from misc                 import *
 
 
-
 class GNUPlot(object):
     """Provides useful methods for subclasses which need to run gnuplot.
     """
@@ -57,7 +56,7 @@ class GNUPlot(object):
         stdout.close()
         stderr.close()
 
-        
+
 
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
@@ -164,11 +163,9 @@ class TranslationAnalysis(GNUPlot):
         
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
         self.png_path = "%s.png" % (basename)
+        self.txt_path = "%s.txt" % (basename)
 
-        data_file_list = []
-        for tls in tlsopt.tls_list:
-            filename = self.write_data_file(chainopt, tls)
-            data_file_list.append(filename)
+        self.write_data_file(tlsopt)
 
         script = _TRANSLATION_ANALYSIS_TEMPLATE
         script = script.replace("<xrng1>", tlsopt.tls_list[0]["frag_id1"])
@@ -184,46 +181,55 @@ class TranslationAnalysis(GNUPlot):
         ## plot list
         plist = []
         ls = 0
-        for filename in data_file_list:
+        for itls in range(len(tlsopt.tls_list)):
             ls += 1
-            for n in (2,3,4):
-                x = '"%s" using 1:%d notitle ls %d with lines' % (filename, n, ls)
+            
+            for n in (0,1,2):
+                col = 2 + 3*itls + n
+                x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (self.txt_path, col , ls)
                 plist.append(x)
 
         script += "plot " + string.join(plist, ",\\\n\t") + "\n"
            
         return script
 
-    def write_data_file(self, chainopt, tls):
+    def write_data_file(self, tlsopt):
         """Generate the data file and return the filename.
         """
-        tls_group = tls["tls_group"]
-        tls_info  = tls["model_tls_info"]
+        fil = open(self.txt_path, "w")
 
-        ## generate a sorted list of fragment IDs from the TLS group atoms
-        fid_list = []
-        for atm in tls_group:
-            fid = FragmentID(atm.fragment_id)
-            if fid not in fid_list:
-                fid_list.append(fid)
-        fid_list.sort()
+        ncols = 1 + 3*len(tlsopt.tls_list)
 
-        ## determine Tr translational eigenvalues
-        t1 = GAUSS3C[ADP_PROB] * tls_info["Tr1_rmsd"]
-        t2 = GAUSS3C[ADP_PROB] * tls_info["Tr2_rmsd"]
-        t3 = GAUSS3C[ADP_PROB] * tls_info["Tr3_rmsd"]
-        
-        ## write data file
-        filename  = "%s_CHAIN%s_TLS%s_%s_TRANSLATION.txt" % (
-            chainopt["struct_id"], chainopt["chain_id"], tls["frag_id1"], tls["frag_id2"])
+        for itls in range(len(tlsopt.tls_list)):
+            tls = tlsopt.tls_list[itls]
 
-        fil = open(filename, "w")
-        for fid in fid_list:
-            fil.write("%s %f %f %f\n" % (fid, t1, t2, t3))
+            tls_group = tls["tls_group"]
+            tls_info  = tls["model_tls_info"]
+            O         = tls_info["COR"]
+
+            for atm in tls_group:
+                if atm.name!="CA": continue
+
+                try:
+                    ifrag = int(str(atm.fragment_id))
+                except ValueError:
+                    continue
+                
+                cols = ["?" for x in range(ncols)]
+                cols[0] = str(ifrag)
+
+                ## determine Tr translational eigenvalues
+                t1 = GAUSS3C[ADP_PROB] * tls_info["Tr1_rmsd"]
+                t2 = GAUSS3C[ADP_PROB] * tls_info["Tr2_rmsd"]
+                t3 = GAUSS3C[ADP_PROB] * tls_info["Tr3_rmsd"]
+
+                if t1>0.0: cols[1 + 3*itls] = "%6.4f" % (t1)
+                if t2>0.0: cols[2 + 3*itls] = "%6.4f" % (t2)
+                if t3>0.0: cols[3 + 3*itls] = "%6.4f" % (t3)
+                
+                fil.write(string.join(cols) + "\n")
+
         fil.close()
-
-        return filename
-
 
 
 _LIBRATION_ANALYSIS_TEMPLATE = """\

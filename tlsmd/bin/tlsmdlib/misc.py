@@ -73,7 +73,7 @@ GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 ADP_PROB = 85
 
 ## number of TLS partitons for each chain
-NPARTS = 10
+NPARTS = 25
 
 ###############################################################################
 ## Utility Funcs

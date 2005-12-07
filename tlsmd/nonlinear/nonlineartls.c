@@ -1091,7 +1091,7 @@ anisotropic_lmder1_fcn_R(int m, int n, double *NL_ATLS, double *R)
     atom = &g_pFit->atoms[ia];
     calc_anisotropic_Utls(ATLS, atom->xtls, atom->ytls, atom->ztls, U);
     for (j = 0; j < 6; j++) {
-      R[i] = atom->sqrt_weight * (U[j] - atom->U[j]);
+      R[i] = U[j] - atom->U[j];
       i++;
     }
   }
@@ -1246,7 +1246,7 @@ isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R)
     atom = &g_pFit->atoms[ia];
     calc_isotropic_uiso(ITLS, atom->xtls, atom->ytls, atom->ztls, &u_iso_tls);
 
-    R[i] = atom->sqrt_weight * (u_iso_tls - atom->u_iso);
+    R[i] = u_iso_tls - atom->u_iso;
     i++;
   }
 }

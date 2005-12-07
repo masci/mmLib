@@ -97,12 +97,14 @@ def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
     if atm.name in MAINCHAIN_ATOMS:
-        sigma = 2.0 + (0.05 * atm.temp_factor)
+        sigma = 2.0 + 0.10 * atm.temp_factor
     else:
         sigma = 5.0 + (0.50 / 60.0) * atm.temp_factor**2
 
     sigma_u = B2U * sigma
     weight = 1.0 / sigma_u**2
+
+    weight = 1.0
 
     return weight * atm.occupancy
 
@@ -110,7 +112,8 @@ def calc_num_subsegments(n, m):
     """Calculates the number of possible subsegment for the chain of length n and minimum
     subsegment length m.
     """
-    return (n**2 + m**2 - 2*n*m - n + m) / 2
+    m = m-1
+    return (n*(n+1))/2 - (m*n - (m*(m+1))/2 + m)
 
 def iter_ij(num_vertex, min_len):
     """Iterates over the i,j vertex indexes defining the edges
@@ -397,7 +400,7 @@ class TLSChainProcessor(object):
             analysis.tlsmdfile.grh_append_tls_record(fit_info)
 
         print
-        print "NUMBER OF CHAIN SUBSEGMENTS FIT WITH TLS PARAMETERS: %d" % (self.num_subsegments)
+        print "NUMBER OF CHAIN SUBSEGMENTS FIT WITH TLS PARAMETERS: (%d/%d)" % (self.num_subsegments, self.total_num_subsegments)
 
 
 class TLSOptimization(object):
