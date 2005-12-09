@@ -103,7 +103,7 @@ def calc_atom_weight(atm):
 
 ##     sigma_u = B2U * sigma
 ##     weight = 1.0 / sigma_u**2
-    assert atm.occupancy >= 0.0 and atm.occupancy < 1.0
+    assert atm.occupancy >= 0.0 and atm.occupancy <= 1.0
     return atm.occupancy
 
 def calc_num_subsegments(n, m):
