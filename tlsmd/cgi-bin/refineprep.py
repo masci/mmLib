@@ -30,6 +30,12 @@ TLSIN file. Feed these to REFMAC5 as a start point for  multi-TLS group refineme
 See the TLSMD documentation for detailed instructions.
 """
 
+class UInvalid(Exception):
+    """Exception raised if a anisotropic ADP U is not positive definite.
+    """
+    def __init__(self, atom, U):
+        print "%s eigenvalues(%s)" % (str(atom), str(eigenvalues(U))) 
+
 
 def refmac5_prep(pdbin, tlsins, pdbout, tlsout):
     os.umask(022)
@@ -56,7 +62,8 @@ def refmac5_prep(pdbin, tlsins, pdbout, tlsout):
     ## individual atoms
     for tls_group in tls_group_list:
         for atm, U in tls_group.iter_atm_Utls():
-            assert min(eigenvalues(U))>0.0
+            if min(eigenvalues(U)) < 0.0:
+                raise UInvalid(atm, U)
 
         ## leave some B magnitude in the file for refinement
         (tevals, R) = eigenvectors(tls_group.T)
