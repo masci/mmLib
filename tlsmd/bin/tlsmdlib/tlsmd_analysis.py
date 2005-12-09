@@ -96,17 +96,15 @@ def calc_include_atom(atm, reject_messages=False):
 def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
-    if atm.name in MAINCHAIN_ATOMS:
-        sigma = 2.0 + 0.10 * atm.temp_factor
-    else:
-        sigma = 5.0 + (0.50 / 60.0) * atm.temp_factor**2
+##     if atm.name in MAINCHAIN_ATOMS:
+##         sigma = 2.0 + 0.10 * atm.temp_factor
+##     else:
+##         sigma = 5.0 + (0.50 / 60.0) * atm.temp_factor**2
 
-    sigma_u = B2U * sigma
-    weight = 1.0 / sigma_u**2
-
-    weight = 1.0
-
-    return weight * atm.occupancy
+##     sigma_u = B2U * sigma
+##     weight = 1.0 / sigma_u**2
+    assert atm.occupancy >= 0.0 and atm.occupancy < 1.0
+    return atm.occupancy
 
 def calc_num_subsegments(n, m):
     """Calculates the number of possible subsegment for the chain of length n and minimum
