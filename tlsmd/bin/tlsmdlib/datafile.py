@@ -9,12 +9,7 @@ import cPickle
 import bsddb
 from misc import *
 
-SAVEKEYS = [
-    "error", "lsq_residual", "method", "num_atoms",
-    "cor_x", "cor_y", "cor_z",
-    "t11", "t22", "t33", "t12", "t13", "t23",
-    "l11", "l22", "l33", "l12", "l13", "l23",
-    "s2211", "s1133", "s12", "s13", "s23", "s21", "s31", "s32" ]
+SAVEKEYS = ["error", "lsq_residual", "method", "num_atoms"]
 
 class TLSMDFile(object):
     """Manages several files which save the state information of a TLSMD

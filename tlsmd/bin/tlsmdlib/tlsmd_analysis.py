@@ -471,8 +471,6 @@ class TLSChainMinimizer(HCSSSP):
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
-#        self.hinge_plot()
-
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
         V = []
@@ -578,7 +576,7 @@ class TLSChainMinimizer(HCSSSP):
 
         ## anisotropic model
         tls = nltls.anisotropic_fit_segment(0, len(xlist)-1)
-        
+
         tls_group.origin = array([tls["x"], tls["y"], tls["z"]], Float)
 
         tls_group.T = array(

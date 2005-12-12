@@ -1005,6 +1005,7 @@ linear_isotropic_fit_segment(struct TLSFitContext *fit)
   }
 
   fit->ilsqr = num_residues * (chi2 / sum_weight);
+  fit->ilsqr = num_residues * (chi2 / (num_atoms - ITLS_NUM_PARAMS));
 }
 
 

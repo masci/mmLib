@@ -52,7 +52,7 @@ GLOBALS = {
     "MIN_SUBSEGMENT_SIZE": 6,
     "VERBOSE"            : False,
 
-    "VERSION":        "0.3.0",
+    "VERSION":        "0.5.0",
     "RELEASE_DATE":   "Aug 10, 2005",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",
@@ -73,7 +73,7 @@ GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 ADP_PROB = 85
 
 ## number of TLS partitons for each chain
-NPARTS = 25
+NPARTS = 20
 
 ###############################################################################
 ## Utility Funcs
