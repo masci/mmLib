@@ -261,15 +261,13 @@ class RefinePrepPage(Page):
 
         ## success -- make download links
         x += '<center>'
-        x += '<table border="1">'
+        x += '<table border="0" style="background-color:#eeeeee">'
         x += '<tr>'
         x += '<td align="right"><b>PDBIN File</b></td>'
-        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
-            pdbout_url, pdbout)
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (pdbout_url, pdbout)
         x += '</tr><tr>'
         x += '<td align="right"><b>TLSIN File</b></td>'
-        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
-            tlsout_url, tlsout)
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (tlsout_url, tlsout)
         x += '</table>'
 
         x += '<br>'
@@ -304,9 +302,7 @@ def main():
     page = None
     job_id = check_job_id(form)
     if job_id==None:
-        page = ErrorPage(
-            form,
-            "<center>The Job ID seems to be expired or invalid.</center>")
+        page = ErrorPage(form, "<center>The Job ID seems to be expired or invalid.</center>")
     else:
         page = RefinePrepPage(form)
 
