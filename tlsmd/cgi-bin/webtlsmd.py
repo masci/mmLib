@@ -704,7 +704,7 @@ class QueuePage(Page):
 
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">'
         x += '<tr style="background-color:#bbbbbb">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'
@@ -752,7 +752,7 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>%d Queued Jobs</b>' % (len(queued_list))
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">'
         x += '<tr style="background-color:#bbbbbb">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'
@@ -791,7 +791,7 @@ class QueuePage(Page):
 
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
-             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">',
+             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">',
              '<tr style="background-color:#bbbbbb">',
              '<th>Job ID</th>',
              '<th>Struct ID</th>',
@@ -838,7 +838,7 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="1" width="100%" style="background-color:#eeeeee; font-size:small">'
+        x += '<table border="1" width="100%" style="background-color:#eeeeee; font-size:x-small">'
         x += '<tr style="background-color:#bbbbbb">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'
