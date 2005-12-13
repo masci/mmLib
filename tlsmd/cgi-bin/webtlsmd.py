@@ -704,14 +704,14 @@ class QueuePage(Page):
 
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">'
         x += '<tr style="background-color:#bbbbbb">'
-        x += '<th><font size="-5">Job ID</font></th>'
-        x += '<th><font size="-5">Struct ID</font></th>'
-	x += '<th><font size="-5">Chain:Num Res</font></th>'
-        x += '<th><font size="-5">Submission Date</font></th>'
-        x += '<th><font size="-5">Currently Processing</font></th>'
-        x += '<th><font size="-5">Processing Time<br>Used (HH:MM.SS)</font></th>'
+        x += '<th>Job ID</th>'
+        x += '<th>Struct ID</th>'
+	x += '<th>Chain:Num Res</th>'
+        x += '<th>Submission Date</th>'
+        x += '<th>Currently Processing</th>'
+        x += '<th>Processing Time<br>Used (HH:MM.SS)</th>'
         x += '</tr>'
 
         if jdict!=None:
@@ -752,12 +752,12 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>%d Queued Jobs</b>' % (len(queued_list))
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">'
         x += '<tr style="background-color:#bbbbbb">'
-        x += '<th><font size="-5">Job ID</font></th>'
-        x += '<th><font size="-5">Struct ID</font></th>'
-	x += '<th><font size="-5">Chain:Num Res</font></th>'
-        x += '<th><font size="-5">Submission Date</font></th>'
+        x += '<th>Job ID</th>'
+        x += '<th>Struct ID</th>'
+	x += '<th>Chain:Num Res</th>'
+        x += '<th>Submission Date</th>'
         x += '</tr>'
 
         for jdict in queued_list:
@@ -791,13 +791,13 @@ class QueuePage(Page):
 
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
-             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">',
+             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:small">',
              '<tr style="background-color:#bbbbbb">',
-             '<th><font size="-5">Job ID</font></th>',
-             '<th><font size="-5">Struct ID</font></th>',
-             '<th><font size="-5">Status</font></th>',
-             '<th><font size="-5">Submission Date</font></th>',
-             '<th><font size="-5">Processing Time<br> Used (HH:MM.SS)</font></th>',
+             '<th>Job ID</th>',
+             '<th>Struct ID</th>',
+             '<th>Status</th>',
+             '<th>Submission Date</th>',
+             '<th>Processing Time<br> Used (HH:MM.SS)</th>',
              '</tr>']
 
         alt_color = True
@@ -838,12 +838,12 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="1" width="100%" style="background-color:#eeeeee">'
+        x += '<table border="1" width="100%" style="background-color:#eeeeee; font-size:small">'
         x += '<tr style="background-color:#bbbbbb">'
-        x += '<th><font size="-5">Job ID</font></th>'
-        x += '<th><font size="-5">Struct ID</font></th>'
-        x += '<th><font size="-5">State</font></th>'
-        x += '<th><font size="-5">Submission Date</font></th>'
+        x += '<th>Job ID</th>'
+        x += '<th>Struct ID</th>'
+        x += '<th>State</th>'
+        x += '<th>Submission Date</th>'
         x += '</tr>'
 
         for jdict in limbo_list:

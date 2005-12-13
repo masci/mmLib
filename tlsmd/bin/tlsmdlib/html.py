@@ -248,44 +248,44 @@ class Report(object):
     def html_head(self, title):
         """Header for all HTML pages.
         """
-        x  = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n\n'
-        x += '<html>\n'
-        x += '<head>\n'
-        x += '  <title>%s</title>\n' % (title)
-        x += '  <style type="text/css" media="screen">\n'
-        x += '  <!-- \n'
-        x += '  BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}\n'
-        x += '  -->\n'
-        x += '  </style>\n'
-        x += '</head>\n'
-        x += '<body>\n'
-        return x
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n\n',
+             '<html>\n',
+             '<head>\n',
+             '  <title>%s</title>\n' % (title),
+             '  <style type="text/css" media="screen">\n',
+             '  <!-- \n',
+             '  BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}\n',
+             '  -->\n',
+             '  </style>\n',
+             '</head>\n',
+             '<body>\n']
+
+        return "".join(l)
 
     def html_title(self, title):
         timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
         
-        x  = '<table border="0" width="100%" style="background-color:#eeeeee"><tr>'
-        x += '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr)
-        x += '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"])
-        x += '</tr></table>'
-
-        x += '<center><font size="+3">%s</font></center>' % (title)
+        l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
+              '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
+              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"]),
+              '</tr></table>',
+              '<center><font size="+2">%s</font></center><br>' % (title)]
         
-        return x
+        return "".join(l)
 
     def html_foot(self):
         """Footer for all HTML pages.
         """
         timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
         
-        x  = '<table border="0" width="100%" style="background-color:#eeeeee"><tr>'
-        x += '<td align="left"><font size="-5">%s</font></td>' % (timestr)
-        x += '<td align="center"><font size="-5">Released by %s <i>%s</i> on %s</font></td>' % (GLOBALS["AUTHOR"], GLOBALS["EMAIL"], GLOBALS["RELEASE_DATE"])
-        x += '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"])
-        x += '</tr></table>'
+        l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
+              '<td align="left"><font size="-5">%s</font></td>' % (timestr),
+              '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (GLOBALS["RELEASE_DATE"], GLOBALS["EMAIL"]),
+              '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"]),
+              '</tr></table>',
+              '</body></html>']
         
-        x += '</body></html>\n'
-        return x
+        return "".join(l)
 
 
 class HTMLReport(Report):
@@ -455,7 +455,7 @@ class HTMLReport(Report):
         """Generate and returns the HTML string for the main index.html
         file of the report.
         """
-        title = "TLSMD Rigid Body Analysis of %s" % (self.struct_id)
+        title = "TLSMD Thermal Parameter Analysis of Structure %s" % (self.struct_id)
 
         x  = ''
         x += self.html_head(title)
@@ -469,7 +469,7 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>'
         x += '</center>'
-        x += '<p>%s</p>' % (MOTION_ANALYSIS_TEXT)
+        x += '<p style="font-size:small">%s</p>' % (MOTION_ANALYSIS_TEXT)
 
         for xdict in self.pages_chain_motion_analysis:
             x += '<p><a href="%s">%s</a></p>\n' % (xdict["href"], xdict["title"])
@@ -480,7 +480,7 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<h3>Multi-Chain TLS Group Alignment</h3>'
         x += '</center>'
-        x += '<p>%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)
+        x += '<p style="font-size:small">%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)
 
         if self.page_multi_chain_alignment!=None:
             x += '<p><a href="%s">%s</a></p>\n' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"])
@@ -496,61 +496,35 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3>'
         x += '</center>'
-        x += '<p>%s</p>' % (REFINEMENT_PREP_TEXT)
+        x += '<p style="font-size:small">%s</p>' % (REFINEMENT_PREP_TEXT)
         x += '<p><a href="%s">%s</a></p>\n' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"])
             
         x += self.html_foot()
         return x
 
     def html_globals(self):
-        x  = ''
-        
-        x += '<center>'
-        x += '<h3>Optimization Parameters</h3>'
-        x += '</center>'
-
-        x += '<p>%s</p>' % (OPTIMIZATION_PARAMS_TEXT)
-
-        x += '<table border="1" cellpadding="3">'
-        x += '<tr>'
-        x += '<td>Form of TLS Model</td>'
-
+        """
+        """
         if GLOBALS["TLS_MODEL"] in ["ISOT", "NLISOT"]:
-            tls_model = 'For Input Structure with Isotropic ADPs'
+            tls_model = "Isotropic"
         elif GLOBALS["TLS_MODEL"] in ["ANISO", "NLANISO"]:
-            tls_model = 'For Input Structure with Anisotropic ADPs'
-
-        x += '<td><b>%s</b></td>' % (tls_model)
-        x += '</tr>'
-
-        x += '<tr>'
-        x += '<td>Least-Squares Weight Model</td>'
+            tls_model = "Anisotropic"
 
         if GLOBALS["WEIGHT_MODEL"]=="UNIT":
             weight = 'Unit Weights (All Weights 1.0)'
         elif GLOBALS["WEIGHT_MODEL"]=="IUISO":
             weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
-            
-        x += '<td><b>%s</b></td>' % (weight)
-        x += '</tr>'
 
+        l = ['<center>',
+             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">',
+             '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>',
+             '<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
+             '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"]),
+             '</table>',
+             '</center>']
 
-        x += '<tr>'
-        x += '<td>Included Atoms</td>'
-        x += '<td><b>%s</b></td>' % (GLOBALS["INCLUDE_ATOMS"])
-        x += '</tr>'
-
-        x += '<tr>'
-        x += '<td>'
-        x += 'Smallest Chain Subsegment Considered as a TLS Group'
-        x += '</td>'
-        x += '<td><b>%s Residues</b></td>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"])
-        x += '</tr>'
-
-        x += '</table>'
-
-        return x
-
+        return "".join(l)
+    
     def write_tls_chain_optimization(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
