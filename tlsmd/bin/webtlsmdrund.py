@@ -16,7 +16,7 @@ import xmlrpclib
 
 
 ## CONFIGURATION
-VERSION   = "0.3.0"
+VERSION   = "0.5.0"
 WEBTLSMDD = "http://localhost:10101"
 MSMTP     = "/usr/bin/msmtp"
 
@@ -31,8 +31,7 @@ if os.environ.has_key("TLSMD_GRID_FILE"):
 ## regular expression for parsing the output of TLSMD while
 ## it is running -- this is used for updating the calculation
 ## progress information
-RE_PROCESS_CHAIN = re.compile(
-    "process_chain\(chain_id=(\w+),\s*frag_id=\{(\w+)\.\.(\w+)\},.*$")
+RE_PERCENT_COMPLETE = re.compile("\s*\(\s*(\d+)/\s*(\d+)\)\s+(\d+)%%.*$")
 
 def log_write(x):
     sys.stdout.write(x+"\n")
@@ -80,8 +79,6 @@ def run_tlsmd(webtlsmdd, jdict):
     time_chain_id   = None
     time_begin      = None
     
-    segments = 0
-
     while True:
         ln = stdout.readline()
 	if len(ln)==0:
@@ -118,18 +115,12 @@ def run_tlsmd(webtlsmdd, jdict):
             time_chain_id = None
             time_begin    = None
 
-        m = RE_PROCESS_CHAIN.match(ln)
+        m = RE_PERCENT_COMPLETE.match(ln)
         if m!=None:
-            segments += 1
-            chain_id, frag_id1, frag_id2 = m.groups()
+            junk1, junk2, pcomplete = m.groups()
+            webtlsmdd.job_data_set(job_id, "run_chain_id", chain_id)
+            webtlsmdd.job_data_set(job_id, "chain_pcomplete", pcomplete)
 
-            ## only update the run-time database periodically
-            if segments%100==0:
-                chain_id, frag_id1, frag_id2 = m.groups()
-                webtlsmdd.job_data_set(job_id, "run_chain_id", chain_id)
-                webtlsmdd.job_data_set(job_id, "run_frag_id1", frag_id1)
-                webtlsmdd.job_data_set(job_id, "run_frag_id2", frag_id2)
-                
         logfil.write(ln)
 	logfil.flush()
 

@@ -120,16 +120,10 @@ def html_job_edit_form(fdict):
     x  = ''
     x += '<center>'
 
-    x += '<form '\
-         'enctype="multipart/form-data" '\
-         'action="webtlsmd.cgi" '\
-         'method="post">'
-
-    x += '<input type="hidden" name="page" value="%s">' % (
-        fdict.get("page", "index"))
+    x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
+    x += '<input type="hidden" name="page" value="%s">' % (fdict.get("page", "index"))
     x += '<input type="hidden" name="edit_form" value="TRUE">'
-    x += '<input type="hidden" name="job_id" value="%s">' % (
-        fdict["job_id"])
+    x += '<input type="hidden" name="job_id" value="%s">' % (fdict["job_id"])
 
     x += '<table border="1" width="100%">'
 
@@ -155,24 +149,14 @@ def html_job_edit_form(fdict):
     ## email address
     x += '<tr>'
     x += '<td align="right"><label>EMail Address:</td><td>'
-    x += '<input '\
-         'type="text" '\
-         'name="email" '\
-         'value="%s" '\
-         'size="25" '\
-         'maxlength="40">' % (fdict.get("email", ""))
+    x += '<input type="text" name="email" value="%s" size="25" maxlength="40">' % (fdict.get("email", ""))
     x += '</label></td>'
     x += '</tr>'
 
     ## structure code
     x += '<tr>'
     x += '<td align="right"><label>Structure Code:</td><td>'
-    x += '<input '\
-         'type="text" '\
-         'name="structure_id" '\
-         'value="%s" '\
-         'size="4" '\
-         'maxlength="4">' % (fdict.get("structure_id", ""))
+    x += '<input type="text" name="structure_id" value="%s" size="4" maxlength="4">' % (fdict.get("structure_id", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -212,11 +196,9 @@ def html_job_edit_form(fdict):
         x += '<tr><td>'
         x += '<label>'
         if cdict["selected"]==True:
-            x += '<input type="checkbox" name="%s" value="TRUE" checked>' % (
-                cdict["name"])
+            x += '<input type="checkbox" name="%s" value="TRUE" checked>' % (cdict["name"])
         else:
-            x += '<input type="checkbox" name="%s" value="TRUE">' % (
-                cdict["name"])
+            x += '<input type="checkbox" name="%s" value="TRUE">' % (cdict["name"])
         x += '%s' % (cdict["desc"])
         x += '</label>'
 
@@ -319,7 +301,6 @@ def html_job_info_table(fdict):
         hours = "---"
     x += '<td><b>%s</b></td></tr>' % (hours)
 
-
     x += '</table></td>'
 
     x += '</tr>'
@@ -349,9 +330,7 @@ def html_job_info_table(fdict):
 
     ## column titles
     x += '<tr>'
-    x += '<th>TLS Model</th>'\
-         '<th>Least Squares Weighting</th>'\
-         '<th>Include Atoms</th>'
+    x += '<th>TLS Model</th><th>Least Squares Weighting</th><th>Include Atoms</th>'
     x += '</tr>'
 
     x += '<tr>'
@@ -387,21 +366,14 @@ def html_job_info_table(fdict):
 
     ## end form
     if fdict.has_key("removebutton"):
-        x += '<form '\
-             'enctype="multipart/form-data" '\
-             'action="webtlsmd.cgi" '\
-             'method="post">'
+        x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
 
         ## Job ID, user, passwd
-        x += '<input type="hidden" name="page" value="%s">' % (
-            fdict.get("page", "index"))
+        x += '<input type="hidden" name="page" value="%s">' % (fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE">'
-        x += '<input type="hidden" name="job_id" value="%s">' % (
-            fdict["job_id"])
-        x += '<input type="hidden" name="user" value="%s">' % (
-            fdict["user"])
-        x += '<input type="hidden" name="passwd" value="%s">' % (
-            fdict["passwd"])
+        x += '<input type="hidden" name="job_id" value="%s">' % (fdict["job_id"])
+        x += '<input type="hidden" name="user" value="%s">' % (fdict["user"])
+        x += '<input type="hidden" name="passwd" value="%s">' % (fdict["passwd"])
 
         x += '<tr>'
         x += '<td colspan="3" align="left">'
@@ -515,9 +487,7 @@ def remove_job(webtlsmdd, job_id):
     """
     job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
 
-    if job_dir and \
-       job_dir.startswith(TLSMD_WORK_DIR) and \
-       os.path.isdir(job_dir):
+    if job_dir and job_dir.startswith(TLSMD_WORK_DIR) and os.path.isdir(job_dir):
 
         for root, dirs, files in os.walk(job_dir, topdown=False):
             for name in files:
@@ -562,8 +532,7 @@ class Page(object):
     def html_foot(self):
         x = ''
         x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Modified %s' % (
-            VERSION, LAST_MODIFIED_DATE)
+        x += '<p><small><b>Version %s</b> Last Modified %s' % (VERSION, LAST_MODIFIED_DATE)
         x += '</small></p>'
         x += '</center>'
         x += '</body></html>'
@@ -628,9 +597,7 @@ class QueuePage(Page):
     def html_foot(self):
         x = ''
         x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (
-            VERSION,
-            timestring(time.time()))
+        x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (VERSION, timestring(time.time()))
         x += '</center>'
         x += '</body></html>'
         return x
@@ -737,7 +704,7 @@ class QueuePage(Page):
 
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
-        x += '<table border="1" cellpadding="3" width="100%">'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">'
         x += '<tr>'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
@@ -755,10 +722,7 @@ class QueuePage(Page):
 	    x += '<td>%s</td>' % (self.chain_size_string(jdict))
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
 
-            tls_seg = 'Chain <b>%s</b> Residues <b>%s-%s</b>' % (
-                jdict.get("run_chain_id", ""),
-                jdict.get("run_frag_id1", ""),
-                jdict.get("run_frag_id2", ""))
+            tls_seg = 'Chain <b>%s</b> %s%% Complete' % (jdict.get("run_chain_id", ""), jdict.get("pcomplete", ""))
             x += '<td>%s</td>' % (tls_seg)
 
             if jdict.has_key("run_start_time"):
@@ -788,8 +752,8 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>%d Queued Jobs</b>' % (len(queued_list))
-        x += '<table border="1" cellpadding="3" width="100%">'
-        x += '<tr>'
+        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">'
+        x += '<tr style="background-color:#bbbbbb">'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
 	x += '<th><font size="-5">Chain:Num Res</font></th>'
@@ -824,38 +788,43 @@ class QueuePage(Page):
                 completed_list.append(jdict)
 
         completed_list.reverse()
-        
-        x  = ''
-	x += '<center><b>%d Completed Jobs</b></center>' % (len(completed_list))
-        x += '<center>'
-        x += '<table border="1" cellpadding="3" width="100%">'
-        x += '<tr>'
-        x += '<th><font size="-5">Job ID</font></th>'
-        x += '<th><font size="-5">Struct ID</font></th>'
-        x += '<th><font size="-5">Status</font></th>'
-        x += '<th><font size="-5">Submission Date</font></th>'
-	x += '<th><font size="-5">Processing Time<br> Used (HH:MM.SS)</font></th>'
-        x += '</tr>'
+
+        l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
+             '<center>',
+             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">',
+             '<tr style="background-color:#bbbbbb">',
+             '<th><font size="-5">Job ID</font></th>',
+             '<th><font size="-5">Struct ID</font></th>',
+             '<th><font size="-5">Status</font></th>',
+             '<th><font size="-5">Submission Date</font></th>',
+             '<th><font size="-5">Processing Time<br> Used (HH:MM.SS)</font></th>',
+             '</tr>']
+
+        alt_color = True
 
         for jdict in completed_list:
-            x += '<tr>'
-            
-            x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (jdict.get("structure_id", "----"))
-            x += '<td>%s</td>' % (jdict["state"])
-            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
+            if alt_color:
+                l.append('<tr style="background-color:#dddddd">')
+            else:
+                l.append('<tr>')
+            alt_color = not alt_color
+                                
+            l.append('<td>%s</td>' % (self.explore_href(jdict)))
+            l.append('<td>%s</td>' % (jdict.get("structure_id", "----")))
+            l.append('<td>%s</td>' % (jdict["state"]))
+            l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
 
             if jdict.has_key("run_end_time") and jdict.has_key("run_start_time"):
                 hours = timediffstring(jdict["run_start_time"], jdict["run_end_time"])
 	    else:
 		hours = "---"
-            x += '<td align="right">%s</td>' % (hours)
+            l.append('<td align="right">%s</td>' % (hours))
 
-            x += '</tr>'
+            l.append('</tr>')
 
-        x += '</table>'
-        x += '</center>'
-        return x
+        l.append('</table>')
+        l.append('</center>')
+        return "".join(l)
     
     def html_limbo_job_table(self, job_list):
         limbo_list = []
@@ -869,8 +838,8 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="1" width="100%">'
-        x += '<tr>'
+        x += '<table border="1" width="100%" style="background-color:#eeeeee">'
+        x += '<tr style="background-color:#bbbbbb">'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
         x += '<th><font size="-5">State</font></th>'
@@ -934,8 +903,7 @@ class AdminJobPage(Page):
 
         x += html_nav_bar()
 
-        if self.form.has_key("submit") and \
-           self.form["submit"].value=="Remove Job":
+        if self.form.has_key("submit") and self.form["submit"].value=="Remove Job":
             x += self.remove(job_id)
         else:
             x += self.edit(job_id)
@@ -1002,9 +970,7 @@ class Submit1Page(Page):
         x += 'Step 1: Select your PDB file to upload, then click Next'
         x += '</h3></center>'
 
-        x += '<form enctype="multipart/form-data" '\
-             'action="webtlsmd.cgi" '\
-             'method="post">'
+        x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
         
         x += '<input type="hidden" name="page" value="submit2">'
         x += '<center>'
@@ -1063,16 +1029,14 @@ class Submit2Page(Page):
 	return code
 
     def prepare_submission(self):
-        if self.form.has_key("pdbfile")==False or \
-           self.form["pdbfile"].file==None:
+        if self.form.has_key("pdbfile")==False or self.form["pdbfile"].file==None:
             raise SubmissionException("No PDB file uploaded")
 	
         ## make working directory
         try:
             os.chdir(TLSMD_WORK_DIR)
         except os.error, err:
-            raise SubmissionException(
-                '<p>Cannot change to working directory: %s</p>' % (str(err)))
+            raise SubmissionException('<p>Cannot change to working directory: %s</p>' % (str(err)))
 
         job_id = webtlsmdd.job_new(self.generate_security_code())
         os.umask(022)
@@ -1080,8 +1044,7 @@ class Submit2Page(Page):
             os.mkdir(job_id)
         except os.error, err:
             webtlsmdd.job_delete(job_id)
-            raise SubmissionException(
-                '<p>Cannot make directory: %s</p>' % (str(err)))
+            raise SubmissionException('<p>Cannot make directory: %s</p>' % (str(err)))
 
         job_dir = os.path.join(TLSMD_WORK_DIR, job_id)
         os.chdir(job_dir)
@@ -1104,8 +1067,7 @@ class Submit2Page(Page):
         ## error out if there weren't many lines
         if num_lines<10:
             webtlsmdd.job_delete(job_id)
-            raise SubmissionException(
-                '<p>Only Recieved %d lines</p>' % (num_lines))
+            raise SubmissionException('<p>Only Recieved %d lines</p>' % (num_lines))
 
         webtlsmdd.job_data_set(job_id, "pdb_filename", pdb_filename)
 
@@ -1119,8 +1081,7 @@ class Submit2Page(Page):
         analysis_base_url = "%s/ANALYSIS" % (job_url)
         analysis_url      = "%s/ANALYSIS/index.html" % (job_url)
         webtlsmdd.job_data_set(job_id, "analysis_dir", analysis_dir)
-        webtlsmdd.job_data_set(
-            job_id, "analysis_base_url", analysis_base_url)
+        webtlsmdd.job_data_set(job_id, "analysis_base_url", analysis_base_url)
         webtlsmdd.job_data_set(job_id, "analysis_url", analysis_url) 
 
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
@@ -1135,8 +1096,7 @@ class Submit2Page(Page):
 	if not struct.structure_id:
 	    struct.structure_id = "XXXX"
 
-        webtlsmdd.job_data_set(
-            job_id, "structure_id", struct.structure_id)
+        webtlsmdd.job_data_set(job_id, "structure_id", struct.structure_id)
 
         ## Select Chains for Analysis
         num_atoms          = 0
@@ -1161,9 +1121,7 @@ class Submit2Page(Page):
             cb_name = 'CHAIN%s' % (chain.chain_id)
             
             ## create chain description label cb_desc
-            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (
-                chain.chain_id,
-                chain.count_amino_acids())
+            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, chain.count_amino_acids())
 
             listx = []
             i = 0
