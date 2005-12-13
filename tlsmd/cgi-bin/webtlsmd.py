@@ -46,47 +46,43 @@ def timediffstring(begin, end):
 def html_title(title):
     """Title
     """
-    x  = ''
-    x += '<center><h1>%s</h1></center>' % (title)
-    return x
-
+    return '<center><h1>%s</h1></center>' % (title)
 
 def html_nav_bar(page_name=None):
     """Site navigation bar.
     """
-    x  = ''
-    x += '<center>\n'
+    l = ['<center>']
 
     if page_name=="home":
-        x += 'Home\n'
+        l.append('Home')
     else:
-        x += '<a href="/~tlsmd/index.html">Home</a>\n'
+        l.append('<a href="/~jpaint/index.html">Home</a>')
 
-    x += LINK_SPACE + '\n'
+    l.append(LINK_SPACE)
 
     if page_name=="":
-        x += 'Start a New Job\n'
+        l.append('Start a New Job')
     else:
-        x += '<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>\n'
+        l.append('<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>')
 
-    x += LINK_SPACE + '\n'
+    l.append(LINK_SPACE) 
 
     if page_name=="queue":
-        x += 'Job Status\n'
+        l.append('Job Status')
     else:
-        x += '<a href="webtlsmd.cgi">Job Status</a>\n'
+        l.append('<a href="webtlsmd.cgi">Job Status</a>')
 
-    x += LINK_SPACE + '\n'
+    l.append(LINK_SPACE)
 
-    x += '<a href="/~tlsmd/examples/index.html">Examples</a>\n'
+    l.append('<a href="/~jpaint/examples/index.html">Examples</a>')
 
-    x += LINK_SPACE + '\n'
+    l.append(LINK_SPACE)
     
-    x += '<a href="/~tlsmd/documentation.html">Documentation</a>\n'
-    x += '</center>\n'
-    x += '<br>\n'
-    return x
+    l.append('<a href="/~jpaint/documentation.html">Documentation</a>')
+    l.append('</center>')
+    l.append('<br>')
 
+    return "".join(l)
 
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.

@@ -16,8 +16,8 @@ import xmlrpclib
 
 
 ## CONFIGURATION
-VERSION   = "0.2.0"
-WEBTLSMDD = "http://localhost:10100"
+VERSION   = "0.3.0"
+WEBTLSMDD = "http://localhost:10101"
 MSMTP     = "/usr/bin/msmtp"
 
 TLSMD_CMD = [

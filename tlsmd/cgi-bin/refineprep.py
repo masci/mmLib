@@ -23,7 +23,6 @@ from mmLib.Extensions.TLS import *
 from cgiconfig import *
 webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=True)
 
-
 CAPTION = """\
 Download both this modified PDB file of your structure, and the corresponding
 TLSIN file. Feed these to REFMAC5 as a start point for  multi-TLS group refinement.
@@ -34,7 +33,11 @@ class UInvalid(Exception):
     """Exception raised if a anisotropic ADP U is not positive definite.
     """
     def __init__(self, atom, U):
-        print "%s eigenvalues(%s)" % (str(atom), str(eigenvalues(U))) 
+        Exception.__init__(self)
+        self.text = "%s eigenvalues(%s)" % (str(atom), str(eigenvalues(U2B*U))) 
+
+    def __str__(self):
+        return self.text
 
 
 def refmac5_prep(pdbin, tlsins, pdbout, tlsout):
@@ -61,9 +64,9 @@ def refmac5_prep(pdbin, tlsins, pdbout, tlsout):
     ## shift some Uiso displacement from the TLS T tensor to the
     ## individual atoms
     for tls_group in tls_group_list:
-        for atm, U in tls_group.iter_atm_Utls():
-            if min(eigenvalues(U)) < 0.0:
-                raise UInvalid(atm, U)
+ #       for atm, U in tls_group.iter_atm_Utls():
+ #           if min(eigenvalues(U)) < 0.0:
+ #               raise UInvalid(atm, U)
 
         ## leave some B magnitude in the file for refinement
         (tevals, R) = eigenvectors(tls_group.T)
