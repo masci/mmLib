@@ -705,7 +705,7 @@ class QueuePage(Page):
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
         x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee">'
-        x += '<tr>'
+        x += '<tr style="background-color:#bbbbbb">'
         x += '<th><font size="-5">Job ID</font></th>'
         x += '<th><font size="-5">Struct ID</font></th>'
 	x += '<th><font size="-5">Chain:Num Res</font></th>'
@@ -804,7 +804,7 @@ class QueuePage(Page):
 
         for jdict in completed_list:
             if alt_color:
-                l.append('<tr style="background-color:#dddddd">')
+                l.append('<tr style="background-color:#ddddee">')
             else:
                 l.append('<tr>')
             alt_color = not alt_color
