@@ -503,6 +503,9 @@ class TLSChainMinimizer(HCSSSP):
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
                 sys.exit(-1)
 
+            if tls.has_key("error")==True:
+                continue
+
             if tls.has_key("lsq_residual")==False:
                 print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, msg["frag_id1"], msg["frag_id2"])
                 sys.exit(-1)

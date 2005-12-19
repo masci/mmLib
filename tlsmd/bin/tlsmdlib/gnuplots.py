@@ -529,8 +529,8 @@ def calc_mean_biso_obs(chainopt):
             n += 1
             b_sum_obs += atm.temp_factor
 
-        mean_b_obs = b_sum_obs / n
-        biso[frag.ichain] = mean_b_obs
+        if n>0:
+            biso[frag.ichain] = b_sum_obs / n
 
     return biso
 
@@ -561,7 +561,8 @@ def calc_mean_biso_tls(chainopt, tlsopt):
                 n += 1
                 b_sum_tls += U2B * calc_itls_uiso(T, L, S, atm.position - O)
 
-            biso[frag.ichain] =  b_sum_tls / n
+            if n>0:
+                biso[frag.ichain] =  b_sum_tls / n
 
     return biso
 
@@ -594,11 +595,12 @@ def calc_accounted_biso(chainopt, tlsopt):
                 b_sum_obs += atm.temp_factor
                 b_sum_tls += U2B * calc_itls_uiso(T, L, S, atm.position - O)
 
-            mean_b_obs = b_sum_obs / n
-            mean_b_tls = b_sum_tls / n
+            if n>0:
+                mean_b_obs = b_sum_obs / n
+                mean_b_tls = b_sum_tls / n
 
-            ## set the cross prediction matrix
-            biso[frag.ichain] = mean_b_obs - mean_b_tls
+                ## set the cross prediction matrix
+                biso[frag.ichain] = mean_b_obs - mean_b_tls
 
     return biso
      
@@ -736,11 +738,12 @@ def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
                 delta = atm.temp_factor - b_iso_tls
                 delta2 += delta**2
 
-            msd = delta2 / n
-            rmsd = math.sqrt(msd)
+            if n>0:
+                msd = delta2 / n
+                rmsd = math.sqrt(msd)
 
-            ## set the cross prediction matrix
-            cmtx[i,j] = rmsd
+                ## set the cross prediction matrix
+                cmtx[i,j] = rmsd
 
     return cmtx
      
