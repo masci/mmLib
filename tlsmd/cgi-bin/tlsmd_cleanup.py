@@ -19,7 +19,7 @@ from mmLib.Structure  import *
 from mmLib.FileLoader import *
 
 SECS_IN_DAY = float(60*60*24)
-DELETE_DAYS = 15
+DELETE_DAYS = 12
 
 ## GLOBALS
 from cgiconfig import *

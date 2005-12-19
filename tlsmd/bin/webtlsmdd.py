@@ -19,7 +19,7 @@ import SimpleXMLRPCServer
 ## CONFIGURATION
 
 HOST = "localhost"
-PORT = 10101
+PORT = 10100
 
 ###############################################################################
 

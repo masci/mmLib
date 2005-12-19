@@ -56,7 +56,7 @@ def html_nav_bar(page_name=None):
     if page_name=="home":
         l.append('Home')
     else:
-        l.append('<a href="/~jpaint/index.html">Home</a>')
+        l.append('<a href="/~tlsmd/index.html">Home</a>')
 
     l.append(LINK_SPACE)
 
@@ -74,11 +74,11 @@ def html_nav_bar(page_name=None):
 
     l.append(LINK_SPACE)
 
-    l.append('<a href="/~jpaint/examples/index.html">Examples</a>')
+    l.append('<a href="/~tlsmd/examples/index.html">Examples</a>')
 
     l.append(LINK_SPACE)
     
-    l.append('<a href="/~jpaint/documentation.html">Documentation</a>')
+    l.append('<a href="/~tlsmd/documentation.html">Documentation</a>')
     l.append('</center>')
     l.append('<br>')
 
@@ -108,7 +108,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += LINK_SPACE
 
     if os.path.isfile(logfile):
-        x += '<a href="%s">Download Logfile(Large)</a>' % (log_url)
+        x += '<a href="%s">View TLSMD Logfile</a>' % (log_url)
 
     x += '</h3>'
     x += '</center>'
@@ -843,7 +843,7 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="1" width="100%" style="background-color:#eeeeee; font-size:x-small">'
+        x += '<table border="0" width="100%" style="background-color:#eeeeee; font-size:x-small">'
         x += '<tr style="background-color:#bbbbbb">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'

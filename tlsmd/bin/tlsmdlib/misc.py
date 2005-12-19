@@ -59,13 +59,13 @@ GLOBALS = {
 
     "WEBTLSMDD":      None,
     "JOB_ID":         None,
-    "REFINEPREP_URL": "/~jpaint/cgi-bin/refineprep.cgi",
+    "REFINEPREP_URL": "/~tlsmd/cgi-bin/refineprep.cgi",
 
     "START_TIME":     time.time()
     }
 
 ## Font used by Python Imaging Library and GNUPlot
-TLSMD_ROOT   = "/home/jpaint/tlsmd"
+TLSMD_ROOT   = "/home/tlsmd/tlsmd"
 GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 
 ## the isoprobability contour level for all
@@ -73,7 +73,7 @@ GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 ADP_PROB = 85
 
 ## number of TLS partitons for each chain
-NPARTS = 1
+NPARTS = 20
 
 ###############################################################################
 ## Utility Funcs
