@@ -852,7 +852,7 @@ class RMSDPlot(GNUPlot):
             x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, col, line_titles[itls], ls)
             plist.append(x)
 
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n\t".join(plist) + "\n"
         
         return script
 

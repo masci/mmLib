@@ -580,64 +580,58 @@ class QueuePage(Page):
         return '<a href="http://pdbbeta.rcsb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
 
     def html_head_nocgi(self, title):
-        x  = ''
-        x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
-        x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
-        x += '<html>'
-        x += '<head>'
-        x += '  <meta http-equiv="refresh" content="120">'
-        x += '  <title>%s</title>' % (title)
-        x += '  <style type="text/css" media=screen>'
-        x += '  <!-- '
-        x += '  BODY { background-color: white;'
-        x += '         margin-left: 5%; margin-right: 5%;'
-        x += '         border-left: 5%; border-right: 5%;'
-        x += '         margin-top: 2%; border-top: 2%;}'
-        x += '  -->'
-        x += '  </style>'
-        x += '</head>'
-        x += '<body>'
-        return x
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
+             '"http://www.w3.org/TR/html4/loose.dtd">\n\n',
+             '<html>',
+             '<head>',
+             '  <meta http-equiv="refresh" content="120">',
+             '  <title>%s</title>' % (title),
+             '  <style type="text/css" media=screen>',
+             '  <!-- ',
+             '  BODY { background-color: white;',
+             '         margin-left: 5%; margin-right: 5%;',
+             '         border-left: 5%; border-right: 5%;',
+             '         margin-top: 2%; border-top: 2%;}',
+             '  -->',
+             '  </style>',
+             '</head>',
+             '<body>']
+        
+        return "".join(l)
     
     def html_foot(self):
-        x = ''
-        x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Updated %s</p>' % (VERSION, timestring(time.time()))
-        x += '</center>'
-        x += '</body></html>'
-        return x
+        l = ['<center>',
+             '<p><small><b>Version %s</b> Last Updated %s</p>' % (VERSION, timestring(time.time())),
+             '</center>',,
+             '</body></html>']
+        return "".join(l)
 
     def html_page(self):
         title = 'TLSMD: Job Status'
         
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
-        x += html_nav_bar("queue")
-
-        x += self.html_private_form()
-
-        x += '<center><b>'
-        x += 'Or click on the Job ID you wish to view'
-        x += '</b></center>'
-
-        x += '<br>'
-
-        job_list = self.get_job_list()
-
-        x += self.html_running_job_table(job_list)
-	x += '<br>'	
-        x += self.html_queued_job_table(job_list)
-        x += '<br>'
-        x += self.html_completed_job_table(job_list)
+        l = [self.html_head(title),
+             html_title(title),
+             html_nav_bar("queue"),
+             self.html_private_form(),
+             '<center><b>',
+             'Or click on the Job ID you wish to view',
+             '</b></center>',
+             '<br>',
+             job_list = self.get_job_list(),
+             self.html_running_job_table(job_list),
+             '<br>',
+             self.html_queued_job_table(job_list),
+             '<br>',
+             self.html_completed_job_table(job_list)]
 
         limbo = self.html_limbo_job_table(job_list)
         if limbo!=None:
-            x += '<br>'
-            x += limbo
+            l.append('<br>')
+            l.append(limbo)
 
-        x += self.html_foot()
-        return x
+        l.appned(self.html_foot())
+        
+        return "".join(l)
 
     def html_private_form(self):
         x  = ''
@@ -685,7 +679,7 @@ class QueuePage(Page):
             l3 = listx[:5]
 	    listx = listx[5:]
 
-	    strx += string.join(l3, " ")
+	    strx += " ".join(l3)
 	    if len(listx)>0:
                 strx += '<br>'
 	

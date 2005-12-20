@@ -7,10 +7,10 @@ import re
 import string
 
 WEBTLSMDD              = "http://localhost:10100"
-VERSION                = "0.5.0"
+VERSION                = "0.5.1"
 LAST_MODIFIED_BY       = ""
 LAST_MODIFIED_BY_EMAIL = ""
-LAST_MODIFIED_DATE     = "13 Dec 2005"
+LAST_MODIFIED_DATE     = "20 Dec 2005"
 
 TLSMD_WORK_DIR         = "/home/tlsmd/public_html/jobs"
 TLSMD_WORK_URL         = "/~tlsmd/jobs"

@@ -40,16 +40,6 @@ class UInvalid(Exception):
         return self.text
 
 
-class MyEx(Exception):
-    def __init__(self, text):
-        Exception.__init__(self)
-        self.text = text
-
-    def __str__(self):
-        return self.text
-
-
-
 def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     """Use TLS model + Uiso for each atom.  Output xyzout with the
     residual Uiso only.
@@ -176,9 +166,7 @@ class Page(object):
         self.form = form
 
     def html_title(self, title):
-        x  = ''
-        x += '<center><h1>%s</h1></center>' % (title)
-        return x
+        return '<center><h1>%s</h1></center>' % (title)
 
     def html_head_nocgi(self, title):
         x  = ''
@@ -208,8 +196,7 @@ class Page(object):
     def html_foot(self):
         x = ''
         x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Modified %s' % (
-            VERSION, LAST_MODIFIED_DATE)
+        x += '<p><small><b>Version %s</b> Last Modified %s' % (VERSION, LAST_MODIFIED_DATE)
         x += ' by %s ' % (LAST_MODIFIED_BY)
         x += '<i>%s</i></small></p>' % (LAST_MODIFIED_BY_EMAIL)
         x += '</center>'
