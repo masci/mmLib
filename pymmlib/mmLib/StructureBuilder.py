@@ -239,8 +239,7 @@ class StructureBuilder(object):
             ## fragment are: it has it have the same res_name, and its
             ## atom name cannot conflict with the names of atoms already in
             ## in the fragment
-            if atm.res_name!=current_polymer_res_name or \
-               current_polymer_name_dict.has_key(atm.name):
+            if atm.res_name!=current_polymer_res_name or current_polymer_name_dict.has_key(atm.name):
                 
                 current_polymer_res_name  = atm.res_name
                 current_polymer_name_dict = {atm.name: True}
@@ -264,7 +263,7 @@ class StructureBuilder(object):
         model_list = [polymer_model_dict[model_id] for model_id in model_ids]
 
         num_chains = 0
-        for frag_list in polymer_model_dict.values():
+        for frag_list in polymer_model_dict.itervalues():
             num_chains = max(num_chains, len(frag_list))
 
         for chain_index in range(num_chains):
@@ -308,10 +307,7 @@ class StructureBuilder(object):
         ## split atoms into fragments
         for atm in self.name_service_list:
             atm_id      = (atm.name, atm.alt_loc)
-            atm_frag_id = (atm.model_id,
-                           atm.chain_id,
-                           atm.fragment_id,
-                           atm.res_name)
+            atm_frag_id = (atm.model_id, atm.chain_id, atm.fragment_id, atm.res_name)
 
             ## if the atom fragment id matches the current fragment id
             ## and doesn't conflict with any other atom name in the fragment
@@ -325,8 +321,7 @@ class StructureBuilder(object):
                 
                 ### debug
                 if frag:
-                    debug("name_service: fragment detected in cr=%s" % (
-                        str(cr_key)))
+                    debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
                     for a in frag:
                         debug("  " + str(a))
                 ### /debug
@@ -356,8 +351,7 @@ class StructureBuilder(object):
         for cr_key in cr_key_list:
             ### debug
             debug("name_service: chain_id / res_name keys")
-            debug("  cr_key: chain_id='%s' res_name='%s'" % (
-                cr_key[0],cr_key[1]))
+            debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
             ### /debug
 
             ## get the next chain ID, use the cfr group's
@@ -381,7 +375,7 @@ class StructureBuilder(object):
             ## and have a 1:1 cooraspondance; if not, match up the
             ## fragments as much as possible
             max_frags = -1
-            for (model, frag_list) in model_dict.items():
+            for (model, frag_list) in model_dict.iteritems():
                 frag_list_len = len(frag_list)
 
                 if max_frags == -1:
@@ -399,7 +393,7 @@ class StructureBuilder(object):
             for i in range(max_frags):
                 fragment_id_num += 1
                 
-                for frag_list in model_dict.values():
+                for frag_list in model_dict.itervalues():
                     try:
                         frag = frag_list[i]
                     except IndexError:
@@ -413,11 +407,7 @@ class StructureBuilder(object):
                         self.struct.add_atom(atm, True)
 
             ## logging
-            warning("name_serverice(): added chain_id=%s, res_name=%s, "\
-                    "num_residues=%d" % (new_chain_id,
-                                         cr_key[1],
-                                         fragment_id_num))
-
+            warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (new_chain_id, cr_key[1], fragment_id_num))
 
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to
@@ -494,7 +484,7 @@ class StructureBuilder(object):
 
         ### XXX: fix this to build bonds in all models!!!
         
-        for ((atm1, atm2), bd_map) in bond_map.items():
+        for ((atm1, atm2), bd_map) in bond_map.iteritems():
 
             ## check for files which, for some reason, define have a bond
             ## entry bonding the atom to itself

@@ -66,7 +66,7 @@ class mmCIFRow(dict):
 
     def __deepcopy__(self, memo):
         cif_row = mmCIFRow()
-        for key, val in self.items():
+        for key, val in self.iteritems():
             cif_row[key] = val
         return cif_row
 
@@ -212,7 +212,7 @@ class mmCIFTable(list):
         column_used = {}
 
         for cif_row in self:
-            for column in cif_row.keys():
+            for column in cif_row.iterkeys():
                 column_used[column] = True                
                 if column not in self.columns:
                     self.columns.append(column)
@@ -925,22 +925,22 @@ class mmCIFFileWriter(object):
         self.write(self.form_mstring(mstring))
 
     def form_mstring(self, mstring):
-        strx = ";"
+        l = [";"]
 
         lw = MAX_LINE - 2
-
         for x in mstring.split("\n"):
             if x == "":
-                strx += "\n"
+                l.append("\n")
                 continue
             
             while len(x) > 0:
-                x1 = x[:lw]
-                x  = x[lw:]
-                strx += x1 + "\n"
+                l.append(x[:lw])
+                l.append("\n")
 
-        strx += ";\n"
-        return strx
+                x  = x[lw:]
+
+        l.append(";\n")
+        return "".join(l)
 
     def data_type(self, x):
         """Analyze x and return its type: token, qstring, mstring
@@ -1011,11 +1011,10 @@ class mmCIFFileWriter(object):
         vmax  = MAX_LINE - kmax - 1
 
         ## write out the keys and values
-        strx = ""
-        
         for col in cif_table.columns:
-            strx = "_%s.%s" % (cif_table.name, col)
-            strx = strx.ljust(kmax)
+            
+            cif_key = "_%s.%s" % (cif_table.name, col)
+            l = [cif_key.ljust(kmax)]
 
             try:
                 x0 = row[col]
@@ -1026,23 +1025,23 @@ class mmCIFFileWriter(object):
                 x, dtype = self.data_type(x0)
 
             if dtype == "token":
-                if len(x) > vmax:
-                    strx += "\n"
-                strx += "%s\n" % (x)
-                self.write(strx)
+                if len(x) > vmax: l.append("\n")
+                l.append("%s\n" % (x))
+                self.write("".join(l))
 
             elif dtype == "qstring":
                 if len(x) > vmax:
-                    strx += "\n"
-                    self.write(strx)
+                    l.append("\n")
+                    self.write("".join(l))
                     self.write_mstring(x)
+
                 else:
-                    strx += "'%s'\n" % (x)
-                    self.write(strx)
+                    l.append("'%s'\n" % (x))
+                    self.write("".join(l))
 
             elif dtype == "mstring":
-                strx += "\n"
-                self.write(strx)
+                l.append("\n")
+                self.write("".join(l))
                 self.write_mstring(x)
 
     def write_multi_row_table(self, cif_table):

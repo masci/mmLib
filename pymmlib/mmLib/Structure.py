@@ -697,8 +697,7 @@ class Structure(object):
 
             for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(2.5):
 
-                if (atm1.alt_loc=="" or atm2.alt_loc=="") or \
-                   (atm1.alt_loc==atm2.alt_loc):
+                if (atm1.alt_loc=="" or atm2.alt_loc=="") or (atm1.alt_loc==atm2.alt_loc):
 
                     ## calculate the expected bond distance by adding the
                     ## covalent radii + 0.54A
@@ -708,8 +707,7 @@ class Structure(object):
                     if edesc1==None or edesc2==None:
                         continue
 
-                    bond_dist = edesc1.covalent_radius +\
-                                edesc2.covalent_radius + 0.54
+                    bond_dist = edesc1.covalent_radius + edesc2.covalent_radius + 0.54
 
                     if dist>bond_dist:
                         continue
@@ -1157,18 +1155,14 @@ class Segment(object):
 
     def __str__(self):
         try:
-            return "Segment(%d:%s, %s...%s)" % (
-                self.model_id, self.chain_id,
-                self.fragment_list[0],
-                self.fragment_list[-1])
+            return "Segment(%d:%s, %s...%s)" % (self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
         except IndexError:
              return "Segment(%d:%s)" % (self.model_id, self.chain_id)
 
     def __deepcopy__(self, memo):
         """Implements copy module protocol for deepcopy() operation.
         """
-        segment = Segment(model_id = self.model_id,
-                          chain_id = self.chain_id)
+        segment = Segment(model_id = self.model_id, chain_id = self.chain_id)
 
         for fragment in self.fragment_list:
             segment.add_fragment(copy.deepcopy(fragment, memo), True)
@@ -1614,10 +1608,7 @@ class Chain(Segment):
 
     def __str__(self):
         try:
-            return "Chain(%d:%s, %s...%s)" % (
-                self.model_id, self.chain_id,
-                self.fragment_list[0],
-                self.fragment_list[-1])
+            return "Chain(%d:%s, %s...%s)" % (self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
         except IndexError:
              return "Chain(%d:%s)" % (self.model_id, self.chain_id)
 
@@ -1861,7 +1852,7 @@ class Fragment(object):
                         del self.atom_list[i-ishift]
                     except IndexError:
                         pass
-                    for atmx in atm.values():
+                    for atmx in atm.itervalues():
                         try:
                             del self.atom_dict[atmx.name]
                         except KeyError:
@@ -1911,8 +1902,7 @@ class Fragment(object):
                     atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    warning("atom name clash %s, automatically "\
-                            "assigning ALTLOC labels" % (str(atomA)))
+                    warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
 
                     iA = self.atom_order_list.index(atomA)
 
@@ -2463,7 +2453,7 @@ class Altloc(dict):
     """
     def __deepcopy__(self, memo):
         altloc = Altloc()
-        for atom in self.values():
+        for atom in self.itervalues():
             altloc.add_atom(copy.deepcopy(atom, memo))
         return altloc
     
@@ -2494,8 +2484,8 @@ class Altloc(dict):
         for alt_loc in string.uppercase:
             if self.has_key(alt_loc)==False:
                 return alt_loc
-        raise AtomOverwrite(
-            "exhausted availible alt_loc labels for "+str(atom))
+            
+        raise AtomOverwrite("exhausted availible alt_loc labels for "+str(atom))
         
 
 class Atom(object):
@@ -2877,7 +2867,7 @@ class Atom(object):
                     standard_res_bond = standard_res_bond)
             else:
                 ## case 2: self.has no alt_loc, atom has alt_loc
-                for atmx in atom.altloc.values():
+                for atmx in atom.altloc.itervalues():
                     self.create_bond(
                         atom              = atmx,
                         bond_type         = bond_type,
@@ -2889,7 +2879,7 @@ class Atom(object):
         else:
             if atom.altloc==None:
                 ## case 3: self has alt_loc, atom has no alt_loc
-                for (alt_loc, atmx) in self.altloc.items():
+                for (alt_loc, atmx) in self.altloc.iteritems():
                     atmx.create_bond(
                         atom              = atom,
                         bond_type         = bond_type,
@@ -2899,7 +2889,7 @@ class Atom(object):
 
             else:
                 ## case 4: self has alt_loc, atom has alt_loc
-                for (alt_loc, atmx) in self.altloc.items():
+                for (alt_loc, atmx) in self.altloc.iteritems():
                     if atom.altloc.has_key(alt_loc):
                         atmx.create_bond(
                             atom              = atom.altloc[alt_loc],

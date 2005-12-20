@@ -659,26 +659,13 @@ class GLDrawList(GLObject):
         assert draw_method.has_key("name")
         assert draw_method.has_key("func")
 
-        draw_method["transparent"] = draw_method.get(
-            "transparent", False)
-
-        draw_method["no_gl_compile"] = draw_method.get(
-            "no_gl_compile", False)
-
-        draw_method["visible_property"] =  draw_method.get(
-            "visible_property", None)
-
-        draw_method["recompile_action"] = draw_method.get(
-            "recompile_action", None)
-
-        draw_method["opacity_property"] = draw_method.get(
-            "opacity_property", None)
-
-        draw_method["multidraw_iter"]  = draw_method.get(
-            "multipdraw_iter", None)
-
-        draw_method["multidraw_all_iter"] = draw_method.get(
-            "multipdraw_all_iter", None)
+        draw_method["transparent"] = draw_method.get("transparent", False)
+        draw_method["no_gl_compile"] = draw_method.get("no_gl_compile", False)
+        draw_method["visible_property"] = draw_method.get("visible_property", None)
+        draw_method["recompile_action"] = draw_method.get("recompile_action", None)
+        draw_method["opacity_property"] = draw_method.get("opacity_property", None)
+        draw_method["multidraw_iter"] = draw_method.get("multipdraw_iter", None)
+        draw_method["multidraw_all_iter"] = draw_method.get("multipdraw_all_iter", None)
 
         ## the state_id gets incrimented whever compiled draw methods
         ## need to be recompiled
@@ -796,12 +783,10 @@ class GLDrawList(GLObject):
 
             ## some draw lists may be not be compiled into a OpenGL draw
             ## list, these have to be redrawn every time
-            if draw_method["no_gl_compile"]==True or \
-               not self.driver.glr_compile_supported():
+            if draw_method["no_gl_compile"]==True or not self.driver.glr_compile_supported():
                 draw_method["func"]()
 
             else:
-
                 if not self.driver.glr_compile_exists(draw_method):
                     self.gldl_draw_method_compile(draw_method)
 
@@ -1713,7 +1698,7 @@ class GLAtomList(GLDrawList):
         if self.glal_visible_atoms_dict==None:
             self.glal_rebuild_atom_dicts()
 
-        for atm, pos in self.glal_visible_atoms_dict.items():
+        for atm, pos in self.glal_visible_atoms_dict.iteritems():
             yield atm, pos
                     
     def glal_calc_position(self, position):

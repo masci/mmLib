@@ -249,9 +249,7 @@ def library_construct_element_desc(symbol):
     element_desc.covalent_radius = float(element.get("covalent_radius", 0.0))
     
     rgb8 = element["color_rgb"]
-    element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0,
-                               int(rgb8[3:5], 16) / 255.0,
-                               int(rgb8[5:7], 16) / 255.0)
+    element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0, int(rgb8[3:5], 16) / 255.0, int(rgb8[5:7], 16) / 255.0)
 
     return element_desc
 
@@ -357,12 +355,7 @@ def library_construct_monomer_desc(res_name):
         torsion_angles = mmlib_cif_data.get_table("torsion_angles")
         if torsion_angles!=None:
             for cif_row in torsion_angles:
-                mon_desc.torsion_angle_dict[cif_row["name"]] = (
-                    cif_row["atom1"],
-                    cif_row["atom2"],
-                    cif_row["atom3"],
-                    cif_row["atom4"])              
-
+                mon_desc.torsion_angle_dict[cif_row["name"]] = (cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              
 
     ## set some derived flags on the monomer description
     mon_type = mon_desc.type.upper()

@@ -49,8 +49,7 @@ def setmapf_cif(smap, skey, dmap, dkey):
         try:
             dmap[dkey] = float(x)
         except ValueError:
-            warning("setmapf_cif(%s=%s): ValueError" % (
-                skey, smap[skey]))
+            warning("setmapf_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
@@ -123,11 +122,8 @@ class mmCIFStructureBuilder(StructureBuilder):
 
         ## count the number of columns which exist for the auth_ style
         ## columns and label_ style columns
-        auth_cols  = ["auth_atom_id", "auth_comp_id", "auth_seq_id",
-                      "auth_asym_id"]
-
-        label_cols = ["label_atom_id", "label_comp_id", "label_seq_id",
-                      "label_asym_id"]
+        auth_cols  = ["auth_atom_id", "auth_comp_id", "auth_seq_id", "auth_asym_id"]
+        label_cols = ["label_atom_id", "label_comp_id", "label_seq_id", "label_asym_id"]
         
         auth_count = 0
         for col in auth_cols:
@@ -533,13 +529,11 @@ class mmCIFFileBuilder(object):
             else:
                 ## figure out what type of biopolymer this is
                 if (chain.count_amino_acids()/len(chain))>0.5:
-                    details   = "%d residue polypeptide" % (
-                        chain.count_amino_acids())
+                    details   = "%d residue polypeptide" % (chain.count_amino_acids())
                     poly_type = "polypeptide(L)"
 
                 elif (chain.count_nucleic_acids()/len(chain))>0.5:
-                    details   = "%d residue DNA/RNA" % (
-                        chain.count_nucleic_acids())
+                    details   = "%d residue DNA/RNA" % (chain.count_nucleic_acids())
                     poly_type = "polydeoxyribonucleotide"
                     
                 else:
@@ -581,8 +575,7 @@ class mmCIFFileBuilder(object):
 
                 ## already assigned a entity_id for this fragment_id
                 if self.entity_res_name_dict.has_key(frag.res_name):
-                    self.entity_frag_dict[frag] = \
-                        self.entity_res_name_dict[frag.res_name]
+                    self.entity_frag_dict[frag] = self.entity_res_name_dict[frag.res_name]
                     continue
                     
                 ## we need to assign a entity_id for this fragment_id

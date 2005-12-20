@@ -581,7 +581,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
 
     def load(self, fil):
         tls_desc_list = []
-        tls_desc      = None
+        tls_desc = None
         
         for ln in fil.readlines():
             ln = ln.rstrip()
@@ -621,8 +621,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 frag_id1 = self.convert_frag_id_load(frag_id1)
                 frag_id2 = self.convert_frag_id_load(frag_id2)
 
-                tls_desc.add_range(
-                    chain_id1, frag_id1, chain_id2, frag_id2, sel)
+                tls_desc.add_range(chain_id1, frag_id1, chain_id2, frag_id2, sel)
 
             elif re_key == "T":
                 ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
@@ -825,7 +824,7 @@ def iter_itls_uiso(atom_iter, T, L, S, O):
     """Iterates the pair (atom, u_iso)
     """
     for atm in atom_iter:
-        yield calc_itls_uiso(T, L, S, atm.position - O)
+        yield atm, calc_itls_uiso(T, L, S, atm.position - O)
 
 def calc_itls_center_of_reaction(iT, iL, iS, origin):
     """iT is a single float; iL[3,3]; iS[3]

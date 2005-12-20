@@ -603,38 +603,20 @@ class PDBStructureBuilder(StructureBuilder):
         try:
             atm1 = args["atm1"]
         except KeyError:
-            chain_id1 = args.get("chain_id1") or \
-                        rec.get(args["chain_id1_field"])
-
-            frag_id1 = args.get("frag_id1") or \
-                       self.get_fragment_id(rec,
-                           args["res_seq1_field"],args["icode1_field"])
-
-            name1 = args.get("name1") or \
-                    rec.get("name1_field")
-
-            alt_loc1 = args.get("alt_loc1") or \
-                       rec.get(args["alt_loc1_field"])
-
+            chain_id1 = args.get("chain_id1") or rec.get(args["chain_id1_field"])
+            frag_id1 = args.get("frag_id1") or self.get_fragment_id(rec, args["res_seq1_field"],args["icode1_field"])
+            name1 = args.get("name1") or rec.get("name1_field")
+            alt_loc1 = args.get("alt_loc1") or rec.get(args["alt_loc1_field"])
             atm1 = get_atom(chain_id1, frag_id1, name1, alt_loc1)
 
         ## get atm2
         try:
             atm2 = args["atm2"]
         except KeyError:
-            chain_id2 = args.get("chain_id2") or \
-                        rec.get(args["chain_id2_field"])
-
-            frag_id2 = args.get("frag_id2") or \
-                       self.get_fragment_id(rec,
-                           args["res_seq2_field"],args["icode2_field"])
-
-            name2 = args.get("name2") or \
-                    rec.get("name2_field")
-
-            alt_loc2 = args.get("alt_loc2") or \
-                       rec.get(args["alt_loc2_field"])
-
+            chain_id2 = args.get("chain_id2") or rec.get(args["chain_id2_field"])
+            frag_id2 = args.get("frag_id2") or  self.get_fragment_id(rec, args["res_seq2_field"],args["icode2_field"])
+            name2 = args.get("name2") or  rec.get("name2_field")
+            alt_loc2 = args.get("alt_loc2") or  rec.get(args["alt_loc2_field"])
             atm2 = get_atom(chain_id2, frag_id2, name2, alt_loc2)
 
         ## unable to retrieve the atoms?
@@ -658,10 +640,8 @@ class PDBStructureBuilder(StructureBuilder):
         bond["bond_type"] = args["bond_type"]
 
         ## symmetry operations
-        symop1 = args.get("symop1") or \
-                 rec.get(args["symop1_field"])
-        symop2 = args.get("symop2") or \
-                 rec.get(args["symop2_field"])
+        symop1 = args.get("symop1") or rec.get(args["symop1_field"])
+        symop2 = args.get("symop2") or  rec.get(args["symop2_field"])
 
         if symop1:
             bond["symop1"] = symop1
@@ -872,14 +852,8 @@ class PDBFileBuilder(object):
         self.pdb_file.append(header)
 
         header["idCode"] = self.struct.structure_id
-        
-        #self.set_from_cifdb(header, "idCode",
-        #                    "entry", "id")
-
-        self.set_from_cifdb(header, "depDate",
-                            "database_pdb_rev", "date_original")
-        self.set_from_cifdb(header, "classification",
-                            "struct_keywords", "pdbx_keywords")
+        self.set_from_cifdb(header, "depDate", "database_pdb_rev", "date_original")
+        self.set_from_cifdb(header, "classification", "struct_keywords", "pdbx_keywords")
 
         ## add TITLE records
         try:
@@ -988,16 +962,14 @@ class PDBFileBuilder(object):
             helix["initResName"] = alpha_helix.res_name1
             helix["initChainID"] = alpha_helix.chain_id1
             try:
-                helix["initSeqNum"], helix["initICode"] = fragment_id_split(
-                    alpha_helix.fragment_id1)
+                helix["initSeqNum"], helix["initICode"] = fragment_id_split( alpha_helix.fragment_id1)
             except ValueError:
                 pass
 
             helix["endResName"]  = alpha_helix.res_name2
             helix["endChainID"]  = alpha_helix.chain_id2
             try:
-                helix["endSeqNum"], helix["endICode"] = fragment_id_split(
-                    alpha_helix.fragment_id2)
+                helix["endSeqNum"], helix["endICode"] = fragment_id_split(alpha_helix.fragment_id2)
             except ValueError:
                 pass
 
@@ -1023,16 +995,14 @@ class PDBFileBuilder(object):
                 sheet["initResName"] = strand.res_name1
                 sheet["initChainID"] = strand.chain_id1
                 try:
-                    sheet["initSeqNum"], sheet["initICode"]=fragment_id_split(
-                        strand.fragment_id1)
+                    sheet["initSeqNum"], sheet["initICode"]=fragment_id_split(strand.fragment_id1)
                 except ValueError:
                     pass
                 
                 sheet["endResName"] = strand.res_name2
                 sheet["endChainID"] = strand.chain_id2
                 try:
-                    sheet["endSeqNum"], sheet["endICode"] = fragment_id_split(
-                        strand.fragment_id2)
+                    sheet["endSeqNum"], sheet["endICode"] = fragment_id_split(strand.fragment_id2)
                 except ValueError:
                     pass
                 
@@ -1041,8 +1011,7 @@ class PDBFileBuilder(object):
                 sheet["curChainID"] = strand.reg_chain_id
 
                 try:
-                    sheet["curSeqNum"], sheet["curICode"] = fragment_id_split(
-                        strand.reg_fragment_id)
+                    sheet["curSeqNum"], sheet["curICode"] = fragment_id_split(strand.reg_fragment_id)
                 except ValueError:
                     pass
 
@@ -1050,8 +1019,7 @@ class PDBFileBuilder(object):
                 sheet["prevResName"] = strand.reg_prev_res_name
                 sheet["prevChainID"] = strand.reg_prev_chain_id
                 try:
-                    sheet["prevSeqNum"],sheet["prevICode"]=fragment_id_split(
-                        strand.reg_prev_fragment_id)
+                    sheet["prevSeqNum"],sheet["prevICode"]=fragment_id_split(strand.reg_prev_fragment_id)
                 except ValueError:
                     pass
 
@@ -1091,8 +1059,7 @@ class PDBFileBuilder(object):
             site_pdb[chain_id] = frag_dict["chain_id"]
             site_pdb[res_name] = frag_dict["res_name"]
             try:
-                site_pdb[res_seq], site_pdb[icode] = fragment_id_split(
-                    frag_dict["frag_id"])
+                site_pdb[res_seq], site_pdb[icode] = fragment_id_split(frag_dict["frag_id"])
             except KeyError:
                 pass
 
