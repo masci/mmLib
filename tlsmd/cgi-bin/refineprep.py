@@ -40,7 +40,7 @@ class UInvalid(Exception):
         return self.text
 
 
-def refmac5_prep(xyzin, tlsin, xyzout, tlsout):
+def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     """Use TLS model + Uiso for each atom.  Output xyzout with the
     residual Uiso only.
     """
@@ -52,15 +52,15 @@ def refmac5_prep(xyzin, tlsin, xyzout, tlsout):
     ## load and construct TLS groups
     tls_group_list = []
 
-    tls_file = TLSFile()
-    tls_file.set_file_format(TLSFileFormatTLSOUT())
-    tls_file.load(open(tlsin, "r"))
+    for tlsin in tlsin_list:
+        tls_file = TLSFile()
+        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file.load(open(tlsin, "r"))
 
-    for tls_desc in tls_file.tls_desc_list:
-        tls_group = tls_desc.construct_tls_group_with_atoms(struct)
-        fit_tls_group(tls_group)
-        tls_group.tls_desc = tls_desc
-        tls_group_list.append(tls_group)
+        for tls_desc in tls_file.tls_desc_list:
+            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+            tls_group.tls_desc = tls_desc
+            tls_group_list.append(tls_group)
 
     ## set the extra Uiso for each atom
     for tls_group in tls_group_list:
@@ -136,8 +136,7 @@ def refmac5_prep(xyzin, tlsin, xyzout, tlsout):
         ## rotate T back to original orientation
         tls_group.T = matrixmultiply(transpose(TR), matrixmultiply(T, TR))
 
-        ## reset the TLS tensor values in the TLSDesc object so they can be
-        ## saved
+        ## reset the TLS tensor values in the TLSDesc object so they can be saved
         tls_group.tls_desc.set_tls_group(tls_group)
         
         ## set atm.temp_factor
