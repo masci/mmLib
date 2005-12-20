@@ -40,63 +40,122 @@ class UInvalid(Exception):
         return self.text
 
 
-def refmac5_prep(pdbin, tlsins, pdbout, tlsout):
+def refmac5_prep(xyzin, tlsin, xyzout, tlsout):
+    """Use TLS model + Uiso for each atom.  Output xyzout with the
+    residual Uiso only.
+    """
     os.umask(022)
     
-    ## load input structure
-    struct = LoadStructure(fil = pdbin)
+    ## load structure
+    struct = LoadStructure(fil = xyzin)
 
-    ## load input TLS description
+    ## load and construct TLS groups
+    tls_group_list = []
+
     tls_file = TLSFile()
     tls_file.set_file_format(TLSFileFormatTLSOUT())
-    for tlsin in tlsins:
-        fil = open(tlsin, "r")
-        listx = tls_file.file_format.load(fil)
-        tls_file.tls_desc_list += listx
+    tls_file.load(open(tlsin, "r"))
 
-    ## generate TLS groups from the structure file
-    tls_group_list = []
     for tls_desc in tls_file.tls_desc_list:
         tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+        fit_tls_group(tls_group)
         tls_group.tls_desc = tls_desc
         tls_group_list.append(tls_group)
 
-    ## shift some Uiso displacement from the TLS T tensor to the
-    ## individual atoms
+    ## set the extra Uiso for each atom
     for tls_group in tls_group_list:
- #       for atm, U in tls_group.iter_atm_Utls():
- #           if min(eigenvalues(U)) < 0.0:
- #               raise UInvalid(atm, U)
 
-        ## leave some B magnitude in the file for refinement
-        (tevals, R) = eigenvectors(tls_group.T)
-        tmin = min(tevals)
-        T = matrixmultiply(R, matrixmultiply(tls_group.T, transpose(R)))
-        T = T - (tmin * identity(3, Float))
-        tls_group.T = matrixmultiply(transpose(R), matrixmultiply(T, R))
+        ## minimal/maximal amount of Uiso which has to be added
+        ## to the group's atoms to to make Uiso == Uiso_tls
+        min_Uiso = 0.0
+        max_Uiso = 0.0
 
-        bmin = U2B * tmin
-        for atm, U in tls_group.iter_atm_Utls():
-            btls = U2B * (trace(U)/3.0)
-            biso = atm.temp_factor
+        n         = 0
+        sum_diff2 = 0.0
 
-            bnew = biso - btls - bmin
-            bnew = max(0.0, bnew)
+        for atm, Utls in tls_group.iter_atm_Utls():
+            for aatm in atm.iter_alt_loc():
+                tls_tf = trace(Utls)/3.0
+                ref_tf = trace(aatm.get_U())/3.0
 
-            atm.temp_factor = bnew
-            atm.U = None
+                n += 1
+                sum_diff2 += (tls_tf - ref_tf)**2
+                
+                if ref_tf>tls_tf:
+                    max_Uiso = max(ref_tf - tls_tf, max_Uiso)
+                else:
+                    min_Uiso = max(tls_tf - ref_tf, min_Uiso)
 
-    ## write TLSOUT file with new tensor values
-    for tls_group in tls_group_list:
-        tls_desc = tls_group.tls_desc
-        tls_desc.set_tls_group(tls_group)
+        msd = sum_diff2 / n
+        rmsd = math.sqrt(msd)
+
+
+        ## report the percentage of atoms with Uiso within the RMSD
+        ntotal = 0
+        nrmsd  = 0
         
-    fil = open(tlsout, "w")
-    tls_file.save(fil)
-    fil.close()
+        for atm, Utls in tls_group.iter_atm_Utls():
+            for aatm in atm.iter_alt_loc():
+                tls_tf = trace(Utls)/3.0
+                ref_tf = trace(aatm.get_U())/3.0
 
-    ## write out a PDB file with reduced temperature factors
-    SaveStructure(fil=pdbout, struct=struct)
+                ntotal += 1
+                deviation = math.sqrt((tls_tf - ref_tf)**2)
+                
+                if deviation<=rmsd:
+                    nrmsd += 1
+
+        ## reduce the TLS group T tensor by min_Uiso so that
+        ## a PDB file can be written out where all atoms
+        ## Uiso == Uiso_tls
+
+        ## we must rotate the T tensor to its primary axes before
+        ## subtracting min_Uiso magnitude from it
+        (T_eval, TR) = eigenvectors(tls_group.T)
+        T = matrixmultiply(TR, matrixmultiply(tls_group.T, transpose(TR)))
+
+        assert allclose(T[0,1], 0.0)
+        assert allclose(T[0,2], 0.0)
+        assert allclose(T[1,2], 0.0)
+
+        T[0,0] = T[0,0] - min_Uiso
+        T[1,1] = T[1,1] - min_Uiso
+        T[2,2] = T[2,2] - min_Uiso
+
+        ## now take half of the smallest principal component of T and
+        ## move it into the individual atomic temperature factors
+
+        min_T    = min(T[0,0], min(T[1,1], T[2,2]))
+        sub_T    = min_T * 0.80
+        add_Uiso = min_T - sub_T
+        
+        T[0,0] = T[0,0] - sub_T
+        T[1,1] = T[1,1] - sub_T
+        T[2,2] = T[2,2] - sub_T
+        
+        ## rotate T back to original orientation
+        tls_group.T = matrixmultiply(transpose(TR), matrixmultiply(T, TR))
+
+        ## reset the TLS tensor values in the TLSDesc object so they can be
+        ## saved
+        tls_group.tls_desc.set_tls_group(tls_group)
+        
+        ## set atm.temp_factor
+        for atm, Utls in tls_group.iter_atm_Utls():
+            for aatm in atm.iter_alt_loc():
+                tls_tf = trace(Utls)/3.0
+                ref_tf = trace(aatm.get_U())/3.0
+                
+                if ref_tf>tls_tf:
+                    aatm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*U2B
+                    aatm.U = None
+                else:
+                    aatm.temp_factor = (add_Uiso) * U2B
+                    aatm.U = None
+
+    SaveStructure(fil=xyzout, struct=struct)
+    tls_file.save(open(tlsout, "w"))
+    
 
 
 class Page(object):
