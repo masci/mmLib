@@ -40,6 +40,16 @@ class UInvalid(Exception):
         return self.text
 
 
+class MyEx(Exception):
+    def __init__(self, text):
+        Exception.__init__(self)
+        self.text = text
+
+    def __str__(self):
+        return self.text
+
+
+
 def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     """Use TLS model + Uiso for each atom.  Output xyzout with the
     residual Uiso only.
@@ -52,12 +62,16 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     ## load and construct TLS groups
     tls_group_list = []
 
-    for tlsin in tlsin_list:
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
-        tls_file.load(open(tlsin, "r"))
+    tls_file = TLSFile()
+    tls_file.set_file_format(TLSFileFormatTLSOUT())
 
-        for tls_desc in tls_file.tls_desc_list:
+    tls_file_format = TLSFileFormatTLSOUT()
+
+    for tlsin in tlsin_list:
+        tls_desc_list = tls_file_format.load(open(tlsin, "r"))
+
+        for tls_desc in tls_desc_list:
+            tls_file.tls_desc_list.append(tls_desc)
             tls_group = tls_desc.construct_tls_group_with_atoms(struct)
             tls_group.tls_desc = tls_desc
             tls_group_list.append(tls_group)
