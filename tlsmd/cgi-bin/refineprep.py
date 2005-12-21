@@ -255,7 +255,7 @@ class RefinePrepPage(Page):
         
         ## extract ntls selections from CGI form
         chain_ntls = []
-        for key in self.form.keys():
+        for key in self.form.iterkeys():
             if key.startswith("NTLS_CHAIN"):
                 chain_id = key[-1]
                 try:

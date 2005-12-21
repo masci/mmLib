@@ -278,7 +278,7 @@ class TLSGridClientThread(Thread):
         fit_info = self.compute_server.lsq_fit_segment(frag_id1, frag_id2)
 
         ## merge the fit_info data with the original message
-        for key in fit_info.keys():
+        for key in fit_info.iterkeys():
             if msg.has_key(key):
                 assert msg[key]==fit_info[key]
             msg[key] = fit_info[key]

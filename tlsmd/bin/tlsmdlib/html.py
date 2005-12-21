@@ -870,7 +870,7 @@ class HTMLReport(Report):
         SaveStructure(fil=pdb_path, struct=self.struct)
 
         ## restore atom temp_factor and U
-        for atm, temp_factor in old_temp_factor.items():
+        for atm, temp_factor in old_temp_factor.iteritems():
             atm.temp_factor = temp_factor
             atm.U = old_U[atm]
 
@@ -1108,7 +1108,7 @@ class HTMLReport(Report):
             SaveStructure(fil=pdb_path, struct=self.struct)
 
             ## restore atom temp_factor and U
-            for atm, temp_factor in old_temp_factor.items():
+            for atm, temp_factor in old_temp_factor.iteritems():
                 atm.temp_factor = temp_factor
                 atm.U = old_U[atm]
 
