@@ -602,13 +602,14 @@ class QueuePage(Page):
     def html_foot(self):
         l = ['<center>',
              '<p><small><b>Version %s</b> Last Updated %s</p>' % (VERSION, timestring(time.time())),
-             '</center>',,
+             '</center>',
              '</body></html>']
         return "".join(l)
 
     def html_page(self):
         title = 'TLSMD: Job Status'
-        
+        job_list = self.get_job_list()
+	
         l = [self.html_head(title),
              html_title(title),
              html_nav_bar("queue"),
@@ -617,7 +618,6 @@ class QueuePage(Page):
              'Or click on the Job ID you wish to view',
              '</b></center>',
              '<br>',
-             job_list = self.get_job_list(),
              self.html_running_job_table(job_list),
              '<br>',
              self.html_queued_job_table(job_list),
@@ -629,7 +629,7 @@ class QueuePage(Page):
             l.append('<br>')
             l.append(limbo)
 
-        l.appned(self.html_foot())
+        l.append(self.html_foot())
         
         return "".join(l)
 

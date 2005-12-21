@@ -12,8 +12,6 @@ import socket
 import string
 
 import xmlrpclib
-import cgitb; cgitb.enable()
-import cgi
 
 from mmLib.Structure  import *
 from mmLib.FileLoader import *
