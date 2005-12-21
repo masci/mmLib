@@ -1012,8 +1012,8 @@ class CRYSTn(PDBRecord):
         ("alpha", 34, 40, "float.3", "rjust", None),
         ("beta", 41, 47, "float.3", "rjust", None),
         ("gamma", 48, 54, "float.3", "rjust", None),
-        ("sgroup", 56, 66, "string", "rjust", None),
-        ("z", 67, 70, "integer", "rjust", None)]
+        ("sgroup", 56, 66, "string", "ljust", None),
+        ("z", 67, 70, "integer", "ljust", None)]
 
 class CRYST1(CRYSTn):
     __slots__ = []
