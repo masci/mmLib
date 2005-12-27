@@ -95,7 +95,7 @@ def rmatrixu_bla(u, theta):
 
 
 def dmatrix(alpha, beta, gamma):
-    """Returns the displacment matrix based on rotation about Euler
+    """Returns the displacement matrix based on rotation about Euler
     angles alpha, beta, and gamma.
     """
     return rmatrix(alpha, beta, gamma) - identity(3, Float)
