@@ -72,6 +72,7 @@ class GNUPlot(object):
         
         ## run gnuplot
         self.run_gnuplot(script_png)
+        return
 
         ## XXX: hack svg output
         l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
@@ -82,6 +83,7 @@ class GNUPlot(object):
 
     def html_link(self, alt_text=None):
         if not alt_text: alt_text = self.basename
+        return '<img src="%s" alt="%s">' % (self.png_path, alt_text)
         
         l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
              '<img src="%s" alt="%s">' % (self.png_path, alt_text),
