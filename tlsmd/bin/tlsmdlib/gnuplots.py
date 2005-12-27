@@ -22,40 +22,72 @@ class GNUPlot(object):
         self.font_size    = args.get("fontsize", 10)
         self.width        = args.get("width", 640)
         self.height       = args.get("height", 480)
+
+        self.basename     = None
+        self.txt_path     = None
         self.plot_path    = None
         self.png_path     = None
+        self.svg_path     = None
+
+    def set_basename(self, basename):
+        """Sets all output file names based on the plot's basename.
+        """
+        self.basename = basename
+        self.txt_path = "%s.txt" % (basename)
+        self.plot_path = "%s.plot" % (basename)
+        self.png_path = "%s.png" % (basename)
+        self.svg_path = "%s.svg" % (basename)
 
     def make_script(self):
         """Implement me.
         """
         pass
 
-    def output_png(self):
-        """Runs gnuplot.  Expects self.plot_path and self.png_path to be set.
+    def run_gnuplot(self, script):
+        """Execute GNUPlot with the given script.
         """
-        script = self.make_script()
-        
-        ## if a basename is given, then write the GnuPlot script as a file
-        print "GNUPLot: Saving %s" % (self.png_path)
-
-        ## set output size
-        x  = ''
-        x += 'set term png font "%s" %d size %d,%d enhanced\n' % (self.font_path, self.font_size, self.width, self.height)
-        x += 'set output "%s"\n' % (self.png_path)
-        
-        script = x + script
-
-        ## optionally write a gnuplot script
-        if self.plot_path!=None:
-            open(self.plot_path, "w").write(script)
-        
-        ## run gnuplot
         stdout, stdin, stderr = popen2.popen3((self.gnuplot_path, ), 32768)
         stdin.write(script)
         stdin.close()
         stdout.close()
         stderr.close()
 
+    def output_png(self):
+        """Runs gnuplot.  Expects self.plot_path and self.png_path to be set.
+        """
+        script0 = self.make_script()
+        
+        ## if a basename is given, then write the GnuPlot script as a file
+        print "GNUPLot: Saving %s" % (self.png_path)
+
+        ## set output size
+        l = ['set term png font "%s" %d size %d,%d enhanced' % (self.font_path, self.font_size, self.width, self.height),
+             'set output "%s"' % (self.png_path),
+             '']
+        
+        script_png = "\n".join(l) + script0
+
+        ## write a gnuplot script
+        open(self.plot_path, "w").write(script_png)
+        
+        ## run gnuplot
+        self.run_gnuplot(script_png)
+
+        ## XXX: hack svg output
+        l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
+             'set output "%s"' % (self.svg_path),
+             '']
+        script_svg = "\n".join(l) + script0
+        self.run_gnuplot(script_svg)
+
+    def html_link(self, alt_text=None):
+        if not alt_text: alt_text = self.basename
+        
+        l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
+             '<img src="%s" alt="%s">' % (self.png_path, alt_text),
+             '</object>']
+
+        return "".join(l)
 
 
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
@@ -80,9 +112,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 
         ## generate data and png paths
         basename = "%s_CHAIN%s_RESID" % (chainopt["struct_id"] , chainopt["chain_id"])
-        self.txt_path = "%s.txt" % (basename)
-        self.png_path = "%s.png" % (basename)
-        self.plot_path = "%s.plot" % (basename)
+        self.set_basename(basename)
 
         fil = open(self.txt_path, "w")
         for h, tlsopt in chainopt["ntls_list"]:
@@ -121,8 +151,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         
         ## generate data and png paths
         basename = "%s_RESID" % (struct_id)
-        self.png_path = "%s.png" % (basename)
-        self.plot_path = "%s.plot" % (basename)
+        self.set_basename(basename)
 
         ## prepare gnuplot script
         script = _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE
@@ -162,8 +191,7 @@ class TranslationAnalysis(GNUPlot):
         tlsopt = self.tlsopt
         
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
-        self.png_path = "%s.png" % (basename)
-        self.txt_path = "%s.txt" % (basename)
+        self.set_basename(basename)
 
         self.write_data_file(tlsopt)
 
@@ -253,8 +281,7 @@ class LibrationAnalysis(GNUPlot):
         tlsopt = self.tlsopt
         
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
-        self.png_path = "%s.png" % (basename)
-        self.txt_path = "%s.txt" % (basename)
+        self.set_basename(basename)
 
         self.write_data_file(tlsopt)
 
@@ -351,8 +378,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         tlsopt = self.tlsopt
 
         basename = "%s_CHAIN%s_NTLS%s_CADIFF" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
-        self.png_path = "%s.png" % (basename)
-        self.txt_path = "%s.txt" % (basename)
+        self.set_basename(basename)
 
         self.write_data_file(tlsopt)
 
@@ -441,11 +467,8 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         tls = self.tls
 
         ## generate data and png paths
-        basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (
-            chainopt["struct_id"], chainopt["chain_id"], tls["frag_id1"], tls["frag_id2"])
-        
-        self.txt_path = "%s.txt" % (basename)
-        self.png_path = "%s.png" % (basename)
+        basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (chainopt["struct_id"], chainopt["chain_id"], tls["frag_id1"], tls["frag_id2"])
+        self.set_basename(basename)
 
         ## write out the data file
         tls_group = tls["tls_group"]
@@ -628,8 +651,7 @@ class BMeanPlot(GNUPlot):
         tlsopt = self.tlsopt
         
         basename = "%s_CHAIN%s_NTLS%s_BMEAN" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
-        self.png_path = "%s.png" % (basename)
-        self.plot_path = "%s.plot" % (basename)
+        self.set_basename(basename)
 
         ## write data file
         BISO1 = calc_mean_biso_obs(chainopt)
@@ -807,9 +829,7 @@ class RMSDPlot(GNUPlot):
         tlsopt = self.tlsopt
         
         basename = "%s_CHAIN%s_NTLS%s_RMSD" % (chainopt["struct_id"], chainopt["chain_id"], tlsopt.ntls)
-        self.png_path = "%s.png" % (basename)
-        self.plot_path = "%s.plot" % (basename)
-        self.txt_path = "%s.txt" % (basename)
+        self.set_basename(basename)
 
         self.write_data_file(chainopt, tlsopt)
 

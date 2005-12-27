@@ -52,8 +52,8 @@ GLOBALS = {
     "MIN_SUBSEGMENT_SIZE": 6,
     "VERBOSE"            : False,
 
-    "VERSION":        "0.5.2",
-    "RELEASE_DATE":   "21 Dec 2005",
+    "VERSION":        "0.5.3",
+    "RELEASE_DATE":   "26 Dec 2005",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",
 
@@ -65,7 +65,7 @@ GLOBALS = {
     }
 
 ## Font used by Python Imaging Library and GNUPlot
-TLSMD_ROOT   = "/home/tlsmd/tlsmd"
+TLSMD_ROOT   = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
 GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 
 ## the isoprobability contour level for all

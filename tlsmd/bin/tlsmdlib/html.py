@@ -163,43 +163,40 @@ def calc_orientation(struct, chain):
 def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
     """Generate HTML for a table containing the details of the ntls-group partitioning of the given chain.
     """
-    f1 = '<font size="-5">'
-    f2 = '</font>'
+    
 
-    x = ''
+    
+    l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
+         '<tr>',
+         '<th align="center" colspan="12">',
+         'Analysis of TLS Group Chain Segments',
+         '</th>',
+         '</tr>',
 
-    ## TLS group table
-    x += '<table width="100%" border=0 style="background-color:#eeeeee">\n'
-
-    x += '<tr>\n'
-    x += '<th align="center" colspan="12">'
-    x += 'Analysis of TLS Group Chain Segments'
-    x += '</th>\n'
-    x += '</tr>\n'
-
-    x += '<tr>\n'
-    x += '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>\n'
-    x += '<th colspan="6" style="background-color:#bbbbbb">TLS Predictions</th>\n'
-    x += '</tr>\n'
-
-    x += ' <tr align="left" style="background-color:#bbbbbb">\n'
-    x += '  <th>%sColor%s</th>\n' % (f1, f2)
-    x += '  <th>%sSegment%s</th>\n' % (f1, f2)
-    x += '  <th>%sResidues%s</th>\n' % (f1, f2)
-    x += '  <th>%sAtoms%s</th>\n'  % (f1, f2)
-    x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
-    x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
-    x += '  <th>%sLSQR%s</th>\n' % (f1, f2)
-    x += '  <th>%sLSQR/Res%s</th>\n' % (f1, f2)
-    x += '  <th>%seval(T<sup>r</sup>) <var>B</var>%s</th>\n' % (f1, f2)
-    x += '  <th>%seval(L) <var>DEG<sup>2</sup></var>%s</th>\n' % (f1, f2)
-    x += '  <th>%s&#60;B&#62;%s</th>\n'  % (f1, f2)
-    x += '  <th>%s&#60;Aniso&#62;%s</th>\n' % (f1, f2)
-    x += ' </tr>\n'
+         '<tr>',
+         '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>',
+         '<th colspan="6" style="background-color:#bbbbbb">TLS Predictions</th>',
+         '</tr>',
+         
+         '<tr align="left" style="background-color:#bbbbbb">',
+         '<th>Color</th>',
+         '<th>Segment</th>',
+         '<th>Residues</th>',
+         '<th>Atoms</th>',
+         '<th>&#60;B&#62;</th>',
+         '<th>&#60;Aniso&#62;</th>',
+         '<th>LSQR</th>',
+         '<th>LSQR/Res</th>',
+         '<th>eval(T<sup>r</sup>) <var>B</var></th>',
+         '<th>eval(L) <var>DEG<sup>2</sup></var></th>',
+         '<th>&#60;B&#62;</th>',
+         '<th>&#60;Aniso&#62;</th>',
+         '</tr>' ]
 
     bgcolor_flag = True
 
     for tls in tlsopt.tls_list:
+        
         tls_group = tls["tls_group"]
         tls_info  = tls["tls_info"]
         mtls_info = tls["model_tls_info"]
@@ -212,10 +209,11 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
         Tr2 = mtls_info["Tr2_eigen_val"] * U2B
         Tr3 = mtls_info["Tr3_eigen_val"] * U2B
 
+        ## alternate row background color
         if bgcolor_flag:
-            x += '<tr style="background-color:#dddddd">\n'
+            l.append('<tr style="background-color:#dddddd">')
         else:
-            x += '<tr>\n'
+            l.append('<tr>')
         bgcolor_flag = not bgcolor_flag
 
         ## path to color thumbnail
@@ -224,22 +222,22 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
         else:
             cpath = tls["color"]["thumbnail_path"]
 
-        x += '<td align="center" valign="middle"><img src="%s" alt="%s"></td>\n' % (cpath, tls["color"]["name"])
-        x += '<td>%s%s-%s%s</td>\n' % (f1, tls["frag_id1"], tls["frag_id2"], f2)
-        x += '<td>%s%d%s</td>\n'    % (f1, len(tls["segment"]), f2)
-        x += '<td>%s%d%s</td>\n'    % (f1, len(tls_group), f2)
-        x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["exp_mean_temp_factor"], f2)
-        x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["exp_mean_anisotropy"], f2)
-        x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual"], f2)
-        x += '<td>%s%6.4f%s</td>\n' % (f1, tls["lsq_residual_per_res"], f2)
-        x += '<td>%s%5.1f, %5.1f, %5.1f%s</td>\n' % (f1, Tr1, Tr2, Tr3, f2)
-        x += '<td>%s%5.2f, %5.2f, %5.2f%s</td>\n' % (f1, L1, L2, L3, f2)
-        x += '<td>%s%5.1f%s</td>\n' % (f1, tls_info["tls_mean_temp_factor"], f2)
-        x += '<td>%s%4.2f%s</td>\n' % (f1, tls_info["tls_mean_anisotropy"], f2)
-        x += '</tr>\n'
+        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls["color"]["name"]),
+              '<td>%s-%s</td>' % (tls["frag_id1"], tls["frag_id2"]),
+              '<td>%d</td>'    % (len(tls["segment"])),
+              '<td>%d</td>'    % (len(tls_group)),
+              '<td>%5.1f</td>' % (tls_info["exp_mean_temp_factor"]),
+              '<td>%4.2f</td>' % (tls_info["exp_mean_anisotropy"]),
+              '<td>%6.4f</td>' % (tls["lsq_residual"]),
+              '<td>%6.4f</td>' % (tls["lsq_residual_per_res"]),
+              '<td>%5.1f, %5.1f, %5.1f</td>' % (Tr1, Tr2, Tr3),
+              '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
+              '<td>%5.1f</td>' % (tls_info["tls_mean_temp_factor"]),
+              '<td>%4.2f</td>' % (tls_info["tls_mean_anisotropy"]),
+              '</tr>']
 
-    x += '</table>\n'
-    return x
+    l.append('</table>')
+    return "\n".join(l)
 
 
 class Report(object):
@@ -248,17 +246,17 @@ class Report(object):
     def html_head(self, title):
         """Header for all HTML pages.
         """
-        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n\n',
-             '<html>\n',
-             '<head>\n',
-             '  <title>%s</title>\n' % (title),
-             '  <style type="text/css" media="screen">\n',
-             '  <!-- \n',
-             '  BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}\n',
-             '  -->\n',
-             '  </style>\n',
-             '</head>\n',
-             '<body>\n']
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
+             '<html>',
+             '<head>',
+             '<title>%s</title>' % (title),
+             '<style type="text/css" media="screen">',
+             '<!-- ',
+             'BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}',
+             '-->',
+             '</style>',
+             '</head>',
+             '<body>']
 
         return "".join(l)
 
@@ -271,7 +269,7 @@ class Report(object):
               '</tr></table>',
               '<center><font size="+2">%s</font></center><br>' % (title)]
         
-        return "".join(l)
+        return "\n".join(l)
 
     def html_foot(self):
         """Footer for all HTML pages.
@@ -285,7 +283,7 @@ class Report(object):
               '</tr></table>',
               '</body></html>']
         
-        return "".join(l)
+        return "\n".join(l)
 
 
 class HTMLReport(Report):
@@ -592,7 +590,7 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<table>'
         x += '<tr><td align="center">'
-        x += '<img src="%s" alt="LSQR Plot">' % (gp.png_path)
+        x += gp.html_link()
         x += '</td></tr>'
         x += '<tr><td><p>%s</p></td></tr>' % (LSQR_CAPTION)
         x += '</table>'
@@ -666,70 +664,64 @@ class HTMLReport(Report):
         ## detailed analysis of all TLS groups
         ntls_analysis = self.chain_ntls_analysis(chainopt, tlsopt)
 
-        f1 = '<font size="-10">'
-        f2 = '</font>'
-
-        x  = ''
-        x += '<hr>'
-        x += '<center style="page-break-before: always">\n'
-        x += '<h3><a name="NTLS%d">Optimal TLS Group Partition using %d Groups</a></h3>\n' % (ntls, ntls)
-
-        ## navigation links
-        x += '<a href="%s">Motion and Error Analysis</a>' % (ntls_analysis.url)
-
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-         
-        x += '<a href="." onClick="'\
-             'window.open('\
-             '&quot;%s&quot;,'\
-             '&quot;&quot;,'\
-             '&quot;width=%d,height=%d,screenX=10,'\
-             'screenY=10,left=10,top=10&quot;);'\
-             'return false;">View with JMol</a>' % (
-            jmol_path, JMOL_SIZE, JMOL_SIZE)
-
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-
-        x += '<a href="." onClick="'\
-             'window.open('\
-             '&quot;%s&quot;,'\
-             '&quot;&quot;,'\
-             '&quot;width=%d,height=%d,screenX=10,'\
-             'screenY=10,left=10,top=10&quot;);'\
-             'return false;">Animate Screw Displacement with JMol</a>' % (
-            jmol_animate_path, JMOL_SIZE, JMOL_SIZE)
-
-        x += '<br>'
-        x += '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_path)
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
-        x += '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id))
-
-        x += '</center>\n'
-
-        ## raytraced image
-        x += '<table style="background-color:white" width="100%" border=0>'
-        
-        x += '<tr><th>'
-        x += '<center><img src="%s" alt="iAlt"></center><br>\n' % (png_path)
-        x += '</th></tr>'
-
         ## BMean Plot
         ntls_analysis.bmean_plot.width = 640
         ntls_analysis.bmean_plot.height = 250
         ntls_analysis.bmean_plot.tls_group_titles = False
         ntls_analysis.bmean_plot.output_png()
-        
-        x += '<tr><th>'
-        x += '<center><img src="%s" alt="iAlt"></center><br>\n' % (ntls_analysis.bmean_plot.png_path)
-        x += '</th></tr>'
-        x += '</table>'
 
-        ## now the table
-        x += html_tls_group_table(chainopt, tlsopt, ntls)
-
-        x += '<br clear="all">\n'
         
-        return x
+        l = ['<hr>',
+             
+             '<center style="page-break-before:always; font-size:small">',
+             '<a name="NTLS%d" style="font-size:large">' % (ntls),
+             'Summary of Optimal TLS Group Partition using %d Groups' % (ntls),
+             '</a>',
+             '<br>',
+
+             ## navigation links
+             '<a href="%s">Full TLS Partition Analysis</a>' % (ntls_analysis.url),
+
+             '&nbsp;&nbsp;&nbsp;&nbsp;',
+         
+             '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (jmol_path),
+             'width=%d,height=%d,screenX=10,screenY=10,left=10,top=10&quot;);' % (JMOL_SIZE, JMOL_SIZE),
+             'return false;">View with JMol</a>',
+
+             '&nbsp;&nbsp;&nbsp;&nbsp;',
+
+             '<a href="." onClick="'\
+             'window.open('\
+             '&quot;%s&quot;,'\
+             '&quot;&quot;,'\
+             '&quot;width=%d,height=%d,screenX=10,'\
+             'screenY=10,left=10,top=10&quot;);'\
+             'return false;">Animate Screw Displacement with JMol</a>' % (jmol_animate_path, JMOL_SIZE, JMOL_SIZE),
+
+             '<br>',
+             '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_path),
+             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id)),
+             
+             '</center>',
+
+             ## raytraced image
+             '<table style="background-color:white" width="100%" border=0>',
+             '<tr><th>',
+             '<center><img src="%s" alt="structimage"></center><br>' % (png_path),
+             '</th></tr>',
+
+             '<tr><th><center>',
+             ntls_analysis.bmean_plot.html_link(),
+             '</center></th></tr>',
+             '</table>',
+
+             ## now the table
+             html_tls_group_table(chainopt, tlsopt, ntls),
+             
+             '<br clear="all">']
+        
+        return "".join(l)
 
     def raster3d_render_tls_graph_path(self, chainopt, tlsopt, ntls):
         """Render TLS visualizations using Raster3D.
@@ -1065,7 +1057,7 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<a href="index.html">Back to Index</a>'
         x += '</center>'
-        x += '<br>\n'
+        x += '<br>'
 
         ## figure out the maximum number of ntls in all chains
         max_ntls = 0
@@ -1189,7 +1181,7 @@ class HTMLReport(Report):
         x += '<center><table><tr><td>'
         
         plot = LSQR_vs_TLS_Segments_All_Chains_Plot(chainopt_list)
-        x += '<img src="%s" alt="LSQR Residual">' % (plot.png_path)
+        x += plot.html_link()
 
         x += '</td></tr><tr><td>'
 
@@ -1303,93 +1295,82 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a translation analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        x  = ''
-        x += '<center>'
-        x += '<h3>Translation Analysis of T<sup>r</sup></h3>'
-        x += '</center>\n'
-
         tanalysis = TranslationAnalysis(self.chainopt, self.tlsopt)
+
+        l = ['<center>',
+             '<h3>Translation Analysis of T<sup>r</sup></h3>',
+             tanalysis.html_link(),
+             '</center>',
+             '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)]
         
-        x += '<center>'
-        x += '<img src="%s" alt="Translation Analysis">' % (tanalysis.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)
-        
-        return x
+        return "".join(l)
 
     def html_libration_analysis(self):
         """Perform a libration analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        x  = ''
-        x += '<center><h3>Screw Displacement Analysis</h3></center>\n'
-
         libration_analysis = LibrationAnalysis(self.chainopt, self.tlsopt)
-
-        x += '<center>'
-        x += '<img src="%s" alt="Libration Analysis">' % (libration_analysis.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION)
         
-        return x
+        l = ['<center>',
+             '<h3>Screw Displacement Analysis</h3>',
+             libration_analysis.html_link(),
+             '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION),
+             '</center>']
+        
+        return "".join(l)
 
     def html_ca_differance(self):
         """Perform a fit analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        x  = ''
-        x += '<center><h3>Deviation of Observed Mainchain B-Factors From Rigid Body Model</h3></center>\n'
-
         plot = CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
         
-        x += '<center>'
-        x += '<img src="%s" alt="CA Differance">' % (plot.png_path)
-        x += '</center>\n'
-        x += '<p>%s</p>' % (FIT_GRAPH_CAPTION)
+        l = ['<center>',
+             '<h3>Deviation of Observed Mainchain B-Factors From Rigid Body Model</h3>',
+             plot.html_link(),
+             '<p>%s</p>' % (FIT_GRAPH_CAPTION),
+             '</center>']
 
-        return x
+        return "".join(l)
 
     def html_bmean(self):
-        x  = ''
-        x += '<center><h3>Mean BFactor Analysis</h3></center>\n'
-
+        """Mean B-Factor per residue.
+        """
         self.bmean_plot = BMeanPlot(self.chainopt, self.tlsopt)
-        
-        x += '<center>'
-        x += '<img src="%s" alt="Bla">' % (self.bmean_plot.png_path)
-        x += '</center>\n'
-        x += '<p>Comparison of TLS predicted B factors with experimental (input) B factors.</p>'
 
-        return x
+        l = ['<center>',
+             '<h3>Mean BFactor Analysis</h3>',
+             self.bmean_plot.html_link(),
+             '<p>Comparison of TLS predicted B factors with experimental (input) B factors.</p>',
+             '</center>']
+
+        return "".join(l)
 
     def html_rmsd_plot(self):
-        x  = ''
-        x += '<center><h3>Residue RMSD Analysis</h3></center>\n'
-
         rmsd_plot = RMSDPlot(self.chainopt, self.tlsopt)
-        
-        x += '<center>'
-        x += '<img src="%s" alt="RMSD">' % (rmsd_plot.png_path)
-        x += '</center>\n'
-        x += '<p>Nothing Here Yet</p>'
 
-        return x
+        l = ['<center>',
+             '<h3>Residue RMSD Analysis</h3>',
+             rmsd_plot.html_link(),
+             '<p>Nothing Here Yet</p>'
+             '</center>']
+
+        return "".join(l)
 
     def html_tls_fit_histogram(self, tls):
-        """A complete analysis of a single TLS group output as HTML.
+        """histogram of atomic U_ISO - U_TLS_ISO
         """
-        x  = ''
-        x += '<center>'
-        x += '<h3>Distribution Histogram of TLS Group %s%s-%s%s</h3>' % (
-            self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
-        x += '</center>'
-
-        ## histogram of atomic U_ISO - U_TLS_ISO
+        
         his = UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
+        
+        l = ['<center>',
+             '<h3>Distribution Histogram of TLS Group %s%s-%s%s</h3>' % (self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"]),
+             '</center>',
+             '<center>',
+             his.html_link(),
+             '</center>']
 
-        x += '<center><img src="%s" alt="iAlt"></center>\n' % (his.png_path)
-
-        return x
+        return "".join(l)
 
 
 
