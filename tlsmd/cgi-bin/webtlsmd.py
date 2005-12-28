@@ -506,8 +506,7 @@ class Page(object):
 
     def html_head_nocgi(self, title):
         x  = ''
-        x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
-        x += '"http://www.w3.org/TR/html4/loose.dtd">\n\n'
+        x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
@@ -524,19 +523,16 @@ class Page(object):
         return x
 
     def html_head(self, title):
-        x = ''
-        x += 'Content-Type: text/html\n\n'
-        x += self.html_head_nocgi(title)
-        return x
+        return 'Content-Type: text/html\n\n' + self.html_head_nocgi(title)
 
     def html_foot(self):
-        x = ''
-        x += '<center>'
-        x += '<p><small><b>Version %s</b> Last Modified %s' % (VERSION, LAST_MODIFIED_DATE)
-        x += '</small></p>'
-        x += '</center>'
-        x += '</body></html>'
-        return x
+        l = ['<center>',
+             '<p><small><b>Version %s</b> Last Modified %s' % (VERSION, LAST_MODIFIED_DATE),
+             '</small></p>',
+             '</center>',
+             '</body></html>']
+        
+        return "".join(l)
 
 
 class ErrorPage(Page):
@@ -580,8 +576,7 @@ class QueuePage(Page):
         return '<a href="http://pdbbeta.rcsb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
 
     def html_head_nocgi(self, title):
-        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
-             '"http://www.w3.org/TR/html4/loose.dtd">\n\n',
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
              '<html>',
              '<head>',
              '  <meta http-equiv="refresh" content="120">',
@@ -604,6 +599,7 @@ class QueuePage(Page):
              '<p><small><b>Version %s</b> Last Updated %s</p>' % (VERSION, timestring(time.time())),
              '</center>',
              '</body></html>']
+        
         return "".join(l)
 
     def html_page(self):

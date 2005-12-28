@@ -52,8 +52,8 @@ GLOBALS = {
     "MIN_SUBSEGMENT_SIZE": 6,
     "VERBOSE"            : False,
 
-    "VERSION":        "0.5.3",
-    "RELEASE_DATE":   "26 Dec 2005",
+    "VERSION":        "0.5.4",
+    "RELEASE_DATE":   "28 Dec 2005",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",
 

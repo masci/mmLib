@@ -237,7 +237,7 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
               '</tr>']
 
     l.append('</table>')
-    return "\n".join(l)
+    return "".join(l)
 
 
 class Report(object):
@@ -269,7 +269,7 @@ class Report(object):
               '</tr></table>',
               '<center><font size="+2">%s</font></center><br>' % (title)]
         
-        return "\n".join(l)
+        return "".join(l)
 
     def html_foot(self):
         """Footer for all HTML pages.
@@ -283,7 +283,7 @@ class Report(object):
               '</tr></table>',
               '</body></html>']
         
-        return "\n".join(l)
+        return "".join(l)
 
 
 class HTMLReport(Report):
@@ -455,50 +455,40 @@ class HTMLReport(Report):
         """
         title = "TLSMD Thermal Parameter Analysis of Structure %s" % (self.struct_id)
 
-        x  = ''
-        x += self.html_head(title)
-        x += self.html_title(title)
+        l = [self.html_head(title),
+             self.html_title(title),
 
-        ## OPTIMIZATION PARAMETERS
-        x += self.html_globals()
-        x += '<br>'
+             ## OPTIMIZATION PARAMETERS
+             self.html_globals(),
+             '<br>',
         
-        ## MOTION ANALYSIS
-        x += '<center>'
-        x += '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>'
-        x += '</center>'
-        x += '<p style="font-size:small">%s</p>' % (MOTION_ANALYSIS_TEXT)
+             ## MOTION ANALYSIS
+             '<center>',
+             '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
+             '</center>',
+             '<p style="font-size:small">%s</p>' % (MOTION_ANALYSIS_TEXT)]
 
         for xdict in self.pages_chain_motion_analysis:
-            x += '<p><a href="%s">%s</a></p>\n' % (xdict["href"], xdict["title"])
+            l.append('<p><a href="%s">%s</a></p>' % (xdict["href"], xdict["title"]))
 
-        x += '<br>'
-
-        ## MULTI CHAIN ALIGNMENT
-        x += '<center>'
-        x += '<h3>Multi-Chain TLS Group Alignment</h3>'
-        x += '</center>'
-        x += '<p style="font-size:small">%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)
+        l +=['<br>',
+             ## MULTI CHAIN ALIGNMENT
+             '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
+             '<p style="font-size:small">%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)]
 
         if self.page_multi_chain_alignment!=None:
-            x += '<p><a href="%s">%s</a></p>\n' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"])
+            l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
         else:
-            x += '<p><u>Only one chain was analyized in this '
-            x += 'structure, so the multi-chain alignment analysis '
-            x += 'was not performed.'
-            x += '</u></p>'
+            l.append('<p><u>Only one chain was analyized in this structure, so the multi-chain alignment analysis was not performed.</u></p>')
 
-        x += '<br>'
-
-        ## REFINEMENT PREP
-        x += '<center>'
-        x += '<h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3>'
-        x += '</center>'
-        x += '<p style="font-size:small">%s</p>' % (REFINEMENT_PREP_TEXT)
-        x += '<p><a href="%s">%s</a></p>\n' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"])
-            
-        x += self.html_foot()
-        return x
+        l +=['<br>',
+             ## REFINEMENT PREP
+             '<center><h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3></center>',
+             '<p style="font-size:small">%s</p>' % (REFINEMENT_PREP_TEXT),
+             '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"]),
+             self.html_foot()]
+        
+        return "".join(l)
 
     def html_globals(self):
         """
@@ -550,7 +540,7 @@ class HTMLReport(Report):
         x  = self.html_head(title)
         x += self.html_title(title)
         x += '<center><a href="index.html">Back to Index</a></center>'
-        x += '<br>\n'
+        x += '<br>'
 
         ## if there were no valid chain configurations found
         ## then write out a useful error message
@@ -585,18 +575,17 @@ class HTMLReport(Report):
         """
         gp = LSQR_vs_TLS_Segments_Plot(chainopt)
 
-        x  = ''
-        x += '<center><h3>Chain %s Optimization Residual</h3></center>\n' % (chainopt["chain_id"])
-        x += '<center>'
-        x += '<table>'
-        x += '<tr><td align="center">'
-        x += gp.html_link()
-        x += '</td></tr>'
-        x += '<tr><td><p>%s</p></td></tr>' % (LSQR_CAPTION)
-        x += '</table>'
-        x += '</center>'
+        l = ['<center><h3>Chain %s Optimization Residual</h3></center>' % (chainopt["chain_id"]),
+             '<center>',
+             '<table>',
+             '<tr><td align="center">',
+             gp.html_link(),
+             '</td></tr>',
+             '<tr><td><p>%s</p></td></tr>' % (LSQR_CAPTION),
+             '</table>',
+             '</center>']
         
-        return x
+        return "".join(l)
 
     def html_chain_alignment_plot(self, chainopt):
         """generate a plot comparing all segmentations
@@ -611,32 +600,27 @@ class HTMLReport(Report):
         
         plot.plot(plot_path)
 
-        x  = ''
-        x += '<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>\n' % (chainopt["chain_id"])
-        x += '<center>'
-        x += '<table border="0" style="background-color:#dddddd">'
-        x += '<tr><th># of TLS<br>Groups</th>'
-        x += '<th>Segment/Sequence Alignment</th></tr>'
-        x += '<tr>'
+        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chainopt["chain_id"]),
+             '<center>',
+             '<table border="0" style="background-color:#dddddd">',
+             '<tr><th># of TLS<br>Groups</th>',
+             '<th>Segment/Sequence Alignment</th></tr>',
+             '<tr>',
         
-        x += '<td align="right">'
-        x += '<table border="0" cellspacing="0" cellpadding="0">'
+             '<td align="right" valign="top">',
+             '<p style="font-size:xx-small; margin-top:%dpx; line-height:18px">' % (plot.border_width)]
 
         for ntls, tlsopt in chainopt["ntls_list"]:
-            x += '<tr><td align="right" valign="middle" height="20"><font size="-20"><a href="#NTLS%d">%d</a></font></td></tr>' % (ntls, ntls)
+            l.append('<a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
 
-        x += '</table>'
-        x += '</td>'
-
-        x += '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_path)
-
-        x += '</tr>'
-        x += '</table>'
-        x += '</center>'
-
-        x += '<p>%s</p>' % (SEG_ALIGN_CAPTION)
+        l +=['</td>',
+             '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_path),
+             '</tr>',
+             '</table>',
+             '</center>',
+             '<p>%s</p>' % (SEG_ALIGN_CAPTION)]
         
-        return x
+        return "".join(l)
 
     def html_tls_graph_path(self, chainopt, ntls):
         """Generates the HTML table describing the path (set of tls groups)
@@ -907,45 +891,43 @@ class HTMLReport(Report):
 
         ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
-        js  = ''
-        js += 'load %s;' % (self.struct_path)
-        js += 'select *;'
-        js += 'cpk off;'
-        js += 'wireframe off;'
-        js += 'select protein;'
-        js += 'cartoon on;'
+        js = ['load %s;' % (self.struct_path),
+              'select *;',
+              'cpk off;',
+              'wireframe off;',
+              'select protein;',
+              'cartoon on;']
 
         ## loop over TLS groups and color
         for tls in tlsopt.tls_list:
-            js += 'select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], tls["chain_id"])
-            js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
+            js.append('select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], tls["chain_id"]))
+            js.append('color [%d,%d,%d];' % (tls["color"]["rgbi"]))
 
         ## select non-protein non-solvent and display
-        js += 'select not protein and not solvent;'
-        js += 'color CPK;'
-        js += 'wireframe on; wireframe 0.5;'
-        js += 'spacefill 80%;'
-        js += 'spacefill on;'
+        js +=['select not protein and not solvent;',
+              'color CPK;',
+              'wireframe on; wireframe 0.5;',
+              'spacefill 80%;',
+              'spacefill on;']
         
         ## write the HTML page to render the script in
-        x  = ''
-        x += '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'
-        x += '<html>'
-        x += '<head>'
-        x += '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], ntls)
-        x += '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR)
-        x += '</script>'
-        x += '</head>'
-        x += '<body>'
-        x += '<script type="text/javascript">'
-        x += 'jmolInitialize("%s");' % (JMOL_DIR)
-        x += 'jmolSetAppletColor("white");'
-        x += 'jmolApplet(%d, "%s");' % (JMOL_SIZE, js)
-        x += '</script>'
-        x += '</body>'
-        x += '</html>'
+        l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
+             '<html>',
+             '<head>',
+             '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], ntls),
+             '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR),
+             '</script>',
+             '</head>',
+             '<body>',
+             '<script type="text/javascript">',
+             'jmolInitialize("%s");' % (JMOL_DIR),
+             'jmolSetAppletColor("white");',
+             'jmolApplet(%d, "%s");' % (JMOL_SIZE, "".join(js)),
+             '</script>',
+             '</body>',
+             '</html>']
 
-        open(jmol_path, "w").write(x)
+        open(jmol_path, "w").write("".join(l))
         return jmol_path
 
     def jmol_animate_html(self, chainopt, tlsopt):
@@ -970,13 +952,12 @@ class HTMLReport(Report):
         
         ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
-        js  = ''
-        js += 'load %s;' % (pdb_path)
-        js += 'select *;'
-        js += 'cpk off;'
-        js += 'wireframe off;'
-        js += 'select protein;'
-        js += 'trace on;'
+        js = ['load %s;' % (pdb_path),
+              'select *;',
+              'cpk off;',
+              'wireframe off;',
+              'select protein;',
+              'trace on;']
 
         ## loop over TLS groups and color
         for tls in tlsopt.tls_list:
@@ -985,45 +966,43 @@ class HTMLReport(Report):
                          tlsa.L3_chain.chain_id]
 
             for chain_id in chain_ids:
-                js += 'select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], chain_id)
-                js += 'color [%d,%d,%d];' % (tls["color"]["rgbi"])
+                js.append('select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], chain_id))
+                js.append('color [%d,%d,%d];' % (tls["color"]["rgbi"]))
 
         ## select non-protein non-solvent and display
-        js += 'select not protein and not solvent;'
-        js += 'color CPK;'
-        js += 'wireframe on;'
-        js += 'wireframe 0.5;'
-        js += 'spacefill 80%;'
-        js += 'spacefill on;'
-
-        js += 'anim fps 2;'
-        js += 'anim mode loop 0 0;'
-        js += 'anim on;'
+        js +=['select not protein and not solvent;',
+              'color CPK;',
+              'wireframe on;',
+              'wireframe 0.5;',
+              'spacefill 80%;',
+              'spacefill on;',
+              'anim fps 2;',
+              'anim mode loop 0 0;',
+              'anim on;']
 
         ## write the HTML page to render the script in
-        x  = ''
-        x += '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'
-        x += '<html>'
-        x += '<head>'
-        x += '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], tlsopt.ntls)
-        x += '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR)
-        x += '</script>'
-        x += '</head>'
-        x += '<body>'
-        x += '<script type="text/javascript">'
-        x += 'jmolInitialize("%s");' % (JMOL_DIR)
-        x += 'jmolSetAppletColor("white");'
-        x += 'jmolApplet(%d, "%s");' % (JMOL_SIZE, js)
-        x += '</script>'
-        x += '</body>'
-        x += '</html>'
+        l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
+             '<html>',
+             '<head>',
+             '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], tlsopt.ntls),
+             '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR),
+             '</script>',
+             '</head>',
+             '<body>',
+             '<script type="text/javascript">',
+             'jmolInitialize("%s");' % (JMOL_DIR),
+             'jmolSetAppletColor("white");',
+             'jmolApplet(%d, "%s");' % (JMOL_SIZE, "".join(js)),
+             '</script>',
+             '</body>',
+             '</html>']
 
         ## manually free memory
         tlsa = None
         import gc
         gc.collect()
 
-        open(html_path, "w").write(x)
+        open(html_path, "w").write("".join(l))
         return html_path
 
     def write_multi_chain_alignment(self, chainopt_list):
@@ -1119,7 +1098,7 @@ class HTMLReport(Report):
             plot.plot(plot_path)
 
             ## write HTML
-            x += '<h3>Chains Alignment using %d TLS Groups</h3>\n' % (ntls)
+            x += '<h3>Chains Alignment using %d TLS Groups</h3>' % (ntls)
 
             ## plot table
             x += '<table border="1">'
@@ -1171,7 +1150,7 @@ class HTMLReport(Report):
         x += '<center>'
         x += '<a href="index.html">Back to Index</a>'
         x += '</center>'
-        x += '<br>\n'
+        x += '<br>'
 
         x += '<form enctype="multipart/form-data" action="%s" method="post">' % (GLOBALS["REFINEPREP_URL"])
         x += '<input type="hidden" name="job_id" value="%s">' % (GLOBALS["JOB_ID"])
@@ -1269,7 +1248,7 @@ class ChainNTLSAnalysisReport(Report):
         x += '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id)
         x += '</center>'
         
-        x += '<br>\n'
+        x += '<br>'
 
         x += self.html_tls_group_table()
         x += self.html_bmean()
