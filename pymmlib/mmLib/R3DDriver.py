@@ -198,8 +198,8 @@ class Raster3DDriver(object):
         self.glr_construct_header()
 
         try:
-            for ln in self.header_list:
-                stdin.write(ln + "\n")
+            stdin.write("\n".join(self.header_list))
+            stdin.write("\n")
             self.glr_write_objects(stdin)
         except IOError, err:
             warning("IOError while executing %s" % (self.render_program_path))
