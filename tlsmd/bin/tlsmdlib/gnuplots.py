@@ -11,6 +11,7 @@ import string
 from mmLib.Colors         import *
 ## tlsmdlib
 from misc                 import *
+from tls_calcs            import *
 
 
 class GNUPlot(object):
@@ -169,7 +170,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
             x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (filename, chain_id)
             plist.append(x)
             
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
         return script
 
 
@@ -219,7 +220,7 @@ class TranslationAnalysis(GNUPlot):
                 x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (self.txt_path, col , ls)
                 plist.append(x)
 
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
            
         return script
 
@@ -257,7 +258,7 @@ class TranslationAnalysis(GNUPlot):
                 if t2>0.0: cols[2 + 3*itls] = "%6.4f" % (t2)
                 if t3>0.0: cols[3 + 3*itls] = "%6.4f" % (t3)
                 
-                fil.write(string.join(cols) + "\n")
+                fil.write(" ".join(cols) + "\n")
 
         fil.close()
 
@@ -309,7 +310,7 @@ class LibrationAnalysis(GNUPlot):
                 x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (self.txt_path, col , ls)
                 plist.append(x)
 
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
            
         return script
 
@@ -354,7 +355,7 @@ class LibrationAnalysis(GNUPlot):
                     d = length(dvec)
                     cols[1 + 3*itls + n] = "%8.3f" % (d)
 
-                fil.write(string.join(cols) + "\n")
+                fil.write(" ".join(cols) + "\n")
 
         fil.close()
 
@@ -409,7 +410,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
             x = '"%s" using 1:%d notitle ls %d with lines' % (self.txt_path, itls+2, ls)
             plist.append(x)
 
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
            
         return script
 
@@ -441,7 +442,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
                 ltmp[0] = str(ifrag)
                 ltmp[itls+1] = "%6.2f" % (bdiff)
 
-                fil.write(string.join(ltmp) + "\n")
+                fil.write(" ".join(ltmp) + "\n")
         
         fil.close()
 
@@ -536,99 +537,6 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
 
         return script
 
-
-def calc_mean_biso_obs(chainopt):
-    """Calculates the mean B value per residue in the chain (as observed in the input structure).
-    """
-    chain = chainopt["chain"]
-    num_res = chain.count_fragments()
-    biso = zeros(num_res, Float)
-
-    for frag in chain.iter_fragments():
-        n = 0
-        b_sum_obs = 0.0
-
-        for atm in frag.iter_all_atoms():
-            if atm.include==False: continue
-
-            n += 1
-            b_sum_obs += atm.temp_factor
-
-        if n>0:
-            biso[frag.ichain] = b_sum_obs / n
-
-    return biso
-
-def calc_mean_biso_tls(chainopt, tlsopt):
-    """Calculated the mean B value per residue in the chain as calculated in the chain optimization.
-    """
-    chain = chainopt["chain"]
-    num_res = chain.count_fragments()
-    biso = zeros(num_res, Float)
-
-    for i in range(len(tlsopt.tls_list)):
-        tls       = tlsopt.tls_list[i]
-        tls_group = tls["tls_group"]
-        segment   = tls["segment"]
-
-        T = tls_group.itls_T
-        L = tls_group.itls_L
-        S = tls_group.itls_S
-        O = tls_group.origin
-
-        for frag in segment.iter_fragments():
-            n = 0
-            b_sum_tls = 0.0
-
-            for atm in frag.iter_all_atoms():
-                if atm.include==False: continue
-
-                n += 1
-                b_sum_tls += U2B * calc_itls_uiso(T, L, S, atm.position - O)
-
-            if n>0:
-                biso[frag.ichain] =  b_sum_tls / n
-
-    return biso
-
-def calc_accounted_biso(chainopt, tlsopt):
-    chain = chainopt["chain"]
-
-    num_res = chain.count_fragments()
-    biso = zeros(num_res, Float)
-
-    for i in range(len(tlsopt.tls_list)):
-        tls       = tlsopt.tls_list[i]
-        tls_group = tls["tls_group"]
-        segment   = tls["segment"]
-
-        T = tls_group.itls_T
-        L = tls_group.itls_L
-        S = tls_group.itls_S
-        O = tls_group.origin
-
-        for frag in segment:
-
-            n = 0
-            b_sum_obs = 0.0
-            b_sum_tls = 0.0
-
-            for atm in frag.iter_all_atoms():
-                if atm.include==False: continue
-
-                n += 1
-                b_sum_obs += atm.temp_factor
-                b_sum_tls += U2B * calc_itls_uiso(T, L, S, atm.position - O)
-
-            if n>0:
-                mean_b_obs = b_sum_obs / n
-                mean_b_tls = b_sum_tls / n
-
-                ## set the cross prediction matrix
-                biso[frag.ichain] = mean_b_obs - mean_b_tls
-
-    return biso
-     
      
 _BMEAN_PLOT_TEMPLATE = """\
 set xlabel "Residue"
@@ -726,51 +634,11 @@ class BMeanPlot(GNUPlot):
             x = '"%s" using 1:%d %s ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
             plist.append(x)
 
-        script += "plot " + string.join(plist, ",\\\n\t") + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
         
         return script
 
 
-def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
-    chain = chainopt["chain"]
-
-    num_tls = len(tlsopt.tls_list)
-    num_res = chain.count_fragments()
-
-    cmtx = zeros((num_tls, num_res), Float)
-
-    for i in range(len(tlsopt.tls_list)):
-        tls = tlsopt.tls_list[i]
-        tls_group = tls["tls_group"]
-
-        T = tls_group.itls_T
-        L = tls_group.itls_L
-        S = tls_group.itls_S
-        O = tls_group.origin
-
-        for j in range(len(chain)):
-            frag = chain[j]
-
-            ## calculate a atom-normalized rmsd deviation for each residue
-            n = 0
-            delta2 = 0.0
-            for atm in frag.iter_all_atoms():
-                if atm.include==False: continue
-
-                n += 1
-                b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
-                delta = atm.temp_factor - b_iso_tls
-                delta2 += delta**2
-
-            if n>0:
-                msd = delta2 / n
-                rmsd = math.sqrt(msd)
-
-                ## set the cross prediction matrix
-                cmtx[i,j] = rmsd
-
-    return cmtx
-     
 _RMSD_PLOT_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
@@ -822,7 +690,7 @@ class RMSDPlot(GNUPlot):
                     cols[itls+2] = "%6.2f" % (CMTX[itls,j])
                     break
 
-            fil.write(string.join(cols) + "\n")
+            fil.write(" ".join(cols) + "\n")
                 
         fil.close()
 
@@ -874,7 +742,7 @@ class RMSDPlot(GNUPlot):
             x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, col, line_titles[itls], ls)
             plist.append(x)
 
-        script += "plot " + ",\\\n\t".join(plist) + "\n"
+        script += "plot " + ",\\\n    ".join(plist) + "\n"
         
         return script
 

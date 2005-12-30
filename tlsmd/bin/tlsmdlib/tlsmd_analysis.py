@@ -16,6 +16,7 @@ from misc       import *
 from fit_engine import *
 from datafile   import TLSMDFile
 from hcsssp     import HCSSSP
+from tls_calcs  import *
 
 
 ###############################################################################
@@ -649,7 +650,7 @@ class TLSChainMinimizer(HCSSSP):
 
         tls["tls_group"]            = tls_group
         tls["segment"]              = segment
-        tls["lsq_residual_per_res"] = tls["lsq_residual"] / (len(segment))
+        tls["rmsd_b"]               = calc_rmsd_tls_biso(tls_group)
 
         return tls
 

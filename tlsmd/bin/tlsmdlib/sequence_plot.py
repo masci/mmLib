@@ -84,7 +84,7 @@ class TLSSegmentAlignmentPlot(object):
         nfrag = len(self.frag_list)
         target_width = 500
         fw = int(round(float(ALIGN_TARGET_WIDTH) / nfrag))
-        one_frag_width = max(1, fw)
+        one_frag_width = max(2, fw)
 
         ## calculate with pixel width/fragment
         ## adjust the width of the graph as necessary

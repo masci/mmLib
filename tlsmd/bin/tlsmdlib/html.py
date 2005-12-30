@@ -163,9 +163,23 @@ def calc_orientation(struct, chain):
 def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
     """Generate HTML for a table containing the details of the ntls-group partitioning of the given chain.
     """
-    
+    ## inspect the first tls group dictionary to determine TLS model type
+    try:
+        tls = tlsopt.tls_list[0]
+    except IndexError:
+        return ""
 
+    tls_model = tls["tls_group"].model
     
+    if tls_model=="ISOT":
+        t_head = 'T<sup>r</sup> <var>B</var>'
+
+    elif tls_model=="ANISO":
+        t_head = 'eval(T<sup>r</sup>) <var>B</var>'
+
+    else:
+        return ""
+
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
          '<th align="center" colspan="12">',
@@ -175,7 +189,7 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
 
          '<tr>',
          '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>',
-         '<th colspan="6" style="background-color:#bbbbbb">TLS Predictions</th>',
+         '<th colspan="5" style="background-color:#bbbbbb">TLS Predictions</th>',
          '</tr>',
          
          '<tr align="left" style="background-color:#bbbbbb">',
@@ -185,9 +199,8 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
          '<th>Atoms</th>',
          '<th>&#60;B&#62;</th>',
          '<th>&#60;Aniso&#62;</th>',
-         '<th>LSQR</th>',
-         '<th>LSQR/Res</th>',
-         '<th>eval(T<sup>r</sup>) <var>B</var></th>',
+         '<th>RMSD B</th>',
+         '<th>%s</th>' % (t_head),
          '<th>eval(L) <var>DEG<sup>2</sup></var></th>',
          '<th>&#60;B&#62;</th>',
          '<th>&#60;Aniso&#62;</th>',
@@ -205,9 +218,14 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
         L2 = mtls_info["L2_eigen_val"] * RAD2DEG2
         L3 = mtls_info["L3_eigen_val"] * RAD2DEG2
 
-        Tr1 = mtls_info["Tr1_eigen_val"] * U2B
-        Tr2 = mtls_info["Tr2_eigen_val"] * U2B
-        Tr3 = mtls_info["Tr3_eigen_val"] * U2B
+        if tls_model=="ISOT":
+            t_data = "%5.1f" % (mtls_info["Tr1_eigen_val"] * U2B)
+
+        else:
+            Tr1 = mtls_info["Tr1_eigen_val"] * U2B
+            Tr2 = mtls_info["Tr2_eigen_val"] * U2B
+            Tr3 = mtls_info["Tr3_eigen_val"] * U2B
+            t_data = '%5.1f, %5.1f, %5.1f' % (Tr1, Tr2, Tr3),
 
         ## alternate row background color
         if bgcolor_flag:
@@ -228,9 +246,8 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
               '<td>%d</td>'    % (len(tls_group)),
               '<td>%5.1f</td>' % (tls_info["exp_mean_temp_factor"]),
               '<td>%4.2f</td>' % (tls_info["exp_mean_anisotropy"]),
-              '<td>%6.4f</td>' % (tls["lsq_residual"]),
-              '<td>%6.4f</td>' % (tls["lsq_residual_per_res"]),
-              '<td>%5.1f, %5.1f, %5.1f</td>' % (Tr1, Tr2, Tr3),
+              '<td>%5.2f</td>' % (tls["rmsd_b"]),
+              '<td>%s</td>'    % (t_data),
               '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
               '<td>%5.1f</td>' % (tls_info["tls_mean_temp_factor"]),
               '<td>%4.2f</td>' % (tls_info["tls_mean_anisotropy"]),
@@ -1237,35 +1254,36 @@ class ChainNTLSAnalysisReport(Report):
         """Writes analysis details of each TLS group.
         """
         title = "Chain %s Partitioned by %d TLS Groups" % (self.chain_id, self.ntls)
-        
-        x  = self.html_head(title)
-        x += self.html_title(title)
-
-        x += '<center>'
-        x += '<a href="../index.html">Back to Index</a>'
-        x += '&nbsp;&nbsp;&nbsp;&nbsp;'
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
-        x += '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id)
-        x += '</center>'
-        
-        x += '<br>'
 
-        x += self.html_tls_group_table()
-        x += self.html_bmean()
-        x += self.html_translation_analysis()
-        x += self.html_libration_analysis()
-        x += self.html_ca_differance()
-        x += self.html_rmsd_plot()
+
+        l = [self.html_head(title),
+             self.html_title(title),
+
+             '<center>',
+             '<a href="../index.html">Back to Index</a>',
+             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id),
+             '</center>',
+             
+             '<br>',
+
+             self.html_tls_group_table(),
+             self.html_bmean(),
+             self.html_translation_analysis(),
+             self.html_libration_analysis(),
+             self.html_ca_differance(),
+             self.html_rmsd_plot()]
         
         for tls in self.tlsopt.tls_list:
             ## don't write out bypass edges
-            if tls["method"]!="TLS":
-                continue
-            x += self.html_tls_fit_histogram(tls)
+            if tls["method"]!="TLS": continue
 
-        ## write out the HTML page
-        x += self.html_foot()
-        open(self.index, "w").write(x)
+            l.append(self.html_tls_fit_histogram(tls))
+
+        l.append(self.html_foot())
+        
+        open(self.index, "w").write("".join(l))
 
     def html_tls_group_table(self):
         return html_tls_group_table(self.chainopt, self.tlsopt, self.ntls, "..")
@@ -1279,8 +1297,8 @@ class ChainNTLSAnalysisReport(Report):
         l = ['<center>',
              '<h3>Translation Analysis of T<sup>r</sup></h3>',
              tanalysis.html_link(),
-             '</center>',
-             '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION)]
+             '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION),
+             '</center>']
         
         return "".join(l)
 
