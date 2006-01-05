@@ -23,6 +23,18 @@ from mmLib.FileLoader import *
 from cgiconfig import *
 webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=True)
 
+
+STYLE_SHEET = """
+BODY { background-color:white;margin-left:5%;margin-right:5%;border-left:5%;border-right:5%;margin-top:2%;border-top:2%; }
+.step_title { line-height:2.0em;font-size:large }
+.submit_table { padding:10px;border-width:thin;border-color:blue;border-style:solid;background-color:#eeeeee; }
+.inner_table { font-size:small;width:90%;padding:10px;border-width:thin;border-color:black;border-style:solid;background-color:#dddddd; }
+.inner_title { background-color:#ccccff; line-height:2.0em; }
+.ninner_table { font-size:small;width:95%;padding:2%;border-width:thin;
+                border-color:#aaaaaa;border-style:solid;background-color:#eeeeee }
+"""
+
+
 def timestring(secs):
     tm_struct = time.localtime(secs)
     return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
@@ -228,6 +240,192 @@ def html_job_edit_form(fdict):
     x += '</form>'
     return x
 
+def html_session_info_table(fdict):
+    if fdict.has_key("submit_time"):
+        date = timestring(fdict["submit_time"])
+    else:
+        date = ""
+
+    l = ['<table class="inner_table">',
+
+         '<tr class="inner_title"><th>',
+         '<a id="cid2" href="javascript:',
+         "ToggleDivVisibility('cid2','id2','Show Session Information','Hide Session Information')",
+         '">Show Session Information</a>',
+         '</th></tr>',
+
+         '<tr><td align="center">',
+
+         '<div id="id2" style="display:none"><table class="ninner_table">',
+         '<tr><td align="right">TLSMD Job ID:</td>',
+         '<td><b>%s</b></td></tr>' % (fdict["job_id"]),
+         
+         '<tr><td align="right">Job State:</td>',
+         '<td><b>%s</b></td></tr>' % (fdict["state"]),
+         
+         '<tr><td align="right">Submission IP Address: </td>',
+         '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", "")),
+         
+         '<tr><td align="right">Submission Date: </td>',
+         '<td><b>%s</b></td></tr>' % (date),
+         '</table></div>',
+         
+         '</table>']
+
+    return "".join(l)
+
+def html_user_info_table(fdict):
+    l = ['<table class="inner_table">',
+
+         '<tr class="inner_title"><th colspan="2">User Information</th></tr>',
+
+         '<tr><td align="center">',
+         '<table class="ninner_table">',
+
+         '<tr>',
+         '<td align="right"><label for="user_name">Your Name</label></td>',
+         '<td><input type="text" id="user_name" name="user_name" value="%s" size="25" maxlength="40"></td>' % (fdict.get("user_name","")),
+         '</tr>',
+
+         '<tr>',
+         '<td align="right"><label for="email">EMail Address</label></td>',
+         '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40"></td>' % (fdict.get("email", "")),
+         '</tr>',
+
+         '</table>',
+         '</td></tr></table>']
+
+    return "".join(l)
+
+def html_program_settings_table(fdict):
+
+    opt_plot_svg = ""
+    opt_plot_png = ""
+
+    opt_atoms_all = ""
+    opt_atoms_mnchn = ""
+
+    l = ['<table class="inner_table">',
+         '<tr class="inner_title"><th>TLSMD Program Options</th></tr>',
+
+         '<tr><td align="center">',
+         '<table width="100%">',
+         '<tr><td align="center" valign="top">',
+
+         ## left table
+         '<table class="ninner_table">',
+
+         '<tr><td>',
+         '<label><input type="checkbox" id="private_job" name="private_job" value="TRUE">Keep Job Private</label>',
+         '</td></tr>',
+
+         '<tr><td>',
+         '<label for="structure_id">4-Letter Structure ID </label>',
+         '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4">' % (fdict.get("structure_id", "")),
+         '</td></tr>',
+
+         '</table>',
+
+         '</td><td align="center" valign="top">',
+
+         ## right table
+         '<table class="ninner_table">',
+         '<tr style="line-height:2em"><th>Select Chains for Analysis</th></tr>']
+         
+    for cdict in fdict.get("chains", []):
+        if cdict["selected"]==True:
+            x = '<label><input type="checkbox" id="%s" name="%s" value="TRUE" checked>' % (cdict["name"], cdict["name"])
+        else:
+            x = '<label><input type="checkbox" id="%s" name="%s" value="TRUE">' % (cdict["name"], cdict["name"])
+            
+        l +=['<tr><td>', x, cdict["desc"], '</label></td></tr>' ]
+
+    l +=['</table>',
+         
+         '</td></tr>',
+         '</table>',
+
+         ## advanced options
+         '<tr class="inner_title"><th>',
+         '<a id="cid1" href="javascript:',
+         "ToggleDivVisibility('cid1','id1','Show Advanced Program Options','Hide Advanced Program Options')",
+         '">Show Advanced Program Options</a>',
+         '</th></tr>',
+         
+         '<tr><td align="center">',
+         '<div id="id1" style="display:none">',
+         '<table class="ninner_table">',
+         '<tr>',
+
+         '<td valign="top">',
+         '<fieldset><legend>Plot Output Format</legend>',
+         '<div style="font-size:xx-small">Select the output format for plots.<br>SVG works with the Adobe plugin and Firefox 1.5.</div><br>',
+         '<label><input name="plot_format" type="radio" value="PNG" tabindex="35" checked>PNG Images</label><br>',
+         '<label><input name="plot_format" type="radio" value="SVG" tabindex="35">SVG</label>',
+         '</fieldset>',
+         '</td>',
+
+         '<td valign="top">',
+         '<fieldset><legend>Atom Class Selection</legend>',
+         '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div><br>',
+         '<label><input name="include_atoms" type="radio" value="ALL" tabindex="35" checked>All Atoms</label><br>',
+         '<label><input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35">Mainchain Atoms (N,CA,C,O,CB)</label>',
+         '</fieldset>',
+         '</td>',
+
+         '</tr>',
+         '</table>',
+
+         '</div>',
+         '</td></tr>',
+         '</table>']
+         
+    return "".join(l)
+
+
+def html_job_edit_form2(fdict, title=""):
+    if fdict.has_key("removebutton"):
+        remove_button = '<input type="submit" name="submit" value="Remove Job">'
+    else:
+        remove_button = ''
+    
+    l = ['<script language=javascript type="text/javascript">',
+         'function ToggleDivVisibility(control_id, target_id, show_val, hide_val) {',
+         '  var ctrl_element = document.getElementById(control_id);',
+         '  var target_element = document.getElementById(target_id);',
+         
+         '  if (target_element.style.display != "none") {',
+         '    target_element.style.display = "none";',
+         '    ctrl_element.firstChild.nodeValue = show_val;',
+         '  } else {',
+         '    target_element.style.display = "inline";',
+         '    ctrl_element.firstChild.nodeValue = hide_val;',
+         '  }',
+         '}',
+         '</script>',
+
+         '<center>',
+
+         '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
+         
+         '<input type="hidden" name="page" value="%s">' % (fdict.get("page", "index")),
+         '<input type="hidden" name="edit_form" value="TRUE">',
+         '<input type="hidden" name="job_id" value="%s">' % (fdict["job_id"]),
+         
+         '<table width="100%" class="submit_table">',
+         '<tr><th class="step_title">%s</th></tr>' % (title),
+
+         '<tr><td align="center">', html_user_info_table(fdict), '</td></tr>',
+         '<tr><td align="center">', html_program_settings_table(fdict), '</td></tr>',
+         '<tr><td align="center">', html_session_info_table(fdict), '</td></tr>',
+
+         '<tr><td align="center"><input type="submit" name="submit" value="Submit Job"></td></tr>',
+
+         '</table>',
+         '</form>',
+         '</center>']
+
+    return "".join(l)
 
 def html_job_info_table(fdict):
     x  = ''
@@ -440,7 +638,12 @@ def extract_job_edit_form(form, webtlsmdd):
 
     if form.has_key("private_job"):
         webtlsmdd.job_data_set(job_id, "private_job", True)
-        
+
+    if form.has_key("user_name"):
+        user_name = form["user_name"].value.strip()
+        user_name = user_name[:100]
+        webtlsmdd.job_data_set(job_id, "user_name", user_name)
+            
     if form.has_key("email"):
         email = form["email"].value.strip()
         if vet_email(email):
@@ -476,10 +679,17 @@ def extract_job_edit_form(form, webtlsmdd):
 
     if form.has_key("include_atoms"):
         include_atoms = form["include_atoms"].value.strip()
-        if include_atoms in ["ALL", "MAINCHAIN", "CA"]:
+        if include_atoms in ["ALL", "MAINCHAIN"]:
             webtlsmdd.job_data_set(job_id, "include_atoms", include_atoms)
 
+    if form.has_key("plot_format"):
+        plot_format = form["plot_format"].value.strip()
+        if plot_format in ["PNG", "SVG"]:
+            webtlsmdd.job_data_set(job_id, "plot_format", plot_format)
+
+
     return True
+
 
 def remove_job(webtlsmdd, job_id):
     """Removes job from database and deletes working directory and
@@ -512,10 +722,7 @@ class Page(object):
         x += '  <title>%s</title>' % (title)
         x += '  <style type="text/css" media=screen>'
         x += '  <!-- '
-        x += '  BODY { background-color: white;'
-        x += '         margin-left: 5%; margin-right: 5%;'
-        x += '         border-left: 5%; border-right: 5%;'
-        x += '         margin-top: 2%; border-top: 2%;}'
+        x += STYLE_SHEET
         x += '  -->'
         x += '  </style>'
         x += '</head>'
@@ -583,10 +790,7 @@ class QueuePage(Page):
              '  <title>%s</title>' % (title),
              '  <style type="text/css" media=screen>',
              '  <!-- ',
-             '  BODY { background-color: white;',
-             '         margin-left: 5%; margin-right: 5%;',
-             '         border-left: 5%; border-right: 5%;',
-             '         margin-top: 2%; border-top: 2%;}',
+             STYLE_SHEET,
              '  -->',
              '  </style>',
              '</head>',
@@ -656,10 +860,10 @@ class QueuePage(Page):
             return 'private'
  
         if self.admin==True:
-            return '<a href="webtlsmd.cgi?page=%s&job_id=%s"><font size="-2">%s</font></a><br><font size="-3">%s</font>' % (
+            return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s"><font size="-2">%s</font></a><br><font size="-3">%s</font>' % (
                    page, jdict["job_id"] ,jdict["job_id"], jdict.get("email", "No EMail"))
     
-        return '<a href="webtlsmd.cgi?page=%s&job_id=%s"><font size="-2">%s</font></a>' % (
+        return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s"><font size="-2">%s</font></a>' % (
             page, jdict["job_id"] ,jdict["job_id"])
     
     def chain_size_string(self, jdict):
@@ -955,36 +1159,33 @@ class Submit1Page(Page):
     def html_page(self):
         title = 'TLSMD: Start a New Job'
 
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
+        l = [self.html_head(title),
+             html_title(title),
+             '<center>',
 
-        x += '<p><b>Note: </b>%s</p>' % (SUBMIT1_NOTE)
+             '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
+             '<input type="hidden" name="page" value="submit2">',
 
-        x += '<center><h3>'
-        x += 'Step 1: Select your PDB file to upload, then click Next'
-        x += '</h3></center>'
+             '<table class="submit_table">',
+             '<tr><th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th></tr>',
 
-        x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
-        
-        x += '<input type="hidden" name="page" value="submit2">'
-        x += '<center>'
-        x += '<table>'
-        x += '<tr>'
-        x += '<td align="left">Upload PDB File:</td>'
-        x += '<td><input name="pdbfile" size="50" type="file"></td>'
-        x += '</tr>'
-        x += '<tr>'
-        x += '<td colspan="2" align="center">'
-        x += '<input value="Next" type="submit">'
-        x += '</td>'
-        x += '</tr>'
-        x += '</table>'
-        x += '</center>'
-        x += '</form>'
+             '<tr>',
+             '<td align="left">Upload PDB File:</td>',
+             '<td><input name="pdbfile" size="50" type="file"></td>',
+             '</tr>',
 
-        x += self.html_foot()
-        return x
+             '<tr><td colspan="2" align="center">',
+             '<input value="Upload File and Proceed to Step 2" type="submit">',
+             '</td></tr>',
+
+             '</table>',
+             '</form>',
+             
+             '</center>',
+
+             self.html_foot()]
+
+        return "".join(l)
 
 
 class Submit2Page(Page):
@@ -1000,12 +1201,7 @@ class Submit2Page(Page):
         except SubmissionException, err:
              x += html_nav_bar()
              x += '<center><h3>ERROR:%s</h3></center>' % (err.html)
-        else:
-
-            x += '<center><h3>'
-            x += 'Step 2: Fill out submission form, click Next'
-            x += '</h3></center>'
-            
+        else:            
             x += self.job_edit_form(job_id)
 
         x += self.html_foot()
@@ -1014,7 +1210,7 @@ class Submit2Page(Page):
     def job_edit_form(self, job_id, show_warnings=False):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "submit3"
-        x = html_job_edit_form(fdict)
+        x = html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
         return x
 
     def generate_security_code(self):
@@ -1148,6 +1344,7 @@ class Submit2Page(Page):
         webtlsmdd.job_data_set(job_id, "email", "")
         webtlsmdd.job_data_set(job_id, "comment", "")
         webtlsmdd.job_data_set(job_id, "private_job", False)
+        webtlsmdd.job_data_set(job_id, "plot_format", "PNG")
 
         aniso_ratio = float(num_aniso_atoms)/float(num_atoms)
         if aniso_ratio>0.90:
@@ -1155,7 +1352,7 @@ class Submit2Page(Page):
         else:
             webtlsmdd.job_data_set(job_id, "tls_model", "ISOT")
             
-        webtlsmdd.job_data_set(job_id, "weight", "IUISO")
+        webtlsmdd.job_data_set(job_id, "weight", "")
         webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
 
 	return job_id
@@ -1179,25 +1376,29 @@ class Submit3Page(Page):
 	else:
             title = 'TLSMD: Job Submission Succeeded'
 
-            html = ''
+            l = ['<center>',
+                 
+                 '<table class="submit_table">',
+                 '<tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>',
 
-            html += '<center><h3>'
-            html += 'Step 3: Finished!  Job successfully submitted.'
-            html += '</h3></center>'
-    
-            html += '<center>'
-	    html += 'Your job ID is %s</h3>' % (job_id)
-	    html += '</center>'
-	    
-            html += '<p>Visit and bookmark your '
-	    html += '<a href="webtlsmd.cgi?page=explore&job_id=%s">Explore Job %s</a> ' % (job_id, job_id)
-	    html += 'page, this page is the status page of your job, and it is '
-	    html += 'updated as your job progresses through the queue.  Once your '
-	    html += 'job is complete, a link to the completed TLSMD analysis will appear '
-	    html += 'on it.'
-	    html += '</p>'
-	    
-            html += '<p>%s</p>' % (SUBMIT3_CAP1)
+                 '<tr><td align="center">Your job ID is %s</td></tr>' % (job_id),
+
+                 '<tr><td>',
+                 '<p>Visit and bookmark your ',
+                 '<a href="webtlsmd.cgi?page=explore&amp;job_id=%s">Explore Job %s</a> ' % (job_id, job_id),
+                 'page, this page is the status page of your job, and it is ',
+                 'updated as your job progresses through the queue.  Once your ',
+                 'job is complete, a link to the completed TLSMD analysis will appear ',
+                 'on it.',
+                 '</p>',
+                 
+                 '<p>%s</p>' % (SUBMIT3_CAP1),
+
+                 '</td></tr>',
+                 '</table>',
+                 '</center>']
+            
+            html = "".join(l)
 	    
         x  = self.html_head(title)
         x += html_title(title)

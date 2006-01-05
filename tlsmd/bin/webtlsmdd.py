@@ -197,8 +197,7 @@ class WebTLSMDDaemon2(object):
         xmlrpc_server.register_function(self.job_new,      "job_new")
         xmlrpc_server.register_function(self.job_exists,   "job_exists")
         xmlrpc_server.register_function(self.job_get_dict, "job_get_dict")
-        xmlrpc_server.register_function(
-            self.job_get_dict_index, "job_get_dict_index")
+        xmlrpc_server.register_function(self.job_get_dict_index, "job_get_dict_index")
         xmlrpc_server.register_function(self.job_delete,   "job_delete")
         xmlrpc_server.register_function(self.job_data_set, "job_data_set")
         xmlrpc_server.register_function(self.job_data_get, "job_data_get")
@@ -207,12 +206,12 @@ class WebTLSMDDaemon2(object):
         xmlrpc_server.serve_forever()
 
 def main():
-    database_file = os.environ["TLSMD_DATABASE"]
+    database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")
     webtlsmdd = WebTLSMDDaemon2(database_file)
     webtlsmdd.run_server(HOST, PORT)
 
 def inspect():
-    database_file = os.environ["TLSMD_DATABASE"]
+    database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")
     webtlsmdd = WebTLSMDDaemon2(database_file)
 
     if sys.argv[1]=="list":

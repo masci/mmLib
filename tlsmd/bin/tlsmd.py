@@ -32,6 +32,7 @@ def usage():
     print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
     print "            [-i <struct_id>] Override struct_id in PDB file"
+    print "            [-s] output Gnuplot plots using SVG"
     print "            struct.pdb"
     print
     print "To run a a tls search in grid computation mode requires a"
@@ -71,6 +72,9 @@ def analysis_main(struct_path, opt_dict):
     if opt_dict.has_key("-v"):
         misc.GLOBALS["VERBOSE"] = True
 
+    if opt_dict.has_key("-s"):
+        misc.GLOBALS["USE_SVG"] = True
+        
     if opt_dict.has_key("-x"):
         misc.GLOBALS["WEBTLSMDD"] = opt_dict["-x"]
 
@@ -126,7 +130,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:nv")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:nvs")
     except getopt.GetoptError:
         usage()
 

@@ -184,6 +184,10 @@ def get_job(webtlsmdd):
     ## override PDB ID
     tlsmd.append("-i%s" % (jdict["structure_id"]))
 
+    ## plot style
+    if jdict.get("plot_format")=="SVG":
+        tlsmd.append("-s")
+
     ## select TLS model
     tls_model = jdict["tls_model"]
     if tls_model=="ISOT":

@@ -73,22 +73,44 @@ class GNUPlot(object):
         
         ## run gnuplot
         self.run_gnuplot(script_png)
-        return
 
         ## XXX: hack svg output
-        l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
-             'set output "%s"' % (self.svg_path),
-             '']
-        script_svg = "\n".join(l) + script0
-        self.run_gnuplot(script_svg)
+        if GLOBALS["USE_SVG"]==True:
+            l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
+                 'set output "%s"' % (self.svg_path),
+                 '']
+            script_svg = "\n".join(l) + script0
+            self.run_gnuplot(script_svg)
 
     def html_link(self, alt_text=None):
         if not alt_text: alt_text = self.basename
-        return '<img src="%s" alt="%s">' % (self.png_path, alt_text)
+
+        if GLOBALS["USE_SVG"]==True:
+            l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
+                 '<img src="%s" alt="%s">' % (self.png_path, alt_text),
+                 '</object>']
+
+            return "".join(l)
+        else:
+            return '<img src="%s" alt="%s">' % (self.png_path, alt_text)
         
-        l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
-             '<img src="%s" alt="%s">' % (self.png_path, alt_text),
-             '</object>']
+    def html_markup(self, title, caption, alt_text=None):
+        if caption:
+            l = ['<tr><td align="center">',
+                 '<p style="padding:2%%;background-color:#eeeeee;border-style:dashed;border-width:thin;border-color:black">%s</p>' % (caption),
+                 '</td></tr>']
+            cap_html = "".join(l)
+        else:
+            cap_html = ""
+                
+        l = ['<table style="width:80%">',
+             '<tr><th style="font-size:large">%s</th></tr>' % (title),
+
+             '<tr><td align="center">',
+             self.html_link(alt_text),
+             '</td></tr>',
+             cap_html,
+             '</table>']
 
         return "".join(l)
 

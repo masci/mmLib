@@ -182,9 +182,7 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
 
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
-         '<th align="center" colspan="12">',
-         'Analysis of TLS Group Chain Segments',
-         '</th>',
+         '<th align="center" colspan="12">Analysis of TLS Group Chain Segments</th>',
          '</tr>',
 
          '<tr>',
@@ -192,7 +190,7 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
          '<th colspan="5" style="background-color:#bbbbbb">TLS Predictions</th>',
          '</tr>',
          
-         '<tr align="left" style="background-color:#bbbbbb">',
+         '<tr style="background-color:#bbbbbb">',
          '<th>Color</th>',
          '<th>Segment</th>',
          '<th>Residues</th>',
@@ -592,14 +590,10 @@ class HTMLReport(Report):
         """
         gp = LSQR_vs_TLS_Segments_Plot(chainopt)
 
-        l = ['<center><h3>Chain %s Optimization Residual</h3></center>' % (chainopt["chain_id"]),
-             '<center>',
-             '<table>',
-             '<tr><td align="center">',
-             gp.html_link(),
-             '</td></tr>',
-             '<tr><td><p>%s</p></td></tr>' % (LSQR_CAPTION),
-             '</table>',
+        title = 'Chain %s Optimization Residual' % (chainopt["chain_id"])
+
+        l = ['<center>',
+             gp.html_markup(title, LSQR_CAPTION),
              '</center>']
         
         return "".join(l)
@@ -1268,11 +1262,11 @@ class ChainNTLSAnalysisReport(Report):
              
              '<br>',
 
-             self.html_tls_group_table(),
-             self.html_bmean(),
-             self.html_translation_analysis(),
-             self.html_libration_analysis(),
-             self.html_ca_differance(),
+             self.html_tls_group_table(),'<br>',
+             self.html_bmean(),'<br>',
+             self.html_translation_analysis(),'<br>',
+             self.html_libration_analysis(),'<br>',
+             self.html_ca_differance(),'<br>',
              self.html_rmsd_plot()]
         
         for tls in self.tlsopt.tls_list:
@@ -1295,9 +1289,7 @@ class ChainNTLSAnalysisReport(Report):
         tanalysis = TranslationAnalysis(self.chainopt, self.tlsopt)
 
         l = ['<center>',
-             '<h3>Translation Analysis of T<sup>r</sup></h3>',
-             tanalysis.html_link(),
-             '<p>%s</p>' % (TRANSLATION_GRAPH_CAPTION),
+             tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", TRANSLATION_GRAPH_CAPTION),
              '</center>']
         
         return "".join(l)
@@ -1309,9 +1301,7 @@ class ChainNTLSAnalysisReport(Report):
         libration_analysis = LibrationAnalysis(self.chainopt, self.tlsopt)
         
         l = ['<center>',
-             '<h3>Screw Displacement Analysis</h3>',
-             libration_analysis.html_link(),
-             '<p>%s</p>' % (LIBRATION_GRAPH_CAPTION),
+             libration_analysis.html_markup("Screw Displacement Analysis", LIBRATION_GRAPH_CAPTION),
              '</center>']
         
         return "".join(l)
@@ -1323,9 +1313,7 @@ class ChainNTLSAnalysisReport(Report):
         plot = CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
         
         l = ['<center>',
-             '<h3>Deviation of Observed Mainchain B-Factors From Rigid Body Model</h3>',
-             plot.html_link(),
-             '<p>%s</p>' % (FIT_GRAPH_CAPTION),
+             plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", FIT_GRAPH_CAPTION),
              '</center>']
 
         return "".join(l)
@@ -1336,9 +1324,7 @@ class ChainNTLSAnalysisReport(Report):
         self.bmean_plot = BMeanPlot(self.chainopt, self.tlsopt)
 
         l = ['<center>',
-             '<h3>Mean BFactor Analysis</h3>',
-             self.bmean_plot.html_link(),
-             '<p>Comparison of TLS predicted B factors with experimental (input) B factors.</p>',
+             self.bmean_plot.html_markup("Mean BFactor Analysis", "Comparison of TLS predicted B factors with experimental (input) B factors."),
              '</center>']
 
         return "".join(l)
@@ -1347,9 +1333,7 @@ class ChainNTLSAnalysisReport(Report):
         rmsd_plot = RMSDPlot(self.chainopt, self.tlsopt)
 
         l = ['<center>',
-             '<h3>Residue RMSD Analysis</h3>',
-             rmsd_plot.html_link(),
-             '<p>Nothing Here Yet</p>'
+             rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors", ""),
              '</center>']
 
         return "".join(l)
@@ -1359,12 +1343,11 @@ class ChainNTLSAnalysisReport(Report):
         """
         
         his = UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
+
+        title = 'Distribution Histogram of TLS Group %s%s-%s%s' % (self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
         
         l = ['<center>',
-             '<h3>Distribution Histogram of TLS Group %s%s-%s%s</h3>' % (self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"]),
-             '</center>',
-             '<center>',
-             his.html_link(),
+             his.html_markup(title, ""),
              '</center>']
 
         return "".join(l)
