@@ -196,7 +196,7 @@ def get_job(webtlsmdd):
         tlsmd.append("-mANISO")
 
     ## select LSQ weighting
-    tlsmd.append("-w%s" % (jdict["weight"]))
+    #tlsmd.append("-w%s" % (jdict["weight"]))
 
     ## select chain IDs to analyze
     cids = []

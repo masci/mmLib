@@ -94,14 +94,14 @@ def analysis_main(struct_path, opt_dict):
             usage()
 
     ## weighting scheme
-    for opt, val in opt_dict.items():
-        if opt=="-w":
-            val = val.upper()
-            if val=="IUISO":
-                misc.GLOBALS["WEIGHT_MODEL"] = val
-            else:
-                print "[ERROR] Invalid Weight Model: %s" % (val)
-                usage()
+    if opt_dict.has_key("-w"):
+        val = opt_dict["-w"].upper()
+        val = val.upper()
+        if val=="IUISO":
+            misc.GLOBALS["WEIGHT_MODEL"] = val
+        else:
+            print "[ERROR] Invalid Weight Model: %s" % (val)
+            usage()
 
     ## atoms to include
     if opt_dict.has_key("-a"):

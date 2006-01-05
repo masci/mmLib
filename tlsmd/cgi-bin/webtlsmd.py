@@ -1331,9 +1331,9 @@ class Submit2Page(Page):
             cdict["preview"]  = cb_preview
             cdict["selected"] = True
 
-        if largest_chain_seen>700:
+        if largest_chain_seen>1700:
             webtlsmdd.job_delete(job_id)
-	    strx = '<p>Your submitted structure contained a chain exceeding the 700 residue limit</p>'
+	    strx = '<p>Your submitted structure contained a chain exceeding the 1700 residue limit</p>'
             raise SubmissionException(strx)
 
         webtlsmdd.job_data_set(job_id, "chains", chains)
