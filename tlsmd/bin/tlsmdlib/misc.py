@@ -54,7 +54,7 @@ GLOBALS = {
     "USE_SVG"            : True,
 
     "VERSION":        "0.5.6",
-    "RELEASE_DATE":   "29 Dec 2005",
+    "RELEASE_DATE":   "5 Jan 2006",
     "AUTHOR":         "Jay Painter",
     "EMAIL":          "jpaint@u.washington.edu",
 
