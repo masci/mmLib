@@ -51,7 +51,7 @@ GLOBALS = {
     "INCLUDE_ATOMS":       "ALL",
     "MIN_SUBSEGMENT_SIZE": 6,
     "VERBOSE"            : False,
-    "USE_SVG"            : True,
+    "USE_SVG"            : False,
 
     "VERSION":        "0.5.6",
     "RELEASE_DATE":   "5 Jan 2006",
