@@ -772,7 +772,7 @@ class QueuePage(Page):
 
     def verify_admin(self, passcode):
         try:
-            code = open("/home/tlsmd/database/cgi-admin", "r").read().strip()
+            code = open(ADMIN_PASSWORD_FILE, "r").read().strip()
 	except IOError:
             return False
         return code==passcode
@@ -834,37 +834,42 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_private_form(self):
-        x  = ''
-        x += '<form action="webtlsmd.cgi" method="post">'
-        x += '<input type="hidden" name="page" value="explore">'
+        l = ['<form action="webtlsmd.cgi" method="post">',
+             '<input type="hidden" name="page" value="explore">',
+             
+             '<center>',
+             '<b>To access a private job, enter its Job ID below</b>',
+             '</center>',
+             
+             '<center>',
+             '<input type="text" name="job_id" size="50">',
+             '</center>',
+             
+             '</form>']
 
-        x += '<center>'
-        x += '<b>To access a private job, enter its Job ID below</b>'
-        x += '</center>'
-
-        x += '<center>'
-        x += '<input type="text" name="job_id" size="50">'
-        x += '</center>'
-        
-        x += '</form>'
-
-        return x
+        return "".join(l)
 
     def explore_href(self, jdict):
         if self.admin==True:
             page = "admin"
         else:
             page = "explore"
-
-        if self.admin==False and jdict.get("private_job", False)==True:
-            return 'private'
  
         if self.admin==True:
-            return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s"><font size="-2">%s</font></a><br><font size="-3">%s</font>' % (
-                   page, jdict["job_id"] ,jdict["job_id"], jdict.get("email", "No EMail"))
+            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])]
+
+            if jdict.get("user_name", "")!="":
+                l.append('<br>%s' % (jdict["user_name"]))
+
+            if jdict.get("email", "")!="":
+                l.append('<br>%s' % (jdict["email"]))
+
+            return "".join(l)
+
+        if jdict.get("private_job", False)==True:
+            return 'private'
     
-        return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s"><font size="-2">%s</font></a>' % (
-            page, jdict["job_id"] ,jdict["job_id"])
+        return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
     
     def chain_size_string(self, jdict):
         if jdict.has_key("chains")==False:
@@ -883,7 +888,7 @@ class QueuePage(Page):
 	    if len(listx)>0:
                 strx += '<br>'
 	
-	return '<font size="-10">%s</font>' % (strx)
+	return '%s' % (strx)
 	
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.

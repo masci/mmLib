@@ -16,3 +16,4 @@ TLSMD_WORK_DIR         = "/home/tlsmd/public_html/jobs"
 TLSMD_WORK_URL         = "/~tlsmd/jobs"
 
 LINK_SPACE             = '&nbsp;&nbsp;&nbsp;&nbsp;'
+ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
