@@ -518,11 +518,17 @@ class HTMLReport(Report):
         elif GLOBALS["WEIGHT_MODEL"]=="IUISO":
             weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
 
+        if GLOBALS["INCLUDE_ATOMS"]=="MAINCHAIN":
+            include_atoms = "Main Chain Protein Atoms (N, CA, C, O, CB)"
+        else:
+            include_atoms = "All Protein Atoms"
+
         l = ['<center>',
              '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">',
              '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>',
              '<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
              '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"]),
+             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (include_atoms),
              '</table>',
              '</center>']
 
