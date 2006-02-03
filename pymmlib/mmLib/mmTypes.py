@@ -18,20 +18,6 @@ from types import *
 ## turn on debugging
 _DEBUG = False
 
-## use old Numeric libraries, or the new Numarray
-_USE_NUMARRAY = False
-
-if _USE_NUMARRAY:
-    from numarray import *
-    from numarray.linear_algebra import *
-else:
-    try:
-      from Numeric import *
-      from LinearAlgebra import *
-    except ImportError:
-      from numarray import *
-      from numarray.linear_algebra import *
-
 
 ## useful constents
 PI       = math.pi

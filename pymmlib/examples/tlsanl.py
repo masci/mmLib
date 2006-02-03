@@ -43,8 +43,8 @@ def print_TLS(text, Tt, T, Lt, L, St, S):
     print "".ljust(5) + s0.ljust(24) + s1.ljust(24) + s2
     print "     (A^2)                   (DEG^2)                 (A DEG)"
 
-    L = L * rad2deg2
-    S = S * rad2deg
+    L = L * RAD2DEG2
+    S = S * RAD2DEG
 
     for i in range(3):
         print "   %s   %s   %s" % (astr(T[i]), astr(L[i]), astr(S[i]))
@@ -67,7 +67,7 @@ def print_TLSGroup(tls):
     print "MEAN TRANSLATION (TRACE/3)                %.3f" % (
         trace(tls.T)/3.0)
     print "MEAN LIBRATION   (TRACE/3)                %.3f" % (
-        trace(tls.L * rad2deg2)/3.0)
+        trace(tls.L * RAD2DEG2)/3.0)
     print
 
     print_TLS(
@@ -101,8 +101,8 @@ def print_TLSGroup(tls):
 
     print
     print "TRACE(T')/3.0   (A^2): %.3f" % (trace(calcs["T'"])/3.0)
-    print "TRACE(L')/3.0 (DEG^2): %.3f" % (trace(calcs["L'"])/3.0*rad2deg2)
-    print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*rad2deg)
+    print "TRACE(L')/3.0 (DEG^2): %.3f" % (trace(calcs["L'"])/3.0*RAD2DEG2)
+    print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*RAD2DEG)
     print
 
     print
@@ -128,8 +128,7 @@ def print_TLSGroup(tls):
         ("L2", "L2_pitch"),
         ("L3", "L3_pitch")]:
 
-        print "%s PITCH (A/DEG): %10.3f" % (
-            Lx, calcs[Lx_pitch]/rad2deg)
+        print "%s PITCH (A/DEG): %10.3f" % (Lx, calcs[Lx_pitch]/RAD2DEG)
 
 
 def main(pdb_path, tls_out_path, calc_tls):
@@ -168,7 +167,9 @@ def main(pdb_path, tls_out_path, calc_tls):
                 print "[Error] %s: %s" % (str(e), tls_out_path)
 
         ## print the TLS groups
-        for tls_group in tls_file.generate_tls_group_list(struct):
+        tls_group_list = tls_file.construct_tls_groups_with_atoms(struct)
+        
+        for tls_group in tls_group_list:
             print_TLSGroup(tls_group)
             print
         

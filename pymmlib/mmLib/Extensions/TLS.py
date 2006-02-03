@@ -9,6 +9,7 @@ import re
 import sys
 import string
 import fpformat
+import numpy
 
 from mmLib.mmTypes   import *
 from mmLib.AtomMath  import *
@@ -55,31 +56,30 @@ class TLSGroupDesc(object):
     def set_origin(self, x, y, z):
         """Sets the TLS group origin of calculations.
         """
-        self.origin = array((x, y, z), Float)
+        self.origin = numpy.array((x, y, z), float)
 
     def add_range(self, chain_id1, frag_id1, chain_id2, frag_id2, selection):
         """Adds a segment of residues to the TLS group.  Not too sure how to
         handle segments which span chains, so assert on that condition.
         """
         assert chain_id1==chain_id2
-        self.range_list.append(
-            (chain_id1, frag_id1, chain_id2, frag_id2, selection))
+        self.range_list.append((chain_id1, frag_id1, chain_id2, frag_id2, selection))
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
         """Sets the T tensor from the component arguments.  Units are in
         square Angstroms.
         """
-        self.T = array( [[t11, t12, t13],
-                         [t12, t22, t23],
-                         [t13, t23, t33]], Float)
+        self.T = numpy.array( [[t11, t12, t13],
+                               [t12, t22, t23],
+                               [t13, t23, t33]], float)
 
     def set_L(self,  l11, l22, l33, l12, l13, l23):
         """Sets the L tensor from the component arguments.  Units are in
         square Radians.
         """
-        self.L = array( [[l11, l12, l13],
-                         [l12, l22, l23],
-                         [l13, l23, l33]], Float)
+        self.L = numpy.array( [[l11, l12, l13],
+                               [l12, l22, l23],
+                               [l13, l23, l33]], float)
 
     def set_L_deg2(self,  l11, l22, l33, l12, l13, l23):
         """Sets the L tensor from the component arguments.  Units are in
@@ -96,9 +96,9 @@ class TLSGroupDesc(object):
         s11 = s22 - s2211
         s33 = s11 - s1133
 
-        self.S = array([[s11, s12, s13],
-                        [s21, s22, s23],
-                        [s31, s32, s33]])
+        self.S = numpy.array([[s11, s12, s13],
+                              [s21, s22, s23],
+                              [s31, s32, s33]])
         
     def set_S_deg(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the S tensor from the component arguments.  Units are in
@@ -156,8 +156,7 @@ class TLSGroupDesc(object):
         """
         listx = []
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
-            listx.append("%s%s-%s%s %s" % (
-                chain_id1, frag_id1, chain_id2, frag_id2, sel))
+            listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
         return string.join(listx,';')
 
     def iter_atoms(self, struct):
@@ -194,17 +193,13 @@ class TLSGroupDesc(object):
             tls_group.name = self.name
 
         if self.origin!=None:
-            tls_group.set_origin(self.origin[0],
-                                 self.origin[1],
-                                 self.origin[2])
+            tls_group.set_origin(self.origin[0], self.origin[1], self.origin[2])
 
         if self.T!=None:
-            tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2],
-                            self.T[0,1], self.T[0,2], self.T[1,2])
+            tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2], self.T[0,1], self.T[0,2], self.T[1,2])
 
         if self.L!=None:
-            tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2],
-                            self.L[0,1], self.L[0,2], self.L[1,2])
+            tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2], self.L[0,1], self.L[0,2], self.L[1,2])
 
         if self.S!=None:
             ## s2211, s1133, s12, s13, s23, s21, s31, s32)
@@ -731,17 +726,17 @@ def solve_TLS_Ab(A, b):
     """Sove a overdetermined TLS system by singular value decomposition.
     """
     ## solve by SVD
-    U, W, Vt = singular_value_decomposition(A, full_matrices=0)
+    U, W, Vt = numpy.linalg.singular_value_decomposition(A, full_matrices=0)
 
-    V  = transpose(Vt)
-    Ut = transpose(U)
+    V  = numpy.transpose(Vt)
+    Ut = numpy.transpose(U)
 
     ## analize singular values and generate smallness cutoff
     cutoff = max(W) * 1E-10
 
     ## make W
     dim_W = len(W)
-    Wi = zeros((dim_W, dim_W), Float)
+    Wi = numpy.zeros((dim_W, dim_W), float)
 
     for i in range(dim_W):
         if W[i]>cutoff:
@@ -751,9 +746,9 @@ def solve_TLS_Ab(A, b):
             Wi[i,i] = 0.0
 
     ## solve for x
-    Utb  = matrixmultiply(Ut, b)
-    WUtb = matrixmultiply(Wi, Utb)
-    x    = matrixmultiply(V, WUtb)
+    Utb  = numpy.matrixmultiply(Ut, b)
+    WUtb = numpy.matrixmultiply(Wi, Utb)
+    x    = numpy.matrixmultiply(V, WUtb)
 
     return x
 
@@ -817,7 +812,8 @@ def calc_itls_uiso(T, L, S, position):
     zz = z*z
 
     ## note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 
-    u_tls = T + (L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy) - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
+    u_tls = T + (L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy) - 2.0*L[0,1]*x*y -
+                 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
     return u_tls
 
 def iter_itls_uiso(atom_iter, T, L, S, O):
@@ -830,15 +826,15 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     """iT is a single float; iL[3,3]; iS[3]
     """
     ## construct TLS tensors from isotropic TLS description
-    T0 = array([[iT,  0.0, 0.0],
+    T0 = numpy.array([[iT,  0.0, 0.0],
                 [0.0,  iT, 0.0],
-                [0.0, 0.0,  iT]], Float)
+                [0.0, 0.0,  iT]], float)
     
     L0 = iL.copy()
         
-    S0 = array([ [  0.0,   0.0, iS[1]],
+    S0 = numpy.array([ [  0.0,   0.0, iS[1]],
                  [iS[0],   0.0,  0.0],
-                 [  0.0, iS[2],  0.0] ], Float)
+                 [  0.0, iS[2],  0.0] ], float)
 
 
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
@@ -860,16 +856,16 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     rdict["L2_rmsd"] = 0.0
     rdict["L3_rmsd"] = 0.0
 
-    rdict["L1_eigen_vec"] = zeros(3, Float)
-    rdict["L2_eigen_vec"] = zeros(3, Float)
-    rdict["L3_eigen_vec"] = zeros(3, Float)
+    rdict["L1_eigen_vec"] = numpy.zeros(3, float)
+    rdict["L2_eigen_vec"] = numpy.zeros(3, float)
+    rdict["L3_eigen_vec"] = numpy.zeros(3, float)
     
-    rdict["RHO"] = zeros(3, Float)
+    rdict["RHO"] = numpy.zeros(3, float)
     rdict["COR"] = origin
 
-    rdict["L1_rho"] = zeros(3, Float)
-    rdict["L2_rho"] = zeros(3, Float)
-    rdict["L3_rho"] = zeros(3, Float)
+    rdict["L1_rho"] = numpy.zeros(3, float)
+    rdict["L2_rho"] = numpy.zeros(3, float)
+    rdict["L3_rho"] = numpy.zeros(3, float)
     
     rdict["L1_pitch"] = 0.0
     rdict["L2_pitch"] = 0.0
@@ -884,35 +880,35 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     rdict["Tr3_rmsd"] = 0.0
 
     ## set the L tensor eigenvalues and eigenvectors
-    (L_evals, RL) = eigenvectors(L0)
+    (L_evals, RL) = numpy.linalg.eigenvectors(L0)
     L1, L2, L3 = L_evals
 
     good_L_eigens = []
 
-    if allclose(L1, 0.0) or type(L1)==complex:
+    if numpy.allclose(L1, 0.0) or type(L1)==complex:
         L1 = 0.0
     else:
         good_L_eigens.append(0)
         
-    if allclose(L2, 0.0) or type(L2)==complex:
+    if numpy.allclose(L2, 0.0) or type(L2)==complex:
         L2 = 0.0
     else:
         good_L_eigens.append(1)
 
-    if allclose(L3, 0.0) or type(L3)==complex:
+    if numpy.allclose(L3, 0.0) or type(L3)==complex:
         L3 = 0.0
     else:
         good_L_eigens.append(2)
 
     ## no good L eigen values
     if len(good_L_eigens)==0:
-        Tr1, Tr2, Tr3 = eigenvalues(T0)
+        Tr1, Tr2, Tr3 = numpy.linalg.eigenvalues(T0)
 
-        if allclose(Tr1, 0.0) or type(Tr1)==complex:
+        if numpy.allclose(Tr1, 0.0) or type(Tr1)==complex:
             Tr1 = 0.0
-        if allclose(Tr2, 0.0) or type(Tr2)==complex:
+        if numpy.allclose(Tr2, 0.0) or type(Tr2)==complex:
             Tr2 = 0.0
-        if allclose(Tr3, 0.0) or type(Tr3)==complex:
+        if numpy.allclose(Tr3, 0.0) or type(Tr3)==complex:
             Tr3 = 0.0
 
         rdict["Tr1_eigen_val"] = Tr1
@@ -929,9 +925,9 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         i = good_L_eigens[0]
         evec = RL[i]
 
-        RZt = transpose(rmatrixz(evec))
-        xevec = matrixmultiply(RZt, array([1.0, 0.0, 0.0], Float))
-        yevec = matrixmultiply(RZt, array([0.0, 1.0, 0.0], Float))
+        RZt = numpy.transpose(rmatrixz(evec))
+        xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
+        yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
         if i==0:
             RL[1] = xevec
@@ -970,24 +966,24 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     ## begin tensor transformations which depend upon
     ## the eigenvectors of L0 being well-determined
     ## make sure RLt is right-handed
-    if allclose(determinant(RL), -1.0):
-        I = identity(3, Float)
+    if numpy.allclose(numpy.linalg.determinant(RL), -1.0):
+        I = numpy.identity(3, float)
         I[0,0] = -1.0
-        RL = matrixmultiply(I, RL)
+        RL = numpy.matrixmultiply(I, RL)
 
-    if not allclose(determinant(RL), 1.0):
+    if not numpy.allclose(numpy.linalg.determinant(RL), 1.0):
         return rdict
     
-    RLt = transpose(RL)
+    RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
+    cL = numpy.matrixmultiply(numpy.matrixmultiply(RL, L0), RLt) 
     
     ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
+    cT = numpy.matrixmultiply(numpy.matrixmultiply(RL, T0), RLt)
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
+    cS = numpy.matrixmultiply(numpy.matrixmultiply(RL, S0), RLt)
 
     ## ^rho: the origin-shift vector in the coordinate system of L
     L23 = L2 + L3
@@ -995,58 +991,60 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     L12 = L1 + L2
 
     ## shift for L1
-    if not allclose(L1, 0.0) and abs(L23)>LSMALL:
+    if not numpy.allclose(L1, 0.0) and abs(L23)>LSMALL:
         crho1 = (cS[1,2] - cS[2,1]) / L23
     else:
         crho1 = 0.0
 
-    if not allclose(L2, 0.0) and abs(L13)>LSMALL:
+    if not numpy.allclose(L2, 0.0) and abs(L13)>LSMALL:
         crho2 = (cS[2,0] - cS[0,2]) / L13
     else:
         crho2 = 0.0
 
-    if not allclose(L3, 0.0) and abs(L12)>LSMALL:
+    if not numpy.allclose(L3, 0.0) and abs(L12)>LSMALL:
         crho3 = (cS[0,1] - cS[1,0]) / L12
     else:
         crho3 = 0.0
 
-    crho = array([crho1, crho2, crho3], Float)
+    crho = numpy.array([crho1, crho2, crho3], float)
 
     ## rho: the origin-shift vector in orthogonal coordinates
-    rho = matrixmultiply(RLt, crho)
+    rho = numpy.matrixmultiply(RLt, crho)
     rdict["RHO"] = rho
     rdict["COR"] = origin + rho
 
     ## set up the origin shift matrix PRHO WRT orthogonal axes
-    PRHO = array([ [    0.0,  rho[2], -rho[1]],
+    PRHO = numpy.array([ [    0.0,  rho[2], -rho[1]],
                    [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], Float)
+                   [ rho[1], -rho[0],     0.0] ], float)
 
     ## set up the origin shift matrix cPRHO WRT libration axes
-    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+    cPRHO = numpy.array([ [    0.0,  crho[2], -crho[1]],
                     [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], Float)
+                    [ crho[1], -crho[0],     0.0] ], float)
 
     ## calculate tranpose of cPRHO, ans cS
-    cSt = transpose(cS)
-    cPRHOt = transpose(cPRHO)
+    cSt = numpy.transpose(cS)
+    cPRHOt = numpy.transpose(cPRHO)
 
     ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + matrixmultiply(cL, cPRHOt)
+    cSp = cS + numpy.matrixmultiply(cL, cPRHOt)
 
     ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + matrixmultiply(cPRHO, cS) + matrixmultiply(cSt, cPRHOt) + matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+    cTp = cT + numpy.matrixmultiply(cPRHO, cS) + numpy.matrixmultiply(cSt, cPRHOt) + \
+          numpy.matrixmultiply(numpy.matrixmultiply(cPRHO, cL), cPRHOt)
 
     ## transpose of PRHO and S
-    PRHOt = transpose(PRHO)
-    St = transpose(S0)
+    PRHOt = numpy.transpose(PRHO)
+    St = numpy.transpose(S0)
 
     ## calculate S' = S + L*PRHOt
-    Sp = S0 + matrixmultiply(L0, PRHOt)
+    Sp = S0 + numpy.matrixmultiply(L0, PRHOt)
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + matrixmultiply(PRHO, S0) + matrixmultiply(St, PRHOt) + matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
+    Tp = T0 + numpy.matrixmultiply(PRHO, S0) + numpy.matrixmultiply(St, PRHOt) + \
+         numpy.matrixmultiply(numpy.matrixmultiply(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
 
     ## now calculate the TLS motion description using 3 non
@@ -1054,15 +1052,15 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     ## libration axis 1 shift in the L coordinate system
     ## you cannot determine axis shifts from the isotropic TLS parameters
-    cL1rho = zeros(3, Float)
-    cL2rho = zeros(3, Float)
-    cL3rho = zeros(3, Float)
+    cL1rho = numpy.zeros(3, float)
+    cL2rho = numpy.zeros(3, float)
+    cL3rho = numpy.zeros(3, float)
 
     ## libration axes shifts in the origional orthogonal
     ## coordinate system
-    rdict["L1_rho"] = matrixmultiply(RLt, cL1rho)
-    rdict["L2_rho"] = matrixmultiply(RLt, cL2rho)
-    rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
+    rdict["L1_rho"] = numpy.matrixmultiply(RLt, cL1rho)
+    rdict["L2_rho"] = numpy.matrixmultiply(RLt, cL2rho)
+    rdict["L3_rho"] = numpy.matrixmultiply(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
     ## no screw pitches either
@@ -1073,8 +1071,8 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    Tiso = trace(Tp) / 3.0
-    rdict["rT'"] = Tiso * identity(3, Float)
+    Tiso = numpy.trace(Tp) / 3.0
+    rdict["rT'"] = Tiso * numpy.identity(3, float)
 
     rdict["Tr1_eigen_val"] = Tiso
     rdict["Tr2_eigen_val"] = Tiso
@@ -1120,9 +1118,9 @@ def calc_Utls(T, L, S, position):
     u13 = T[0,2] - L[1,1]*xz + L[1,2]*xy - L[2,0]*yy + L[0,1]*yz + S[0,0]*y - S[2,2]*y + S[1,2]*z - S[1,0]*x
     u23 = T[1,2] - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
 
-    return array([[u11, u12, u13],
+    return numpy.array([[u11, u12, u13],
                   [u12, u22, u23],
-                  [u13, u23, u33]], Float)
+                  [u13, u23, u33]], float)
 
 def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     """Returns the amount of rotational displacement from L
@@ -1132,7 +1130,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     Lorigin  = cor + Lrho
     D        = dmatrixu(Lvec, Lrot)
 
-    drot = matrixmultiply(D, position - Lorigin)
+    drot = numpy.matrixmultiply(D, position - Lorigin)
     dscw = (Lrot * Lpitch) * Lvec
     
     return drot + dscw
@@ -1232,8 +1230,8 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     num_atoms = len(atom_list)
     params = 20
 
-    A = zeros((num_atoms * 6, params), Float)
-    B = zeros(num_atoms * 6,  Float)
+    A = numpy.zeros((num_atoms * 6, params), float)
+    B = numpy.zeros(num_atoms * 6,  float)
 
     i = -1
     for atm in atom_list:
@@ -1261,24 +1259,24 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-    T = array([ [ X[T11], X[T12], X[T13] ],
+    T = numpy.array([ [ X[T11], X[T12], X[T13] ],
                 [ X[T12], X[T22], X[T23] ],
-                [ X[T13], X[T23], X[T33] ] ], Float)
+                [ X[T13], X[T23], X[T33] ] ], float)
 
-    L = array([ [ X[L11], X[L12], X[L13] ],
+    L = numpy.array([ [ X[L11], X[L12], X[L13] ],
                 [ X[L12], X[L22], X[L23] ],
-                [ X[L13], X[L23], X[L33] ] ], Float)
+                [ X[L13], X[L23], X[L33] ] ], float)
 
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
-    S = array([ [    s11, X[S12], X[S13] ],
+    S = numpy.array([ [    s11, X[S12], X[S13] ],
                 [ X[S21],    s22, X[S23] ],
-                [ X[S31], X[S32],    s33 ] ], Float)
+                [ X[S31], X[S32],    s33 ] ], float)
 
     ## calculate the lsq residual
-    UTLS = matrixmultiply(A, X)
+    UTLS = numpy.matrixmultiply(A, X)
     D = UTLS - B
-    lsq_residual = dot(D, D)
+    lsq_residual = numpy.dot(D, D)
 
     return T, L, S, lsq_residual
 
@@ -1314,16 +1312,16 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L2_rmsd"] = 0.0
     rdict["L3_rmsd"] = 0.0
 
-    rdict["L1_eigen_vec"] = zeros(3, Float)
-    rdict["L2_eigen_vec"] = zeros(3, Float)
-    rdict["L3_eigen_vec"] = zeros(3, Float)
+    rdict["L1_eigen_vec"] = numpy.zeros(3, float)
+    rdict["L2_eigen_vec"] = numpy.zeros(3, float)
+    rdict["L3_eigen_vec"] = numpy.zeros(3, float)
     
-    rdict["RHO"] = zeros(3, Float)
+    rdict["RHO"] = numpy.zeros(3, float)
     rdict["COR"] = origin
 
-    rdict["L1_rho"] = zeros(3, Float)
-    rdict["L2_rho"] = zeros(3, Float)
-    rdict["L3_rho"] = zeros(3, Float)
+    rdict["L1_rho"] = numpy.zeros(3, float)
+    rdict["L2_rho"] = numpy.zeros(3, float)
+    rdict["L3_rho"] = numpy.zeros(3, float)
     
     rdict["L1_pitch"] = 0.0
     rdict["L2_pitch"] = 0.0
@@ -1338,22 +1336,22 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["Tr3_rmsd"] = 0.0
 
     ## set the L tensor eigenvalues and eigenvectors
-    (L_evals, RL) = eigenvectors(L0)
+    (L_evals, RL) = numpy.linalg.eigenvectors(L0)
     L1, L2, L3 = L_evals
 
     good_L_eigens = []
 
-    if allclose(L1, 0.0) or type(L1)==complex:
+    if numpy.allclose(L1, 0.0) or type(L1)==complex:
         L1 = 0.0
     else:
         good_L_eigens.append(0)
         
-    if allclose(L2, 0.0) or type(L2)==complex:
+    if numpy.allclose(L2, 0.0) or type(L2)==complex:
         L2 = 0.0
     else:
         good_L_eigens.append(1)
 
-    if allclose(L3, 0.0) or type(L3)==complex:
+    if numpy.allclose(L3, 0.0) or type(L3)==complex:
         L3 = 0.0
     else:
         good_L_eigens.append(2)
@@ -1367,9 +1365,9 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         i = good_L_eigens[0]
         evec = RL[i]
 
-        RZt = transpose(rmatrixz(evec))
-        xevec = matrixmultiply(RZt, array([1.0, 0.0, 0.0], Float))
-        yevec = matrixmultiply(RZt, array([0.0, 1.0, 0.0], Float))
+        RZt = numpy.transpose(rmatrixz(evec))
+        xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
+        yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
         if i==0:
             RL[1] = xevec
@@ -1408,24 +1406,27 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## begin tensor transformations which depend upon
     ## the eigenvectors of L0 being well-determined
     ## make sure RLt is right-handed
-    if allclose(determinant(RL), -1.0):
-        I = identity(3, Float)
+    if numpy.allclose(numpy.linalg.determinant(RL), -1.0):
+        I = numpy.identity(3, float)
         I[0,0] = -1.0
-        RL = matrixmultiply(I, RL)
+        RL = numpy.matrixmultiply(I, RL)
 
-    if not allclose(determinant(RL), 1.0):
+    if not numpy.allclose(numpy.linalg.determinant(RL), 1.0):
         return rdict
     
-    RLt = transpose(RL)
+    RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = matrixmultiply(matrixmultiply(RL, L0), RLt) 
+    cL = numpy.matrixmultiply(numpy.matrixmultiply(RL, L0), RLt) 
+    rdict["L^"] = cL.copy()
     
     ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = matrixmultiply(matrixmultiply(RL, T0), RLt)
+    cT = numpy.matrixmultiply(numpy.matrixmultiply(RL, T0), RLt)
+    rdict["T^"] = cT.copy()
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = matrixmultiply(matrixmultiply(RL, S0), RLt)
+    cS = numpy.matrixmultiply(numpy.matrixmultiply(RL, S0), RLt)
+    rdict["S^"] = cS.copy()
 
     ## ^rho: the origin-shift vector in the coordinate system of L
     L23 = L2 + L3
@@ -1433,58 +1434,65 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     L12 = L1 + L2
 
     ## shift for L1
-    if not allclose(L1, 0.0) and abs(L23)>LSMALL:
+    if not numpy.allclose(L1, 0.0) and abs(L23)>LSMALL:
         crho1 = (cS[1,2] - cS[2,1]) / L23
     else:
         crho1 = 0.0
 
-    if not allclose(L2, 0.0) and abs(L13)>LSMALL:
+    if not numpy.allclose(L2, 0.0) and abs(L13)>LSMALL:
         crho2 = (cS[2,0] - cS[0,2]) / L13
     else:
         crho2 = 0.0
 
-    if not allclose(L3, 0.0) and abs(L12)>LSMALL:
+    if not numpy.allclose(L3, 0.0) and abs(L12)>LSMALL:
         crho3 = (cS[0,1] - cS[1,0]) / L12
     else:
         crho3 = 0.0
 
-    crho = array([crho1, crho2, crho3], Float)
-
+    crho = numpy.array([crho1, crho2, crho3], float)
+    rdict["RHO^"] = crho.copy()
+    
     ## rho: the origin-shift vector in orthogonal coordinates
-    rho = matrixmultiply(RLt, crho)
+    rho = numpy.matrixmultiply(RLt, crho)
     rdict["RHO"] = rho
     rdict["COR"] = origin + rho
 
     ## set up the origin shift matrix PRHO WRT orthogonal axes
-    PRHO = array([ [    0.0,  rho[2], -rho[1]],
+    PRHO = numpy.array([ [    0.0,  rho[2], -rho[1]],
                    [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], Float)
+                   [ rho[1], -rho[0],     0.0] ], float)
 
     ## set up the origin shift matrix cPRHO WRT libration axes
-    cPRHO = array([ [    0.0,  crho[2], -crho[1]],
+    cPRHO = numpy.array([ [    0.0,  crho[2], -crho[1]],
                     [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], Float)
+                    [ crho[1], -crho[0],     0.0] ], float)
 
     ## calculate tranpose of cPRHO, ans cS
-    cSt = transpose(cS)
-    cPRHOt = transpose(cPRHO)
+    cSt = numpy.transpose(cS)
+    cPRHOt = numpy.transpose(cPRHO)
+
+    rdict["L'^"] = cL.copy()
 
     ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + matrixmultiply(cL, cPRHOt)
+    cSp = cS + numpy.matrixmultiply(cL, cPRHOt)
+    rdict["S'^"] = cSp.copy()
 
     ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + matrixmultiply(cPRHO, cS) + matrixmultiply(cSt, cPRHOt) + matrixmultiply(matrixmultiply(cPRHO, cL), cPRHOt)
+    cTp = cT + numpy.matrixmultiply(cPRHO, cS) + numpy.matrixmultiply(cSt, cPRHOt) +\
+          numpy.matrixmultiply(numpy.matrixmultiply(cPRHO, cL), cPRHOt)
+    rdict["T'^"] = cTp.copy()
 
     ## transpose of PRHO and S
-    PRHOt = transpose(PRHO)
-    St = transpose(S0)
+    PRHOt = numpy.transpose(PRHO)
+    St = numpy.transpose(S0)
 
     ## calculate S' = S + L*PRHOt
-    Sp = S0 + matrixmultiply(L0, PRHOt)
+    Sp = S0 + numpy.matrixmultiply(L0, PRHOt)
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + matrixmultiply(PRHO, S0) + matrixmultiply(St, PRHOt) + matrixmultiply(matrixmultiply(PRHO, L0), PRHOt)
+    Tp = T0 + numpy.matrixmultiply(PRHO, S0) + numpy.matrixmultiply(St, PRHOt) +\
+         numpy.matrixmultiply(numpy.matrixmultiply(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
 
     ## now calculate the TLS motion description using 3 non
@@ -1492,27 +1500,27 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     ## libration axis 1 shift in the L coordinate system        
     if abs(L1)>LSMALL:
-        cL1rho = array([0.0, -cSp[0,2]/L1, cSp[0,1]/L1], Float)
+        cL1rho = numpy.array([0.0, -cSp[0,2]/L1, cSp[0,1]/L1], float)
     else:
-        cL1rho = zeros(3, Float)
+        cL1rho = numpy.zeros(3, float)
 
     ## libration axis 2 shift in the L coordinate system
     if abs(L2)>LSMALL:
-        cL2rho = array([cSp[1,2]/L2, 0.0, -cSp[1,0]/L2], Float)
+        cL2rho = numpy.array([cSp[1,2]/L2, 0.0, -cSp[1,0]/L2], float)
     else:
-        cL2rho = zeros(3, Float)
+        cL2rho = numpy.zeros(3, float)
 
     ## libration axis 2 shift in the L coordinate system
     if abs(L3)>LSMALL:
-        cL3rho = array([-cSp[2,1]/L3, cSp[2,0]/L3, 0.0], Float)
+        cL3rho = numpy.array([-cSp[2,1]/L3, cSp[2,0]/L3, 0.0], float)
     else:
-        cL3rho = zeros(3, Float)
+        cL3rho = numpy.zeros(3, float)
 
     ## libration axes shifts in the origional orthogonal
     ## coordinate system
-    rdict["L1_rho"] = matrixmultiply(RLt, cL1rho)
-    rdict["L2_rho"] = matrixmultiply(RLt, cL2rho)
-    rdict["L3_rho"] = matrixmultiply(RLt, cL3rho)
+    rdict["L1_rho"] = numpy.matrixmultiply(RLt, cL1rho)
+    rdict["L2_rho"] = numpy.matrixmultiply(RLt, cL2rho)
+    rdict["L3_rho"] = numpy.matrixmultiply(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
     if abs(L1)>LSMALL:
@@ -1551,16 +1559,16 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    Tr = matrixmultiply(matrixmultiply(RLt, cTred), RL)
+    Tr = numpy.matrixmultiply(numpy.matrixmultiply(RLt, cTred), RL)
     rdict["rT'"] = Tr
 
-    Tr1, Tr2, Tr3 = eigenvalues(Tr)
+    Tr1, Tr2, Tr3 = numpy.linalg.eigenvalues(Tr)
 
-    if allclose(Tr1, 0.0) or type(Tr1)==complex:
+    if numpy.allclose(Tr1, 0.0) or type(Tr1)==complex:
         Tr1 = 0.0
-    if allclose(Tr2, 0.0) or type(Tr2)==complex:
+    if numpy.allclose(Tr2, 0.0) or type(Tr2)==complex:
         Tr2 = 0.0
-    if allclose(Tr3, 0.0) or type(Tr3)==complex:
+    if numpy.allclose(Tr3, 0.0) or type(Tr3)==complex:
         Tr3 = 0.0
 
     rdict["Tr1_eigen_val"] = Tr1
@@ -1587,8 +1595,8 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
     num_atoms = len(atom_list)
     params = 20 + num_atoms
 
-    A = zeros((num_atoms * 6, params), Float)
-    B = zeros(num_atoms * 6,  Float)
+    A = numpy.zeros((num_atoms * 6, params), float)
+    B = numpy.zeros(num_atoms * 6,  float)
 
     i = -1
     for atm in atom_list:
@@ -1602,10 +1610,8 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
         
         ## set the b vector
         U = atm.get_U()
-        assert trace(U)>0.0
-        set_TLS_b(B, iU11,
-                  U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-                  w)
+        assert numpy.trace(U)>0.0
+        set_TLS_b(B, iU11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
         x, y, z = atm.position - origin
@@ -1624,24 +1630,24 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-    T = array([ [ X[T11], X[T12], X[T13] ],
+    T = numpy.array([ [ X[T11], X[T12], X[T13] ],
                 [ X[T12], X[T22], X[T23] ],
-                [ X[T13], X[T23], X[T33] ] ], Float)
+                [ X[T13], X[T23], X[T33] ] ], float)
 
-    L = array([ [ X[L11], X[L12], X[L13] ],
+    L = numpy.array([ [ X[L11], X[L12], X[L13] ],
                 [ X[L12], X[L22], X[L23] ],
-                [ X[L13], X[L23], X[L33] ] ], Float)
+                [ X[L13], X[L23], X[L33] ] ], float)
 
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
-    S = array([ [    s11, X[S12], X[S13] ],
+    S = numpy.array([ [    s11, X[S12], X[S13] ],
                 [ X[S21],    s22, X[S23] ],
-                [ X[S31], X[S32],    s33 ] ], Float)
+                [ X[S31], X[S32],    s33 ] ], float)
 
     ## calculate the lsq residual
-    UTLS = matrixmultiply(A, X)
+    UTLS = numpy.matrixmultiply(A, X)
     D = UTLS - B
-    lsq_residual = dot(D, D)
+    lsq_residual = numpy.dot(D, D)
 
     rdict = {}
     rdict["T"] = T
@@ -1756,8 +1762,8 @@ def calc_TLSCA_least_squares_fit(segment, origin):
 
     params = (6 * num_pivot_frags) + 20
 
-    A = zeros((num_atoms * 6, params), Float)
-    B = zeros(num_atoms * 6,  Float)
+    A = numpy.zeros((num_atoms * 6, params), float)
+    B = numpy.zeros(num_atoms * 6,  float)
 
     i = -1
     for atm in segment.iter_atoms():
@@ -1797,9 +1803,9 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     X = solve_TLS_Ab(A, B)
 
     ## calculate the lsq residual
-    UTLS = matrixmultiply(A, X)
+    UTLS = numpy.matrixmultiply(A, X)
     D = UTLS - B
-    lsq_residual = dot(D, D)
+    lsq_residual = numpy.dot(D, D)
 
     ## create the T,L,S tensors
 
@@ -1808,19 +1814,19 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-    T = array([ [ X[T11], X[T12], X[T13] ],
-                [ X[T12], X[T22], X[T23] ],
-                [ X[T13], X[T23], X[T33] ] ], Float)
+    T = numpy.array([ [ X[T11], X[T12], X[T13] ],
+                      [ X[T12], X[T22], X[T23] ],
+                      [ X[T13], X[T23], X[T33] ] ], float)
 
-    L = array([ [ X[L11], X[L12], X[L13] ],
-                [ X[L12], X[L22], X[L23] ],
-                [ X[L13], X[L23], X[L33] ] ], Float)
-
+    L = numpy.array([ [ X[L11], X[L12], X[L13] ],
+                      [ X[L12], X[L22], X[L23] ],
+                      [ X[L13], X[L23], X[L33] ] ], float)
+    
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
-    S = array([ [    s11, X[S12], X[S13] ],
-                [ X[S21],    s22, X[S23] ],
-                [ X[S31], X[S32],    s33 ] ], Float)
+    S = numpy.array([ [    s11, X[S12], X[S13] ],
+                      [ X[S21],    s22, X[S23] ],
+                      [ X[S31], X[S32],    s33 ] ], float)
 
     ## extract the CA-pivot L tensors
     frag_L_dict = {}
@@ -1830,16 +1836,14 @@ def calc_TLSCA_least_squares_fit(segment, origin):
             continue
 
         iL11 = iL11p[frag]
-        CA_L = array([ [ X[iL11],   X[iL11+3], X[iL11+4] ],
-                       [ X[iL11+3], X[iL11+1], X[iL11+5] ],
-                       [ X[iL11+4], X[iL11+5], X[iL11+2] ] ], Float)
-
+        CA_L = numpy.array([ [ X[iL11],   X[iL11+3], X[iL11+4] ],
+                             [ X[iL11+3], X[iL11+1], X[iL11+5] ],
+                             [ X[iL11+4], X[iL11+5], X[iL11+2] ] ], float)
+        
         frag_L_dict[frag] = CA_L
-        eval = eigenvalues(CA_L) * RAD2DEG2
+        eval = numpy.linalg.eigenvalues(CA_L) * RAD2DEG2
 
-        print "%s %s: %6.2f %6.2f %6.2f" % (
-            frag.fragment_id, frag.res_name,
-            eval[0],eval[1],eval[2])
+        print "%s %s: %6.2f %6.2f %6.2f" % (frag.fragment_id, frag.res_name, eval[0],eval[1],eval[2])
 
     ## calculate TLSCA-U
     udict = {}
@@ -1848,9 +1852,9 @@ def calc_TLSCA_least_squares_fit(segment, origin):
         i += 1
         iU11 = i * 6
 
-        U = array( ((UTLS[iU11],   UTLS[iU11+3], UTLS[iU11+4]),
-                    (UTLS[iU11+3], UTLS[iU11+1], UTLS[iU11+5]),
-                    (UTLS[iU11+4], UTLS[iU11+5], UTLS[iU11+2])), Float)
+        U = numpy.array( ((UTLS[iU11],   UTLS[iU11+3], UTLS[iU11+4]),
+                          (UTLS[iU11+3], UTLS[iU11+1], UTLS[iU11+5]),
+                          (UTLS[iU11+4], UTLS[iU11+5], UTLS[iU11+2])), float)
 
         udict[atm] = U
 
@@ -1891,8 +1895,8 @@ def calc_TLS_uber_least_squares_fit(tls_group_list, origin):
     cols = (num_tls * 20) + 20
 
     ## allocate arrays
-    A = zeros((rows, cols), Float)
-    B = zeros(rows,  Float)
+    A = numpy.zeros((rows, cols), float)
+    B = numpy.zeros(rows,  float)
 
     i = -1
     j = 0
@@ -1921,9 +1925,9 @@ def calc_TLS_uber_least_squares_fit(tls_group_list, origin):
     X = solve_TLS_Ab(A, B)
 
     ## calculate the lsq residual
-    UTLS = matrixmultiply(A, X)
+    UTLS = numpy.matrixmultiply(A, X)
     D = UTLS - B
-    lsq_residual = dot(D, D)
+    lsq_residual = numpy.dot(D, D)
 
     ## calculate precited U values for atoms
     udict = {}
@@ -1933,9 +1937,9 @@ def calc_TLS_uber_least_squares_fit(tls_group_list, origin):
             i += 1
             iU11 = i * 6
         
-            U = array( ((UTLS[iU11],   UTLS[iU11+3], UTLS[iU11+4]),
-                        (UTLS[iU11+3], UTLS[iU11+1], UTLS[iU11+5]),
-                        (UTLS[iU11+4], UTLS[iU11+5], UTLS[iU11+2])), Float)
+            U = numpy.array( ((UTLS[iU11],   UTLS[iU11+3], UTLS[iU11+4]),
+                              (UTLS[iU11+3], UTLS[iU11+1], UTLS[iU11+5]),
+                              (UTLS[iU11+4], UTLS[iU11+5], UTLS[iU11+2])), float)
             
             udict[atm] = U
 
@@ -1945,19 +1949,19 @@ def calc_TLS_uber_least_squares_fit(tls_group_list, origin):
     S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-    Tu = array([ [ X[T11], X[T12], X[T13] ],
-                 [ X[T12], X[T22], X[T23] ],
-                 [ X[T13], X[T23], X[T33] ] ], Float)
+    Tu = numpy.array([ [ X[T11], X[T12], X[T13] ],
+                       [ X[T12], X[T22], X[T23] ],
+                       [ X[T13], X[T23], X[T33] ] ], float)
     
-    Lu = array([ [ X[L11], X[L12], X[L13] ],
-                 [ X[L12], X[L22], X[L23] ],
-                 [ X[L13], X[L23], X[L33] ] ], Float)
-
+    Lu = numpy.array([ [ X[L11], X[L12], X[L13] ],
+                       [ X[L12], X[L22], X[L23] ],
+                       [ X[L13], X[L23], X[L33] ] ], float)
+    
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
-    Su = array([ [    s11, X[S12], X[S13] ],
-                 [ X[S21],    s22, X[S23] ],
-                 [ X[S31], X[S32],    s33 ] ], Float)
+    Su = numpy.array([ [    s11, X[S12], X[S13] ],
+                       [ X[S21],    s22, X[S23] ],
+                       [ X[S31], X[S32],    s33 ] ], float)
 
     ## caclculate the center of reaction for the group and
     rdict = {}
@@ -1984,16 +1988,16 @@ class TLSGroup(AtomList):
         AtomList.__init__(self, *args)
 
         self.name           = "" 
-        self.origin         = zeros(3, Float)
-        self.T              = array([[0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]], Float)
-        self.L              = array([[0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]], Float)
-        self.S              = array([[0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0],
-                                     [0.0, 0.0, 0.0]], Float)
+        self.origin         = numpy.zeros(3, float)
+        self.T              = numpy.array([[0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0]], float)
+        self.L              = numpy.array([[0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0]], float)
+        self.S              = numpy.array([[0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0],
+                                           [0.0, 0.0, 0.0]], float)
 
     def str_old(self):
         tstr  = "TLS %s\n" % (self.name)
@@ -2018,23 +2022,23 @@ class TLSGroup(AtomList):
     def set_origin(self, x, y, z):
         """Sets the x, y, z components of the TLS origin vector.
         """
-        self.origin = array([x, y, z])
+        self.origin = numpy.array([x, y, z])
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
         """Sets the components of the symmetric T tensor.  Units in square
         Angstroms.
         """
-        self.T = array([[t11, t12, t13],
-                        [t12, t22, t23],
-                        [t13, t23, t33]], Float)
+        self.T = numpy.array([[t11, t12, t13],
+                              [t12, t22, t23],
+                              [t13, t23, t33]], float)
 
     def set_L(self, l11, l22, l33, l12, l13, l23):
         """Sets the components of the symmetric L tensor from arguments.
         Units should be in square radians.
         """
-        self.L = array([[l11, l12, l13],
-                        [l12, l22, l23],
-                        [l13, l23, l33]], Float)
+        self.L = numpy.array([[l11, l12, l13],
+                              [l12, l22, l23],
+                              [l13, l23, l33]], float)
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the componets of the asymmetric S tenssor.  The trace
@@ -2042,9 +2046,9 @@ class TLSGroup(AtomList):
         the Trace(S) = 0.  Units in Radians*Angstroms.
         """
         s11, s22, s33 = self.calc_s11_s22_s33(s2211, s1133)
-        self.S = array([[s11, s12, s13],
-                        [s21, s22, s23],
-                        [s31, s32, s33]], Float)
+        self.S = numpy.array([[s11, s12, s13],
+                              [s21, s22, s23],
+                              [s31, s32, s33]], float)
 
     def calc_s11_s22_s33(self, s2211, s1133):
         """Calculates s11, s22, s33 based on s22-s11 and s11-s33 using
@@ -2059,7 +2063,7 @@ class TLSGroup(AtomList):
         """Returns True if the T,L,S tensors are not set, or are set
         with values of zero.
         """
-        if allclose(trace(self.T), 0.0) or allclose(trace(self.L), 0.0):
+        if numpy.allclose(numpy.trace(self.T), 0.0) or numpy.allclose(numpy.trace(self.L), 0.0):
             return True
         return False
 
@@ -2070,16 +2074,16 @@ class TLSGroup(AtomList):
         positive eigenvalues.
         """
         for atm, Utls in self.iter_atm_Utls():
-            if min(eigenvalues(Utls))<0.0:
+            if min(numpy.linalg.eigenvalues(Utls))<0.0:
                 debug("check_valid_model(): negative Utls eigenvalue")
                 return False
 
-        if min(eigenvalues(self.L))<0.0:
+        if min(numpy.linalg.eigenvalues(self.L))<0.0:
             debug("check_valid_model(): negative L eigenvalue")
             return False
 
         T_red = self.calc_COR()["rT'"]
-        if min(eigenvalues(T_red))<0.0:
+        if min(numpy.linalg.eigenvalues(T_red))<0.0:
             debug("check_valid_model(): negative Tr eigenvalue")
             return False
 
@@ -2154,12 +2158,12 @@ class TLSGroup(AtomList):
         for atm, Utls in self.iter_atm_Utls():
             n += 1
 
-            evals  = eigenvalues(Utls)
+            evals  = numpy.linalg.eigenvalues(Utls)
             max_ev = max(evals)
             min_ev = min(evals)
 
             mean_max_tf += U2B * max_ev
-            mean_tf     += U2B * trace(Utls) / 3.0
+            mean_tf     += U2B * numpy.trace(Utls) / 3.0
             mean_aniso  += calc_anisotropy(Utls)
 
         tls_info["tls_mean_max_temp_factor"] = mean_max_tf / float(n)
@@ -2384,10 +2388,6 @@ class TLSStructureAnalysis(object):
                     rdict = calc_CB_pivot_TLS_least_squares_fit(pv_seg)
                     tls_info["ca_pivot"] = rdict
 
-                ## check if the TLS model is valid
-                if not tls_info["valid_model"]:
-                    tls_info["error"] = "TLS Model Invalid"
-
                 ## add additional information
                 tls_info["name"]      = name
                 tls_info["chain_id"]  = chain.chain_id
@@ -2514,64 +2514,64 @@ class GLTLSAtomList(GLAtomList):
               "desc":        "TLS Center of Reaction", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "T",
               "desc":        "T<sup>COR</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "rT",
               "desc":        "T<sup>r</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L",
               "desc":        "L<sup>COR</sup> Tensor (DEG<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "S",
               "desc":        "S<sup>COR</sup> Tensor (A*DEG)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
               "desc":        "L<sub>1</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_vec",
               "desc":        "L<sub>2</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_vec",
               "desc":        "L<sub>3</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_val",
@@ -2602,24 +2602,24 @@ class GLTLSAtomList(GLAtomList):
               "desc":        "L<sub>1</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_rho",
               "desc":        "L<sub>2</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_rho",
               "desc":        "L<sub>3</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
@@ -2723,7 +2723,7 @@ class GLTLSAtomList(GLAtomList):
                 rot   = sign * self.properties[Lx_rot] *  self.properties[Lx_scale]
                 screw = axis * (rot * pitch)
                 
-                if allclose(rot, 0.0):
+                if numpy.allclose(rot, 0.0):
                     if zero_rot==True:
                         continue
                     zero_rot = True
@@ -3019,64 +3019,64 @@ class GLTLSGroup(GLDrawList):
               "desc":        "TLS Center of Reaction", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "T",
               "desc":        "T<sup>COR</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "rT",
               "desc":        "T<sup>r</sup> Tensor (A<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L",
               "desc":        "L<sup>COR</sup> Tensor (DEG<sup>2</sup>)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "S",
               "desc":        "S<sup>COR</sup> Tensor (A*DEG)",
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3,3)",
-              "default":     zeros((3,3), Float),
+              "type":        "numpy.array(3,3)",
+              "default":     numpy.zeros((3,3), float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_vec",
               "desc":        "L<sub>1</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_eigen_vec",
               "desc":        "L<sub>2</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_eigen_vec",
               "desc":        "L<sub>3</sub> Eigen Vector", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_eigen_val",
@@ -3107,24 +3107,24 @@ class GLTLSGroup(GLDrawList):
               "desc":        "L<sub>1</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L2_rho",
               "desc":        "L<sub>2</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L3_rho",
               "desc":        "L<sub>3</sub> Position from COR", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
-              "type":        "array(3)",
-              "default":     zeros(3, Float),
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
               "action":      "recompile" })
         self.glo_add_property(
             { "name":        "L1_pitch",
@@ -3515,7 +3515,7 @@ class GLTLSGroup(GLDrawList):
 
             if self.properties["add_biso"]==True:
                 if atm.temp_factor!=None:
-                    Utls = Utls + (B2U * atm.temp_factor * identity(3, Float))
+                    Utls = Utls + (B2U * atm.temp_factor * numpy.identity(3, float))
             
             yield atm, Utls
     
@@ -3667,12 +3667,12 @@ class GLTLSGroup(GLDrawList):
                     bond_list.append(bond)
         
         ## this just won't work...
-        if allclose(Lx_eigen_val, 0.0):
+        if numpy.allclose(Lx_eigen_val, 0.0):
             return
 
         C = GAUSS3C[self.properties["adp_prob"]]
         Lx_s = C * calc_rmsd(Lx_eigen_val * DEG2RAD2)
-        if allclose(Lx_s, 0.0):
+        if numpy.allclose(Lx_s, 0.0):
             return
 
         Lx_pitch      = Lx_pitch * (1.0/DEG2RAD)
@@ -3717,10 +3717,10 @@ class GLTLSGroup(GLDrawList):
                     pos1 = bond.atom1.position - Lx_origin
                     pos2 = bond.atom2.position - Lx_origin
 
-                    v1 = matrixmultiply(Rstep1, pos1) + screw1
-                    v2 = matrixmultiply(Rstep2, pos1) + screw2
-                    v3 = matrixmultiply(Rstep2, pos2) + screw2
-                    v4 = matrixmultiply(Rstep1, pos2) + screw1
+                    v1 = numpy.matrixmultiply(Rstep1, pos1) + screw1
+                    v2 = numpy.matrixmultiply(Rstep2, pos1) + screw2
+                    v3 = numpy.matrixmultiply(Rstep2, pos2) + screw2
+                    v4 = numpy.matrixmultiply(Rstep1, pos2) + screw1
                     
                     ## one normal perpendicular to the quad
                     glr_normal(cross(v2-v1, v4-v1))
@@ -4057,7 +4057,7 @@ class GLTLSChain(GLDrawList):
 
         ## a reasonable range is needed to color by goodness of fit
         gof_range = max_gof - min_gof
-        if allclose(gof_range, 0.0):
+        if numpy.allclose(gof_range, 0.0):
             for gof, gl_tls_group in gof_list:
                 gl_tls_group.properties.update(
                     visible = True,
@@ -4167,9 +4167,9 @@ if __name__ == "__main__":
     print tls
 
     print "eigenvalues(T)"
-    print eigenvalues(tls.T)
+    print numpy.linalg.eigenvalues(tls.T)
     print "eigenvalues(L)"
-    print eigenvalues(tls.L)
+    print numpy.linalg.eigenvalues(tls.L)
 
     print "==============================================="
 
@@ -4188,9 +4188,9 @@ if __name__ == "__main__":
         print tls
 
         print "eigenvalues(T)"
-        print eigenvalues(tls.T)
+        print numpy.linalg.eigenvalues(tls.T)
         print "eigenvalues(L)"
-        print eigenvalues(tls.L)
+        print numpy.linalg.eigenvalues(tls.L)
 
         print "-----------------------"
 

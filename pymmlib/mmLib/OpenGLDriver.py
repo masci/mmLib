@@ -8,6 +8,7 @@ from __future__  import generators
 
 import sys
 import copy
+import numpy
 
 from OpenGL.GL      import *
 from OpenGL.GLU     import *
@@ -462,7 +463,7 @@ class OpenGLDriver(object):
         with the given radius.
         """
         ## don't bother redering small axes -- they look like junk
-        if allclose(length(axis), 0.0):
+        if numpy.allclose(length(axis), 0.0):
             return
         
         end = position + axis
@@ -484,13 +485,10 @@ class OpenGLDriver(object):
     def glaccel_glr_axis(self, position, axis, radius):
         """glaccel optimized version of glr_axis.
         """
-        if allclose(length(axis), 0.0):
+        if numpy.allclose(length(axis), 0.0):
             return
         end = position + axis
-        glaccel.rod(
-            position[0], position[1], position[2],
-            end[0], end[1], end[2],
-            radius)
+        glaccel.rod(position[0], position[1], position[2], end[0], end[1], end[2], radius)
 
     def glr_tube(self, pos1, pos2, radius):
         """Draws a hollow tube beginning at pos1, and ending at pos2.
@@ -527,9 +525,9 @@ class OpenGLDriver(object):
         glColor3f(*color)
         glLineWidth(line_width)
 
-        vx = array([0.25, 0.0,  0.0])
-        vy = array([0.0,  0.25, 0.0])
-        vz = array([0.0,  0.0,  0.25])
+        vx = numpy.array([0.25, 0.0,  0.0])
+        vy = numpy.array([0.0,  0.25, 0.0])
+        vz = numpy.array([0.0,  0.0,  0.25])
 
         glBegin(GL_LINES)
         
@@ -554,7 +552,7 @@ class OpenGLDriver(object):
         """Draw the anisotropic axies of the atom at the given probability.
         """
         C = GAUSS3C[prob]        
-        eval_U, evec_U = eigenvectors(U)
+        eval_U, evec_U = numpy.linalg.eignvectors(U)
 
         try:
             v0_peak = C * math.sqrt(eval_U[0])

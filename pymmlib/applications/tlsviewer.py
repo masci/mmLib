@@ -6,6 +6,7 @@
 
 import math
 import random
+import numpy
 
 import pygtk
 pygtk.require("2.0")
@@ -1191,7 +1192,7 @@ def calc_include_atom(atm):
     if atm.occupancy<=0.4:
         return False
     
-    if trace(atm.get_U())<=1e-7:
+    if numpy.trace(atm.get_U())<=1e-7:
         return False
 
     return True
@@ -1689,8 +1690,8 @@ class TLSDialog(gtk.Dialog):
             miter = self.model.append(None)
 
             tls_info = tls["tls_info"]
-            tr_rT = "%8.4f" % (trace(tls_info["rT'"]))
-            tr_L  = "%8.4f" % (trace(tls_info["L'"]*RAD2DEG2))
+            tr_rT = "%8.4f" % (numpy.trace(tls_info["rT'"]))
+            tr_L  = "%8.4f" % (numpy.trace(tls_info["L'"]*RAD2DEG2))
 
             if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)

@@ -5,6 +5,8 @@
 """Mathmatical operations performed on mmLib.Strcuture.Atom objects.
 """
 import math
+import numpy
+
 from mmTypes import *
 
 
@@ -14,20 +16,20 @@ from mmTypes import *
 def length(u):
     """Calculates the length of u.
     """
-    return math.sqrt(dot(u, u))
+    return math.sqrt(numpy.dot(u, u))
 
 def normalize(u):
     """Returns the normalized vector along u.
     """
-    return u/math.sqrt(dot(u, u))
+    return u/math.sqrt(numpy.dot(u, u))
 
 def cross(u, v):
     """Cross product of u and v:
     Cross[u,v] = {-u3 v2 + u2 v3, u3 v1 - u1 v3, -u2 v1 + u1 v2}
     """
-    return array([ u[1]*v[2] - u[2]*v[1],
-                   u[2]*v[0] - u[0]*v[2],
-                   u[0]*v[1] - u[1]*v[0] ], Float)
+    return numpy.array([ u[1]*v[2] - u[2]*v[1],
+                         u[2]*v[0] - u[0]*v[2],
+                         u[0]*v[1] - u[1]*v[0] ], float)
 
 
 ##
@@ -45,52 +47,35 @@ def rmatrix(alpha, beta, gamma):
     sinB = math.sin(beta)
     sinG = math.sin(gamma)
     
-    R = array(
+    R = numpy.array(
         [[cosB*cosG, cosG*sinA*sinB-cosA*sinG, cosA*cosG*sinB+sinA*sinG],
          [cosB*sinG, cosA*cosG+sinA*sinB*sinG, cosA*sinB*sinG-cosG*sinA ],
-         [-sinB,     cosB*sinA,                cosA*cosB ]], Float)
+         [-sinB,     cosB*sinA,                cosA*cosB ]], float)
 
-    assert allclose(determinant(R), 1.0)
+    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     return R
 
 def rmatrixu(u, theta):
     """Return a rotation matrix caused by a right hand rotation of theta
     radians around vector u.
     """
-    if allclose(theta, 0.0) or allclose(dot(u,u), 0.0):
-        return identity(3, Float)
+    if numpy.allclose(theta, 0.0) or numpy.allclose(numpy.dot(u,u), 0.0):
+        return numpy.identity(3, float)
 
     x, y, z = normalize(u)
     sa = math.sin(theta)
     ca = math.cos(theta)
 
-    R = array([[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
-               [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
-               [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], Float)
+    R = numpy.array([[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
+                     [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
+                     [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], float)
 
     try:
-        assert allclose(determinant(R), 1.0)
+        assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     except AssertionError:
-        print "rmatrixu(%s, %f) determinant(R)=%f" % (u, theta, determinant(R))
+        print "rmatrixu(%s, %f) determinant(R)=%f" % (u, theta, numpy.linalg.determinant(R))
         raise
     
-    return R
-
-def rmatrixu_bla(u, theta):
-    """Return a rotation matrix caused by a right hand rotation of theta
-    radians around vector u.
-    """
-    u    = normalize(u)
-    U    = array([ [   0.0, -u[2],  u[1] ],
-                   [  u[2],   0.0, -u[0] ],
-                   [ -u[1],  u[0],   0.0 ] ], Float)
-        
-    cosT = math.cos(theta)
-    sinT = math.sin(theta)
-
-    R = identity(3, Float)*cosT + outerproduct(u,u)*(1-cosT) + U*sinT
-    
-    assert allclose(determinant(R), 1.0)
     return R
 
 
@@ -98,13 +83,13 @@ def dmatrix(alpha, beta, gamma):
     """Returns the displacement matrix based on rotation about Euler
     angles alpha, beta, and gamma.
     """
-    return rmatrix(alpha, beta, gamma) - identity(3, Float)
+    return rmatrix(alpha, beta, gamma) - numpy.identity(3, float)
 
 def dmatrixu(u, theta):
     """Return a displacement matrix caused by a right hand rotation of theta
     radians around vector u.
     """
-    return rmatrixu(u, theta) - identity(3, Float)
+    return rmatrixu(u, theta) - numpy.identity(3, float)
 
 def rmatrixz(vec):
     """Return a rotation matrix which transforms the coordinate system
@@ -115,23 +100,23 @@ def rmatrixz(vec):
     d = math.sqrt(u*u + v*v)
 
     if d!=0.0:
-        Rxz = array([ [  u/d, v/d,  0.0 ],
-                      [ -v/d, u/d,  0.0 ],
-                      [  0.0, 0.0,  1.0 ] ], Float)
+        Rxz = numpy.array([ [  u/d, v/d,  0.0 ],
+                            [ -v/d, u/d,  0.0 ],
+                            [  0.0, 0.0,  1.0 ] ], float)
     else:
-        Rxz = identity(3, Float)
+        Rxz = numpy.identity(3, float)
 
 
-    Rxz2z = array([ [   w, 0.0,    -d],
-                    [ 0.0, 1.0,   0.0],
-                    [   d, 0.0,     w] ], Float)
+    Rxz2z = numpy.array([ [   w, 0.0,    -d],
+                          [ 0.0, 1.0,   0.0],
+                          [   d, 0.0,     w] ], float)
 
-    R = matrixmultiply(Rxz2z, Rxz)
+    R = numpy.matrixmultiply(Rxz2z, Rxz)
 
     try:
-        assert allclose(determinant(R), 1.0)
+        assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     except AssertionError:
-        print "rmatrixz(%s) determinant(R)=%f" % (vec, determinant(R))
+        print "rmatrixz(%s) determinant(R)=%f" % (vec, numpy.linalg.determinant(R))
         raise
 
     return R
@@ -141,7 +126,7 @@ def rmatrixz(vec):
 ##
 def rquaternionu(u, theta):
     """Returns a quaternion representing the right handed rotation of theta
-    radians about vector u.Quaternions are typed as Numeric Python arrays of
+    radians about vector u.Quaternions are typed as Numeric Python numpy.arrays of
     length 4.
     """
     u = normalize(u)
@@ -154,17 +139,17 @@ def rquaternionu(u, theta):
     w = math.cos(theta / 2.0)
 
     ## create quaternion
-    q = array((x, y, z, w), Float)
-    assert allclose(math.sqrt(dot(q,q)), 1.0)
+    q = numpy.array((x, y, z, w), float)
+    assert numpy.allclose(math.sqrt(numpy.dot(q,q)), 1.0)
 
     return q
 
 def addquaternion(q1, q2):
     """Adds quaterions q1 and q2. Quaternions are typed as Numeric
-    Python arrays of length 4.
+    Python numpy.arrays of length 4.
     """
-    assert allclose(math.sqrt(dot(q1,q1)), 1.0)
-    assert allclose(math.sqrt(dot(q2,q2)), 1.0)
+    assert numpy.allclose(math.sqrt(numpy.dot(q1,q1)), 1.0)
+    assert numpy.allclose(math.sqrt(numpy.dot(q2,q2)), 1.0)
     
     x1, y1, z1, w1 = q1
     x2, y2, z2, w2 = q2
@@ -173,19 +158,19 @@ def addquaternion(q1, q2):
     y = w1*y2 + y1*w2 + z1*x2 - x1*z2
     z = w1*z2 + z1*w2 + x1*y2 - y1*x2
     w = w1*w2 - x1*x2 - y1*y2 - z1*z2
-    q = array((x, y, z, w), Float)
+    q = numpy.array((x, y, z, w), float)
     
     ## normalize quaternion
-    q = q / math.sqrt(dot(q,q))
-    assert allclose(math.sqrt(dot(q,q)), 1.0)
+    q = q / math.sqrt(numpy.dot(q,q))
+    assert numpy.allclose(math.sqrt(numpy.dot(q,q)), 1.0)
     
     return q
 
 def rmatrixquaternion(q):
     """Create a rotation matrix from q quaternion rotation.
-    Quaternions are typed as Numeric Python arrays of length 4.
+    Quaternions are typed as Numeric Python numpy.arrays of length 4.
     """
-    assert allclose(math.sqrt(dot(q,q)), 1.0)
+    assert numpy.allclose(math.sqrt(numpy.dot(q,q)), 1.0)
     
     x, y, z, w = q
 
@@ -211,22 +196,22 @@ def rmatrixquaternion(q):
     r21 =       2.0 * (yz + xw)
     r22 = 1.0 - 2.0 * (xx + yy)
 
-    R = array([[r00, r01, r02],
+    R = numpy.array([[r00, r01, r02],
                [r10, r11, r12],
-               [r20, r21, r22]], Float)
+               [r20, r21, r22]], float)
     
-    assert allclose(determinant(R), 1.0)
+    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     return R
 
 def quaternionrmatrix(R):
     """Return a quaternion calculated from the argument rotation matrix R.
     """
-    assert allclose(determinant(R), 1.0)
+    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
 
-    t = trace(R) + 1.0
+    t = numpy.trace(R) + 1.0
 
     if t>1e-5:
-        w = math.sqrt(1.0 + trace(R)) / 2.0
+        w = math.sqrt(1.0 + numpy.trace(R)) / 2.0
         w4 = 4.0 * w
 
         x = (R[2,1] - R[1,2]) / w4
@@ -241,20 +226,20 @@ def quaternionrmatrix(R):
             z = (R[0,2] + R[2,0]) / S 
             w = (R[1,2] - R[2,1]) / S
         elif R[1,1]>R[2,2]: 
-            S = sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0; 
+            S = math.sqrt(1.0 + R[1,1] - R[0,0] - R[2,2]) * 2.0; 
             x = (R[0,1] + R[1,0]) / S; 
             y = 0.25 * S;
             z = (R[1,2] + R[2,1]) / S; 
             w = (R[0,2] - R[2,0]) / S;
         else:
-            S = sqrt(1.0 + R[2,2] - R[0,0] - R[1,1]) * 2; 
+            S = math.sqrt(1.0 + R[2,2] - R[0,0] - R[1,1]) * 2; 
             x = (R[0,2] + R[2,0]) / S; 
             y = (R[1,2] + R[2,1]) / S; 
             z = 0.25 * S;
             w = (R[0,1] - R[1,0] ) / S;
 
-    q = array((x, y, z, w), Float)
-    assert allclose(math.sqrt(dot(q,q)), 1.0)    
+    q = numpy.array((x, y, z, w), float)
+    assert numpy.allclose(math.sqrt(numpy.dot(q,q)), 1.0)    
     return q
 
 
@@ -279,7 +264,7 @@ def calc_angle(a1, a2, a3):
     a23 = a3.position - a2.position
     a23 = a23 / (length(a23))
 
-    return arccos(dot(a21, a23))
+    return arccos(numpy.dot(a21, a23))
 
 def calc_torsion_angle(a1, a2, a3, a4):
     """Calculates the torsion angle between the four argument atoms.
@@ -299,7 +284,7 @@ def calc_torsion_angle(a1, a2, a3, a4):
 
     cross_n12_n34  = cross(n12, n34)
     direction      = cross_n12_n34 * a23
-    scalar_product = dot(n12, n34)
+    scalar_product = numpy.dot(n12, n34)
 
     if scalar_product > 1.0:
         scalar_product = 1.0
@@ -321,23 +306,23 @@ def calc_CCuij(U, V):
     """Calculate the cooralation coefficent for anisotropic ADP tensors U
     and V.
     """
-    invU = inverse(U)
-    invV = inverse(V)
+    invU = numpy.linalg.inverse(U)
+    invV = numpy.linalg.inverse(V)
     
-    det_invU = determinant(invU)
-    det_invV = determinant(invV)
+    det_invU = numpy.linalg.determinant(invU)
+    det_invV = numpy.linalg.determinant(invV)
 
     return ( math.sqrt(math.sqrt(det_invU * det_invV)) /
-             math.sqrt((1.0/8.0) * determinant(invU + invV)) )
+             math.sqrt((1.0/8.0) * numpy.linalg.determinant(invU + invV)) )
 
 def calc_Suij(U, V):
     """Calculate the similarity of anisotropic ADP tensors U and V.
     """
-    eqU = trace(U) / 3.0
-    eqV = trace(V) / 3.0
+    eqU = numpy.trace(U) / 3.0
+    eqV = numpy.trace(V) / 3.0
 
-    isoU = eqU * identity(3, Float)
-    isoV = eqV * identity(3, Float)
+    isoU = eqU * numpy.identity(3, float)
+    isoV = eqV * numpy.identity(3, float)
 
     return ( calc_CCuij(U, (eqU/eqV)*V) /
              (calc_CCuij(U, isoU) * calc_CCuij(V, isoV)) )
@@ -346,16 +331,15 @@ def calc_DP2uij(U, V):
     """Calculate the square of the volumetric difference in the probability
     density function of anisotropic ADP tensors U and V.
     """
-    invU = inverse(U)
-    invV = inverse(V)
+    invU = numpy.linalg.inverse(U)
+    invV = numpy.linalg.inverse(V)
 
-    det_invU = determinant(invU)
-    det_invV = determinant(invV)
+    det_invU = numpy.linalg.determinant(invU)
+    det_invV = numpy.linalg.determinant(invV)
 
     Pu2 = math.sqrt( det_invU / (64.0 * PI3) )
     Pv2 = math.sqrt( det_invV / (64.0 * PI3) )
-    Puv = math.sqrt(
-        (det_invU * det_invV) / (8.0*PI3 * determinant(invU + invV)) )
+    Puv = math.sqrt((det_invU * det_invV) / (8.0*PI3 * determinant(invU + invV)) )
 
     dP2 = Pu2 + Pv2 - (2.0 * Puv)
     
@@ -366,7 +350,7 @@ def calc_anisotropy(U):
     defined as the smallest eigenvalue of U divided by the largest eigenvalue
     of U.
     """
-    evals = eigenvalues(U)
+    evals = numpy.linalg.eigenvalues(U)
     return min(evals) / max(evals)
 
 ##
@@ -377,7 +361,7 @@ def calc_atom_centroid(atom_iter):
     returns a Vector to the centroid.
     """
     num      = 0
-    centroid = zeros(3, Float)
+    centroid = numpy.zeros(3, float)
     for atm in atom_iter:
         if atm.position!=None:
             centroid += atm.position
@@ -404,7 +388,8 @@ def calc_inertia_tensor(atom_iter, origin):
     """Calculate a moment-of-intertia tensor at the given origin assuming all
     atoms have the same mass.
     """
-    I = zeros((3,3), Float)
+    I = numpy.zeros((3,3), float)
+    
     for atm in atom_iter:
         x = atm.position - origin
 
@@ -421,36 +406,36 @@ def calc_inertia_tensor(atom_iter, origin):
         I[1,2] += - x[1]*x[2]
         I[2,1] += - x[1]*x[2]
 
-    evals, evecs = eigenvectors(I)
+    evals, evecs = numpy.linalg.eigenvectors(I)
 
     ## order the tensor such that the largest
     ## principal compent is along the z-axis, and
     ## the second largest is along the y-axis
     if evals[0]>=evals[1] and evals[0]>=evals[2]:
         if evals[1]>=evals[2]:
-            R = array((evecs[2], evecs[1], evecs[0]), Float)
+            R = numpy.array((evecs[2], evecs[1], evecs[0]), float)
         else:
-            R = array((evecs[1], evecs[2], evecs[0]), Float)
+            R = numpy.array((evecs[1], evecs[2], evecs[0]), float)
 
     elif evals[1]>=evals[0] and evals[1]>=evals[2]:
         if evals[0]>=evals[2]:
-            R = array((evecs[2], evecs[0], evecs[1]), Float)
+            R = numpy.array((evecs[2], evecs[0], evecs[1]), float)
         else:
-            R = array((evecs[0], evecs[2], evecs[1]), Float)
+            R = numpy.array((evecs[0], evecs[2], evecs[1]), float)
 
     elif evals[2]>=evals[0] and evals[2]>=evals[1]:
         if evals[0]>=evals[1]:
-            R = array((evecs[1], evecs[0], evecs[2]), Float)
+            R = numpy.array((evecs[1], evecs[0], evecs[2]), float)
         else:
-            R = array((evecs[0], evecs[1], evecs[2]), Float)
+            R = numpy.array((evecs[0], evecs[1], evecs[2]), float)
 
     ## make sure the tensor is right-handed
-    if allclose(determinant(R), -1.0):
-        I = identity(3, Float)
+    if numpy.allclose(numpy.linalg.determinant(R), -1.0):
+        I = numpy.identity(3, float)
         I[0,0] = -1.0
-        R = matrixmultiply(I, R)
+        R = numpy.matrixmultiply(I, R)
 
-    assert allclose(determinant(R), 1.0)
+    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     return R
 
 

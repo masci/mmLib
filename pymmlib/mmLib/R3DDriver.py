@@ -9,6 +9,7 @@ from __future__  import generators
 import popen2
 import copy
 import random
+import numpy
 
 from Gaussian       import *
 from Structure      import *
@@ -23,9 +24,9 @@ def matrixmultiply43(M, x):
     """M is a 4x4 rotation-translation matrix, x is a 3x1 vector.  Returns
     the 3x1 vector of x transformed by M.
     """
-    return array((M[0,0]*x[0] + M[0,1]*x[1] + M[0,2]*x[2] + M[0,3],
-                  M[1,0]*x[0] + M[1,1]*x[1] + M[1,2]*x[2] + M[1,3],
-                  M[2,0]*x[0] + M[2,1]*x[1] + M[2,2]*x[2] + M[2,3]), Float)
+    return numpy.array((M[0,0]*x[0] + M[0,1]*x[1] + M[0,2]*x[2] + M[0,3],
+                        M[1,0]*x[0] + M[1,1]*x[1] + M[1,2]*x[2] + M[1,3],
+                        M[2,0]*x[0] + M[2,1]*x[1] + M[2,2]*x[2] + M[2,3]), float)
 
  
 class Raster3DDriver(object):
@@ -53,7 +54,7 @@ class Raster3DDriver(object):
         """
         self.object_list      = []
         
-        self.matrix           = identity(4, Float)
+        self.matrix           = numpy.identity(4, float)
         self.matrix_stack     = []
 
         self.line_width       = 1.0 * BASE_LINE_WIDTH
@@ -320,20 +321,20 @@ class Raster3DDriver(object):
     def glr_translate(self, t):
         """Translates the scene by vector t.
         """
-        M = array( [[   1.0,    0.0,    0.0, t[0]],
-                    [   0.0,    1.0,    0.0, t[1]],
-                    [   0.0,    0.0,    1.0, t[2]],
-                    [   0.0,    0.0,    0.0,  1.0]], Float)
+        M = numpy.array( [[   1.0,    0.0,    0.0, t[0]],
+                          [   0.0,    1.0,    0.0, t[1]],
+                          [   0.0,    0.0,    1.0, t[2]],
+                          [   0.0,    0.0,    0.0,  1.0]], Float)
 
         self.matrix = matrixmultiply(self.matrix, M)
 
     def glr_translate3(self, x, y, z):
         """
         """
-        M = array( [[   1.0,    0.0,    0.0,    x],
-                    [   0.0,    1.0,    0.0,    y],
-                    [   0.0,    0.0,    1.0,    z],
-                    [   0.0,    0.0,    0.0,  1.0]], Float)
+        M = numpy.array( [[   1.0,    0.0,    0.0,    x],
+                          [   0.0,    1.0,    0.0,    y],
+                          [   0.0,    0.0,    1.0,    z],
+                          [   0.0,    0.0,    0.0,  1.0]], Float)
 
         self.matrix = matrixmultiply(self.matrix, M)
 
@@ -341,10 +342,10 @@ class Raster3DDriver(object):
         """Return the current matrix as a 3x3 rotation matrix R and 3x1
         translation vector t.
         """
-        M = array( [[R[0,0], R[0,1], R[0,2], t[0]],
-                    [R[1,0], R[1,1], R[1,2], t[1]],
-                    [R[2,0], R[2,1], R[2,2], t[2]],
-                    [   0.0,    0.0,    0.0,  1.0]], Float)
+        M = numpy.array( [[R[0,0], R[0,1], R[0,2], t[0]],
+                          [R[1,0], R[1,1], R[1,2], t[1]],
+                          [R[2,0], R[2,1], R[2,2], t[2]],
+                          [   0.0,    0.0,    0.0,  1.0]], Float)
 
         self.matrix = matrixmultiply(self.matrix, M)
         
@@ -352,10 +353,10 @@ class Raster3DDriver(object):
         """Multiplies the current matrix by rotation matrix R and translates
         by t
         """
-        M = array( [[R[0,0], R[0,1], R[0,2], 0.0],
-                    [R[1,0], R[1,1], R[1,2], 0.0],
-                    [R[2,0], R[2,1], R[2,2], 0.0],
-                    [   0.0,    0.0,    0.0, 1.0]], Float)
+        M = numpy.array( [[R[0,0], R[0,1], R[0,2], 0.0],
+                          [R[1,0], R[1,1], R[1,2], 0.0],
+                          [R[2,0], R[2,1], R[2,2], 0.0],
+                          [   0.0,    0.0,    0.0, 1.0]], Float)
 
         self.matrix = matrixmultiply(self.matrix, M)
         

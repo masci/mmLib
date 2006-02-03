@@ -5,6 +5,7 @@
 """Classes for representing biological macromolecules.
 """
 from __future__ import generators
+import numpy
 
 from mmTypes        import *
 from GeometryDict   import *
@@ -591,6 +592,15 @@ class Structure(object):
             n += model.count_all_atoms()
         return n
 
+    def get_equivalent_atom(self, atom):
+        """Returns the atom with the same fragment_id and name as the
+        argument atom, or None if it is not found.
+        """
+        try:
+            return self.model_dict[atom.model_id].chain_dict[atom.chain_id].fragment_dict[atom.fragment_id].atom_dict[atom.name]
+        except KeyError:
+            return None
+
     def iter_bonds(self):
         """Iterates over all Bond objects.  The iteration is preformed by
         iterating over all Atom objects in the same order as iter_atoms(),
@@ -1026,6 +1036,15 @@ class Model(object):
         for chain in self.iter_chains():
             n += chain.count_all_atoms()
         return n
+
+    def get_equivalent_atom(self, atom):
+        """Returns the atom with the same fragment_id and name as the
+        argument atom, or None if it is not found.
+        """
+        try:
+            return self.chain_dict[atom.chain_id].fragment_dict[atom.fragment_id].atom_dict[atom.name]
+        except KeyError:
+            return None
 
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix object to the Model.
@@ -1515,6 +1534,15 @@ class Segment(object):
         for frag in self.iter_fragments():
             n += frag.count_all_atoms()
         return n
+
+    def get_equivalent_atom(self, atom):
+        """Returns the atom with the same fragment_id and name as the
+        argument atom, or None if it is not found.
+        """
+        try:
+            return self.fragment_dict[atom.fragment_id].atom_dict[atom.name]
+        except KeyError:
+            return None
                 
     def iter_bonds(self):
         """Iterates over all Bond objects attached to Atom objects within the
@@ -2003,6 +2031,15 @@ class Fragment(object):
                 return None
             return self.atom_dict[name]
     
+    def get_equivalent_atom(self, atom):
+        """Returns the atom with the same fragment_id and name as the
+        argument atom, or None if it is not found.
+        """
+        try:
+            return self.atom_dict[atom.name]
+        except KeyError:
+            return None
+        
     def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment matching
         the current model and default alt_loc.
@@ -2504,7 +2541,7 @@ class Atom(object):
     Atom.icode       - the insertion code for the residue/fragment
     Atom.chain_id    - the chain ID of the chain containing this atom
     Atom.element     - symbol for the element
-    Atom.position    - a array[3] (Numeric Python)
+    Atom.position    - a numpy.array[3] (Numeric Python)
     Atom.occupancy   - [1.0 - 0.0] float 
     Atom.temp_factor - float represting B-style temp factor
     Atom.U           - a 6-tuple of the anisotropic values
@@ -2570,7 +2607,7 @@ class Atom(object):
         if position!=None:
             self.position = position
         elif x!=None or y!=None or z!=None:
-            self.position = array([x, y, z])
+            self.position = numpy.array([x, y, z])
         else:
             self.position = None
 
@@ -2578,14 +2615,14 @@ class Atom(object):
         if sig_position!=None:
             self.sig_position = sig_position
         elif sig_x!=None or sig_y!=None or sig_z!=None:
-            self.sig_position = array([sig_x, sig_y, sig_z])
+            self.sig_position = numpy.array([sig_x, sig_y, sig_z])
         else:
             self.sig_position = None
 
         if type(U) != NoneType:
             self.U = U
         elif u11 != None:
-            self.U = array(
+            self.U = numpy.array(
                 [ [u11, u12, u13],
                   [u12, u22, u23],
                   [u13, u23, u33] ])
@@ -2595,7 +2632,7 @@ class Atom(object):
         if type(sig_U) != NoneType:
             self.sig_U = sig_U
         elif sig_u11 != None:
-            self.sig_U = array(
+            self.sig_U = numpy.array(
                 [ [sig_u11, sig_u12, sig_u13],
                   [sig_u12, sig_u22, sig_u23],
                   [sig_u13, sig_u23, sig_u33] ])
@@ -2944,23 +2981,23 @@ class Atom(object):
     def set_U(self, u11, u22, u33, u12, u13, u23):
         """Sets the symmetric U tensor from the six unique values.
         """
-        self.U = array([[u11, u12, u13],
-                        [u12, u22, u23],
-                        [u13, u23, u33]])
+        self.U = numpy.array([[u11, u12, u13],
+                              [u12, u22, u23],
+                              [u13, u23, u33]], float)
 
     def set_sig_U(self, u11, u22, u33, u12, u13, u23):
         """Sets the symmetric sig_U tensor from the six unique values.
         """
-        self.sig_U = array([[u11, u12, u13],
-                            [u12, u22, u23],
-                            [u13, u23, u33]])
+        self.sig_U = numpy.array([[u11, u12, u13],
+                                  [u12, u22, u23],
+                                  [u13, u23, u33]], float)
 
     def calc_Uiso(self):
         """Calculates the Uiso tensor from the Atom's temperature factor.
         """
         if self.temp_factor==None:
             return None
-        return identity(3, Float) * (self.temp_factor * B2U)
+        return numpy.identity(3, float) * (self.temp_factor * B2U)
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns
@@ -2979,7 +3016,7 @@ class Atom(object):
         if self.U == None:
             return 1.0
 
-        evals = eigenvalues(self.U)
+        evals = numpy.linalg.eigenvalues(self.U)
         ansotropy = min(evals) / max(evals)
         return ansotropy
 
@@ -2991,7 +3028,7 @@ class Atom(object):
         if self.U == None:
             return (1.0, 1.0, 1.0)
 
-        e1, e2, e3 = eigenvalues(self.U)
+        e1, e2, e3 = numpy.linalg.eigenvalues(self.U)
         elist = [e1, e2, e3]
         elist.sort()
         e1, e2, e3 = elist
@@ -3656,7 +3693,7 @@ class AtomList(list):
         returns a Vector to the centroid.
         """
         num      = 0
-        centroid = zeros(3, Float)
+        centroid = numpy.zeros(3, float)
         for atm in self:
             if atm.position!=None:
                 centroid += atm.position
@@ -3683,7 +3720,7 @@ class AtomList(list):
         adverage.
         """
         num_U = 0
-        adv_U = zeros((3,3), Float)
+        adv_U = numpy.zeros((3,3), float)
 
         for atm in self:
             ## use the atom's U matrix if it exists, otherwise use the

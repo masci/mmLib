@@ -5,6 +5,8 @@
 """Classes for handling unit cell transformation.
 """
 import math
+import numpy
+
 from mmTypes import *
 from AtomMath import *
 from SpaceGroups import GetSpaceGroup, SymOp
@@ -46,7 +48,7 @@ class UnitCell(object):
         self.frac_to_orth = self.calc_orthogonalization_matrix()
 
         ## check our math!
-        assert allclose(self.orth_to_frac, inverse(self.frac_to_orth))
+        assert numpy.allclose(self.orth_to_frac, numpy.linalg.inverse(self.frac_to_orth))
 
     def __str__(self):
         alpha = math.degrees(self.alpha)
@@ -135,9 +137,9 @@ class UnitCell(object):
         f23 = (self.c * (cos_alpha - cos_beta * cos_gamma)) / (sin_gamma)
         f33 = (self.c * v) / sin_gamma
 
-        orth_to_frac = array([ [f11, f12, f13],
-                               [0.0, f22, f23],
-                               [0.0, 0.0, f33] ])
+        orth_to_frac = numpy.array([ [f11, f12, f13],
+                                     [0.0, f22, f23],
+                                     [0.0, 0.0, f33] ])
         
         return orth_to_frac
         
@@ -161,9 +163,9 @@ class UnitCell(object):
         o23 = (cos_gamma * cos_beta - cos_alpha) / (self.b * v * sin_gamma)
         o33 = sin_gamma / (self.c * v)
 
-        frac_to_orth = array([ [o11, o12, o13],
-                               [0.0, o22, o23],
-                               [0.0, 0.0, o33] ])
+        frac_to_orth = numpy.array([ [o11, o12, o13],
+                                     [0.0, o22, o23],
+                                     [0.0, 0.0, o33] ])
 
         return frac_to_orth
 
@@ -237,14 +239,14 @@ class UnitCell(object):
         """
         ## compute the centroid of the structure
         n = 0
-        cent = zeros(3, Float)
+        cent = numpy.zeros(3, numpy.float)
         for atm in struct.iter_all_atoms():
             n    += 1
             cent += atm.position
         centroid = cent / n
 
         ccell = self.calc_cell(self.calc_orth_to_frac(centroid))
-        centroid_cell = array(ccell, Float)
+        centroid_cell = numpy.array(ccell, numpy.float)
 
         ## compute the distance from the centroid to the
         ## farthest point from it in the structure
@@ -258,7 +260,7 @@ class UnitCell(object):
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():
 
-                 cell_t  = array([i, j, k], Float)
+                 cell_t  = numpy.array([i, j, k], numpy.float)
                  symop_t = SymOp(symop.R, symop.t+cell_t)
 
                  xyz       = self.calc_orth_to_frac(centroid)
@@ -290,7 +292,7 @@ def main():
 
     uc = UnitCell(7.877, 7.210, 7.891, 105.563, 116.245, 79.836)
 
-    e = array([[1.0, 0.0, 0.0],
+    e = numpy.array([[1.0, 0.0, 0.0],
                [0.0, 1.0, 0.0],
                [0.0, 0.0, 1.0]])
 
@@ -307,10 +309,10 @@ def main():
 
     print "calc_frac_to_orth"
     vlist = [
-        array([0.0, 0.0, 0.0]),
-        array([0.5, 0.5, 0.5]),
-        array([1.0, 1.0, 1.0]),
-        array([-0.13614, 0.15714, -0.07165]) ]
+        numpy.array([0.0, 0.0, 0.0]),
+        numpy.array([0.5, 0.5, 0.5]),
+        numpy.array([1.0, 1.0, 1.0]),
+        numpy.array([-0.13614, 0.15714, -0.07165]) ]
     
     for v in vlist:
         ov = uc.calc_frac_to_orth(v)

@@ -6,6 +6,7 @@
 """
 from __future__  import generators
 import copy
+import numpy
 
 from Structure      import *
 from Colors         import *
@@ -405,8 +406,8 @@ class GLObject(object):
             elif prop_desc["update_on_changed"]==True:
 
                 ## special handling for Numeric/Numarray types
-                if isinstance(self.properties[name], ArrayType):
-                    if allclose(self.properties[name], args[name])==False:
+                if isinstance(self.properties[name], numpy.ArrayType):
+                    if numpy.allclose(self.properties[name], args[name])==False:
                         do_update = True
 
                 elif self.properties[name]!=args[name]:
@@ -540,14 +541,14 @@ class GLDrawList(GLObject):
               "desc":       "Origin",
               "type":       "array(3)",
               "hidden":     True,
-              "default":    zeros(3, Float),
+              "default":    numpy.zeros(3, float),
               "action":     "redraw" })
         self.glo_add_property(
             { "name" :      "axes",
               "desc":       "Rotation Axes",
               "type":       "array(3,3)",
               "hidden":     True,
-              "default":    identity(3, Float),
+              "default":    numpy.identity(3, float),
               "action":     "redraw" })
         self.glo_add_property(
             { "name" :      "rot_x",
@@ -718,11 +719,11 @@ class GLDrawList(GLObject):
 
         self.driver.glr_push_matrix()
 
-        if not allclose(self.properties["origin"], zeros(3, Float)):
+        if not numpy.allclose(self.properties["origin"], numpy.zeros(3, float)):
             self.driver.glr_translate(self.properties["origin"])
 
         axes = self.properties["axes"]
-        if not allclose(axes, identity(3, Float)):
+        if not numpy.allclose(axes, numpy.identity(3, float)):
             self.driver.glr_rotate_axis(self.properties["rot_x"], axes[0])
             self.driver.glr_rotate_axis(self.properties["rot_y"], axes[1])
             self.driver.glr_rotate_axis(self.properties["rot_z"], axes[2])
@@ -885,22 +886,22 @@ class GLAxes(GLDrawList):
         r, g, b = self.gldl_property_color_rgbf("color_x")
         self.driver.glr_set_material_rgb(r, g, b)
         self.driver.glr_axis(
-            zeros(3, Float),
-            array([line_length, 0.0, 0.0]),
+            numpy.zeros(3, float),
+            numpy.array([line_length, 0.0, 0.0]),
             line_width) 
 
         r, g, b = self.gldl_property_color_rgbf("color_y")
         self.driver.glr_set_material_rgb(r, g, b)
         self.driver.glr_axis(
-            zeros(3, Float),
-            array([0.0, line_length, 0.0]),
+            numpy.zeros(3, float),
+            numpy.array([0.0, line_length, 0.0]),
             line_width) 
 
         r, g, b = self.gldl_property_color_rgbf("color_z")
         self.driver.glr_set_material_rgb(r, g, b)
         self.driver.glr_axis(
-            zeros(3, Float),
-            array([0.0, 0.0, line_length]),
+            numpy.zeros(3, float),
+            numpy.array([0.0, 0.0, line_length]),
             line_width) 
 
 
@@ -1046,9 +1047,9 @@ class GLUnitCell(GLDrawList):
         """
         assert x1<=x2 and y1<=y2 and z1<=z2
 
-        a = self.unit_cell.calc_frac_to_orth(array([1.0, 0.0, 0.0]))
-        b = self.unit_cell.calc_frac_to_orth(array([0.0, 1.0, 0.0]))
-        c = self.unit_cell.calc_frac_to_orth(array([0.0, 0.0, 1.0]))
+        a = self.unit_cell.calc_frac_to_orth(numpy.array([1.0, 0.0, 0.0]))
+        b = self.unit_cell.calc_frac_to_orth(numpy.array([0.0, 1.0, 0.0]))
+        c = self.unit_cell.calc_frac_to_orth(numpy.array([0.0, 0.0, 1.0]))
 
         rad = self.properties["radius"]
 
@@ -1814,7 +1815,7 @@ class GLAtomList(GLDrawList):
 
         viewer = self.gldl_get_glviewer()
         R  = viewer.properties["R"]
-        Ri = transpose(R)
+        Ri = numpy.transpose(R)
 
         ## this vecor is needed to adjust for origin/atom_origin
         ## changes, but it does not account for object rotation yet
@@ -1893,9 +1894,9 @@ class GLAtomList(GLDrawList):
                          atm.fragment_id,
                          atm.chain_id)
 
-            relative_pos = matrixmultiply(R, pos + cv)
+            relative_pos = numpy.matrixmultiply(R, pos + cv)
             glr_push_matrix()
-            glr_translate(relative_pos + array([0.0, 0.0, 2.0]))
+            glr_translate(relative_pos + numpy.array([0.0, 0.0, 2.0]))
             glr_text(text, scale)
             glr_pop_matrix()
 
@@ -2368,7 +2369,7 @@ class GLViewer(GLObject):
               "catagory":  "View",
               "read_only": True,
               "type":      "array(3,3)",
-              "default":   identity(3, Float),
+              "default":   numpy.identity(3, float),
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "cor",
@@ -2376,7 +2377,7 @@ class GLViewer(GLObject):
               "catagory":  "View",
               "read_only": True,
               "type":      "array(3)",
-              "default":   zeros(3, Float),
+              "default":   numpy.zeros(3, float),
               "action":    "redraw" })
         self.glo_add_property(
             { "name":      "width",
@@ -2544,7 +2545,7 @@ class GLViewer(GLObject):
         max_z = 0.0
 
         for atm in aa_atom_iter(struct):
-            x  = matrixmultiply(R, atm.position - centroid)
+            x  = numpy.matrixmultiply(R, atm.position - centroid)
 
             if first_atm==True:
                 first_atm = False
@@ -2675,14 +2676,14 @@ class GLViewer(GLObject):
         yA = angstrom_per_pixel * float(y)
 
         ## XY translational shift
-        dt = array((xA, yA, 0.0), Float)
+        dt = numpy.array((xA, yA, 0.0), float)
 
         ## change the center of rotation
         R = self.properties["R"]
 
         ## shift in the XY plane by chainging the position of the
         ## center of rotation
-        cor = self.properties["cor"] - matrixmultiply(transpose(R), dt)
+        cor = self.properties["cor"] - numpy.matrixmultiply(numpy.transpose(R), dt)
 
         self.properties.update(cor=cor)
 
@@ -2714,8 +2715,8 @@ class GLViewer(GLObject):
             x2c = x2 - width/2
             y2c = y2 - width/2
 
-            p1 = normalize(array((x1c, y1c, 0.0), Float))
-            p2 = normalize(array((x2c, y2c, 0.0), Float))
+            p1 = normalize(numpy.array((x1c, y1c, 0.0), float))
+            p2 = normalize(numpy.array((x2c, y2c, 0.0), float))
 
             c = cross(p2, p1)
 
@@ -2740,8 +2741,8 @@ class GLViewer(GLObject):
             if x1==x2 and y1==y2:
                 return
 
-            p1 = array((x1, y1, project_to_sphere(tb_size, x1, y1)), Float)
-            p2 = array((x2, y2, project_to_sphere(tb_size, x2, y2)), Float)
+            p1 = numpy.array((x1, y1, project_to_sphere(tb_size, x1, y1)), float)
+            p2 = numpy.array((x2, y2, project_to_sphere(tb_size, x2, y2)), float)
 
             a = cross(p1, p2)
             d = p1 - p2
@@ -2758,7 +2759,7 @@ class GLViewer(GLObject):
         Rcur = self.properties["R"]
 
         ## calculate a in the original coordinate frame
-        a = matrixmultiply(transpose(Rcur), a)
+        a = numpy.matrixmultiply(numpy.transpose(Rcur), a)
         qup = rquaternionu(a, theta)
 
         ## convert the current rotation matrix to a quaternion so the
@@ -2815,7 +2816,7 @@ class GLViewer(GLObject):
             gl_fog             = self.properties["GL_FOG"])
 
         R = self.properties["R"]
-        assert allclose(determinant(R), 1.0)
+        assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
 
         driver.glr_mult_matrix_R(R)
         driver.glr_translate(-self.properties["cor"])
