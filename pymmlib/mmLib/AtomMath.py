@@ -264,7 +264,7 @@ def calc_angle(a1, a2, a3):
     a23 = a3.position - a2.position
     a23 = a23 / (length(a23))
 
-    return arccos(numpy.dot(a21, a23))
+    return math.acos(numpy.dot(a21, a23))
 
 def calc_torsion_angle(a1, a2, a3, a4):
     """Calculates the torsion angle between the four argument atoms.
@@ -291,7 +291,7 @@ def calc_torsion_angle(a1, a2, a3, a4):
     if scalar_product < -1.0:
         scalar_product = -1.0
 
-    angle = arccos(scalar_product)
+    angle = math.acos(scalar_product)
 
 #    if direction<0.0:
 #        angle = -angle
