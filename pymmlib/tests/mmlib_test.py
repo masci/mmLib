@@ -6,6 +6,7 @@ import time
 import copy
 import weakref
 import gc
+import numpy
 
 import test_util
 from mmLib.FileLoader import LoadStructure, SaveStructure, decode_format
@@ -518,29 +519,29 @@ def cmp_struct(struct1, struct2):
         assert atm1.alt_loc       == atm2.alt_loc
 
         assert (atm1.position==None and atm2.position==None) or \
-               allclose(atm1.position, atm2.position)
+               numpy.allclose(atm1.position, atm2.position)
 
         assert (atm1.sig_position==None and atm2.sig_position==None) or \
-               allclose(atm1.sig_position, atm2.sig_position)
+               numpy.allclose(atm1.sig_position, atm2.sig_position)
         
         assert atm1.occupancy==atm2.occupancy or \
-               allclose(atm1.occupancy, atm2.occupancy)
+               numpy.allclose(atm1.occupancy, atm2.occupancy)
 
         assert atm1.sig_occupancy==atm2.sig_occupancy or \
-               allclose(atm1.sig_occupancy, atm2.sig_occupancy)
+               numpy.allclose(atm1.sig_occupancy, atm2.sig_occupancy)
 
         assert atm1.temp_factor==atm2.temp_factor or \
-               allclose(atm1.temp_factor, atm2.temp_factor)
+               numpy.allclose(atm1.temp_factor, atm2.temp_factor)
 
         assert atm1.sig_temp_factor==atm2.sig_temp_factor or \
-               allclose(atm1.sig_temp_factor, atm2.sig_temp_factor)
+               numpy.allclose(atm1.sig_temp_factor, atm2.sig_temp_factor)
 
         assert atm1.charge==atm2.charge or \
-               allclose(atm1.charge, atm2.charge)
+               numpy.allclose(atm1.charge, atm2.charge)
         
         U1 = atm1.get_U()
         U2 = atm2.get_U()
-        assert (U1==None and U2==None) or allclose(U1, U2)
+        assert (U1==None and U2==None) or numpy.allclose(U1, U2)
 
     for atm1 in struct1.iter_all_atoms():
         model2 = struct2.get_model(atm1.model_id)

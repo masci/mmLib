@@ -324,9 +324,9 @@ class Raster3DDriver(object):
         M = numpy.array( [[   1.0,    0.0,    0.0, t[0]],
                           [   0.0,    1.0,    0.0, t[1]],
                           [   0.0,    0.0,    1.0, t[2]],
-                          [   0.0,    0.0,    0.0,  1.0]], Float)
+                          [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = matrixmultiply(self.matrix, M)
+        self.matrix = numpy.matrixmultiply(self.matrix, M)
 
     def glr_translate3(self, x, y, z):
         """
@@ -334,9 +334,9 @@ class Raster3DDriver(object):
         M = numpy.array( [[   1.0,    0.0,    0.0,    x],
                           [   0.0,    1.0,    0.0,    y],
                           [   0.0,    0.0,    1.0,    z],
-                          [   0.0,    0.0,    0.0,  1.0]], Float)
+                          [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = matrixmultiply(self.matrix, M)
+        self.matrix = numpy.matrixmultiply(self.matrix, M)
 
     def glr_mult_matrix_Rt(self, R, t):
         """Return the current matrix as a 3x3 rotation matrix R and 3x1
@@ -345,9 +345,9 @@ class Raster3DDriver(object):
         M = numpy.array( [[R[0,0], R[0,1], R[0,2], t[0]],
                           [R[1,0], R[1,1], R[1,2], t[1]],
                           [R[2,0], R[2,1], R[2,2], t[2]],
-                          [   0.0,    0.0,    0.0,  1.0]], Float)
+                          [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = matrixmultiply(self.matrix, M)
+        self.matrix = numpy.matrixmultiply(self.matrix, M)
         
     def glr_mult_matrix_R(self, R):
         """Multiplies the current matrix by rotation matrix R and translates
@@ -356,9 +356,9 @@ class Raster3DDriver(object):
         M = numpy.array( [[R[0,0], R[0,1], R[0,2], 0.0],
                           [R[1,0], R[1,1], R[1,2], 0.0],
                           [R[2,0], R[2,1], R[2,2], 0.0],
-                          [   0.0,    0.0,    0.0, 1.0]], Float)
+                          [   0.0,    0.0,    0.0, 1.0]], float)
 
-        self.matrix = matrixmultiply(self.matrix, M)
+        self.matrix = numpy.matrixmultiply(self.matrix, M)
         
     def glr_rotate_axis(self, deg, axis):
         """
@@ -587,7 +587,7 @@ class Raster3DDriver(object):
         """
         ## just rotate the normal
         R  = self.matrix[:3,:3]
-        nr = matrixmultiply(R, n)
+        nr = numpy.matrixmultiply(R, n)
 
         if self.normalize==True:
             self.normal = normalize(nr)
@@ -599,7 +599,7 @@ class Raster3DDriver(object):
         """
         ## just rotate the normal
         R  = self.matrix[:3,:3]
-        nr = matrixmultiply(R, n)
+        nr = numpy.matrixmultiply(R, n)
 
         if self.normalize==True:
             self.normal = normalize(nr)
@@ -644,7 +644,7 @@ class Raster3DDriver(object):
         with the given radius.
         """
         ## don't bother redering small axes -- they look like junk
-        if allclose(length(axis), 0.0):
+        if numpy.allclose(length(axis), 0.0):
             return
         
         self.object_list.append(
@@ -689,9 +689,9 @@ class Raster3DDriver(object):
         """
         ## rotate U
         R  = self.matrix[:3,:3]
-        Ur = matrixmultiply(matrixmultiply(R, U), transpose(R))
+        Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
 
-        evals, evecs = eigenvectors(Ur)
+        evals, evecs = numpy.linalg.eigenvectors(Ur)
         
     def glr_Uellipse(self, position, U, prob):
         """Renders the ellipsoid enclosing the given fractional probability
@@ -700,16 +700,16 @@ class Raster3DDriver(object):
         """
         ## rotate U
         R  = self.matrix[:3,:3]
-        Ur = matrixmultiply(matrixmultiply(R, U), transpose(R))
+        Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
 
-        Umax = max(eigenvalues(Ur))
+        Umax = max(numpy.linalg.eigenvalues(Ur))
         try:
             limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(Umax)
         except ValueError:
             limit_radius = 2.0
 
         try:
-            Q = inverse(Ur)
+            Q = numpy.linalg.inverse(Ur)
         except LinAlgError:
             return
         

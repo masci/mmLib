@@ -38,8 +38,8 @@ def main(tlsin, struct_in, struct_out):
 
     for tls in tls_group_list:
         for atm, Utls in tls.iter_atm_Utls():
-            atm.U = Utls + (B2U * atm.temp_factor * identity(3, Float))
-            atm.temp_factor = U2B * (trace(atm.U)/3.0)
+            atm.U = Utls + (B2U * atm.temp_factor * numpy.identity(3, float))
+            atm.temp_factor = U2B * (numpy.trace(atm.U)/3.0)
 
     ## save the struct
     SaveStructure(fil=struct_out, struct=struct)
