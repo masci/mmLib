@@ -6,11 +6,12 @@
 """
 from __future__ import generators
 import copy
-import string
 
-from mmCIF            import *
-from Structure        import *
-from StructureBuilder import *
+from mmTypes import *
+
+import mmCIF
+import StructureBuilder
+import Structure
 
 
 def setmaps_cif(smap, skey, dmap, dkey):
@@ -55,13 +56,13 @@ def setmapf_cif(smap, skey, dmap, dkey):
     return False
 
 
-class mmCIFStructureBuilder(StructureBuilder):
+class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file.
     """
 
     def read_start(self, fil, update_cb = None):
         ## parse the mmCIF file
-        self.cif_file = mmCIFFile()
+        self.cif_file =mmCIF. mmCIFFile()
         self.cif_file.load_file(fil, update_cb)
 
         ## for a mmCIF file for a structure, assume the first data item
@@ -482,8 +483,7 @@ class mmCIFFileBuilder(object):
 
     def get_entity_desc_from_sequence(self, sequence):
         for entity_desc in self.entity_list:
-            if entity_desc.has_key("sequence") and \
-               entity_desc["sequence"]==sequence:
+            if entity_desc.has_key("sequence") and entity_desc["sequence"]==sequence:
                 return entity_desc
         return None
 

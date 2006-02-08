@@ -7,6 +7,8 @@
 from   __future__ import generators
 import numpy
 
+from mmTypes import *
+
 ## 64 unique rotation matricies
 Rot_Z_mY_X    = numpy.array([[ 0.0, 0.0, 1.0], [ 0.0,-1.0, 0.0], [ 1.0, 0.0, 0.0]], float)
 Rot_Y_mX_mZ   = numpy.array([[ 0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [ 0.0, 0.0,-1.0]], float)

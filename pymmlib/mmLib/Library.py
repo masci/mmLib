@@ -7,9 +7,10 @@ for the identification and construction of biopolymers and ligands.
 """
 import os
 import sys
+import types
 
 from mmTypes import *
-from mmCIF   import mmCIFFile
+import mmCIF
 
 
 ###############################################################################
@@ -227,7 +228,7 @@ def library_construct_element_desc(symbol):
     ## only load elements.cif once
     global ELEMENT_CIF_FILE
     if ELEMENT_CIF_FILE==None:
-        ELEMENT_CIF_FILE = mmCIFFile()
+        ELEMENT_CIF_FILE = mmCIF.mmCIFFile()
         ELEMENT_CIF_FILE.load_file(ELEMENT_DATA_PATH)
 
     cif_data = ELEMENT_CIF_FILE.get_data(symbol)
@@ -259,7 +260,7 @@ def library_get_element_desc(symbol):
     element symbol.  The source of the element data is the
     mmLib/Data/elements.cif file.
     """
-    assert type(symbol)==StringType
+    assert type(symbol)==types.StringType
 
     try:
         return ELEMENT_CACHE[symbol]
@@ -310,7 +311,7 @@ def library_construct_monomer_desc(res_name):
     mon_desc = MonomerDesc()
 
     ## data from RCSB library
-    rcsb_cif_file = mmCIFFile()
+    rcsb_cif_file = mmCIF.mmCIFFile()
     rcsb_cif_file.load_file(open(path, "r"))
     rcsb_cif_data = rcsb_cif_file[0]
 
@@ -340,7 +341,7 @@ def library_construct_monomer_desc(res_name):
             mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
 
     ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
-    mmlib_cif_file = mmCIFFile()
+    mmlib_cif_file = mmCIF.mmCIFFile()
     mmlib_cif_file.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
 
     mmlib_cif_data = mmlib_cif_file.get_data(res_name)
@@ -376,7 +377,7 @@ def library_get_monomer_desc(res_name):
     """Loads/caches/returns the monomer description objec MonomerDesc
     for the given monomer residue name.
     """
-    assert type(res_name)==StringType
+    assert type(res_name)==types.StringType
 
     try:
         return MONOMER_RES_NAME_CACHE[res_name]
@@ -394,7 +395,7 @@ def library_get_monomer_desc(res_name):
 def library_is_amino_acid(res_name):
     """Returns True if the res_name is a amino acid.
     """
-    assert type(res_name)==StringType
+    assert type(res_name)==types.StringType
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc==None:
@@ -406,7 +407,7 @@ def library_is_amino_acid(res_name):
 def library_is_nucleic_acid(res_name):
     """Returns True if the res_name is a nucleic acid.
     """
-    assert type(res_name)==StringType
+    assert type(res_name)==types.StringType
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc==None:
@@ -418,7 +419,7 @@ def library_is_nucleic_acid(res_name):
 def library_is_water(res_name):
     """Return True if the res_name is water.
     """
-    assert type(res_name)==StringType
+    assert type(res_name)==types.StringType
     if res_name=="HOH" or res_name=="WAT":
         return True
     return False

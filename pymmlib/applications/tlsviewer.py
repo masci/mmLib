@@ -4,9 +4,11 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+import sys
 import math
 import random
 import numpy
+import re
 
 import pygtk
 pygtk.require("2.0")
@@ -19,13 +21,9 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-from mmLib.PDB            import PDBFile
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Viewer         import *
-from mmLib.R3DDriver      import Raster3DDriver
-from mmLib.OpenGLDriver   import OpenGLDriver
-from mmLib.Extensions.TLS import *
+from mmLib.mmTypes import *
+from mmLib import FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure
+from mmLib.Extensions import TLS
 
 
 ###############################################################################
@@ -159,17 +157,17 @@ class R3DDialog(gtk.Dialog):
         self.show_all()
 
 
-class GtkGLViewer(gtk.gtkgl.DrawingArea, GLViewer):
+class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
     def __init__(self):
         self.in_drag = False
         self.beginx  = 0
         self.beginy  = 0
 
         gtk.gtkgl.DrawingArea.__init__(self)
-        GLViewer.__init__(self)
+        Viewer.GLViewer.__init__(self)
 
-        self.opengl_driver = OpenGLDriver()
-        self.r3d_driver    = Raster3DDriver()
+        self.opengl_driver = OpenGLDriver.OpenGLDriver()
+        self.r3d_driver    = R3DDriver.Raster3DDriver()
 
         try:
             glconfig = gtk.gdkgl.Config(
@@ -1119,7 +1117,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
                 path.append(gloxx.glo_get_properties_id())
             path = path[1:]
 
-            paths = string.join(path, "/")
+            paths = "/".join(path)
             if len(paths)>0:
                 paths += "/"
             
@@ -1359,8 +1357,8 @@ class TLSDialog(gtk.Dialog):
         if not save_path or response!=gtk.RESPONSE_OK:
             return
 
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file = TLS.TLSFile()
+        tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
         for tls in self.tls_list:
             tls_desc = tls["tls_desc"]
@@ -1462,7 +1460,7 @@ class TLSDialog(gtk.Dialog):
             gof = -1.0
             
         ## create GLTLSGroup for the visualization component
-        gl_tls_group = GLTLSGroup(
+        gl_tls_group = TLS.GLTLSGroup(
             tls_group = tls["tls_group"],
             tls_info  = tls["tls_info"],
             tls_name  = tls["name"],
@@ -1474,7 +1472,7 @@ class TLSDialog(gtk.Dialog):
         try:
             gl_tls_chain = self.gl_tls_chain[chain_id]
         except KeyError:
-            gl_tls_chain = GLTLSChain(
+            gl_tls_chain = TLS.GLTLSChain(
                 chain_id     = chain_id,
                 color_method = color_method)
 
@@ -1542,15 +1540,15 @@ class TLSDialog(gtk.Dialog):
         """
         self.clear_tls_groups()
         
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatPDB())
+        tls_file = TLS.TLSFile()
+        tls_file.set_file_format(TLS.TLSFileFormatPDB())
 
         try:
             tls_file.load(open(path, "r"), path)
         except IOError:
             self.error_dialog("File Not Found: %s" % (path))
             return
-        except TLSFileFormatError:
+        except TLS.TLSFileFormatError:
             self.error_dialog("File Format Error: %s" % (path))
             return
 
@@ -1573,15 +1571,15 @@ class TLSDialog(gtk.Dialog):
         """
         self.clear_tls_groups()
 
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file = TLS.TLSFile()
+        tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
         try:
             tls_file.load(open(path, "r"), path)
         except IOError:
             self.error_dialog("File Not Found: %s" % (path))
             return
-        except TLSFileFormatError:
+        except TLS.TLSFileFormatError:
             self.error_dialog("File Format Error: %s" % (path))
             return
 
@@ -1668,7 +1666,7 @@ class TLSDialog(gtk.Dialog):
         for (chain_id1,frag_id1,chain_id2,frag_id2,sel) in tls_desc.range_list:
             listx.append("%s%s-%s%s %s" % (
                 chain_id1, frag_id1, chain_id2, frag_id2, sel))
-        return string.join(listx, "\n")
+        return "\n".join(listx)
 
     def markup_tensor(self, tensor):
         """Uses pango markup to make the presentation of the tenosr
@@ -2016,7 +2014,7 @@ class TLSSearchDialog(gtk.Dialog):
                 tls_info["<DP2>"] = "---"
             
             ## create a TLSGroupDesc object for this tls group
-            tls_desc = TLSGroupDesc()
+            tls_desc = TLS.TLSGroupDesc()
             tls_desc.set_name(tls_info["name"])
             tls_desc.set_tls_group(tls_info["tls_group"])
             tls_desc.add_range(
@@ -2690,9 +2688,9 @@ class MainWindow(object):
         self.set_statusbar("Loading: %s" % (path))
 
         try:
-            struct = LoadStructure(
+            struct = FileLoader.LoadStructure(
                 fil              = path,                
-             #   update_cb        = self.update_cb,
+                update_cb        = self.update_cb,
                 build_properties = ("library_bonds","distance_bonds"))
 
         except IOError:

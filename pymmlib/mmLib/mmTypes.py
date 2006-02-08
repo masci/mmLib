@@ -7,13 +7,13 @@ custom, and the code for those is here.  Inother cases the types are
 imported from other Python packages.
 """
 from __future__ import generators
+
 import os
 import sys
 import math
-import string
 import gzip
+import types
 
-from types import *
 
 ## turn on debugging
 _DEBUG = False
@@ -44,7 +44,7 @@ def OpenFile(path, mode):
     """
     ## if path is not a string, assume it is a file object and
     ## return it
-    if type(path) != StringType:
+    if type(path) != types.StringType:
         return path
     (base, ext) = os.path.splitext(path)
     if ext == ".gz":

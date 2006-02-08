@@ -6,6 +6,7 @@
 The mmCIF and PDB file formats are currently supported.
 """
 import os
+import types
 
 from mmTypes      import *
 from mmCIF        import mmCIFFile
@@ -18,7 +19,7 @@ def decode_format(path):
     """Returns the 3-letter MIME code for the file format.
     """
     ## check/remove compressed file extention
-    if path and type(path) == StringType:
+    if path and type(path) == types.StringType:
         (base, ext) = os.path.splitext(path)
         if ext.lower() in ['.z', '.gz', '.bz2']:
             path = base

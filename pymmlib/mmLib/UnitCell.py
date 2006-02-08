@@ -8,8 +8,9 @@ import math
 import numpy
 
 from mmTypes import *
-from AtomMath import *
-from SpaceGroups import GetSpaceGroup, SymOp
+
+import AtomMath
+import SpaceGroups
 
 
 class UnitCell(object):
@@ -43,7 +44,7 @@ class UnitCell(object):
             self.beta  = beta
             self.gamma = gamma
 
-        self.space_group  = GetSpaceGroup(space_group)
+        self.space_group  = SpaceGroups.GetSpaceGroup(space_group)
         self.orth_to_frac = self.calc_fractionalization_matrix()
         self.frac_to_orth = self.calc_orthogonalization_matrix()
 
@@ -188,7 +189,7 @@ class UnitCell(object):
         RF  = matrixmultiply(symop.R, self.orth_to_frac)
         ORF = matrixmultiply(self.frac_to_orth, RF)
         Ot  = matrixmultiply(self.frac_to_orth, symop.t)
-        return SymOp(ORF, Ot)
+        return SpaceGroups.SymOp(ORF, Ot)
 
     def calc_orth_symop2(self, symop):
         """Calculates the orthogonal space symmetry operation (return SymOp)
@@ -199,7 +200,7 @@ class UnitCell(object):
         Rt  = matrixmultiply(symop.R, symop.t)
         ORt = matrixmultiply(self.frac_to_orth, Rt)
         
-        return SymOp(ORF, ORt)
+        return SpaceGroups.SymOp(ORF, ORt)
 
     def calc_cell(self, xyz):
         """Returns the cell integer 3-Tuple where the xyz fractional
@@ -261,7 +262,7 @@ class UnitCell(object):
             for i, j, k in self.cell_search_iter():
 
                  cell_t  = numpy.array([i, j, k], numpy.float)
-                 symop_t = SymOp(symop.R, symop.t+cell_t)
+                 symop_t = SpaceGroups.SymOp(symop.R, symop.t+cell_t)
 
                  xyz       = self.calc_orth_to_frac(centroid)
                  xyz_symm  = symop_t(xyz)

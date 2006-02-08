@@ -442,12 +442,12 @@ def calc_inertia_tensor(atom_iter, origin):
 
 ### <TESTING>
 if __name__ == "__main__":
-    from Structure import *
+    import Structure
 
-    a1 = Atom(x=0.0, y=-1.0, z=0.0)
-    a2 = Atom(x=0.0, y=0.0,  z=0.0)
-    a3 = Atom(x=1.0, y=0.0,  z=0.0)
-    a4 = Atom(x=1.0, y=1.0,  z=-1.0)
+    a1 = Structure.Atom(x=0.0, y=-1.0, z=0.0)
+    a2 = Structure.Atom(x=0.0, y=0.0,  z=0.0)
+    a3 = Structure.Atom(x=1.0, y=0.0,  z=0.0)
+    a4 = Structure.Atom(x=1.0, y=1.0,  z=-1.0)
 
     print "a1:",a1.position
     print "calc_angle:",calc_angle(a1, a2, a3)

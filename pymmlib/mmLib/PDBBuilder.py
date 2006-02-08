@@ -5,11 +5,15 @@
 """Convert a Structure object to its PDBFile description.
 """
 from __future__ import generators
-import string
 
-from PDB              import *
-from Structure        import *
-from StructureBuilder import *
+from mmTypes import *
+
+import Library
+import PDB
+import mmCIF
+import Structure
+import StructureBuilder
+
 
 ## class specification for alpha helicies mapping mmLib classification
 ## strings with PDB helix class integers, -1 where no PDB helix class
@@ -71,7 +75,7 @@ HELIX_CLASS_LIST = [
     ]
 
 
-class PDBStructureBuilder(StructureBuilder):
+class PDBStructureBuilder(StructureBuilder.StructureBuilder):
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
@@ -86,13 +90,13 @@ class PDBStructureBuilder(StructureBuilder):
         return fragment_id
     
     def read_start(self, fil, update_cb=None):
-        self.pdb_file = PDBFile()
+        self.pdb_file = PDB.PDBFile()
         self.pdb_file.load_file(fil, update_cb)
 
     def load_atom(self, atm_map):
         """Override load_atom to maintain a serial_num->atm map.
         """
-        atm = StructureBuilder.load_atom(self, atm_map)
+        atm = StructureBuilder.StructureBuilder.load_atom(self, atm_map)
 
         ## map PDB atom serial number -> Atom object
         try:
@@ -109,13 +113,13 @@ class PDBStructureBuilder(StructureBuilder):
         self.model_num = None
 
         def filter_func(rec):
-            if isinstance(rec, ATOM) or \
-               isinstance(rec, SIGATM) or \
-               isinstance(rec, ANISOU) or \
-               isinstance(rec, SIGUIJ) or \
-               isinstance(rec, TER) or \
-               isinstance(rec, MODEL) or \
-               isinstance(rec, ENDMDL):
+            if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.SIGATM) or \
+               isinstance(rec, PDB.ANISOU) or \
+               isinstance(rec, PDB.SIGUIJ) or \
+               isinstance(rec, PDB.TER) or \
+               isinstance(rec, PDB.MODEL) or \
+               isinstance(rec, PDB.ENDMDL):
                 return True
             return False
 
@@ -140,13 +144,13 @@ class PDBStructureBuilder(StructureBuilder):
         self.site_list = []
 
         def filter_func(rec):
-            if isinstance(rec, ATOM) or \
-               isinstance(rec, SIGATM) or \
-               isinstance(rec, ANISOU) or \
-               isinstance(rec, SIGUIJ) or \
-               isinstance(rec, TER) or \
-               isinstance(rec, MODEL) or \
-               isinstance(rec, ENDMDL):
+            if isinstance(rec, PDB.ATOM) or \
+               isinstance(rec, PDB.SIGATM) or \
+               isinstance(rec, PDB.ANISOU) or \
+               isinstance(rec, PDB.SIGUIJ) or \
+               isinstance(rec, PDB.TER) or \
+               isinstance(rec, PDB.MODEL) or \
+               isinstance(rec, PDB.ENDMDL):
                 return False
             return True
 
@@ -187,7 +191,7 @@ class PDBStructureBuilder(StructureBuilder):
             atm_map["name"] = name.strip()
             
             res_name = rec.get("resName", "")
-            gelement = library_guess_element_from_name(name, res_name)
+            gelement = Library.library_guess_element_from_name(name, res_name)
             if gelement!=None:
                 atm_map["element"] = gelement
 
@@ -279,8 +283,8 @@ class PDBStructureBuilder(StructureBuilder):
         entity_keywords = self.struct.cifdb.confirm_table("entity_keywords")
 
         for compnd in compnd_list:
-            erow = mmCIFRow()
-            ekrow = mmCIFRow()
+            erow = mmCIF.mmCIFRow()
+            ekrow = mmCIF.mmCIFRow()
 
             setmaps(compnd, "MOLECULE", erow, "pdbx_description")
             if erow:
@@ -297,8 +301,8 @@ class PDBStructureBuilder(StructureBuilder):
         entity_src_gen = self.struct.cifdb.confirm_table("entity_src_gen")
 
         for source in source_list:
-            nrow = mmCIFRow()
-            grow = mmCIFRow()
+            nrow = mmCIF.mmCIFRow()
+            grow = mmCIF.mmCIFRow()
 
             setmaps(source, "FRAGMENT",
                     grow, "pdbx_gene_src_fragment")
@@ -381,17 +385,17 @@ class PDBStructureBuilder(StructureBuilder):
     def preprocess_KEYWDS(self, keywds_list):
         struct_keywords = self.struct.cifdb.confirm_table("struct_keywords")
         for keywds in keywds_list:
-            struct_keywords.append(mmCIFRow({"text": keywds}))
+            struct_keywords.append(mmCIF.mmCIFRow({"text": keywds}))
 
     def preprocess_AUTHOR(self, author_list):
         audit_author = self.struct.cifdb.confirm_table("audit_author")
         for author in author_list:
-            audit_author.append(mmCIFRow({"name": author}))
+            audit_author.append(mmCIF.mmCIFRow({"name": author}))
 
     def preprocess_EXPDTA(self, expdta_list):
         exptl = self.struct.cifdb.confirm_table("exptl")
         for (technique, details) in expdta_list:
-            row = mmCIFRow({"method": technique})
+            row = mmCIF.mmCIFRow({"method": technique})
             if details:
                 row["details"] = details
             exptl.append(row)
@@ -828,7 +832,7 @@ class PDBFileBuilder(object):
         when creating PDB records which require serial number identification
         of the atoms.
         """
-        assert isinstance(atm, Atom)
+        assert isinstance(atm, Structure.Atom)
         
         try:
             return self.atom_serial_map[atm]
@@ -848,7 +852,7 @@ class PDBFileBuilder(object):
         """ HEADER, TITLE, EXPDTA, AUTHOR
         """
         ## add HEADER records
-        header = HEADER()
+        header = PDB.HEADER()
         self.pdb_file.append(header)
 
         header["idCode"] = self.struct.structure_id
@@ -866,7 +870,7 @@ class PDBFileBuilder(object):
                 stx = struct_title[:60]
                 struct_title = struct_title[60:]
         
-                title = TITLE()
+                title = PDB.TITLE()
                 self.pdb_file.append(title)
 
                 cont += 1
@@ -881,7 +885,7 @@ class PDBFileBuilder(object):
         except KeyError:
             pass
         else:
-            expdta = EXPDTA()
+            expdta = PDB.EXPDTA()
             self.pdb_file.append(expdta)
             expdta["technique"] = exptl_method
 
@@ -899,9 +903,9 @@ class PDBFileBuilder(object):
                 except KeyError:
                     pass
 
-            author = AUTHOR()
+            author = PDB.AUTHOR()
             self.pdb_file.append(author)
-            author["authorList"] = string.join(name_list, ",")
+            author["authorList"] = ",".join(name_list)
 
     def add_primary_structure_section(self):
         """DBREF,SEQADV,SEQRES,MODRES
@@ -914,7 +918,7 @@ class PDBFileBuilder(object):
             seq_index = 0
             while seq_index < len(sequence):
                 
-                seqres = SEQRES()
+                seqres = PDB.SEQRES()
                 self.pdb_file.append(seqres)
 
                 sernum += 1
@@ -952,7 +956,7 @@ class PDBFileBuilder(object):
         for alpha_helix in self.struct.iter_alpha_helicies():
             serial_num += 1
 
-            helix = HELIX()
+            helix = PDB.HELIX()
             self.pdb_file.append(helix)
 
             helix["serNum"]      = serial_num
@@ -962,14 +966,14 @@ class PDBFileBuilder(object):
             helix["initResName"] = alpha_helix.res_name1
             helix["initChainID"] = alpha_helix.chain_id1
             try:
-                helix["initSeqNum"], helix["initICode"] = fragment_id_split( alpha_helix.fragment_id1)
+                helix["initSeqNum"], helix["initICode"] = Structure.fragment_id_split( alpha_helix.fragment_id1)
             except ValueError:
                 pass
 
             helix["endResName"]  = alpha_helix.res_name2
             helix["endChainID"]  = alpha_helix.chain_id2
             try:
-                helix["endSeqNum"], helix["endICode"] = fragment_id_split(alpha_helix.fragment_id2)
+                helix["endSeqNum"], helix["endICode"] = Structure.fragment_id_split(alpha_helix.fragment_id2)
             except ValueError:
                 pass
 
@@ -985,7 +989,7 @@ class PDBFileBuilder(object):
             for strand in beta_sheet.iter_strands():
                 strand_num += 1
 
-                sheet = SHEET()
+                sheet = PDB.SHEET()
                 self.pdb_file.append(sheet)
 
                 sheet["strand"]     = strand_num
@@ -995,14 +999,14 @@ class PDBFileBuilder(object):
                 sheet["initResName"] = strand.res_name1
                 sheet["initChainID"] = strand.chain_id1
                 try:
-                    sheet["initSeqNum"], sheet["initICode"]=fragment_id_split(strand.fragment_id1)
+                    sheet["initSeqNum"], sheet["initICode"] = Structure.fragment_id_split(strand.fragment_id1)
                 except ValueError:
                     pass
                 
                 sheet["endResName"] = strand.res_name2
                 sheet["endChainID"] = strand.chain_id2
                 try:
-                    sheet["endSeqNum"], sheet["endICode"] = fragment_id_split(strand.fragment_id2)
+                    sheet["endSeqNum"], sheet["endICode"] = Structure.fragment_id_split(strand.fragment_id2)
                 except ValueError:
                     pass
                 
@@ -1011,7 +1015,7 @@ class PDBFileBuilder(object):
                 sheet["curChainID"] = strand.reg_chain_id
 
                 try:
-                    sheet["curSeqNum"], sheet["curICode"] = fragment_id_split(strand.reg_fragment_id)
+                    sheet["curSeqNum"], sheet["curICode"] = Structure.fragment_id_split(strand.reg_fragment_id)
                 except ValueError:
                     pass
 
@@ -1019,7 +1023,7 @@ class PDBFileBuilder(object):
                 sheet["prevResName"] = strand.reg_prev_res_name
                 sheet["prevChainID"] = strand.reg_prev_chain_id
                 try:
-                    sheet["prevSeqNum"],sheet["prevICode"]=fragment_id_split(strand.reg_prev_fragment_id)
+                    sheet["prevSeqNum"],sheet["prevICode"] = Structure.fragment_id_split(strand.reg_prev_fragment_id)
                 except ValueError:
                     pass
 
@@ -1044,7 +1048,7 @@ class PDBFileBuilder(object):
 
                     key_index = 0
 
-                    site_pdb = SITE()
+                    site_pdb = PDB.SITE()
                     self.pdb_file.append(site_pdb)
 
                     site_pdb["serNum"] = serial_num
@@ -1059,14 +1063,14 @@ class PDBFileBuilder(object):
             site_pdb[chain_id] = frag_dict["chain_id"]
             site_pdb[res_name] = frag_dict["res_name"]
             try:
-                site_pdb[res_seq], site_pdb[icode] = fragment_id_split(frag_dict["frag_id"])
+                site_pdb[res_seq], site_pdb[icode] = Structure.fragment_id_split(frag_dict["frag_id"])
             except KeyError:
                 pass
 
     def add_crystallographic_coordinate_transformation_section(self):
         """CRYST1,ORIGXn,SCALEn,MTRIXn,TVECT
         """
-        cryst1 = CRYST1()
+        cryst1 = PDB.CRYST1()
         self.pdb_file.append(cryst1)
 
         unit_cell = self.struct.unit_cell
@@ -1089,13 +1093,13 @@ class PDBFileBuilder(object):
             for model in self.struct.iter_models():
                 self.struct.default_model = model
 
-                model_rec = MODEL()
+                model_rec = PDB.MODEL()
                 self.pdb_file.append(model_rec)
                 model_rec["serial"] = model.model_id
 
                 self.add_atom_records()
 
-                endmdl = ENDMDL()
+                endmdl = PDB.ENDMDL()
                 self.pdb_file.append(endmdl)
 
             self.struct.default_model = orig_model
@@ -1113,7 +1117,7 @@ class PDBFileBuilder(object):
         """MASTER,END
         """
         ## END
-        end = END()
+        end = PDB.END()
         self.pdb_file.append(end)
 
     def add_atom_records(self):
@@ -1130,7 +1134,7 @@ class PDBFileBuilder(object):
 
             ## chain termination record
             if res:
-                ter_rec = TER()
+                ter_rec = PDB.TER()
                 self.pdb_file.append(ter_rec)
                 fid = FragmentID(res.fragment_id)
                 ter_rec["serial"]  = self.next_serial_number()
@@ -1151,9 +1155,9 @@ class PDBFileBuilder(object):
         self.atom_count += 1
 
         if rec_type == "ATOM":
-            atom_rec = ATOM()
+            atom_rec = PDB.ATOM()
         elif rec_type == "HETATM":
-            atom_rec = HETATM()
+            atom_rec = PDB.HETATM()
 
         self.pdb_file.append(atom_rec)
 
@@ -1207,7 +1211,7 @@ class PDBFileBuilder(object):
                 arec2["charge"] = arec1["charge"]
 
         if atm.sig_position!=None:
-            sigatm_rec = SIGATM()
+            sigatm_rec = PDB.SIGATM()
             self.pdb_file.append(sigatm_rec)
             atom_common(atom_rec, sigatm_rec)
 
@@ -1223,7 +1227,7 @@ class PDBFileBuilder(object):
                 sigatm_rec["sigOccupancy"] = atm.sig_occupancy
 
         if atm.U!=None:
-            anisou_rec = ANISOU()
+            anisou_rec = PDB.ANISOU()
             self.pdb_file.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
 
@@ -1241,7 +1245,7 @@ class PDBFileBuilder(object):
                 anisou_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
 
         if atm.sig_U!=None:
-            siguij_rec = SIGUIJ()
+            siguij_rec = PDB.SIGUIJ()
             self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
 

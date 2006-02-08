@@ -9,9 +9,8 @@ and written back out as PDB files.
 """
 from __future__ import generators
 
-import string
 import fpformat
-from types import *
+import types
  
 try:
     from mmTypes import *
@@ -91,7 +90,7 @@ class PDBRecord(dict):
 
             ## assert type
             try:
-                assert type(s) == StringType
+                assert type(s) == types.StringType
             except AssertionError:
                 print "### s",str(type(s)), str(s), ftype, field
                 print ln
@@ -151,7 +150,7 @@ class PDBRecord(dict):
     def reccat(self, rec_list, field):
         """Return the concatenation of field in all the records in rec_list.
         """
-        if type(rec_list) != ListType:
+        if type(rec_list) != types.ListType:
             rec_list = [rec_list]
 
         retval = ""
@@ -206,7 +205,7 @@ class PDBRecord(dict):
         dictionary key whose value is a list formed from the list of
         PDB fields in t[1].
         """
-        if type(rec_list) != ListType:
+        if type(rec_list) != types.ListType:
             rec_list = [rec_list]
         
         listx = []
@@ -243,7 +242,7 @@ class PDBRecord(dict):
 
                 ## source is a list of fields which should be
                 ## added to a list under the dest key in dictx
-                if type(trans) == TupleType:
+                if type(trans) == types.TupleType:
                     (dest, srcs) = trans
                     
                     for sx in srcs:
@@ -1567,7 +1566,7 @@ class RecordProcessor(object):
     def call_processor(self, recs):
         """Invoke callbacks on self.processor for the given record list (recs).
         """
-        if type(recs) == ListType:
+        if type(recs) == types.ListType:
             rec = recs[0]
         else:
             rec = recs

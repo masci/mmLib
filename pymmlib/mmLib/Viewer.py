@@ -5,14 +5,18 @@
 """Visualization system for Structure objects.
 """
 from __future__  import generators
+
 import copy
 import numpy
+import types
+import math
 
-from Structure      import *
-from Colors         import *
-from Gaussian       import *
-from GeometryDict   import *
-
+import Library
+import GeometryDict
+import AtomMath
+import Structure
+import Gaussian
+import Colors
 
 
 ## MISC Constents
@@ -354,11 +358,11 @@ class GLObject(object):
 
                  ## add changes to actions list
                  ## case 1: action is a string
-                 if type(prop_desc["action"])==StringType:
+                 if type(prop_desc["action"])==types.StringType:
                      if prop_desc["action"] not in actions:
                          actions.append(prop_desc["action"])
                  ## case 2: action is a list of strings
-                 elif type(prop_desc["action"])==ListType:
+                 elif type(prop_desc["action"])==types.ListType:
                      for prop_action in prop_desc["action"]:
                          if prop_action not in actions:
                              actions.append(prop_action)
@@ -424,11 +428,11 @@ class GLObject(object):
 
                 ## now update the actions taken when a property changes
                 ## case 1: action is a string
-                if type(prop_desc["action"])==StringType:
+                if type(prop_desc["action"])==types.StringType:
                     if prop_desc["action"] not in actions:
                         actions.append(prop_desc["action"])
                 ## case 2: action is a list of strings
-                elif type(prop_desc["action"])==ListType:
+                elif type(prop_desc["action"])==types.ListType:
                     for prop_action in prop_desc["action"]:
                         if prop_action not in actions:
                             actions.append(prop_action)
@@ -498,7 +502,7 @@ class GLDrawList(GLObject):
     """Fundamental OpenGL rigid entity.
     """
 
-    gldl_color_list = COLOR_NAMES_CAPITALIZED[:]
+    gldl_color_list = Colors.COLOR_NAMES_CAPITALIZED[:]
     
     def __init__(self, **args):
         self.driver                = None
@@ -626,7 +630,7 @@ class GLDrawList(GLObject):
             raise KeyError, "gldl_property_color_rgbf: bad prop_name %s" % (prop_name)
         
         try:
-            return COLOR_RGBF[colorx.lower()]
+            return Colors.COLOR_RGBF[colorx.lower()]
         except KeyError:
             pass
 
@@ -1491,8 +1495,7 @@ class GLAtomList(GLDrawList):
                 return
 
             try:
-                self.properties.update(
-                    color_setting=COLOR_RGBF[value.lower()])
+                self.properties.update(color_setting = Colors.COLOR_RGBF[value.lower()])
             except KeyError:
                 pass
             else:
@@ -1562,7 +1565,7 @@ class GLAtomList(GLDrawList):
         at a time, in order.  This implementation works with any
         implementation of glal_iter_atoms, but is very inefficent.
         """
-        struct = Structure()
+        struct = Structure.Structure()
         memo   = {}
         
         for atm in self.glal_iter_atoms():
@@ -1576,7 +1579,7 @@ class GLAtomList(GLDrawList):
         at a time, in order.  This implementation works with any
         implementation of glal_iter_atoms, but is very inefficent.
         """
-        struct = Structure()
+        struct = Structure.Structure()
         memo   = {}
         
         for atm in self.glal_iter_atoms():
@@ -1590,7 +1593,7 @@ class GLAtomList(GLDrawList):
         at a time, in order.  This implementation works with any
         implementation of glal_iter_atoms, but is very inefficent.
         """
-        struct = Structure()
+        struct = Structure.Structure()
         memo   = {}
         
         for atm in self.glal_iter_atoms():
@@ -1682,7 +1685,7 @@ class GLAtomList(GLDrawList):
         """
         self.glal_hidden_atoms_dict  = {}
         self.glal_visible_atoms_dict = {}
-        self.glal_xyzdict           = XYZDict(5.0)
+        self.glal_xyzdict           = GeometryDict.XYZDict(5.0)
 
         for atm, visible in self.glal_iter_atoms_filtered():
             pos = self.glal_calc_position(atm.position)
@@ -1743,22 +1746,22 @@ class GLAtomList(GLDrawList):
             return atom.glal_color
 
         setting = self.properties["color_setting"]
-        if type(setting)==TupleType:
+        if type(setting)==types.TupleType:
             return setting
 
         if setting=="Color By Element":
-            element = library_get_element_desc(atom.element)
+            element = Library.library_get_element_desc(atom.element)
             try:
                 return element.color_rgbf
             except AttributeError:
-                return COLOR_RGBF["white"]
+                return Colors.COLOR_RGBF["white"]
 
         elif setting=="Color By Residue Type":
-            monomer = library_get_monomer_desc(atom.res_name)
+            monomer = Library.library_get_monomer_desc(atom.res_name)
             try:
                 return self.glal_res_type_color_dict[monomer.chem_type]
             except KeyError:
-                return COLOR_RGBF["white"]
+                return Colors.COLOR_RGBF["white"]
 
         elif setting=="Color By Temp Factor":
             return self.glal_calc_color_range(atom.temp_factor)
@@ -1911,7 +1914,7 @@ class GLAtomList(GLDrawList):
         ##
         
         for atm, pos in self.glal_iter_visible_atoms():
-            edesc = library_get_element_desc(atm.element)
+            edesc = Library.library_get_element_desc(atm.element)
             if edesc!=None:
                 radius = edesc.vdw_radius
             else:
@@ -2190,22 +2193,19 @@ class GLStructure(GLDrawList):
         self.struct = args["struct"]
         
         ## add GLObject children
-        self.glo_set_properties_id(
-            "GLStructure_%s" % (self.struct.structure_id))
+        self.glo_set_properties_id("GLStructure_%s" % (self.struct.structure_id))
 
         ## structure axes
         self.gl_axes = GLAxes()
         self.gl_axes.glo_set_properties_id("GLAxes")
         self.glo_add_child(self.gl_axes)
-        self.glo_link_child_property(
-            "axes_visible", "GLAxes", "visible")
+        self.glo_link_child_property("axes_visible", "GLAxes", "visible")
 
         ## unit cell
         self.gl_unit_cell = GLUnitCell(unit_cell=self.struct.unit_cell)
         self.gl_unit_cell.glo_set_properties_id("GLUnitCell")
         self.glo_add_child(self.gl_unit_cell)
-        self.glo_link_child_property(
-            "unit_cell_visible", "GLUnitCell", "visible")
+        self.glo_link_child_property("unit_cell_visible", "GLUnitCell", "visible")
 
         ## GLChains 
         for chain in self.struct.iter_chains():
@@ -2359,7 +2359,7 @@ class GLViewer(GLObject):
               "catagory":  "Background",
               "type":      "enum_string",
               "default":   "Black",
-              "enum_list": COLOR_NAMES_CAPITALIZED[:],
+              "enum_list": Colors.COLOR_NAMES_CAPITALIZED[:],
               "action":    "redraw" })
 
         ## View
@@ -2526,11 +2526,11 @@ class GLViewer(GLObject):
                     yield atm
                     
         try:
-            centroid = calc_atom_centroid(aa_atom_iter(struct))
+            centroid = AtomMath.calc_atom_centroid(aa_atom_iter(struct))
         except OverflowError:
             return None
 
-        R = calc_inertia_tensor(aa_atom_iter(struct), centroid)
+        R = AtomMath.calc_inertia_tensor(aa_atom_iter(struct), centroid)
 
         ori = {}
 
@@ -2594,7 +2594,7 @@ class GLViewer(GLObject):
         to the GLViewer.  It returns the GLStructure object created to
         visualize the Structure object.
         """
-        assert isinstance(struct, Structure)
+        assert isinstance(struct, Structure.Structure)
 
         ## add the structure
         gl_struct = GLStructure(struct=struct)
@@ -2715,17 +2715,17 @@ class GLViewer(GLObject):
             x2c = x2 - width/2
             y2c = y2 - width/2
 
-            p1 = normalize(numpy.array((x1c, y1c, 0.0), float))
-            p2 = normalize(numpy.array((x2c, y2c, 0.0), float))
+            p1 = AtomMath.normalize(numpy.array((x1c, y1c, 0.0), float))
+            p2 = AtomMath.normalize(numpy.array((x2c, y2c, 0.0), float))
 
-            c = cross(p2, p1)
+            c = numpy.cross(p2, p1)
 
             try:
-                a = normalize(c)
+                a = AtomMath.normalize(c)
             except OverflowError:
                 return
 
-            theta = length(c) * math.pi/2.0
+            theta = AtomMath.length(c) * math.pi/2.0
 
         ## XY trackball rotation
         else:
@@ -2744,9 +2744,9 @@ class GLViewer(GLObject):
             p1 = numpy.array((x1, y1, project_to_sphere(tb_size, x1, y1)), float)
             p2 = numpy.array((x2, y2, project_to_sphere(tb_size, x2, y2)), float)
 
-            a = cross(p1, p2)
+            a = numpy.cross(p1, p2)
             d = p1 - p2
-            t = length(d) / (2.0 * tb_size)
+            t = AtomMath.length(d) / (2.0 * tb_size)
 
             if t>1.0:
                 t - 1.0
@@ -2760,13 +2760,13 @@ class GLViewer(GLObject):
 
         ## calculate a in the original coordinate frame
         a = numpy.matrixmultiply(numpy.transpose(Rcur), a)
-        qup = rquaternionu(a, theta)
+        qup = AtomMath.rquaternionu(a, theta)
 
         ## convert the current rotation matrix to a quaternion so the
         ## new rotation quaternion can be added to it
-        qcur = quaternionrmatrix(Rcur)
-        qnew = addquaternion(qcur, qup)
-        Rnew = rmatrixquaternion(qnew)
+        qcur = AtomMath.quaternionrmatrix(Rcur)
+        qnew = AtomMath.addquaternion(qcur, qup)
+        Rnew = AtomMath.rmatrixquaternion(qnew)
 
         self.properties.update(R=Rnew)
 
@@ -2774,8 +2774,8 @@ class GLViewer(GLObject):
         """Return the R,G,B triplit of the background color.
         """
         colorx = self.properties["bg_color"].lower()
-        if COLOR_RGBF.has_key(colorx):
-            return COLOR_RGBF[colorx]
+        if Colors.COLOR_RGBF.has_key(colorx):
+            return Colors.COLOR_RGBF[colorx]
         
         try:
             r, g, b = colorx.split(",")

@@ -5,9 +5,14 @@
 """Classes for building a mmLib.Structure representation of biological
 macromolecules.
 """
+import types
 
-from mmTypes   import *
-from Structure import *
+from mmTypes import *
+
+import Library
+import Structure
+import UnitCell
+
 
 class StructureBuilderError(Exception):
     """Base class of errors raised by Structure objects.
@@ -35,7 +40,7 @@ class StructureBuilder(object):
         elif args.get("struct")!=None:
             self.struct = args["struct"]
         else:
-            self.struct = Structure()
+            self.struct = Structure.Structure()
 
         ## set structure_id
         if args.get("structure_id")!=None:
@@ -109,7 +114,7 @@ class StructureBuilder(object):
         point.  Look at this function and you'll figure it out.
         """
         ## create atom object
-        atm = Atom(**atm_map)
+        atm = Structure.Atom(**atm_map)
 
         ## survey the atom and structure and determine if the atom requres
         ## being passed to the naming service
@@ -121,11 +126,11 @@ class StructureBuilder(object):
         try:
             self.struct.add_atom(atm, True)
 
-        except FragmentOverwrite:
+        except Structure.FragmentOverwrite:
             warning("FragmentOverwrite: %s" % (atm))
             self.name_service_list.append(atm)
 
-        except AtomOverwrite, err:
+        except Structure.AtomOverwrite, err:
             warning("AtomOverwrite: %s" % (err))
             self.name_service_list.append(atm)
 
@@ -181,9 +186,9 @@ class StructureBuilder(object):
         for atm in self.name_service_list[:]:
             
             ## determine the polymer type of the atom
-            if library_is_amino_acid(atm.res_name):
+            if Library.library_is_amino_acid(atm.res_name):
                 polymer_type = "protein"
-            elif library_is_nucleic_acid(atm.res_name):
+            elif Library.library_is_nucleic_acid(atm.res_name):
                 polymer_type = "dna"
             else:
                 ## if the atom is not a polymer, we definately have a break
@@ -430,7 +435,7 @@ class StructureBuilder(object):
     def load_structure_id(self, structure_id):
         """
         """
-        assert type(structure_id)==StringType
+        assert type(structure_id)==types.StringType
         self.struct.structure_id = structure_id
 
     def load_unit_cell(self, ucell_map):
@@ -443,7 +448,7 @@ class StructureBuilder(object):
                 return
 
         if ucell_map.has_key("space_group"):
-            self.struct.unit_cell = UnitCell(
+            self.struct.unit_cell = UnitCell.UnitCell(
                 a = ucell_map["a"],
                 b = ucell_map["b"],
                 c = ucell_map["c"],
@@ -452,7 +457,7 @@ class StructureBuilder(object):
                 gamma = ucell_map["gamma"],
                 space_group = ucell_map["space_group"])
         else:
-            self.struct.unit_cell = UnitCell(
+            self.struct.unit_cell = UnitCell.UnitCell(
                 a = ucell_map["a"],
                 b = ucell_map["b"],
                 c = ucell_map["c"],
@@ -544,7 +549,7 @@ class StructureBuilder(object):
 
             ## build a AlphaHelix for every Model in the Structure
             for model in self.struct.iter_models():
-                alpha_helix = AlphaHelix(model_id=model.model_id, **helix)
+                alpha_helix = Structure.AlphaHelix(model_id=model.model_id, **helix)
                 model.add_alpha_helix(alpha_helix)
                 alpha_helix.construct_segment()
 
@@ -582,7 +587,7 @@ class StructureBuilder(object):
             ## iterate over all Models and add the BetaSheet description to
             ## each Model
             for model in self.struct.iter_models():
-                beta_sheet = BetaSheet(model=model.model_id, **sheet)
+                beta_sheet = Structure.BetaSheet(model=model.model_id, **sheet)
         
                 for strand in sheet["strand_list"]:
                     ## required strand info
@@ -594,7 +599,7 @@ class StructureBuilder(object):
                     except KeyError:
                         continue
 
-                    beta_strand = Strand(**strand)
+                    beta_strand = Structure.Strand(**strand)
                     beta_sheet.add_strand(beta_strand)
 
                 model.add_beta_sheet(beta_sheet)
@@ -614,7 +619,7 @@ class StructureBuilder(object):
                 continue
 
             for model in self.struct.iter_models():
-                site = Site(**site_desc)
+                site = Structure.Site(**site_desc)
                 model.add_site(site)
                 site.construct_fragments()
         

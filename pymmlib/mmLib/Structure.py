@@ -5,14 +5,18 @@
 """Classes for representing biological macromolecules.
 """
 from __future__ import generators
+
+import types
+import copy
 import numpy
 
-from mmTypes        import *
-from GeometryDict   import *
-from AtomMath       import *
-from Library        import *
-from UnitCell       import UnitCell
-from mmCIFDB        import *
+from mmTypes import *
+
+import GeometryDict
+import AtomMath
+import Library
+import UnitCell
+import mmCIFDB
 
 
 class StructureError(Exception):
@@ -112,8 +116,8 @@ class Structure(object):
     """
     def __init__(self, **args):
         self.structure_id     = args.get("structure_id") or "XXXX"
-        self.cifdb            = args.get("cifdb")        or mmCIFDB("XXXX")
-        self.unit_cell        = args.get("unit_cell")    or UnitCell()
+        self.cifdb            = args.get("cifdb")        or mmCIFDB.mmCIFDB("XXXX")
+        self.unit_cell        = args.get("unit_cell")    or UnitCell.UnitCell()
 
         self.default_alt_loc = "A"
         self.default_model   = None
@@ -164,7 +168,7 @@ class Structure(object):
         if isinstance(model_chain_idx, Model):
             return self.model_list.__contains__(model_chain_idx)
         elif isinstance(model_chain_idx, Chain) or \
-             type(model_chain_idx) == StringType:
+             type(model_chain_idx) == types.StringType:
             try:
                 return self.default_model.__contains__(model_chain_idx)
             except AttributeError:
@@ -686,7 +690,7 @@ class Structure(object):
     def set_default_alt_loc(self, alt_loc):
         """Sets the default alt_loc for the Stucture.
         """
-        assert type(alt_loc)==StringType
+        assert type(alt_loc)==types.StringType
 
         self.default_alt_loc = alt_loc        
         for frag in self.iter_all_fragments():
@@ -699,7 +703,7 @@ class Structure(object):
         covalent radii + 0.54A.
         """
         for model in self.iter_models():
-            xyzdict = XYZDict(2.0)
+            xyzdict = GeometryDict.XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
                 if atm.position!=None:
@@ -711,8 +715,8 @@ class Structure(object):
 
                     ## calculate the expected bond distance by adding the
                     ## covalent radii + 0.54A
-                    edesc1 = library_get_element_desc(atm1.element)
-                    edesc2 = library_get_element_desc(atm2.element)
+                    edesc1 = Library.library_get_element_desc(atm1.element)
+                    edesc2 = Library.library_get_element_desc(atm2.element)
 
                     if edesc1==None or edesc2==None:
                         continue
@@ -738,7 +742,7 @@ class Model(object):
     """Multiple models support.
     """
     def __init__(self, model_id=1, **args):
-        assert type(model_id)==IntType
+        assert type(model_id)==types.IntType
 
         self.structure        = None
 
@@ -784,9 +788,9 @@ class Model(object):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
         """
-        if type(chain_idx) == StringType:
+        if type(chain_idx) == types.StringType:
             return self.chain_dict[chain_idx]
-        elif type(chain_idx) == IntType:
+        elif type(chain_idx) == types.IntType:
             return self.chain_list[chain_idx]
         raise TypeError, chain_idx
 
@@ -800,7 +804,7 @@ class Model(object):
         """
         if isinstance(chain_idx, Chain):
             return self.chain_list.__contains__(chain_idx)
-        elif type(chain_idx) == StringType:
+        elif type(chain_idx) == types.StringType:
             return self.chain_dict.__contains__(chain_idx)
         raise TypeError, chain_idx
 
@@ -1132,7 +1136,7 @@ class Model(object):
     def set_model_id(self, model_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(model_id)==IntType
+        assert type(model_id)==types.IntType
 
         if self.structure!=None:
             chk_model = self.structure.get_model(model_id)
@@ -1158,8 +1162,8 @@ class Segment(object):
                  chain_id = "",
                  **args):
 
-        assert type(model_id) == IntType
-        assert type(chain_id) == StringType
+        assert type(model_id) == types.IntType
+        assert type(chain_id) == types.StringType
 
         self.model    = None
         self.chain    = None
@@ -1226,13 +1230,13 @@ class Segment(object):
         is returned includes those Fragments.  If the slice values are
         integers, then normal list slicing rules apply.
         """
-        if type(fragment_idx)==IntType:
+        if type(fragment_idx)==types.IntType:
             return self.fragment_list[fragment_idx]
 
-        elif type(fragment_idx)==StringType:
+        elif type(fragment_idx)==types.StringType:
             return self.fragment_dict[fragment_idx]
 
-        elif type(fragment_idx)==SliceType:
+        elif type(fragment_idx)==types.SliceType:
             
             ## determine if the slice is on list indexes or on fragment_id
             ## strings
@@ -1241,9 +1245,9 @@ class Segment(object):
             
             ## check for index (list) slicing
             if (start==None and stop==None) or \
-               (start==None and type(stop)==IntType) or \
-               (stop==None  and type(start)==IntType) or \
-               (type(start)==IntType and type(stop)==IntType):
+               (start==None and type(stop)==types.IntType) or \
+               (stop==None  and type(start)==types.IntType) or \
+               (type(start)==types.IntType and type(stop)==types.IntType):
 
                 segment = self.construct_segment()
                 for frag in self.fragment_list[start:stop]:
@@ -1251,9 +1255,9 @@ class Segment(object):
                 return segment
             
             ## check for fragment_id slicing
-            if (start==None and type(stop)==StringType) or \
-               (stop==None  and type(start)==StringType) or \
-               (type(start)==StringType and type(stop)==StringType):
+            if (start==None and type(stop)==types.StringType) or \
+               (stop==None  and type(start)==types.StringType) or \
+               (type(start)==types.StringType and type(stop)==types.StringType):
 
                 return self.construct_sub_segment(start, stop)
 
@@ -1269,7 +1273,7 @@ class Segment(object):
         """
         if isinstance(fragment_idx, Fragment):
             return self.fragment_list.__contains__(fragment_idx)
-        elif type(fragment_idx) == StringType:
+        elif type(fragment_idx) == types.StringType:
             return self.fragment_dict.__contains__(fragment_idx)
         raise TypeError, fragment_idx
 
@@ -1472,14 +1476,14 @@ class Segment(object):
         ## add new fragment if necessary 
         if self.fragment_dict.has_key(atom.fragment_id)==False:
             
-            if library_is_amino_acid(atom.res_name)==True:
+            if Library.library_is_amino_acid(atom.res_name)==True:
                 fragment = AminoAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
                     res_name    = atom.res_name)
 
-            elif library_is_nucleic_acid(atom.res_name)==True:
+            elif Library.library_is_nucleic_acid(atom.res_name)==True:
                 fragment = NucleicAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
@@ -1557,15 +1561,46 @@ class Segment(object):
                 visited[bond] = True
 
     def calc_sequence(self):
-        """Attempts to calculate the residue sequence contained in the
-        Segment object.  This is a simple algorithm: find the longest running
-        sequence of the same bio-residue, and that's the sequence.  Returns
-        a list of 3-letter residues codes of the calculated sequence.
+        """Calculate the residue sequence of the Fragments contained in the
+        Segment object.  Returns a list of 3-letter residues codes of
+        the calculated sequence.
         """
         sequence_list = []
         for frag in self.iter_fragments():
             sequence_list.append(frag.res_name)
         return sequence_list
+
+    def calc_sequence_one_letter_code(self):
+        """Return the one letter code representation of the sequence as
+        a string.
+        """
+        seqlist = []
+
+        for frag in self.iter_fragments():
+            mdesc = Library.library_get_monomer_desc(frag.res_name)
+
+            if mdesc!=None and mdesc.one_letter_code:
+                seqlist.append(mdesc.one_letter_code)
+            else:
+                seqlist.append("X")
+
+        return "".join(seqlist)
+
+    def sequence_one_letter_code(self):
+        """Return the one letter code representation of the sequence as
+        a string.
+        """
+        seqlist = []
+
+        for res_name, frag in self.sequence_fragment_list:
+            mdesc = Library.library_get_monomer_desc(res_name)
+
+            if mdesc!=None and mdesc.one_letter_code:
+                seqlist.append(mdesc.one_letter_code)
+            else:
+                seqlist.append("(%s)" % (res_name))
+
+        return "".join(seqlist)
 
     def get_chain(self):
         """Returns the Chain object this Segment is part of.
@@ -1585,7 +1620,7 @@ class Segment(object):
     def set_model_id(self, model_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(model_id)==IntType
+        assert type(model_id)==types.IntType
         self.model_id = model_id
 
         for frag in self.iter_fragments():
@@ -1594,7 +1629,7 @@ class Segment(object):
     def set_chain_id(self, chain_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(chain_id)==StringType
+        assert type(chain_id)==types.StringType
         self.chain_id = chain_id
 
         for frag in self.iter_fragments():
@@ -1691,22 +1726,6 @@ class Chain(Segment):
     def get_fragment_sequence_index(self, seq_index):
         return self.sequence_fragment_list[seq_index][1]
 
-    def sequence_one_letter_code(self):
-        """Return the one letter code representation of the sequence as
-        a string.
-        """
-        one_letter_code = ""
-
-        for res_name, frag in self.sequence_fragment_list:
-            mdesc = library_get_monomer_desc(res_name)
-
-            if mdesc!=None and mdesc.one_letter_code:
-                one_letter_code += mdesc.one_letter_code
-            else:
-                one_letter_code += "(%s)" % (res_name)
-
-        return one_letter_code
-
     def add_fragment(self, fragment, delay_sort=False):
         """Adds a Fragment instance to the Chain.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
@@ -1756,10 +1775,10 @@ class Fragment(object):
                  res_name    = "",
                  **args):
 
-        assert type(model_id)    == IntType
-        assert type(res_name)    == StringType
-        assert type(fragment_id) == StringType
-        assert type(chain_id)    == StringType
+        assert type(model_id)    == types.IntType
+        assert type(res_name)    == types.StringType
+        assert type(fragment_id) == types.StringType
+        assert type(chain_id)    == types.StringType
 
         self.chain           = None
 
@@ -1826,9 +1845,9 @@ class Fragment(object):
         type.  If the argument was a integer, then a IndexError is raised.
         If the argument was a string, then a KeyError is raised.
         """
-        if type(name_idx) == StringType:
+        if type(name_idx) == types.StringType:
             return self.atom_dict[name_idx]
-        elif type(name_idx) == IntType:
+        elif type(name_idx) == types.IntType:
             return self.atom_list[name_idx]
         raise TypeError, name_idx
 
@@ -1844,7 +1863,7 @@ class Fragment(object):
         """
         if isinstance(atom_idx, Atom):
             return self.atom_list.__contains__(atom_idx)
-        elif type(atom_idx) == StringType:
+        elif type(atom_idx) == types.StringType:
             return self.atom_dict.__contains__(atom_idx)
         raise TypeError, atom_idx
 
@@ -2087,7 +2106,7 @@ class Fragment(object):
         """Returns the fragment in the same chain at integer offset from
         self.  Returns None if no fragment is found.
         """
-        assert type(offset)==IntType
+        assert type(offset)==types.IntType
 
         i = self.chain.index(self) + offset
         if i < 0:
@@ -2116,7 +2135,7 @@ class Fragment(object):
         """Contructs bonds within a fragment.  Bond definitions are retrieved
         from the monomer library.
         """
-        mdesc = library_get_monomer_desc(self.res_name)
+        mdesc = Library.library_get_monomer_desc(self.res_name)
         if mdesc==None:
             return
 
@@ -2150,13 +2169,13 @@ class Fragment(object):
         """Returns True if the Fragment is a water molecule, returns False
         otherwise.
         """
-        return library_is_water(self.res_name)
+        return Library.library_is_water(self.res_name)
 
     def set_model_id(self, model_id):
         """Sets the model_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(model_id)==IntType
+        assert type(model_id)==types.IntType
         self.model_id = model_id
 
         for atm in self.iter_atoms():
@@ -2166,7 +2185,7 @@ class Fragment(object):
         """Sets the chain_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(chain_id)==StringType
+        assert type(chain_id)==types.StringType
         self.chain_id = chain_id
 
         for atm in self.iter_atoms():
@@ -2176,7 +2195,7 @@ class Fragment(object):
         """Sets the fragment_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(fragment_id)==StringType
+        assert type(fragment_id)==types.StringType
 
         if self.chain!=None:
             chk_frag = self.chain.get_fragment(fragment_id)
@@ -2195,7 +2214,7 @@ class Fragment(object):
         """Sets the res_name of the Fragment and all contained Atom
         objects.
         """
-        assert type(res_name)==StringType
+        assert type(res_name)==types.StringType
         self.res_name = res_name
 
         for atm in self.iter_atoms():
@@ -2215,7 +2234,7 @@ class Residue(Fragment):
         from self.  Returns None if there is no residue at that offset, or
         if the fragment found is not the same type of residue as self.
         """
-        assert type(offset) == IntType
+        assert type(offset) == types.IntType
         frag = Fragment.get_offset_fragment(self, offset)
         if type(self) == type(frag):
             return frag
@@ -2234,8 +2253,8 @@ class Residue(Fragment):
         if next_res==None:
             return
 
-        mdesc1 = library_get_monomer_desc(self.res_name)
-        mdesc2 = library_get_monomer_desc(next_res.res_name)
+        mdesc1 = Library.library_get_monomer_desc(self.res_name)
+        mdesc2 = Library.library_get_monomer_desc(next_res.res_name)
 
         if mdesc1==None or mdesc2==None:
             return
@@ -2300,11 +2319,11 @@ class AminoAcidResidue(Residue):
         except AttributeError:
             naN = None
      
-        N_CA  = calc_distance(aN, aCA)
-        CA_C  = calc_distance(aCA, aC)
-        C_O   = calc_distance(aC, aO)
-        C_nN  = calc_distance(aC, naN)
-        CA_CB = calc_distance(aCA, aCB)
+        N_CA  = AtomMath.calc_distance(aN, aCA)
+        CA_C  = AtomMath.calc_distance(aCA, aC)
+        C_O   = AtomMath.calc_distance(aC, aO)
+        C_nN  = AtomMath.calc_distance(aC, naN)
+        CA_CB = AtomMath.calc_distance(aCA, aCB)
         return (N_CA, CA_C, C_O, CA_CB, C_nN)
 
     def calc_mainchain_bond_angle(self):
@@ -2326,12 +2345,12 @@ class AminoAcidResidue(Residue):
             naN  = next_res.get_atom('N')
             naCA = next_res.get_atom('CA')
 
-        N_CA_C   = calc_angle(aN, aCA, aC)
-        CA_C_O   = calc_angle(aCA, aC, aO)
-        N_CA_CB  = calc_angle(aN, aCA, aCB)
-        CB_CA_C  = calc_angle(aCB, aCA, aC)
-        CA_C_nN  = calc_angle(aCA, aC, naN)
-        C_nN_nCA = calc_angle(aC, naN, naCA)
+        N_CA_C   = AtomMath.calc_angle(aN, aCA, aC)
+        CA_C_O   = AtomMath.calc_angle(aCA, aC, aO)
+        N_CA_CB  = AtomMath.calc_angle(aN, aCA, aCB)
+        CB_CA_C  = AtomMath.calc_angle(aCB, aCA, aC)
+        CA_C_nN  = AtomMath.calc_angle(aCA, aC, naN)
+        C_nN_nCA = AtomMath.calc_angle(aC, naN, naCA)
 
         return (N_CA_C, N_CA_CB, CB_CA_C, CA_C_O, CA_C_nN, C_nN_nCA) 
 
@@ -2348,7 +2367,7 @@ class AminoAcidResidue(Residue):
         aCA = self.get_atom('CA')
         aC  = self.get_atom('C')
         naN = next_res.get_atom('N')
-        return calc_torsion_angle(aN, aCA, aC, naN)
+        return AtomMath.calc_torsion_angle(aN, aCA, aC, naN)
 
     def calc_torsion_phi(self):
         """Calculates the Phi torsion angle of the amino acid.  Raises a
@@ -2363,7 +2382,7 @@ class AminoAcidResidue(Residue):
         aN  = self.get_atom('N')
         aCA = self.get_atom('CA')
         aC  = self.get_atom('C')
-        return calc_torsion_angle(paC, aN, aCA, aC)
+        return AtomMath.calc_torsion_angle(paC, aN, aCA, aC)
 
     def calc_torsion_omega(self):
         """Calculates the Omega torsion angle of the amino acid. Raises a
@@ -2378,7 +2397,7 @@ class AminoAcidResidue(Residue):
         aC   = self.get_atom('C')
         naN  = next_res.get_atom('N')
         naCA = next_res.get_atom('CA')
-        return calc_torsion_angle(aCA, aC, naN, naCA)
+        return AtomMath.calc_torsion_angle(aCA, aC, naN, naCA)
 
     def is_cis(self):
         """Returns True if this is a CIS amino acid, otherwise returns False.
@@ -2402,7 +2421,7 @@ class AminoAcidResidue(Residue):
         """Calculates the given torsion angle for the monomer.  The torsion
         angles are defined by name in monomers.cif.
         """
-        mdesc = library_get_monomer_desc(self.res_name)
+        mdesc = Library.library_get_monomer_desc(self.res_name)
         try:
             (atom1_name,
              atom2_name,
@@ -2416,7 +2435,7 @@ class AminoAcidResidue(Residue):
         atom3 = self.get_atom(atom3_name)
         atom4 = self.get_atom(atom4_name)
         
-        return calc_torsion_angle(atom1, atom2, atom3, atom4)
+        return AtomMath.calc_torsion_angle(atom1, atom2, atom3, atom4)
 
     def calc_torsion_chi1(self):
         return self.calc_torsion("chi1")
@@ -2580,12 +2599,12 @@ class Atom(object):
 
         **args):
 
-        assert type(name)        == StringType
-        assert type(model_id)    == IntType
-        assert type(alt_loc)     == StringType
-        assert type(res_name)    == StringType
-        assert type(fragment_id) == StringType
-        assert type(chain_id)    == StringType
+        assert type(name)        == types.StringType
+        assert type(model_id)    == types.IntType
+        assert type(alt_loc)     == types.StringType
+        assert type(res_name)    == types.StringType
+        assert type(fragment_id) == types.StringType
+        assert type(chain_id)    == types.StringType
 
         self.fragment        = None
         self.altloc          = None
@@ -2619,7 +2638,7 @@ class Atom(object):
         else:
             self.sig_position = None
 
-        if type(U) != NoneType:
+        if type(U) != types.NoneType:
             self.U = U
         elif u11 != None:
             self.U = numpy.array(
@@ -2629,7 +2648,7 @@ class Atom(object):
         else:
             self.U = None
 
-        if type(sig_U) != NoneType:
+        if type(sig_U) != types.NoneType:
             self.sig_U = sig_U
         elif sig_u11 != None:
             self.sig_U = numpy.array(
@@ -2791,7 +2810,7 @@ class Atom(object):
         """This is a alternative to calling get_alt_loc, but a KeyError
         exception is raised if the alt_loc Atom is not found.
         """
-        assert type(alt_loc)==StringType
+        assert type(alt_loc)==types.StringType
         
         if self.altloc==None:
             if self.alt_loc==alt_loc:
@@ -2823,7 +2842,7 @@ class Atom(object):
             else:
                 return self.altloc[atom_alt_loc.alt_loc]==atom_alt_loc
 
-        elif type(atom_alt_loc)==StringType:
+        elif type(atom_alt_loc)==types.StringType:
             if self.altloc==None:
                 return atom_alt_loc==self.alt_loc
             else:
@@ -3093,7 +3112,7 @@ class Atom(object):
         """Sets the chain_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(model_id)==IntType
+        assert type(model_id)==types.IntType
         for atm in self.iter_alt_loc():
             atm.model_id = model_id 
 
@@ -3101,7 +3120,7 @@ class Atom(object):
         """Sets the chain_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(chain_id)==StringType
+        assert type(chain_id)==types.StringType
         for atm in self.iter_alt_loc():
             atm.chain_id = chain_id
 
@@ -3109,7 +3128,7 @@ class Atom(object):
         """Sets the fragment_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(fragment_id)==StringType
+        assert type(fragment_id)==types.StringType
         for atm in self.iter_alt_loc():
             atm.fragment_id = fragment_id
 
@@ -3117,7 +3136,7 @@ class Atom(object):
         """Sets the fragment_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(res_name)==StringType
+        assert type(res_name)==types.StringType
         for atm in self.iter_alt_loc():
             atm.res_name = res_name
             
@@ -3232,17 +3251,17 @@ class AlphaHelix(object):
                  details      = "",
                  **args):
 
-        assert type(helix_id)      == StringType
-        assert type(helix_class)   == StringType
-        assert type(helix_length)  == IntType
-        assert type(details)       == StringType
-        assert type(chain_id1)     == StringType
-        assert type(frag_id1)      == StringType
-        assert type(res_name1)     == StringType
-        assert type(chain_id2)     == StringType
-        assert type(frag_id2)      == StringType
-        assert type(res_name2)     == StringType
-        assert type(details)       == StringType
+        assert type(helix_id)      == types.StringType
+        assert type(helix_class)   == types.StringType
+        assert type(helix_length)  == types.IntType
+        assert type(details)       == types.StringType
+        assert type(chain_id1)     == types.StringType
+        assert type(frag_id1)      == types.StringType
+        assert type(res_name1)     == types.StringType
+        assert type(chain_id2)     == types.StringType
+        assert type(frag_id2)      == types.StringType
+        assert type(res_name2)     == types.StringType
+        assert type(details)       == types.StringType
 
         self.model        = None
 
@@ -3386,20 +3405,20 @@ class Strand(object):
                  reg_prev_atom     = "",
                  **args):
 
-        assert type(chain_id1)         == StringType
-        assert type(frag_id1)          == StringType
-        assert type(res_name1)         == StringType
-        assert type(chain_id2)         == StringType
-        assert type(frag_id2)          == StringType 
-        assert type(res_name2)         == StringType
-        assert type(reg_chain_id)      == StringType
-        assert type(reg_frag_id)       == StringType
-        assert type(reg_res_name)      == StringType
-        assert type(reg_atom)          == StringType
-        assert type(reg_prev_chain_id) == StringType
-        assert type(reg_prev_frag_id)  == StringType
-        assert type(reg_prev_res_name) == StringType
-        assert type(reg_prev_atom)     == StringType
+        assert type(chain_id1)         == types.StringType
+        assert type(frag_id1)          == types.StringType
+        assert type(res_name1)         == types.StringType
+        assert type(chain_id2)         == types.StringType
+        assert type(frag_id2)          == types.StringType 
+        assert type(res_name2)         == types.StringType
+        assert type(reg_chain_id)      == types.StringType
+        assert type(reg_frag_id)       == types.StringType
+        assert type(reg_res_name)      == types.StringType
+        assert type(reg_atom)          == types.StringType
+        assert type(reg_prev_chain_id) == types.StringType
+        assert type(reg_prev_frag_id)  == types.StringType
+        assert type(reg_prev_res_name) == types.StringType
+        assert type(reg_prev_atom)     == types.StringType
 
         self.beta_sheet            = None
         
@@ -3536,7 +3555,7 @@ class BetaSheet(object):
                  sheet_id  = "",
                  **args):
 
-        assert type(sheet_id) == StringType
+        assert type(sheet_id) == types.StringType
         
         self.model       = None
 
@@ -3606,8 +3625,8 @@ class Site(object):
                  fragment_list      = [],
                  **args):
 
-        assert type(site_id)            == StringType
-        assert type(fragment_list)      == ListType
+        assert type(site_id)            == types.StringType
+        assert type(fragment_list)      == types.ListType
 
         self.model              = None
         self.site_id            = site_id

@@ -4,15 +4,23 @@
 ## included as part of this package.
 __all__ = [
     "AtomMath",
+    "Colors",
     "FileLoader",
-    "GLViewer",
+    "Gaussian",
+    "GeometryDict",
     "Library",
+    "mmCIFBuilder",
     "mmCIFDB",
     "mmCIF",
     "mmTypes",
+    "OpenGLDriver",
+    "PDBBuilder",
     "PDB",
+    "R3DDriver",
     "SpaceGroups",
     "StructureBuilder",
     "Structure",
-    "UnitCell"]
+    "Superposition",
+    "UnitCell",
+    "Viewer"]
 

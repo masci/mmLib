@@ -14,8 +14,8 @@ from OpenGL.GL      import *
 from OpenGL.GLU     import *
 from OpenGL.GLUT    import *
 
-from Gaussian       import *
-from Structure      import *
+import Gaussian
+import AtomMath
 
 try:
     import glaccel
@@ -463,13 +463,13 @@ class OpenGLDriver(object):
         with the given radius.
         """
         ## don't bother redering small axes -- they look like junk
-        if numpy.allclose(length(axis), 0.0):
+        if numpy.allclose(AtomMath.length(axis), 0.0):
             return
         
         end = position + axis
 
-        l = length(axis)
-        R = rmatrixz(axis)
+        l = AtomMath.length(axis)
+        R = AtomMath.rmatrixz(axis)
 
         glPushMatrix()
         self.glr_mult_matrix_Rt(R, position)
@@ -485,7 +485,7 @@ class OpenGLDriver(object):
     def glaccel_glr_axis(self, position, axis, radius):
         """glaccel optimized version of glr_axis.
         """
-        if numpy.allclose(length(axis), 0.0):
+        if numpy.allclose(AtomMath.length(axis), 0.0):
             return
         end = position + axis
         glaccel.rod(position[0], position[1], position[2], end[0], end[1], end[2], radius)
@@ -551,7 +551,7 @@ class OpenGLDriver(object):
     def glr_Uaxes(self, position, U, prob, color, line_width):
         """Draw the anisotropic axies of the atom at the given probability.
         """
-        C = GAUSS3C[prob]        
+        C = Gaussian.GAUSS3C[prob]        
         eval_U, evec_U = numpy.linalg.eignvectors(U)
 
         try:
@@ -604,7 +604,7 @@ class OpenGLDriver(object):
         glaccel.Uellipse(
             position[0], position[1], position[2],
             U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-            GAUSS3C[prob], 3)
+            Gaussian.GAUSS3C[prob], 3)
         
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of

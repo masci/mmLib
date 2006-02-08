@@ -7,15 +7,13 @@
 from __future__ import generators
 import re
 import sys
-import string
 import fpformat
 import numpy
 
-from mmLib.mmTypes   import *
-from mmLib.AtomMath  import *
-from mmLib.Structure import *
-from mmLib.PDB       import *
-from mmLib.Viewer    import *
+from mmLib.mmTypes import *
+from mmLib import AtomMath, PDB, Structure, Viewer, Gaussian, Colors
+
+
 
 ###############################################################################
 ## EXCEPTION BASE CLASS
@@ -157,7 +155,7 @@ class TLSGroupDesc(object):
         listx = []
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
             listx.append("%s%s-%s%s %s" % (chain_id1, frag_id1, chain_id2, frag_id2, sel))
-        return string.join(listx,';')
+        return ";".join(listx)
 
     def iter_atoms(self, struct):
         """Uses the TLS definition and the given Structure object to iterate
@@ -175,8 +173,7 @@ class TLSGroupDesc(object):
             try:
                 seg = chain1[frag_id1:frag_id2]
             except KeyError:
-                warning("iter_tls_atoms():unable to find segment={%s..%s}" % (
-                    frag_id1, frag_id2))
+                warning("iter_tls_atoms():unable to find segment={%s..%s}" % (frag_id1, frag_id2))
 
             for atm in seg.iter_all_atoms():
                 yield atm
@@ -342,7 +339,7 @@ class TLSFileFormatPDB(TLSFileFormat):
         self.tls_scrap     = {}
         self.tls_desc_list = []
        
-        pdb_file = PDBFile()
+        pdb_file = PDB.PDBFile()
         pdb_file.load_file(fil)
         pdb_file.record_processor(self)
 
@@ -707,7 +704,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 tls_desc.S[2,0] * RAD2DEG,
                 tls_desc.S[2,1] * RAD2DEG))
 
-        return string.join(listx, "\n")
+        return "\n".jon(listx)
 
     def save(self, fil, tls_desc_list):
         ## with this line, the tensor components will be read by some
@@ -827,14 +824,14 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     """
     ## construct TLS tensors from isotropic TLS description
     T0 = numpy.array([[iT,  0.0, 0.0],
-                [0.0,  iT, 0.0],
-                [0.0, 0.0,  iT]], float)
+                      [0.0,  iT, 0.0],
+                      [0.0, 0.0,  iT]], float)
     
     L0 = iL.copy()
         
     S0 = numpy.array([ [  0.0,   0.0, iS[1]],
-                 [iS[0],   0.0,  0.0],
-                 [  0.0, iS[2],  0.0] ], float)
+                       [iS[0],   0.0,  0.0],
+                       [  0.0, iS[2],  0.0] ], float)
 
 
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
@@ -1119,14 +1116,14 @@ def calc_Utls(T, L, S, position):
     u23 = T[1,2] - L[0,0]*yz - L[1,2]*xx + L[2,0]*xy + L[0,1]*xz - S[1,1]*x + S[2,2]*x + S[0,1]*y - S[0,2]*z
 
     return numpy.array([[u11, u12, u13],
-                  [u12, u22, u23],
-                  [u13, u23, u33]], float)
+                        [u12, u22, u23],
+                        [u13, u23, u33]], float)
 
 def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     """Returns the amount of rotational displacement from L
     for a atom at the given position.
     """
-    Lrot     = GAUSS3C[prob] * calc_rmsd(Lval)
+    Lrot     = Gaussian.GAUSS3C[prob] * calc_rmsd(Lval)
     Lorigin  = cor + Lrho
     D        = dmatrixu(Lvec, Lrot)
 
@@ -1260,18 +1257,18 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = numpy.array([ [ X[T11], X[T12], X[T13] ],
-                [ X[T12], X[T22], X[T23] ],
-                [ X[T13], X[T23], X[T33] ] ], float)
+                      [ X[T12], X[T22], X[T23] ],
+                      [ X[T13], X[T23], X[T33] ] ], float)
 
     L = numpy.array([ [ X[L11], X[L12], X[L13] ],
-                [ X[L12], X[L22], X[L23] ],
-                [ X[L13], X[L23], X[L33] ] ], float)
+                      [ X[L12], X[L22], X[L23] ],
+                      [ X[L13], X[L23], X[L33] ] ], float)
 
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
     S = numpy.array([ [    s11, X[S12], X[S13] ],
-                [ X[S21],    s22, X[S23] ],
-                [ X[S31], X[S32],    s33 ] ], float)
+                      [ X[S21],    s22, X[S23] ],
+                      [ X[S31], X[S32],    s33 ] ], float)
 
     ## calculate the lsq residual
     UTLS = numpy.matrixmultiply(A, X)
@@ -1459,13 +1456,13 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     ## set up the origin shift matrix PRHO WRT orthogonal axes
     PRHO = numpy.array([ [    0.0,  rho[2], -rho[1]],
-                   [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], float)
+                         [-rho[2],     0.0,  rho[0]],
+                         [ rho[1], -rho[0],     0.0] ], float)
 
     ## set up the origin shift matrix cPRHO WRT libration axes
     cPRHO = numpy.array([ [    0.0,  crho[2], -crho[1]],
-                    [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], float)
+                          [-crho[2],     0.0,  crho[0]],
+                          [ crho[1], -crho[0],     0.0] ], float)
 
     ## calculate tranpose of cPRHO, ans cS
     cSt = numpy.transpose(cS)
@@ -1626,8 +1623,7 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
     X = solve_TLS_Ab(A, B)
 
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = numpy.array([ [ X[T11], X[T12], X[T13] ],
@@ -1876,116 +1872,14 @@ def calc_TLSCA_least_squares_fit(segment, origin):
 
 
 ###############################################################################
-## NESTED VIBRATIONAL MODELS
-##
-
-def calc_TLS_uber_least_squares_fit(tls_group_list, origin):
-    """Refits all TLS groups in the list in a single matrix, with one
-    new overall TLS group matrix.
-    """
-    ## calculate matrix sizes
-    num_atoms = 0
-    num_tls   = 0
-    
-    for tls_group in tls_group_list:
-        num_tls   += 1
-        num_atoms += len(tls_group)
-
-    rows = num_atoms * 6
-    cols = (num_tls * 20) + 20
-
-    ## allocate arrays
-    A = numpy.zeros((rows, cols), float)
-    B = numpy.zeros(rows,  float)
-
-    i = -1
-    j = 0
-    for tls_group in tls_group_list:
-        j += 20
-
-        for atm in tls_group:
-            i += 1
-            iU11 = i * 6
-
-            ## set B
-            U = atm.get_U()
-            set_TLS_b(B, iU11,
-                      U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2],
-                      1.0)
-
-            ## set uber-TLS A
-            x0, y0, z0 = atm.position - origin
-            set_TLS_A(A, iU11, 0, x0, y0, z0, 1.0)
-
-            ## set nested tls_group A
-            x, y, z = atm.position - tls_group.origin
-            set_TLS_A(A, iU11, j, x, y, z, 1.0)
-
-    ## solve by SVD
-    X = solve_TLS_Ab(A, B)
-
-    ## calculate the lsq residual
-    UTLS = numpy.matrixmultiply(A, X)
-    D = UTLS - B
-    lsq_residual = numpy.dot(D, D)
-
-    ## calculate precited U values for atoms
-    udict = {}
-    i = -1
-    for tls_group in tls_group_list:
-        for atm in tls_group:
-            i += 1
-            iU11 = i * 6
-        
-            U = numpy.array( ((UTLS[iU11],   UTLS[iU11+3], UTLS[iU11+4]),
-                              (UTLS[iU11+3], UTLS[iU11+1], UTLS[iU11+5]),
-                              (UTLS[iU11+4], UTLS[iU11+5], UTLS[iU11+2])), float)
-            
-            udict[atm] = U
-
-    ## create the uber T,L,S tensors
-    ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
-    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
-    Tu = numpy.array([ [ X[T11], X[T12], X[T13] ],
-                       [ X[T12], X[T22], X[T23] ],
-                       [ X[T13], X[T23], X[T33] ] ], float)
-    
-    Lu = numpy.array([ [ X[L11], X[L12], X[L13] ],
-                       [ X[L12], X[L22], X[L23] ],
-                       [ X[L13], X[L23], X[L33] ] ], float)
-    
-    s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
-
-    Su = numpy.array([ [    s11, X[S12], X[S13] ],
-                       [ X[S21],    s22, X[S23] ],
-                       [ X[S31], X[S32],    s33 ] ], float)
-
-    ## caclculate the center of reaction for the group and
-    rdict = {}
-
-    rdict["T"] = Tu
-    rdict["L"] = Lu
-    rdict["S"] = Su
-
-    rdict["lsq_residual"] = lsq_residual
-    rdict["num_atoms"] = num_atoms
-    rdict["udict"] = udict
-
-    return rdict
-
-
-###############################################################################
 ## 
 
-class TLSGroup(AtomList):
+class TLSGroup(Structure.AtomList):
     """A subclass of AtomList implementing methods for performing TLS
     calculations on the contained Atom instances.
     """
     def __init__(self, *args):
-        AtomList.__init__(self, *args)
+        Structure.AtomList.__init__(self, *args)
 
         self.name           = "" 
         self.origin         = numpy.zeros(3, float)
@@ -2135,8 +2029,7 @@ class TLSGroup(AtomList):
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,
         goodness of fit, various parameter averages, center of reaction
-        tensors, etc...  If tls_info["valid_model"] is not None, then the TLS
-        group parameters are invalid.
+        tensors, etc...
         """
         tls_info = self.calc_COR()
 
@@ -2164,7 +2057,7 @@ class TLSGroup(AtomList):
 
             mean_max_tf += U2B * max_ev
             mean_tf     += U2B * numpy.trace(Utls) / 3.0
-            mean_aniso  += calc_anisotropy(Utls)
+            mean_aniso  += AtomMath.calc_anisotropy(Utls)
 
         tls_info["tls_mean_max_temp_factor"] = mean_max_tf / float(n)
         tls_info["tls_mean_temp_factor"]     = mean_tf     / float(n)
@@ -2426,17 +2319,17 @@ def goodness_color(x):
 
     return (r, g, b)
 
-class GLTLSAtomList(GLAtomList):
+class GLTLSAtomList(Viewer.GLAtomList):
     """OpenGL visualizations of TLS group atoms.
     """
     def __init__(self, **args):
         self.tls_group = args["tls_group"] 
-        GLAtomList.__init__(self, **args)
+        Viewer.GLAtomList.__init__(self, **args)
         self.glo_set_properties_id("GLTLSAtomList")
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
-        GLAtomList.glo_install_properties(self)
+        Viewer.GLAtomList.glo_install_properties(self)
 
         ## Show/Hide
         self.glo_add_property(
@@ -2483,7 +2376,7 @@ class GLTLSAtomList(GLAtomList):
               "desc":        "COR-Backbone Fan Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_fan" })
         self.glo_add_property(
@@ -2677,7 +2570,7 @@ class GLTLSAtomList(GLAtomList):
               "action":      "redraw" })
 
     def gldl_install_draw_methods(self):
-        GLAtomList.gldl_install_draw_methods(self)
+        Viewer.GLAtomList.gldl_install_draw_methods(self)
         
         self.gldl_draw_method_install(
             { "name":                "fan",
@@ -2687,7 +2580,7 @@ class GLTLSAtomList(GLAtomList):
               "recompile_action":    "recompile_fan" })
 
     def gldl_iter_multidraw_self(self):
-        for draw_flag in GLAtomList.gldl_iter_multidraw_self(self):
+        for draw_flag in Viewer.GLAtomList.gldl_iter_multidraw_self(self):
             for draw_flag2 in self.gldl_iter_multidraw_animate():
                 yield True
             
@@ -2813,7 +2706,7 @@ class GLTLSAtomList(GLAtomList):
         self.driver.glr_lighting_disable()
         
 
-class GLTLSGroup(GLDrawList):
+class GLTLSGroup(Viewer.GLDrawList):
     """Top level visualization object for a TLS group.
     """
     def __init__(self, **args):
@@ -2821,7 +2714,7 @@ class GLTLSGroup(GLDrawList):
         self.tls_info  = args["tls_info"]
         self.tls_name  = args["tls_name"]
 
-        GLDrawList.__init__(self)
+        Viewer.GLDrawList.__init__(self)
         self.glo_set_properties_id("GLTLSGroup_%s" % (self.tls_name))
         self.glo_set_name(self.tls_name)
 
@@ -3011,7 +2904,7 @@ class GLTLSGroup(GLDrawList):
                 L3_pitch     = GLObject.PropertyDefault )
 
     def glo_install_properties(self):
-        GLDrawList.glo_install_properties(self)
+        Viewer.GLDrawList.glo_install_properties(self)
 
         ## TLS Analysis
         self.glo_add_property(
@@ -3317,7 +3210,7 @@ class GLTLSGroup(GLDrawList):
               "desc":       "Isoprobability Magnitude",
               "catagory":   "TLS",
               "type":       "integer",
-              "range":      PROP_PROBABILTY_RANGE,
+              "range":      Viewer.PROP_PROBABILTY_RANGE,
               "default":    50,
               "action":     "recompile" })
         self.glo_add_property(
@@ -3339,7 +3232,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "U<sup>TLS</sup> Thermal Ellipsoid Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_Utls_ellipse" })
         self.glo_add_property(
@@ -3347,7 +3240,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "U<sup>TLS</sup> Thermal Peanut Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_Utls_rms" })
         self.glo_add_property(
@@ -3355,7 +3248,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "Screw Surface Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_surface" })
         self.glo_add_property(
@@ -3363,7 +3256,7 @@ class GLTLSGroup(GLDrawList):
               "desc":        "COR-Backbone Fan Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_fan" })
         self.glo_add_property(
@@ -3468,7 +3361,7 @@ class GLTLSGroup(GLDrawList):
 
         ## calculate L eignvalue displacements at the given
         ## probability levels
-        C = GAUSS3C[self.properties["adp_prob"]]
+        C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
 
         L1_rot  = self.properties["amplitude"] * C * calc_rmsd(self.properties["L1_eigen_val"]) * sin_tm
         L2_rot  = self.properties["amplitude"] * C * calc_rmsd(self.properties["L2_eigen_val"]) * sin_tm
@@ -3548,7 +3441,7 @@ class GLTLSGroup(GLDrawList):
             L_rho       = self.properties[Lx_rho]
             L_pitch     = self.properties[Lx_pitch]
 
-            C = GAUSS3C[self.properties["adp_prob"]]
+            C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
             L_rot = C * (L_scale * calc_rmsd(L_eigen_val))
 
             if L_eigen_val<=0.0:
@@ -3670,7 +3563,7 @@ class GLTLSGroup(GLDrawList):
         if numpy.allclose(Lx_eigen_val, 0.0):
             return
 
-        C = GAUSS3C[self.properties["adp_prob"]]
+        C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
         Lx_s = C * calc_rmsd(Lx_eigen_val * DEG2RAD2)
         if numpy.allclose(Lx_s, 0.0):
             return
@@ -3735,19 +3628,19 @@ class GLTLSGroup(GLDrawList):
         self.driver.glr_normalize_disable()
         self.driver.glr_lighting_disable()
 
-class GLTLSChain(GLDrawList):
+class GLTLSChain(Viewer.GLDrawList):
     """Collects a list of GLTLSGroup instances which are all in the
     same chain.
     """
     def __init__(self, **args):
-        GLDrawList.__init__(self)
+        Viewer.GLDrawList.__init__(self)
         self.glo_set_properties_id("GLTLSChain_%s" % (args["chain_id"]))
         self.glo_set_name("TLS Chain %s" % (args["chain_id"]))
         self.glo_add_update_callback(self.update_cb)
         self.glo_init_properties(**args)
 
     def glo_install_properties(self):
-        GLDrawList.glo_install_properties(self)
+        Viewer.GLDrawList.glo_install_properties(self)
 
         ## show/hide
         self.glo_add_property(
@@ -3897,7 +3790,7 @@ class GLTLSChain(GLDrawList):
               "desc":       "Isoprobability Magnitude",
               "catagory":   "TLS",
               "type":       "integer",
-              "range":      PROP_PROBABILTY_RANGE,
+              "range":      Viewer.PROP_PROBABILTY_RANGE,
               "default":    50,
               "action":     "" })
 
@@ -3920,7 +3813,7 @@ class GLTLSChain(GLDrawList):
               "desc":        "U<sup>TLS</sup> Thermal Ellipsoid Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "" })
         self.glo_add_property(
@@ -3928,7 +3821,7 @@ class GLTLSChain(GLDrawList):
               "desc":        "U<sup>TLS</sup> Thermal Peanut Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "" })
         self.glo_add_property(
@@ -3936,7 +3829,7 @@ class GLTLSChain(GLDrawList):
               "desc":        "Screw Displacement Surface Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":      PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "" })
         self.glo_add_property(
@@ -3944,7 +3837,7 @@ class GLTLSChain(GLDrawList):
               "desc":        "COR-Backbone Fan Opacity",
               "catagory":    "TLS",
               "type":        "float",
-              "range":       PROP_OPACITY_RANGE,
+              "range":       Viewer.PROP_OPACITY_RANGE,
               "default":     1.0,
               "action":      "recompile_fan" })
 
@@ -4007,10 +3900,10 @@ class GLTLSChain(GLDrawList):
         colori = 2
         for gl_tls_group in self.glo_iter_children():
             try:
-                tls_color = COLOR_NAMES_CAPITALIZED[colori]
+                tls_color = Colors.COLOR_NAMES_CAPITALIZED[colori]
             except IndexError:
                 colori = 2
-                tls_color = COLOR_NAMES_CAPITALIZED[colori]
+                tls_color = Colors.COLOR_NAMES_CAPITALIZED[colori]
                                                                 
             gl_tls_group.properties.update(
                 visible = True,

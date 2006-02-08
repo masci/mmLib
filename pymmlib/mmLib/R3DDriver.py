@@ -11,8 +11,7 @@ import copy
 import random
 import numpy
 
-from Gaussian       import *
-from Structure      import *
+import Gaussian
 
 
 ## constants
@@ -192,8 +191,8 @@ class Raster3DDriver(object):
                  "-gamma", "1.5"), 32768*4)
 
         ## XXX: hack
-        #r3dfil = open("/tmp/raytrace.r3d","w")
-        #stdin = TeeWrite(stdin)
+        r3dfil = open("/tmp/raytrace.r3d","w")
+        stdin = TeeWrite(stdin)
 
         ## add required hader for the render program
         self.glr_construct_header()
@@ -704,7 +703,7 @@ class Raster3DDriver(object):
 
         Umax = max(numpy.linalg.eigenvalues(Ur))
         try:
-            limit_radius = GAUSS3C[prob] * MARGIN * math.sqrt(Umax)
+            limit_radius = Gaussian.GAUSS3C[prob] * MARGIN * math.sqrt(Umax)
         except ValueError:
             limit_radius = 2.0
 
@@ -721,7 +720,7 @@ class Raster3DDriver(object):
              self.material_color_g,
              self.material_color_b,
              Q,
-             -GAUSS3C[prob]**2))
+             -Gaussian.GAUSS3C[prob]**2))
     
     def glr_Urms(self, position, U):
         """Renders the root mean square (one standard deviation) surface of
