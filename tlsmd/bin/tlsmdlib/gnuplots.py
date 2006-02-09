@@ -7,8 +7,7 @@
 import popen2
 import numpy
 
-from mmLib.mmTypes import *
-from mmLib import Colors, Gaussian, AtomMath
+from mmLib import Constants, Colors, Gaussian, AtomMath
 from mmLib.Extensions import TLS
 
 import misc
@@ -459,7 +458,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
                 except ValueError:
                     continue
             
-                b_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+                b_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 bdiff = atm.temp_factor - b_tls
 
                 ltmp = ["?" for x in range(ncols)]
@@ -510,7 +509,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         bdiff_max = 0.0
 
         for atm in tls_group:
-            b_iso_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
 
             bdiff_min = min(bdiff_min, bdiff)
@@ -530,7 +529,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
 
         ## count the bins
         for atm in tls_group:
-            b_iso_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
             bin = int((bdiff - bdiff_min)/ bin_width)
             bins[bin] += 1

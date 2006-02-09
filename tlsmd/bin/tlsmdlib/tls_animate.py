@@ -9,12 +9,10 @@ import string
 import math
 import numpy
 
-import conf
-
-from mmLib.mmTypes import *
 from mmLib import Structure, FileLoader, Gaussian, AtomMath
 from mmLib.Extensions import TLS
 
+import conf
 
 TWO_PI = 2.0 * math.pi
 

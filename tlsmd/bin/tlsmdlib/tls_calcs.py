@@ -3,9 +3,10 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+import math
 import numpy
 
-from mmLib.mmTypes import *
+from mmLib import Constants
 from mmLib.Extensions import TLS
 
 def calc_rmsd_tls_biso(tls_group):
@@ -19,7 +20,7 @@ def calc_rmsd_tls_biso(tls_group):
     msd_sum = 0.0
     
     for atm, uiso_tls in TLS.iter_itls_uiso(iter(tls_group), T, L, S, O):
-        msd_sum += (U2B*uiso_tls - atm.temp_factor)**2
+        msd_sum += (Constants.U2B*uiso_tls - atm.temp_factor)**2
         
     if len(tls_group)>0:
         msd = msd_sum / len(tls_group)
@@ -78,7 +79,7 @@ def calc_mean_biso_tls(chainopt, tlsopt):
                 if atm.include==False: continue
 
                 n += 1
-                b_sum_tls += U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+                b_sum_tls += Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
 
             if n>0:
                 biso[frag.ichain] =  b_sum_tls / n
@@ -114,7 +115,7 @@ def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
                 if atm.include==False: continue
 
                 n += 1
-                b_iso_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+                b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 delta = atm.temp_factor - b_iso_tls
                 delta2 += delta**2
 

@@ -5,13 +5,13 @@
 ## included as part of this package.
 """Program constants
 """
-from mmLib.mmTypes import *
+from mmLib import Constants
 
 ## unreasonably small T/L eigenvalues B<=0.01
-TSMALL = 0.1 * B2U
+TSMALL = 0.1 * Constants.B2U
 
 ## L RMSD <= 0.1 DEG
-LSMALL = (0.1)**2 * DEG2RAD2
+LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
 VERSION = "0.5.7"

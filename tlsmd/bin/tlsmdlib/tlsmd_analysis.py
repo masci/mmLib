@@ -6,11 +6,10 @@
 
 import sys
 import copy
-import string
+import math
 import numpy
 
-from mmLib.mmTypes import *
-from mmLib import FileLoader
+from mmLib import Constants, FileLoader
 from mmLib.Extensions import TLS
 
 import misc
@@ -109,7 +108,7 @@ def chain_to_xmlrpc_list(chain):
         atm_desc["y"] = atm.position[1]
         atm_desc["z"] = atm.position[2]
 
-        atm_desc["u_iso"] = B2U * atm.temp_factor
+        atm_desc["u_iso"] = Constants.B2U * atm.temp_factor
 
         U = atm.get_U()
         atm_desc["u11"] = U[0,0]
@@ -152,17 +151,22 @@ class TLSChainProcessor(object):
         """
         print "PROCESSING CHAIN: ", self.chain.chain_id
 
+        tlsmdfile = self.analysis.tlsmdfile
+
         pcomplete = 0
         pcomplete_old = 0
+
+        chain_id = self.chain.chain_id
         
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(self.chain, self.min_subsegment_len):
-            fit_info = self.fit_engine.lsq_fit_segment(frag_id1, frag_id2)
-            fit_info["method"] = "TLS"
-            fit_info["chain_id"] = self.chain.chain_id
-            fit_info["frag_id1"] = frag_id1
-            fit_info["frag_id2"] = frag_id2
-            
-            self.analysis.tlsmdfile.grh_append_tls_record(fit_info)
+
+            if tlsmdfile.grh_get_tls_record(chain_id, frag_id1, frag_id2) == None:
+                fit_info = self.fit_engine.lsq_fit_segment(frag_id1, frag_id2)
+                fit_info["method"]  = "TLS"
+                fit_info["chain_id"] = chain_id
+                fit_info["frag_id1"] = frag_id1
+                fit_info["frag_id2"] = frag_id2
+                tlsmdfile.grh_append_tls_record(fit_info)
             
             self.num_subsegments += 1
             pcomplete = round(100.0 * self.num_subsegments / self.total_num_subsegments)
@@ -197,7 +201,7 @@ class TLSOptimization(object):
         convert from A^2 units to B units.
         """
         nres = len(self.chain)
-        self.residual = U2B * math.sqrt(self.residual / nres)
+        self.residual = Constants.U2B * math.sqrt(self.residual / nres)
 
     def is_valid(self):
         """Return True if the optimization is valid; otherwise, return False.
@@ -534,14 +538,19 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             msd_abo = hdict["hdelta_abo"]
             msd_Lab = hdict["msd_c"]
 
-            print "SEGMENT A(%d-%d): msd=%f rmsd=%f" % (istarta, ienda, U2B**2 * hdict["msd_a"],  U2B * math.sqrt(hdict["msd_a"]))
-            print "SEGMENT B(%d-%d): msd=%f rmsd=%f" % (istartb, iendb, U2B**2 * hdict["msd_b"],  U2B * math.sqrt(hdict["msd_b"]))
-            print "HINGE VALS: msd_ab=%f rmsd_ab=%f" % (U2B**2 * msd_ab, U2B * math.sqrt(msd_ab)) 
-            print "HINGE VALS: msd_abo=%f rmsd_abo=%f" % (U2B**2 * msd_abo, U2B * math.sqrt(msd_abo))
-            print "L TENSOR: msd_Lab=%f rmsd_Lab=%f" % (RAD2DEG2**2 *  msd_Lab, RAD2DEG2 * math.sqrt(msd_Lab))
+            print "SEGMENT A(%d-%d): msd=%f rmsd=%f" % (
+                istarta, ienda, Constants.U2B**2 * hdict["msd_a"],  Constants.U2B * math.sqrt(hdict["msd_a"]))
+            print "SEGMENT B(%d-%d): msd=%f rmsd=%f" % (
+                istartb, iendb, Constants.U2B**2 * hdict["msd_b"],  Constants.U2B * math.sqrt(hdict["msd_b"]))
+            print "HINGE VALS: msd_ab=%f rmsd_ab=%f" % (
+                Constants.U2B**2 * msd_ab, Constants.U2B * math.sqrt(msd_ab)) 
+            print "HINGE VALS: msd_abo=%f rmsd_abo=%f" % (
+                Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo))
+            print "L TENSOR: msd_Lab=%f rmsd_Lab=%f" % (
+                Constants.RAD2DEG2**2 *  msd_Lab, Constants.RAD2DEG2 * math.sqrt(msd_Lab))
             print
 
-            fil.write("%s %f %f\n" % (frag_id2a, U2B**2 * msd_abo, U2B * math.sqrt(msd_abo)))
+            fil.write("%s %f %f\n" % (frag_id2a, Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo)))
 
         fil.close()
 
@@ -655,8 +664,8 @@ class TLSMDAnalysis(object):
                 
                 for atm, Utls in tls_group.iter_atm_Utls():
                     bresi = atm.temp_factor
-                    atm.temp_factor = bresi + (U2B * numpy.trace(Utls) / 3.0)
-                    atm.U = (B2U * bresi * numpy.identity(3, float)) + Utls
+                    atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
+                    atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
             
             print
 

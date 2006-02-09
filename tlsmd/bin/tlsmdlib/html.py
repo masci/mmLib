@@ -18,8 +18,7 @@ import Image
 import ImageDraw
 
 ## mmLib
-from mmLib.mmTypes import *
-from mmLib import Colors, Viewer, R3DDriver, Structure, Gaussian, FileLoader
+from mmLib import Constants, Colors, Viewer, R3DDriver, Structure, Gaussian, FileLoader
 from mmLib.Extensions import TLS
 
 ## tlsmdlib
@@ -218,17 +217,17 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
         tls_info  = tls["tls_info"]
         mtls_info = tls["model_tls_info"]
 
-        L1 = mtls_info["L1_eigen_val"] * RAD2DEG2
-        L2 = mtls_info["L2_eigen_val"] * RAD2DEG2
-        L3 = mtls_info["L3_eigen_val"] * RAD2DEG2
+        L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
+        L2 = mtls_info["L2_eigen_val"] * Constants.RAD2DEG2
+        L3 = mtls_info["L3_eigen_val"] * Constants.RAD2DEG2
 
         if tls_model=="ISOT":
-            t_data = "%5.1f" % (mtls_info["Tr1_eigen_val"] * U2B)
+            t_data = "%5.1f" % (mtls_info["Tr1_eigen_val"] * Constants.U2B)
 
         else:
-            Tr1 = mtls_info["Tr1_eigen_val"] * U2B
-            Tr2 = mtls_info["Tr2_eigen_val"] * U2B
-            Tr3 = mtls_info["Tr3_eigen_val"] * U2B
+            Tr1 = mtls_info["Tr1_eigen_val"] * Constants.U2B
+            Tr2 = mtls_info["Tr2_eigen_val"] * Constants.U2B
+            Tr3 = mtls_info["Tr3_eigen_val"] * Constants.U2B
             t_data = '%5.1f, %5.1f, %5.1f' % (Tr1, Tr2, Tr3),
 
         ## alternate row background color
@@ -863,7 +862,7 @@ class HTMLReport(Report):
                 old_temp_factor[atm] = atm.temp_factor
                 old_U[atm] = atm.U
 
-                atm.temp_factor = U2B * (numpy.trace(Utls)/3.0)
+                atm.temp_factor = Constants.U2B * (numpy.trace(Utls)/3.0)
                 atm.U = Utls
 
         FileLoader.SaveStructure(fil=pdb_path, struct=self.struct)
@@ -1095,7 +1094,7 @@ class HTMLReport(Report):
                     for atm, Utls in tls_group.iter_atm_Utls():
                         old_temp_factor[atm] = atm.temp_factor
                         old_U[atm] = atm.U
-                        atm.temp_factor = U2B * (Utls[0,0] + Utls[1,1] + Utls[2,2]) / 3.0
+                        atm.temp_factor = Constants.U2B * (Utls[0,0] + Utls[1,1] + Utls[2,2]) / 3.0
                         atm.U = Utls
 
             ## save the structure file
