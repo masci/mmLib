@@ -10,14 +10,13 @@ import time
 import socket
 import string
 import glob
-
 import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
+import numpy
 
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Extensions.TLS import *
+from mmLib import Structure, FileLoader, Constants
+from mmLib.Extensions import TLS
 
 ## GLOBALS
 from cgiconfig import *
@@ -34,7 +33,7 @@ class UInvalid(Exception):
     """
     def __init__(self, atom, U):
         Exception.__init__(self)
-        self.text = "%s eigenvalues(%s)" % (str(atom), str(eigenvalues(U2B*U))) 
+        self.text = "%s eigenvalues(%s)" % (str(atom), str(numpy.linalg.eigenvalues(Constants.U2B*U))) 
 
     def __str__(self):
         return self.text
@@ -47,15 +46,15 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     os.umask(022)
     
     ## load structure
-    struct = LoadStructure(fil = xyzin)
+    struct = FileLoader.LoadStructure(fil = xyzin)
 
     ## load and construct TLS groups
     tls_group_list = []
 
-    tls_file = TLSFile()
-    tls_file.set_file_format(TLSFileFormatTLSOUT())
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
-    tls_file_format = TLSFileFormatTLSOUT()
+    tls_file_format = TLS.TLSFileFormatTLSOUT()
 
     for tlsin in tlsin_list:
         tls_desc_list = tls_file_format.load(open(tlsin, "r"))
@@ -79,8 +78,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
         for atm, Utls in tls_group.iter_atm_Utls():
             for aatm in atm.iter_alt_loc():
-                tls_tf = trace(Utls)/3.0
-                ref_tf = trace(aatm.get_U())/3.0
+                tls_tf = numpy.trace(Utls)/3.0
+                ref_tf = numpy.trace(aatm.get_U())/3.0
 
                 n += 1
                 sum_diff2 += (tls_tf - ref_tf)**2
@@ -100,13 +99,13 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         
         for atm, Utls in tls_group.iter_atm_Utls():
             for aatm in atm.iter_alt_loc():
-                tls_tf = trace(Utls)/3.0
-                ref_tf = trace(aatm.get_U())/3.0
+                tls_tf = numpy.trace(Utls)/3.0
+                ref_tf = numpy.trace(aatm.get_U())/3.0
 
                 ntotal += 1
                 deviation = math.sqrt((tls_tf - ref_tf)**2)
                 
-                if deviation<=rmsd:
+                if deviation <= rmsd:
                     nrmsd += 1
 
         ## reduce the TLS group T tensor by min_Uiso so that
@@ -115,12 +114,12 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
         ## we must rotate the T tensor to its primary axes before
         ## subtracting min_Uiso magnitude from it
-        (T_eval, TR) = eigenvectors(tls_group.T)
-        T = matrixmultiply(TR, matrixmultiply(tls_group.T, transpose(TR)))
+        (T_eval, TR) = numpy.linalg.eigenvectors(tls_group.T)
+        T = numpy.matrixmultiply(TR, numpy.matrixmultiply(tls_group.T, numpy.transpose(TR)))
 
-        assert allclose(T[0,1], 0.0)
-        assert allclose(T[0,2], 0.0)
-        assert allclose(T[1,2], 0.0)
+        assert numpy.allclose(T[0,1], 0.0)
+        assert numpy.allclose(T[0,2], 0.0)
+        assert numpy.allclose(T[1,2], 0.0)
 
         T[0,0] = T[0,0] - min_Uiso
         T[1,1] = T[1,1] - min_Uiso
@@ -138,7 +137,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         T[2,2] = T[2,2] - sub_T
         
         ## rotate T back to original orientation
-        tls_group.T = matrixmultiply(transpose(TR), matrixmultiply(T, TR))
+        tls_group.T = numpy.matrixmultiply(numpy.transpose(TR), numpy.matrixmultiply(T, TR))
 
         ## reset the TLS tensor values in the TLSDesc object so they can be saved
         tls_group.tls_desc.set_tls_group(tls_group)
@@ -146,8 +145,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         ## set atm.temp_factor
         for atm, Utls in tls_group.iter_atm_Utls():
             for aatm in atm.iter_alt_loc():
-                tls_tf = trace(Utls)/3.0
-                ref_tf = trace(aatm.get_U())/3.0
+                tls_tf = numpy.trace(Utls)/3.0
+                ref_tf = numpy.trace(aatm.get_U())/3.0
                 
                 if ref_tf>tls_tf:
                     aatm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*U2B
@@ -156,7 +155,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
                     aatm.temp_factor = (add_Uiso) * U2B
                     aatm.U = None
 
-    SaveStructure(fil=xyzout, struct=struct)
+    FileLoader.SaveStructure(fil=xyzout, struct=struct)
     tls_file.save(open(tlsout, "w"))
     
 

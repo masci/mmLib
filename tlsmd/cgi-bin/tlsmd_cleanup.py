@@ -13,9 +13,6 @@ import string
 
 import xmlrpclib
 
-from mmLib.Structure  import *
-from mmLib.FileLoader import *
-
 SECS_IN_DAY = float(60*60*24)
 DELETE_DAYS = 12
 
@@ -56,8 +53,6 @@ def check_remove(jdict):
 
     email = jdict.get("email")
     if email: pass
-#        if email.count("jpaint@u.washington.edu")>0:
-#            return False
 
     days = round((time.time() - submit_time) / SECS_IN_DAY)
     jdict["days"] = days
