@@ -1107,7 +1107,7 @@ class HTMLReport(Report):
                 atm.U = old_U[atm]
 
             ## generate the TLS segmentation alignment plot for all chains
-            plot = segment_plot.TLSSegmentAlignmentPlot()
+            plot = sequence_plot.TLSSegmentAlignmentPlot()
             chain_id_list = []
 
             for chainopt in chainopt_list:
@@ -1354,7 +1354,7 @@ class ChainNTLSAnalysisReport(Report):
         """histogram of atomic U_ISO - U_TLS_ISO
         """
         
-        his = UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
+        his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
 
         title = 'Distribution Histogram of TLS Group %s%s-%s%s' % (self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
         

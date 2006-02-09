@@ -24,7 +24,7 @@ class GlobalConfiguration(object):
         self.tls_model = "ISOT"
         self.weight_model = "UNIT"
         self.include_atoms = "ALL"
-        self.min_subsegment_size = 6
+        self.min_subsegment_size = 4
         self.adp_prob = ADP_PROB
         self.nparts = NPARTS
         self.verbose = False
