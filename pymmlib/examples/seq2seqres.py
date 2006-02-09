@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import os, sys
 
-from mmLib.PDB     import *
-from mmLib.Library import *
+from mmLib import PDB, Library
+
 
 AMINO_ACID13_DICT = {
     'A': 'ALA', 'C': 'CYS', 'E': 'GLU', 'D': 'ASP', 'G': 'GLY',
@@ -18,7 +18,7 @@ def usage():
     sys.exit(-1)
 
 def main(chain_id, sequence):
-    pdb_file = PDBFile()
+    pdb_file = PDB.PDBFile()
 
     ## parse sequence into 
     sequence3  = []
@@ -50,7 +50,7 @@ def main(chain_id, sequence):
             serial += 1
             res_num = 1
             
-            seqres = SEQRES()
+            seqres = PDB.SEQRES()
             pdb_file.append(seqres)
             
             seqres["serNum"] = serial

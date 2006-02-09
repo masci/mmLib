@@ -12,7 +12,8 @@ import random
 import math
 import numpy
 
-from mmTypes import *
+import mmTypes
+import Constants
 import Gaussian
 import AtomMath
 
@@ -205,9 +206,9 @@ class Raster3DDriver(object):
             stdin.write("\n")
             self.glr_write_objects(stdin)
         except IOError, err:
-            warning("IOError while executing %s" % (self.render_program_path))
-	    warning(str(err))
-	    warning(stderr.read())
+            mmTypes.warning("IOError while executing %s" % (self.render_program_path))
+	    mmTypes.warning(str(err))
+	    mmTypes.warning(stderr.read())
             return
 
         ## close stdin to the render program
@@ -365,7 +366,7 @@ class Raster3DDriver(object):
     def glr_rotate_axis(self, deg, axis):
         """
         """
-        R = AtomMath.rmatrixu(axis, deg*DEG2RAD)
+        R = AtomMath.rmatrixu(axis, deg*Constants.DEG2RAD)
         self.glr_mult_matrix_R(R)
 
     def glr_lighting_enable(self):

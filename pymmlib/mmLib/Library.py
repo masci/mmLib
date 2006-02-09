@@ -9,7 +9,6 @@ import os
 import sys
 import types
 
-from mmTypes import *
 import mmCIF
 
 
@@ -356,7 +355,8 @@ def library_construct_monomer_desc(res_name):
         torsion_angles = mmlib_cif_data.get_table("torsion_angles")
         if torsion_angles!=None:
             for cif_row in torsion_angles:
-                mon_desc.torsion_angle_dict[cif_row["name"]] = (cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              
+                mon_desc.torsion_angle_dict[cif_row["name"]] = (
+                    cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              
 
     ## set some derived flags on the monomer description
     mon_type = mon_desc.type.upper()

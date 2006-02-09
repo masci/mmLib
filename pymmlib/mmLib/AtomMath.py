@@ -7,7 +7,7 @@
 import math
 import numpy
 
-from mmTypes import *
+import Constants
 
 
 ##
@@ -337,9 +337,9 @@ def calc_DP2uij(U, V):
     det_invU = numpy.linalg.determinant(invU)
     det_invV = numpy.linalg.determinant(invV)
 
-    Pu2 = math.sqrt( det_invU / (64.0 * PI3) )
-    Pv2 = math.sqrt( det_invV / (64.0 * PI3) )
-    Puv = math.sqrt((det_invU * det_invV) / (8.0*PI3 * determinant(invU + invV)) )
+    Pu2 = math.sqrt( det_invU / (64.0 * Constants.PI3) )
+    Pv2 = math.sqrt( det_invV / (64.0 * Constants.PI3) )
+    Puv = math.sqrt((det_invU * det_invV) / (8.0*Constants.PI3 * numpy.linalg.determinant(invU + invV)))
 
     dP2 = Pu2 + Pv2 - (2.0 * Puv)
     

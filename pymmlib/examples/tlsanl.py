@@ -9,10 +9,8 @@ import sys
 import re
 import string
 
-from mmLib.PDB import PDBFile
-from mmLib.Structure import *
-from mmLib.FileLoader import LoadStructure, SaveStructure
-from mmLib.Extensions.TLS import *
+from mmLib import Constants, FileLoader, Structure, PDB
+from mmLib.Extensions import TLS
 
 
 def usage():
@@ -43,8 +41,8 @@ def print_TLS(text, Tt, T, Lt, L, St, S):
     print "".ljust(5) + s0.ljust(24) + s1.ljust(24) + s2
     print "     (A^2)                   (DEG^2)                 (A DEG)"
 
-    L = L * RAD2DEG2
-    S = S * RAD2DEG
+    L = L * Constants.RAD2DEG2
+    S = S * Constants.RAD2DEG
 
     for i in range(3):
         print "   %s   %s   %s" % (astr(T[i]), astr(L[i]), astr(S[i]))
@@ -67,7 +65,7 @@ def print_TLSGroup(tls):
     print "MEAN TRANSLATION (TRACE/3)                %.3f" % (
         trace(tls.T)/3.0)
     print "MEAN LIBRATION   (TRACE/3)                %.3f" % (
-        trace(tls.L * RAD2DEG2)/3.0)
+        trace(tls.L * Constants.RAD2DEG2)/3.0)
     print
 
     print_TLS(
@@ -101,8 +99,8 @@ def print_TLSGroup(tls):
 
     print
     print "TRACE(T')/3.0   (A^2): %.3f" % (trace(calcs["T'"])/3.0)
-    print "TRACE(L')/3.0 (DEG^2): %.3f" % (trace(calcs["L'"])/3.0*RAD2DEG2)
-    print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*RAD2DEG)
+    print "TRACE(L')/3.0 (DEG^2): %.3f" % (trace(calcs["L'"])/3.0*Constants.RAD2DEG2)
+    print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*Constants.RAD2DEG)
     print
 
     print
@@ -128,16 +126,16 @@ def print_TLSGroup(tls):
         ("L2", "L2_pitch"),
         ("L3", "L3_pitch")]:
 
-        print "%s PITCH (A/DEG): %10.3f" % (Lx, calcs[Lx_pitch]/RAD2DEG)
+        print "%s PITCH (A/DEG): %10.3f" % (Lx, calcs[Lx_pitch]/Constants.RAD2DEG)
 
 
 def main(pdb_path, tls_out_path, calc_tls):
 
-    struct = LoadStructure(fil = pdb_path)
+    struct = FileLoader.LoadStructure(fil = pdb_path)
 
     ## calculate one set of TLS tensors from all the amino acid atoms
     if calc_tls == True:
-        tls = TLSGroup()
+        tls = TLS.TLSGroup()
 
         for res in struct.iter_amino_acids():
             for atm in res.iter_atoms():
@@ -148,11 +146,11 @@ def main(pdb_path, tls_out_path, calc_tls):
         print_TLSGroup(tls)
 
     else:
-        tls_file = TLSFile()
+        tls_file = TLS.TLSFile()
 
         ## get TLS groups from REMARK statments in PDB file
         if tls_out_path == None:
-            tls_file.set_file_format(TLSFileFormatPDB())
+            tls_file.set_file_format(TLS.TLSFileFormatPDB())
             try:
                 tls_file.load(open(pdb_path, "r"), pdb_path)
             except IOError, e:
@@ -160,7 +158,7 @@ def main(pdb_path, tls_out_path, calc_tls):
             
         ## or get TLS groups from REFMAC TLSOUT file
         else:
-            tls_file.set_file_format(TLSFileFormatTLSOUT())
+            tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
             try:
                 tls_file.load(open(tls_out_path, "r"), tls_out_path)
             except IOError, e:

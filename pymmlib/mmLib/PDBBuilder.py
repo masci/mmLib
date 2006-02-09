@@ -6,8 +6,7 @@
 """
 from __future__ import generators
 
-from mmTypes import *
-
+import mmTypes
 import Library
 import PDB
 import mmCIF
@@ -75,11 +74,117 @@ HELIX_CLASS_LIST = [
     ]
 
 
+def setmap(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the value from smap/skey/
+    """
+    if smap.has_key(skey):
+        dmap[dkey] = str(smap[skey])
+        return True
+    return False
+
+
+def setmaps(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the string value from smap/skey/
+    """
+    if smap.has_key(skey):
+        try:
+            dmap[dkey] = str(smap[skey])
+        except ValueError:
+            print "setmaps(): ValueError"
+            return False
+        return True
+    return False
+
+
+def setmapi(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the integer value from smap/skey.
+    """
+    if smap.has_key(skey) and smap[skey]!="":
+        try:
+            dmap[dkey] = int(smap[skey])
+        except ValueError:
+            print "setmapi(): ValueError"
+            return False
+        return True
+    return False
+
+
+def setmapf(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the float value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    if smap.has_key(skey) and smap[skey]!="":
+        try:
+            dmap[dkey] = float(smap[skey])
+        except ValueError:
+            print "setmapf(): ValueError dmap[%s]=smap[%s]=%s" % (
+                dkey, skey, smap[skey])
+            return False
+        return True
+    return False
+
+
+def setmapsd(smap, skey, dmap, dkey):
+    """Sets the dmap/dkey with the string value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = str(smap[skey])
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default==None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
+def setmapid(smap, skey, dmap, dkey, default=None):
+    """Sets the dmap/dkey with the integer value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = int(smap[skey])
+        return
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default==None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
+def setmapfd(smap, skey, dmap, dkey, default=None):
+    """Sets the dmap/dkey with the float value from smap/skey or
+    default if not smap/skey value is found.
+    """
+    try:
+        dmap[dkey] = float(smap[skey])
+        return
+    except ValueError:
+        pass
+    except KeyError:
+        pass
+
+    if default==None:
+        return False
+
+    dmap[dkey] = default
+    return True
+
+
 class PDBStructureBuilder(StructureBuilder.StructureBuilder):
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
-        warning("PDB::%s %s" % (rec_name, text))
+        mmTypes.warning("PDB::%s %s" % (rec_name, text))
 
     def get_fragment_id(self, rec, res_seq="resSeq", icode="iCode"):
         fragment_id = None
@@ -1136,12 +1241,12 @@ class PDBFileBuilder(object):
             if res:
                 ter_rec = PDB.TER()
                 self.pdb_file.append(ter_rec)
-                fid = FragmentID(res.fragment_id)
+                res_seq, icode = Structure.fragment_id_split(res.fragment_id)
                 ter_rec["serial"]  = self.next_serial_number()
                 ter_rec["resName"] = res.res_name
                 ter_rec["chainID"] = res.chain_id
-                ter_rec["resSeq"]  = fid.res_seq
-                ter_rec["iCode"]   = fid.icode
+                ter_rec["resSeq"]  = res_seq
+                ter_rec["iCode"]   = icode
 
         ## hetatm records for non-standard groups
         for chain in self.struct.iter_chains():
@@ -1162,13 +1267,13 @@ class PDBFileBuilder(object):
         self.pdb_file.append(atom_rec)
 
         serial = self.new_atom_serial(atm)
-        fid = FragmentID(atm.fragment_id)
+        res_seq, icode = Structure.fragment_id_split(atm.fragment_id)
 
         atom_rec["serial"]      = serial
         atom_rec["chainID"]     = atm.chain_id
         atom_rec["resName"]     = atm.res_name
-        atom_rec["resSeq"]      = fid.res_seq
-        atom_rec["iCode"]       = fid.icode
+        atom_rec["resSeq"]      = res_seq
+        atom_rec["iCode"]       = icode
         atom_rec["name"]        = atm.name
         atom_rec["element"]     = atm.element
         atom_rec["altLoc"]      = atm.alt_loc

@@ -7,8 +7,7 @@
 import math
 import numpy
 
-from mmTypes import *
-
+import mmTypes
 import AtomMath
 import SpaceGroups
 
@@ -140,7 +139,7 @@ class UnitCell(object):
 
         orth_to_frac = numpy.array([ [f11, f12, f13],
                                      [0.0, f22, f23],
-                                     [0.0, 0.0, f33] ])
+                                     [0.0, 0.0, f33] ], float)
         
         return orth_to_frac
         
@@ -166,7 +165,7 @@ class UnitCell(object):
 
         frac_to_orth = numpy.array([ [o11, o12, o13],
                                      [0.0, o22, o23],
-                                     [0.0, 0.0, o33] ])
+                                     [0.0, 0.0, o33] ], float)
 
         return frac_to_orth
 
@@ -174,7 +173,7 @@ class UnitCell(object):
         """Calculates and returns the fractional coordinate vector of
         orthogonal vector v.
         """
-        return matrixmultiply(self.orth_to_frac, v)
+        return numpy.matrixmultiply(self.orth_to_frac, v)
 
     def calc_frac_to_orth(self, v):
         """Calculates and returns the orthogonal coordinate vector of
@@ -186,19 +185,19 @@ class UnitCell(object):
         """Calculates the orthogonal space symmetry operation (return SymOp)
         given a fractional space symmetry operation (argument SymOp).
         """
-        RF  = matrixmultiply(symop.R, self.orth_to_frac)
-        ORF = matrixmultiply(self.frac_to_orth, RF)
-        Ot  = matrixmultiply(self.frac_to_orth, symop.t)
+        RF  = numpy.matrixmultiply(symop.R, self.orth_to_frac)
+        ORF = numpy.matrixmultiply(self.frac_to_orth, RF)
+        Ot  = numpy.matrixmultiply(self.frac_to_orth, symop.t)
         return SpaceGroups.SymOp(ORF, Ot)
 
     def calc_orth_symop2(self, symop):
         """Calculates the orthogonal space symmetry operation (return SymOp)
         given a fractional space symmetry operation (argument SymOp).
         """
-        RF  = matrixmultiply(symop.R, self.orth_to_frac)
-        ORF = matrixmultiply(self.frac_to_orth, RF)
-        Rt  = matrixmultiply(symop.R, symop.t)
-        ORt = matrixmultiply(self.frac_to_orth, Rt)
+        RF  = numpy.matrixmultiply(symop.R, self.orth_to_frac)
+        ORF = numpy.matrixmultiply(self.frac_to_orth, RF)
+        Rt  = numpy.matrixmultiply(symop.R, symop.t)
+        ORt = numpy.matrixmultiply(self.frac_to_orth, Rt)
         
         return SpaceGroups.SymOp(ORF, ORt)
 
@@ -240,35 +239,35 @@ class UnitCell(object):
         """
         ## compute the centroid of the structure
         n = 0
-        cent = numpy.zeros(3, numpy.float)
+        cent = numpy.zeros(3, float)
         for atm in struct.iter_all_atoms():
             n    += 1
             cent += atm.position
         centroid = cent / n
 
         ccell = self.calc_cell(self.calc_orth_to_frac(centroid))
-        centroid_cell = numpy.array(ccell, numpy.float)
+        centroid_cell = numpy.array(ccell, float)
 
         ## compute the distance from the centroid to the
         ## farthest point from it in the structure
         max_dist = 0.0
         for frag in struct.iter_amino_acids():
             for atm in frag.iter_atoms():
-                dist = length(atm.position - centroid)
+                dist = AtomMath.length(atm.position - centroid)
                 max_dist = max(max_dist, dist)
         max_dist2 = 2.0 * max_dist + 5.0
 
         for symop in self.space_group.iter_symops():
             for i, j, k in self.cell_search_iter():
 
-                 cell_t  = numpy.array([i, j, k], numpy.float)
+                 cell_t  = numpy.array([i, j, k], float)
                  symop_t = SpaceGroups.SymOp(symop.R, symop.t+cell_t)
 
                  xyz       = self.calc_orth_to_frac(centroid)
                  xyz_symm  = symop_t(xyz)
                  centroid2 = self.calc_frac_to_orth(xyz_symm)
                  
-                 if length(centroid - centroid2)<=max_dist2:
+                 if AtomMath.length(centroid - centroid2)<=max_dist2:
                      yield self.calc_orth_symop(symop_t)
 
 
@@ -294,8 +293,8 @@ def main():
     uc = UnitCell(7.877, 7.210, 7.891, 105.563, 116.245, 79.836)
 
     e = numpy.array([[1.0, 0.0, 0.0],
-               [0.0, 1.0, 0.0],
-               [0.0, 0.0, 1.0]])
+                     [0.0, 1.0, 0.0],
+                     [0.0, 0.0, 1.0]], float)
 
 
     print uc

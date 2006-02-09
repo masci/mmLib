@@ -8,9 +8,8 @@
 import sys
 import getopt
 
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Extensions.TLS import *
+from mmLib import Constants, Structure, FileLoader
+from mmLib.Extension import TLS
 
 def usage():
     print "tlsb2aniso.py <tlsin> <struct-in> <struct-out>"
@@ -21,12 +20,12 @@ def usage():
     print
 
 def main(tlsin, struct_in, struct_out):
-    struct = LoadStructure(fil = struct_in)
+    struct = FileLoader.LoadStructure(fil = struct_in)
 
     ## make the TLS groups
     fil = open(tlsin, "r")
-    tls_file = TLSFile()
-    tls_file.set_file_format(TLSFileFormatTLSOUT())
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
     tls_file.load(fil)
     
     tls_group_list = []
@@ -38,11 +37,11 @@ def main(tlsin, struct_in, struct_out):
 
     for tls in tls_group_list:
         for atm, Utls in tls.iter_atm_Utls():
-            atm.U = Utls + (B2U * atm.temp_factor * numpy.identity(3, float))
-            atm.temp_factor = U2B * (numpy.trace(atm.U)/3.0)
+            atm.U = Utls + (Constants.B2U * atm.temp_factor * numpy.identity(3, float))
+            atm.temp_factor = Constants.U2B * (numpy.trace(atm.U)/3.0)
 
     ## save the struct
-    SaveStructure(fil=struct_out, struct=struct)
+    FileLoader.SaveStructure(fil=struct_out, struct=struct)
 
 
 if __name__ == "__main__":

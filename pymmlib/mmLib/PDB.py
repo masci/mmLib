@@ -13,9 +13,9 @@ import fpformat
 import types
  
 try:
-    from mmTypes import *
+    from mmTypes import OpenFile
 except ImportError:
-    OpenFile = open    
+    OpenFile = open
 
 
 class PDBError(Exception):
@@ -131,18 +131,12 @@ class PDBRecord(dict):
                 try:
                     s = int(s)
                 except ValueError:
-                    if s.strip() != "":
-                        warning("PDB parser: int(%s) failed on record" % (s))
-                        warning(str(line))
                     continue
 
             elif ftype.startswith("float"):
                 try:
                     s = float(s)
                 except ValueError:
-                    if s.strip() != "":
-                        warning("PDB parser: float(%s) failed on record" % (s))
-                        warning(str(line))
                     continue
 
             self[field] = s
@@ -1529,7 +1523,6 @@ class PDBFile(list):
             try:
                 pdb_record_class = PDBRecordMap[rname]
             except KeyError:
-                debug("PDB parser: unknown record type: %s"%(rname))
                 continue
 
             ## create/add/parse the record

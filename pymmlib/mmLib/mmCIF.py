@@ -15,7 +15,7 @@ import copy
 import types
 
 try:
-    from mmTypes import *
+    from mmTypes import OpenFile
 except ImportError:
     OpenFile = open
 

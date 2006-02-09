@@ -8,10 +8,10 @@ from __future__ import generators
 
 import types
 import copy
+import math
 import numpy
 
-from mmTypes import *
-
+import Constants
 import GeometryDict
 import AtomMath
 import Library
@@ -3016,7 +3016,7 @@ class Atom(object):
         """
         if self.temp_factor==None:
             return None
-        return numpy.identity(3, float) * (self.temp_factor * B2U)
+        return numpy.identity(3, float) * (self.temp_factor * Constants.B2U)
 
     def get_U(self):
         """Returns the Atoms's U tensor if it exists, otherwise returns

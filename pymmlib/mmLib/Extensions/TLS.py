@@ -9,10 +9,10 @@ import re
 import sys
 import fpformat
 import string
+import math
 import numpy
 
-from mmLib.mmTypes import *
-from mmLib import AtomMath, PDB, Structure, Viewer, Gaussian, Colors
+from mmLib import Constants, mmTypes, AtomMath, PDB, Structure, Viewer, Gaussian, Colors
 
 
 
@@ -84,8 +84,8 @@ class TLSGroupDesc(object):
         """Sets the L tensor from the component arguments.  Units are in
         square Degrees.
         """
-        self.set_L(l11*DEG2RAD2, l22*DEG2RAD2, l33*DEG2RAD2,
-                   l12*DEG2RAD2, l13*DEG2RAD2, l23*DEG2RAD2)
+        self.set_L(l11*Constants.DEG2RAD2, l22*Constants.DEG2RAD2, l33*Constants.DEG2RAD2,
+                   l12*Constants.DEG2RAD2, l13*Constants.DEG2RAD2, l23*Constants.DEG2RAD2)
 
     def set_S(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the S tensor from the component arguments.  Units are in
@@ -103,9 +103,9 @@ class TLSGroupDesc(object):
         """Sets the S tensor from the component arguments.  Units are in
         Degrees*Angstroms.  The trace of S is set to 0.0.
         """
-        self.set_S(s2211*DEG2RAD, s1133*DEG2RAD, s12*DEG2RAD,
-                   s13*DEG2RAD,   s23*DEG2RAD,   s21*DEG2RAD,
-                   s31*DEG2RAD,   s32*DEG2RAD)
+        self.set_S(s2211*Constants.DEG2RAD, s1133*Constants.DEG2RAD, s12*Constants.DEG2RAD,
+                   s13*Constants.DEG2RAD,   s23*Constants.DEG2RAD,   s21*Constants.DEG2RAD,
+                   s31*Constants.DEG2RAD,   s32*Constants.DEG2RAD)
 
     def set_tls_group(self, tls_group):
         """Sets the TLSGroupDesc tensor values from the TLSGroup instance.
@@ -168,13 +168,13 @@ class TLSGroupDesc(object):
 
             chain1 = struct.get_chain(chain_id1)
             if chain1==None:
-                warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
+                mmTypes.warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
                 continue
 
             try:
                 seg = chain1[frag_id1:frag_id2]
             except KeyError:
-                warning("iter_tls_atoms():unable to find segment={%s..%s}" % (frag_id1, frag_id2))
+                mmTypes.warning("iter_tls_atoms():unable to find segment={%s..%s}" % (frag_id1, frag_id2))
 
             for atm in seg.iter_all_atoms():
                 yield atm
@@ -684,26 +684,26 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         if tls_desc.L!=None:
             ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
             listx.append("L   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
-                tls_desc.L[0,0] * RAD2DEG2,
-                tls_desc.L[1,1] * RAD2DEG2,
-                tls_desc.L[2,2] * RAD2DEG2,
-                tls_desc.L[0,1] * RAD2DEG2,
-                tls_desc.L[0,2] * RAD2DEG2,
-                tls_desc.L[1,2] * RAD2DEG2))
+                tls_desc.L[0,0] * Constants.RAD2DEG2,
+                tls_desc.L[1,1] * Constants.RAD2DEG2,
+                tls_desc.L[2,2] * Constants.RAD2DEG2,
+                tls_desc.L[0,1] * Constants.RAD2DEG2,
+                tls_desc.L[0,2] * Constants.RAD2DEG2,
+                tls_desc.L[1,2] * Constants.RAD2DEG2))
 
         if tls_desc.S!=None:
             ## REFMAC ORDER:
             ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
             listx.append(
                 "S   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
-                (tls_desc.S[1,1] - tls_desc.S[0,0]) * RAD2DEG,
-                (tls_desc.S[0,0] - tls_desc.S[2,2]) * RAD2DEG,
-                tls_desc.S[0,1] * RAD2DEG,
-                tls_desc.S[0,2] * RAD2DEG,
-                tls_desc.S[1,2] * RAD2DEG,
-                tls_desc.S[1,0] * RAD2DEG,
-                tls_desc.S[2,0] * RAD2DEG,
-                tls_desc.S[2,1] * RAD2DEG))
+                (tls_desc.S[1,1] - tls_desc.S[0,0]) * Constants.RAD2DEG,
+                (tls_desc.S[0,0] - tls_desc.S[2,2]) * Constants.RAD2DEG,
+                tls_desc.S[0,1] * Constants.RAD2DEG,
+                tls_desc.S[0,2] * Constants.RAD2DEG,
+                tls_desc.S[1,2] * Constants.RAD2DEG,
+                tls_desc.S[1,0] * Constants.RAD2DEG,
+                tls_desc.S[2,0] * Constants.RAD2DEG,
+                tls_desc.S[2,1] * Constants.RAD2DEG))
 
         return "\n".join(listx)
 
@@ -836,7 +836,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
 
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
-    LSMALL = 0.5 * DEG2RAD2
+    LSMALL = 0.5 * Constants.DEG2RAD2
     
     rdict = {}
 
@@ -1292,7 +1292,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
               with the origin shifted to the center of reaction.
     """
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
-    LSMALL = 0.5 * DEG2RAD2
+    LSMALL = 0.5 * Constants.DEG2RAD2
     
     rdict = {}
 
@@ -1838,7 +1838,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
                              [ X[iL11+4], X[iL11+5], X[iL11+2] ] ], float)
         
         frag_L_dict[frag] = CA_L
-        eval = numpy.linalg.eigenvalues(CA_L) * RAD2DEG2
+        eval = numpy.linalg.eigenvalues(CA_L) * Constants.RAD2DEG2
 
         print "%s %s: %6.2f %6.2f %6.2f" % (frag.fragment_id, frag.res_name, eval[0],eval[1],eval[2])
 
@@ -2056,8 +2056,8 @@ class TLSGroup(Structure.AtomList):
             max_ev = max(evals)
             min_ev = min(evals)
 
-            mean_max_tf += U2B * max_ev
-            mean_tf     += U2B * numpy.trace(Utls) / 3.0
+            mean_max_tf += Constants.U2B * max_ev
+            mean_tf     += Constants.U2B * numpy.trace(Utls) / 3.0
             mean_aniso  += AtomMath.calc_anisotropy(Utls)
 
         tls_info["tls_mean_max_temp_factor"] = mean_max_tf / float(n)
@@ -2825,24 +2825,24 @@ class GLTLSGroup(Viewer.GLDrawList):
 
                 T            = self.tls_info["T'"],
                 rT           = self.tls_info["rT'"],
-                L            = self.tls_info["L'"] * RAD2DEG2,
-                S            = self.tls_info["S'"] * RAD2DEG,
+                L            = self.tls_info["L'"] * Constants.RAD2DEG2,
+                S            = self.tls_info["S'"] * Constants.RAD2DEG,
 
                 L1_eigen_vec = self.tls_info["L1_eigen_vec"],
                 L2_eigen_vec = self.tls_info["L2_eigen_vec"],
                 L3_eigen_vec = self.tls_info["L3_eigen_vec"],
 
-                L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
-                L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
-                L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+                L1_eigen_val = self.tls_info["L1_eigen_val"] * Constants.RAD2DEG2,
+                L2_eigen_val = self.tls_info["L2_eigen_val"] * Constants.RAD2DEG2,
+                L3_eigen_val = self.tls_info["L3_eigen_val"] * Constants.RAD2DEG2,
 
                 L1_rho       = self.tls_info["L1_rho"],
                 L2_rho       = self.tls_info["L2_rho"],
                 L3_rho       = self.tls_info["L3_rho"],
 
-                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
-                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
-                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG),
+                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/Constants.RAD2DEG),
+                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/Constants.RAD2DEG),
+                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/Constants.RAD2DEG),
                 **args)
         else:
             self.glo_init_properties(**args)
@@ -2859,24 +2859,24 @@ class GLTLSGroup(Viewer.GLDrawList):
                 COR          = self.tls_info["COR"],
                 T            = self.tls_info["T'"],
                 Tr           = self.tls_info["rT'"],
-                L            = self.tls_info["L'"] * RAD2DEG2,
-                S            = self.tls_info["S'"] * RAD2DEG,
+                L            = self.tls_info["L'"] * Constants.RAD2DEG2,
+                S            = self.tls_info["S'"] * Constants.RAD2DEG,
 
                 L1_eigen_vec = self.tls_info["L1_eigen_vec"],
                 L2_eigen_vec = self.tls_info["L2_eigen_vec"],
                 L3_eigen_vec = self.tls_info["L3_eigen_vec"],
 
-                L1_eigen_val = self.tls_info["L1_eigen_val"] * RAD2DEG2,
-                L2_eigen_val = self.tls_info["L2_eigen_val"] * RAD2DEG2,
-                L3_eigen_val = self.tls_info["L3_eigen_val"] * RAD2DEG2,
+                L1_eigen_val = self.tls_info["L1_eigen_val"] * Constants.RAD2DEG2,
+                L2_eigen_val = self.tls_info["L2_eigen_val"] * Constants.RAD2DEG2,
+                L3_eigen_val = self.tls_info["L3_eigen_val"] * Constants.RAD2DEG2,
 
                 L1_rho       = self.tls_info["L1_rho"],
                 L2_rho       = self.tls_info["L2_rho"],
                 L3_rho       = self.tls_info["L3_rho"],
 
-                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/RAD2DEG),
-                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/RAD2DEG),
-                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/RAD2DEG) )
+                L1_pitch     = self.tls_info["L1_pitch"] * (1.0/Constants.RAD2DEG),
+                L2_pitch     = self.tls_info["L2_pitch"] * (1.0/Constants.RAD2DEG),
+                L3_pitch     = self.tls_info["L3_pitch"] * (1.0/Constants.RAD2DEG) )
 
         else:
             self.tls_info = None
@@ -3409,7 +3409,7 @@ class GLTLSGroup(Viewer.GLDrawList):
 
             if self.properties["add_biso"]==True:
                 if atm.temp_factor!=None:
-                    Utls = Utls + (B2U * atm.temp_factor * numpy.identity(3, float))
+                    Utls = Utls + (Constants.B2U * atm.temp_factor * numpy.identity(3, float))
             
             yield atm, Utls
     
@@ -3565,11 +3565,11 @@ class GLTLSGroup(Viewer.GLDrawList):
             return
 
         C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
-        Lx_s = C * calc_rmsd(Lx_eigen_val * DEG2RAD2)
+        Lx_s = C * calc_rmsd(Lx_eigen_val * Constants.DEG2RAD2)
         if numpy.allclose(Lx_s, 0.0):
             return
 
-        Lx_pitch      = Lx_pitch * (1.0/DEG2RAD)
+        Lx_pitch      = Lx_pitch * (1.0 / Constants.DEG2RAD)
         COR           = self.properties["COR"]
         Lx_origin     = COR + Lx_rho
         steps         = 1

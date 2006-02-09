@@ -8,8 +8,7 @@ import getopt
 import copy
 import popen2
 
-from mmLib.FileLoader import *
-from mmLib.mmCIF      import *
+from mmLib import mmCIF
 
 
 ##
@@ -542,7 +541,7 @@ def cif_merge(merge_paths, output_path, entry_id):
     a crystallographic structure, and the entry_ids of all tables are
     overridden with the given entry_id.
     """
-    output_cif_file = mmCIFFile()
+    output_cif_file = mmCIF.mmCIFFile()
     output_cif_data = output_cif_file.new_data(entry_id)
 
     ## add the entry table to the output mmCIFFile
@@ -552,7 +551,7 @@ def cif_merge(merge_paths, output_path, entry_id):
 
     ## merge in mmCIF files
     for mpath in merge_paths:
-        merge_cif_file = mmCIFFile()
+        merge_cif_file = mmCIF.mmCIFFile()
         merge_cif_file.load_file(mpath)
 
         for src_data in merge_cif_file:

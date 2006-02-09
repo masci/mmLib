@@ -6,10 +6,11 @@
 """
 from __future__ import generators
 import copy
-from mmCIF import mmCIFRow, mmCIFTable, mmCIFData
+
+import mmCIF
 
 
-class mmCIFDB(mmCIFData):
+class mmCIFDB(mmCIF.mmCIFData):
     """Database class for the storage and access of structural data.  This
     database is organized according to mmCIF data tags.  Methods to lookup
     common structure items are included.
@@ -47,7 +48,7 @@ class mmCIFDB(mmCIFData):
         """Return table table_name, create the table if necessary.
         """
         if not self.has_key(table_name):
-            table = mmCIFTable(table_name)
+            table = mmCIF.mmCIFTable(table_name)
             self.append(table)
         else:
             table = self[table_name]
@@ -73,7 +74,7 @@ class mmCIFDB(mmCIFData):
         if len(table):
             table[0][col_name] = val
         else:
-            row = mmCIFRow()
+            row = mmCIF.mmCIFRow()
             table.append(row)
             row[col_name] = val
 

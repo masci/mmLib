@@ -7,8 +7,7 @@ macromolecules.
 """
 import types
 
-from mmTypes import *
-
+import mmTypes
 import Library
 import Structure
 import UnitCell
@@ -31,7 +30,7 @@ class StructureBuilder(object):
     method to implement a working builder.
     """
     def __init__(self, **args):
-        debug("StructureBuilder.__init__()")
+        mmTypes.debug("StructureBuilder.__init__()")
         
         ## allocate a new Structure object for building if one was not
         ## passed to the StructureBuilder
@@ -54,7 +53,7 @@ class StructureBuilder(object):
         ## what items are going to be built into the Structure graph
         ## follow up with adding structural components which depend on
         ## other components
-        debug("build_properties=%s" % (str(args.get("build_properties"))))
+        mmTypes.debug("build_properties=%s" % (str(args.get("build_properties"))))
         
         self.build_properties = args.get("build_properties") or ()
         if "calc_sequence" in self.build_properties:
@@ -83,7 +82,7 @@ class StructureBuilder(object):
         ## self.struct is now built and ready for use
 
         if self.halt==True:
-            fatal("self.halt==True")
+            mmTypes.fatal("self.halt==True")
 
     def read_start(self, fil, update_cb):
         """This methods needs to be reimplemented in a functional subclass.
@@ -127,11 +126,11 @@ class StructureBuilder(object):
             self.struct.add_atom(atm, True)
 
         except Structure.FragmentOverwrite:
-            warning("FragmentOverwrite: %s" % (atm))
+            mmTypes.warning("FragmentOverwrite: %s" % (atm))
             self.name_service_list.append(atm)
 
         except Structure.AtomOverwrite, err:
-            warning("AtomOverwrite: %s" % (err))
+            mmTypes.warning("AtomOverwrite: %s" % (err))
             self.name_service_list.append(atm)
 
         return atm
@@ -203,7 +202,7 @@ class StructureBuilder(object):
                 current_frag_list         = None
                 continue
 
-            fragment_id = FragmentID(atm.fragment_id)
+            fragment_id = mmTypes.FragmentID(atm.fragment_id)
 
             ## now we deal with conditions which can terminate the current
             ## polymer chain
@@ -215,7 +214,7 @@ class StructureBuilder(object):
                 current_polymer_type      = polymer_type
                 current_polymer_model_id  = atm.model_id
                 current_polymer_chain_id  = atm.chain_id
-                current_polymer_frag_id   = FragmentID(atm.fragment_id)
+                current_polymer_frag_id   = mmTypes.FragmentID(atm.fragment_id)
                 current_polymer_res_name  = atm.res_name
                 current_polymer_name_dict = {atm.name: True}
 
@@ -326,9 +325,9 @@ class StructureBuilder(object):
                 
                 ### debug
                 if frag:
-                    debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
+                    mmTypes.debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
                     for a in frag:
-                        debug("  " + str(a))
+                        mmTypes.debug("  " + str(a))
                 ### /debug
                 
                 try:
@@ -355,8 +354,8 @@ class StructureBuilder(object):
 
         for cr_key in cr_key_list:
             ### debug
-            debug("name_service: chain_id / res_name keys")
-            debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
+            mmTypes.debug("name_service: chain_id / res_name keys")
+            mmTypes.debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
             ### /debug
 
             ## get the next chain ID, use the cfr group's
@@ -370,7 +369,7 @@ class StructureBuilder(object):
                 fragment_id_num = 0
 
             elif new_chain_id == None or fragment_id_num == None:
-                fatal("name_service: unable to assign any chain ids")
+                mmTypes.fatal("name_service: unable to assign any chain ids")
 
             ## get model dictionary
             model_dict = cr_dict[cr_key]
@@ -389,8 +388,8 @@ class StructureBuilder(object):
 
                 if max_frags != frag_list_len:
                     strx = "name_service: model fragments not identical"
-                    debug(strx)
-                    warning(strx)
+                    mmTypes.debug(strx)
+                    mmTypes.warning(strx)
                     max_frags = max(max_frags, frag_list_len)
 
             ## now iterate through the fragment lists in parallel and assign
@@ -412,7 +411,8 @@ class StructureBuilder(object):
                         self.struct.add_atom(atm, True)
 
             ## logging
-            warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (new_chain_id, cr_key[1], fragment_id_num))
+            mmTypes.warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (
+                new_chain_id, cr_key[1], fragment_id_num))
 
     def read_atoms_finalize(self):
         """After loading all atom records, use the list of atom records to
@@ -444,7 +444,7 @@ class StructureBuilder(object):
         """
         for key in ("a", "b", "c", "alpha", "beta", "gamma"):
             if not ucell_map.has_key(key):
-                debug("ucell_map missing: %s" % (key))
+                mmTypes.debug("ucell_map missing: %s" % (key))
                 return
 
         if ucell_map.has_key("space_group"):
@@ -494,7 +494,7 @@ class StructureBuilder(object):
             ## check for files which, for some reason, define have a bond
             ## entry bonding the atom to itself
             if atm1 == atm2:
-                warning("silly file defines self bonded atom")
+                mmTypes.warning("silly file defines self bonded atom")
                 continue
             
             atm1.create_bonds(
@@ -640,11 +640,11 @@ class StructureBuilder(object):
         done.  Currently, this method does nothing but may be used in
         future versions.
         """
-        debug("read_end_finalize()")
+        mmTypes.debug("read_end_finalize()")
         
         ## calculate sequences for all chains
         if self.calc_sequence==True:
-            debug("read_end_finalize(): calc_sequence")
+            mmTypes.debug("read_end_finalize(): calc_sequence")
             
             for model in self.struct.iter_models():
                 for chain in model.iter_chains():
@@ -652,11 +652,11 @@ class StructureBuilder(object):
 
         ## build bonds as defined in the monomer library
         if self.library_bonds==True:
-            debug("read_end_finalize(): library_bonds")
+            mmTypes.debug("read_end_finalize(): library_bonds")
             self.struct.add_bonds_from_library()
 
         ## build bonds by covalent distance calculations
         if self.distance_bonds==True:
-            debug("read_end_finalize(): distance_bonds")
+            mmTypes.debug("read_end_finalize(): distance_bonds")
             self.struct.add_bonds_from_covalent_distance()
             

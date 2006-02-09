@@ -8,7 +8,6 @@ The mmCIF and PDB file formats are currently supported.
 import os
 import types
 
-from mmTypes      import *
 from mmCIF        import mmCIFFile
 from mmCIFBuilder import mmCIFStructureBuilder, mmCIFFileBuilder
 from PDB          import PDBFile

@@ -6,8 +6,7 @@
 """
 from   __future__ import generators
 import numpy
-
-from mmTypes import *
+import mmTypes
 
 ## 64 unique rotation matricies
 Rot_Z_mY_X    = numpy.array([[ 0.0, 0.0, 1.0], [ 0.0,-1.0, 0.0], [ 1.0, 0.0, 0.0]], float)
@@ -7760,7 +7759,7 @@ def GetSpaceGroup(name):
         if sg.check_group_name(name):
             return sg
 
-    warning("GetSpaceGroup('%s') not found" % (name))
+    mmTypes.warning("GetSpaceGroup('%s') not found" % (name))
 
     ## return P1
     return sg1

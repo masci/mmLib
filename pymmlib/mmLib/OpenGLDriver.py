@@ -14,13 +14,14 @@ from OpenGL.GL      import *
 from OpenGL.GLU     import *
 from OpenGL.GLUT    import *
 
+import mmTypes
 import Gaussian
 import AtomMath
 
 try:
     import glaccel
 except ImportError:
-    warning("cannot load OpenGL acceloration module glaccel")
+    mmTypes.warning("cannot load OpenGL acceloration module glaccel")
     GLACCEL_EXISTS = False
 else:
     GLACCEL_EXISTS = True

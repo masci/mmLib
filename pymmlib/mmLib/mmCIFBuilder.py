@@ -7,8 +7,7 @@
 from __future__ import generators
 import copy
 
-from mmTypes import *
-
+import mmTypes
 import mmCIF
 import StructureBuilder
 import Structure
@@ -25,6 +24,7 @@ def setmaps_cif(smap, skey, dmap, dkey):
         return True
     return False
 
+
 def setmapi_cif(smap, skey, dmap, dkey):
     """For integer converisons, treat [?.] as blank.
     """
@@ -35,10 +35,11 @@ def setmapi_cif(smap, skey, dmap, dkey):
         try:
             dmap[dkey] = int(x)
         except ValueError:
-            warning("setmapi_cif(%s=%s): ValueError" % (skey, smap[skey]))
+            mmTypes.warning("setmapi_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
+
 
 def setmapf_cif(smap, skey, dmap, dkey):
     """For float converisons, treat [?.] as blank.
@@ -50,7 +51,7 @@ def setmapf_cif(smap, skey, dmap, dkey):
         try:
             dmap[dkey] = float(x)
         except ValueError:
-            warning("setmapf_cif(%s=%s): ValueError" % (skey, smap[skey]))
+            mmTypes.warning("setmapf_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
@@ -145,7 +146,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             atom_site_table = self.cif_data["atom_site"]
         except KeyError:
-            warning("read_atoms: atom_site table not found")
+            mmTypes.warning("read_atoms: atom_site table not found")
             return
 
         try:
@@ -159,7 +160,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             try:
                 atom_site_id = atom_site["id"]
             except KeyError:
-                warning("unable to find id for atom_site row")
+                mmTypes.warning("unable to find id for atom_site row")
                 continue
 
             atm_map = {}
@@ -191,7 +192,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 try:
                     aniso = aniso_dict[atom_site_id]
                 except KeyError:
-                    warning("unable to find aniso row for atom")
+                    mmTypes.warning("unable to find aniso row for atom")
                 else:
                     setmapf_cif(aniso, "u[1][1]", atm_map, "u11")
                     setmapf_cif(aniso, "u[2][2]", atm_map, "u22")
@@ -245,13 +246,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             entry_id = self.cif_data["entry"]["id"]
         except KeyError:
-            warning("read_unit_cell(): entry id not found")
+            mmTypes.warning("read_unit_cell(): entry id not found")
             return
 
         try:
             cell_table = self.cif_data["cell"]
         except KeyError:
-            warning("read_unit_cell: cell table not found")
+            mmTypes.warning("read_unit_cell: cell table not found")
         else:
             cell = cell_table.get_row(("entry_id", entry_id))
             if cell != None:
@@ -266,7 +267,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             symmetry_table = self.cif_data["symmetry"]
         except KeyError:
-            warning("read_unit_cell: symmetry table not found")
+            mmTypes.warning("read_unit_cell: symmetry table not found")
         else:
             symm = symmetry_table.get_row(("entry_id", entry_id))
             if symm != None:
@@ -287,13 +288,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             atom_site = self.cif_data["atom_site"]
         except KeyError:
-            warning("read_struct_conn: atom_site table not found")
+            mmTypes.warning("read_struct_conn: atom_site table not found")
             return
 
         try:
             struct_conn_table = self.cif_data["struct_conn"]
         except KeyError:
-            warning("read_struct_conn: struct_conn table not found")
+            mmTypes.warning("read_struct_conn: struct_conn table not found")
             return
 
         bond_map = {}
@@ -332,13 +333,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 (self.atom_id, atom_id2))
 
             if not as1 or not as2:
-                warning("read_struct_conn: atom not found id: " + \
+                mmTypes.warning("read_struct_conn: atom not found id: " + \
                         row.get("id","[No ID]"))
                 
-                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                mmTypes.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id1, seq_id1, comp_id1, atom_id1, symm1))
                 
-                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                mmTypes.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id2, seq_id2, comp_id2, atom_id2, symm2))
 
                 continue
@@ -347,13 +348,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 atm1 = self.atom_site_id_map[as1["id"]]
                 atm2 = self.atom_site_id_map[as2["id"]]
             except KeyError:
-                warning("read_struct_conn: atom_site_id_map incorrect id: " + \
+                mmTypes.warning("read_struct_conn: atom_site_id_map incorrect id: " + \
                         row.get("id", "[No ID]"))
 
-                warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                mmTypes.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id1, seq_id1, comp_id1, atom_id1, symm1))
                 
-                warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                mmTypes.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id2, seq_id2, comp_id2, atom_id2, symm2))
 
                 continue
@@ -615,7 +616,7 @@ class mmCIFFileBuilder(object):
             row = entity_poly.new_row()
             
             row["entity_id"] = entity_desc["id"]
-            row["ndb_chain_id"] = string.join(entity_desc["chain_ids"], ",")
+            row["ndb_chain_id"] = ",".join(entity_desc["chain_ids"])
             row["ndb_seq_one_letter_code"] = entity_desc["sequence"]
         
     def add__cell(self):

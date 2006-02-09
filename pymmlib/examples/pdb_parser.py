@@ -4,10 +4,10 @@
 ## very simple custom PDB file processor
 
 import os, sys
-import mmLib.PDB
+from mmLib import PDB
 
 
-class PDBProcessor:
+class PDBProcessor(object):
     """Implement callbacks for PDB record types.  If you want the callback
     with the raw mmLib.PDB classes, prefix the method name with 'process_',
     if you want callback argument to be the result of the mmLib.PDB record
@@ -49,7 +49,7 @@ class PDBProcessor:
 
 
 def main(path):
-    pdb_file = mmLib.PDB.PDBFile()
+    pdb_file = PDB.PDBFile()
     pdb_file.load_file(path)
 
     proc = PDBProcessor()
