@@ -10,7 +10,7 @@ import sys
 import string
 import getopt
 
-from tlsmdlib import misc
+from tlsmdlib import conf
 from tlsmdlib import tlsmd_analysis
 from tlsmdlib import html
 
@@ -70,25 +70,25 @@ def analysis_main(struct_path, opt_dict):
     num_threads       = int(opt_dict.get("-t", 1))
 
     if opt_dict.has_key("-v"):
-        misc.GLOBALS["VERBOSE"] = True
+        conf.globalconf.verbose = True
 
     if opt_dict.has_key("-s"):
-        misc.GLOBALS["USE_SVG"] = True
+        conf.globalconf.use_svg = True
         
     if opt_dict.has_key("-x"):
-        misc.GLOBALS["WEBTLSMDD"] = opt_dict["-x"]
+        conf.globalconf.webtlsmdd =  opt_dict["-x"]
 
     if opt_dict.has_key("-j"):
-        misc.GLOBALS["JOB_ID"] = opt_dict["-j"]
+        conf.globalconf.job_id = opt_dict["-j"]
 
     if opt_dict.has_key("-i"):
-        misc.GLOBALS["STRUCT_ID"] = opt_dict["-i"]
+        conf.globalconf.struct_id = opt_dict["-i"]
         
     ## set the TLS model to use
     if opt_dict.has_key("-m"):
         tls_model = opt_dict.get("-m").upper()
         if tls_model in ["ANISO", "ISOT", "NLANISO", "NLISOT"]:
-            misc.GLOBALS["TLS_MODEL"] = tls_model
+            conf.globalconf.tls_model = tls_model
         else:
             print "[ERROR] Invalid TLS Model: %s" % (tls_model)
             usage()
@@ -98,7 +98,7 @@ def analysis_main(struct_path, opt_dict):
         val = opt_dict["-w"].upper()
         val = val.upper()
         if val=="IUISO":
-            misc.GLOBALS["WEIGHT_MODEL"] = val
+            conf.globalconf.weight_model = val
         else:
             print "[ERROR] Invalid Weight Model: %s" % (val)
             usage()
@@ -106,9 +106,8 @@ def analysis_main(struct_path, opt_dict):
     ## atoms to include
     if opt_dict.has_key("-a"):
         val = opt_dict["-a"].upper()
-        if val not in ["ALL", "MAINCHAIN", "CA"]:
-            usage()
-        misc.GLOBALS["INCLUDE_ATOMS"] = val
+        if val not in ["ALL", "MAINCHAIN", "CA"]: usage()
+        conf.globalconf.include_atoms = val
 
     ## create the analysis processor and load the structure, select chains
     anal = tlsmd_analysis.TLSMDAnalysis(

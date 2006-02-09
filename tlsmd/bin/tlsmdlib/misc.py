@@ -1,84 +1,11 @@
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-###############################################################################
-## Imports
-##
-
-## standard Python library
-import os
-import sys
-import math
-import string
 import time
-import cPickle
-import thread
-import xmlrpclib
-import SimpleXMLRPCServer
 
-from threading          import *
-from Queue              import *
-
-## Numeric Python imports
-from Numeric       import *
-from LinearAlgebra import *
-
-## mmLib imports
-from mmLib.FileLoader     import *
-from mmLib.Structure      import *
-from mmLib.Extensions.TLS import *
-
-###############################################################################
-## Constants
-##
-
-## unreasonably small T/L eigenvalues
-## B<=0.01
-TSMALL = 0.1 * B2U
-
-## L RMSD <= 0.1 DEG
-LSMALL = (0.1)**2 * DEG2RAD2
-
-###############################################################################
-## Globals
-##
-GLOBALS = {
-    "TLS_MODEL":           "ISOT",
-    "WEIGHT_MODEL":        "UNIT",
-    "INCLUDE_ATOMS":       "ALL",
-    "MIN_SUBSEGMENT_SIZE": 6,
-    "VERBOSE"            : False,
-    "USE_SVG"            : False,
-
-    "VERSION":        "0.5.6",
-    "RELEASE_DATE":   "5 Jan 2006",
-    "AUTHOR":         "Jay Painter",
-    "EMAIL":          "jpaint@u.washington.edu",
-
-    "WEBTLSMDD":      None,
-    "JOB_ID":         None,
-    "REFINEPREP_URL": "/~tlsmd/cgi-bin/refineprep.cgi",
-
-    "START_TIME":     time.time()
-    }
-
-## Font used by Python Imaging Library and GNUPlot
-TLSMD_ROOT   = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
-GNUPLOT_FONT = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-
-## the isoprobability contour level for all
-## visualizations
-ADP_PROB = 85
-
-## number of TLS partitons for each chain
-NPARTS = 20
-
-###############################################################################
-## Utility Funcs
-##
 _STIME = 0.0
 
 def start_timing():

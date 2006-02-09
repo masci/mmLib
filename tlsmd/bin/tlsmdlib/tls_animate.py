@@ -7,20 +7,23 @@
 import copy
 import string
 import math
+import numpy
 
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Extensions.TLS import *
+import conf
+
+from mmLib.mmTypes import *
+from mmLib import Structure, FileLoader, Gaussian, AtomMath
+from mmLib.Extensions import TLS
+
 
 TWO_PI = 2.0 * math.pi
-ADP_PROB = 85
 
 
 def iter_fragment_range(chain, frag_id1, frag_id2):
     for frag in chain.iter_fragments():
-        if fragment_id_lt(frag.fragment_id, frag_id1):
+        if Structure.fragment_id_lt(frag.fragment_id, frag_id1):
             continue
-        if fragment_id_gt(frag.fragment_id, frag_id2):
+        if Structure.fragment_id_gt(frag.fragment_id, frag_id2):
             break
         yield frag
 
@@ -51,7 +54,7 @@ class TLSAnimate(object):
         """Make a copy of the argument structure to use for generating
         the animation.  Only copy the chain specified in chain_id.
         """
-        cp_struct = Structure(structure_id = struct.structure_id)
+        cp_struct = Structure.Structure(structure_id = struct.structure_id)
         chain_id = chainopt["chain_id"]
 
         for chain in struct.iter_chains():
@@ -75,7 +78,7 @@ class TLSAnimate(object):
                         if atm.name not in ["N","CA","C","O"]:
                             continue
                         
-                        cp_atom = Atom(
+                        cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
                             fragment_id = atm.fragment_id,
                             res_name    = atm.res_name,
@@ -88,7 +91,7 @@ class TLSAnimate(object):
 
                 elif frag.is_standard_residue()==False:
                     for atm in frag.iter_atoms():
-                        cp_atom = Atom(
+                        cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
                             fragment_id = atm.fragment_id,
                             res_name    = atm.res_name,
@@ -108,7 +111,7 @@ class TLSAnimate(object):
         ##self.phase_assignment()
         for phase in (0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5):
             self.construct_frame(phase)
-        SaveStructure(struct=self.struct, fil=filename)
+        FileLoader.SaveStructure(struct=self.struct, fil=filename)
 
     def next_model_id(self):
         """Return the next availible model_id in self.struct
@@ -181,8 +184,8 @@ class TLSAnimate(object):
 
             ## pre-calculations for screw displacement
             Lorigin = cor + Lrho
-            Lrot = GAUSS3C[ADP_PROB] * Lrmsd * phase
-            D = dmatrixu(Lvec, Lrot)
+            Lrot = Gaussian.GAUSS3C[conf.ADP_PROB] * Lrmsd * phase
+            D = AtomMath.dmatrixu(Lvec, Lrot)
             d_screw = (Lrot * Lpitch) * Lvec
             
             if n==1:
@@ -196,5 +199,5 @@ class TLSAnimate(object):
 
             for frag in iter_fragment_range(chain, frag_id1, frag_id2):
                 for atm in frag.iter_atoms():
-                    d = matrixmultiply(D, atm.position - Lorigin) + d_screw
+                    d = numpy.matrixmultiply(D, atm.position - Lorigin) + d_screw
                     atm.position += d

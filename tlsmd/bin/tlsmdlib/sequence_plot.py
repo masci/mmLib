@@ -9,12 +9,9 @@ import Image
 import ImageDraw
 import ImageFont
 
-## mmLib
-from mmLib.Colors         import *
+import misc
+import conf
 
-## tlsmdlib
-from misc                 import *
-from captions             import *
 
 ## target pixel width, height, and spacing of sequence
 ## alignment plots
@@ -40,7 +37,7 @@ class TLSSegmentAlignmentPlot(object):
         self.spacing    = ALIGN_SPACING
 
         ## background color
-        self.bg_color   = rgb_f2i((0.90, 0.90, 0.90))
+        self.bg_color   = misc.rgb_f2i((0.90, 0.90, 0.90))
 
         ## height of the x-axis scale
         self.xscale_height = 20
@@ -69,7 +66,7 @@ class TLSSegmentAlignmentPlot(object):
         self.frag_list and sort it.
         """
         for frag in chain.iter_fragments():
-            fid = FragmentID(frag.fragment_id)
+            fid = misc.FragmentID(frag.fragment_id)
             if fid not in self.frag_list:
                 self.frag_list.append(fid)
 
@@ -100,7 +97,7 @@ class TLSSegmentAlignmentPlot(object):
         image = Image.new("RGBA", (img_width, img_height), self.bg_color)
         idraw = ImageDraw.Draw(image)
         idraw.setfill(True)
-        idraw.setfont(ImageFont.truetype(GNUPLOT_FONT, 12))
+        idraw.setfont(ImageFont.truetype(conf.GNUPLOT_FONT, 12))
 
         x_start = self.border_width
 
@@ -176,8 +173,8 @@ class TLSSegmentAlignmentPlot(object):
         ## draw a gray background for the lengt of the chain;
         ## the colored TLS segments will be drawn on top of this
         chain = tls_seg_desc["chainopt"]["chain"]
-        fid1 = FragmentID(chain[0].fragment_id)
-        fid2 = FragmentID(chain[-1].fragment_id)
+        fid1 = misc.FragmentID(chain[0].fragment_id)
+        fid2 = misc.FragmentID(chain[-1].fragment_id)
 
         i1 = self.frag_list.index(fid1)
         i2 = self.frag_list.index(fid2)
@@ -194,8 +191,8 @@ class TLSSegmentAlignmentPlot(object):
 
         ## draw colored TLS segments
         for tls in tlsopt.tls_list:
-            fid1 = FragmentID(tls["frag_id1"])
-            fid2 = FragmentID(tls["frag_id2"])
+            fid1 = misc.FragmentID(tls["frag_id1"])
+            fid2 = misc.FragmentID(tls["frag_id2"])
 
             i1 = self.frag_list.index(fid1)
             i2 = self.frag_list.index(fid2)

@@ -8,13 +8,13 @@ import sys
 import copy
 import string
 
-from misc     import *
-from datafile import TLSMDFile
-from hcsssp   import HCSSSP
+from mmLib import Structure
 
-## C/FORTRAN TLS Fitting Engines
+import conf
 import lineartls
 import nonlineartls
+
+
 
 ###############################################################################
 ## Utility Class
@@ -77,11 +77,11 @@ class XChain(object):
 
         for icur in range(len(self.xmlrpc_chain)):
             if state=="find_istart":
-                if fragment_id_ge(self.xmlrpc_chain[icur]["frag_id"], frag_id1):
+                if Structure.fragment_id_ge(self.xmlrpc_chain[icur]["frag_id"], frag_id1):
                     state  = "find_iend"
                     istart = icur
             elif state=="find_iend":
-                if fragment_id_gt(self.xmlrpc_chain[icur]["frag_id"], frag_id2):
+                if Structure.fragment_id_gt(self.xmlrpc_chain[icur]["frag_id"], frag_id2):
                     iend = icur - 1
                     break
 
@@ -107,7 +107,7 @@ class TLSGraphChain(object):
         self.name = name
         self.tls_model = None
         self.model_parameters = 0
-        self.verbose = GLOBALS["VERBOSE"]
+        self.verbose = conf.globalconf.verbose
     
     def set_xmlrpc_chain(self, xmlrpc_chain):
         self.xchain = XChain(xmlrpc_chain)
@@ -244,34 +244,4 @@ def NewTLSGraphChain(tls_model):
         return TLSGraphChainNonlinearAnisotropic()
 
     raise Exception()
-
-class TLSGraphChainXMLRPCServer(TLSGraphChain):
-    """Runs this object as a xmlrpc server servicing requests for
-    functions: set_xmlrpc_chain, and lsq_fit_segment.
-    """
-    def __init__(self):
-        self.proxy = None
-
-    def set_tls_model(self, tls_model, weight_model):
-        print "TLSGraphChainXMLRPCServer.set_tls_model(%s, %s)" % (tls_model, weight_model)
-
-        ## select proper TLS model
-        self.proxy = NewTLSGraphChain(tls_model)
-        
-        return True
-
-    def set_xmlrpc_chain(self, xmlrpc_chain):
-        return self.proxy.set_xmlrpc_chain(xmlrpc_chain)
-
-    def lsq_fit_segment(self, frag_id1, frag_id2):
-        return self.proxy.lsq_fit_segment(frag_id1, frag_id2)
-
-    def run_server(self, host_port):
-        xmlrpc_server = SimpleXMLRPCServer.SimpleXMLRPCServer(host_port, SimpleXMLRPCServer.SimpleXMLRPCRequestHandler, False)
-        
-        xmlrpc_server.register_function(self.set_tls_model,    "set_tls_model")
-        xmlrpc_server.register_function(self.set_xmlrpc_chain, "set_xmlrpc_chain")
-        xmlrpc_server.register_function(self.lsq_fit_segment,  "lsq_fit_segment")
-        
-        xmlrpc_server.serve_forever()
 

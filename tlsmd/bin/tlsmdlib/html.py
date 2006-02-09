@@ -8,24 +8,30 @@
 ## Report Directory Generation
 ##
 
+import os
 import popen2
 import time
+import numpy
 
 ## Python Imaging Library imports
 import Image
 import ImageDraw
 
 ## mmLib
-from mmLib.Colors         import *
-from mmLib.Viewer         import *
-from mmLib.R3DDriver      import Raster3DDriver
+from mmLib.mmTypes import *
+from mmLib import Colors, Viewer, R3DDriver, Structure, Gaussian, FileLoader
+from mmLib.Extensions import TLS
 
 ## tlsmdlib
-from misc                 import *
+import misc
+import const
+import conf
+import gnuplots
+import sequence_plot
+
 from captions             import *
 from tls_animate          import TLSAnimate, TLSAnimateFailure
-from sequence_plot        import TLSSegmentAlignmentPlot
-from gnuplots             import *
+
 
 ## JMol URL path
 JMOL_DIR = "../../../jmol"
@@ -41,10 +47,10 @@ def calc_inertia_tensor(atom_iter):
     """Calculate moment of inertia tensor at the centroid
     of the atoms.
     """
-    al              = AtomList(atom_iter)
+    al              = Structure.AtomList(atom_iter)
     centroid        = al.calc_centroid()
 
-    I = zeros((3,3), Float)
+    I = numpy.zeros((3,3), float)
     for atm in al:
         x = atm.position - centroid
 
@@ -61,7 +67,7 @@ def calc_inertia_tensor(atom_iter):
         I[1,2] += - x[1]*x[2]
         I[2,1] += - x[1]*x[2]
 
-    evals, evecs = eigenvectors(I)
+    evals, evecs = numpy.linalg.eigenvectors(I)
 
     elist = [(evals[0], evecs[0]),
              (evals[1], evecs[1]),
@@ -69,14 +75,14 @@ def calc_inertia_tensor(atom_iter):
 
     elist.sort()
 
-    R = array((elist[0][1], elist[1][1], elist[2][1]), Float)
+    R = numpy.array((elist[0][1], elist[1][1], elist[2][1]), float)
 
     ## make sure the tensor uses a right-handed coordinate system
-    if allclose(determinant(R), -1.0):
-        I = identity(3, Float)
+    if numpy.allclose(numpy.linalg.determinant(R), -1.0):
+        I = numpy.identity(3, float)
         I[0,0] = -1.0
-        R = matrixmultiply(I, R)
-    assert allclose(determinant(R), 1.0)
+        R = numpy.matrixmultiply(I, R)
+    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
 
     return centroid, R
 
@@ -109,7 +115,7 @@ def calc_orientation(struct, chain):
     max_z = 0.0
 
     for atm in iter_protein_atoms(chain):
-        x  = matrixmultiply(R, atm.position - centroid)
+        x  = numpy.matrixmultiply(R, atm.position - centroid)
 
         if first_atm==True:
             first_atm = False
@@ -142,13 +148,13 @@ def calc_orientation(struct, chain):
     xcenter = min_x + (width / 2.0)
     ycenter = min_y + (height / 2.0)
 
-    xydelta  = array((xcenter, ycenter, 0.0), Float)
+    xydelta  = numpy.array((xcenter, ycenter, 0.0), float)
 
     pwidth = VIS_WIDTH
     pheight = pwidth * (height / width)
 
     ori["R"]        = R
-    ori["centroid"] = centroid + matrixmultiply(transpose(R), xydelta)
+    ori["centroid"] = centroid + numpy.matrixmultiply(numpy.transpose(R), xydelta)
     ori["pwidth"]   = pwidth
     ori["pheight"]  = pheight 
     ori["hzoom"]    = zoom
@@ -276,11 +282,11 @@ class Report(object):
         return "".join(l)
 
     def html_title(self, title):
-        timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
+        timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
         
         l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
-              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"]),
+              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
               '</tr></table>',
               '<center><font size="+2">%s</font></center><br>' % (title)]
         
@@ -289,12 +295,12 @@ class Report(object):
     def html_foot(self):
         """Footer for all HTML pages.
         """
-        timestr = time.strftime("%d %b %Y", time.localtime(GLOBALS["START_TIME"]))
+        timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
         
         l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left"><font size="-5">%s</font></td>' % (timestr),
-              '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (GLOBALS["RELEASE_DATE"], GLOBALS["EMAIL"]),
-              '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (GLOBALS["VERSION"]),
+              '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (const.RELEASE_DATE, const.EMAIL),
+              '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
               '</tr></table>',
               '</body></html>']
         
@@ -341,7 +347,7 @@ class HTMLReport(Report):
         chainopt["chain"]        = chain
         chainopt["struct_id"]    = self.struct_id
         chainopt["chain_id"]     = chain.chain_id
-        chainopt["max_ntls"]     = NPARTS
+        chainopt["max_ntls"]     = conf.globalconf.nparts
         chainopt["ntls_list"]    = []
         chainopt["tlsopt"]       = {}
 
@@ -394,8 +400,8 @@ class HTMLReport(Report):
         self.colors = []
 
         ## skip the first two colors which are black/white
-        for i in range(len(COLORS)):
-            cname, rgbf = COLORS[i]
+        for i in range(len(Colors.COLORS)):
+            cname, rgbf = Colors.COLORS[i]
             
             color = {}
             self.colors.append(color)
@@ -403,9 +409,9 @@ class HTMLReport(Report):
             color["index"] = i
             color["name"]  = cname
             color["rgbf"]  = rgbf
-            color["rgbi"]  = rgb_f2i(rgbf)
+            color["rgbi"]  = misc.rgb_f2i(rgbf)
 
-            rgbs = "#%2x%2x%2x" % rgb_f2i(rgbf)
+            rgbs = "#%2x%2x%2x" % misc.rgb_f2i(rgbf)
             rgbs = rgbs.replace(" ", "0")
             color["rgbs"]  = rgbs
 
@@ -428,7 +434,7 @@ class HTMLReport(Report):
         """
         ## write a local copy of the Structure
         self.struct_path = "%s.pdb" % (self.struct_id)
-        SaveStructure(fil=self.struct_path, struct=self.struct)
+        FileLoader.SaveStructure(fil=self.struct_path, struct=self.struct)
 
         ## generate small .png images so  they can be placed in the
         ## TLS group tables to identify the TLS group tabular data
@@ -439,9 +445,9 @@ class HTMLReport(Report):
         ## way before writing HTML
         chainopt_list = []
         for chain in self.chains:
-            begin_chain_timing(chain.chain_id)
+            misc.begin_chain_timing(chain.chain_id)
             chainopt = self.init_chain_optimization(chain)
-	    end_chain_timing(chain.chain_id)
+	    misc.end_chain_timing(chain.chain_id)
             chainopt_list.append(chainopt)
 
         ## a report page comparing the tls group segments of all
@@ -508,17 +514,17 @@ class HTMLReport(Report):
     def html_globals(self):
         """
         """
-        if GLOBALS["TLS_MODEL"] in ["ISOT", "NLISOT"]:
+        if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
             tls_model = "Isotropic"
-        elif GLOBALS["TLS_MODEL"] in ["ANISO", "NLANISO"]:
+        elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
             tls_model = "Anisotropic"
 
-        if GLOBALS["WEIGHT_MODEL"]=="UNIT":
+        if conf.globalconf.weight_model == "UNIT":
             weight = 'Unit Weights (All Weights 1.0)'
-        elif GLOBALS["WEIGHT_MODEL"]=="IUISO":
+        elif conf.globalconf.weight_model == "IUISO":
             weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
 
-        if GLOBALS["INCLUDE_ATOMS"]=="MAINCHAIN":
+        if conf.globalconf.include_atoms == "MAINCHAIN":
             include_atoms = "Main Chain Protein Atoms (N, CA, C, O, CB)"
         else:
             include_atoms = "All Protein Atoms"
@@ -527,8 +533,8 @@ class HTMLReport(Report):
              '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">',
              '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>',
              '<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
-             '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (GLOBALS["MIN_SUBSEGMENT_SIZE"]),
-             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (include_atoms),
+             '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
+             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
              '</table>',
              '</center>']
 
@@ -537,7 +543,7 @@ class HTMLReport(Report):
     def write_tls_chain_optimization(self, chainopt):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
-        begin_chain_timing(chainopt["chain_id"])
+        misc.begin_chain_timing(chainopt["chain_id"])
             
         path  = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, chainopt["chain_id"])
         title = "Chain %s TLS Analysis" % (chainopt["chain_id"])
@@ -550,7 +556,7 @@ class HTMLReport(Report):
         fil.write(self.html_tls_chain_optimization(chainopt))
         fil.close()
 
-        end_chain_timing(chainopt["chain_id"])
+        misc.end_chain_timing(chainopt["chain_id"])
         
     def html_tls_chain_optimization(self, chainopt):
         """Generates and returns the HTML string report analysis of a
@@ -594,7 +600,7 @@ class HTMLReport(Report):
         """Generates the Gnuplot/PNG image plot, and returns the HTML
         fragment for its display in a web page.
         """
-        gp = LSQR_vs_TLS_Segments_Plot(chainopt)
+        gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chainopt)
 
         title = 'Chain %s Optimization Residual' % (chainopt["chain_id"])
 
@@ -607,7 +613,7 @@ class HTMLReport(Report):
     def html_chain_alignment_plot(self, chainopt):
         """generate a plot comparing all segmentations
         """
-        plot = TLSSegmentAlignmentPlot()
+        plot = sequence_plot.TLSSegmentAlignmentPlot()
         
         for ntls, tlsopt in chainopt["ntls_list"]:
             plot.add_tls_segmentation(chainopt, ntls)
@@ -730,14 +736,14 @@ class HTMLReport(Report):
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chainopt["chain_id"], ntls)
         png_path = "%s.png"   % (basename)
 
-        start_timing()
+        misc.start_timing()
         print "Raster3D: rendering %s..." % (basename)
 
         struct_id = self.struct_id
         chain     = chainopt["chain"]
         chain_id  = chainopt["chain_id"]
 
-        driver = Raster3DDriver()
+        driver = R3DDriver.Raster3DDriver()
 
         ## XXX: Size hack: some structures have too many chains,
         ## or are just too large
@@ -754,7 +760,7 @@ class HTMLReport(Report):
             show_chain[chx.chain_id] = True
         ## end size hack
 
-        viewer = GLViewer()
+        viewer = Viewer.GLViewer()
         gl_struct = viewer.glv_add_struct(self.struct)
 
         ## orient the structure with the super-spiffy orientation algorithm
@@ -776,7 +782,7 @@ class HTMLReport(Report):
 
         ## setup base structural visualization
         for gl_chain in gl_struct.glo_iter_children():
-            if not isinstance(gl_chain, GLChain):
+            if not isinstance(gl_chain, Viewer.GLChain):
                 continue
 
             ## chain is hidden
@@ -808,11 +814,11 @@ class HTMLReport(Report):
             
             tls_name = "TLS_%s_%s" % (tls["frag_id1"], tls["frag_id2"])
             
-            gl_tls_group = GLTLSGroup(
+            gl_tls_group = TLS.GLTLSGroup(
                 oatm_visible       = False,
                 side_chain_visible = False,
                 hetatm_visible     = True,
-                adp_prob           = ADP_PROB,
+                adp_prob           = conf.ADP_PROB,
                 L_axis_scale       = 2.0,
                 L_axis_radius      = 0.25,
 		both_phases        = True,
@@ -827,7 +833,7 @@ class HTMLReport(Report):
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
 
             ## too big usually for good visualization -- cheat and scale it down
-            radius = 0.5 * GAUSS3C[ADP_PROB] * calc_rmsd(tiso)
+            radius = 0.5 * Gaussian.GAUSS3C[conf.ADP_PROB] * TLS.calc_rmsd(tiso)
             radius = max(radius, 0.30)
             radius = 0.50
             
@@ -836,7 +842,7 @@ class HTMLReport(Report):
             
         driver.glr_set_render_png_path(png_path)
         viewer.glv_render_one(driver)
-        print end_timing()
+        print misc.end_timing()
 
         return "", png_path
 
@@ -857,10 +863,10 @@ class HTMLReport(Report):
                 old_temp_factor[atm] = atm.temp_factor
                 old_U[atm] = atm.U
 
-                atm.temp_factor = U2B * (trace(Utls)/3.0)
+                atm.temp_factor = U2B * (numpy.trace(Utls)/3.0)
                 atm.U = Utls
 
-        SaveStructure(fil=pdb_path, struct=self.struct)
+        FileLoader.SaveStructure(fil=pdb_path, struct=self.struct)
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():
@@ -876,15 +882,15 @@ class HTMLReport(Report):
         struct_id = self.struct_id
         chain_id  = chainopt["chain_id"]
 
-        tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file = TLS.TLSFile()
+        tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
         for tls in tlsopt.tls_list:
             ## don't write out bypass edges
             if tls["method"]!="TLS":
                 continue
             
-            tls_desc = TLSGroupDesc()
+            tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
             
             tls_desc.set_tls_group(tls["tls_group"])
@@ -960,10 +966,10 @@ class HTMLReport(Report):
 
         try:
             print "TLSAnimate: creating animation PDB file..."
-            start_timing()
+            misc.start_timing()
             tlsa = TLSAnimate(self.struct, chainopt, tlsopt)
             tlsa.construct_animation(pdb_path)
-            print end_timing()
+            print misc.end_timing()
         except TLSAnimateFailure:
             pass
         
@@ -1093,7 +1099,7 @@ class HTMLReport(Report):
                         atm.U = Utls
 
             ## save the structure file
-            SaveStructure(fil=pdb_path, struct=self.struct)
+            FileLoader.SaveStructure(fil=pdb_path, struct=self.struct)
 
             ## restore atom temp_factor and U
             for atm, temp_factor in old_temp_factor.iteritems():
@@ -1101,7 +1107,7 @@ class HTMLReport(Report):
                 atm.U = old_U[atm]
 
             ## generate the TLS segmentation alignment plot for all chains
-            plot = TLSSegmentAlignmentPlot()
+            plot = segment_plot.TLSSegmentAlignmentPlot()
             chain_id_list = []
 
             for chainopt in chainopt_list:
@@ -1169,14 +1175,14 @@ class HTMLReport(Report):
         x += '</center>'
         x += '<br>'
 
-        x += '<form enctype="multipart/form-data" action="%s" method="post">' % (GLOBALS["REFINEPREP_URL"])
-        x += '<input type="hidden" name="job_id" value="%s">' % (GLOBALS["JOB_ID"])
+        x += '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL)
+        x += '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id)
 
         x += '<p>%s</p>' % (REFINEMENT_PREP_INFO)
         
         x += '<center><table><tr><td>'
         
-        plot = LSQR_vs_TLS_Segments_All_Chains_Plot(chainopt_list)
+        plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(chainopt_list)
         x += plot.html_link()
 
         x += '</td></tr><tr><td>'
@@ -1292,7 +1298,7 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a translation analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        tanalysis = TranslationAnalysis(self.chainopt, self.tlsopt)
+        tanalysis = gnuplots.TranslationAnalysis(self.chainopt, self.tlsopt)
 
         l = ['<center>',
              tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", TRANSLATION_GRAPH_CAPTION),
@@ -1304,7 +1310,7 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a libration analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        libration_analysis = LibrationAnalysis(self.chainopt, self.tlsopt)
+        libration_analysis = gnuplots.LibrationAnalysis(self.chainopt, self.tlsopt)
         
         l = ['<center>',
              libration_analysis.html_markup("Screw Displacement Analysis", LIBRATION_GRAPH_CAPTION),
@@ -1316,7 +1322,7 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a fit analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        plot = CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
+        plot = gnuplots.CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
         
         l = ['<center>',
              plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", FIT_GRAPH_CAPTION),
@@ -1327,7 +1333,7 @@ class ChainNTLSAnalysisReport(Report):
     def html_bmean(self):
         """Mean B-Factor per residue.
         """
-        self.bmean_plot = BMeanPlot(self.chainopt, self.tlsopt)
+        self.bmean_plot = gnuplots.BMeanPlot(self.chainopt, self.tlsopt)
 
         l = ['<center>',
              self.bmean_plot.html_markup("Mean BFactor Analysis", "Comparison of TLS predicted B factors with experimental (input) B factors."),
@@ -1336,7 +1342,7 @@ class ChainNTLSAnalysisReport(Report):
         return "".join(l)
 
     def html_rmsd_plot(self):
-        rmsd_plot = RMSDPlot(self.chainopt, self.tlsopt)
+        rmsd_plot = gnuplots.RMSDPlot(self.chainopt, self.tlsopt)
 
         l = ['<center>',
              rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors", ""),

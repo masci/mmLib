@@ -3,9 +3,7 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
-from Numeric       import *
-from LinearAlgebra import *
+import numpy
 
 class HCSSSP(object):
     """Hop Constrained Single Source Shortest Path graph(V,E) minimization
@@ -27,7 +25,7 @@ class HCSSSP(object):
 
         ## a 2D cost matrix; the value at Dij describes the minimum
         ## cost to reach vertex j by traversing i edges
-        D = zeros((hops+1, num_vertex), Float) + infinity
+        D = numpy.zeros((hops+1, num_vertex), float) + infinity
 
         ## like BellmanFord, initialize the source vertex distance to 0.0
         for i in range(hops+1):
@@ -37,7 +35,7 @@ class HCSSSP(object):
         ## previous vertex of the path used to achieve cost Dij,
         ## except the previous vertex it describes is not the one
         ## in row i, but the one in row i-1 (the previous row)
-        P = zeros((hops+1, num_vertex), Int) - 1
+        P = numpy.zeros((hops+1, num_vertex), int) - 1
 
         ## a 2D "travel" matrix containing the edge used by the path
         ## through the previous matrix -- this is a Python 2D matrix and
@@ -93,7 +91,7 @@ class HCSSSP(object):
 
         ## a 2D cost matrix; the value at Dij describes the minimum
         ## cost to reach vertex j by traversing i edges
-        D = zeros((hops+1, num_vertex), Float)
+        D = numpy.zeros((hops+1, num_vertex), float)
 
         ## like BellmanFord, initialize the source vertex distance to 0.0
         for i in range(hops+1):
@@ -103,7 +101,7 @@ class HCSSSP(object):
         ## previous vertex of the path used to achieve cost Dij,
         ## except the previous vertex it describes is not the one
         ## in row i, but the one in row i-1 (the previous row)
-        P = zeros((hops+1, num_vertex), Int) - 1
+        P = numpy.zeros((hops+1, num_vertex), int) - 1
 
         ## a 2D "travel" matrix containing the edge used by the path
         ## through the previous matrix -- this is a Python 2D matrix and

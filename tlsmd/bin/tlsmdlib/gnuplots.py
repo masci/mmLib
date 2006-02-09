@@ -5,13 +5,15 @@
 ## included as part of this package.
 
 import popen2
-import string
+import numpy
 
-## mmLib
-from mmLib.Colors         import *
-## tlsmdlib
-from misc                 import *
-from tls_calcs            import *
+from mmLib.mmTypes import *
+from mmLib import Colors, Gaussian, AtomMath
+from mmLib.Extensions import TLS
+
+import misc
+import conf
+import tls_calcs
 
 
 class GNUPlot(object):
@@ -19,7 +21,7 @@ class GNUPlot(object):
     """
     def __init__(self, **args):
         self.gnuplot_path = args.get("gnuplot_path", "gnuplot")
-        self.font_path    = args.get("font_path", GNUPLOT_FONT)
+        self.font_path    = args.get("font_path", conf.GNUPLOT_FONT)
         self.font_size    = args.get("fontsize", 10)
         self.width        = args.get("width", 640)
         self.height       = args.get("height", 480)
@@ -75,7 +77,7 @@ class GNUPlot(object):
         self.run_gnuplot(script_png)
 
         ## XXX: hack svg output
-        if GLOBALS["USE_SVG"]==True:
+        if conf.globalconf.use_svg == True:
             l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
                  'set output "%s"' % (self.svg_path),
                  '']
@@ -85,7 +87,7 @@ class GNUPlot(object):
     def html_link(self, alt_text=None):
         if not alt_text: alt_text = self.basename
 
-        if GLOBALS["USE_SVG"]==True:
+        if conf.globalconf.use_svg == True:
             l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
                  '<img src="%s" alt="%s">' % (self.png_path, alt_text),
                  '</object>']
@@ -146,7 +148,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 
         ## modify script template
         script = _LSQR_VS_TLS_SEGMENTS_TEMPLATE
-        script = script.replace("<nparts>", str(NPARTS))
+        script = script.replace("<nparts>", str(conf.globalconf.nparts))
         script = script.replace("<txtfile>", self.txt_path)
         script = script.replace("<title>", "Least Squares Residual vs. Number of TLS Segments for %s Chain %s " % (
             chainopt["struct_id"], chainopt["chain_id"]))
@@ -180,7 +182,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 
         ## prepare gnuplot script
         script = _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE
-        script = script.replace("<nparts>", str(NPARTS))
+        script = script.replace("<nparts>", str(conf.globalconf.nparts))
         script = script.replace("<title>", "Least Squares Residual vs. Number of TLS Segments of %s" % (struct_id))
 
         ## re-use the data files of LSQRvsNTLS from the individual
@@ -272,9 +274,9 @@ class TranslationAnalysis(GNUPlot):
                 cols[0] = str(ifrag)
 
                 ## determine Tr translational eigenvalues
-                t1 = GAUSS3C[ADP_PROB] * tls_info["Tr1_rmsd"]
-                t2 = GAUSS3C[ADP_PROB] * tls_info["Tr2_rmsd"]
-                t3 = GAUSS3C[ADP_PROB] * tls_info["Tr3_rmsd"]
+                t1 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr1_rmsd"]
+                t2 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr2_rmsd"]
+                t3 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr3_rmsd"]
 
                 if t1>0.0: cols[1 + 3*itls] = "%6.4f" % (t1)
                 if t2>0.0: cols[2 + 3*itls] = "%6.4f" % (t2)
@@ -371,10 +373,10 @@ class LibrationAnalysis(GNUPlot):
                     Lrho   = tls_info[Lx_rho]
                     Lpitch = tls_info[Lx_pitch]
 
-                    if allclose(Lval, 0.0): continue
+                    if numpy.allclose(Lval, 0.0): continue
 
-                    dvec = calc_LS_displacement(O, Lval, Lvec, Lrho, Lpitch, atm.position, ADP_PROB)
-                    d = length(dvec)
+                    dvec = TLS.calc_LS_displacement(O, Lval, Lvec, Lrho, Lpitch, atm.position, conf.ADP_PROB)
+                    d = AtomMath.length(dvec)
                     cols[1 + 3*itls + n] = "%8.3f" % (d)
 
                 fil.write(" ".join(cols) + "\n")
@@ -457,7 +459,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
                 except ValueError:
                     continue
             
-                b_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+                b_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 bdiff = atm.temp_factor - b_tls
 
                 ltmp = ["?" for x in range(ncols)]
@@ -508,7 +510,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         bdiff_max = 0.0
 
         for atm in tls_group:
-            b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
 
             bdiff_min = min(bdiff_min, bdiff)
@@ -528,7 +530,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
 
         ## count the bins
         for atm in tls_group:
-            b_iso_tls = U2B * calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
             bin = int((bdiff - bdiff_min)/ bin_width)
             bins[bin] += 1
@@ -586,8 +588,8 @@ class BMeanPlot(GNUPlot):
         self.set_basename(basename)
 
         ## write data file
-        BISO1 = calc_mean_biso_obs(chainopt)
-        BISO = calc_mean_biso_tls(chainopt, tlsopt)
+        BISO1 = tls_calcs.calc_mean_biso_obs(chainopt)
+        BISO = tls_calcs.calc_mean_biso_tls(chainopt, tlsopt)
         chain = chainopt["chain"]
 
         data_path = "%s.txt" % (basename)
@@ -681,12 +683,12 @@ class RMSDPlot(GNUPlot):
         ncols = len(tlsopt.tls_list) + 2
         
         if tlsopt.ntls>1:
-            CMTX1 = calc_cross_prediction_matrix_rmsd(chainopt, chainopt["tlsopt"][1])
+            CMTX1 = tls_calcs.calc_cross_prediction_matrix_rmsd(chainopt, chainopt["tlsopt"][1])
         else:
             CMTX1 = None
 
-        CMTX = calc_cross_prediction_matrix_rmsd(chainopt, tlsopt)
-        m, n = shape(CMTX)
+        CMTX = tls_calcs.calc_cross_prediction_matrix_rmsd(chainopt, tlsopt)
+        m, n = CMTX.shape
 
         chain = chainopt["chain"]
 
