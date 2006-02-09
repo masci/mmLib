@@ -9,9 +9,12 @@ from __future__  import generators
 import popen2
 import copy
 import random
+import math
 import numpy
 
+from mmTypes import *
 import Gaussian
+import AtomMath
 
 
 ## constants
@@ -362,7 +365,7 @@ class Raster3DDriver(object):
     def glr_rotate_axis(self, deg, axis):
         """
         """
-        R = rmatrixu(axis, deg*DEG2RAD)
+        R = AtomMath.rmatrixu(axis, deg*DEG2RAD)
         self.glr_mult_matrix_R(R)
 
     def glr_lighting_enable(self):
@@ -643,7 +646,7 @@ class Raster3DDriver(object):
         with the given radius.
         """
         ## don't bother redering small axes -- they look like junk
-        if numpy.allclose(length(axis), 0.0):
+        if numpy.allclose(AtomMath.length(axis), 0.0):
             return
         
         self.object_list.append(

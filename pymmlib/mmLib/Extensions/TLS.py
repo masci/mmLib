@@ -8,6 +8,7 @@ from __future__ import generators
 import re
 import sys
 import fpformat
+import string
 import numpy
 
 from mmLib.mmTypes import *
@@ -704,7 +705,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 tls_desc.S[2,0] * RAD2DEG,
                 tls_desc.S[2,1] * RAD2DEG))
 
-        return "\n".jon(listx)
+        return "\n".join(listx)
 
     def save(self, fil, tls_desc_list):
         ## with this line, the tensor components will be read by some
@@ -922,7 +923,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         i = good_L_eigens[0]
         evec = RL[i]
 
-        RZt = numpy.transpose(rmatrixz(evec))
+        RZt = numpy.transpose(AtomMath.rmatrixz(evec))
         xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
         yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
@@ -941,7 +942,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         i = good_L_eigens[0]
         j = good_L_eigens[1]
 
-        xevec = normalize(cross(RL[i], RL[j]))
+        xevec = AtomMath.normalize(numpy.cross(RL[i], RL[j]))
         for k in range(3):
             if k==i: continue
             if k==j: continue
@@ -1125,7 +1126,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     """
     Lrot     = Gaussian.GAUSS3C[prob] * calc_rmsd(Lval)
     Lorigin  = cor + Lrho
-    D        = dmatrixu(Lvec, Lrot)
+    D        = AtomMath.dmatrixu(Lvec, Lrot)
 
     drot = numpy.matrixmultiply(D, position - Lorigin)
     dscw = (Lrot * Lpitch) * Lvec
@@ -1362,7 +1363,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         i = good_L_eigens[0]
         evec = RL[i]
 
-        RZt = numpy.transpose(rmatrixz(evec))
+        RZt = numpy.transpose(AtomMath.rmatrixz(evec))
         xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
         yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
@@ -1381,7 +1382,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         i = good_L_eigens[0]
         j = good_L_eigens[1]
 
-        xevec = normalize(cross(RL[i], RL[j]))
+        xevec = AtomMath.normalize(numpy.cross(RL[i], RL[j]))
         for k in range(3):
             if k==i: continue
             if k==j: continue
@@ -3599,8 +3600,8 @@ class GLTLSGroup(Viewer.GLDrawList):
                 rot1   = rot_start * sign
                 rot2   = rot_end   * sign
 
-                Rstep1 = rmatrixu(Lx_eigen_vec, rot1)
-                Rstep2 = rmatrixu(Lx_eigen_vec, rot2)
+                Rstep1 = AtomMath.rmatrixu(Lx_eigen_vec, rot1)
+                Rstep2 = AtomMath.rmatrixu(Lx_eigen_vec, rot2)
 
                 screw1 = Lx_eigen_vec * (rot1 * Lx_pitch)
                 screw2 = Lx_eigen_vec * (rot2 * Lx_pitch)
