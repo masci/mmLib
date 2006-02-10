@@ -46,7 +46,7 @@ class HCSSSP(object):
 
         ## now run the minimization
         for h in range(1, hops+1):
-            for edge in self.E:
+            for edge in E:
                 self.HCSSSP_minimize_relax(D, P, T, edge, h)
 
         ## now the matrix Dij and Pij are complete
@@ -112,7 +112,7 @@ class HCSSSP(object):
 
         ## now run the minimization
         for h in range(1, hops+1):
-            for edge in self.E:
+            for edge in E:
                 self.HCSSSP_maximize_relax(D, P, T, edge, h)
 
         ## now the matrix Dij and Pij are complete

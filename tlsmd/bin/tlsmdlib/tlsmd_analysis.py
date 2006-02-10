@@ -3,9 +3,7 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-
 import sys
-import copy
 import math
 import numpy
 
@@ -21,7 +19,7 @@ import tls_calcs
 import fit_engine
 
 
-def calc_include_atom(atm, reject_messages=False):
+def calc_include_atom(atm, reject_messages = False):
     """Filter out atoms from the model which will cause problems or
     cont contribute to the TLS analysis.
     """
@@ -92,7 +90,7 @@ def chain_to_xmlrpc_list(chain):
     xmlrpc_chain = []
 
     for atm in chain.iter_all_atoms():
-        if atm.include==False:
+        if atm.include == False:
             continue
 
         atm_desc = {}
@@ -254,14 +252,14 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         """
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
-        V = []
+        vertices = []
         for i in range(self.num_vertex):
 
             ## add the vertex label for i at Vi
-            if i==0:
+            if i ==0 :
                 vertex_label = "N-TERM"
 
-            elif i==self.num_vertex - 1:
+            elif i == self.num_vertex - 1:
                 vertex_label = "C-TERM"
 
             else:
@@ -270,15 +268,13 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
                                               self.chain[i].fragment_id)
 
             vertex_label = "V%d[%s]" % (i, vertex_label)
-            V.append(vertex_label)
-
-        self.V = V
+            vertices.append(vertex_label)
 
         ## now build edges for the graph with weights given by the LSQ
         ## residual of TLS group fits
         grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
         
-        E = []
+        edges = []
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(self.chain, self.min_subsegment_len):
             tls = grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
 
@@ -289,29 +285,28 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
                 sys.exit(-1)
 
-            if tls.has_key("error")==True:
+            if tls.has_key("error") == True:
                 continue
 
-            if tls.has_key("lsq_residual")==False:
+            if tls.has_key("lsq_residual") == False:
                 print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
                 sys.exit(-1)
 
             cost = tls["lsq_residual"]
             frag_range = (frag_id1, frag_id2)
             edge = (i, j, cost, frag_range)
-            E.append(edge)
-
-        self.E = E
+            edges.append(edge)
 
         ## perform the minimization
         misc.start_timing()
 
-        if len(self.E)>0:
+        if len(edges) > 0:
             print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (self.chain.chain_id)
         
-            D, P, T = self.HCSSSP_minimize(self.V, self.E, self.nparts)
+            D, P, T = self.HCSSSP_minimize(vertices, edges, self.nparts)
 
             self.minimized = True
+            self.V = vertices
             self.D = D
             self.P = P
             self.T = T
@@ -320,8 +315,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             self.minimized = False
 
         ## free memory taken up from edges
-        E      = None
-        self.E = None
+        edges = None
         import gc
         gc.collect()
 
@@ -497,7 +491,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         fil = open("hinge_chain_%s.txt" % (self.chain.chain_id), "w")
 
-        xchain = XChain(chain_to_xmlrpc_list(self.chain))
+        xchain = fit_engine.XChain(chain_to_xmlrpc_list(self.chain))
 
         tls_model = lineartls.LinearTLSModel()
         #tls_model = nonlineartls.NLTLSModel()

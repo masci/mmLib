@@ -1,13 +1,11 @@
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-import os
 import cPickle
 import bsddb
-from misc import *
 
 SAVEKEYS = ["error", "lsq_residual", "method", "num_atoms"]
 
@@ -20,7 +18,6 @@ class TLSMDFile(object):
     """
     def __init__(self, tlsdb_file):
         self.tlsdb_file = tlsdb_file
-        ## graph-file uses Berkeley DB
         self.grh_db = bsddb.hashopen(self.tlsdb_file, "c")
 
     def grh_db_key(self, chain_id, frag_id1, frag_id2):
