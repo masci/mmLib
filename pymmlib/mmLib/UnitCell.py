@@ -179,7 +179,7 @@ class UnitCell(object):
         """Calculates and returns the orthogonal coordinate vector of
         fractional vector v.
         """
-        return matrixmultiply(self.frac_to_orth, v)
+        return numpy.matrixmultiply(self.frac_to_orth, v)
 
     def calc_orth_symop(self, symop):
         """Calculates the orthogonal space symmetry operation (return SymOp)
@@ -303,7 +303,7 @@ def main():
     print "fractionalization matrix =\n",uc.calc_fractionalization_matrix()
     print "orthogonalization matrix =\n",uc.calc_orthogonalization_matrix()
 
-    print "orth * e =\n",matrixmultiply(
+    print "orth * e =\n", numpy.matrixmultiply(
         uc.calc_orthogonalization_matrix(), e)
 
 

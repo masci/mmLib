@@ -1536,19 +1536,19 @@ class GLAtomList(GLDrawList):
         else:
 
             gl_struct = self.glo_get_glstructure()
-            if gl_struct==None:
+            if gl_struct == None:
                 yield True
 
             else:
                 for symop in gl_struct.iter_orth_symops():
                     self.driver.glr_push_matrix()
 
-                    if self.properties["atom_origin"]!=None:
+                    if self.properties["atom_origin"] != None:
                         self.driver.glr_translate(-self.properties["atom_origin"])
 
                     self.driver.glr_mult_matrix_Rt(symop.R, symop.t)
 
-                    if self.properties["atom_origin"]!=None:
+                    if self.properties["atom_origin"] != None:
                         self.driver.glr_translate(self.properties["atom_origin"])
                     
                     yield True
@@ -1623,21 +1623,21 @@ class GLAtomList(GLDrawList):
 
             frag = atm.get_fragment()
             
-            if frag.is_amino_acid()==True:
-                if oatm_visible==False and atm.name=="O":
+            if frag.is_amino_acid() == True:
+                if oatm_visible == False and atm.name == "O":
                     yield atm, False                    
                     continue
                 
-                elif main_chain_visible==True and side_chain_visible==True:
+                elif main_chain_visible == True and side_chain_visible == True:
                     yield atm, True
                     continue
                 
-                elif main_chain_visible==True and side_chain_visible==False:
+                elif main_chain_visible == True and side_chain_visible == False:
                     if atm.name in aa_bb_atoms:
                         yield atm, True
                         continue
                     
-                elif main_chain_visible==False and side_chain_visible==True:
+                elif main_chain_visible == False and side_chain_visible == True:
                     if atm.name not in aa_bb_atoms:
                         yield atm, True
                         continue
@@ -2037,8 +2037,6 @@ class GLAtomList(GLDrawList):
     def glal_draw_ball_stick(self):
         """Draw atom with ball/stick model.
         """
-        debug("glal_draw_ball_stick()")
-
         ## driver optimization
         glr_set_material_rgb = self.driver.glr_set_material_rgb
         glr_tube             = self.driver.glr_tube

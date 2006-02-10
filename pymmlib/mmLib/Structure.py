@@ -9,8 +9,10 @@ from __future__ import generators
 import types
 import copy
 import math
+import string
 import numpy
 
+import mmTypes
 import Constants
 import GeometryDict
 import AtomMath
@@ -79,26 +81,26 @@ def fragment_id_lt(frag_id1, frag_id2):
     """Performs a proper less than comparison of frament_id strings
     according to their sequence number, then insertion code.
     """
-    return fragment_id_split(frag_id1)<fragment_id_split(frag_id2)
+    return fragment_id_split(frag_id1) < fragment_id_split(frag_id2)
     
 def fragment_id_le(frag_id1, frag_id2):
     """Performs a proper less than or equal to comparison of frament_id
     strings according to their sequence number, then insertion code.
     """
-    return fragment_id_split(frag_id1)<=fragment_id_split(frag_id2)
+    return fragment_id_split(frag_id1) <= fragment_id_split(frag_id2)
 
 def fragment_id_gt(frag_id1, frag_id2):
     """Performs a proper greator than comparison of frament_id strings
     according to their sequence number, then insertion code.
     """
-    return fragment_id_split(frag_id1)>fragment_id_split(frag_id2)
+    return fragment_id_split(frag_id1) > fragment_id_split(frag_id2)
     
 def fragment_id_ge(frag_id1, frag_id2):
     """Performs a proper greator then or equal to comparison of
     frament_id strings according to their sequence number, then
     insertion code.
     """
-    return fragment_id_split(frag_id1)>=fragment_id_split(frag_id2)
+    return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
 
     
 class Structure(object):
@@ -281,7 +283,7 @@ class Structure(object):
         """
         return len(self.model_list)
     
-    def add_chain(self, chain, delay_sort=True):
+    def add_chain(self, chain, delay_sort = True):
         """Adds a Chain object to the Structure.  Creates necessary parent
         Model if necessary
         """
@@ -304,7 +306,7 @@ class Structure(object):
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
-        if self.default_model==None:
+        if self.default_model == None:
             return None
         if self.default_model.chain_dict.has_key(chain_id):
             return self.default_model.chain_dict[chain_id]
@@ -519,7 +521,7 @@ class Structure(object):
             if frag.is_water():
                 yield frag
 
-    def add_atom(self, atom, delay_sort=False):
+    def add_atom(self, atom, delay_sort = False):
         """Adds a Atom object to the Structure.  If a collision occurs, a
         error is raised.
         """
@@ -633,7 +635,7 @@ class Structure(object):
         """
         al_list = []
         for atm in self.iter_all_atoms():
-            if atm.alt_loc!="" and atm.alt_loc not in al_list:
+            if atm.alt_loc != "" and atm.alt_loc not in al_list:
                 al_list.append(atm.alt_loc)
         return al_list
 
@@ -706,19 +708,19 @@ class Structure(object):
             xyzdict = GeometryDict.XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
-                if atm.position!=None:
+                if atm.position != None:
                     xyzdict.add(atm.position, atm)
 
             for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(2.5):
 
-                if (atm1.alt_loc=="" or atm2.alt_loc=="") or (atm1.alt_loc==atm2.alt_loc):
+                if (atm1.alt_loc == "" or atm2.alt_loc == "") or (atm1.alt_loc == atm2.alt_loc):
 
                     ## calculate the expected bond distance by adding the
                     ## covalent radii + 0.54A
                     edesc1 = Library.library_get_element_desc(atm1.element)
                     edesc2 = Library.library_get_element_desc(atm2.element)
 
-                    if edesc1==None or edesc2==None:
+                    if edesc1 == None or edesc2 == None:
                         continue
 
                     bond_dist = edesc1.covalent_radius + edesc2.covalent_radius + 0.54
@@ -726,7 +728,7 @@ class Structure(object):
                     if dist>bond_dist:
                         continue
 
-                    if atm1.get_bond(atm2)==None:
+                    if atm1.get_bond(atm2) == None:
                         atm1.create_bond(atom=atm2, standard_res_bond=False)
         
     def add_bonds_from_library(self):
@@ -742,7 +744,7 @@ class Model(object):
     """Multiple models support.
     """
     def __init__(self, model_id=1, **args):
-        assert type(model_id)==types.IntType
+        assert type(model_id) == types.IntType
 
         self.structure        = None
 
@@ -1004,7 +1006,7 @@ class Model(object):
         """Removes a Atom object.
         """
         assert isinstance(atom, Atom)
-        assert atom.model_id==self.model_id        
+        assert atom.model_id == self.model_id        
         self.chain_dict[atom.chain_id].remove_atom(atom)
 
     def iter_atoms(self):
@@ -1136,11 +1138,11 @@ class Model(object):
     def set_model_id(self, model_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(model_id)==types.IntType
+        assert type(model_id) == types.IntType
 
         if self.structure!=None:
             chk_model = self.structure.get_model(model_id)
-            if chk_model!=None or chk_model!=self:
+            if chk_model != None or chk_model != self:
                 raise ModelOverwrite()
 
         self.model_id = model_id
@@ -1178,7 +1180,8 @@ class Segment(object):
 
     def __str__(self):
         try:
-            return "Segment(%d:%s, %s...%s)" % (self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
+            return "Segment(%d:%s, %s...%s)" % (
+                self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
         except IndexError:
              return "Segment(%d:%s)" % (self.model_id, self.chain_id)
 
@@ -1196,25 +1199,25 @@ class Segment(object):
         """Less than operator based on the chain_id.
         """
         assert isinstance(other, Segment)
-        return self.chain_id<other.chain_id
+        return self.chain_id < other.chain_id
         
     def __le__(self, other):
         """Less than or equal operator based on chain_id.
         """
         assert isinstance(other, Segment)
-        return self.chain_id<=other.chain_id
+        return self.chain_id <= other.chain_id
         
     def __gt__(self, other):
         """Greator than operator based on chain_id.
         """
         assert isinstance(other, Segment)
-        return self.chain_id>other.chain_id
+        return self.chain_id > other.chain_id
 
     def __ge__(self, other):
         """Greator than or equal to operator based on chain_id.
         """
         assert isinstance(other, Segment)
-        return self.chain_id>=other.chain_id
+        return self.chain_id >= other.chain_id
 
     def __len__(self):
         """Return the number of Fragments in the Segment.
@@ -1230,13 +1233,13 @@ class Segment(object):
         is returned includes those Fragments.  If the slice values are
         integers, then normal list slicing rules apply.
         """
-        if type(fragment_idx)==types.IntType:
+        if type(fragment_idx) == types.IntType:
             return self.fragment_list[fragment_idx]
 
-        elif type(fragment_idx)==types.StringType:
+        elif type(fragment_idx) == types.StringType:
             return self.fragment_dict[fragment_idx]
 
-        elif type(fragment_idx)==types.SliceType:
+        elif type(fragment_idx) == types.SliceType:
             
             ## determine if the slice is on list indexes or on fragment_id
             ## strings
@@ -1244,10 +1247,10 @@ class Segment(object):
             stop  = fragment_idx.stop
             
             ## check for index (list) slicing
-            if (start==None and stop==None) or \
-               (start==None and type(stop)==types.IntType) or \
-               (stop==None  and type(start)==types.IntType) or \
-               (type(start)==types.IntType and type(stop)==types.IntType):
+            if (start == None and stop == None) or \
+               (start == None and type(stop) == types.IntType) or \
+               (stop == None  and type(start) == types.IntType) or \
+               (type(start) == types.IntType and type(stop) == types.IntType):
 
                 segment = self.construct_segment()
                 for frag in self.fragment_list[start:stop]:
@@ -1255,9 +1258,9 @@ class Segment(object):
                 return segment
             
             ## check for fragment_id slicing
-            if (start==None and type(stop)==types.StringType) or \
-               (stop==None  and type(start)==types.StringType) or \
-               (type(start)==types.StringType and type(stop)==types.StringType):
+            if (start == None and type(stop) == types.StringType) or \
+               (stop == None  and type(start) == types.StringType) or \
+               (type(start) == types.StringType and type(stop) == types.StringType):
 
                 return self.construct_sub_segment(start, stop)
 
@@ -1949,7 +1952,7 @@ class Fragment(object):
                     atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
+                    mmTypes.warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
 
                     iA = self.atom_order_list.index(atomA)
 
@@ -3055,39 +3058,6 @@ class Atom(object):
         return (min(e1, e2) / max(e1, e2),
                 min(e1, e3) / max(e1, e3),
                 min(e2, e3) / max(e2, e3))
-
-    def calc_CCuij(self, atom_U):
-        """Calculates the correlation coefficent between this Atom and the
-        argument Atom.  The argument atom may also be a U matrix
-        """
-        U = self.get_U()
-        if isinstance(atom_U, Atom):
-            V = atom_U.get_U()
-        else:
-            V = atom_U
-        return calc_CCuij(U, V)
-
-    def calc_Suij(self, atom_U):
-        """Compares self Atom with argument Atom or U matrix, and returns
-        a value greator than 1.0 when the two Atoms are more alike than a
-        isotropic Atom.
-        """
-        U = self.get_U()
-        if isinstance(atom_U, Atom):
-            V = atom_U.get_U()
-        else:
-            V = atom_U
-        return calc_Suij(U, V)
-        
-    def calc_DP2uij(self, atom_U):
-        """
-        """
-        U = self.get_U()
-        if isinstance(atom_U, Atom):
-            V = atom_U.get_U()
-        else:
-            V = atom_U
-        return calc_DP2uij(U, V)
         
     def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the
@@ -3098,12 +3068,12 @@ class Atom(object):
 
         if max_distance:
             for atm in self.get_structure().iter_atoms():
-                d = calc_distance(self, atm)
+                d = AtomMath.calc_distance(self, atm)
                 if d <= max_distance:
-                    listx.append((calc_distance(self, atm), atm))
+                    listx.append((AtomMath.calc_distance(self, atm), atm))
         else:
             for atm in self.get_structure().iter_atoms():
-                listx.append((calc_distance(self, atm), atm))
+                listx.append((AtomMath.calc_distance(self, atm), atm))
 
         listx.sort()
         return iter(listx)
@@ -3232,7 +3202,7 @@ class Bond(object):
     def calc_length(self):
         """Returns the length of the bond.
         """
-        return length(self.atom1.position - self.atom2.position)
+        return AtomMath.length(self.atom1.position - self.atom2.position)
 
 
 class AlphaHelix(object):
@@ -3325,7 +3295,7 @@ class AlphaHelix(object):
         fragment_id1:fragment_id2 cannot be found in the parent Chain object.
         """
         if self.chain_id1!=self.chain_id2:
-            fatal("alpha helix spans multiple chains -- not supported") 
+            mmTypes.fatal("alpha helix spans multiple chains -- not supported") 
 
         ## get the Chain object from the parent Model
         try:

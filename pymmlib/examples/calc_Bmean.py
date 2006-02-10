@@ -10,13 +10,11 @@
 
 import sys
 
-from mmLib.Structure  import *
-from mmLib.FileLoader import LoadStructure
-
+from mmLib import FileLoader
 
 def main(path):
     ## load structure
-    struct = LoadStructure(
+    struct = FileLoader.LoadStructure(
         fil = path,
         build_properties = ("no_bonds",))
 
