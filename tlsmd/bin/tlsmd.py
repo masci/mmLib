@@ -1,5 +1,6 @@
 #!/home/tlsmd/local/bin/python
-## TLS Minimized Domains (TLSMD)
+
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -20,9 +21,7 @@ def usage():
     print "           B-factors (temperature factors)"
     print
     print "Command Line Usage:"
-    print "  tlsmd.py  [-t <num threads>]"
-    print "            [-v ] verbose output "
-    print "            [-f <grid server config file>]"
+    print "  tlsmd.py  [-v ] verbose output "
     print "            [-x <URL of WebTLSMDD XMLRPC Server>]"
     print "            [-j <Job ID of WebTLSMDD Job>]"
     print "            [-r <html report dir>]"
@@ -33,15 +32,8 @@ def usage():
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
     print "            [-i <struct_id>] Override struct_id in PDB file"
     print "            [-s] output Gnuplot plots using SVG"
+    print "            [-t struct.pdb:chain_id ]"
     print "            struct.pdb"
-    print
-    print "To run a a tls search in grid computation mode requires a"
-    print "configuration file with the URLs of the grid computation"
-    print "servers. Here is a example:"
-    print 
-    print "## WebTLSMD Grid Server File"
-    print "http://localhost:9500"
-    print "http://localhost:9501"
     print
     print "Authors:"
     print "  Jay Painter <jpaint@u.washington.edu>"
@@ -66,9 +58,12 @@ def analysis_main(struct_path, opt_dict):
     tlsdb_file        = opt_dict.get("-d")
     tlsdb_complete    = opt_dict.has_key("-n")
     chain_ids         = opt_dict.get("-c")
-    gridconf_file     = opt_dict.get("-f")
-    num_threads       = int(opt_dict.get("-t", 1))
 
+    if opt_dict.has_key("-t"):
+        tpath, tchain_id = opt_dict["-t"].split(":")
+        conf.globalconf.target_struct_path = tpath
+        conf.globalconf.target_struct_chain_id = tchain_id
+        
     if opt_dict.has_key("-v"):
         conf.globalconf.verbose = True
 
@@ -76,7 +71,7 @@ def analysis_main(struct_path, opt_dict):
         conf.globalconf.use_svg = True
         
     if opt_dict.has_key("-x"):
-        conf.globalconf.webtlsmdd =  opt_dict["-x"]
+        conf.globalconf.webtlsmdd = opt_dict["-x"]
 
     if opt_dict.has_key("-j"):
         conf.globalconf.job_id = opt_dict["-j"]
@@ -106,7 +101,7 @@ def analysis_main(struct_path, opt_dict):
     ## atoms to include
     if opt_dict.has_key("-a"):
         val = opt_dict["-a"].upper()
-        if val not in ["ALL", "MAINCHAIN", "CA"]: usage()
+        if val not in ["ALL", "MAINCHAIN"]: usage()
         conf.globalconf.include_atoms = val
 
     ## create the analysis processor and load the structure, select chains
@@ -114,9 +109,8 @@ def analysis_main(struct_path, opt_dict):
         struct_path    = struct_path,
         sel_chain_ids  = chain_ids,
         tlsdb_file     = tlsdb_file,
-        tlsdb_complete = tlsdb_complete,
-        gridconf_file  = gridconf_file,
-        num_threads    = num_threads)
+        tlsdb_complete = tlsdb_complete)
+    
     anal.run_optimization()
 
     ## generate HTML report if a directory is given
@@ -129,7 +123,7 @@ if __name__ == "__main__":
     import getopt
 
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:c:d:i:w:m:r:f:t:j:x:nvs")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvs")
     except getopt.GetoptError:
         usage()
 

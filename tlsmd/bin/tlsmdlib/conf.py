@@ -33,6 +33,8 @@ class GlobalConfiguration(object):
         self.job_id = None
         self.struct_id = None
         self.start_time = time.time()
+        self.target_struct_path = None
+        self.target_struct_chain_id = None
 
     def prnt(self):
         print "TLSMD GLOBAL CONFIGURATION"

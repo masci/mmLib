@@ -57,7 +57,7 @@ class TLSAnimate(object):
 
         for chain in struct.iter_chains():
 
-            if chain.chain_id==chain_id or chain.count_fragments()<200:
+            if chain.chain_id == chain_id or chain.count_fragments() < 200:
                 include_chain = True
 	    else:
 		include_chain = False
@@ -65,16 +65,18 @@ class TLSAnimate(object):
             for frag in chain.iter_fragments():
 
                 ## skip all waters
-                if frag.is_water()==True:
+                if frag.is_water() == True:
                     continue
 
-                elif frag.is_amino_acid()==True and include_chain:
+                elif frag.is_amino_acid() == True and include_chain:
                     for atm in frag.iter_atoms():
 
                         ## we only want main-chain atoms necessary for
                         ## generating cartoon/trace
-                        if atm.name not in ["N","CA","C","O"]:
-                            continue
+                        #if atm.name not in ["N","CA","C","O"]:
+                        #    continue
+
+                        if atm.name != "CA": continue
                         
                         cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
@@ -109,7 +111,7 @@ class TLSAnimate(object):
         ##self.phase_assignment()
         for phase in (0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5):
             self.construct_frame(phase)
-        FileLoader.SaveStructure(struct=self.struct, fil=filename)
+        FileLoader.SaveStructure(struct = self.struct, fil = filename)
 
     def next_model_id(self):
         """Return the next availible model_id in self.struct
@@ -118,7 +120,7 @@ class TLSAnimate(object):
         while True:
             model_id += 1            
             model = self.struct.get_model(model_id)
-            if model==None:
+            if model == None:
                 return model_id
             
     def next_chain_id(self):
@@ -126,7 +128,7 @@ class TLSAnimate(object):
         """
         for chain_id in string.uppercase:
             chain = self.struct.get_chain(chain_id)
-            if chain==None:
+            if chain == None:
                 return chain_id
         raise TLSAnimateFailure()
 

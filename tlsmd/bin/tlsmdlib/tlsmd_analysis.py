@@ -3,6 +3,7 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
 import sys
 import math
 import numpy
@@ -24,18 +25,18 @@ def calc_include_atom(atm, reject_messages = False):
     cont contribute to the TLS analysis.
     """
     if atm.occupancy<0.1:
-        if reject_messages==True:
+        if reject_messages == True:
             print "calc_include_atom(%s): rejected because of low occupancy" % (atm)
 	return False
     
     if numpy.trace(atm.get_U()) <= const.TSMALL:
-        if reject_messages==True:
+        if reject_messages == True:
             print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
         return False
 
     elif conf.globalconf.include_atoms == "MAINCHAIN":
         if atm.name not in const.MAINCHAIN_ATOMS:
-            if reject_messages==True:
+            if reject_messages == True:
                 print "calc_include_atom(%s): rejected non-mainchain atom" % (atm)
             return False
     
@@ -77,7 +78,6 @@ def iter_chain_subsegment_descs(chain, min_len):
     for vertex_i, vertex_j in iter_ij(num_vertex, min_len):
         frag_id1 = chain.fragment_list[vertex_i].fragment_id
         frag_id2 = chain.fragment_list[vertex_j-1].fragment_id
-        
         yield frag_id1, frag_id2, vertex_i, vertex_j
 
 
@@ -138,7 +138,8 @@ class TLSChainProcessor(object):
         self.fit_engine.set_xmlrpc_chain(chain_to_xmlrpc_list(chain))
 
         self.num_subsegments = 0
-        self.total_num_subsegments = calc_num_subsegments(chain.count_fragments(), self.min_subsegment_len)
+        self.total_num_subsegments = calc_num_subsegments(
+            chain.count_fragments(), self.min_subsegment_len)
 
     def prnt_percent_complete(self, p):
         print "(%10d/%10d) %2d%% Complete" % (self.num_subsegments, self.total_num_subsegments, p)
@@ -156,7 +157,8 @@ class TLSChainProcessor(object):
 
         chain_id = self.chain.chain_id
         
-        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(self.chain, self.min_subsegment_len):
+        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
+            self.chain, self.min_subsegment_len):
 
             if tlsmdfile.grh_get_tls_record(chain_id, frag_id1, frag_id2) == None:
                 fit_info = self.fit_engine.lsq_fit_segment(frag_id1, frag_id2)
@@ -275,7 +277,9 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
         
         edges = []
-        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(self.chain, self.min_subsegment_len):
+        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
+            self.chain, self.min_subsegment_len):
+
             tls = grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
 
             assert frag_id1 == tls["frag_id1"]
@@ -478,7 +482,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             else:
                 edge_label = ""
                  
-            print "%s   %3d     %10.4f   %s   %s" % (vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
+            print "%s   %3d     %10.4f   %s   %s" % (
+                vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
 
             curr_v = prev_vertex
             h -= 1
@@ -524,7 +529,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             istartb = xchain.get_istart(frag_id1b)
             iendb   = xchain.get_iend(frag_id2b)
 
-            print "HINGE WINDOW: %s %s-%s:%s-%s" % (chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b)
+            print "HINGE WINDOW: %s %s-%s:%s-%s" % (
+                chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b)
             
             hdict = tls_model.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
 
@@ -533,9 +539,11 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             msd_Lab = hdict["msd_c"]
 
             print "SEGMENT A(%d-%d): msd=%f rmsd=%f" % (
-                istarta, ienda, Constants.U2B**2 * hdict["msd_a"],  Constants.U2B * math.sqrt(hdict["msd_a"]))
+                istarta, ienda, Constants.U2B**2 * hdict["msd_a"],
+                Constants.U2B * math.sqrt(hdict["msd_a"]))
             print "SEGMENT B(%d-%d): msd=%f rmsd=%f" % (
-                istartb, iendb, Constants.U2B**2 * hdict["msd_b"],  Constants.U2B * math.sqrt(hdict["msd_b"]))
+                istartb, iendb, Constants.U2B**2 * hdict["msd_b"],
+                Constants.U2B * math.sqrt(hdict["msd_b"]))
             print "HINGE VALS: msd_ab=%f rmsd_ab=%f" % (
                 Constants.U2B**2 * msd_ab, Constants.U2B * math.sqrt(msd_ab)) 
             print "HINGE VALS: msd_abo=%f rmsd_abo=%f" % (
@@ -544,7 +552,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
                 Constants.RAD2DEG2**2 *  msd_Lab, Constants.RAD2DEG2 * math.sqrt(msd_Lab))
             print
 
-            fil.write("%s %f %f\n" % (frag_id2a, Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo)))
+            fil.write("%s %f %f\n" % (
+                frag_id2a, Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo)))
 
         fil.close()
 
@@ -556,9 +565,7 @@ class TLSMDAnalysis(object):
                  struct_path    = None,
                  sel_chain_ids  = None,
                  tlsdb_file     = None,
-                 tlsdb_complete = False,
-                 gridconf_file  = None,
-                 num_threads    = 1):
+                 tlsdb_complete = False):
 
         conf.globalconf.prnt()
 
@@ -569,8 +576,6 @@ class TLSMDAnalysis(object):
             self.sel_chain_ids = None
         self.tlsdb_file      = tlsdb_file
         self.tlsdb_complete  = tlsdb_complete
-        self.gridconf_file   = gridconf_file
-        self.num_threads     = num_threads
 
         self.struct          = None
         self.struct_id       = None
@@ -584,7 +589,8 @@ class TLSMDAnalysis(object):
 
         ## auto name of tlsdb file then open
         if self.tlsdb_file==None:
-            self.tlsdb_file = "%s_%s_%s.db" % (self.struct_id, conf.globalconf.tls_model, conf.globalconf.weight_model)
+            self.tlsdb_file = "%s_%s_%s.db" % (self.struct_id, conf.globalconf.tls_model,
+                                               conf.globalconf.weight_model)
         self.tlsmdfile = datafile.TLSMDFile(self.tlsdb_file)
 
         ## select chains for analysis
@@ -611,7 +617,6 @@ class TLSMDAnalysis(object):
         print "    STRUCTURE ID.......................: %s" % (self.struct_id)
         print "    CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
         print "    DATABASE FILE PATH.................: %s" % (self.tlsdb_file)
-        print "    GRID SERVER CONFIG FILE............: %s" % (self.gridconf_file)
         print
         
     def load_struct(self):
