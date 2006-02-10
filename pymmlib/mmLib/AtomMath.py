@@ -66,14 +66,16 @@ def rmatrixu(u, theta):
     sa = math.sin(theta)
     ca = math.cos(theta)
 
-    R = numpy.array([[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
-                     [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
-                     [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], float)
+    R = numpy.array(
+        [[1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
+         [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
+         [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]], float)
 
     try:
         assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
     except AssertionError:
-        print "rmatrixu(%s, %f) determinant(R)=%f" % (u, theta, numpy.linalg.determinant(R))
+        print "rmatrixu(%s, %f) determinant(R)=%f" % (
+            u, theta, numpy.linalg.determinant(R))
         raise
     
     return R
@@ -99,7 +101,7 @@ def rmatrixz(vec):
 
     d = math.sqrt(u*u + v*v)
 
-    if d!=0.0:
+    if d != 0.0:
         Rxz = numpy.array([ [  u/d, v/d,  0.0 ],
                             [ -v/d, u/d,  0.0 ],
                             [  0.0, 0.0,  1.0 ] ], float)
@@ -249,14 +251,14 @@ def quaternionrmatrix(R):
 def calc_distance(a1, a2):
     """Returns the distance between two argument atoms.
     """
-    if a1==None or a2==None:
+    if a1 == None or a2 == None:
         return None
     return length(a1.position - a2.position)
 
 def calc_angle(a1, a2, a3):
     """Return the angle between the three argument atoms.
     """
-    if a1==None or a2==None or a3==None:
+    if a1 == None or a2 == None or a3 == None:
         return None
     a21 = a1.position - a2.position
     a21 = a21 / (length(a21))
@@ -269,7 +271,7 @@ def calc_angle(a1, a2, a3):
 def calc_torsion_angle(a1, a2, a3, a4):
     """Calculates the torsion angle between the four argument atoms.
     """
-    if a1==None or a2==None or a3==None or a4==None:
+    if a1 == None or a2 == None or a3 == None or a4 == None:
         return None
 
     a12 = a2.position - a1.position
@@ -339,7 +341,8 @@ def calc_DP2uij(U, V):
 
     Pu2 = math.sqrt( det_invU / (64.0 * Constants.PI3) )
     Pv2 = math.sqrt( det_invV / (64.0 * Constants.PI3) )
-    Puv = math.sqrt((det_invU * det_invV) / (8.0*Constants.PI3 * numpy.linalg.determinant(invU + invV)))
+    Puv = math.sqrt(
+        (det_invU * det_invV) / (8.0*Constants.PI3 * numpy.linalg.determinant(invU + invV)))
 
     dP2 = Pu2 + Pv2 - (2.0 * Puv)
     
@@ -363,7 +366,7 @@ def calc_atom_centroid(atom_iter):
     num      = 0
     centroid = numpy.zeros(3, float)
     for atm in atom_iter:
-        if atm.position!=None:
+        if atm.position != None:
             centroid += atm.position
             num += 1
     
@@ -377,7 +380,7 @@ def calc_atom_mean_temp_factor(atom_iter):
     adv_tf = 0.0
 
     for atm in atom_iter:
-        if atm.temp_factor!=None:
+        if atm.temp_factor != None:
             adv_tf += atm.temp_factor
             num_tf += 1
 
@@ -411,20 +414,20 @@ def calc_inertia_tensor(atom_iter, origin):
     ## order the tensor such that the largest
     ## principal compent is along the z-axis, and
     ## the second largest is along the y-axis
-    if evals[0]>=evals[1] and evals[0]>=evals[2]:
-        if evals[1]>=evals[2]:
+    if evals[0] >= evals[1] and evals[0] >= evals[2]:
+        if evals[1] >= evals[2]:
             R = numpy.array((evecs[2], evecs[1], evecs[0]), float)
         else:
             R = numpy.array((evecs[1], evecs[2], evecs[0]), float)
 
-    elif evals[1]>=evals[0] and evals[1]>=evals[2]:
-        if evals[0]>=evals[2]:
+    elif evals[1] >= evals[0] and evals[1] >= evals[2]:
+        if evals[0] >= evals[2]:
             R = numpy.array((evecs[2], evecs[0], evecs[1]), float)
         else:
             R = numpy.array((evecs[0], evecs[2], evecs[1]), float)
 
-    elif evals[2]>=evals[0] and evals[2]>=evals[1]:
-        if evals[0]>=evals[1]:
+    elif evals[2] >= evals[0] and evals[2] >= evals[1]:
+        if evals[0] >= evals[1]:
             R = numpy.array((evecs[1], evecs[0], evecs[2]), float)
         else:
             R = numpy.array((evecs[0], evecs[1], evecs[2]), float)

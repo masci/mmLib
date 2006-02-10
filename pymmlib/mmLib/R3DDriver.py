@@ -6,6 +6,7 @@
 for the Raster3D ray tracer.
 """
 from __future__  import generators
+
 import popen2
 import copy
 import random
@@ -17,10 +18,12 @@ import Constants
 import Gaussian
 import AtomMath
 
-
 ## constants
 MARGIN          = 1.15
 BASE_LINE_WIDTH = 0.05
+
+
+class FinishMe(Exception): pass
 
 
 def matrixmultiply43(M, x):
@@ -593,7 +596,7 @@ class Raster3DDriver(object):
         nr = numpy.matrixmultiply(R, n)
 
         if self.normalize==True:
-            self.normal = normalize(nr)
+            self.normal = AtomMath.normalize(nr)
         else:
             self.normal = nr
 
@@ -602,10 +605,11 @@ class Raster3DDriver(object):
         """
         ## just rotate the normal
         R  = self.matrix[:3,:3]
+        n = numpy.array([x, y, z], float)
         nr = numpy.matrixmultiply(R, n)
 
         if self.normalize==True:
-            self.normal = normalize(nr)
+            self.normal = AtomMath.normalize(nr)
         else:
             self.normal = nr
         
@@ -713,7 +717,7 @@ class Raster3DDriver(object):
 
         try:
             Q = numpy.linalg.inverse(Ur)
-        except LinAlgError:
+        except numpy.linalg.LinAlgError:
             return
         
         self.object_list.append(

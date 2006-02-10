@@ -8,6 +8,7 @@ from __future__  import generators
 
 import sys
 import copy
+import math
 import numpy
 
 from OpenGL.GL      import *
@@ -206,7 +207,8 @@ class OpenGLDriver(object):
             if gl_fog:
                 glEnable(GL_FOG)
                 glFogf(GL_FOG_MODE,    GL_LINEAR)
-                glFogfv(GL_FOG_COLOR, (bg_color_rgbf[0], bg_color_rgbf[1], bg_color_rgbf[2], 0.0))
+                glFogfv(GL_FOG_COLOR, (bg_color_rgbf[0], bg_color_rgbf[1],
+                                       bg_color_rgbf[2], 0.0))
                 glFogf(GL_FOG_START, 0.0)
                 glFogf(GL_FOG_END,   depth)
             else:
@@ -307,16 +309,6 @@ class OpenGLDriver(object):
         """
         glEnd()
     
-    def glr_vertex(self, position):
-        """
-        """
-        glVertex3f(*position)
-
-    def glr_vertex3(self, x, y, z):
-        """
-        """
-        glVertex3f(x, y, z)
-
     def glr_normalize_enable(self):
         """
         """
@@ -414,16 +406,6 @@ class OpenGLDriver(object):
         glMaterialfv(side, GL_SPECULAR,  specular)
         glMaterialfv(side, GL_EMISSION,  emission)
         glMaterialfv(side, GL_SHININESS, 100.0)
-
-    def glr_begin_lines(self):
-        """
-        """
-        glBegin(GL_LINES)
-
-    def glr_end(self):
-        """
-        """
-        glEnd()
 
     def glr_vertex(self, position):
         """

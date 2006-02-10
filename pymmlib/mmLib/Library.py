@@ -9,6 +9,7 @@ import os
 import sys
 import types
 
+import mmTypes
 import mmCIF
 
 
@@ -226,13 +227,13 @@ def library_construct_element_desc(symbol):
     """
     ## only load elements.cif once
     global ELEMENT_CIF_FILE
-    if ELEMENT_CIF_FILE==None:
+    if ELEMENT_CIF_FILE == None:
         ELEMENT_CIF_FILE = mmCIF.mmCIFFile()
         ELEMENT_CIF_FILE.load_file(ELEMENT_DATA_PATH)
 
     cif_data = ELEMENT_CIF_FILE.get_data(symbol)
-    if cif_data==None:
-        warning("element description not found for %s" % (symbol))
+    if cif_data == None:
+        mmTypes.warning("element description not found for %s" % (symbol))
         return None
 
     ## create element description
@@ -259,7 +260,7 @@ def library_get_element_desc(symbol):
     element symbol.  The source of the element data is the
     mmLib/Data/elements.cif file.
     """
-    assert type(symbol)==types.StringType
+    assert type(symbol) == types.StringType
 
     try:
         return ELEMENT_CACHE[symbol]
@@ -267,8 +268,8 @@ def library_get_element_desc(symbol):
         pass
 
     element_desc = library_construct_element_desc(symbol)
-    if element_desc==None:
-        warning("element description not found for %s" % (symbol))
+    if element_desc == None:
+        mmTypes.warning("element description not found for %s" % (symbol))
         return None
     
     ELEMENT_CACHE[symbol] = element_desc
@@ -303,7 +304,7 @@ def library_construct_monomer_desc(res_name):
     path     = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
 
     if not os.path.isfile(path):
-        warning("monomer description not found for %s" % (res_name))
+        mmTypes.warning("monomer description not found for %s" % (res_name))
         return None
 
     ## generate monomer description    
@@ -324,7 +325,7 @@ def library_construct_monomer_desc(res_name):
     mon_desc.rcsb_class_1 = chem_comp.get("rcsb_class_1")
 
     chem_comp_atom = rcsb_cif_data.get_table("chem_comp_atom")
-    if chem_comp_atom!=None:
+    if chem_comp_atom != None:
         for cif_row in chem_comp_atom:
             name   = cif_row["atom_id"]
             symbol = cif_row["type_symbol"]
@@ -333,7 +334,7 @@ def library_construct_monomer_desc(res_name):
             mon_desc.atom_dict[name] = symbol
 
     chem_comp_bond = rcsb_cif_data.get_table("chem_comp_bond")
-    if chem_comp_bond!=None:
+    if chem_comp_bond != None:
         for cif_row in chem_comp_bond:
             atom1 = cif_row["atom_id_1"]
             atom2 = cif_row["atom_id_2"]
@@ -344,16 +345,16 @@ def library_construct_monomer_desc(res_name):
     mmlib_cif_file.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
 
     mmlib_cif_data = mmlib_cif_file.get_data(res_name)
-    if mmlib_cif_data!=None:
+    if mmlib_cif_data != None:
         ## get additional chemical information on amino acids
         chem_comp = mmlib_cif_data.get_table("chem_comp")
-        if chem_comp!=None:
+        if chem_comp != None:
             mon_desc.one_letter_code = chem_comp["one_letter_code"]
             mon_desc.chem_type = chem_comp["chem_type"]
 
         ## get torsion angle definitions
         torsion_angles = mmlib_cif_data.get_table("torsion_angles")
-        if torsion_angles!=None:
+        if torsion_angles != None:
             for cif_row in torsion_angles:
                 mon_desc.torsion_angle_dict[cif_row["name"]] = (
                     cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              
@@ -361,13 +362,13 @@ def library_construct_monomer_desc(res_name):
     ## set some derived flags on the monomer description
     mon_type = mon_desc.type.upper()
     
-    if mon_type=="L-PEPTIDE LINKING":
+    if mon_type == "L-PEPTIDE LINKING":
         mon_desc.amino_acid = True
 
-    elif mon_type=="DNA LINKING" or mon_type=="RNA LINKING":
+    elif mon_type == "DNA LINKING" or mon_type=="RNA LINKING":
         mon_desc.nucleic_acid = True
 
-    elif mon_type=="HOH" or mon_type=="WAT":
+    elif mon_type == "HOH" or mon_type == "WAT":
         mon_desc.water = True
 
     return mon_desc
@@ -377,7 +378,7 @@ def library_get_monomer_desc(res_name):
     """Loads/caches/returns the monomer description objec MonomerDesc
     for the given monomer residue name.
     """
-    assert type(res_name)==types.StringType
+    assert type(res_name) == types.StringType
 
     try:
         return MONOMER_RES_NAME_CACHE[res_name]
@@ -385,7 +386,7 @@ def library_get_monomer_desc(res_name):
         pass
 
     mon_desc = library_construct_monomer_desc(res_name)
-    if mon_desc==None:
+    if mon_desc == None:
         return None
 
     MONOMER_RES_NAME_CACHE[res_name] = mon_desc
@@ -395,10 +396,10 @@ def library_get_monomer_desc(res_name):
 def library_is_amino_acid(res_name):
     """Returns True if the res_name is a amino acid.
     """
-    assert type(res_name)==types.StringType
+    assert type(res_name) == types.StringType
 
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc==None:
+    if mdesc == None:
         return False
 
     return mdesc.is_amino_acid()
@@ -407,10 +408,10 @@ def library_is_amino_acid(res_name):
 def library_is_nucleic_acid(res_name):
     """Returns True if the res_name is a nucleic acid.
     """
-    assert type(res_name)==types.StringType
+    assert type(res_name) == types.StringType
 
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc==None:
+    if mdesc == None:
         return False
 
     return mdesc.is_nucleic_acid()
@@ -419,8 +420,8 @@ def library_is_nucleic_acid(res_name):
 def library_is_water(res_name):
     """Return True if the res_name is water.
     """
-    assert type(res_name)==types.StringType
-    if res_name=="HOH" or res_name=="WAT":
+    assert type(res_name) == types.StringType
+    if res_name == "HOH" or res_name == "WAT":
         return True
     return False
 
@@ -433,22 +434,22 @@ def library_guess_element_from_name(name0, res_name):
     ## strip any space from the name, and return now if there
     ## is nothing left to work with
     name = name0.strip()
-    if name=="":
+    if name == "":
         return None
 
     ## try the easy way out -- look up the atom in the monomer dictionary
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc!=None:
+    if mdesc != None:
         if mdesc.atom_dict.has_key(name):
             symbol = mdesc.atom_dict[name]
-            if symbol!=None:
+            if symbol != None:
                 return symbol
 
-        if mdesc.is_amino_acid() and name=="OXT":
+        if mdesc.is_amino_acid() and name == "OXT":
             return "O"
 
         if mdesc.is_amino_acid():
-            warning("invalid amino acid atom name %s" % (name))
+            mmTypes.warning("invalid amino acid atom name %s" % (name))
 
     ## ok, that didn't work...
 
@@ -463,13 +464,13 @@ def library_guess_element_from_name(name0, res_name):
     ## remove all non-alpha chars from the name
     alpha_name = ""
     for c in name:
-        if c.isalpha()==True:
+        if c.isalpha() == True:
             alpha_name += c
 
     ## look up two possible element symbols in the library:
     ## e1 is the possible one-charactor symbol
     ## e2 is the possible two-charactor symbol
-    if len(alpha_name)==0:
+    if len(alpha_name) == 0:
         return None
 
     e1_symbol = alpha_name[0]
@@ -485,13 +486,13 @@ def library_guess_element_from_name(name0, res_name):
     ## e1 or e2 must return somthing for us to proceed, otherwise,
     ## there's just no possible element symbol contained in the atom
     ## name
-    if e1_valid==False and e2_valid==False:
+    if e1_valid == False and e2_valid == False:
         return None
 
-    elif e1_valid==True and e2_valid==False:
+    elif e1_valid == True and e2_valid == False:
         return e1_symbol
 
-    elif e1_valid==False and e2_valid==True:
+    elif e1_valid == False and e2_valid == True:
         return e2_symbol
 
     ## if we get here, then e1 and e2 are both valid elements
@@ -499,7 +500,7 @@ def library_guess_element_from_name(name0, res_name):
     ## we're out of choices, go by the space_flag: if there is a space
     ## before the atom name, then use the 1-char element symbol;
     ## if there is no space, then use the 2-char element symbol
-    if space_flag==True:
+    if space_flag == True:
         return e1_symbol
 
     return e2_symbol

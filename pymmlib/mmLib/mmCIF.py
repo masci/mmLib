@@ -73,7 +73,7 @@ class mmCIFRow(dict):
         return dict.__contains__(self, column.lower())
 
     def __setitem__(self, column, value):
-        assert value!=None
+        assert value != None
         dict.__setitem__(self, column.lower(), value)
 
     def __getitem__(self, column):
@@ -107,10 +107,10 @@ class mmCIFTable(list):
     __slots__ = ["name", "columns", "data"]
 
     def __init__(self, name, columns=None):
-        assert name!=None
+        assert name != None
         list.__init__(self)
         self.name = name
-        if columns==None:
+        if columns == None:
             self.columns = []
         else:
             self.set_columns(columns)
@@ -149,7 +149,7 @@ class mmCIFTable(list):
         raise TypeError, x
     
     def __setitem__(self, x, value):
-        assert value!=None
+        assert value != None
         
         if type(x) == types.IntType and isinstance(value, mmCIFRow):
             value.table = self
@@ -287,7 +287,7 @@ class mmCIFData(list):
     __slots__ = ["name", "file"]
     
     def __init__(self, name):
-        assert name!=None        
+        assert name != None        
         list.__init__(self)
         self.name = name
 
@@ -445,7 +445,7 @@ class mmCIFFile(list):
         return cif_file
 
     def __eq__(self, other):
-        return id(self)==id(other)
+        return id(self) == id(other)
 
     def __getitem__(self, x):
         """Retrieve a mmCIFData object by index or name.
@@ -576,7 +576,7 @@ class mmCIFFileParser(object):
         reserved words: data_, loop_, global_, save_, stop_
         """
         i = tokx.find("_")
-        if i==-1:
+        if i == -1:
             return None, None
 
         rword = tokx[:i].lower()
@@ -603,10 +603,10 @@ class mmCIFFileParser(object):
         ## found
         while 1:
             tblx,colx,strx,tokx = token_iter.next()
-            if tokx==None:
+            if tokx == None:
                 continue
             rword, name = self.split_token(tokx)
-            if rword!=None:
+            if rword != None:
                 break
         
         while 1:
@@ -619,19 +619,19 @@ class mmCIFFileParser(object):
             elif tokx != None:
                 rword, name = self.split_token(tokx)
 
-                if rword=="loop":
+                if rword == "loop":
                     state = "RD_LOOP"
 
-                elif rword=="data":
+                elif rword == "data":
                     state = "RD_DATA"
 
-                elif rword=="save":
+                elif rword == "save":
                     state = "RD_SAVE"
 
-                elif rword=="stop":
+                elif rword == "stop":
                     return
 
-                elif rword=="global":
+                elif rword == "global":
                     self.syntax_error("unable to handle global_ syntax")
 
                 else:
@@ -676,19 +676,19 @@ class mmCIFFileParser(object):
                 ## get the next token from the file, it should be the data
                 ## keyed by the previous token
                 tx,cx,strx,tokx = token_iter.next()
-                if tx!=None or (strx==None and tokx==None):
+                if tx != None or (strx == None and tokx == None):
                     self.syntax_error("missing data for _%s.%s" % (tblx,colx))
 
                 if tokx != None:
                     ## check token for reserved words
                     rword, name = self.split_token(tokx)
-                    if rword!=None:
-                        if rword=="stop":
+                    if rword != None:
+                        if rword == "stop":
                             return
                         self.syntax_error(
                             "unexpected reserved word: %s" % (rword))
 
-                    if tokx!=".":
+                    if tokx != ".":
                         cif_row[colx] = tokx
 
                 elif strx != None:
@@ -748,10 +748,10 @@ class mmCIFFileParser(object):
 
                 ## before starting to read data, check tokx for any control
                 ## tokens
-                if tokx!=None:
+                if tokx != None:
                     rword, name = self.split_token(tokx)
-                    if rword!=None:
-                        if rword=="stop":
+                    if rword != None:
+                        if rword == "stop":
                             return
                         else:
                             self.syntax_error(
@@ -764,7 +764,7 @@ class mmCIFFileParser(object):
 
                     for col in cif_table.columns:
                         if tokx != None:
-                            if tokx!=".":
+                            if tokx != ".":
                                 cif_row[col] = tokx
                         elif strx != None:
                             cif_row[col] = strx
@@ -773,13 +773,13 @@ class mmCIFFileParser(object):
 
                     ## the loop ends when one of these conditions is met:
                     ## condition #1: a new table is encountered
-                    if tblx!=None:
+                    if tblx != None:
                         break
 
                     ## condition #2: a reserved word is encountered
-                    if tokx!=None:
+                    if tokx != None:
                         rword, name = self.split_token(tokx)
-                        if rword!=None:
+                        if rword != None:
                             break
                         
                 continue
@@ -840,7 +840,7 @@ class mmCIFFileParser(object):
                     self.fil = fil
                 def next(self):
                     ln = self.fil.readline()
-                    if ln=="":
+                    if ln == "":
                         raise StopIteration
                     else:
                         return ln
@@ -944,22 +944,22 @@ class mmCIFFileWriter(object):
     def data_type(self, x):
         """Analyze x and return its type: token, qstring, mstring
         """
-        assert x!=None
+        assert x != None
 
-        if type(x)!=types.StringType:
+        if type(x) != types.StringType:
             x = str(x)
             return x, "token"
 
-        if x=="" or x==".":
+        if x == "" or x == ".":
             return ".", "token"
 
-        if x.find("\n")!=-1:
+        if x.find("\n") != -1:
             return x, "mstring"
         
-        if x.count(" ")!=0 or x.count("\t")!=0 or x.count("#")!=0:
+        if x.count(" ") != 0 or x.count("\t") != 0 or x.count("#") != 0:
             if len(x)>MAX_LINE-2:
                 return x, "mstring"
-            if x.count("' ")!=0 or x.count('" ')!=0:
+            if x.count("' ") != 0 or x.count('" ') != 0:
                 return x, "mstring"
             return x, "qstring"
 
@@ -978,7 +978,7 @@ class mmCIFFileWriter(object):
         
         for cif_table in self.cif_data:
             ## ignore tables without data rows
-            if len(cif_table)==0:
+            if len(cif_table) == 0:
                 continue
 
             ## special handling for tables with one row of data
@@ -990,7 +990,7 @@ class mmCIFFileWriter(object):
                 self.write_multi_row_table(cif_table)
 
             else:
-                fatal("write_cif_data()\n%s" % (str(cif_table)))
+                raise mmCIFError()
 
             self.writeln("#")
 
