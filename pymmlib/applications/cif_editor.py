@@ -15,7 +15,7 @@ pygtk.require("2.0")
 import gobject
 import gtk
 
-from mmLib.mmCIF import *
+from mmLib import mmCIF
 
 
 ## constants
@@ -100,11 +100,11 @@ class FileControlEditDialog(gtk.Dialog):
         self.context = context
         self.cif = cif
 
-        if isinstance(self.cif, mmCIFData):
+        if isinstance(self.cif, mmCIF.mmCIFData):
             msg = "Enter mmCIF Data Block Name"
             entry_text = self.cif.name
 
-        elif isinstance(self.cif, mmCIFTable):
+        elif isinstance(self.cif, mmCIF.mmCIFTable):
             msg = "Enter mmCIF Section Name"
             entry_text = self.cif.name
 
@@ -144,10 +144,10 @@ class FileControlEditDialog(gtk.Dialog):
 
         name = self.entry.get_text()
 
-        if isinstance(self.cif, mmCIFData):
+        if isinstance(self.cif, mmCIF.mmCIFData):
             self.context.cif_data_set_name(self.cif, name)
 
-        elif isinstance(self.cif, mmCIFTable):
+        elif isinstance(self.cif, mmCIF.mmCIFTable):
             self.context.cif_table_set_name(self.cif, name)
 
         elif isinstance(self.cif, tuple):
@@ -440,18 +440,18 @@ class TableTreeControl(gtk.TreeView):
             i += 1
 
         if ins_cif_row == None:
-            ins_cif_row = mmCIFRow()
+            ins_cif_row = mmCIF.mmCIFRow()
         else:
-            assert isinstance(ins_cif_row, mmCIFRow)
+            assert isinstance(ins_cif_row, mmCIF.mmCIFRow)
         
         self.context.cif_table_insert_row(
             cif_row.table, i, ins_cif_row)
 
     def do_append(self, ins_cif_row = None):
         if ins_cif_row == None:
-            ins_cif_row = mmCIFRow()
+            ins_cif_row = mmCIF.mmCIFRow()
         else:
-            assert isinstance(ins_cif_row, mmCIFRow)
+            assert isinstance(ins_cif_row, mmCIF.mmCIFRow)
         
         self.context.cif_table_insert_row(
             self.cif_table, -1, ins_cif_row)
@@ -534,11 +534,11 @@ class FileTreeControl(gtk.TreeView):
         """Returns the model path for the cif instance: cif_data, cif_table,
         or (cif_table, col_name).
         """
-        if isinstance(cif, mmCIFData):
+        if isinstance(cif, mmCIF.mmCIFData):
             i = cif.file.index(cif)
             return (i, )
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             i = cif.data.file.index(cif.data)
             j = cif.data.index(cif)
             return (i, j)
@@ -578,10 +578,10 @@ class FileTreeControl(gtk.TreeView):
 
         cif = self.get_cif(path)
 
-        if isinstance(cif, mmCIFData):
+        if isinstance(cif, mmCIF.mmCIFData):
             pass
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             self.context.mw.table_ctrl.set_cif_table(cif)
 
         elif isinstance(cif, tuple):
@@ -601,7 +601,7 @@ class FileTreeControl(gtk.TreeView):
 
         cif = self.get_cif(path)
 
-        if isinstance(cif, mmCIFTable):
+        if isinstance(cif, mmCIF.mmCIFTable):
             APP.set_help_window(cif.name.upper())
 
         elif isinstance(cif, tuple):
@@ -723,16 +723,16 @@ class FileTreeControl(gtk.TreeView):
     def new_cif_data(self):
         """Create a new cif_data->cif_table->column->cif_row
         """
-        cif_data = mmCIFData("New_Data")
+        cif_data = mmCIF.mmCIFData("New_Data")
         cif_data.append(self.new_cif_table())
         return cif_data
 
     def new_cif_table(self):
         """Create a new cif_table->column->cif_row
         """
-        cif_table = mmCIFTable("New_Section")
+        cif_table = mmCIF.mmCIFTable("New_Section")
         cif_table.columns.append("New_Subsection")
-        cif_table.append(mmCIFRow())
+        cif_table.append(mmCIF.mmCIFRow())
         return cif_table
 
     def do_insert_sibling_at_selected(
@@ -750,29 +750,29 @@ class FileTreeControl(gtk.TreeView):
         ## if it is, then at least add a new mmCIFData
         if cif == None:
             if len(self.context.cif_file) == 0:
-                if ins_cif and isinstance(ins_cif, mmCIFData):
+                if ins_cif and isinstance(ins_cif, mmCIF.mmCIFData):
                     self.context.cif_file_insert_data(
                         self.context.cif_file, -1, ins_cif)
                 elif ins_cif == None:
                     self.context.cif_file_insert_data(
                         self.context.cif_file, -1, self.new_cif_data()) 
         
-        elif isinstance(cif, mmCIFData):
+        elif isinstance(cif, mmCIF.mmCIFData):
             i = cif.file.index(cif)
             if ins_cif == None:
                 ins_cif = self.new_cif_data()
             else:
-                assert isinstance(ins_cif, mmCIFData)
+                assert isinstance(ins_cif, mmCIF.mmCIFData)
             if not before:
                 i += 1
             self.context.cif_file_insert_data(cif.file, i, ins_cif)
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             i = cif.data.index(cif)
             if ins_cif == None:
                 ins_cif = self.new_cif_table()
             else:
-                assert isinstance(ins_cif, mmCIFTable)
+                assert isinstance(ins_cif, mmCIF.mmCIFTable)
             if not before:
                 i += 1
             self.context.cif_data_insert_table(cif.data, i, ins_cif)
@@ -799,21 +799,21 @@ class FileTreeControl(gtk.TreeView):
 
         if cif == None:
             if len(self.context.cif_file) == 0:
-                if ins_cif and isinstance(ins_cif, mmCIFData):
+                if ins_cif and isinstance(ins_cif, mmCIF.mmCIFData):
                     self.context.cif_file_insert_data(
                         self.context.cif_file, -1, ins_cif)
                 elif ins_cif == None:
                     self.context.cif_file_insert_data(
                         self.context.cif_file, -1, self.new_cif_data()) 
 
-        elif isinstance(cif, mmCIFData):
+        elif isinstance(cif, mmCIF.mmCIFData):
             if ins_cif == None:
                 ins_cif = self.new_cif_table()
             else:
-                assert isinstance(ins_cif, mmCIFTable)
+                assert isinstance(ins_cif, mmCIF.mmCIFTable)
             self.context.cif_data_insert_table(cif, -1, ins_cif)
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             if ins_cif == None:
                 self.context.cif_table_column_insert(cif, -1, "New_Subsection")
             else:
@@ -831,10 +831,10 @@ class FileTreeControl(gtk.TreeView):
         else:
             cif = sel_cif
         
-        if isinstance(cif, mmCIFData):
+        if isinstance(cif, mmmCIF.mCIFData):
             self.context.cif_data_remove(cif)
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             self.context.cif_table_remove(cif)
 
         elif isinstance(cif, tuple):
@@ -851,12 +851,12 @@ class FileTreeControl(gtk.TreeView):
 
         cif = copy.deepcopy(cif)
         
-        if isinstance(cif, mmCIFData):
+        if isinstance(cif, mmCIF.mmCIFData):
             APP.buffer = cif
             if cut:
                 self.context.cif_data_remove(cif)
 
-        elif isinstance(cif, mmCIFTable):
+        elif isinstance(cif, mmCIF.mmCIFTable):
             APP.buffer = cif
             if cut:
                 self.context.cif_table_remove(cif)
@@ -880,20 +880,20 @@ class FileTreeControl(gtk.TreeView):
         sel_cif = self.get_selected_cif()
 
         if sel_cif == None:
-            if isinstance(ins_cif, mmCIFData):
+            if isinstance(ins_cif, mmCIF.mmCIFData):
                 self.do_append_child_at_selected(ins_cif)
 
-        elif isinstance(sel_cif, mmCIFData):
-            if isinstance(ins_cif, mmCIFData):
+        elif isinstance(sel_cif, mmCIF.mmCIFData):
+            if isinstance(ins_cif, mmCIF.mmCIFData):
                 self.do_insert_sibling_at_selected(ins_cif, before = before)
-            elif isinstance(ins_cif, mmCIFTable):
+            elif isinstance(ins_cif, mmCIF.mmCIFTable):
                 self.do_append_child_at_selected(ins_cif)
 
-        elif isinstance(sel_cif, mmCIFTable):
-            if isinstance(ins_cif, mmCIFData):
+        elif isinstance(sel_cif, mmCIF.mmCIFTable):
+            if isinstance(ins_cif, mmCIF.mmCIFData):
                 self.do_insert_sibling_at_selected(
                     ins_cif, before = before, sel_cif = sel_cif.data)
-            elif isinstance(ins_cif, mmCIFTable):
+            elif isinstance(ins_cif, mmCIF.mmCIFTable):
                 self.do_insert_sibling_at_selected(ins_cif, before = before)
             elif isinstance(ins_cif, tuple):
                 self.do_append_child_at_selected(ins_cif)
@@ -901,10 +901,10 @@ class FileTreeControl(gtk.TreeView):
         elif isinstance(sel_cif, tuple):
             (cif_table, col_name) = sel_cif
 
-            if isinstance(ins_cif, mmCIFData):
+            if isinstance(ins_cif, mmCIF.mmCIFData):
                  self.do_insert_sibling_at_selected(
                     ins_cif, before = before, sel_cif = cif_table.data)
-            elif isinstance(ins_cif, mmCIFTable):
+            elif isinstance(ins_cif, mmCIF.mmCIFTable):
                 self.do_insert_sibling_at_selected(
                     ins_cif, before = before, sel_cif = cif_table)
             elif isinstance(ins_cif, tuple):
@@ -1260,7 +1260,7 @@ class mmCIFEditor:
     def cif_row_set_value(self, cif_row, col_name, value, save_undo = True):
         """Sets the value of the cif_row[col_name] to the given value.
         """
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         
         if save_undo:
             undo = (self.cif_row_set_value_undo,
@@ -1271,7 +1271,7 @@ class mmCIFEditor:
         self.cif_row_set_value_notify(cif_row, col_name)
 
     def cif_row_set_value_undo(self, cif_row, col_name, value):
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         self.cif_row_set_value(cif_row, col_name, value, save_undo = False)
 
     def cif_row_set_value_notify(self, cif_row, col_name):
@@ -1280,7 +1280,7 @@ class mmCIFEditor:
     def cif_row_remove(self, cif_row, save_undo = True):
         """Removes the cif_row from self.cif_fil.
         """
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         
         if save_undo:
             undo = (self.cif_row_remove_undo,
@@ -1298,14 +1298,14 @@ class mmCIFEditor:
         pass
 
     def cif_row_remove_undo(self, i, cif_row):
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         self.cif_table_insert_row(cif_row.table, i, cif_row, save_undo = False)
         
     def cif_table_insert_row(self, cif_table, i, cif_row, save_undo = True):
         """Inserts a new cif_row into cif_table at position i.
         """
-        assert isinstance(cif_table, mmCIFTable)
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         
         if save_undo:
             undo = (self.cif_table_insert_row_undo, cif_row)
@@ -1318,7 +1318,7 @@ class mmCIFEditor:
         self.cif_table_insert_row_notify(cif_row)
 
     def cif_table_insert_row_undo(self, cif_row):
-        assert isinstance(cif_row, mmCIFRow)
+        assert isinstance(cif_row, mmCIF.mmCIFRow)
         self.cif_row_remove(cif_row, save_undo = False)
 
     def cif_table_insert_row_notify(self, cif_row):
@@ -1327,8 +1327,8 @@ class mmCIFEditor:
     def cif_data_insert_table(self, cif_data, i, cif_table, save_undo = True):
         """Inserts a new cif_table into cif_data at position i.
         """
-        assert isinstance(cif_data, mmCIFData)
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         if cif_data.has_key(cif_table.name):
             self.error("Insert Error: Table names must be unique.")
@@ -1345,7 +1345,7 @@ class mmCIFEditor:
         self.cif_data_insert_table_notify(cif_table)
 
     def cif_data_insert_table_undo(self, cif_table):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_remove(cif_table, save_undo = False)
 
     def cif_data_insert_table_notify(self, cif_table):
@@ -1354,7 +1354,7 @@ class mmCIFEditor:
     def cif_table_set_name(self, cif_table, name, save_undo = True):
         """Sets the name of a cif_table.
         """
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         if cif_table.data.has_key(name):
             self.error(
@@ -1371,7 +1371,7 @@ class mmCIFEditor:
     def cif_table_remove(self, cif_table, save_undo = True):
         """Removes the cif_table from the cif_file.
         """
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
 
         print "\n\n## cif_table: ",dir(cif_table),"\n\n"
         
@@ -1391,13 +1391,13 @@ class mmCIFEditor:
         pass
 
     def cif_table_remove_undo(self, i, cif_table):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         self.cif_data_insert_table(
             cif_table.data, i, cif_table, save_undo = False)
 
     def cif_table_set_name_undo(self, cif_table, old_name):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_set_name(cif_table, old_name, save_undo = False)
 
     def cif_table_set_name_notify(self, cif_table):
@@ -1407,7 +1407,7 @@ class mmCIFEditor:
         self, cif_table, i, col_name, save_undo = True):
         """Sets the cif_table.columns[i] = col_name
         """
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         ## do not allow duplicate column names
         for j in range(len(cif_table.columns)):
@@ -1434,7 +1434,7 @@ class mmCIFEditor:
         self.cif_table_column_set_name_notify(cif_table, col_name)
             
     def cif_table_column_set_name_undo(self, cif_table, i, old_name):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_column_set_name(
             cif_table, i, old_name, save_undo = False)
 
@@ -1445,7 +1445,7 @@ class mmCIFEditor:
         self, cif_table, i, col_name, col_val_list = None, save_undo = True):
         """Calls cif_table.insert(i, col_name)
         """
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
 
         ## do not allow duplicate column names
         if col_name in cif_table.columns:
@@ -1468,7 +1468,7 @@ class mmCIFEditor:
         self.cif_table_column_insert_notify(cif_table, col_name)
 
     def cif_table_column_insert_undo(self, cif_table, col_name):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_column_remove(cif_table, col_name, save_undo = False)
 
     def cif_table_column_insert_notify(self, cif_table, col_name):
@@ -1477,7 +1477,7 @@ class mmCIFEditor:
     def cif_table_column_remove(self, cif_table, col_name, save_undo = True):
         """Removes a column from the cif_table.
         """
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         if save_undo:
             rebuild_list = []
@@ -1506,7 +1506,7 @@ class mmCIFEditor:
 
     def cif_table_column_remove_undo(
         self, cif_table, i, col_name, rebuild_list):
-        assert isinstance(cif_table, mmCIFTable)
+        assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_column_insert(cif_table, i, col_name, save_undo = False)
         for i in range(len(cif_table)):
             cif_table[i][col_name] = rebuild_list[i]
@@ -1514,8 +1514,8 @@ class mmCIFEditor:
     def cif_file_insert_data(self, cif_file, i, cif_data, save_undo = True):
         """Inserts a new cif_data into cif_file at position i.
         """
-        assert isinstance(cif_file, mmCIFFile)
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_file, mmCIF.mmCIFFile)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         
         if cif_file.has_key(cif_data.name):
             self.error(
@@ -1533,7 +1533,7 @@ class mmCIFEditor:
         self.cif_file_insert_data_notify(cif_data)
 
     def cif_file_insert_data_undo(self, cif_data):
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         self.cif_data_remove(cif_data, save_undo = False)
 
     def cif_file_insert_data_notify(self, cif_data):
@@ -1542,7 +1542,7 @@ class mmCIFEditor:
     def cif_data_remove(self, cif_data, save_undo = True):
         """Removes the cif_row from self.cif_fil.
         """
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         if save_undo:
             undo = (self.cif_data_remove_undo,
                     cif_data.file.index(cif_data),
@@ -1559,14 +1559,14 @@ class mmCIFEditor:
         pass
 
     def cif_data_remove_undo(self, i, cif_data):
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         self.cif_file_insert_data(
             cif_data.file, i, cif_data, save_undo = False)
 
     def cif_data_set_name(self, cif_data, name, save_undo = True):
         """Sets the name of a cif_data
         """
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         if cif_data.file.has_key(name):
             self.error(
                 "Name Change Error: Data block names must be unique.")
@@ -1580,7 +1580,7 @@ class mmCIFEditor:
         self.cif_data_set_name_notify(cif_data)
 
     def cif_data_set_name_undo(self, cif_data, old_name):
-        assert isinstance(cif_data, mmCIFData)
+        assert isinstance(cif_data, mmCIF.mmCIFData)
         self.cif_data_set_name(cif_data, old_name, save_undo = False)
 
     def cif_data_set_name_notify(self, cif_data):
@@ -1601,7 +1601,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
         ## no editing has been done
         self.open_into_context = True
         self.path = path
-        self.cif_file = mmCIFFile()
+        self.cif_file = mmCIF.mmCIFFile()
         ## set to False when the cif_file has been edited and not saved
         self.saved = True
         ## a list of edit dialogs open
@@ -1647,7 +1647,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
 
             try:
                 self.cif_file.load_file(fil, self.mw.update_cb)
-            except mmCIFError, e:
+            except mmCIF.mmCIFError, e:
                 self.error("mmCIF parse error:\n%s" % (e))
                 return
 
@@ -2055,7 +2055,7 @@ class mmCIFDictionaryManager(list):
         except IOError:
             return None
 
-        cif_dict = mmCIFDictionary()
+        cif_dict = mmCIF.mmCIFDictionary()
         cif_dict.path = path
         cif_dict.load_file(path)
 

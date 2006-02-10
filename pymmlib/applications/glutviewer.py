@@ -13,15 +13,10 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-from mmLib.PDB            import PDBFile
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Viewer         import *
-from mmLib.R3DDriver      import Raster3DDriver
-from mmLib.OpenGLDriver   import OpenGLDriver
-from mmLib.Extensions.TLS import *
 
-##
+from mmLib import FileLoader, Structure, Viewer, OpenGLDriver
+
+
 ## tweakers (tweakable constants)
 ##
 BG_COLOR         = "0.3,0.3,0.3"
@@ -255,13 +250,13 @@ class Terminal(object):
             i += 1
 
 
-class GLUT_Viewer(GLViewer):
+class GLUT_Viewer(Viewer.GLViewer):
     """The main OpenGL Viewer using GLUT.
     """
     def __init__(self):
         self.glut_init_done = False
         self.struct_desc_list = []
-        self.opengl_driver = OpenGLDriver()
+        self.opengl_driver = OpenGLDriver.OpenGLDriver()
 
         ## pixel width and height of window
         self.width  = 640
@@ -280,7 +275,7 @@ class GLUT_Viewer(GLViewer):
         self.term = Terminal(self)
         self.term.write(WELCOME)
 
-        GLViewer.__init__(self)
+        Viewer.GLViewer.__init__(self)
         self.properties.update(bg_color=BG_COLOR)
 
     def command(self, cmd):
@@ -359,7 +354,7 @@ class GLUT_Viewer(GLViewer):
         info("loading: %s" % (path))
         
         try:
-            struct = LoadStructure(
+            struct = FileLoader.LoadStructure(
                 fil              = path,
                 build_properties = ("library_bonds","distance_bonds"))
         except IOError:

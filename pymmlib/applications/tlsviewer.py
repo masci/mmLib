@@ -21,8 +21,7 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-from mmLib.mmTypes import *
-from mmLib import FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure
+from mmLib import Constants, FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure
 from mmLib.Extensions import TLS
 
 
@@ -1689,7 +1688,7 @@ class TLSDialog(gtk.Dialog):
 
             tls_info = tls["tls_info"]
             tr_rT = "%8.4f" % (numpy.trace(tls_info["rT'"]))
-            tr_L  = "%8.4f" % (numpy.trace(tls_info["L'"]*RAD2DEG2))
+            tr_L  = "%8.4f" % (numpy.trace(tls_info["L'"]*Constants.RAD2DEG2))
 
             if tls["GLTLSGroup"].properties["visible"]==True:
                 self.model.set(miter, 0, gtk.TRUE)
