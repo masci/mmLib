@@ -15,13 +15,6 @@ import bsddb
 import xmlrpclib
 import SimpleXMLRPCServer
 
-###############################################################################
-## CONFIGURATION
-
-HOST = "localhost"
-PORT = 10100
-
-###############################################################################
 
 def debug(text):
     return
@@ -208,7 +201,7 @@ class WebTLSMDDaemon2(object):
 def main():
     database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")
     webtlsmdd = WebTLSMDDaemon2(database_file)
-    webtlsmdd.run_server(HOST, PORT)
+    webtlsmdd.run_server("localhost", int(os.environ["TLSMD_APP_PORT"]))
 
 def inspect():
     database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")

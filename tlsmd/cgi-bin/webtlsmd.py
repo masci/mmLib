@@ -65,7 +65,7 @@ def html_nav_bar(page_name=None):
     if page_name=="home":
         l.append('Home')
     else:
-        l.append('<a href="/~tlsmd/index.html">Home</a>')
+        l.append('<a href="%s/index.html">Home</a>' % (TLSMD_BASE_URL))
 
     l.append(LINK_SPACE)
 
@@ -83,11 +83,11 @@ def html_nav_bar(page_name=None):
 
     l.append(LINK_SPACE)
 
-    l.append('<a href="/~tlsmd/examples/index.html">Examples</a>')
+    l.append('<a href="%s/examples/index.html">Examples</a>' % (TLSMD_BASE_URL))
 
     l.append(LINK_SPACE)
     
-    l.append('<a href="/~tlsmd/documentation.html">Documentation</a>')
+    l.append('<a href="%s/documentation.html">Documentation</a>' % (TLSMD_BASE_URL))
     l.append('</center>')
     l.append('<br>')
 

@@ -9,9 +9,9 @@ import os
 import time
 
 ## paths and URLs
-TLSMD_ROOT     = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
+TLSMD_ROOT     = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
 GNUPLOT_FONT   = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL = "/~tlsmd/cgi-bin/refineprep.cgi"
+REFINEPREP_URL = "/~jpaint/cgi-bin/refineprep.cgi"
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 85

@@ -1,5 +1,5 @@
 #!/home/tlsmd/local/bin/python
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -17,16 +17,12 @@ import xmlrpclib
 
 ## CONFIGURATION
 VERSION   = "0.5.0"
-WEBTLSMDD = "http://localhost:10100"
+WEBTLSMDD = "http://localhost:%s" % (os.environ["TLSMD_APP_PORT"])
 MSMTP     = "/usr/bin/msmtp"
 
 TLSMD_CMD = [
     "%s/bin/tlsmd.py" % (os.environ["TLSMD_ROOT"]),
     "-rANALYSIS" ]
-
-if os.environ.has_key("TLSMD_GRID_FILE"):
-    TLSMD_CMD.append("-f%s" % (os.environ["TLSMD_GRID_FILE"]))
-    
 
 ## regular expression for parsing the output of TLSMD while
 ## it is running -- this is used for updating the calculation
