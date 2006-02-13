@@ -8,7 +8,6 @@
 
 import os
 import sys
-import string
 import getopt
 
 from tlsmdlib import conf
@@ -101,7 +100,8 @@ def analysis_main(struct_path, opt_dict):
     ## atoms to include
     if opt_dict.has_key("-a"):
         val = opt_dict["-a"].upper()
-        if val not in ["ALL", "MAINCHAIN"]: usage()
+        if val not in ["ALL", "MAINCHAIN"]:
+            usage()
         conf.globalconf.include_atoms = val
 
     ## create the analysis processor and load the structure, select chains
@@ -120,8 +120,6 @@ def analysis_main(struct_path, opt_dict):
         report.write(report_dir)
 
 if __name__ == "__main__":
-    import getopt
-
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvs")
     except getopt.GetoptError:

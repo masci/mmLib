@@ -20,14 +20,17 @@ TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
 TLSMD_WWW_ROOT         = "/home/jpaint/public_html"
 TLSMD_BASE_URL         = "/~jpaint"
 WEBTLSMDD              = "http://localhost:10200"
+WEBTLSMDD_DATABASE     = "webtlsmdd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
+MSMTP                  = "/usr/bin/msmtp"
 ## END: CONFIGURATION PATHS AND URLS
 
 
 
 ## derived paths
+TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL         = os.path.join(TLSMD_BASE_URL, "cgi-bin/refineprep.cgi")
+REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 

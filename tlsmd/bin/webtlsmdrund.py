@@ -8,26 +8,20 @@
 import os
 import sys
 import time
-import string
 import re
 import fcntl
 import popen2
 import xmlrpclib
 
 
-## CONFIGURATION
-VERSION   = "0.5.0"
-WEBTLSMDD = "http://localhost:%s" % (os.environ["TLSMD_APP_PORT"])
-MSMTP     = "/usr/bin/msmtp"
+from tlsmdlib import const, conf
 
-TLSMD_CMD = [
-    "%s/bin/tlsmd.py" % (os.environ["TLSMD_ROOT"]),
-    "-rANALYSIS" ]
 
 ## regular expression for parsing the output of TLSMD while
 ## it is running -- this is used for updating the calculation
 ## progress information
 RE_PERCENT_COMPLETE = re.compile("\s*\(\s*(\d+)/\s*(\d+)\)\s+(\d+)%%.*$")
+
 
 def log_write(x):
     sys.stdout.write(x+"\n")
@@ -38,7 +32,7 @@ def log_job_start(jdict):
     
     ln  = ""
     ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
-    ln += string.join(tlsmd, " ")
+    ln += " ".join(tlsmd)
     log_write(ln)
     
 def log_job_end(jdict):
@@ -64,7 +58,7 @@ def run_tlsmd(webtlsmdd, jdict):
     tlsmd  = jdict["tlsmd"]
 
     ## write the tlsmd execution command out to a file
-    open("tlsmdcmd.txt", "w").write(string.join(tlsmd, " ")+'\n')
+    open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
     stdout, stdin = popen2.popen4(tlsmd)
     stdin.close()
@@ -171,11 +165,11 @@ def get_job(webtlsmdd):
         return None
     jdict = webtlsmdd.job_get_dict(job_id)
 
-    tlsmd = TLSMD_CMD[:]
+    tlsmd = [conf.TLSMD_PROGRAM_PATH, "-rANALYSIS" ]
 
     ## Job ID and webtlsmdd URL
     tlsmd.append("-j%s" % (job_id))
-    tlsmd.append("-x%s" % (WEBTLSMDD))
+    tlsmd.append("-x%s" % (conf.WEBTLSMDD))
 
     ## override PDB ID
     tlsmd.append("-i%s" % (jdict["structure_id"]))
@@ -199,7 +193,7 @@ def get_job(webtlsmdd):
     for cdict in jdict["chains"]:
         if cdict["selected"]==True:
             cids.append(cdict["chain_id"])
-    tlsmd.append("-c%s" % (string.join(cids,",")))
+    tlsmd.append("-c%s" % (",".join(cids)))
 
     ## included atoms
     include_atoms = jdict["include_atoms"]
@@ -212,10 +206,10 @@ def get_job(webtlsmdd):
     return jdict
     
 def main():
-    log_write("Starting WebTLSMDRunD v%s" % (VERSION))
-    log_write("using xmlrpc server webtlsmdd.py at %s" % (WEBTLSMDD))
+    log_write("Starting WebTLSMDRunD v%s" % (const.VERSION))
+    log_write("using xmlrpc server webtlsmdd.py at %s" % (conf.WEBTLSMDD))
 
-    webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=1)
+    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
     while True:
         jdict = get_job(webtlsmdd)
@@ -246,7 +240,7 @@ Ethan Merritt <merritt@u.washington.edu>
 """
 
 def send_mail(job_id):
-    webtlsmdd = xmlrpclib.ServerProxy(WEBTLSMDD, allow_none=1)
+    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
     jdict = webtlsmdd.job_get_dict(job_id)
     if jdict==False:
@@ -269,7 +263,7 @@ def send_mail(job_id):
     message = message.replace("<ANALYSIS_URL>", analysis_url)
 
     ## send mail using msmtp
-    stdout, stdin = popen2.popen4([MSMTP, email])
+    stdout, stdin = popen2.popen4([conf.MSMTP, email])
     stdin.write(message)
     stdout.close()
     stdin.close()

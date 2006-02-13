@@ -15,7 +15,7 @@ LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "0.5.7CVS"
+VERSION       = "0.6.0CVS"
 RELEASE_DATE  = "12 Feb 2006"
 AUTHOR        = "Jay Painter"
 EMAIL         = "jpaint@u.washington.edu"

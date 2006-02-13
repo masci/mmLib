@@ -1,5 +1,6 @@
-#!/home/tlsmd/local/bin/python
-## TLS Minimized Domains (TLSMD)
+#!/usr/bin/env python
+
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -15,10 +16,14 @@ import bsddb
 import xmlrpclib
 import SimpleXMLRPCServer
 
+from tlsmdlib import conf, const
+
+
 
 def debug(text):
     return
     open("debug.txt", "a").write(text)
+
 
 class WebTLSMDDaemon2(object):
     def __init__(self, db_file):
@@ -198,14 +203,20 @@ class WebTLSMDDaemon2(object):
 
         xmlrpc_server.serve_forever()
 
+
 def main():
-    database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")
-    webtlsmdd = WebTLSMDDaemon2(database_file)
-    webtlsmdd.run_server("localhost", int(os.environ["TLSMD_APP_PORT"]))
+    rtype, baseurl, port = conf.WEBTLSMDD.split(":")
+
+    print "webtlsmdd.py xmlrpc server version %s" % (const.VERSION)
+    print "using database file %s" % (conf.WEBTLSMDD_DATABASE)
+    print "listening for incoming connections at %s" % (conf.WEBTLSMDD)
+    
+    webtlsmdd = WebTLSMDDaemon2(conf.WEBTLSMDD_DATABASE)    
+    webtlsmdd.run_server("localhost", int(port))
+
 
 def inspect():
-    database_file = os.environ.get("TLSMD_DATABASE", "webtlsmdd.db")
-    webtlsmdd = WebTLSMDDaemon2(database_file)
+    webtlsmdd = WebTLSMDDaemon2(conf.WEBTLSMDD_DATABASE)
 
     if sys.argv[1]=="list":
         for dbkey in webtlsmdd.db.keys():
@@ -216,15 +227,13 @@ def inspect():
 	del webtlsmdd.db[dbkey]
         webtlsmdd.db.sync()
 
-if __name__=="__main__":
 
+if __name__=="__main__":
     if len(sys.argv)==1:
         try:
             main()
         except KeyboardInterrupt:
             pass
-    
     else:
         inspect()
-
     sys.exit(0)

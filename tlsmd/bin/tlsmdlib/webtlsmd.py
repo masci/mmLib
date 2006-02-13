@@ -69,25 +69,25 @@ def html_nav_bar(page_name=None):
     else:
         l.append('<a href="%s/index.html">Home</a>' % (conf.TLSMD_BASE_URL))
 
-    l.append(LINK_SPACE)
+    l.append(const.LINK_SPACE)
 
     if page_name=="":
         l.append('Start a New Job')
     else:
         l.append('<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>')
 
-    l.append(LINK_SPACE) 
+    l.append(const.LINK_SPACE) 
 
     if page_name=="queue":
         l.append('Job Status')
     else:
         l.append('<a href="webtlsmd.cgi">Job Status</a>')
 
-    l.append(LINK_SPACE)
+    l.append(const.LINK_SPACE)
 
     l.append('<a href="%s/examples/index.html">Examples</a>' % (conf.TLSMD_BASE_URL))
 
-    l.append(LINK_SPACE)
+    l.append(const.LINK_SPACE)
     
     l.append('<a href="%s/documentation.html">Documentation</a>' % (conf.TLSMD_BASE_URL))
     l.append('</center>')
@@ -116,7 +116,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     if os.path.isfile(analysis_index):
 	x += '<a href="%s">Click Here: View Completed TLSMD Analysis</a>' % (analysis_url)
 
-    x += LINK_SPACE
+    x += const.LINK_SPACE
 
     if os.path.isfile(logfile):
         x += '<a href="%s">View TLSMD Logfile</a>' % (log_url)
@@ -799,7 +799,7 @@ class QueuePage(Page):
     
     def html_foot(self):
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last Updated %s</p>' % (conf.VERSION, timestring(time.time())),
+             '<p><small><b>Version %s</b> Last Updated %s</p>' % (const.VERSION, timestring(time.time())),
              '</center>',
              '</body></html>']
         
