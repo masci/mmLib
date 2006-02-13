@@ -14,10 +14,11 @@ TSMALL = 0.1 * Constants.B2U
 LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
-VERSION = "0.5.7"
-RELEASE_DATE = "CVS Version"
-AUTHOR = "Jay Painter"
-EMAIL = "jpaint@u.washington.edu"
+LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
+VERSION       = "0.5.7CVS"
+RELEASE_DATE  = "12 Feb 2006"
+AUTHOR        = "Jay Painter"
+EMAIL         = "jpaint@u.washington.edu"
 
 ## mainchain atom definitions
 MAINCHAIN_ATOMS = ["N","CA","C","O","CB"]

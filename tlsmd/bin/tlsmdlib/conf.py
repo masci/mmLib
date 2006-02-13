@@ -3,15 +3,33 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Installation settings.
+"""Installation settings.  When installed to run as a web application, the layout
+of the directories from the tlsmd root directory is as follows:
+
+$TLSMD_ROOT/cgi-bin 
+$TLSMD_ROOT/jobs
+$TLSMD_ROOT/jmol
+$TLSMD_ROOT/examples
+
 """
 import os
 import time
 
-## paths and URLs
-TLSMD_ROOT     = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
-GNUPLOT_FONT   = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL = "/~jpaint/cgi-bin/refineprep.cgi"
+## BEGIN: CONFIGURATION PATHS AND URLS
+TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
+TLSMD_WWW_ROOT         = "/home/jpaint/public_html"
+TLSMD_BASE_URL         = "/~jpaint"
+WEBTLSMDD              = "http://localhost:10200"
+ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
+## END: CONFIGURATION PATHS AND URLS
+
+
+
+## derived paths
+GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
+REFINEPREP_URL         = os.path.join(TLSMD_BASE_URL, "cgi-bin/refineprep.cgi")
+TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
+TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 85
