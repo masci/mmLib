@@ -216,17 +216,23 @@ def main():
 
 
 def inspect():
-    webtlsmdd = WebTLSMDDaemon2(conf.WEBTLSMDD_DATABASE)
+    database_path = sys.argv[2]
+    
+    webtlsmdd = WebTLSMDDaemon2(database_path)
 
     if sys.argv[1]=="list":
         for dbkey in webtlsmdd.db.keys():
-            print dbkey
+            jdict = webtlsmdd.job_get_dict(dbkey)
+            print dbkey, jdict.get("email")
 
     if sys.argv[1]=="remove":
         dbkey = sys.argv[2]
 	del webtlsmdd.db[dbkey]
         webtlsmdd.db.sync()
 
+def usage():
+    print "webtlsmdd.py [list | remove] args..."
+    
 
 if __name__=="__main__":
     if len(sys.argv)==1:
