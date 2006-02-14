@@ -8,7 +8,7 @@ import os
 import sys
 import time
 import socket
-import string
+import math
 import glob
 import xmlrpclib
 import cgitb; cgitb.enable()
@@ -22,7 +22,7 @@ import const
 import conf
 
 ## GLOBALS
-webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD, allow_none=True)
+webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 CAPTION = """\
 Download both this modified PDB file of your structure, and the corresponding
@@ -150,11 +150,11 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
                 tls_tf = numpy.trace(Utls)/3.0
                 ref_tf = numpy.trace(aatm.get_U())/3.0
                 
-                if ref_tf>tls_tf:
-                    aatm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*U2B
+                if ref_tf > tls_tf:
+                    aatm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*Constants.U2B
                     aatm.U = None
                 else:
-                    aatm.temp_factor = (add_Uiso) * U2B
+                    aatm.temp_factor = (add_Uiso) * Constants.U2B
                     aatm.U = None
 
     FileLoader.SaveStructure(fil=xyzout, struct=struct)
@@ -301,7 +301,7 @@ class RefinePrepPage(Page):
         for chain_id, ntls in chain_ntls:
             listx.append("CHAIN%s" % (chain_id))
             listx.append("NTLS%d" % (ntls))
-        outbase = string.join(listx, "_")
+        outbase ="_".join(listx)
         pdbout = "%s.pdb" % (outbase)
 
         ## the tlsout from this program is going to be the tlsin
