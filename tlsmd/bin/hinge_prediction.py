@@ -10,7 +10,7 @@ import math
 import numpy
 
 from mmLib import Constants, FileLoader, Structure
-from tlsmdlib import fit_engine, lineartls, nonlineartls
+from tlsmdlib import tlsmd_analysis, fit_engine, lineartls, nonlineartls
 
 
 class TLSHingePredictionHypothosis(object):
@@ -20,10 +20,13 @@ class TLSHingePredictionHypothosis(object):
     def __init__(self, chain, residue_window_with):
         self.chain = chain
         self.residue_window_width = residue_window_with
+
+        for atm in chain.iter_all_atoms():
+            atm.include = True
     
     def hinge_analysis(self, data_filename):
         fil = open(data_filename, "w")
-        xchain = fit_engine.XChain(chain_to_xmlrpc_list(self.chain))
+        xchain = fit_engine.XChain(tlsmd_analysis.chain_to_xmlrpc_list(self.chain))
 
         tls_model = lineartls.LinearTLSModel()
         #tls_model = nonlineartls.NLTLSModel()
@@ -103,7 +106,7 @@ def main():
     for frag in chain.iter_amino_acids():
         segment.add_fragment(frag)
     
-    hinge_hyp = TLSHingePredictionHypothosis(segment, 12)
+    hinge_hyp = TLSHingePredictionHypothosis(segment, 14)
     hinge_hyp.hinge_analysis(plot_file)
 
 if __name__ == "__main__":
