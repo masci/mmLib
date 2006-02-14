@@ -5,8 +5,6 @@
 """Classes for building a mmLib.Structure representation of biological
 macromolecules.
 """
-import types
-
 import mmTypes
 import Library
 import Structure
