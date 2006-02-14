@@ -18,12 +18,12 @@ def decode_format(path):
     """Returns the 3-letter MIME code for the file format.
     """
     ## check/remove compressed file extention
-    if path and type(path) == types.StringType:
-        (base, ext) = os.path.splitext(path)
+    if path and isinstance(path, str):
+        base, ext = os.path.splitext(path)
         if ext.lower() in ['.z', '.gz', '.bz2']:
             path = base
 
-        (base, ext) = os.path.splitext(path)
+        base, ext = os.path.splitext(path)
         ext = ext.lower()
 
         if ext == ".cif":

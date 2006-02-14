@@ -10,7 +10,6 @@ and written back out as PDB files.
 from __future__ import generators
 
 import fpformat
-import types
  
 try:
     from mmTypes import OpenFile
@@ -90,7 +89,7 @@ class PDBRecord(dict):
 
             ## assert type
             try:
-                assert type(s) == types.StringType
+                assert isinstance(s, str)
             except AssertionError:
                 print "### s",str(type(s)), str(s), ftype, field
                 print ln
@@ -144,7 +143,7 @@ class PDBRecord(dict):
     def reccat(self, rec_list, field):
         """Return the concatenation of field in all the records in rec_list.
         """
-        if type(rec_list) != types.ListType:
+        if not isinstance(rec_list, list):
             rec_list = [rec_list]
 
         retval = ""
@@ -199,7 +198,7 @@ class PDBRecord(dict):
         dictionary key whose value is a list formed from the list of
         PDB fields in t[1].
         """
-        if type(rec_list) != types.ListType:
+        if not isinstance(rec_list, list):
             rec_list = [rec_list]
         
         listx = []
@@ -236,7 +235,7 @@ class PDBRecord(dict):
 
                 ## source is a list of fields which should be
                 ## added to a list under the dest key in dictx
-                if type(trans) == types.TupleType:
+                if isinstance(trans, tuple):
                     (dest, srcs) = trans
                     
                     for sx in srcs:
@@ -1483,10 +1482,10 @@ class PDBFile(list):
         assert isinstance(rec, PDBRecord)
         list.insert(self, i, rec)
 
-    def load_file(self, fil, update_cb = None):
+    def load_file(self, fil_or_filname, update_cb = None):
         """Loads a PDB file from File object fil.
         """
-        fil = OpenFile(fil, "r")
+        fil = OpenFile(fil_or_filname, "r")
     
         ## get file size for update callbacks
         line_number    = 0
@@ -1505,7 +1504,8 @@ class PDBFile(list):
         else:
             fil_size_bytes = 1304189
 
-        for ln in fil.readlines():
+        iterfil = iter(fil)
+        for ln in iterfil:
             line_number    += 1
             fil_read_bytes += len(ln)
 
@@ -1559,7 +1559,7 @@ class RecordProcessor(object):
     def call_processor(self, recs):
         """Invoke callbacks on self.processor for the given record list (recs).
         """
-        if type(recs) == types.ListType:
+        if isinstance(recs, list):
             rec = recs[0]
         else:
             rec = recs

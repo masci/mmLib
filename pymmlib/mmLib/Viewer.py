@@ -345,7 +345,7 @@ class GLObject(object):
 
             ## set the property value
             if args.has_key(name):
-                if type(args[name])==type(self.PropertyDefault):
+                if isinstance(args[name], GLPropertyDefault):
                     self.properties[name] = prop_desc["default"]
                 else:
                     self.properties[name] = args[name]
@@ -358,11 +358,11 @@ class GLObject(object):
 
                  ## add changes to actions list
                  ## case 1: action is a string
-                 if type(prop_desc["action"])==types.StringType:
+                 if isinstance(prop_desc["action"], str):
                      if prop_desc["action"] not in actions:
                          actions.append(prop_desc["action"])
                  ## case 2: action is a list of strings
-                 elif type(prop_desc["action"])==types.ListType:
+                 elif isinstance(prop_desc["action"], list):
                      for prop_action in prop_desc["action"]:
                          if prop_action not in actions:
                              actions.append(prop_action)
@@ -419,7 +419,7 @@ class GLObject(object):
             
             if do_update==True:
                 
-                if type(args[name])==type(self.PropertyDefault):
+                if isinstance(args[name], GLPropertyDefault):
                     self.properties[name] = prop_desc["default"]
                 else:
                     self.properties[name] = args[name]
@@ -428,11 +428,11 @@ class GLObject(object):
 
                 ## now update the actions taken when a property changes
                 ## case 1: action is a string
-                if type(prop_desc["action"])==types.StringType:
+                if isinstance(prop_desc["action"], str):
                     if prop_desc["action"] not in actions:
                         actions.append(prop_desc["action"])
                 ## case 2: action is a list of strings
-                elif type(prop_desc["action"])==types.ListType:
+                elif isinstance(prop_desc["action"], list):
                     for prop_action in prop_desc["action"]:
                         if prop_action not in actions:
                             actions.append(prop_action)
@@ -1746,7 +1746,7 @@ class GLAtomList(GLDrawList):
             return atom.glal_color
 
         setting = self.properties["color_setting"]
-        if type(setting)==types.TupleType:
+        if isinstance(setting, tuple):
             return setting
 
         if setting=="Color By Element":

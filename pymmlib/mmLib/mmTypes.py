@@ -11,7 +11,6 @@ from __future__ import generators
 import os
 import sys
 import gzip
-import types
 
 ## turn on debugging
 _DEBUG = False
@@ -25,13 +24,14 @@ def OpenFile(path, mode):
     """
     ## if path is not a string, assume it is a file object and
     ## return it
-    if type(path) != types.StringType:
-        return path
-    (base, ext) = os.path.splitext(path)
-    if ext == ".gz":
-        return gzip.open(path, mode)
-    return open(path, mode)
+    
+    if isinstance(path, str):
+        base, ext = os.path.splitext(path)
+        if ext == ".gz":
+            return gzip.open(path, mode)
+        return open(path, mode)
 
+    return path
 
 class FragmentID(object):
     """A fragment ID class acts a lot like a string, but separates the

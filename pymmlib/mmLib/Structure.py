@@ -6,7 +6,6 @@
 """
 from __future__ import generators
 
-import types
 import copy
 import math
 import string
@@ -170,7 +169,7 @@ class Structure(object):
         if isinstance(model_chain_idx, Model):
             return self.model_list.__contains__(model_chain_idx)
         elif isinstance(model_chain_idx, Chain) or \
-             type(model_chain_idx) == types.StringType:
+             isinstance(model_chain_idx, str):
             try:
                 return self.default_model.__contains__(model_chain_idx)
             except AttributeError:
@@ -692,7 +691,7 @@ class Structure(object):
     def set_default_alt_loc(self, alt_loc):
         """Sets the default alt_loc for the Stucture.
         """
-        assert type(alt_loc)==types.StringType
+        assert isinstance(alt_loc, str)
 
         self.default_alt_loc = alt_loc        
         for frag in self.iter_all_fragments():
@@ -744,7 +743,7 @@ class Model(object):
     """Multiple models support.
     """
     def __init__(self, model_id=1, **args):
-        assert type(model_id) == types.IntType
+        assert isinstance(model_id, int)
 
         self.structure        = None
 
@@ -790,9 +789,9 @@ class Model(object):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
         """
-        if type(chain_idx) == types.StringType:
+        if isinstance(chain_idx, str):
             return self.chain_dict[chain_idx]
-        elif type(chain_idx) == types.IntType:
+        elif isinstance(chain_idx, int):
             return self.chain_list[chain_idx]
         raise TypeError, chain_idx
 
@@ -806,7 +805,7 @@ class Model(object):
         """
         if isinstance(chain_idx, Chain):
             return self.chain_list.__contains__(chain_idx)
-        elif type(chain_idx) == types.StringType:
+        elif isinstance(chain_idx, str):
             return self.chain_dict.__contains__(chain_idx)
         raise TypeError, chain_idx
 
@@ -1138,7 +1137,7 @@ class Model(object):
     def set_model_id(self, model_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(model_id) == types.IntType
+        assert isinstance(model_id, int)
 
         if self.structure!=None:
             chk_model = self.structure.get_model(model_id)
@@ -1164,8 +1163,8 @@ class Segment(object):
                  chain_id = "",
                  **args):
 
-        assert type(model_id) == types.IntType
-        assert type(chain_id) == types.StringType
+        assert isinstance(model_id, int)
+        assert isinstance(chain_id, str)
 
         self.model    = None
         self.chain    = None
@@ -1233,13 +1232,13 @@ class Segment(object):
         is returned includes those Fragments.  If the slice values are
         integers, then normal list slicing rules apply.
         """
-        if type(fragment_idx) == types.IntType:
+        if isinstance(fragment_idx, int):
             return self.fragment_list[fragment_idx]
 
-        elif type(fragment_idx) == types.StringType:
+        elif isinstance(fragment_idx, str):
             return self.fragment_dict[fragment_idx]
 
-        elif type(fragment_idx) == types.SliceType:
+        elif isinstance(fragment_idx, slice):
             
             ## determine if the slice is on list indexes or on fragment_id
             ## strings
@@ -1248,9 +1247,9 @@ class Segment(object):
             
             ## check for index (list) slicing
             if (start == None and stop == None) or \
-               (start == None and type(stop) == types.IntType) or \
-               (stop == None  and type(start) == types.IntType) or \
-               (type(start) == types.IntType and type(stop) == types.IntType):
+               (start == None and isinstance(stop, int)) or \
+               (stop == None  and isinstance(start, int)) or \
+               (isinstance(start, int) and isinstance(stop, int)):
 
                 segment = self.construct_segment()
                 for frag in self.fragment_list[start:stop]:
@@ -1258,9 +1257,9 @@ class Segment(object):
                 return segment
             
             ## check for fragment_id slicing
-            if (start == None and type(stop) == types.StringType) or \
-               (stop == None  and type(start) == types.StringType) or \
-               (type(start) == types.StringType and type(stop) == types.StringType):
+            if (start == None and isinstance(stop, str)) or \
+               (stop == None  and isinstance(start, str)) or \
+               (isinstance(start, str) and isinstance(stop, str)):
 
                 return self.construct_sub_segment(start, stop)
 
@@ -1276,7 +1275,7 @@ class Segment(object):
         """
         if isinstance(fragment_idx, Fragment):
             return self.fragment_list.__contains__(fragment_idx)
-        elif type(fragment_idx) == types.StringType:
+        elif isinstance(fragment_idx, str):
             return self.fragment_dict.__contains__(fragment_idx)
         raise TypeError, fragment_idx
 
@@ -1623,7 +1622,7 @@ class Segment(object):
     def set_model_id(self, model_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(model_id)==types.IntType
+        assert isinstance(model_id, int)
         self.model_id = model_id
 
         for frag in self.iter_fragments():
@@ -1632,7 +1631,7 @@ class Segment(object):
     def set_chain_id(self, chain_id):
         """Sets the model_id of all contained objects.
         """
-        assert type(chain_id)==types.StringType
+        assert isinstance(chain_id, str)
         self.chain_id = chain_id
 
         for frag in self.iter_fragments():
@@ -1778,10 +1777,10 @@ class Fragment(object):
                  res_name    = "",
                  **args):
 
-        assert type(model_id)    == types.IntType
-        assert type(res_name)    == types.StringType
-        assert type(fragment_id) == types.StringType
-        assert type(chain_id)    == types.StringType
+        assert isinstance(model_id, int)
+        assert isinstance(res_name, str)
+        assert isinstance(fragment_id, str)
+        assert isinstance(chain_id, str)
 
         self.chain           = None
 
@@ -1848,9 +1847,9 @@ class Fragment(object):
         type.  If the argument was a integer, then a IndexError is raised.
         If the argument was a string, then a KeyError is raised.
         """
-        if type(name_idx) == types.StringType:
+        if isinstance(name_idx, str):
             return self.atom_dict[name_idx]
-        elif type(name_idx) == types.IntType:
+        elif isinstance(name_idx, int):
             return self.atom_list[name_idx]
         raise TypeError, name_idx
 
@@ -1866,7 +1865,7 @@ class Fragment(object):
         """
         if isinstance(atom_idx, Atom):
             return self.atom_list.__contains__(atom_idx)
-        elif type(atom_idx) == types.StringType:
+        elif isinstance(atom_idx, str):
             return self.atom_dict.__contains__(atom_idx)
         raise TypeError, atom_idx
 
@@ -2109,7 +2108,7 @@ class Fragment(object):
         """Returns the fragment in the same chain at integer offset from
         self.  Returns None if no fragment is found.
         """
-        assert type(offset)==types.IntType
+        assert isinstance(offset, int)
 
         i = self.chain.index(self) + offset
         if i < 0:
@@ -2178,7 +2177,7 @@ class Fragment(object):
         """Sets the model_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(model_id)==types.IntType
+        assert isinstance(model_id, int)
         self.model_id = model_id
 
         for atm in self.iter_atoms():
@@ -2188,7 +2187,7 @@ class Fragment(object):
         """Sets the chain_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(chain_id)==types.StringType
+        assert isinstance(chain_id, str)
         self.chain_id = chain_id
 
         for atm in self.iter_atoms():
@@ -2198,7 +2197,7 @@ class Fragment(object):
         """Sets the fragment_id of the Fragment and all contained Atom
         objects.
         """
-        assert type(fragment_id)==types.StringType
+        assert isinstance(fragment_id, str)
 
         if self.chain!=None:
             chk_frag = self.chain.get_fragment(fragment_id)
@@ -2217,7 +2216,7 @@ class Fragment(object):
         """Sets the res_name of the Fragment and all contained Atom
         objects.
         """
-        assert type(res_name)==types.StringType
+        assert isinstance(res_name, str)
         self.res_name = res_name
 
         for atm in self.iter_atoms():
@@ -2237,7 +2236,7 @@ class Residue(Fragment):
         from self.  Returns None if there is no residue at that offset, or
         if the fragment found is not the same type of residue as self.
         """
-        assert type(offset) == types.IntType
+        assert isinstance(offset, int)
         frag = Fragment.get_offset_fragment(self, offset)
         if type(self) == type(frag):
             return frag
@@ -2602,12 +2601,12 @@ class Atom(object):
 
         **args):
 
-        assert type(name)        == types.StringType
-        assert type(model_id)    == types.IntType
-        assert type(alt_loc)     == types.StringType
-        assert type(res_name)    == types.StringType
-        assert type(fragment_id) == types.StringType
-        assert type(chain_id)    == types.StringType
+        assert isinstance(name, str)
+        assert isinstance(model_id, int)
+        assert isinstance(alt_loc, str)
+        assert isinstance(res_name, str)
+        assert isinstance(fragment_id, str)
+        assert isinstance(chain_id, str)
 
         self.fragment        = None
         self.altloc          = None
@@ -2641,7 +2640,7 @@ class Atom(object):
         else:
             self.sig_position = None
 
-        if type(U) != types.NoneType:
+        if U != None:
             self.U = U
         elif u11 != None:
             self.U = numpy.array(
@@ -2651,7 +2650,7 @@ class Atom(object):
         else:
             self.U = None
 
-        if type(sig_U) != types.NoneType:
+        if sig_U != None:
             self.sig_U = sig_U
         elif sig_u11 != None:
             self.sig_U = numpy.array(
@@ -2813,7 +2812,7 @@ class Atom(object):
         """This is a alternative to calling get_alt_loc, but a KeyError
         exception is raised if the alt_loc Atom is not found.
         """
-        assert type(alt_loc)==types.StringType
+        assert isinstance(alt_loc, str)
         
         if self.altloc==None:
             if self.alt_loc==alt_loc:
@@ -2845,7 +2844,7 @@ class Atom(object):
             else:
                 return self.altloc[atom_alt_loc.alt_loc]==atom_alt_loc
 
-        elif type(atom_alt_loc)==types.StringType:
+        elif isinstance(atom_alt_loc, str):
             if self.altloc==None:
                 return atom_alt_loc==self.alt_loc
             else:
@@ -3082,7 +3081,7 @@ class Atom(object):
         """Sets the chain_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(model_id)==types.IntType
+        assert isinstance(model_id, int)
         for atm in self.iter_alt_loc():
             atm.model_id = model_id 
 
@@ -3090,7 +3089,7 @@ class Atom(object):
         """Sets the chain_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(chain_id)==types.StringType
+        assert isinstance(chain_id, str)
         for atm in self.iter_alt_loc():
             atm.chain_id = chain_id
 
@@ -3098,7 +3097,7 @@ class Atom(object):
         """Sets the fragment_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(fragment_id)==types.StringType
+        assert isinstance(fragment_id, str)
         for atm in self.iter_alt_loc():
             atm.fragment_id = fragment_id
 
@@ -3106,7 +3105,7 @@ class Atom(object):
         """Sets the fragment_id of the Atom and all alt_loc Atom
         objects.
         """
-        assert type(res_name)==types.StringType
+        assert isinstance(res_name, str)
         for atm in self.iter_alt_loc():
             atm.res_name = res_name
             
@@ -3221,17 +3220,17 @@ class AlphaHelix(object):
                  details      = "",
                  **args):
 
-        assert type(helix_id)      == types.StringType
-        assert type(helix_class)   == types.StringType
-        assert type(helix_length)  == types.IntType
-        assert type(details)       == types.StringType
-        assert type(chain_id1)     == types.StringType
-        assert type(frag_id1)      == types.StringType
-        assert type(res_name1)     == types.StringType
-        assert type(chain_id2)     == types.StringType
-        assert type(frag_id2)      == types.StringType
-        assert type(res_name2)     == types.StringType
-        assert type(details)       == types.StringType
+        assert isinstance(helix_id, str)
+        assert isinstance(helix_class, str)
+        assert isinstance(helix_length, int)
+        assert isinstance(details, str)
+        assert isinstance(chain_id1, str)
+        assert isinstance(frag_id1, str)
+        assert isinstance(res_name1, str)
+        assert isinstance(chain_id2, str)
+        assert isinstance(frag_id2, str)
+        assert isinstance(res_name2, str)
+        assert isinstance(details, str)
 
         self.model        = None
 
@@ -3375,20 +3374,20 @@ class Strand(object):
                  reg_prev_atom     = "",
                  **args):
 
-        assert type(chain_id1)         == types.StringType
-        assert type(frag_id1)          == types.StringType
-        assert type(res_name1)         == types.StringType
-        assert type(chain_id2)         == types.StringType
-        assert type(frag_id2)          == types.StringType 
-        assert type(res_name2)         == types.StringType
-        assert type(reg_chain_id)      == types.StringType
-        assert type(reg_frag_id)       == types.StringType
-        assert type(reg_res_name)      == types.StringType
-        assert type(reg_atom)          == types.StringType
-        assert type(reg_prev_chain_id) == types.StringType
-        assert type(reg_prev_frag_id)  == types.StringType
-        assert type(reg_prev_res_name) == types.StringType
-        assert type(reg_prev_atom)     == types.StringType
+        assert isinstance(chain_id1, str)
+        assert isinstance(frag_id1, str)
+        assert isinstance(res_name1, str)
+        assert isinstance(chain_id2, str)
+        assert isinstance(frag_id2, str) 
+        assert isinstance(res_name2, str)
+        assert isinstance(reg_chain_id, str)
+        assert isinstance(reg_frag_id, str)
+        assert isinstance(reg_res_name, str)
+        assert isinstance(reg_atom, str)
+        assert isinstance(reg_prev_chain_id, str)
+        assert isinstance(reg_prev_frag_id, str)
+        assert isinstance(reg_prev_res_name, str)
+        assert isinstance(reg_prev_atom, str)
 
         self.beta_sheet            = None
         
@@ -3525,7 +3524,7 @@ class BetaSheet(object):
                  sheet_id  = "",
                  **args):
 
-        assert type(sheet_id) == types.StringType
+        assert isinstance(sheet_id, str)
         
         self.model       = None
 
@@ -3595,8 +3594,8 @@ class Site(object):
                  fragment_list      = [],
                  **args):
 
-        assert type(site_id)            == types.StringType
-        assert type(fragment_list)      == types.ListType
+        assert isinstance(site_id, str)
+        assert isinstance(fragment_list, list)
 
         self.model              = None
         self.site_id            = site_id

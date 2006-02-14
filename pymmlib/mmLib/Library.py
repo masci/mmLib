@@ -260,7 +260,7 @@ def library_get_element_desc(symbol):
     element symbol.  The source of the element data is the
     mmLib/Data/elements.cif file.
     """
-    assert type(symbol) == types.StringType
+    assert isinstance(symbol, str)
 
     try:
         return ELEMENT_CACHE[symbol]
@@ -378,7 +378,7 @@ def library_get_monomer_desc(res_name):
     """Loads/caches/returns the monomer description objec MonomerDesc
     for the given monomer residue name.
     """
-    assert type(res_name) == types.StringType
+    assert isinstance(res_name, str)
 
     try:
         return MONOMER_RES_NAME_CACHE[res_name]
@@ -396,7 +396,7 @@ def library_get_monomer_desc(res_name):
 def library_is_amino_acid(res_name):
     """Returns True if the res_name is a amino acid.
     """
-    assert type(res_name) == types.StringType
+    assert isinstance(res_name, str)
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc == None:
@@ -408,7 +408,7 @@ def library_is_amino_acid(res_name):
 def library_is_nucleic_acid(res_name):
     """Returns True if the res_name is a nucleic acid.
     """
-    assert type(res_name) == types.StringType
+    assert isinstance(res_name, str)
 
     mdesc = library_get_monomer_desc(res_name)
     if mdesc == None:
@@ -420,7 +420,7 @@ def library_is_nucleic_acid(res_name):
 def library_is_water(res_name):
     """Return True if the res_name is water.
     """
-    assert type(res_name) == types.StringType
+    assert isinstance(res_name, str)
     if res_name == "HOH" or res_name == "WAT":
         return True
     return False

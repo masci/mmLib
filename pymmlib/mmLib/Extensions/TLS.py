@@ -878,17 +878,17 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     good_L_eigens = []
 
-    if numpy.allclose(L1, 0.0) or type(L1)==numpy.complex_:
+    if numpy.allclose(L1, 0.0) or isinstance(L1, complex):
         L1 = 0.0
     else:
         good_L_eigens.append(0)
         
-    if numpy.allclose(L2, 0.0) or type(L2)==numpy.complex_:
+    if numpy.allclose(L2, 0.0) or isinstance(L2, complex):
         L2 = 0.0
     else:
         good_L_eigens.append(1)
 
-    if numpy.allclose(L3, 0.0) or type(L3)==numpy.complex_:
+    if numpy.allclose(L3, 0.0) or isinstance(L3, complex):
         L3 = 0.0
     else:
         good_L_eigens.append(2)
@@ -897,11 +897,11 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     if len(good_L_eigens)==0:
         Tr1, Tr2, Tr3 = numpy.linalg.eigenvalues(T0)
 
-        if numpy.allclose(Tr1, 0.0) or type(Tr1)==numpy.complex_:
+        if numpy.allclose(Tr1, 0.0) or isinstance(Tr1, complex):
             Tr1 = 0.0
-        if numpy.allclose(Tr2, 0.0) or type(Tr2)==numpy.complex_:
+        if numpy.allclose(Tr2, 0.0) or isinstance(Tr2, complex):
             Tr2 = 0.0
-        if numpy.allclose(Tr3, 0.0) or type(Tr3)==numpy.complex_:
+        if numpy.allclose(Tr3, 0.0) or isinstance(Tr3, complex):
             Tr3 = 0.0
 
         rdict["Tr1_eigen_val"] = Tr1
@@ -1334,17 +1334,17 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     good_L_eigens = []
 
-    if numpy.allclose(L1, 0.0) or type(L1)==numpy.complex_:
+    if numpy.allclose(L1, 0.0) or isinstance(L1, complex):
         L1 = 0.0
     else:
         good_L_eigens.append(0)
         
-    if numpy.allclose(L2, 0.0) or type(L2)==numpy.complex_:
+    if numpy.allclose(L2, 0.0) or isinstance(L2, complex):
         L2 = 0.0
     else:
         good_L_eigens.append(1)
 
-    if numpy.allclose(L3, 0.0) or type(L3)==numpy.complex_:
+    if numpy.allclose(L3, 0.0) or isinstance(L3, complex):
         L3 = 0.0
     else:
         good_L_eigens.append(2)
@@ -1557,11 +1557,11 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     Tr1, Tr2, Tr3 = numpy.linalg.eigenvalues(Tr)
 
-    if numpy.allclose(Tr1, 0.0) or type(Tr1)==numpy.complex_:
+    if numpy.allclose(Tr1, 0.0) or isinstance(Tr1, complex):
         Tr1 = 0.0
-    if numpy.allclose(Tr2, 0.0) or type(Tr2)==numpy.complex_:
+    if numpy.allclose(Tr2, 0.0) or isinstance(Tr2, complex):
         Tr2 = 0.0
-    if numpy.allclose(Tr3, 0.0) or type(Tr3)==numpy.complex_:
+    if numpy.allclose(Tr3, 0.0) or isinstance(Tr3, complex):
         Tr3 = 0.0
 
     rdict["Tr1_eigen_val"] = Tr1

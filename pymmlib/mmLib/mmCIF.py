@@ -12,7 +12,6 @@ from __future__ import generators
 
 import re
 import copy
-import types
 
 try:
     from mmTypes import OpenFile
@@ -135,10 +134,10 @@ class mmCIFTable(list):
         a integer.  If the argument is a string, then the data from the
         first row is returned.
         """
-        if type(x) == types.IntType:
+        if isinstance(x, int):
             return list.__getitem__(self, x)
 
-        elif type(x) == types.StringType:
+        elif isinstance(x, str):
             try:
                 return self[0][x]
             except IndexError:
@@ -151,11 +150,11 @@ class mmCIFTable(list):
     def __setitem__(self, x, value):
         assert value != None
         
-        if type(x) == types.IntType and isinstance(value, mmCIFRow):
+        if isinstance(x, int) and isinstance(value, mmCIFRow):
             value.table = self
             list.__setitem__(self, x, value)
 
-        elif type(x) == types.StringType:
+        elif isinstance(x, str):
             try:
                 self[0][x] = value
             except IndexError:
@@ -301,10 +300,10 @@ class mmCIFData(list):
         return id(self) == id(other)
     
     def __getitem__(self, x):
-        if type(x) == types.IntType:
+        if isinstance(x, int):
             return list.__getitem__(self, x)
 
-        elif type(x) == types.StringType:
+        elif isinstance(x, str):
             name = x.lower()
             for ctable in self:
                 if ctable.name.lower() == name:
@@ -325,11 +324,11 @@ class mmCIFData(list):
         else:
             self.remove(old_table)
 
-        if type(x) == types.IntType:
+        if isinstance(x, int):
             table.data = self
             list.__setitem__(self, x, table)
 
-        elif type(x) == types.StringType:
+        elif isinstance(x, str):
             self.append(table)
 
     def __delitem__(self, x):
@@ -450,10 +449,10 @@ class mmCIFFile(list):
     def __getitem__(self, x):
         """Retrieve a mmCIFData object by index or name.
         """
-        if type(x) == types.IntType:
+        if isinstance(x, int):
             return list.__getitem__(self, x)
 
-        elif type(x) == types.StringType:
+        elif isinstance(x, str):
             name = x.lower()
             for cdata in self:
                 if cdata.name.lower() == name:
@@ -946,7 +945,7 @@ class mmCIFFileWriter(object):
         """
         assert x != None
 
-        if type(x) != types.StringType:
+        if not isinstance(x, str):
             x = str(x)
             return x, "token"
 
