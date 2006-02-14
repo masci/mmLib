@@ -206,7 +206,7 @@ class TLSOptimization(object):
     def is_valid(self):
         """Return True if the optimization is valid; otherwise, return False.
         """
-        return len(self.tls_list)>0
+        return len(self.tls_list) > 0
 
 
 class TLSChainMinimizer(hcsssp.HCSSSP):
@@ -220,6 +220,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         self.analysis = analysis
         self.min_subsegment_len = min_subsegment_len
         self.nparts = nparts
+
+        self.tls_cache = {}
 
         self.minimized = False
         self.D         = None
@@ -401,9 +403,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         """
         i, j, cost, frag_range = edge
 
-        ## retrieve from cache if possible
         frag_id1, frag_id2 = frag_range
-
         tls = self.analysis.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
         segment = self.chain[frag_id1:frag_id2]
 
@@ -416,7 +416,20 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             tls_group.append(atm)
 
         ## use the constrained TLS model to calculate tensor values
-        self.__calc_nonlinear_fit(tls_group, segment)
+        cache_key = (frag_id1, frag_id2)
+        if self.tls_cache.has_key(cache_key):
+            tlscache = self.tls_cache[cache_key]
+            tls_group_cache = tlscache["tls_group"]
+            tls_group.origin = tls_group_cache.origin.copy()
+            tls_group.T = tls_group_cache.T.copy()
+            tls_group.L = tls_group_cache.L.copy()
+            tls_group.S = tls_group_cache.S.copy()
+            tls_group.itls_T = tls_group_cache.itls_T
+            tls_group.itls_L = tls_group_cache.itls_L.copy()
+            tls_group.itls_S = tls_group_cache.itls_S.copy()
+        else:
+            self.__calc_nonlinear_fit(tls_group, segment)
+            self.tls_cache[cache_key] = tls
         
         ## helpful additions
         tls_info  = tls_group.calc_tls_info()
@@ -488,75 +501,6 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             curr_v = prev_vertex
             h -= 1
 
-    def hinge_plot(self):
-	"""Spiffy new hinge-prediction algorithm.
-	"""
-        import lineartls
-        import nonlineartls
-
-        fil = open("hinge_chain_%s.txt" % (self.chain.chain_id), "w")
-
-        xchain = fit_engine.XChain(chain_to_xmlrpc_list(self.chain))
-
-        tls_model = lineartls.LinearTLSModel()
-        #tls_model = nonlineartls.NLTLSModel()
-
-        tls_model.set_xmlrpc_chain(xchain.xmlrpc_chain)
-
-        grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
-        chain_id = self.chain.chain_id
-
-        win = 12
-
-        ifrag = 0
-        ifrag_end = len(self.chain) - 2*win + 1
-
-        for ifrag in range(ifrag, ifrag_end):
-
-            ifrag1a = ifrag
-            ifrag2a = ifrag+win-1
-
-            ifrag1b = ifrag+win   
-            ifrag2b = ifrag+2*win-1
-            
-            frag_id1a = self.chain[ifrag1a].fragment_id
-            frag_id2a = self.chain[ifrag2a].fragment_id
-            frag_id1b = self.chain[ifrag1b].fragment_id
-            frag_id2b = self.chain[ifrag2b].fragment_id
-
-            istarta = xchain.get_istart(frag_id1a)
-            ienda   = xchain.get_iend(frag_id2a)
-            istartb = xchain.get_istart(frag_id1b)
-            iendb   = xchain.get_iend(frag_id2b)
-
-            print "HINGE WINDOW: %s %s-%s:%s-%s" % (
-                chain_id, frag_id1a, frag_id2a, frag_id1b, frag_id2b)
-            
-            hdict = tls_model.calc_isotropic_hinge_delta(istarta, ienda, istartb, iendb)
-
-            msd_ab  = hdict["hdelta_ab"]
-            msd_abo = hdict["hdelta_abo"]
-            msd_Lab = hdict["msd_c"]
-
-            print "SEGMENT A(%d-%d): msd=%f rmsd=%f" % (
-                istarta, ienda, Constants.U2B**2 * hdict["msd_a"],
-                Constants.U2B * math.sqrt(hdict["msd_a"]))
-            print "SEGMENT B(%d-%d): msd=%f rmsd=%f" % (
-                istartb, iendb, Constants.U2B**2 * hdict["msd_b"],
-                Constants.U2B * math.sqrt(hdict["msd_b"]))
-            print "HINGE VALS: msd_ab=%f rmsd_ab=%f" % (
-                Constants.U2B**2 * msd_ab, Constants.U2B * math.sqrt(msd_ab)) 
-            print "HINGE VALS: msd_abo=%f rmsd_abo=%f" % (
-                Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo))
-            print "L TENSOR: msd_Lab=%f rmsd_Lab=%f" % (
-                Constants.RAD2DEG2**2 *  msd_Lab, Constants.RAD2DEG2 * math.sqrt(msd_Lab))
-            print
-
-            fil.write("%s %f %f\n" % (
-                frag_id2a, Constants.U2B**2 * msd_abo, Constants.U2B * math.sqrt(msd_abo)))
-
-        fil.close()
-
 
 class TLSMDAnalysis(object):
     """Central object for a whole-structure TLS analysis.
@@ -612,18 +556,16 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
         
-        print "TLSMD ANALYSIS SETTINGS"
-        print "    STRUCTURE FILE.....................: %s" % (self.struct_path)
-        print "    STRUCTURE ID.......................: %s" % (self.struct_id)
-        print "    CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
-        print "    DATABASE FILE PATH.................: %s" % (self.tlsdb_file)
+        print "STRUCTURE FILE.....................: %s" % (self.struct_path)
+        print "STRUCTURE ID.......................: %s" % (self.struct_id)
+        print "CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
+        print "DATABASE FILE PATH.................: %s" % (self.tlsdb_file)
         print
         
     def load_struct(self):
         """Loads Structure, chooses a unique struct_id string.
         """
-        print "LOADING STRUCTURE"
-        print "    PATH: %s" % (self.struct_path)
+        print "LOADING STRUCTURE..................: %s" % (self.struct_path)
 
         ## load struct
         self.struct = FileLoader.LoadStructure(
@@ -640,7 +582,6 @@ class TLSMDAnalysis(object):
         self.struct.structure_id = struct_id
         self.struct_id = struct_id
 
-        print "    STRUCT ID: %s" % (self.struct_id)
         print
 
         ## if there are REFMAC5 TLS groups in the REMARK records of

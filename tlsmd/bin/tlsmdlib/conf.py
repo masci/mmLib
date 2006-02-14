@@ -14,6 +14,7 @@ $TLSMD_ROOT/examples
 """
 import os
 import time
+import const
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
@@ -58,11 +59,12 @@ class GlobalConfiguration(object):
         self.target_struct_chain_id = None
 
     def prnt(self):
-        print "TLSMD GLOBAL CONFIGURATION"
-        print "    TLS PARAMETER FIT ENGINE.....: %s" % (self.tls_model)
-        print "    MIN_SUBSEGMENT_SIZE..........: %d" % (self.min_subsegment_size)
-        print "    ATOM B-FACTOR WEIGHT_MODEL...: %s" % (self.weight_model)
-        print "    PROTEIN ATOMS CONSIDERED.....: %s" % (self.include_atoms)
+        print "TLS Motion Determination (TLSMD) Version %s" % (const.VERSION)
+        print
+        print "TLS PARAMETER FIT ENGINE...........: %s" % (self.tls_model)
+        print "MIN_SUBSEGMENT_SIZE................: %d" % (self.min_subsegment_size)
+        print "ATOM B-FACTOR WEIGHT_MODEL.........: %s" % (self.weight_model)
+        print "PROTEIN ATOMS CONSIDERED...........: %s" % (self.include_atoms)
         print
 
     def verify(self):
