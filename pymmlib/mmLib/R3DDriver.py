@@ -198,8 +198,8 @@ class Raster3DDriver(object):
                  "-gamma", "1.5"), 32768*4)
 
         ## XXX: hack
-        r3dfil = open("/tmp/raytrace.r3d","w")
-        stdin = TeeWrite(stdin)
+        ##r3dfil = open("/tmp/raytrace.r3d","w")
+        ##stdin = TeeWrite(stdin)
 
         ## add required hader for the render program
         self.glr_construct_header()

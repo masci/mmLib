@@ -2625,18 +2625,18 @@ class Atom(object):
         self.charge          = charge
 
         ## position
-        if position!=None:
+        if position != None:
             self.position = position
-        elif x!=None or y!=None or z!=None:
-            self.position = numpy.array([x, y, z])
+        elif x != None and y != None and z != None:
+            self.position = numpy.array([x, y, z], float)
         else:
             self.position = None
 
         ## sig_position
-        if sig_position!=None:
+        if sig_position != None:
             self.sig_position = sig_position
-        elif sig_x!=None or sig_y!=None or sig_z!=None:
-            self.sig_position = numpy.array([sig_x, sig_y, sig_z])
+        elif sig_x != None and sig_y != None and sig_z != None:
+            self.sig_position = numpy.array([sig_x, sig_y, sig_z], float)
         else:
             self.sig_position = None
 
@@ -2646,7 +2646,7 @@ class Atom(object):
             self.U = numpy.array(
                 [ [u11, u12, u13],
                   [u12, u22, u23],
-                  [u13, u23, u33] ])
+                  [u13, u23, u33] ], float)
         else:
             self.U = None
 
@@ -2656,7 +2656,7 @@ class Atom(object):
             self.sig_U = numpy.array(
                 [ [sig_u11, sig_u12, sig_u13],
                   [sig_u12, sig_u22, sig_u23],
-                  [sig_u13, sig_u23, sig_u33] ])
+                  [sig_u13, sig_u23, sig_u33] ], float)
         else:
             self.sig_U = None
 
