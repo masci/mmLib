@@ -24,6 +24,9 @@ def calc_include_atom(atm, reject_messages = False):
     """Filter out atoms from the model which will cause problems or
     cont contribute to the TLS analysis.
     """
+    if atm.position == None:
+        return False
+
     if atm.occupancy<0.1:
         if reject_messages == True:
             print "calc_include_atom(%s): rejected because of low occupancy" % (atm)
