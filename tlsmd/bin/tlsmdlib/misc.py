@@ -32,35 +32,3 @@ def rgb_f2i(rgb):
     gi = int(255.0 * g)
     bi = int(255.0 * b)
     return (ri, gi, bi)
-
-class FragmentID(object):
-    """A fragment ID class acts a lot like a string, but separates the
-    res_seq and icode internally.
-    """
-    def __init__(self, frag_id):
-        self.res_seq = 1
-        self.icode = ""
-        try:
-            self.res_seq = int(frag_id)
-        except ValueError:
-            try:
-                self.res_seq = int(frag_id[:-1])
-            except ValueError:
-                pass
-            else:
-                self.icode = frag_id[-1]
-    def __str__(self):
-        return str(self.res_seq) + self.icode
-    def __lt__(self, other):
-        return (self.res_seq, self.icode) < (other.res_seq, other.icode)
-    def __le__(self, other):
-        return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
-    def __eq__(self, other):
-        return (self.res_seq, self.icode) == (other.res_seq, other.icode)
-    def __ne__(self, other):
-        return (self.res_seq, self.icode) != (other.res_seq, other.icode)
-    def __gt__(self, other):
-        return (self.res_seq, self.icode) > (other.res_seq, other.icode)
-    def __ge__(self, other):
-        return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
-

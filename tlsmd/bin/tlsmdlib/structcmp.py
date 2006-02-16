@@ -11,8 +11,10 @@ from Bio import pairwise2
 from mmLib import Constants, AtomMath, Structure, FileLoader, Superposition
 from mmLib.Extensions import TLS
 
-SUPER_ATOMS  = ["N","CA","C"]
+import nonlineartls
 
+
+SUPER_ATOMS  = ["N","CA","C"]
 
 
 def iter_atoms_to_dict(atom_iter):
@@ -53,8 +55,6 @@ def iter_atoms_to_dict(atom_iter):
 
 
 def fit_itls_group(tls_group):
-    import nonlineartls
-    
     alist = list(iter_atoms_to_dict(iter(tls_group)))
     nltls = nonlineartls.NLTLSModel()
     nltls.set_xmlrpc_chain(alist)
@@ -80,7 +80,7 @@ def calc_angle(a, b):
 
 def calc_directional_overlap(a, b):
     cos_ab = numpy.dot(a, b) / (AtomMath.length(a) * AtomMath.length(b))
-    if cos_ab<0.0:
+    if cos_ab < 0.0:
         return 0.0
     return abs(cos_ab)
 
@@ -231,8 +231,8 @@ class TLSConformationPredctionHypothosis(object):
         print "Structure Superposition RMSD: %6.2f" % (sresult.rmsd)
 
         for atm in self.target_struct.iter_all_atoms():
-            pos =  numpy.matrixmultiply(sresult.R, atm.position - sresult.src_origin) +  sresult.dst_origin
-            atm.align_position = pos
+            pos =  numpy.matrixmultiply(sresult.R, atm.position - sresult.src_origin)
+            atm.align_position = pos + sresult.dst_origin
 
     def calc_superposition(self, tls_group):
         al = []
@@ -240,7 +240,8 @@ class TLSConformationPredctionHypothosis(object):
         
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_group.tls_desc.range_list:
             chain1 = self.struct.get_chain(chain_id1)
-            if chain1 == None: continue
+            if chain1 == None:
+                continue
 
             try:
                 segment = chain1[frag_id1:frag_id2]
@@ -248,13 +249,15 @@ class TLSConformationPredctionHypothosis(object):
                 continue
 
             for frag1 in segment.iter_fragments():
-                if frag1.equiv == None: continue
+                if frag1.equiv == None:
+                    continue
                 frag2 = frag1.equiv
                 
                 for name in SUPER_ATOMS:
                     atm1 = frag1.get_atom(name)
                     atm2 = frag2.get_atom(name)
-                    if atm1 == None or atm2 == None: continue
+                    if atm1 == None or atm2 == None:
+                        continue
                     try:
                         assert atm1.res_name == atm2.res_name
                     except AssertionError:
@@ -289,7 +292,8 @@ class TLSConformationPredctionHypothosis(object):
 
             ang = min(calc_angle(evec, vscrew), calc_angle(-evec, vscrew))
 
-            print "%s  magnitude::%6.2f  vector angle::%6.2f" % (lname, eval*Constants.RAD2DEG2, ang)
+            print "%s  magnitude::%6.2f  vector angle::%6.2f" % (
+                lname, eval*Constants.RAD2DEG2, ang)
             
 
 def main():

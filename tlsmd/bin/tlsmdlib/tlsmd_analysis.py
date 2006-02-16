@@ -126,13 +126,12 @@ def chain_to_xmlrpc_list(chain):
 
 
 class TLSChainProcessor(object):
-    """Uses a TLSGridServerPool object to fit all possible TLS subsegment
-    to a given Chain object.  The resulting TLS groups are stored in the
-    analysis.datafile.grh_*() file.
+    """Fits all possible residue subsegments of the given chain object
+    with TLS parameters and stores the model parameters in the tlsmdfile
+    database file.
     """
-    
-    def __init__(self, analysis, chain, min_subsegment_len):
-        self.analysis = analysis
+    def __init__(self, tlsmdfile, chain, min_subsegment_len):
+        self.tlsmdfile = tlsmdfile
         self.chain = chain
 
         self.min_subsegment_len = min_subsegment_len
@@ -148,12 +147,9 @@ class TLSChainProcessor(object):
         print "(%10d/%10d) %2d%% Complete" % (self.num_subsegments, self.total_num_subsegments, p)
 
     def process_chain(self):
-        """Fits TLS groups to all possible subsegments of the given Chain,
-        storing the results in the analysis.grh_*() file.  
-        """
         print "PROCESSING CHAIN: ", self.chain.chain_id
 
-        tlsmdfile = self.analysis.tlsmdfile
+        tlsmdfile = self.tlsmdfile
 
         pcomplete = 0
         pcomplete_old = 0
@@ -182,8 +178,50 @@ class TLSChainProcessor(object):
             self.num_subsegments, self.total_num_subsegments)
 
 
-class TLSOptimization(object):
-    """Collection object containing one multi-TLS group partition of a protein chain.
+class ChainPartitionCollection(object):
+    """Contains the ChainPartition objects for a chain.
+    """
+    def __init__(self, struct, struct_file_path, chain, chain_optimizer):
+        self.struct = struct
+        self.struct_file_path = struct_file_path
+        self.chain = chain
+        self.chain_optimizer = chain_optimizer
+        
+        self.chain_id = chain.chain_id
+        self.max_ntls = conf.globalconf.nparts
+
+        self.ntls_chain_partition_list = []
+        
+        for ntls in range(1, self.max_ntls + 1):
+            cpartition = self.chain_optimizer.calc_chain_partition(ntls)
+            if cpartition == None:
+                continue
+            self.ntls_chain_partition_list.append((ntls, cpartition))
+
+    def num_chain_paritions(self):
+        return len(self.ntls_chain_partition_list)
+
+    def iter_ntls_chain_partitions(self):
+        return iter(self.ntls_chain_partition_list)
+
+    def iter_chain_partitions(self):
+        for ntls, cpartition in self.iter_ntls_chain_partitions():
+            yield cpartition
+
+    def iter_ntls(self):
+        for ntls, cpartition in self.iter_ntls_chain_partitions():
+            yield ntls
+
+    def get_chain_partition(self, find_ntls):
+        for ntls, cpartition in self.ntls_chain_partition_list:
+            if ntls == find_ntls:
+                return cpartition
+        return None
+            
+
+class ChainPartition(object):
+    """Collection object describing one multi-TLS group partitioning
+    of a protein chain.
     """
     def __init__(self, chain, ntls_constraint):
         self.chain           = chain
@@ -211,16 +249,27 @@ class TLSOptimization(object):
         """
         return len(self.tls_list) > 0
 
+    def num_tls_segments(self):
+        return len(self.tls_list)
+
+    def iter_tls_segments(self):
+        return iter(self.tls_list)
+
+    def enumerate_tls_segments(self):
+        i = 0
+        for tls in self.iter_tls_segments():
+            yield i, tls
+
 
 class TLSChainMinimizer(hcsssp.HCSSSP):
     """Finds the minimal TLS description of a given Chain object using
     the HCSSSP global optimization algorithm and a constraint on the number
     of TLS which can be used for the minimization.
     """
-    def __init__(self, analysis, chain, min_subsegment_len, nparts):
+    def __init__(self, tlsmdfile, chain, min_subsegment_len, nparts):
         hcsssp.HCSSSP.__init__(self)
 
-        self.analysis = analysis
+        self.tlsmdfile = tlsmdfile
         self.min_subsegment_len = min_subsegment_len
         self.nparts = nparts
 
@@ -279,7 +328,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         ## now build edges for the graph with weights given by the LSQ
         ## residual of TLS group fits
-        grh_get_tls_record = self.analysis.tlsmdfile.grh_get_tls_record
+        grh_get_tls_record = self.tlsmdfile.grh_get_tls_record
         
         edges = []
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
@@ -330,8 +379,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         print "run_minimization(): ", misc.end_timing()
 
-    def calc_tls_optimization(self, nparts):
-        """Return a TLSOptimization() object containing the optimal
+    def calc_chain_partition(self, nparts):
+        """Return a ChainPartition() object containing the optimal
         TLS description of self.chain using num_tls_segments.
         """
         if not self.minimized:
@@ -340,22 +389,27 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         print "Re-Fitting TLS Parameters of Optimized Chain %s Partitioned using %d TLS Groups" % (
             self.chain.chain_id, nparts)
 
-        tlsopt = TLSOptimization(self.chain, nparts)
+        cpartition = ChainPartition(self.chain, nparts)
+        
+        partition_num = 0
         
         for hi, hj, edge in self.HCSSSP_path_iter(self.V, self.D, self.P, self.T, nparts):
-            if edge==None: continue
+            if edge == None:
+                continue
             
             i, j, cost, frag_range = edge
             
             ## check if the edge is a bypass-edge type
-            if len(frag_range)==2:
+            if len(frag_range) == 2:
                 print "    Fitting Chain Segment %s-%s" % (frag_range[0], frag_range[1])
                 tls = self.__calc_tls_record_from_edge(edge)
-                tlsopt.add_tls_segment(tls)
+                tls["partition_num"] = partition_num
+                partition_num += 1
 
-        tlsopt.normalize_residual()
+                cpartition.add_tls_segment(tls)
 
-        return tlsopt
+        cpartition.normalize_residual()
+        return cpartition
 
     def __calc_nonlinear_fit(self, tls_group, segment):
         """Use the non-linear TLS model to calculate tensor values.
@@ -407,7 +461,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         i, j, cost, frag_range = edge
 
         frag_id1, frag_id2 = frag_range
-        tls = self.analysis.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
+        tls = self.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
         segment = self.chain[frag_id1:frag_id2]
 
         ## create TLSGroup
@@ -509,18 +563,24 @@ class TLSMDAnalysis(object):
     """Central object for a whole-structure TLS analysis.
     """
     def __init__(self,
-                 struct_path    = None,
-                 sel_chain_ids  = None,
-                 tlsdb_file     = None,
-                 tlsdb_complete = False):
+                 struct_file_path  = None,
+                 struct2_file_path = None,
+                 struct2_chain_id  = None,
+                 sel_chain_ids     = None,
+                 tlsdb_file        = None,
+                 tlsdb_complete    = False):
 
         conf.globalconf.prnt()
 
-        self.struct_path     = struct_path
+        self.struct_file_path     = struct_file_path
+        self.struct2_file_path    = struct2_file_path
+        self.struct2_chain_id     = struct2_chain_id
+
         if sel_chain_ids!=None:
             self.sel_chain_ids = sel_chain_ids.split(",")
         else:
             self.sel_chain_ids = None
+
         self.tlsdb_file      = tlsdb_file
         self.tlsdb_complete  = tlsdb_complete
 
@@ -536,8 +596,10 @@ class TLSMDAnalysis(object):
 
         ## auto name of tlsdb file then open
         if self.tlsdb_file==None:
-            self.tlsdb_file = "%s_%s_%s.db" % (self.struct_id, conf.globalconf.tls_model,
-                                               conf.globalconf.weight_model)
+            self.tlsdb_file = "%s_%s_%s.db" % (
+                self.struct_id, conf.globalconf.tls_model,
+                conf.globalconf.weight_model)
+
         self.tlsmdfile = datafile.TLSMDFile(self.tlsdb_file)
 
         ## select chains for analysis
@@ -549,9 +611,12 @@ class TLSMDAnalysis(object):
         self.set_atom_include_flags()
 
         if not self.tlsdb_complete:
-            self.calc_tls_segments()
+            self.construct_tls_segment_database()
         
         self.calc_chain_minimization()
+
+        if self.struct2_file_path != None and self.struct2_chain_id != None:
+            self.calc_chain_partition_superposition()
 
     def prnt_settings(self):
         chain_ids = []
@@ -559,7 +624,7 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
         
-        print "STRUCTURE FILE.....................: %s" % (self.struct_path)
+        print "STRUCTURE FILE.....................: %s" % (self.struct_file_path)
         print "STRUCTURE ID.......................: %s" % (self.struct_id)
         print "CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
         print "DATABASE FILE PATH.................: %s" % (self.tlsdb_file)
@@ -568,11 +633,11 @@ class TLSMDAnalysis(object):
     def load_struct(self):
         """Loads Structure, chooses a unique struct_id string.
         """
-        print "LOADING STRUCTURE..................: %s" % (self.struct_path)
+        print "LOADING STRUCTURE..................: %s" % (self.struct_file_path)
 
         ## load struct
         self.struct = FileLoader.LoadStructure(
-            fil = self.struct_path,
+            fil = self.struct_file_path,
             build_properties = ("library_bonds","distance_bonds"))
 
         ## set the structure ID
@@ -592,7 +657,7 @@ class TLSMDAnalysis(object):
         tls_file = TLS.TLSFile()
         tls_file.set_file_format(TLS.TLSFileFormatPDB())
 
-        fil = open(self.struct_path, "r")
+        fil = open(self.struct_file_path, "r")
         tls_file.load(fil)
 
         if len(tls_file.tls_desc_list)>0:
@@ -650,7 +715,7 @@ class TLSMDAnalysis(object):
 	    for atm in chain.iter_all_atoms():
                 atm.include = calc_include_atom(atm)
 	
-    def calc_tls_segments(self):
+    def construct_tls_segment_database(self):
         """Calculates the TLSGraph for each chain in self.chains, optionally
         loading pre-computed graphs from the graph_file.  Any chains
         which need TLSGraphs computed will be strored in the graph_file.
@@ -658,7 +723,8 @@ class TLSMDAnalysis(object):
         for chain in self.chains:
             misc.begin_chain_timing(chain.chain_id)
 
-            chain_processor = TLSChainProcessor(self, chain, conf.globalconf.min_subsegment_size)
+            chain_processor = TLSChainProcessor(
+                self.tlsmdfile, chain, conf.globalconf.min_subsegment_size)
 
             print "BUILDING TLS SEGMENT DATABASE FOR %s" % (chain)
             chain_processor.process_chain()
@@ -669,13 +735,33 @@ class TLSMDAnalysis(object):
         """Performs the TLS graph minimization on all TLSGraphs.
         """
         for chain in self.chains:
-            chain.tls_chain_minimizer = TLSChainMinimizer(
-                self, chain, conf.globalconf.min_subsegment_size, conf.globalconf.nparts)
+            tls_chain_minimizer = TLSChainMinimizer(
+                self.tlsmdfile,
+                chain,
+                conf.globalconf.min_subsegment_size,
+                conf.globalconf.nparts)
             
-            chain.tls_chain_minimizer.run_minimization()
-            if not chain.tls_chain_minimizer.minimized: continue
+            tls_chain_minimizer.run_minimization()
+            if not tls_chain_minimizer.minimized:
+                continue
 
             print
             print "="*79
             print "MINIMIZING CHAIN %s" % (chain)
-            chain.tls_chain_minimizer.prnt_detailed_paths()
+            tls_chain_minimizer.prnt_detailed_paths()
+
+            chain.partition_collection = ChainPartitionCollection(
+                self.struct,
+                self.struct_file_path,
+                chain,
+                tls_chain_minimizer)
+
+    def calc_chain_partition_superposition(self):
+        import structcmp
+
+
+    def iter_chains(self):
+        return iter(self.chains)
+
+    def num_chains(self):
+        return len(self.chains)

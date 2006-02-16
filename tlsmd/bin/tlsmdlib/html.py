@@ -165,21 +165,22 @@ def calc_orientation(struct, chain):
     return ori
 
 
-def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
-    """Generate HTML for a table containing the details of the ntls-group partitioning of the given chain.
+def html_tls_group_table(chain, cpartition, report_root = None):
+    """Generate HTML for a table containing the details of the ntls-group partitioning
+    of the given chain.
     """
     ## inspect the first tls group dictionary to determine TLS model type
     try:
-        tls = tlsopt.tls_list[0]
+        tls = cpartition.tls_list[0]
     except IndexError:
         return ""
 
     tls_model = tls["tls_group"].model
     
-    if tls_model=="ISOT":
+    if tls_model == "ISOT":
         t_head = 'T<sup>r</sup> <var>B</var>'
 
-    elif tls_model=="ANISO":
+    elif tls_model == "ANISO":
         t_head = 'eval(T<sup>r</sup>) <var>B</var>'
 
     else:
@@ -211,7 +212,7 @@ def html_tls_group_table(chainopt, tlsopt, ntls, report_root=None):
 
     bgcolor_flag = True
 
-    for tls in tlsopt.tls_list:
+    for tls in cpartition.iter_tls_segments():
         
         tls_group = tls["tls_group"]
         tls_info  = tls["tls_info"]
@@ -309,13 +310,14 @@ class Report(object):
 class HTMLReport(Report):
     """Create a through HTML report it its own subdirectory.
     """
-    def __init__(self, struct_tls_analysis):
+    def __init__(self, tlsmd_analysis):
         Report.__init__(self)
+
+        self.tlsmd_analysis  = tlsmd_analysis
         
-        self.struct          = struct_tls_analysis.struct
-        self.struct_path     = struct_tls_analysis.struct_path
-        self.struct_id       = struct_tls_analysis.struct_id
-        self.chains          = struct_tls_analysis.chains
+        self.struct          = tlsmd_analysis.struct
+        self.struct_path     = tlsmd_analysis.struct_file_path
+        self.struct_id       = tlsmd_analysis.struct_id
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
@@ -334,55 +336,6 @@ class HTMLReport(Report):
         
         ## change back to original directory
         os.chdir(old_dir)
-
-    def init_chain_optimization(self, chain):
-        """Returns a dictionary with all the calculations on the tls_graph
-        needed for the HTML rendering so that no calculations should be
-        performed inside the html generating methods.
-        """
-        chainopt                 = {}
-        chainopt["struct"]       = self.struct
-        chainopt["struct_path"]  = self.struct_path
-        chainopt["chain"]        = chain
-        chainopt["struct_id"]    = self.struct_id
-        chainopt["chain_id"]     = chain.chain_id
-        chainopt["max_ntls"]     = conf.globalconf.nparts
-        chainopt["ntls_list"]    = []
-        chainopt["tlsopt"]       = {}
-
-        ## calculate the maximum interesting ntls
-        minimizer = chain.tls_chain_minimizer
-
-        ## generate the minimized, segmentd TLS groups for 1 TLS
-        ## group up to max_ntls and store it in chainopt["ntls_list"]
-        num_valid_configurations = 0
-        
-        for ntls_constraint in range(1, chainopt["max_ntls"]+1):
-            tlsopt = minimizer.calc_tls_optimization(ntls_constraint)
-
-            if tlsopt==None:
-                continue
-            if not tlsopt.is_valid():
-                continue
-
-            num_valid_configurations += 1
-            
-            chainopt["ntls_list"].append((ntls_constraint, tlsopt))
-            chainopt["tlsopt"][ntls_constraint] = tlsopt
-            
-            ## assign a unique color to each tls group in a
-            ## chain spanning set of tls groupos
-            tlsi = 0
-            for tls in tlsopt.tls_list:
-                if tls["method"]=="TLS":
-                    tls["color"] = self.get_tls_color(tlsi)
-                    tlsi += 1
-                else:
-                    tls["color"] = self.colors[0]
-
-        chainopt["num_valid_configurations"] = num_valid_configurations
-
-        return chainopt
 
     def init_colors(self):
         """Generated the self.colors dictionary of colors for the report,
@@ -420,6 +373,17 @@ class HTMLReport(Report):
             img = Image.new("RGBA", thumbnail_size, color["rgbi"])
             img.save(color["thumbnail_path"], "png")
 
+        ## assign a unique color to each tls group in a
+        ## chain spanning set of tls groupos
+        for cpartition in chain.partition_collection.iter_chain_partitions():
+            tlsi = 0
+            for tls in cpartition.iter_tls_segments():
+                if tls["method"] == "TLS":
+                    tls["color"] = self.get_tls_color(tlsi)
+                    tlsi += 1
+                else:
+                    tls["color"] = self.colors[0]
+
     def get_tls_color(self, tls_index):
         """Returns the color dict description for a TLS segment of the
         given index, starting at 0.
@@ -440,24 +404,15 @@ class HTMLReport(Report):
         ## with the generated visualization
         self.init_colors()
 
-        ## all TLSGraph objects get their calculations out of the
-        ## way before writing HTML
-        chainopt_list = []
-        for chain in self.chains:
-            misc.begin_chain_timing(chain.chain_id)
-            chainopt = self.init_chain_optimization(chain)
-	    misc.end_chain_timing(chain.chain_id)
-            chainopt_list.append(chainopt)
-
         ## a report page comparing the tls group segments of all
         ## chains against each other
-        self.write_multi_chain_alignment(chainopt_list)
+        self.write_multi_chain_alignment()
 
         ## write out all TLSGraph reports
-        for chainopt in chainopt_list:
-            self.write_tls_chain_optimization(chainopt)
+        for chain in tlsmd_analysis.iter_chains():
+            self.write_tls_chain_optimization(chain)
 
-        self.write_refinement_prep(chainopt_list)
+        self.write_refinement_prep()
  
         ## write out index page
         self.write_index()
@@ -539,29 +494,25 @@ class HTMLReport(Report):
 
         return "".join(l)
     
-    def write_tls_chain_optimization(self, chainopt):
+    def write_tls_chain_optimization(self, chain):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
-        misc.begin_chain_timing(chainopt["chain_id"])
-            
-        path  = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, chainopt["chain_id"])
-        title = "Chain %s TLS Analysis" % (chainopt["chain_id"])
+        path  = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, chain.chain_id)
+        title = "Chain %s TLS Analysis" % (chain.chain_id)
 
         self.pages_chain_motion_analysis.append(
             {"title": title,
              "href":  path })
 
         fil = open(path, "w")
-        fil.write(self.html_tls_chain_optimization(chainopt))
+        fil.write(self.html_tls_chain_optimization(chain))
         fil.close()
-
-        misc.end_chain_timing(chainopt["chain_id"])
         
-    def html_tls_chain_optimization(self, chainopt):
+    def html_tls_chain_optimization(self, chain):
         """Generates and returns the HTML string report analysis of a
         single TLS graphed chain.
         """
-        title = "Chain %s TLS Analysis of %s" % (chainopt["chain_id"], self.struct_id)
+        title = "Chain %s TLS Analysis of %s" % (chain.chain_id, self.struct_id)
         
         x  = self.html_head(title)
         x += self.html_title(title)
@@ -570,22 +521,22 @@ class HTMLReport(Report):
 
         ## if there were no valid chain configurations found
         ## then write out a useful error message
-        if chainopt["num_valid_configurations"]==0:
+        if chain.partition_collection.num_chain_partitions() == 0:
             x += '<p>%s</p>' % (NO_VALID_CONFIGURATIONS)
             x += self.html_foot()
             return x
 
         ## TLS Segments vs. Residual
-        x += self.html_chain_lsq_residual_plot(chainopt)
+        x += self.html_chain_lsq_residual_plot(chain)
         
         ## generate a plot comparing all segmentations
-        x += self.html_chain_alignment_plot(chainopt)
+        x += self.html_chain_alignment_plot(chain)
 
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
-        for ntls_constraint in range(1, chainopt["max_ntls"]+1):
-            tmp = self.html_tls_graph_path(chainopt, ntls_constraint)
-            if tmp!=None:
+        for ntls_constraint in range(1, chain.partition_collection.max_ntls + 1):
+            tmp = self.html_tls_graph_path(chain, ntls_constraint)
+            if tmp != None:
                 x += tmp
 
             ## maybe this will help with the memory problems...
@@ -595,13 +546,13 @@ class HTMLReport(Report):
         x += self.html_foot()
         return x
 
-    def html_chain_lsq_residual_plot(self, chainopt):
+    def html_chain_lsq_residual_plot(self, chain):
         """Generates the Gnuplot/PNG image plot, and returns the HTML
         fragment for its display in a web page.
         """
-        gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chainopt)
+        gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
 
-        title = 'Chain %s Optimization Residual' % (chainopt["chain_id"])
+        title = 'Chain %s Optimization Residual' % (chain.chain_id)
 
         l = ['<center>',
              gp.html_markup(title, LSQR_CAPTION),
@@ -609,20 +560,20 @@ class HTMLReport(Report):
         
         return "".join(l)
 
-    def html_chain_alignment_plot(self, chainopt):
+    def html_chain_alignment_plot(self, chain):
         """generate a plot comparing all segmentations
         """
         plot = sequence_plot.TLSSegmentAlignmentPlot()
         
-        for ntls, tlsopt in chainopt["ntls_list"]:
-            plot.add_tls_segmentation(chainopt, ntls)
+        for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
+            plot.add_tls_segmentation(cpartition)
 
         ## create filename for plot PNG image file
-        plot_path = "%s_CHAIN%s_ALIGN.png" % (self.struct_id, chainopt["chain_id"])
+        plot_path = "%s_CHAIN%s_ALIGN.png" % (self.struct_id, chain.chain_id)
         
         plot.plot(plot_path)
 
-        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chainopt["chain_id"]),
+        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chain.chain_id),
              '<center>',
              '<table border="0" style="background-color:#dddddd">',
              '<tr><th># of TLS<br>Groups</th>',
@@ -632,7 +583,7 @@ class HTMLReport(Report):
              '<td align="right" valign="top">',
              '<p style="font-size:xx-small; margin-top:%dpx; line-height:18px">' % (plot.border_width)]
 
-        for ntls, tlsopt in chainopt["ntls_list"]:
+        for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
             l.append('<a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
 
         l +=['</td>',
@@ -644,31 +595,29 @@ class HTMLReport(Report):
         
         return "".join(l)
 
-    def html_tls_graph_path(self, chainopt, ntls):
+    def html_tls_graph_path(self, chain, ntls):
         """Generates the HTML table describing the path (set of tls groups)
         for the given number of segments(h, or ntls)
         """
-        ## select the correct TLSChainDescription() for the number of ntls
-        if not chainopt["tlsopt"].has_key(ntls):
+        cpartition = chain.partition_collection.get_chain_partition(ntls)
+        if cpartition == None:
             return None
 
-        tlsopt = chainopt["tlsopt"][ntls]
-
         ## write out PDB file
-        self.write_tls_pdb_file(chainopt, tlsopt, ntls)
+        self.write_tls_pdb_file(chain, cpartition)
 
         ## Raster3D Image
-        pml_path, png_path = self.raster3d_render_tls_graph_path(chainopt, tlsopt, ntls)
+        pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
 
         ## JMol Viewer Page
-        jmol_path = self.jmol_html(chainopt, tlsopt, ntls)
-        jmol_animate_path = self.jmol_animate_html(chainopt, tlsopt)
+        jmol_path = self.jmol_html(chain, cpartition)
+        jmol_animate_path = self.jmol_animate_html(chain, cpartition)
 
         ## tlsout file
-        tlsout_path = self.write_tlsout_file(chainopt, tlsopt, ntls)
+        tlsout_path = self.write_tlsout_file(chain, cpartition)
 
         ## detailed analysis of all TLS groups
-        ntls_analysis = self.chain_ntls_analysis(chainopt, tlsopt)
+        ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
 
         ## BMean Plot
         ntls_analysis.bmean_plot.width = 640
@@ -723,24 +672,22 @@ class HTMLReport(Report):
              '</table>',
 
              ## now the table
-             html_tls_group_table(chainopt, tlsopt, ntls),
+             html_tls_group_table(chain, cpartition),
              
              '<br clear="all">']
         
         return "".join(l)
 
-    def raster3d_render_tls_graph_path(self, chainopt, tlsopt, ntls):
+    def raster3d_render_tls_graph_path(self, chain, cpartition):
         """Render TLS visualizations using Raster3D.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chainopt["chain_id"], ntls)
+        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.ntls)
         png_path = "%s.png"   % (basename)
 
         misc.start_timing()
         print "Raster3D: rendering %s..." % (basename)
 
         struct_id = self.struct_id
-        chain     = chainopt["chain"]
-        chain_id  = chainopt["chain_id"]
 
         driver = R3DDriver.Raster3DDriver()
 
@@ -748,11 +695,11 @@ class HTMLReport(Report):
         ## or are just too large
         show_chain = {}
         for chx in self.struct.iter_chains():
-            if chx.chain_id==chain_id:
+            if chx.chain_id == chain.chain_id:
                 show_chain[chx.chain_id] = True
                 continue
             
-            if chx.count_fragments()>=20:
+            if chx.count_fragments() >= 20:
                 show_chain[chx.chain_id] = False
                 continue
             
@@ -785,11 +732,11 @@ class HTMLReport(Report):
                 continue
 
             ## chain is hidden
-            if show_chain.get(gl_chain.chain.chain_id, False)==False:
-                gl_chain.properties.update(visible=False)
+            if show_chain.get(gl_chain.chain.chain_id, False) == False:
+                gl_chain.properties.update(visible = False)
                 continue
 
-            if gl_chain.chain.chain_id==chain_id:
+            if gl_chain.chain.chain_id == chain.chain_id:
                 gl_chain.properties.update(
                     oatm_visible       = False,
                     side_chain_visible = False,
@@ -799,7 +746,7 @@ class HTMLReport(Report):
                     ball_stick         = False,
                     trace              = True,
                     trace_radius       = 0.20,
-                    trace_color         = "0.20,0.20,0.20", )
+                    trace_color        = "0.20,0.20,0.20", )
             else:
                 gl_chain.properties.update(
                     visible       = True,
@@ -807,8 +754,8 @@ class HTMLReport(Report):
                     cpk           = True)
                 
         ## add the TLS group visualizations
-        for tls in tlsopt.tls_list:
-            if tls["method"]!="TLS":
+        for tls in cpartition.iter_tls_segments():
+            if tls["method"] != "TLS":
                 continue
             
             tls_name = "TLS_%s_%s" % (tls["frag_id1"], tls["frag_id2"])
@@ -845,17 +792,17 @@ class HTMLReport(Report):
 
         return "", png_path
 
-    def write_tls_pdb_file(self, chainopt, tlsopt, ntls):
+    def write_tls_pdb_file(self, chain, cpartition):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chainopt["chain_id"], ntls)
+        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chain.chain_id, cpartition.ntls)
         pdb_path = "%s.pdb" % (basename)
 
         ## temporarily set the atom temp_factor and U tensor to the Utls value
         old_temp_factor = {}
         old_U = {}
-        for tls in tlsopt.tls_list:
+        for tls in cpartition.iter_tls_segments():
             tls_group = tls["tls_group"]
             
             for atm, Utls in tls_group.iter_atm_Utls():
@@ -865,28 +812,28 @@ class HTMLReport(Report):
                 atm.temp_factor = Constants.U2B * (numpy.trace(Utls)/3.0)
                 atm.U = Utls
 
-        FileLoader.SaveStructure(fil=pdb_path, struct=self.struct)
+        FileLoader.SaveStructure(fil = pdb_path, struct = self.struct)
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():
             atm.temp_factor = temp_factor
             atm.U = old_U[atm]
 
-    def write_tlsout_file(self, chainopt, tlsopt, ntls):
+    def write_tlsout_file(self, chain, cpartition):
         """Writes the TLSOUT file for the segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chainopt["chain_id"], ntls)
+        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.ntls)
         tlsout_path = "%s.tlsout" % (basename)
 
         struct_id = self.struct_id
-        chain_id  = chainopt["chain_id"]
+        chain_id  = chain.chain_id
 
         tls_file = TLS.TLSFile()
         tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
-        for tls in tlsopt.tls_list:
+        for tls in cpartition.iter_tls_segments():
             ## don't write out bypass edges
-            if tls["method"]!="TLS":
+            if tls["method"] != "TLS":
                 continue
             
             tls_desc = TLS.TLSGroupDesc()
@@ -899,17 +846,17 @@ class HTMLReport(Report):
 
         return tlsout_path
 
-    def chain_ntls_analysis(self, chainopt, tlsopt):
+    def chain_ntls_analysis(self, chain, cpartition):
         """Generate ntls optimization constraint report and free memory.
         """
-        report = ChainNTLSAnalysisReport(chainopt, tlsopt, tlsopt.ntls)
+        report = ChainNTLSAnalysisReport(chain, cpartition)
         return report
 
-    def jmol_html(self, chainopt, tlsopt, ntls):
+    def jmol_html(self, chain, cpartition):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
         """
-        jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chainopt["chain_id"], ntls)
+        jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.ntls)
 
         ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
@@ -921,7 +868,7 @@ class HTMLReport(Report):
               'cartoon on;']
 
         ## loop over TLS groups and color
-        for tls in tlsopt.tls_list:
+        for tls in cpartition.iter_tls_segments():
             js.append('select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], tls["chain_id"]))
             js.append('color [%d,%d,%d];' % (tls["color"]["rgbi"]))
 
@@ -936,7 +883,7 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], ntls),
+             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.ntls),
              '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR),
              '</script>',
              '</head>',
@@ -952,11 +899,11 @@ class HTMLReport(Report):
         open(jmol_path, "w").write("".join(l))
         return jmol_path
 
-    def jmol_animate_html(self, chainopt, tlsopt):
+    def jmol_animate_html(self, chain, cpartition):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
         """
-        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (self.struct_id, chainopt["chain_id"], tlsopt.ntls)
+        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (self.struct_id, chain.chain_id, cpartition.ntls)
 
         html_path = "%s.html" % (basename)
         pdb_path  = "%s.pdb" % (basename)
@@ -966,7 +913,7 @@ class HTMLReport(Report):
         try:
             print "TLSAnimate: creating animation PDB file..."
             misc.start_timing()
-            tlsa = TLSAnimate(self.struct, chainopt, tlsopt)
+            tlsa = TLSAnimate(self.struct, chain, cpartition)
             tlsa.construct_animation(pdb_path)
             print misc.end_timing()
         except TLSAnimateFailure:
@@ -982,7 +929,7 @@ class HTMLReport(Report):
               'trace on;']
 
         ## loop over TLS groups and color
-        for tls in tlsopt.tls_list:
+        for tls in cpartition.iter_tls_segments():
             chain_ids = [tlsa.L1_chain.chain_id,
                          tlsa.L2_chain.chain_id,
                          tlsa.L3_chain.chain_id]
@@ -1006,7 +953,7 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chainopt["chain_id"], tlsopt.ntls),
+             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.ntls),
              '<script type="text/javascript" src="%s/Jmol.js">' % (JMOL_DIR),
              '</script>',
              '</head>',
@@ -1027,12 +974,12 @@ class HTMLReport(Report):
         open(html_path, "w").write("".join(l))
         return html_path
 
-    def write_multi_chain_alignment(self, chainopt_list):
+    def write_multi_chain_alignment(self):
         """Write out the chain residue alignment page.
         """
         ## only write out the comparison page if there is more than one
         ## chain analyzed in the structure
-        if len(chainopt_list)<2:
+        if self.tlsmd_analysis.num_chains() < 2:
             return
         
         path  = "%s_CHAIN_COMP.html" % (self.struct_id)
@@ -1043,108 +990,77 @@ class HTMLReport(Report):
             "href":  path }
 
         fil = open(path, "w")
-        fil.write(self.html_multi_chain_alignment(chainopt_list))
+        fil.write(self.html_multi_chain_alignment())
         fil.close()
     
-    def html_multi_chain_alignment(self, chainopt_list):
+    def html_multi_chain_alignment(self):
         """Write out all HTML/PDB/TLSIN files which compare
         chains in the structure.
         """
         title = self.page_multi_chain_alignment["title"]
 
-        x  = self.html_head(title)
-        x += self.html_title(title)
+        l = [ self.html_head(title),
+              xself.html_title(title),
 
-        x += '<center>'
-        x += '<a href="index.html">Back to Index</a>'
-        x += '</center>'
-        x += '<br>'
+              '<center>',
+              '<a href="index.html">Back to Index</a>',
+              '</center>',
+              '<br>' ]
 
         ## figure out the maximum number of ntls in all chains
         max_ntls = 0
-        for chainopt in chainopt_list:
-            max_ntls = max(max_ntls, chainopt["max_ntls"])
+        for chain in self.tlsmd_analysis.iter_chains():
+            max_ntls = max(chain.partition_collection.max_ntls, max_ntls)
 
         ## generate ntls number of plots and add them to the
         ## HTML document
-        for ntls in range(1, max_ntls+1):
+        for ntls in range(1, max_ntls + 1):
 
             ## create a 2-tuple list of (chain_id, chainopt) for
             ## each chain which a a TLSMD segmentation of h groups
             seg_list = []
-            for chainopt in chainopt_list:
-                if chainopt["tlsopt"].has_key(ntls):
-                    seg_list.append((chainopt["chain_id"], 
-                                     chainopt["tlsopt"][ntls]))
-
-            ## generate PDB and TLSIN files containing the TLS
-            ## predicted anisotropic ADPs for all chains for the
-            ## given number of tls segments
-            basename    = "%s_NTLS%d"  % (self.struct_id, ntls)
-            tlsout_path = "%s.tlsout" % (basename)
-            pdb_path    = "%s.pdb" % (basename)
-
-            old_temp_factor = {}
-            old_U = {}
-
-            for chain_id, tlsopt in seg_list:
-                for tls in tlsopt.tls_list:
-                    tls_group = tls["tls_group"]
-
-                    for atm, Utls in tls_group.iter_atm_Utls():
-                        old_temp_factor[atm] = atm.temp_factor
-                        old_U[atm] = atm.U
-                        atm.temp_factor = Constants.U2B * (Utls[0,0] + Utls[1,1] + Utls[2,2]) / 3.0
-                        atm.U = Utls
-
-            ## save the structure file
-            FileLoader.SaveStructure(fil=pdb_path, struct=self.struct)
-
-            ## restore atom temp_factor and U
-            for atm, temp_factor in old_temp_factor.iteritems():
-                atm.temp_factor = temp_factor
-                atm.U = old_U[atm]
+            for chain in self.tlsmd_analysis.iter_chains():
+                cpartition = chain.partition_collection.get_chain_partition(ntls)
+                if cpartition != None:
+                    seg_list.append((chain.chain_id, cpartition))
 
             ## generate the TLS segmentation alignment plot for all chains
             plot = sequence_plot.TLSSegmentAlignmentPlot()
             chain_id_list = []
 
-            for chainopt in chainopt_list:
-                if not chainopt["tlsopt"].has_key(ntls):
-                    continue
-                
-                chain_id_list.append(chainopt["chain_id"])
-                plot.add_tls_segmentation(chainopt, ntls)
+            for chain in self.tlsmd_analysis.iter_chains():
+                cpartition = chain.partition_collection.get_chain_partition(ntls)
+                if cpartition != None:
+                    chain_id_list.append(chain.chain_id)
+                    plot.add_tls_segmentation(cpartition)
 
+            basename  = "%s_NTLS%d"  % (self.struct_id, ntls)
             plot_path = "%s_ALIGN.png" % (basename)
             plot.plot(plot_path)
 
             ## write HTML
-            x += '<h3>Chains Alignment using %d TLS Groups</h3>' % (ntls)
+            l.append('<h3>Chains Alignment using %d TLS Groups</h3>' % (ntls))
 
             ## plot table
-            x += '<table border="1">'
-            x += '<tr><th>Chain</th><th>Chain Alignment</th></tr>'
-            x += '<tr>'
-        
-            x += '<td align="center">'
-            x += '<table border="0" cellspacing="0" cellpadding="0">'
+            l += ['<table border="1">',
+                  '<tr><th>Chain</th><th>Chain Alignment</th></tr>',
+                  '<tr>',
+                  '<td align="center">',
+                  '<table border="0" cellspacing="0" cellpadding="0">' ]
 
             for chain_id in chain_id_list:
-                x += '<tr><td align="right" valign="middle" height="20"><font size="-20">%s</font></td></tr>' % (chain_id)
+                l.append('<tr><td align="right" valign="middle" height="20"><font size="-20">%s</font></td></tr>' % (chain_id))
 
-            x += '</table>'
-            x += '</td>'
+            l += ['</table>'
+                  '</td>',
+                  '<td><img src="%s" alt="Segmentation Plot"></td>' % (plot_path),
+                  '</tr>',
+                  '</table>' ]
 
-            x += '<td><img src="%s" alt="Segmentation Plot"></td>' % (plot_path)
+        l.append(self.html_foot())
+        return "".join(l)
 
-            x += '</tr>'
-            x += '</table>'
-
-        x += self.html_foot()
-        return x
-
-    def write_refinement_prep(self, chainopt_list):
+    def write_refinement_prep(self):
         """Generate form to allow users to select the number of TLS groups
         to use per chain.
         """
@@ -1156,88 +1072,69 @@ class HTMLReport(Report):
             "href" : path }
 
         fil = open(path, "w")
-        fil.write(self.html_refinement_prep(chainopt_list))
+        fil.write(self.html_refinement_prep())
         fil.close()
 
-    def html_refinement_prep(self, chainopt_list):
+    def html_refinement_prep(self):
         title = self.page_refinement_prep["title"]
+        plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
-        x  = self.html_head(title)
-        x += self.html_title(title)
-
-        x += '<center><h3>'
-        x += 'Step 1: Select the number of TLS groups for each chain'
-        x += '</h3></center>'
-
-        x += '<center>'
-        x += '<a href="index.html">Back to Index</a>'
-        x += '</center>'
-        x += '<br>'
-
-        x += '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL)
-        x += '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id)
-
-        x += '<p>%s</p>' % (REFINEMENT_PREP_INFO)
+        l = [self.html_head(title),
+             self.html_title(title),
+             '<center><h3>',
+             'Step 1: Select the number of TLS groups for each chain',
+             '</h3></center>',
+             '<center>',
+             '<a href="index.html">Back to Index</a>',
+             '</center>',
+             '<br>',
+             '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL),
+             '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id),
+             '<p>%s</p>' % (REFINEMENT_PREP_INFO),
+             '<center><table><tr><td>',
+             plot.html_link(),
+             '</td></tr><tr><td>',
+             '<table width="100%" border="1">',
+             '<tr><th>',
+             '<p>Select the Number of TLS Groups per Chain</p>',
+             '</th></tr>',
+             '<tr><td align="center">',
+             '<table cellspacing="5">' ]
         
-        x += '<center><table><tr><td>'
-        
-        plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(chainopt_list)
-        x += plot.html_link()
-
-        x += '</td></tr><tr><td>'
-
-        x += '<table width="100%" border="1">'
-        x += '<tr><th>'
-        x += '<p>Select the Number of TLS Groups per Chain</p>'
-        x += '</th></tr>'
-
-        x += '<tr><td align="center">'
-
-        x += '<table cellspacing="5">'
-        for chainopt in chainopt_list:
-            chain_id = chainopt["chain_id"]
+        for chain in self.tlsmd_analysis.iter_chains():
+            l += ['<tr><td>',
+                  'Number of TLS Groups for Chain %s' % (chain.chain_id),
+                  '</td><td>',
+                  '<select name="NTLS_CHAIN%s">' % (chain.chain_id) ]
+            for ntls in chain.partition_collection.iter_ntls():
+                l.append('<option value="%d">%d</option>' % (ntls, ntls))
+            l += ['</select>',
+                  '</td></tr>' ]
             
-            x += '<tr><td>'
-            x += 'Number of TLS Groups for Chain %s' % (chain_id)
-            x += '</td><td>'
+        l += ['</table>',
+              '</td></tr>',
+              '<tr><td align="right">',
+              '<input type="submit" value="OK">',
+              '</td></tr></table>',
+              '</td></tr></table></center>',
+              '</form>' ]
         
-            x += '<select name="NTLS_CHAIN%s">' % (chain_id)
-            for ntls, tlsopt in chainopt["ntls_list"]:
-                x += '<option value="%d">%d</option>' % (ntls, ntls)
-            x += '</select>'
-
-            x += '</td></tr>'
-        x += '</table>'
-        
-        x += '</td></tr>'
-
-        x += '<tr><td align="right">'
-        x += '<input type="submit" value="OK">'
-        x += '</td></tr></table>'
-        
-        x += '</td></tr></table></center>'
-
-        x += '</form>'
-        
-        x += self.html_foot()
-        return x
+        l.append(self.html_foot())
+        return "".join(l)
 
 
 class ChainNTLSAnalysisReport(Report):
     """Writes a HTML report detailing one given TLS segmentation of a chain.
     """
-    def __init__(self, chainopt, tlsopt, ntls):
+    def __init__(self, struct, chain, ntls):
         Report.__init__(self)
 
-        self.struct      = chainopt["struct"]
-        self.struct_id   = chainopt["struct_id"]
-        self.struct_path = chainopt["struct_path"]
-        self.chain_id    = chainopt["chain_id"]
-
-        
-        self.chainopt = chainopt
-        self.tlsopt   = tlsopt
-        self.ntls     = ntls
+        self.struct = struct
+        self.struct_id = struct.structure_id
+        self.chain = chain
+        self.chain_id = chain.chain_id
+        self.ntls = ntls
+        self.cpartition = chain.partition_collection.get
 
         self.root  = ".."
         self.dir   = "%s_CHAIN%s_NTLS%d"  % (self.struct_id, self.chain_id, self.ntls)
@@ -1280,24 +1177,23 @@ class ChainNTLSAnalysisReport(Report):
              self.html_ca_differance(),'<br>',
              self.html_rmsd_plot()]
         
-        for tls in self.tlsopt.tls_list:
+        for tls in self.cpartition.iter_tls_segments():
             ## don't write out bypass edges
-            if tls["method"]!="TLS": continue
-
+            if tls["method"] != "TLS":
+                continue
             l.append(self.html_tls_fit_histogram(tls))
-
         l.append(self.html_foot())
         
         open(self.index, "w").write("".join(l))
 
     def html_tls_group_table(self):
-        return html_tls_group_table(self.chainopt, self.tlsopt, self.ntls, "..")
+        return html_tls_group_table(self.chain, self.cpartition, "..")
 
     def html_translation_analysis(self):
         """Perform a translation analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        tanalysis = gnuplots.TranslationAnalysis(self.chainopt, self.tlsopt)
+        tanalysis = gnuplots.TranslationAnalysis(self.chain, self.cpartition)
 
         l = ['<center>',
              tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", TRANSLATION_GRAPH_CAPTION),
@@ -1309,7 +1205,7 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a libration analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        libration_analysis = gnuplots.LibrationAnalysis(self.chainopt, self.tlsopt)
+        libration_analysis = gnuplots.LibrationAnalysis(self.chain, self.cpartition)
         
         l = ['<center>',
              libration_analysis.html_markup("Screw Displacement Analysis", LIBRATION_GRAPH_CAPTION),
@@ -1321,7 +1217,7 @@ class ChainNTLSAnalysisReport(Report):
         """Perform a fit analysis of the protein chain as
         spanned by the tlsopt TLS groups.
         """
-        plot = gnuplots.CA_TLS_Differance_Plot(self.chainopt, self.tlsopt)
+        plot = gnuplots.CA_TLS_Differance_Plot(self.chain, self.cpartition)
         
         l = ['<center>',
              plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", FIT_GRAPH_CAPTION),
@@ -1332,7 +1228,7 @@ class ChainNTLSAnalysisReport(Report):
     def html_bmean(self):
         """Mean B-Factor per residue.
         """
-        self.bmean_plot = gnuplots.BMeanPlot(self.chainopt, self.tlsopt)
+        self.bmean_plot = gnuplots.BMeanPlot(self.chain, self.cpartition)
 
         l = ['<center>',
              self.bmean_plot.html_markup("Mean BFactor Analysis", "Comparison of TLS predicted B factors with experimental (input) B factors."),
@@ -1341,7 +1237,7 @@ class ChainNTLSAnalysisReport(Report):
         return "".join(l)
 
     def html_rmsd_plot(self):
-        rmsd_plot = gnuplots.RMSDPlot(self.chainopt, self.tlsopt)
+        rmsd_plot = gnuplots.RMSDPlot(self.chain, self.cpartition)
 
         l = ['<center>',
              rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors", ""),
@@ -1353,7 +1249,7 @@ class ChainNTLSAnalysisReport(Report):
         """histogram of atomic U_ISO - U_TLS_ISO
         """
         
-        his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chainopt, self.tlsopt, tls)
+        his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chain, self.cpartition)
 
         title = 'Distribution Histogram of TLS Group %s%s-%s%s' % (self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
         

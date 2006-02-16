@@ -31,10 +31,9 @@ def calc_rmsd_tls_biso(tls_group):
     return rmsd
      
 
-def calc_mean_biso_obs(chainopt):
+def calc_mean_biso_obs(chain):
     """Calculates the mean B value per residue in the chain (as observed in the input structure).
     """
-    chain = chainopt["chain"]
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
 
@@ -54,15 +53,13 @@ def calc_mean_biso_obs(chainopt):
     return biso
 
 
-def calc_mean_biso_tls(chainopt, tlsopt):
+def calc_mean_biso_tls(chain, cpartition):
     """Calculated the mean B value per residue in the chain as calculated in the chain optimization.
     """
-    chain = chainopt["chain"]
     num_res = chain.count_fragments()
-    biso =  numpy.zeros(num_res, float)
+    biso = numpy.zeros(num_res, float)
 
-    for i in range(len(tlsopt.tls_list)):
-        tls       = tlsopt.tls_list[i]
+    for i, tls in self.cpartition.enumerate_tls_segments():
         tls_group = tls["tls_group"]
         segment   = tls["segment"]
 
@@ -76,27 +73,25 @@ def calc_mean_biso_tls(chainopt, tlsopt):
             b_sum_tls = 0.0
 
             for atm in frag.iter_all_atoms():
-                if atm.include==False: continue
+                if atm.include == False:
+                    continue
 
                 n += 1
                 b_sum_tls += Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
 
-            if n>0:
+            if n > 0:
                 biso[frag.ichain] =  b_sum_tls / n
 
     return biso
 
 
-def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
-    chain = chainopt["chain"]
-
-    num_tls = len(tlsopt.tls_list)
+def calc_cross_prediction_matrix_rmsd(chain, cpartition):
+    num_tls = cpartition.num_tls_segments()
     num_res = chain.count_fragments()
 
     cmtx = numpy.zeros((num_tls, num_res), float)
 
-    for i in range(len(tlsopt.tls_list)):
-        tls = tlsopt.tls_list[i]
+    for i, tls in cpartition.enumerate_tls_segments():
         tls_group = tls["tls_group"]
 
         T = tls_group.itls_T
@@ -112,7 +107,8 @@ def calc_cross_prediction_matrix_rmsd(chainopt, tlsopt):
             delta2 = 0.0
 
             for atm in frag.iter_all_atoms():
-                if atm.include==False: continue
+                if atm.include == False:
+                    continue
 
                 n += 1
                 b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)

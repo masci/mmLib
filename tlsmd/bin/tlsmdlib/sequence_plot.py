@@ -12,12 +12,43 @@ import ImageFont
 import misc
 import conf
 
-
 ## target pixel width, height, and spacing of sequence
 ## alignment plots
 ALIGN_TARGET_WIDTH = 500
 ALIGN_HEIGHT       = 15
 ALIGN_SPACING      = 5
+
+
+class FragmentID(object):
+    """A fragment ID class acts a lot like a string, but separates the
+    res_seq and icode internally.
+    """
+    def __init__(self, frag_id):
+        self.res_seq = 1
+        self.icode = ""
+        try:
+            self.res_seq = int(frag_id)
+        except ValueError:
+            try:
+                self.res_seq = int(frag_id[:-1])
+            except ValueError:
+                pass
+            else:
+                self.icode = frag_id[-1]
+    def __str__(self):
+        return str(self.res_seq) + self.icode
+    def __lt__(self, other):
+        return (self.res_seq, self.icode) < (other.res_seq, other.icode)
+    def __le__(self, other):
+        return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
+    def __eq__(self, other):
+        return (self.res_seq, self.icode) == (other.res_seq, other.icode)
+    def __ne__(self, other):
+        return (self.res_seq, self.icode) != (other.res_seq, other.icode)
+    def __gt__(self, other):
+        return (self.res_seq, self.icode) > (other.res_seq, other.icode)
+    def __ge__(self, other):
+        return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
 
 
 class TLSSegmentAlignmentPlot(object):
@@ -45,37 +76,29 @@ class TLSSegmentAlignmentPlot(object):
         self.frag_list      = []
         self.configurations = []
 
-    def add_tls_segmentation(self, chainopt, ntls):
+        self.chain_partition_list = []
+        
+
+    def add_tls_segmentation(self, cpartition):
         """Add a TLS optimization to the alignment plot.
         """
-        tlsopt = chainopt["tlsopt"][ntls]
-        
-        ## get the list of TLS segments for the specified number of
-        ## segments (ntls)
-        tls_seg_desc = {}
-        self.configurations.append(tls_seg_desc)
-        tls_seg_desc["chainopt"] = chainopt
-        tls_seg_desc["ntls"]     = ntls
-        tls_seg_desc["tlsopt"]   = tlsopt
-        
-        ## update the master fragment_list
-        self.__update_frag_list(chainopt["chain"], tlsopt)
+        self.chain_partition_list.append(cpartition)
+        self.__update_frag_list(cpartition.chain)
 
-    def __update_frag_list(self, chain, tlsopt):
+    def __update_frag_list(self, chain):
         """Add any fragment_ids found in the tls segments to the master
         self.frag_list and sort it.
         """
         for frag in chain.iter_fragments():
-            fid = misc.FragmentID(frag.fragment_id)
+            fid = FragmentID(frag.fragment_id)
             if fid not in self.frag_list:
                 self.frag_list.append(fid)
-
         self.frag_list.sort()
        
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
-        if len(self.frag_list)==0 or len(self.configurations)==0:
+        if len(self.frag_list) == 0 or len(self.chain_partition_list) == 0:
             return False
         
         nfrag = len(self.frag_list)
@@ -89,11 +112,11 @@ class TLSSegmentAlignmentPlot(object):
         img_width = (2 * self.border_width) + (one_frag_width * len(self.frag_list))
             
         ## calculate the total height of the image
-        num_plots = len(self.configurations)
+        num_plots = len(self.chain_partition_list)
         img_height = (2 * self.border_width) + (pheight * num_plots) + (self.spacing * (num_plots-1)) + self.xscale_height
 
         ## create new image and 2D drawing object
-        assert img_width>0 and img_height>0
+        assert img_width > 0 and img_height > 0
         image = Image.new("RGBA", (img_width, img_height), self.bg_color)
         idraw = ImageDraw.Draw(image)
         idraw.setfill(True)
@@ -103,9 +126,9 @@ class TLSSegmentAlignmentPlot(object):
 
         ## draw plots
         for i in range(num_plots):
-            tls_seg_desc = self.configurations[i]
+            cpartition = self.chain_partition_list[i]
             yo = self.border_width + (i * pheight) + (i * self.spacing)
-            self.__plot_segmentation(idraw, img_width - 2*self.border_width, one_frag_width, (x_start, yo), tls_seg_desc)
+            self.__plot_segmentation(idraw, img_width - 2*self.border_width, one_frag_width, (x_start, yo), cpartition)
 
         ## draw labels draw some ruler lines
         x_start = self.border_width
@@ -160,21 +183,17 @@ class TLSSegmentAlignmentPlot(object):
         image.save(path, "png")
         return True
 
-    def __plot_segmentation(self, idraw, pwidth, fwidth, offset, tls_seg_desc):
+    def __plot_segmentation(self, idraw, pwidth, fwidth, offset, cpartition):
         pheight = self.pheight
         nfrag   = len(self.frag_list)
 
         ## x/y offsets
         xo, yo = offset
         
-        ## iterate over tls segments, draw and color
-        tlsopt = tls_seg_desc["tlsopt"]
-
-        ## draw a gray background for the lengt of the chain;
+        ## draw a gray background for the length of the chain;
         ## the colored TLS segments will be drawn on top of this
-        chain = tls_seg_desc["chainopt"]["chain"]
-        fid1 = misc.FragmentID(chain[0].fragment_id)
-        fid2 = misc.FragmentID(chain[-1].fragment_id)
+        fid1 = FragmentID(cpartition.chain[0].fragment_id)
+        fid2 = FragmentID(cpartition.chain[-1].fragment_id)
 
         i1 = self.frag_list.index(fid1)
         i2 = self.frag_list.index(fid2)
@@ -190,9 +209,9 @@ class TLSSegmentAlignmentPlot(object):
                          pheight + yo + outline_width))
 
         ## draw colored TLS segments
-        for tls in tlsopt.tls_list:
-            fid1 = misc.FragmentID(tls["frag_id1"])
-            fid2 = misc.FragmentID(tls["frag_id2"])
+        for tls in cpartition.iter_tls_segments():
+            fid1 = FragmentID(tls["frag_id1"])
+            fid2 = FragmentID(tls["frag_id2"])
 
             i1 = self.frag_list.index(fid1)
             i2 = self.frag_list.index(fid2)
