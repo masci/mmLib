@@ -27,19 +27,25 @@ MSMTP                  = "/usr/bin/msmtp"
 ## END: CONFIGURATION PATHS AND URLS
 
 
-
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
+JMOL_DIR               = "../../../jmol"
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 85
 
 ## number of TLS partitons for each chain
-NPARTS = 20
+NPARTS = 5
+
+## the pixel width of the TLS visualization rendered ray traces
+VIS_WIDTH = 550
+
+## the JMol viewer is a square window, generated with this pixel size
+JMOL_SIZE = 600
 
 class GlobalConfiguration(object):
     def __init__(self):

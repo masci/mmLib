@@ -128,8 +128,8 @@ plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" ls 1 with li
 """
         
 class LSQR_vs_TLS_Segments_Plot(GNUPlot):
-    def __init__(self, partition_collection, **args):
-        GNUPlot.__init__(self, chain, **args)
+    def __init__(self, chain,  **args):
+        GNUPlot.__init__(self, **args)
         self.chain = chain
         self.output_png()
 
@@ -186,9 +186,9 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         ## re-use the data files of LSQRvsNTLS from the individual
         ## graphs; to do this the filenames have to be re-constructed
         plist = []
-        for chain in tlsmd_analysis.iter_chains():
+        for chain in self.tlsmd_analysis.iter_chains():
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain.chain_id)
-            x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (filename, chain_id)
+            x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (filename, chain.chain_id)
             plist.append(x)
             
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -227,7 +227,7 @@ class TranslationAnalysis(GNUPlot):
 
         ## line style
         ls = 0
-        for tls in self.cpartiiton.iter_tls_segments():
+        for tls in self.cpartition.iter_tls_segments():
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
 
@@ -253,9 +253,7 @@ class TranslationAnalysis(GNUPlot):
 
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
-
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             tls_group = tls["tls_group"]
             tls_info  = tls["model_tls_info"]
             O         = tls_info["COR"]
@@ -345,9 +343,7 @@ class LibrationAnalysis(GNUPlot):
 
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
-
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             tls_group = tls["tls_group"]
             tls_info  = tls["model_tls_info"]
             O         = tls_info["COR"]
@@ -374,7 +370,8 @@ class LibrationAnalysis(GNUPlot):
                     Lrho   = tls_info[Lx_rho]
                     Lpitch = tls_info[Lx_pitch]
 
-                    if numpy.allclose(Lval, 0.0): continue
+                    if numpy.allclose(Lval, 0.0):
+                        continue
 
                     dvec = TLS.calc_LS_displacement(O, Lval, Lvec, Lrho, Lpitch, atm.position, conf.ADP_PROB)
                     d = AtomMath.length(dvec)
@@ -420,8 +417,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         script += 'set style line 1 lc rgb "#000000" lw 1\n'
         
         ls = 1
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
 
@@ -431,7 +427,6 @@ class CA_TLS_Differance_Plot(GNUPlot):
 
         ls = 1
         for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
             ls += 1
             x = '"%s" using 1:%d notitle ls %d with lines' % (self.txt_path, itls+2, ls)
             plist.append(x)
@@ -444,8 +439,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         fil = open(self.txt_path, "w")
         ncols = self.cpartition.num_tls_segments() + 1
         
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             tls_group = tls["tls_group"]
 
             T = tls_group.itls_T
@@ -547,8 +541,8 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         fil.write("## the difference of their isotropic temperature factors\n")
         fil.write("## from the isotropic values predicted from the TLS model.\n")
         fil.write("##\n")
-        fil.write("## Structure ----------------: %s\n" % (self.chain.struct.structure_id)
-        fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id)
+        fil.write("## Structure ----------------: %s\n" % (self.chain.struct.structure_id))
+        fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id))
         fil.write("## TLS Group Residue Range --: %s-%s\n" % (tls["frag_id1"], tls["frag_id2"]))
 
         for i in range(len(bins)):
@@ -602,8 +596,7 @@ class BMeanPlot(GNUPlot):
         data_path = "%s.txt" % (basename)
         fil = open(data_path, "w")
 
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls       = self.cpartition.tls_list[itls]
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             tls_group = tls["tls_group"]
             segment   = tls["segment"]
 
@@ -684,7 +677,7 @@ class RMSDPlot(GNUPlot):
         self.output_png()
 
     def write_data_file(self):
-        ncols = len(self.cpartition.num_tls_segments) + 2
+        ncols = self.cpartition.num_tls_segments() + 2
         
         if self.cpartition.ntls > 1:
             CMTX1 = tls_calcs.calc_cross_prediction_matrix_rmsd(
@@ -710,8 +703,7 @@ class RMSDPlot(GNUPlot):
             if CMTX1!=None:
                 cols[1] = "%6.2f" % (CMTX1[0,j])
 
-            for itls in range(self.cpartition.num_tls_segments()):
-                tls = self.cpartition.tls_list[itls]
+            for itls, tls in self.cpartition.enumerate_tls_segments():
                 segment = tls["segment"]
                 if frag in segment:
                     cols[itls+2] = "%6.2f" % (CMTX[itls,j])
@@ -744,9 +736,7 @@ class RMSDPlot(GNUPlot):
             script += 'set style line 1 lc rgb "#000000" lw 3\n'
 
         ls = 1
-        for itls in range(self.cpartition.num_tls_segments()):
-            tls = self.cpartition.tls_list[itls]
-            
+        for itls, tls in self.cpartition.enumerate_tls_segments():
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
 

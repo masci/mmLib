@@ -1,4 +1,4 @@
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -35,12 +35,12 @@ class TLSAnimate(object):
     animation.
     """
     
-    def __init__(self, struct, chainopt, tlsopt):
+    def __init__(self, chain, cpartition):
         ## copy and get the anisotropic ADPs out of the structure
-        self.struct = self.copy_struct(struct, chainopt)
+        self.struct = self.copy_struct(chain.struct, chain)
         
-        self.chainopt = chainopt
-        self.tlsopt   = tlsopt
+        self.chain = chain
+        self.cpartition = cpartition
 
         self.L1_chain = None
         self.L2_chain = None
@@ -48,12 +48,12 @@ class TLSAnimate(object):
 
         self.construct_chain_copies()
 
-    def copy_struct(self, struct, chainopt):
+    def copy_struct(self, struct, chain):
         """Make a copy of the argument structure to use for generating
         the animation.  Only copy the chain specified in chain_id.
         """
         cp_struct = Structure.Structure(structure_id = struct.structure_id)
-        chain_id = chainopt["chain_id"]
+        chain_id = chain.chain_id
 
         for chain in struct.iter_chains():
 
@@ -76,7 +76,8 @@ class TLSAnimate(object):
                         #if atm.name not in ["N","CA","C","O"]:
                         #    continue
 
-                        if atm.name != "CA": continue
+                        if atm.name != "CA":
+                            continue
                         
                         cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
@@ -135,7 +136,7 @@ class TLSAnimate(object):
     def construct_chain_copies(self):
         """Create two other copies 
         """
-        chain_id = self.chainopt["chain_id"]        
+        chain_id = self.chain.chain_id        
         self.L1_chain = self.struct.get_chain(chain_id)
 
         self.L2_chain = copy.deepcopy(self.L1_chain)
@@ -160,7 +161,7 @@ class TLSAnimate(object):
 
         ## now displace the new model according to the tls group
         ## screw axes and given phase
-        for tls in self.tlsopt.tls_list:
+        for tls in self.cpartition.iter_tls_segments():
             self.displace_model(model, tls, phase)
 
     def displace_model(self, model, tls, phase):

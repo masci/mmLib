@@ -198,7 +198,7 @@ class ChainPartitionCollection(object):
                 continue
             self.ntls_chain_partition_list.append((ntls, cpartition))
 
-    def num_chain_paritions(self):
+    def num_chain_partitions(self):
         return len(self.ntls_chain_partition_list)
 
     def iter_ntls_chain_partitions(self):
@@ -259,6 +259,7 @@ class ChainPartition(object):
         i = 0
         for tls in self.iter_tls_segments():
             yield i, tls
+            i += 1
 
 
 class TLSChainMinimizer(hcsssp.HCSSSP):
@@ -704,6 +705,7 @@ class TLSMDAnalysis(object):
                 
             segment = chain[frag_id1:frag_id2]
             segments.append(segment)
+            segment.struct = self.struct
         
         self.chains = segments
         
@@ -758,7 +760,6 @@ class TLSMDAnalysis(object):
 
     def calc_chain_partition_superposition(self):
         import structcmp
-
 
     def iter_chains(self):
         return iter(self.chains)

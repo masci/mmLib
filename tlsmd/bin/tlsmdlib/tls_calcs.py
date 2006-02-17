@@ -59,7 +59,7 @@ def calc_mean_biso_tls(chain, cpartition):
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
 
-    for i, tls in self.cpartition.enumerate_tls_segments():
+    for i, tls in cpartition.enumerate_tls_segments():
         tls_group = tls["tls_group"]
         segment   = tls["segment"]
 
