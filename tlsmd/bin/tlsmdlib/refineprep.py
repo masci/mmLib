@@ -15,8 +15,7 @@ import cgitb; cgitb.enable()
 import cgi
 import numpy
 
-from mmLib import Structure, FileLoader, Constants
-from mmLib.Extensions import TLS
+from mmLib import Structure, FileIO, Constants, TLS
 
 import const
 import conf
@@ -48,7 +47,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     os.umask(022)
     
     ## load structure
-    struct = FileLoader.LoadStructure(fil = xyzin)
+    struct = FileIO.LoadStructure(fil = xyzin)
 
     ## load and construct TLS groups
     tls_group_list = []
@@ -157,7 +156,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
                     aatm.temp_factor = (add_Uiso) * Constants.U2B
                     aatm.U = None
 
-    FileLoader.SaveStructure(fil=xyzout, struct=struct)
+    FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
     
 

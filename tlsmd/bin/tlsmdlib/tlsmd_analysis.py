@@ -8,8 +8,7 @@ import sys
 import math
 import numpy
 
-from mmLib import Constants, FileLoader
-from mmLib.Extensions import TLS
+from mmLib import Constants, FileIO, TLS
 
 import misc
 import const
@@ -637,7 +636,7 @@ class TLSMDAnalysis(object):
         print "LOADING STRUCTURE..................: %s" % (self.struct_file_path)
 
         ## load struct
-        self.struct = FileLoader.LoadStructure(
+        self.struct = FileIO.LoadStructure(
             fil = self.struct_file_path,
             build_properties = ("library_bonds","distance_bonds"))
 
@@ -760,6 +759,22 @@ class TLSMDAnalysis(object):
 
     def calc_chain_partition_superposition(self):
         import structcmp
+
+        target_struct = FileIO.LoadStructure(fil = self.struct2_file_path)
+        target_chain = target_struct.get_chain(self.struct2_chain_id)
+
+        if target_chain == None:
+            print "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
+                target_struct, target_chain)
+            return
+        
+        for chain in self.iter_chains():
+            print
+            print "Superimposing Chain.............%s" % (chain.chain_id)
+            hyp = structcmp.TLSConformationPredctionHypothosis(chain, target_chain)
+            for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
+                print "Number of TLS Segments........: %d" % (ntls)
+                hyp.add_conformation_prediction_to_chain_partition(cpartition)
 
     def iter_chains(self):
         return iter(self.chains)

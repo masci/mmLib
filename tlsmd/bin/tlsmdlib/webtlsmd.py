@@ -15,7 +15,7 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 
-from mmLib import FileLoader
+from mmLib import FileIO
 
 import const
 import conf
@@ -1287,7 +1287,7 @@ class Submit2Page(Page):
         webtlsmdd.job_data_set(job_id, "submit_time", time.time())
 
         ## now load the structure and build the submission form
-        struct = FileLoader.LoadStructure(fil=pdb_filename)
+        struct = FileIO.LoadStructure(fil = pdb_filename)
 	if not struct.structure_id:
 	    struct.structure_id = "XXXX"
 

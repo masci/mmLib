@@ -7,8 +7,7 @@
 import popen2
 import numpy
 
-from mmLib import Constants, Colors, Gaussian, AtomMath
-from mmLib.Extensions import TLS
+from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
 
 import misc
 import conf

@@ -6,8 +6,7 @@
 import math
 import numpy
 
-from mmLib import Constants
-from mmLib.Extensions import TLS
+from mmLib import Constants, TLS
 
 def calc_rmsd_tls_biso(tls_group):
     """Calculate the RMSD of the tls_group using the isotropic TLS model.

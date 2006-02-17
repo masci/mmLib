@@ -1,4 +1,4 @@
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -18,8 +18,7 @@ import Image
 import ImageDraw
 
 ## mmLib
-from mmLib import Constants, Colors, Viewer, R3DDriver, Structure, Gaussian, FileLoader
-from mmLib.Extensions import TLS
+from mmLib import Constants, Colors, Viewer, R3DDriver, Structure, Gaussian, FileIO, TLS
 
 ## tlsmdlib
 import misc
@@ -386,7 +385,7 @@ class HTMLReport(Report):
         """
         ## write a local copy of the Structure
         self.struct_path = "%s.pdb" % (self.struct_id)
-        FileLoader.SaveStructure(fil=self.struct_path, struct=self.struct)
+        FileIO.SaveStructure(fil = self.struct_path, struct = self.struct)
 
         ## generate small .png images so  they can be placed in the
         ## TLS group tables to identify the TLS group tabular data
@@ -591,7 +590,7 @@ class HTMLReport(Report):
             return None
 
         ## write out PDB file
-        self.write_tls_pdb_file(chain, cpartition)
+        ##self.write_tls_pdb_file(chain, cpartition)
 
         ## Raster3D Image
         pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
@@ -761,6 +760,9 @@ class HTMLReport(Report):
                 tls_color          = tls["color"]["name"])
             gl_struct.glo_add_child(gl_tls_group)
 
+            if tls.has_key("superposition_vscrew"):
+                gl_tls_group.properties.update(COR_vector = tls["superposition_vscrew"])
+
             ## set width of trace according to the group's translational tensor trace
             mtls_info = tls["model_tls_info"]
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
@@ -799,7 +801,7 @@ class HTMLReport(Report):
                 atm.temp_factor = Constants.U2B * (numpy.trace(Utls)/3.0)
                 atm.U = Utls
 
-        FileLoader.SaveStructure(fil = pdb_path, struct = self.struct)
+        FileIO.SaveStructure(fil = pdb_path, struct = self.struct)
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():

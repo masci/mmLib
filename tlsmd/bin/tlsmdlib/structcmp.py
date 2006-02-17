@@ -8,10 +8,13 @@ import sys
 import math
 import numpy
 
-from Bio import pairwise2
+try:
+    from Bio import pairwise2
+except ImportError:
+    print "You need to install BioPython to use this feature"
+    sys.exit(-1)
 
-from mmLib import Constants, AtomMath, Structure, FileLoader, Superposition
-from mmLib.Extensions import TLS
+from mmLib import Constants, AtomMath, Structure, Superposition, TLS
 
 SUPER_ATOMS  = ["N","CA","C"]
 
@@ -28,42 +31,42 @@ def calc_directional_overlap(a, b):
     return abs(cos_ab)
 
 
-def align_chains(src_chn, dst_chn):
+def align_chains(chain1, chain2):
     """Adds a .equiv attribute to each fragment of the chain
     referencing the equivalent fragment in the other chain.
     """
     print "Chain Alignment"
-    srcseq = src_chn.calc_sequence_one_letter_code()
-    print "Length of Source Chain: %d" % (len(srcseq))
-    dstseq = dst_chn.calc_sequence_one_letter_code()
-    print "Length of Destination Chain: %d" % (len(dstseq))
-    align = pairwise2.align.globalxs(srcseq, dstseq, -0.25, -0.125)
+    seq1 = chain1.calc_sequence_one_letter_code()
+    print "Length of Chain 1: %d" % (len(seq1))
+    seq2 = chain2.calc_sequence_one_letter_code()
+    print "Length of Chain 2: %d" % (len(seq2))
+    align = pairwise2.align.globalxs(seq1, seq2, -0.5, -0.125)
     print align[0]
 
-    srcseq_align = align[0][0]
-    dstseq_align = align[0][1]
+    seq1_align = align[0][0]
+    seq2_align = align[0][1]
 
-    srciter = src_chn.iter_fragments()
-    dstiter = dst_chn.iter_fragments()
+    iter1 = chain1.iter_fragments()
+    iter2 = chain2.iter_fragments()
 
-    srcdst_equiv = {}
-    dstsrc_equiv = {}
+    chain1_equiv = {}
+    chain2_equiv = {}
     
-    for i in range(len(srcseq_align)):
-        src_frag = None
-        dst_frag = None
+    for i in range(len(seq1_align)):
+        frag1 = None
+        frag2 = None
 
-        if srcseq_align[i] != '-':
-            src_frag = srciter.next()
+        if seq1_align[i] != '-':
+            frag1 = iter1.next()
 
-        if dstseq_align[i] != '-':
-            dst_frag = dstiter.next()
+        if seq2_align[i] != '-':
+            frag2 = iter2.next()
 
-        if src_frag and dst_frag:
-            srcdst_equiv[src_frag] = dst_frag
-            dstsrc_equiv[dst_frag] = src_frag
+        if frag1 and frag2:
+            chain1_equiv[frag1] = frag2
+            chain2_equiv[frag2] = frag1
 
-    return srcdst_equiv, dstsrc_equiv
+    return align[0], chain1_equiv, chain2_equiv
 
 
 def SuperimposeChains(source_chain, target_chain, srcdst_equiv, atom_names = ["CA"]):
@@ -91,22 +94,14 @@ class TLSConformationPredctionHypothosis(object):
     """Calculate the directional overlap of the TLS displacements in
     struct_file/tls_file with the displacements in target_struct_file.
     """    
-    def __init__(self, chain, cpartition, target_chain):
+    def __init__(self, chain, target_chain):
         self.chain = chain
-        self.cpartition = cpartition
         self.target_chain = target_chain
+        self.alignment_score = self.align_source_target_chains()
 
-    def test_hypososis(self):
-        self.push_target_struct_atom_positions()
-        
-        ## align the overall structures
-        self.align_source_target_chains()
-
-        ## calculate CA superposition of the segments
-        for tls in self.cpartition.iter_tls_segments():
+    def add_conformation_prediction_to_chain_partition(self, cpartition):
+        for tls in cpartition.iter_tls_segments():
             self.calc_superposition(tls)
-
-        self.pop_target_atom_positions()
 
     def push_target_struct_atom_positions(self):
         for atm in self.target_struct.iter_all_atoms():
@@ -122,61 +117,63 @@ class TLSConformationPredctionHypothosis(object):
         of the target chain to the source chain.  The coordinates of the
         target chain is altered.
         """
-        schn = self.chain
-        tchn = self.target_chain
+        alignment_score, chain1_equiv, chain2_equiv, = align_chains(self.chain, self.target_chain)
+        self.srctgt_equiv = chain1_equiv
 
-        srcdst_equiv, dstsrc_equiv = align_chains(tchn, schn)
-        self.srctgt_equiv = dstsrc_equiv
-
-        sresult = SuperimposeChains(tchn, schn, dstsrc_equiv, SUPER_ATOMS)
+        sresult = SuperimposeChains(self.target_chain, self.chain, chain2_equiv, SUPER_ATOMS)
         print "Structure Superposition RMSD: %6.2f" % (sresult.rmsd)
 
-        for atm in self.target_struct.iter_all_atoms():
+        for atm in self.target_chain.iter_all_atoms():
             pos =  numpy.matrixmultiply(sresult.R, atm.position - sresult.src_origin)
             atm.align_position = pos + sresult.dst_origin
 
-    def calc_tls_segment_superposition(self, tls):
+        ## residue type mismatches in the sequence alignment of the fragments
+        for frag1 in self.chain.iter_fragments():
+            try:
+                frag2 =  self.srctgt_equiv[frag1]
+            except KeyError:
+                continue
+            if frag1.res_name != frag2.res_name:
+                print "EEK! %s::%s != %s::%s" % (
+                    frag1.fragment_id, frag1.res_name,
+                    frag2.fragment_id, frag2.res_name)
+
+        return alignment_score
+
+    def calc_superposition(self, tls):
         al = []
         msd = 0.0
-
-        try:
-            segment = tls["segment"]
-        except KeyError:
-            continue
+        segment = tls["segment"]
 
         for frag1 in segment.iter_fragments():
-            if frag1.equiv == None:
+            try:
+                frag2 = self.srctgt_equiv[frag1]
+            except KeyError:
                 continue
-            
-            frag2 = frag1.equiv
-
             for name in SUPER_ATOMS:
                 atm1 = frag1.get_atom(name)
                 atm2 = frag2.get_atom(name)
                 if atm1 == None or atm2 == None:
                     continue
-
-                try:
-                    assert atm1.res_name == atm2.res_name
-                except AssertionError:
-                    print "EEK! %s::%s != %s::%s" % (atm1.fragment_id, atm1.res_name,
-                                                     atm2.fragment_id, atm2.res_name)
                 al.append((atm1,atm2))
-                d = atm1.position - atm2.position
+                d = atm1.position - atm2.align_position
                 msd += numpy.dot(d,d)
                     
         rmsd_pre_alignment = math.sqrt(msd / len(al))
-        tls_group.super = Superposition.SuperpositionAtoms(al)
+        sresult = Superposition.SuperpositionAtoms(al)
+        tls["superposition"] = sresult
 
+        fragstr = "%s:%s-%s" % (self.chain.chain_id, tls["frag_id1"], tls["frag_id2"])
         print "TLS Group::%20s  Num Atoms::%4d  RMSD PRE ALIGN::%6.2f  RMSD::%6.2f" % (
-            tls_group.name, len(al), rmsd_pre_alignment, tls_group.super.rmsd)
+            fragstr, len(al), rmsd_pre_alignment, sresult.rmsd)
 
         ## screw displacement vector
-        Q = tls_group.super.Q
-        vscrew = AtomMath.normalize(numpy.array([Q[1],Q[2],Q[3]], float))
+        vscrew = AtomMath.normalize(numpy.array([sresult.Q[1],sresult.Q[2],sresult.Q[3]], float))
+        print "superposition rotation vector: ",vscrew
+        tls["superposition_vscrew"] = vscrew
 
         ## fit the isotropic TLS model to the group
-        fit_itls_group(tls_group)
+        tls_group = tls["tls_group"]
         evals, evecs = numpy.linalg.eigenvectors(tls_group.itls_L)
 
         for i in range(3):
@@ -185,7 +182,8 @@ class TLSConformationPredctionHypothosis(object):
             
             lname = "L%d_eigen_val" % (i)
 
-            if (eval * Constants.RAD2DEG2) < 1.0: continue
+            if (eval * Constants.RAD2DEG2) < 1.0:
+                continue
 
             ang = min(calc_angle(evec, vscrew), calc_angle(-evec, vscrew))
 

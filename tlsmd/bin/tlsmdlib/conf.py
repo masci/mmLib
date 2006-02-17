@@ -39,7 +39,7 @@ JMOL_DIR               = "../../../jmol"
 ADP_PROB = 85
 
 ## number of TLS partitons for each chain
-NPARTS = 5
+NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH = 550

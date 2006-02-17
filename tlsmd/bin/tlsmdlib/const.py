@@ -23,11 +23,4 @@ EMAIL         = "jpaint@u.washington.edu"
 ## mainchain atom definitions
 MAINCHAIN_ATOMS = ["N","CA","C","O","CB"]
 
-## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 550
 
-## the JMol viewer is a square window, generated with this pixel size
-JMOL_SIZE = 600
-
-## JMol URL path
-JMOL_DIR = "../../../jmol"

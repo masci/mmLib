@@ -9,8 +9,7 @@ import string
 import math
 import numpy
 
-from mmLib import Structure, FileLoader, Gaussian, AtomMath
-from mmLib.Extensions import TLS
+from mmLib import Structure, FileIO, Gaussian, AtomMath, TLS
 
 import conf
 
@@ -112,7 +111,7 @@ class TLSAnimate(object):
         ##self.phase_assignment()
         for phase in (0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5):
             self.construct_frame(phase)
-        FileLoader.SaveStructure(struct = self.struct, fil = filename)
+        FileIO.SaveStructure(struct = self.struct, fil = filename)
 
     def next_model_id(self):
         """Return the next availible model_id in self.struct
