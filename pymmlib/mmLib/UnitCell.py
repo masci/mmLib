@@ -285,7 +285,7 @@ def strRT(R, T):
 
 
 ## <testing>
-def main():
+def test_module():
     print "================================================="
     print "TEST CASE #1: Triclinic unit cell"
     print
@@ -362,6 +362,5 @@ def main():
         print
 
 if __name__=="__main__":
-    main()
-
+    test_module()
 ## </testing>

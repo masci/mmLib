@@ -7763,9 +7763,3 @@ def GetSpaceGroup(name):
 
     ## return P1
     return sg1
-
-
-### <testing>
-if __name__ == "__main__":
-    pass
-### </testing>

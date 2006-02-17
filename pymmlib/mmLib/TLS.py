@@ -3946,7 +3946,7 @@ class GLTLSChain(Viewer.GLDrawList):
 
 
 ## <testing>
-if __name__ == "__main__":
+def test_module():
     print "==============================================="
     print "TEST CASE 1: TLS Class"
     print
@@ -3990,4 +3990,8 @@ if __name__ == "__main__":
 ##         print "-----------------------"
 
 ##     print "==============================================="
+    
+if __name__ == "__main__":
+    test_module()
+    
 ## </testing>

@@ -134,12 +134,11 @@ class XYZDict(object):
                 
 
 ### <testing>
-if __name__=="__main__":
-
+def test_module():
     import sys
-    from FileLoader import *
+    import FileIO
     
-    struct = LoadStructure(fil=sys.argv[1])
+    struct = FileIO.LoadStructure(fil=sys.argv[1])
 
     print "Structure Loaded"
 
@@ -159,5 +158,7 @@ if __name__=="__main__":
         #print atm1, atm2, "%6.2f" % (d)
 
     print "%d Bonds" % (cnt)
-    
+                
+if __name__=="__main__":
+    test_module()
 ### <testing>

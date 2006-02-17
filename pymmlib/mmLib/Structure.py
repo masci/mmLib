@@ -74,7 +74,7 @@ def fragment_id_eq(frag_id1, frag_id2):
     """Performs a proper equivelancy of frament_id strings according
     to their sequence number, then insertion code.
     """
-    return frag_id1==frag_id2
+    return frag_id1 == frag_id2
     
 def fragment_id_lt(frag_id1, frag_id2):
     """Performs a proper less than comparison of frament_id strings
@@ -210,7 +210,7 @@ class Structure(object):
             raise ModelOverwrite()
 
         ## set default model if not set
-        if self.default_model==None:
+        if self.default_model == None:
             self.default_model = model
 
         self.model_list.append(model)
@@ -218,7 +218,7 @@ class Structure(object):
 
         model.structure = self
 
-        if delay_sort==False:
+        if not delay_sort:
             self.model_list.sort()
 
     def remove_model(self, model):
@@ -234,8 +234,8 @@ class Structure(object):
 
         ## if the default model is being removed, choose a new default model
         ## if possible
-        if model==self.default_model:
-            if len(self.model_list)>0:
+        if model == self.default_model:
+            if len(self.model_list) > 0:
                 self.default_model = self.model_list[0]
             else:
                 self.default_model = None
@@ -365,7 +365,7 @@ class Structure(object):
         The iteration is performed in order according the the parent
         Chain's chain_id, and the Fragment's positioin within the chain.
         """
-        if self.default_model==None:
+        if self.default_model == None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -475,7 +475,7 @@ class Structure(object):
         Model.
         """
         for frag in self.iter_fragments():
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 return True
         return False
 
@@ -493,7 +493,7 @@ class Structure(object):
         nucleic acid.
         """
         for frag in self.iter_fragments():
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 yield frag
 
     def has_waters(self):
@@ -543,7 +543,7 @@ class Structure(object):
             if chain.fragment_dict.has_key(fragment_id):
                 fragment = chain.fragment_dict[fragment_id]
 
-                if fragment.res_name==atom.res_name:
+                if fragment.res_name == atom.res_name:
                     fragment.add_atom(atom)
                 else:
                     raise FragmentOverwrite()
@@ -563,7 +563,7 @@ class Structure(object):
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
-        if self.default_model==None:
+        if self.default_model == None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -641,7 +641,7 @@ class Structure(object):
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix to the default Model object.
         """
-        assert self.default_model!=None
+        assert self.default_model != None
         self.default_model.add_alpha_helix(alpha_helix)
 
     def iter_alpha_helicies(self):
@@ -655,7 +655,7 @@ class Structure(object):
     def add_beta_sheet(self, beta_sheet):
         """Adds a BetaSheet to the default Model object.
         """
-        assert self.default_model!=None
+        assert self.default_model != None
         self.default_model.add_beta_sheet(beta_sheet)
         
     def iter_beta_sheets(self):
@@ -668,7 +668,7 @@ class Structure(object):
     def add_site(self, site):
         """Adds a Site object to the default Model.
         """
-        assert self.default_model!=None
+        assert self.default_model != None
         self.default_model.add_site(site)
 
     def iter_sites(self):
@@ -724,7 +724,7 @@ class Structure(object):
 
                     bond_dist = edesc1.covalent_radius + edesc2.covalent_radius + 0.54
 
-                    if dist>bond_dist:
+                    if dist > bond_dist:
                         continue
 
                     if atm1.get_bond(atm2) == None:
@@ -827,14 +827,14 @@ class Model(object):
         """
         assert isinstance(chain, Chain)
 
-        if self.chain_dict.has_key(chain.chain_id)==True:
+        if self.chain_dict.has_key(chain.chain_id):
             raise ChainOverwrite()
 
         self.chain_list.append(chain)
         self.chain_dict[chain.chain_id] = chain
         chain.model = self
 
-        if delay_sort==False:
+        if not delay_sort:
             self.chain_list.sort()
 
     def remove_chain(self, chain):
@@ -867,7 +867,7 @@ class Model(object):
         """Finish Me.
         """
         assert isinstance(fragment, Fragment)
-        assert fragment.model_id==self.model_id
+        assert fragment.model_id == self.model_id
 
         ## add new chain if necessary
         try:
@@ -964,7 +964,7 @@ class Model(object):
 
     def iter_non_standard_residues(self):
         for frag in self.iter_fragments():
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 yield frag
 
     def has_waters(self):
@@ -987,7 +987,7 @@ class Model(object):
         """XXX: Finish Me.
         """
         assert isinstance(atom, Atom)
-        assert atom.model_id==self.model_id
+        assert atom.model_id == self.model_id
 
         ## add new chain if necessary
         try:
@@ -1139,7 +1139,7 @@ class Model(object):
         """
         assert isinstance(model_id, int)
 
-        if self.structure!=None:
+        if self.structure != None:
             chk_model = self.structure.get_model(model_id)
             if chk_model != None or chk_model != self:
                 raise ModelOverwrite()
@@ -1149,7 +1149,7 @@ class Model(object):
         for chain in self.iter_chains():
             chain.set_model_id(model_id)
 
-        if self.structure!=None:
+        if self.structure != None:
             self.structure.model_list.sort()
 
 
@@ -1341,7 +1341,7 @@ class Segment(object):
         segment.
         """
         assert isinstance(fragment, Fragment)
-        assert fragment.chain_id==self.chain_id
+        assert fragment.chain_id == self.chain_id
 
         if self.fragment_dict.has_key(fragment.fragment_id):
             raise FragmentOverwrite()
@@ -1349,7 +1349,7 @@ class Segment(object):
         self.fragment_list.append(fragment)
         self.fragment_dict[fragment.fragment_id] = fragment
 
-        if delay_sort==False:
+        if not delay_sort:
             self.fragment_list.sort()
 
     def remove_fragment(self, fragment):
@@ -1434,20 +1434,20 @@ class Segment(object):
 
     def has_non_standard_residues(self):
         for frag in self.fragment_list:
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 return True
         return False
 
     def count_non_standard_residues(self):
         n = 0
         for frag in self.fragment_list:
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 n += 1
         return n
 
     def iter_non_standard_residues(self):
         for frag in self.fragment_list:
-            if frag.is_standard_residue()==False:
+            if not frag.is_standard_residue():
                 yield frag
 
     def has_waters(self):
@@ -1472,20 +1472,20 @@ class Segment(object):
         """Adds a Atom.
         """
         assert isinstance(atom, Atom)
-        assert atom.model_id==self.model_id
-        assert atom.chain_id==self.chain_id
+        assert atom.model_id == self.model_id
+        assert atom.chain_id == self.chain_id
 
         ## add new fragment if necessary 
-        if self.fragment_dict.has_key(atom.fragment_id)==False:
+        if not self.fragment_dict.has_key(atom.fragment_id):
             
-            if Library.library_is_amino_acid(atom.res_name)==True:
+            if Library.library_is_amino_acid(atom.res_name):
                 fragment = AminoAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
                     fragment_id = atom.fragment_id,
                     res_name    = atom.res_name)
 
-            elif Library.library_is_nucleic_acid(atom.res_name)==True:
+            elif Library.library_is_nucleic_acid(atom.res_name):
                 fragment = NucleicAcidResidue(
                     model_id    = atom.model_id,
                     chain_id    = atom.chain_id,
@@ -1502,7 +1502,7 @@ class Segment(object):
 
         else:
             fragment = self.fragment_dict[atom.fragment_id]
-            if fragment.res_name!=atom.res_name:
+            if fragment.res_name != atom.res_name:
                 raise FragmentOverwrite()
 
         fragment.add_atom(atom)
@@ -1581,7 +1581,7 @@ class Segment(object):
         for frag in self.iter_fragments():
             mdesc = Library.library_get_monomer_desc(frag.res_name)
 
-            if mdesc!=None and mdesc.one_letter_code:
+            if mdesc != None and mdesc.one_letter_code:
                 seqlist.append(mdesc.one_letter_code)
             else:
                 seqlist.append("X")
@@ -1597,7 +1597,7 @@ class Segment(object):
         for res_name, frag in self.sequence_fragment_list:
             mdesc = Library.library_get_monomer_desc(res_name)
 
-            if mdesc!=None and mdesc.one_letter_code:
+            if mdesc != None and mdesc.one_letter_code:
                 seqlist.append(mdesc.one_letter_code)
             else:
                 seqlist.append("(%s)" % (res_name))
@@ -1647,7 +1647,7 @@ class Segment(object):
             hdict[fragment.fragment_id] = fragment.res_name
 
         for fragment in segment2.fragment_list:
-            if hdict.get(fragment.fragment_id, fragment.res_name)!=fragment.res_name:
+            if hdict.get(fragment.fragment_id, fragment.res_name) != fragment.res_name:
                 return False
 
         return True
@@ -1747,15 +1747,15 @@ class Chain(Segment):
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        if self.model!=None:
+        if self.model != None:
             chk_chain = self.model.get_chain(chain_id)
-            if chk_chain!=None or chk_chain!=self:
+            if chk_chain != None or chk_chain != self:
                 raise ChainOverwrite()
 
         Segment.set_chain_id(self, chain_id)
 
         ## resort the parent structure
-        if self.model!=None:
+        if self.model != None:
             self.model.chain_list.sort()
 
 
@@ -1929,8 +1929,8 @@ class Fragment(object):
         name    = atom.name
         alt_loc = atom.alt_loc
 
-        if alt_loc=="":
-            if self.alt_loc_dict.has_key(name)==False:
+        if alt_loc == "":
+            if not self.alt_loc_dict.has_key(name):
                 ## CASE:
                 ##     add atom without alt_loc partners to the fragment
                 ## procedure:
@@ -1938,7 +1938,7 @@ class Fragment(object):
                 ##     fragment, and raise a AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
 
-                if self.atom_dict.has_key(name)==False:
+                if not self.atom_dict.has_key(name):
                     self.atom_order_list.append(atom)
                     self.atom_list.append(atom)
                     self.atom_dict[name] = atom
@@ -1988,9 +1988,9 @@ class Fragment(object):
             ##     sequential order of added atoms
             ##    *place atom in the atom_list and atom_dict 
 
-            if self.alt_loc_dict.has_key(name)==False:
+            if not self.alt_loc_dict.has_key(name):
 
-                if self.atom_dict.has_key(name)==False:
+                if not self.atom_dict.has_key(name):
                     ## CASE:
                     ##     add a atom with alt_loc partners to the
                     ##     fragment for the first time
@@ -2048,7 +2048,7 @@ class Fragment(object):
                     return altloc[alt_loc]
             return None
         else:
-            if self.atom_dict.has_key(name)==False:
+            if not self.atom_dict.has_key(name):
                 return None
             return self.atom_dict[name]
     
@@ -2100,7 +2100,7 @@ class Fragment(object):
         visited = {}
         for atm in self.iter_atoms():
             for bond in atm.iter_bonds():
-                if visited.has_key(bond)==False:
+                if not visited.has_key(bond):
                     yield bond
                     visited[bond] = True
 
@@ -2138,7 +2138,7 @@ class Fragment(object):
         from the monomer library.
         """
         mdesc = Library.library_get_monomer_desc(self.res_name)
-        if mdesc==None:
+        if mdesc == None:
             return
 
         for bond in mdesc.bond_list:
@@ -2199,9 +2199,9 @@ class Fragment(object):
         """
         assert isinstance(fragment_id, str)
 
-        if self.chain!=None:
+        if self.chain != None:
             chk_frag = self.chain.get_fragment(fragment_id)
-            if chk_frag!=None or chk_frag!=self:
+            if chk_frag != None or chk_frag != self:
                 raise FragmentOverwrite()
 
         self.fragment_id = fragment_id
@@ -2209,7 +2209,7 @@ class Fragment(object):
         for atm in self.iter_atoms():
             atm.set_fragment_id(fragment_id)
 
-        if self.chain!=None:
+        if self.chain != None:
             self.chain.sort()
 
     def set_res_name(self, res_name):
@@ -2252,13 +2252,13 @@ class Residue(Fragment):
 
         ## XXX: fixme
         next_res = self.get_offset_residue(1)
-        if next_res==None:
+        if next_res == None:
             return
 
         mdesc1 = Library.library_get_monomer_desc(self.res_name)
         mdesc2 = Library.library_get_monomer_desc(next_res.res_name)
 
-        if mdesc1==None or mdesc2==None:
+        if mdesc1 == None or mdesc2 == None:
             return
 
         for (name1, name2) in mdesc1.get_polymer_bond_list(self, next_res):
@@ -2540,7 +2540,7 @@ class Altloc(dict):
         if len(self) == 0:
             return "A"
         for alt_loc in string.uppercase:
-            if self.has_key(alt_loc)==False:
+            if not self.has_key(alt_loc):
                 return alt_loc
             
         raise AtomOverwrite("exhausted availible alt_loc labels for "+str(atom))
@@ -2706,7 +2706,7 @@ class Atom(object):
 
         if self.chain_id<other.chain_id:
             return True
-        if self.chain_id>other.chain_id:
+        if self.chain_id > other.chain_id:
             return False
 
         if fragment_id_lt(self.fragment_id, other.fragment_id):
@@ -2714,24 +2714,24 @@ class Atom(object):
         if fragment_id_gt(self.fragment_id, other.fragment_id):
             return False
 
-        if self.name<other.name:
+        if self.name < other.name:
             return True
-        if self.name>other.name:
+        if self.name > other.name:
             return False
 
-        if self.alt_loc=="" and other.alt_loc!="":
+        if self.alt_loc == "" and other.alt_loc != "":
             return False
-        if self.alt_loc!="" and other.alt_loc=="":
+        if self.alt_loc != "" and other.alt_loc == "":
             return True
 
-        return self.name<other.name
+        return self.name < other.name
             
     def __le__(self, other):
         assert isinstance(other, Atom)
 
-        if self.chain_id<other.chain_id:
+        if self.chain_id < other.chain_id:
             return True
-        if self.chain_id>other.chain_id:
+        if self.chain_id > other.chain_id:
             return False
 
         if fragment_id_lt(self.fragment_id, other.fragment_id):
@@ -2739,24 +2739,24 @@ class Atom(object):
         if fragment_id_gt(self.fragment_id, other.fragment_id):
             return False
 
-        if self.name<other.name:
+        if self.name < other.name:
             return True
-        if self.name>other.name:
+        if self.name > other.name:
             return False
 
-        if self.alt_loc=="" and other.alt_loc!="":
+        if self.alt_loc == "" and other.alt_loc != "":
             return False
-        if self.alt_loc!="" and other.alt_loc=="":
+        if self.alt_loc != "" and other.alt_loc == "":
             return True
 
-        return self.name<=other.name
+        return self.name <= other.name
 
     def __gt__(self, other):
         assert isinstance(other, Atom)
 
-        if self.chain_id>other.chain_id:
+        if self.chain_id > other.chain_id:
             return True
-        if self.chain_id<other.chain_id:
+        if self.chain_id < other.chain_id:
             return False
 
         if fragment_id_gt(self.fragment_id, other.fragment_id):
@@ -2764,24 +2764,24 @@ class Atom(object):
         if fragment_id_lt(self.fragment_id, other.fragment_id):
             return False
 
-        if self.name>other.name:
+        if self.name > other.name:
             return True
-        if self.name<other.name:
+        if self.name < other.name:
             return False
 
-        if self.alt_loc=="" and other.alt_loc!="":
+        if self.alt_loc == "" and other.alt_loc != "":
             return True
-        if self.alt_loc!="" and other.alt_loc=="":
+        if self.alt_loc != "" and other.alt_loc == "":
             return False
 
-        return self.name>other.name
+        return self.name > other.name
 
     def __ge__(self, other):
         assert isinstance(other, Atom)
 
-        if self.chain_id>other.chain_id:
+        if self.chain_id > other.chain_id:
             return True
-        if self.chain_id<other.chain_id:
+        if self.chain_id < other.chain_id:
             return False
 
         if fragment_id_gt(self.fragment_id, other.fragment_id):
@@ -2789,17 +2789,17 @@ class Atom(object):
         if fragment_id_lt(self.fragment_id, other.fragment_id):
             return False
 
-        if self.name>other.name:
+        if self.name > other.name:
             return True
-        if self.name<other.name:
+        if self.name < other.name:
             return False
 
-        if self.alt_loc=="" and other.alt_loc!="":
+        if self.alt_loc == "" and other.alt_loc != "":
             return True
-        if self.alt_loc!="" and other.alt_loc=="":
+        if self.alt_loc != "" and other.alt_loc == "":
             return False
 
-        return self.name>=other.name
+        return self.name >= other.name
 
     def __len__(self):
         """Returns the number of alternate conformations of this atom.
@@ -2814,8 +2814,8 @@ class Atom(object):
         """
         assert isinstance(alt_loc, str)
         
-        if self.altloc==None:
-            if self.alt_loc==alt_loc:
+        if self.altloc == None:
+            if self.alt_loc == alt_loc:
                 return self
             raise KeyError, alt_loc
 
@@ -2825,7 +2825,7 @@ class Atom(object):
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
-        if self.altloc==None:
+        if self.altloc == None:
             yield self
 
         else:
@@ -2839,14 +2839,14 @@ class Atom(object):
         the Atom.  The argument can be a alt_loc label, or a Atom object.
         """
         if isinstance(atom_alt_loc, Atom):
-            if self.altloc==None:
-                return atom_alt_loc==self
+            if self.altloc == None:
+                return atom_alt_loc == self
             else:
-                return self.altloc[atom_alt_loc.alt_loc]==atom_alt_loc
+                return self.altloc[atom_alt_loc.alt_loc] == atom_alt_loc
 
         elif isinstance(atom_alt_loc, str):
-            if self.altloc==None:
-                return atom_alt_loc==self.alt_loc
+            if self.altloc == None:
+                return atom_alt_loc == self.alt_loc
             else:
                 return self.altloc.__contains__(atom_alt_loc)
             
@@ -2858,7 +2858,7 @@ class Atom(object):
         try:
             self.fragment.remove_atom(atom)
         except AttributeError:
-            if self.altloc!=None and self.altloc.has_key(atom.alt_loc):
+            if self.altloc != None and self.altloc.has_key(atom.alt_loc):
                 del self.altloc[atom.alt_loc]
 
     def get_alt_loc(self, alt_loc):
@@ -2914,8 +2914,8 @@ class Atom(object):
         """
         assert isinstance(atom, Atom)
 
-        if self.altloc==None:
-            if atom.altloc==None:
+        if self.altloc == None:
+            if atom.altloc == None:
                 ## case 1: self has no alt_loc, atom no alt_loc
                 self.create_bond(
                     atom              = atom,
@@ -2935,7 +2935,7 @@ class Atom(object):
 
 
         else:
-            if atom.altloc==None:
+            if atom.altloc == None:
                 ## case 3: self has alt_loc, atom has no alt_loc
                 for (alt_loc, atmx) in self.altloc.iteritems():
                     atmx.create_bond(
@@ -2960,10 +2960,10 @@ class Atom(object):
         """Returns the Bond connecting self with the argument atom.
         """
         assert isinstance(atom, Atom)
-        assert atom!=self
+        assert atom != self
 
         for bond in self.bond_list:
-            if atom==bond.atom1 or atom==bond.atom2:
+            if atom == bond.atom1 or atom == bond.atom2:
                 return bond
         return None
 
@@ -3016,7 +3016,7 @@ class Atom(object):
     def calc_Uiso(self):
         """Calculates the Uiso tensor from the Atom's temperature factor.
         """
-        if self.temp_factor==None:
+        if self.temp_factor == None:
             return None
         return numpy.identity(3, float) * (self.temp_factor * Constants.B2U)
 
@@ -3024,7 +3024,7 @@ class Atom(object):
         """Returns the Atoms's U tensor if it exists, otherwise returns
         the isotropic U tensor calculated by self.calc_Uiso
         """
-        if self.U!=None:
+        if self.U != None:
             return self.U
         return self.calc_Uiso()
 
@@ -3143,8 +3143,10 @@ class Bond(object):
     def get_partner(self, atm):
         """Returns the other atom involved in the bond.
         """
-        if   atm == self.atom1: return self.atom2
-        elif atm == self.atom2: return self.atom1
+        if atm == self.atom1:
+            return self.atom2
+        elif atm == self.atom2:
+            return self.atom1
         return None
 
     def get_atom1(self):
@@ -3261,11 +3263,11 @@ class AlphaHelix(object):
         to AlphaHelix objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
-        assert segment==None or isinstance(segment, Segment)
+        assert segment == None or isinstance(segment, Segment)
         self.segment = segment
 
         ## just return if the segment is None
-        if segment==None:
+        if segment == None:
             return
 
         ## reset AlphaHelix description with the description derived
@@ -3293,7 +3295,7 @@ class AlphaHelix(object):
         it was not.  The Segment is not created when the fragment range
         fragment_id1:fragment_id2 cannot be found in the parent Chain object.
         """
-        if self.chain_id1!=self.chain_id2:
+        if self.chain_id1 != self.chain_id2:
             mmTypes.fatal("alpha helix spans multiple chains -- not supported") 
 
         ## get the Chain object from the parent Model
@@ -3422,10 +3424,10 @@ class Strand(object):
         to Strand objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
-        assert segment==None or isinstance(segment, Segment)
+        assert segment == None or isinstance(segment, Segment)
 
         self.segment = segment
-        if segment==None:
+        if segment == None:
             return
 
         ## reset Strand description with the description derived
@@ -3451,7 +3453,7 @@ class Strand(object):
         it was not.  The Segment is not created when the fragment range
         fragment_id1:fragment_id2 cannot be found in the parent Chain object.
         """
-        assert self.chain_id1==self.chain_id2
+        assert self.chain_id1 == self.chain_id2
 
         ## get the Chain object from the parent Model
         try:
@@ -3609,7 +3611,7 @@ class Site(object):
         values in fragment_dict to reflect the new Fragment object.  The
         fragment_dict is added to the Site if it is not already in it.
         """
-        if fragment!=None:
+        if fragment != None:
             fragment_dict["fragment"]    = fragment
             fragment_dict["chain_id"]    = fragment.chain_id
             fragment_dict["frag_id"]     = fragment.fragment_id
@@ -3683,7 +3685,7 @@ class AtomList(list):
         num      = 0
         centroid = numpy.zeros(3, float)
         for atm in self:
-            if atm.position!=None:
+            if atm.position != None:
                 centroid += atm.position
                 num += 1
         return centroid / num
@@ -3696,7 +3698,7 @@ class AtomList(list):
         adv_tf = 0.0
 
         for atm in self:
-            if atm.temp_factor!=None:
+            if atm.temp_factor != None:
                 adv_tf += atm.temp_factor
                 num_tf += 1
 
@@ -3714,7 +3716,7 @@ class AtomList(list):
             ## use the atom's U matrix if it exists, otherwise use the
             ## temperature factor
 
-            if atm.U!=None:
+            if atm.U != None:
                 adv_U += atm.U
                 num_U += 1
 
@@ -3760,11 +3762,10 @@ class AtomList(list):
                 adv_aniso2 / num_atoms,
                 adv_aniso3 / num_atoms)
 
-    
-### <testing>
-if __name__ == "__main__":
-    struct = Structure()
 
+### <testing>
+def test_module():
+    struct = Structure()
 
     for mx in range(1, 4):
         mid = str(mx)
@@ -3814,5 +3815,6 @@ if __name__ == "__main__":
     
     struct.add_atom(atm)
 
-
+if __name__ == "__main__":
+    test_module()
 ### </testing>

@@ -507,7 +507,7 @@ def library_guess_element_from_name(name0, res_name):
 
 
 ## <TESTING>
-if __name__ == "__main__":
+def test_module():
     h = library_get_element_desc("H")
 
     for cif_data in ELEMENT_CIF_FILE:
@@ -517,4 +517,7 @@ if __name__ == "__main__":
         else:
             print '    "%s": True, "%s": True, "%s": True,' % (
                 cif_data.name, cif_data.name.lower(), cif_data.name.upper())
+
+if __name__ == "__main__":
+    test_module()
 ## </TESTING>

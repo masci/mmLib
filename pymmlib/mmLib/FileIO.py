@@ -133,8 +133,11 @@ def SaveStructure(**args):
 
 
 ### <TESTING>
-if __name__ == "__main__":
+def test_module():
     import sys
     struct = LoadStructure(fil = sys.argv[1])
     SaveStructure(fil=sys.stdout, struct=struct)
+
+if __name__ == "__main__":
+    test_module()
 ### </TESTING>

@@ -168,20 +168,17 @@ def SuperimposeAtomsOutlierRejection(alist, rmsd_cutoff = 1.0, max_cycles = 100)
 
     return None
         
-
-
 ## <testing>
-
-if __name__ == "__main__":
+def test_module():
     import random
     import AtomMath
-    import FileLoader
+    import FileIO
     import Structure
     
     R = AtomMath.rmatrixu(numpy.array((0.0, 0.0, 1.0), float), math.pi/2.0)
 
-    struct1 = FileLoader.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
-    struct2 = FileLoader.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
+    struct1 = FileIO.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
+    struct2 = FileIO.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
 
     chn1 = struct1.get_chain("A")
     chn2 = struct2.get_chain("A")
@@ -214,12 +211,14 @@ if __name__ == "__main__":
     for atm in chn1.iter_atoms():
         atm.position = numpy.matrixmultiply(R, atm.position - so)
         sup1.add_atom(atm)
-    FileLoader.SaveStructure(fil="super1.pdb", struct=sup1)
+    FileIO.SaveStructure(fil="super1.pdb", struct=sup1)
 
     sup2 = Structure.Structure(structure_id = "JMP2")
     for atm in chn2.iter_atoms():
         atm.position = atm.position - do
         sup2.add_atom(atm)
-    FileLoader.SaveStructure(fil="super2.pdb", struct=sup2)
-    
+    FileIO.SaveStructure(fil="super2.pdb", struct=sup2)
+
+if __name__ == "__main__":
+    test_module()
 ## </testing>

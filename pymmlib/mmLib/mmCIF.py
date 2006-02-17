@@ -1173,16 +1173,17 @@ class mmCIFFileWriter(object):
 
 
 ### <testing>
-if __name__ == '__main__':
+def test_module():
     import sys
-
     try:
         path = sys.argv[1]
     except IndexError:
         print "usage: mmCIF.py <mmCIF file path>"
         sys.exit(1)
-
     cif = mmCIFDictionary()
     cif.load_file(path)
     cif.save_file(sys.stdout)
+        
+if __name__ == '__main__':
+    test_module()
 ### </testing>

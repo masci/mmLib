@@ -442,9 +442,8 @@ def calc_inertia_tensor(atom_iter, origin):
     return R
 
 
-
 ### <TESTING>
-if __name__ == "__main__":
+def test_module():
     import Structure
 
     a1 = Structure.Atom(x=0.0, y=-1.0, z=0.0)
@@ -455,5 +454,8 @@ if __name__ == "__main__":
     print "a1:",a1.position
     print "calc_angle:",calc_angle(a1, a2, a3)
     print "calc_torsion_angle:",calc_torsion_angle(a1, a2, a3, a4)
+
+if __name__ == "__main__":
+    test_module()
 ### </TESTING>
 

@@ -102,13 +102,3 @@ def debug(x):
             open(path, "a").write(x)
     except IOError:
         pass
-
-
-### <TESTING>
-if __name__ == "__main__":
-    fid = FragmentID("163A")
-    print "fid",fid
-    print "fid.res_seq", fid.res_seq
-    print "fid.icode", fid.icode
-### </TESTING>
-    
