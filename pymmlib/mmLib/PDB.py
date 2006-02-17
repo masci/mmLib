@@ -8,13 +8,7 @@ loaded into a list of these cassed, and also can be constrcted/modified
 and written back out as PDB files.
 """
 from __future__ import generators
-
 import fpformat
- 
-try:
-    from mmTypes import OpenFile
-except ImportError:
-    OpenFile = open
 
 
 class PDBError(Exception):
@@ -1482,10 +1476,13 @@ class PDBFile(list):
         assert isinstance(rec, PDBRecord)
         list.insert(self, i, rec)
 
-    def load_file(self, fil_or_filname, update_cb = None):
+    def load_file(self, fil, update_cb = None):
         """Loads a PDB file from File object fil.
         """
-        fil = OpenFile(fil_or_filname, "r")
+        if isinstance(fil, str):
+            fileobj = open(fil, "r")
+        else:
+            fileobj = fil
     
         ## get file size for update callbacks
         line_number    = 0
@@ -1495,16 +1492,16 @@ class PDBFile(list):
         ## some file objects do not support seek/tell
         if hasattr(fil, "seek") and hasattr(fil, "tell"):
             try:
-                fil.seek(0, 2)
-                fil_size_bytes = fil.tell()
-                fil.seek(0, 0)
+                fileobj.seek(0, 2)
+                fil_size_bytes = fileobj.tell()
+                fileobj.seek(0, 0)
             except:
                 # this is a adverage file size ;)
                 fil_size_bytes = 1304189
         else:
             fil_size_bytes = 1304189
 
-        iterfil = iter(fil)
+        iterfil = iter(fileobj)
         for ln in iterfil:
             line_number    += 1
             fil_read_bytes += len(ln)
@@ -1533,9 +1530,15 @@ class PDBFile(list):
     def save_file(self, fil):
         """Saves the PDBFile object in PDB file format to File object fil.
         """
-        fil = OpenFile(fil, "w")
+        if isinstance(fil, str):
+            fileobj = open(fil, "w")
+        else:
+            fileobj = fil
+
         for pdb_record in self:
-            fil.write(str(pdb_record) + "\n")
+            fileobj.write(str(pdb_record))
+            fileobj.write("\n")
+
         fil.flush()
 
     def record_processor(self, processor, filter_func = None):

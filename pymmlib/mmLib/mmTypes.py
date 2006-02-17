@@ -2,36 +2,15 @@
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Specialized types used by mmLib.  In some cases the types are
-custom, and the code for those is here.  Inother cases the types are
-imported from other Python packages.
+"""Specialized types used by mmLib.
 """
 from __future__ import generators
 
 import os
 import sys
-import gzip
 
 ## turn on debugging
 _DEBUG = False
-
-## types, functions, things which are useful and difficult to
-## classify...
-
-def OpenFile(path, mode):
-    """Right now this only supports opening GZip'ed files, in the future
-    it might be extended for URLs.
-    """
-    ## if path is not a string, assume it is a file object and
-    ## return it
-    
-    if isinstance(path, str):
-        base, ext = os.path.splitext(path)
-        if ext == ".gz":
-            return gzip.open(path, mode)
-        return open(path, mode)
-
-    return path
 
 class FragmentID(object):
     """A fragment ID class acts a lot like a string, but separates the
@@ -50,7 +29,7 @@ class FragmentID(object):
             else:
                 self.icode = frag_id[-1]
     def __str__(self):
-        return str(self.res_seq) + self.icode
+        return "%d%s" % (self.res_seq, self.icode)
     def __lt__(self, other):
         assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) < (other.res_seq, other.icode)

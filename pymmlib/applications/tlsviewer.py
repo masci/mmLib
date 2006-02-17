@@ -21,7 +21,7 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-from mmLib import Constants, FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure, TLS
+from mmLib import Constants, FileIO, Viewer, R3DDriver, OpenGLDriver, Structure, TLS
 
 
 ###############################################################################
@@ -2686,7 +2686,7 @@ class MainWindow(object):
         self.set_statusbar("Loading: %s" % (path))
 
         try:
-            struct = FileLoader.LoadStructure(
+            struct = FileIO.LoadStructure(
                 fil              = path,                
                 update_cb        = self.update_cb,
                 build_properties = ("library_bonds","distance_bonds"))

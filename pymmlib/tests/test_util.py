@@ -2,7 +2,9 @@ from __future__ import generators
 import os
 import sys
 import re
-from mmLib.mmTypes import *
+
+from mmLib import FileIO
+
 """Misc. testing utility code code common to the test programs.
 """
 
@@ -71,7 +73,7 @@ def pdb_stats(path):
     serial_map = {}
     stats = {"atoms" : 0}
 
-    for ln in OpenFile(path, "r").readlines():
+    for ln in FileIO.OpenFile(path, "r").readlines():
 
         ## change model
         m = re_model.match(ln)
@@ -104,7 +106,7 @@ def cif_stats(path):
     start_counting_atoms = False
     stats = {"atoms" : 0}
 
-    for ln in OpenFile(path, "r").readlines():
+    for ln in FileIO.OpenFile(path, "r").readlines():
 
         if ln.startswith("_atom_site."):
             start_counting_atoms = True

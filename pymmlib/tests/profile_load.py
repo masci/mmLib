@@ -5,12 +5,12 @@
 
 import sys
 import profile
-from mmLib.FileLoader import LoadStructure
+from mmLib import FileIO
 
 
 def main(path):
     print "PERFORMANCE PROFILE: mmLib.LoadStructure(fil=%s)" % (path)
-    profile.run("LoadStructure(fil=path)")
+    profile.run("FileIO.LoadStructure(fil=path)")
 
 if __name__ == "__main__":
     import os

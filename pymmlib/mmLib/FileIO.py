@@ -14,6 +14,23 @@ from PDB          import PDBFile
 from PDBBuilder   import PDBStructureBuilder, PDBFileBuilder
 
 
+def OpenFile(path, mode):
+    """Right now this only supports opening GZip'ed files, in the future
+    it might be extended for URLs.
+    """
+    ## if path is not a string, assume it is a file object and
+    ## return it
+    
+    if isinstance(path, str):
+        base, ext = os.path.splitext(path)
+        if ext == ".gz":
+            import gzip
+            return gzip.open(path, mode)
+        return open(path, mode)
+
+    return path
+
+
 def decode_format(path):
     """Returns the 3-letter MIME code for the file format.
     """
@@ -47,6 +64,11 @@ def LoadStructure(**args):
     except KeyError:
         raise TypeError,"LoadStructure(fil=) argument required"
 
+    if isinstance(fil, str):
+        fileobj = OpenFile(fil, "r")
+    else:
+        fileobj = fil
+
     update_cb        = args.get("update_cb")
     format           = args.get("format") or decode_format(fil)
     struct           = args.get("struct") or args.get("structure")
@@ -54,14 +76,14 @@ def LoadStructure(**args):
 
     if format == "PDB":
         return PDBStructureBuilder(
-            fil              = fil,
+            fil              = fileobj,
             update_cb        = update_cb,
             build_properties = build_properties,
             struct           = struct).struct
 
     elif format == "CIF":
         return mmCIFStructureBuilder(
-            fil              = fil,
+            fil              = fileobj,
             update_cb        = update_cb,
             build_properties = build_properties,
             struct           = struct).struct
@@ -80,6 +102,11 @@ def SaveStructure(**args):
     except KeyError:
         raise TypeError,"LoadStructure(fil=) argument required"
 
+    if isinstance(fil, str):
+        fileobj = OpenFile(fil, "w")
+    else:
+        fileobj = fil
+        
     try:
         struct = args["struct"]
     except KeyError:
@@ -93,13 +120,13 @@ def SaveStructure(**args):
     if format == "PDB":
         pdb_file = PDBFile()
         PDBFileBuilder(struct, pdb_file)
-        pdb_file.save_file(fil)
+        pdb_file.save_file(fileobj)
         return
 
     elif format == "CIF":
         cif_file = mmCIFFile()
         mmCIFFileBuilder(struct, cif_file)
-        cif_file.save_file(fil)
+        cif_file.save_file(fileobj)
         return
 
     raise FileLoaderError, "Unsupported file format %s" % (str(fil))

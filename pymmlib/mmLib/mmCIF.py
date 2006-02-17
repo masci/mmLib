@@ -13,13 +13,6 @@ from __future__ import generators
 import re
 import copy
 
-try:
-    from mmTypes import OpenFile
-except ImportError:
-    OpenFile = open
-
-
-
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
 ##
@@ -503,13 +496,20 @@ class mmCIFFile(list):
         
     def load_file(self, fil, update_cb = None):
         """Load and append the mmCIF data from file object fil into self.
+        The fil argument must be a file object or implement its iterface.
         """
-        fil = OpenFile(fil, "r")
-        mmCIFFileParser().parse_file(fil, self, update_cb)
+        if isinstance(fil, str):
+            fileobj = open(fil, "r")
+        else:
+            fileobj = fil
+        mmCIFFileParser().parse_file(fileobj, self, update_cb)
 
     def save_file(self, fil):
-        fil = OpenFile(fil, "w")
-        mmCIFFileWriter().write_file(fil, self)
+        if isinstance(fil, str):
+            fileobj = open(fil, "w")
+        else:
+            fileobj = fil
+        mmCIFFileWriter().write_file(fileobj, self)
 
     def get_data(self, name):
         """Returns the mmCIFData object with the given name.  Returns None

@@ -9,8 +9,8 @@ import gc
 import numpy
 
 import test_util
-from mmLib.FileLoader import LoadStructure, SaveStructure, decode_format
-from mmLib import Structure
+from mmLib.FileIO import decode_format
+from mmLib import Structure, FileIO
 
 
 class Stats(dict):
@@ -590,8 +590,8 @@ def save_verify(struct, stats):
     """
     ## pdb
     print "[temp.pdb]"
-    SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
-    pdb_struct = LoadStructure(
+    FileIO.SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
+    pdb_struct = FileIO.LoadStructure(
         fil              = "temp.pdb",
         build_properties = ("library_bonds",))
 
@@ -599,8 +599,8 @@ def save_verify(struct, stats):
     
     ## mmCIF
     print "[temp.cif]"
-    SaveStructure(fil="temp.cif", struct=struct, format="CIF")
-    cif_struct = LoadStructure(
+    FileIO.SaveStructure(fil="temp.cif", struct=struct, format="CIF")
+    cif_struct = FileIO.LoadStructure(
         fil              = "temp.cif",
         build_properties = ("library_bonds",))
     cmp_struct(struct, cif_struct)
@@ -627,7 +627,7 @@ def main(walk_path, start_path):
         time1 = time.time()
 
         stats  = Stats()
-        struct = LoadStructure(
+        struct = FileIO.LoadStructure(
             fil              = path,
             build_properties = ("library_bonds",))   
 
