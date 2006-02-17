@@ -106,10 +106,12 @@ def analysis_main(struct_path, opt_dict):
 
     ## create the analysis processor and load the structure, select chains
     anal = tlsmd_analysis.TLSMDAnalysis(
-        struct_path    = struct_path,
-        sel_chain_ids  = chain_ids,
-        tlsdb_file     = tlsdb_file,
-        tlsdb_complete = tlsdb_complete)
+        struct_file_path    = struct_path,
+        sel_chain_ids       = chain_ids,
+        tlsdb_file          = tlsdb_file,
+        tlsdb_complete      = tlsdb_complete,
+        struct2_file_path   = conf.globalconf.target_struct_path,
+        struct2_chain_id    = conf.globalconf.target_struct_chain_id)
     
     anal.run_optimization()
 
