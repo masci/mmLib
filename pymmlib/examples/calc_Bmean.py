@@ -10,11 +10,11 @@
 
 import sys
 
-from mmLib import FileLoader
+from mmLib import FileIO
 
 def main(path):
     ## load structure
-    struct = FileLoader.LoadStructure(
+    struct = FileIO.LoadStructure(
         fil = path,
         build_properties = ("no_bonds",))
 
@@ -33,7 +33,7 @@ def main(path):
         min_B = min(min_B, atm.temp_factor)
         max_B = max(max_B, atm.temp_factor)
 
-    if num_atoms>0:
+    if num_atoms > 0:
         mean_B = mean_B / num_atoms
         print "mean B: ",mean_B
         print "max  B: ",max_B

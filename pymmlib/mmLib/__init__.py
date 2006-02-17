@@ -5,7 +5,7 @@
 __all__ = [
     "AtomMath",
     "Colors",
-    "FileLoader",
+    "FileIO",
     "Gaussian",
     "GeometryDict",
     "Library",
@@ -21,6 +21,7 @@ __all__ = [
     "StructureBuilder",
     "Structure",
     "Superposition",
+    "TLS",
     "UnitCell",
     "Viewer"]
 

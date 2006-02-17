@@ -9,7 +9,7 @@ import sys
 import getopt
 import string
 
-from mmLib.FileLoader import LoadStructure, SaveStructure
+from mmLib import FileIO
 
 def usage():
     print """
@@ -25,14 +25,14 @@ def usage():
 
 def main(path, verbose):
     
-    struct = LoadStructure(fil = path)
+    struct = FileIO.LoadStructure(fil = path)
     print struct
 
     print "Alpha Helicies:"
     for ahelix in struct.iter_alpha_helicies():
         print "    ",ahelix
 
-        if verbose==True:
+        if verbose == True:
             print "        ",ahelix.segment
 
     print "Beta Sheets:"
@@ -40,7 +40,7 @@ def main(path, verbose):
 
         print "    ",bsheet
 
-        if verbose==True:
+        if verbose == True:
             for strand in bsheet.iter_strands():
                 print "        ",strand
                 print "            ",strand.segment
@@ -49,7 +49,7 @@ def main(path, verbose):
     for site in struct.iter_sites():
         print "    ",site
 
-        if verbose==True:
+        if verbose == True:
             for frag in site.iter_fragments():
                 print "        ",frag
 

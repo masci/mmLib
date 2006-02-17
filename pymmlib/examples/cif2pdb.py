@@ -11,7 +11,7 @@ import sys
 import getopt
 import string
 
-from mmLib.FileLoader import LoadStructure, SaveStructure
+from mmLib import FileIO
 
 def usage():
     print "NAME"
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     cif = "-"
     pdb = "-"
 
-    if   len(sys.argv) == 1:
+    if len(sys.argv) == 1:
         pass
     elif len(sys.argv) == 2:
         cif = sys.argv[1]
@@ -58,15 +58,16 @@ if __name__ == '__main__':
         usage()
         sys.exit(1)
 
-    if cif == "-": cif = sys.stdin
-    if pdb == "-": pdb = sys.stdout
+    if cif == "-":
+        cif = sys.stdin
+    if pdb == "-":
+        pdb = sys.stdout
 
-    struct = LoadStructure(
+    struct = FileIO.LoadStructure(
         fil = cif, 
-        format = "CIF", 
-        build_properties = ("calc_sequence",))
+        format = "CIF" )
     
-    SaveStructure(
+    FileIO.SaveStructure(
         fil = pdb, 
         structure = struct, 
         format = "PDB")

@@ -9,8 +9,7 @@ import sys
 import re
 import string
 
-from mmLib import Constants, FileLoader, Structure, PDB
-from mmLib.Extensions import TLS
+from mmLib import Constants, FileIO, Structure, PDB, TLS
 
 
 def usage():
@@ -131,7 +130,7 @@ def print_TLSGroup(tls):
 
 def main(pdb_path, tls_out_path, calc_tls):
 
-    struct = FileLoader.LoadStructure(fil = pdb_path)
+    struct = FileIO.LoadStructure(fil = pdb_path)
 
     ## calculate one set of TLS tensors from all the amino acid atoms
     if calc_tls == True:

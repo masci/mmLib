@@ -8,9 +8,7 @@
 import sys
 import getopt
 
-from mmLib.Structure      import *
-from mmLib.FileLoader     import *
-from mmLib.Extensions.TLS import *
+from mmLib import FileIO, Structure, TLS, Constants
 
 def usage():
     print "lsq_tls_fit.py [-s] [-t <tlsin>] [-o <tlsout>]"
@@ -40,7 +38,7 @@ def usage():
 
 
 def main(path, opt_dict):
-    struct = LoadStructure(fil = path)
+    struct = FileIO.LoadStructure(fil = path)
 
     tls_group_list = []
 
@@ -54,7 +52,7 @@ def main(path, opt_dict):
             sys.exit(-1)
         
         tls_file = TLSFile()
-        tls_file.set_file_format(TLSFileFormatTLSOUT())
+        tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
         tls_file.load(fil)
 
         for tls_desc in tls_file.tls_desc_list:
@@ -75,7 +73,7 @@ def main(path, opt_dict):
             except IndexError:
                 continue
             
-            tls_desc = TLSGroupDesc()
+            tls_desc = TLS.TLSGroupDesc()
             tls_desc.add_range(chain_id1, frag_id1, chain_id1, frag_id2, "ALL")
             tls = tls_desc.construct_tls_group_with_atoms(struct)
             tls_group_list.append(tls)
@@ -84,8 +82,8 @@ def main(path, opt_dict):
             print "Creating TLS Group: %s" % (tls.name)
 
     ## fit TLS groups and write output
-    tls_file = TLSFile()
-    tls_file.set_file_format(TLSFileFormatTLSOUT())
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
     ## preform a LSQ fit if necessary
     for tls in tls_group_list:
@@ -122,12 +120,12 @@ def main(path, opt_dict):
                     atm.temp_factor = 0.0
                     atm.U = None
                 else:
-                    atm.temp_factor = U2B * trace(Utls)/3.0
+                    atm.temp_factor = Constants.U2B * trace(Utls)/3.0
                     atm.U = Utls
 
         ## save the struct
         print "Saving XYZIN: %s" % (opt_dict["-p"])
-        SaveStructure(fil=opt_dict["-p"], struct=struct)
+        FileIO.SaveStructure(fil = opt_dict["-p"], struct = struct)
 
 
 if __name__ == "__main__":

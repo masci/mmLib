@@ -21,8 +21,7 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-from mmLib import Constants, FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure
-from mmLib.Extensions import TLS
+from mmLib import Constants, FileLoader, Viewer, R3DDriver, OpenGLDriver, Structure, TLS
 
 
 ###############################################################################

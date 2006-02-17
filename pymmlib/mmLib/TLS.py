@@ -1008,13 +1008,13 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     ## set up the origin shift matrix PRHO WRT orthogonal axes
     PRHO = numpy.array([ [    0.0,  rho[2], -rho[1]],
-                   [-rho[2],     0.0,  rho[0]],
-                   [ rho[1], -rho[0],     0.0] ], float)
+                         [-rho[2],     0.0,  rho[0]],
+                         [ rho[1], -rho[0],     0.0] ], float)
 
     ## set up the origin shift matrix cPRHO WRT libration axes
     cPRHO = numpy.array([ [    0.0,  crho[2], -crho[1]],
-                    [-crho[2],     0.0,  crho[0]],
-                    [ crho[1], -crho[0],     0.0] ], float)
+                          [-crho[2],     0.0,  crho[0]],
+                          [ crho[1], -crho[0],     0.0] ], float)
 
     ## calculate tranpose of cPRHO, ans cS
     cSt = numpy.transpose(cS)
@@ -2566,7 +2566,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
         v2 = None
 
         for atm in self.tls_group:
-            if atm.name not in ("N", "CA", "C"):
+            if atm.name != "CA":
                 continue
 
             if v1==None:
@@ -2793,6 +2793,14 @@ class GLTLSGroup(Viewer.GLDrawList):
         ## TLS Analysis
         self.glo_add_property(
             { "name":        "COR",
+              "desc":        "TLS Center of Reaction", 
+              "catagory":    "TLS Analysis",
+              "read_only":   True,
+              "type":        "numpy.array(3)",
+              "default":     numpy.zeros(3, float),
+              "action":      "recompile" })
+        self.glo_add_property(
+            { "name":        "COR_vector",
               "desc":        "TLS Center of Reaction", 
               "catagory":    "TLS Analysis",
               "read_only":   True,
@@ -3290,8 +3298,8 @@ class GLTLSGroup(Viewer.GLDrawList):
 
             Utls = calc_Utls(T, L, S, atm.position - o)
 
-            if self.properties["add_biso"]==True:
-                if atm.temp_factor!=None:
+            if self.properties["add_biso"] == True:
+                if atm.temp_factor != None:
                     Utls = Utls + (Constants.B2U * atm.temp_factor * numpy.identity(3, float))
             
             yield atm, Utls
@@ -3306,14 +3314,24 @@ class GLTLSGroup(Viewer.GLDrawList):
 
         ## get the TLS color
         r, g, b = self.gldl_property_color_rgbf("tls_color")
-        self.driver.glr_set_material_rgb(r, g, b)
+
         self.driver.glr_translate(self.properties["COR"])
+
+        ## cor vector
+        self.driver.glr_set_material_rgb(0.8, 0.8, 0.9)
+        vec = self.properties["COR_vector"]
+        if AtomMath.length(vec) > 0.1:
+            vec2 = 15.0 * vec
+            self.driver.glr_axis(-vec2/2.0, vec2, 0.25)
+
+        self.driver.glr_set_material_rgb(r, g, b)
         
         ## T: units (A^2)
         self.driver.glr_Uellipse((0.0,0.0,0.0), self.properties["rT"], self.properties["adp_prob"])
 
         ## L: units (DEG^2)
         L_scale = self.properties["L_axis_scale"]
+
         
         for Lx_eigen_val, Lx_eigen_vec, Lx_rho, Lx_pitch in [
             ("L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
@@ -3328,10 +3346,10 @@ class GLTLSGroup(Viewer.GLDrawList):
             C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
             L_rot = C * (L_scale * calc_rmsd(L_eigen_val))
 
-            if L_eigen_val<=0.0:
+            if L_eigen_val <= 0.0:
                 continue
 
-            L_v   = L_eigen_vec * L_rot
+            L_v = L_eigen_vec * L_rot
 
             ## line from COR to center of screw/rotation axis
             ## draw lines from COR to the axis
