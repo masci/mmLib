@@ -36,13 +36,13 @@ TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 JMOL_DIR               = "../../../jmol"
 
 ## the isoprobability contour level for all visualizations
-ADP_PROB = 85
+ADP_PROB = 25
 
 ## number of TLS partitons for each chain
 NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 550
+VIS_WIDTH = 800
 
 ## the JMol viewer is a square window, generated with this pixel size
 JMOL_SIZE = 600

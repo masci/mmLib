@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -261,6 +261,29 @@ class ChainPartition(object):
             i += 1
 
 
+class TLSSegment(object):
+    """Information on a TLS rigid body segment of a protein chain.
+    """
+    def __name__(self, **args):
+        self.chain_id = args["chain_id"]
+        self.frag_id1 = args["frag_id1"]
+        self.frag_id2 = args["frag_id2"]
+        self.lsq_residual = args["lsq_residual"]
+        self.method = args["method"]
+        self.num_atoms = args["num_atoms"]
+
+        ## added by TLSChainMinimizer
+        self.tls_group = None
+        self.tls_info = None
+        self.itls_info = None
+        self.model_tls_info = None
+        self.model = None
+        self.segment = None
+        self.rmsd_b = None
+
+        
+
+
 class TLSChainMinimizer(hcsssp.HCSSSP):
     """Finds the minimal TLS description of a given Chain object using
     the HCSSSP global optimization algorithm and a constraint on the number
@@ -339,7 +362,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             assert frag_id1 == tls["frag_id1"]
             assert frag_id2 == tls["frag_id2"]
             
-            if tls==None:
+            if tls == None:
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
                 sys.exit(-1)
 
@@ -469,7 +492,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         ## add atoms to the group
         for atm in segment.iter_all_atoms():
-            if atm.include == False: continue
+            if atm.include == False:
+                continue
             tls_group.append(atm)
 
         ## use the constrained TLS model to calculate tensor values
@@ -767,12 +791,15 @@ class TLSMDAnalysis(object):
             print "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
                 target_struct, target_chain)
             return
+
+        self.target_chain = target_chain
         
         for chain in self.iter_chains():
             print
             print "Superimposing Chain.............%s" % (chain.chain_id)
             hyp = structcmp.TLSConformationPredctionHypothosis(chain, target_chain)
             for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
+                print
                 print "Number of TLS Segments........: %d" % (ntls)
                 hyp.add_conformation_prediction_to_chain_partition(cpartition)
 

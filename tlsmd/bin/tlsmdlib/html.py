@@ -692,6 +692,13 @@ class HTMLReport(Report):
             show_chain[chx.chain_id] = True
         ## end size hack
 
+        ## got target chain?
+        if self.tlsmd_analysis.target_chain != None:
+            for atm in self.tlsmd_analysis.target_chain.iter_all_atoms():
+                atm.orig_position = atm.position
+                atm.position = chain.target_chain_sresult.transform(atm.position)
+        
+
         viewer = Viewer.GLViewer()
         gl_struct = viewer.glv_add_struct(self.struct)
 
@@ -727,21 +734,24 @@ class HTMLReport(Report):
                     oatm_visible       = False,
                     side_chain_visible = False,
                     hetatm_visible     = True,
-                    color              = "0.20,0.20,0.20",
                     lines              = False,
                     ball_stick         = False,
                     trace              = True,
-                    trace_radius       = 0.20,
-                    trace_color        = "0.20,0.20,0.20", )
+                    trace_radius       = 0.25,
+                    trace_color        = "0.80,0.80,0.80", )
             else:
                 gl_chain.properties.update(
                     visible       = True,
                     ball_stick    = False,
                     cpk           = True)
-                
+
         ## add the TLS group visualizations
         for tls in cpartition.iter_tls_segments():
             if tls["method"] != "TLS":
+                continue
+            if tls["rmsd_pre_alignment"] <= 0.8:
+                continue
+            if (tls["rmsd_pre_alignment"] - tls["sresult"].rmsd) < 0.5:
                 continue
             
             tls_name = "TLS_%s_%s" % (tls["frag_id1"], tls["frag_id2"])
@@ -752,7 +762,7 @@ class HTMLReport(Report):
                 hetatm_visible     = True,
                 adp_prob           = conf.ADP_PROB,
                 L_axis_scale       = 2.0,
-                L_axis_radius      = 0.25,
+                L_axis_radius      = 0.20,
 		both_phases        = True,
                 tls_group          = tls["tls_group"],
                 tls_info           = tls["model_tls_info"],
@@ -770,14 +780,34 @@ class HTMLReport(Report):
             ## too big usually for good visualization -- cheat and scale it down
             radius = 0.5 * Gaussian.GAUSS3C[conf.ADP_PROB] * TLS.calc_rmsd(tiso)
             radius = max(radius, 0.30)
-            radius = 0.50
+            radius = 0.15
             
             gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
             gl_tls_group.glo_update_properties(time = 0.25)
+
+        ## got target chain?
+        if self.tlsmd_analysis.target_chain != None:
+            gl_chain = Viewer.GLChain(chain = self.tlsmd_analysis.target_chain)
+            gl_chain.properties.update(
+                    oatm_visible       = False,
+                    side_chain_visible = False,
+                    hetatm_visible     = True,
+                    lines              = False,
+                    ball_stick         = False,
+                    trace              = True,
+                    trace_radius       = 0.25,
+                    trace_color        = "0.40,0.40,0.40", )
+            gl_struct.glo_add_child(gl_chain)
             
         driver.glr_set_render_png_path(png_path)
         viewer.glv_render_one(driver)
         print misc.end_timing()
+
+        ## got target chain?
+        if self.tlsmd_analysis.target_chain != None:
+            for atm in self.tlsmd_analysis.target_chain.iter_all_atoms():
+                atm.position = atm.orig_position
+                del atm.orig_position
 
         return "", png_path
 
@@ -1221,7 +1251,8 @@ class ChainNTLSAnalysisReport(Report):
         self.bmean_plot = gnuplots.BMeanPlot(self.chain, self.cpartition)
 
         l = ['<center>',
-             self.bmean_plot.html_markup("Mean BFactor Analysis", "Comparison of TLS predicted B factors with experimental (input) B factors."),
+             self.bmean_plot.html_markup("Mean BFactor Analysis",
+                                         "Comparison of TLS predicted B factors with experimental (input) B factors."),
              '</center>']
 
         return "".join(l)
