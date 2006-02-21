@@ -3318,11 +3318,11 @@ class GLTLSGroup(Viewer.GLDrawList):
         self.driver.glr_translate(self.properties["COR"])
 
         ## cor vector
-        self.driver.glr_set_material_rgb(0.8, 0.8, 0.9)
+        self.driver.glr_set_material_rgb(0.5, 0.5, 0.5)
         vec = self.properties["COR_vector"]
-        if AtomMath.length(vec) > 0.1:
-            vec2 = 15.0 * vec
-            self.driver.glr_axis(-vec2/2.0, vec2, 0.25)
+        if AtomMath.length(vec) > 1.0:
+            vec2 = 2.0 * vec
+            self.driver.glr_axis(-vec2 / 2.0, vec2, self.properties["L_axis_radius"])
 
         self.driver.glr_set_material_rgb(r, g, b)
         

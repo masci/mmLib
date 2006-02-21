@@ -266,11 +266,11 @@ def run_setup():
         cmdclass = {'install_data': package_install_data},
         
         name         = "pymmlib",
-        version      = "0.9.7",
+        version      = "0.9.8",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
-        packages     = ["mmLib", "mmLib/Extensions"],
+        packages     = ["mmLib"],
         ext_modules  = extension_list(),
         data_files   = library_data()
         )

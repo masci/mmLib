@@ -42,6 +42,8 @@ def QuaternionToRotationMatrix(q):
 
 
 class SuperpositionResults(object):
+    """Returns the results of a superposition.
+    """
     def __init__(self, quaternion, source_origin, destination_origin, rmsd, num_atoms):
         self.Q = quaternion
         self.R = QuaternionToRotationMatrix(quaternion)
@@ -49,6 +51,14 @@ class SuperpositionResults(object):
         self.dst_origin = destination_origin
         self.rmsd = rmsd
         self.num_atoms = num_atoms
+
+    def transform(self, position):
+        """Transforms a source position to its aligned position.
+        """
+        position = position - self.src_origin
+        position = numpy.matrixmultiply(self.R, position)
+        position = position + self.dst_origin
+        return position
 
 
 def Superposition(src_points, dst_points):
@@ -122,7 +132,23 @@ def Superposition(src_points, dst_points):
     return SuperpositionResults(evec, src_org, dst_org, rmsd, num_points)
 
 
-def SuperpositionAtoms(atom_pair_list):
+def SuperimposePositions(position_tuple_list):
+    """Superimposes a list of 2-tuple atom pairs.
+    """
+    n = len(position_tuple_list)
+    a1 = numpy.zeros((n,3), float)
+    a2 = numpy.zeros((n,3), float)
+    
+    for i in range(n):
+        pos1, pos2 = position_tuple_list[i]
+
+        a1[i] = pos1
+        a2[i] = pos2
+    
+    return Superposition(a1, a2)
+
+
+def SuperimposeAtoms(atom_pair_list):
     """Superimposes a list of 2-tuple atom pairs.
     """
     n = len(atom_pair_list)
@@ -146,15 +172,16 @@ def SuperimposeAtomsOutlierRejection(alist, rmsd_cutoff = 1.0, max_cycles = 100)
     number of cycles exceeds max_cycles.
     """
     for cycle in range(max_cycles):
-        sresult = SuperpositionAtoms(alist)
+        sresult = SuperimposeAtoms(alist)
         print "Cycle %d NA: %5d RMSD %6.2f" % (cycle, sresult.num_atoms, sresult.rmsd)
-        if sresult.rmsd <= rmsd_cutoff: return sresult
+        if sresult.rmsd <= rmsd_cutoff:
+            return sresult
 
         deviation = []
         for i in range(len(alist)):
-            pos1 = numpy.matrixmultiply(sresult.R, alist[i][0].position - sresult.src_origin)
-            pos2 = alist[i][1].position - sresult.dst_origin
-            deviation.append((AtomMath.length(pos1 - pos2), i))
+            satm, datm = alist[i]            
+            spos = sresult.transform(satm.position)
+            deviation.append((AtomMath.length(spos - datm.position), i))
         deviation.sort()
 
         outliers = deviation[-10:]
