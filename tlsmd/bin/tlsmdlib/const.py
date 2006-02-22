@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -15,7 +15,7 @@ LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "0.6.1CVS"
+VERSION       = "0.7.0CVS"
 RELEASE_DATE  = "12 Feb 2006"
 AUTHOR        = "Jay Painter"
 EMAIL         = "jpaint@u.washington.edu"

@@ -177,6 +177,79 @@ class TLSChainProcessor(object):
             self.num_subsegments, self.total_num_subsegments)
 
 
+class TLSSegment(object):
+    """Information on a TLS rigid body segment of a protein chain.
+    """
+    def __init__(self, **args):
+        self.chain_id = args["chain_id"]
+        self.frag_id1 = args["frag_id1"]
+        self.frag_id2 = args["frag_id2"]
+        self.lsq_residual = args["lsq_residual"]
+        self.method = args["method"]
+        self.num_atoms = args["num_atoms"]
+
+        ## added by TLSChainMinimizer
+        self.tls_group = None
+        self.tls_info = None
+        self.itls_info = None
+        self.model_tls_info = None
+        self.model = None
+        self.segment = None
+        self.rmsd_b = None
+
+        ## added by HTML generation code
+        self.color = None
+
+        ## added by structure comparison
+        self.rmsd_pre_alignment = None
+        self.sresult = None
+        self.superposition_vscrew = None
+
+
+class ChainPartition(object):
+    """Collection object describing one multi-TLS group partitioning
+    of a protein chain.
+    """
+    def __init__(self, chain, ntls_constraint):
+        self.chain           = chain
+        self.ntls_constraint = ntls_constraint
+        self.ntls            = ntls_constraint
+        self.tls_list        = []
+        self.residual        = 0.0
+
+    def add_tls_segment(self, tls):
+        """The argument tls is a dictionary containing a bunch of great information
+        about the TLS segment which is part of the optimal partitioning.
+        """
+        assert isinstance(tls, TLSSegment)
+        self.tls_list.append(tls)
+        self.residual += tls.lsq_residual
+
+    def normalize_residual(self):
+        """Devide the residual by the number of residues in the chain and
+        convert from A^2 units to B units.
+        """
+        nres = len(self.chain)
+        self.residual = Constants.U2B * math.sqrt(self.residual / nres)
+
+    def is_valid(self):
+        """Return True if the optimization is valid; otherwise, return False.
+        """
+        return len(self.tls_list) > 0
+
+    def num_tls_segments(self):
+        return len(self.tls_list)
+
+    def iter_tls_segments(self):
+        return iter(self.tls_list)
+
+    def enumerate_tls_segments(self):
+        i = 0
+        for tls in self.iter_tls_segments():
+            yield i, tls
+            i += 1
+
+
 class ChainPartitionCollection(object):
     """Contains the ChainPartition objects for a chain.
     """
@@ -216,72 +289,6 @@ class ChainPartitionCollection(object):
             if ntls == find_ntls:
                 return cpartition
         return None
-            
-
-class ChainPartition(object):
-    """Collection object describing one multi-TLS group partitioning
-    of a protein chain.
-    """
-    def __init__(self, chain, ntls_constraint):
-        self.chain           = chain
-        self.ntls_constraint = ntls_constraint
-        self.ntls            = ntls_constraint
-        self.tls_list        = []
-        self.residual        = 0.0
-
-    def add_tls_segment(self, tls):
-        """The argument tls is a dictionary containing a bunch of great information
-        about the TLS segment which is part of the optimal partitioning.
-        """
-        self.tls_list.append(tls)
-        self.residual += tls["lsq_residual"]
-
-    def normalize_residual(self):
-        """Devide the residual by the number of residues in the chain and
-        convert from A^2 units to B units.
-        """
-        nres = len(self.chain)
-        self.residual = Constants.U2B * math.sqrt(self.residual / nres)
-
-    def is_valid(self):
-        """Return True if the optimization is valid; otherwise, return False.
-        """
-        return len(self.tls_list) > 0
-
-    def num_tls_segments(self):
-        return len(self.tls_list)
-
-    def iter_tls_segments(self):
-        return iter(self.tls_list)
-
-    def enumerate_tls_segments(self):
-        i = 0
-        for tls in self.iter_tls_segments():
-            yield i, tls
-            i += 1
-
-
-class TLSSegment(object):
-    """Information on a TLS rigid body segment of a protein chain.
-    """
-    def __name__(self, **args):
-        self.chain_id = args["chain_id"]
-        self.frag_id1 = args["frag_id1"]
-        self.frag_id2 = args["frag_id2"]
-        self.lsq_residual = args["lsq_residual"]
-        self.method = args["method"]
-        self.num_atoms = args["num_atoms"]
-
-        ## added by TLSChainMinimizer
-        self.tls_group = None
-        self.tls_info = None
-        self.itls_info = None
-        self.model_tls_info = None
-        self.model = None
-        self.segment = None
-        self.rmsd_b = None
-
-        
 
 
 class TLSChainMinimizer(hcsssp.HCSSSP):
@@ -357,23 +364,23 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
             self.chain, self.min_subsegment_len):
 
-            tls = grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
+            tlsdict = grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
 
-            assert frag_id1 == tls["frag_id1"]
-            assert frag_id2 == tls["frag_id2"]
+            assert frag_id1 == tlsdict["frag_id1"]
+            assert frag_id2 == tlsdict["frag_id2"]
             
-            if tls == None:
+            if tlsdict == None:
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
                 sys.exit(-1)
 
-            if tls.has_key("error") == True:
+            if tlsdict.has_key("error") == True:
                 continue
 
-            if tls.has_key("lsq_residual") == False:
+            if tlsdict.has_key("lsq_residual") == False:
                 print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
                 sys.exit(-1)
 
-            cost = tls["lsq_residual"]
+            cost = tlsdict["lsq_residual"]
             frag_range = (frag_id1, frag_id2)
             edge = (i, j, cost, frag_range)
             edges.append(edge)
@@ -426,9 +433,8 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             if len(frag_range) == 2:
                 print "    Fitting Chain Segment %s-%s" % (frag_range[0], frag_range[1])
                 tls = self.__calc_tls_record_from_edge(edge)
-                tls["partition_num"] = partition_num
+                tls.partition_num = partition_num
                 partition_num += 1
-
                 cpartition.add_tls_segment(tls)
 
         cpartition.normalize_residual()
@@ -444,38 +450,38 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         nltls.set_xmlrpc_chain(xlist)
 
         ## anisotropic model
-        tls = nltls.anisotropic_fit_segment(0, len(xlist)-1)
+        tlsdict = nltls.anisotropic_fit_segment(0, len(xlist)-1)
 
-        tls_group.origin = numpy.array([tls["x"], tls["y"], tls["z"]], float)
+        tls_group.origin = numpy.array([tlsdict["x"], tlsdict["y"], tlsdict["z"]], float)
 
         tls_group.T = numpy.array(
-            [ [tls["t11"], tls["t12"], tls["t13"]],
-              [tls["t12"], tls["t22"], tls["t23"]],
-              [tls["t13"], tls["t23"], tls["t33"]] ], float)
+            [ [tlsdict["t11"], tlsdict["t12"], tlsdict["t13"]],
+              [tlsdict["t12"], tlsdict["t22"], tlsdict["t23"]],
+              [tlsdict["t13"], tlsdict["t23"], tlsdict["t33"]] ], float)
         
         tls_group.L = numpy.array(
-            [ [tls["l11"], tls["l12"], tls["l13"]],
-              [tls["l12"], tls["l22"], tls["l23"]],
-              [tls["l13"], tls["l23"], tls["l33"]] ], float)
+            [ [tlsdict["l11"], tlsdict["l12"], tlsdict["l13"]],
+              [tlsdict["l12"], tlsdict["l22"], tlsdict["l23"]],
+              [tlsdict["l13"], tlsdict["l23"], tlsdict["l33"]] ], float)
         
-        s11, s22, s33 = TLS.calc_s11_s22_s33(tls["s2211"], tls["s1133"]) 
+        s11, s22, s33 = TLS.calc_s11_s22_s33(tlsdict["s2211"], tlsdict["s1133"]) 
         
         tls_group.S = numpy.array(
-            [ [       s11, tls["s12"], tls["s13"]],
-              [tls["s21"],        s22, tls["s23"]],
-              [tls["s31"], tls["s32"],       s33] ], float)
+            [ [       s11, tlsdict["s12"], tlsdict["s13"]],
+              [tlsdict["s21"],        s22, tlsdict["s23"]],
+              [tlsdict["s31"], tlsdict["s32"],       s33] ], float)
 
         ## isotropic model
-        itls = nltls.isotropic_fit_segment(0, len(xlist)-1)
+        itlsdict = nltls.isotropic_fit_segment(0, len(xlist)-1)
         
-        tls_group.itls_T = itls["it"]
+        tls_group.itls_T = itlsdict["it"]
         
         tls_group.itls_L = numpy.array(
-            [ [itls["il11"], itls["il12"], itls["il13"]],
-              [itls["il12"], itls["il22"], itls["il23"]],
-              [itls["il13"], itls["il23"], itls["il33"]] ], float)
+            [ [itlsdict["il11"], itlsdict["il12"], itlsdict["il13"]],
+              [itlsdict["il12"], itlsdict["il22"], itlsdict["il23"]],
+              [itlsdict["il13"], itlsdict["il23"], itlsdict["il33"]] ], float)
 
-        tls_group.itls_S = numpy.array([itls["is1"], itls["is2"], itls["is3"]], float)
+        tls_group.itls_S = numpy.array([itlsdict["is1"], itlsdict["is2"], itlsdict["is3"]], float)
 
     def __calc_tls_record_from_edge(self, edge):
         """Independently calculate the TLS parameters for the segment
@@ -484,52 +490,52 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         i, j, cost, frag_range = edge
 
         frag_id1, frag_id2 = frag_range
-        tls = self.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
-        segment = self.chain[frag_id1:frag_id2]
 
-        ## create TLSGroup
-        tls_group = TLS.TLSGroup()
+        tlsdict = self.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
+        tls = TLSSegment(**tlsdict)
+        tls.segment = self.chain[frag_id1:frag_id2]
 
-        ## add atoms to the group
-        for atm in segment.iter_all_atoms():
+        tls.tls_group = TLS.TLSGroup()
+        for atm in tls.segment.iter_all_atoms():
             if atm.include == False:
                 continue
-            tls_group.append(atm)
+            tls.tls_group.append(atm)
 
         ## use the constrained TLS model to calculate tensor values
         cache_key = (frag_id1, frag_id2)
         if self.tls_cache.has_key(cache_key):
             tlscache = self.tls_cache[cache_key]
-            tls_group_cache = tlscache["tls_group"]
-            tls_group.origin = tls_group_cache.origin.copy()
-            tls_group.T = tls_group_cache.T.copy()
-            tls_group.L = tls_group_cache.L.copy()
-            tls_group.S = tls_group_cache.S.copy()
-            tls_group.itls_T = tls_group_cache.itls_T
-            tls_group.itls_L = tls_group_cache.itls_L.copy()
-            tls_group.itls_S = tls_group_cache.itls_S.copy()
+            tls_group_cache = tlscache.tls_group
+            tls.tls_group.origin = tls_group_cache.origin.copy()
+            tls.tls_group.T = tls_group_cache.T.copy()
+            tls.tls_group.L = tls_group_cache.L.copy()
+            tls.tls_group.S = tls_group_cache.S.copy()
+            tls.tls_group.itls_T = tls_group_cache.itls_T
+            tls.tls_group.itls_L = tls_group_cache.itls_L.copy()
+            tls.tls_group.itls_S = tls_group_cache.itls_S.copy()
         else:
-            self.__calc_nonlinear_fit(tls_group, segment)
+            self.__calc_nonlinear_fit(tls.tls_group, tls.segment)
             self.tls_cache[cache_key] = tls
         
         ## helpful additions
-        tls_info  = tls_group.calc_tls_info()
+        tls_info  = tls.tls_group.calc_tls_info()
         itls_info = TLS.calc_itls_center_of_reaction(
-            tls_group.itls_T, tls_group.itls_L, tls_group.itls_S, tls_group.origin)
+            tls.tls_group.itls_T,
+            tls.tls_group.itls_L,
+            tls.tls_group.itls_S,
+            tls.tls_group.origin)
 
-        tls["tls_info"]  = tls_info
-        tls["itls_info"] = itls_info
+        tls.tls_info = tls_info
+        tls.itls_info = itls_info
 
         if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
-            tls_group.model = "ISOT"
-            tls["model_tls_info"] = itls_info
+            tls.tls_group.model = "ISOT"
+            tls.model_tls_info = itls_info
         elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
-            tls_group.model = "ANISO"
-            tls["model_tls_info"] = tls_info
+            tls.tls_group.model = "ANISO"
+            tls.model_tls_info = tls_info
 
-        tls["tls_group"]            = tls_group
-        tls["segment"]              = segment
-        tls["rmsd_b"]               = tls_calcs.calc_rmsd_tls_biso(tls_group)
+        tls.rmsd_b = tls_calcs.calc_rmsd_tls_biso(tls.tls_group)
 
         return tls
 
@@ -599,6 +605,7 @@ class TLSMDAnalysis(object):
         self.struct_file_path     = struct_file_path
         self.struct2_file_path    = struct2_file_path
         self.struct2_chain_id     = struct2_chain_id
+        self.target_chain         = None
 
         if sel_chain_ids!=None:
             self.sel_chain_ids = sel_chain_ids.split(",")

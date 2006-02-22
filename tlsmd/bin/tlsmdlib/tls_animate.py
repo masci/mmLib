@@ -166,11 +166,11 @@ class TLSAnimate(object):
     def displace_model(self, model, tls, phase):
         """Displace the given model by the tls. 
         """
-        tls_info  = tls["model_tls_info"]
+        tls_info  = tls.model_tls_info
         cor       = tls_info["COR"]
 
-        frag_id1  = tls["frag_id1"]
-        frag_id2  = tls["frag_id2"]
+        frag_id1  = tls.frag_id1
+        frag_id2  = tls.frag_id2
 
         for n, Lx_rmsd, Lx_vec, Lx_rho, Lx_pitch in [
             (1, "L1_rmsd", "L1_eigen_vec", "L1_rho", "L1_pitch"),

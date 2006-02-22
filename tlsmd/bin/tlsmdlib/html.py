@@ -154,6 +154,24 @@ def calc_orientation(struct, chain):
     return ori
 
 
+class ColorInfo(object):
+    def __init__(self, index, name, rgbf, thumbnail_dir, thumbnail_size = (25, 25)):
+        self.index = index
+        self.name = name
+        self.rgbf = rgbf
+        self.rgbi = misc.rgb_f2i(rgbf)
+        self.thumbnail_dir = thumbnail_dir
+        self.thumbnail_size = thumbnail_size
+
+        rgbs = "#%2x%2x%2x" % misc.rgb_f2i(rgbf)
+        rgbs = rgbs.replace(" ", "0")
+        self.rgbs = rgbs
+
+        self.thumbnail_path = os.path.join(thumbnail_dir, "%s.png" % (name))
+        img = Image.new("RGBA", thumbnail_size, self.rgbi)
+        img.save(self.thumbnail_path, "png")
+        
+
 def html_tls_group_table(chain, cpartition, report_root = None):
     """Generate HTML for a table containing the details of the ntls-group partitioning
     of the given chain.
@@ -164,7 +182,7 @@ def html_tls_group_table(chain, cpartition, report_root = None):
     except IndexError:
         return ""
 
-    tls_model = tls["tls_group"].model
+    tls_model = tls.tls_group.model
     
     if tls_model == "ISOT":
         t_head = 'T<sup>r</sup> <var>B</var>'
@@ -203,9 +221,9 @@ def html_tls_group_table(chain, cpartition, report_root = None):
 
     for tls in cpartition.iter_tls_segments():
         
-        tls_group = tls["tls_group"]
-        tls_info  = tls["tls_info"]
-        mtls_info = tls["model_tls_info"]
+        tls_group = tls.tls_group
+        tls_info  = tls.tls_info
+        mtls_info = tls.model_tls_info
 
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
         L2 = mtls_info["L2_eigen_val"] * Constants.RAD2DEG2
@@ -229,17 +247,17 @@ def html_tls_group_table(chain, cpartition, report_root = None):
 
         ## path to color thumbnail
         if report_root:
-            cpath = os.path.join(report_root, tls["color"]["thumbnail_path"])
+            cpath = os.path.join(report_root, tls.color.thumbnail_path)
         else:
-            cpath = tls["color"]["thumbnail_path"]
+            cpath = tls.color.thumbnail_path
 
-        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls["color"]["name"]),
-              '<td>%s-%s</td>' % (tls["frag_id1"], tls["frag_id2"]),
-              '<td>%d</td>'    % (len(tls["segment"])),
+        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls.color.name),
+              '<td>%s-%s</td>' % (tls.frag_id1, tls.frag_id2),
+              '<td>%d</td>'    % (len(tls.segment)),
               '<td>%d</td>'    % (len(tls_group)),
               '<td>%5.1f</td>' % (tls_info["exp_mean_temp_factor"]),
               '<td>%4.2f</td>' % (tls_info["exp_mean_anisotropy"]),
-              '<td>%5.2f</td>' % (tls["rmsd_b"]),
+              '<td>%5.2f</td>' % (tls.rmsd_b),
               '<td>%s</td>'    % (t_data),
               '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
               '<td>%5.1f</td>' % (tls_info["tls_mean_temp_factor"]),
@@ -331,7 +349,6 @@ class HTMLReport(Report):
         and also writes thumbnail .png images of all the colors.
         """
         thumbnail_dir   = "colors"
-        thumbnail_size  = (25, 25)
 
         ## make the thumbnail subdirectory
         if not os.path.isdir(thumbnail_dir):
@@ -343,34 +360,18 @@ class HTMLReport(Report):
         ## skip the first two colors which are black/white
         for i in range(len(Colors.COLORS)):
             cname, rgbf = Colors.COLORS[i]
-            
-            color = {}
+            color = ColorInfo(i, cname, rgbf, thumbnail_dir)
             self.colors.append(color)
-
-            color["index"] = i
-            color["name"]  = cname
-            color["rgbf"]  = rgbf
-            color["rgbi"]  = misc.rgb_f2i(rgbf)
-
-            rgbs = "#%2x%2x%2x" % misc.rgb_f2i(rgbf)
-            rgbs = rgbs.replace(" ", "0")
-            color["rgbs"]  = rgbs
-
-            ## generate thumbnail image
-            color["thumbnail_path"] = os.path.join(thumbnail_dir, "%s.png" % (color["name"]))
-
-            img = Image.new("RGBA", thumbnail_size, color["rgbi"])
-            img.save(color["thumbnail_path"], "png")
 
         ## assign a unique color to each tls group in a
         ## chain spanning set of tls groups
         for chain in self.tlsmd_analysis.iter_chains():
             for cpartition in chain.partition_collection.iter_chain_partitions():
                 for tlsi, tls in cpartition.enumerate_tls_segments():
-                    if tls["method"] == "TLS":
-                        tls["color"] = self.get_tls_color(tlsi)
+                    if tls.method == "TLS":
+                        tls.color = self.get_tls_color(tlsi)
                     else:
-                        tls["color"] = self.colors[0]
+                        tls.color = self.colors[0]
 
     def get_tls_color(self, tls_index):
         """Returns the color dict description for a TLS segment of the
@@ -697,7 +698,6 @@ class HTMLReport(Report):
             for atm in self.tlsmd_analysis.target_chain.iter_all_atoms():
                 atm.orig_position = atm.position
                 atm.position = chain.target_chain_sresult.transform(atm.position)
-        
 
         viewer = Viewer.GLViewer()
         gl_struct = viewer.glv_add_struct(self.struct)
@@ -747,14 +747,16 @@ class HTMLReport(Report):
 
         ## add the TLS group visualizations
         for tls in cpartition.iter_tls_segments():
-            if tls["method"] != "TLS":
+            if tls.method != "TLS":
                 continue
-            if tls["rmsd_pre_alignment"] <= 0.8:
-                continue
-            if (tls["rmsd_pre_alignment"] - tls["sresult"].rmsd) < 0.5:
-                continue
+
+            if self.tlsmd_analysis.target_chain != None:
+                if tls.rmsd_pre_alignment <= 0.8:
+                    continue
+                if (tls.rmsd_pre_alignment - tls.sresult.rmsd) < 0.5:
+                    continue
             
-            tls_name = "TLS_%s_%s" % (tls["frag_id1"], tls["frag_id2"])
+            tls_name = "TLS_%s_%s" % (tls.frag_id1, tls.frag_id2)
             
             gl_tls_group = TLS.GLTLSGroup(
                 oatm_visible       = False,
@@ -764,17 +766,17 @@ class HTMLReport(Report):
                 L_axis_scale       = 2.0,
                 L_axis_radius      = 0.20,
 		both_phases        = True,
-                tls_group          = tls["tls_group"],
-                tls_info           = tls["model_tls_info"],
+                tls_group          = tls.tls_group,
+                tls_info           = tls.model_tls_info,
                 tls_name           = tls_name,
-                tls_color          = tls["color"]["name"])
+                tls_color          = tls.color.name)
             gl_struct.glo_add_child(gl_tls_group)
 
-            if tls.has_key("superposition_vscrew"):
-                gl_tls_group.properties.update(COR_vector = tls["superposition_vscrew"])
+            if tls.superposition_vscrew != None:
+                gl_tls_group.properties.update(COR_vector = tls.superposition_vscrew)
 
             ## set width of trace according to the group's translational tensor trace
-            mtls_info = tls["model_tls_info"]
+            mtls_info = tls.model_tls_info
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
 
             ## too big usually for good visualization -- cheat and scale it down
@@ -796,7 +798,7 @@ class HTMLReport(Report):
                     ball_stick         = False,
                     trace              = True,
                     trace_radius       = 0.25,
-                    trace_color        = "0.40,0.40,0.40", )
+                    trace_color        = "0.40,0.40,0.40")
             gl_struct.glo_add_child(gl_chain)
             
         driver.glr_set_render_png_path(png_path)
@@ -822,9 +824,7 @@ class HTMLReport(Report):
         old_temp_factor = {}
         old_U = {}
         for tls in cpartition.iter_tls_segments():
-            tls_group = tls["tls_group"]
-            
-            for atm, Utls in tls_group.iter_atm_Utls():
+            for atm, Utls in tls.tls_group.iter_atm_Utls():
                 old_temp_factor[atm] = atm.temp_factor
                 old_U[atm] = atm.U
 
@@ -852,14 +852,14 @@ class HTMLReport(Report):
 
         for tls in cpartition.iter_tls_segments():
             ## don't write out bypass edges
-            if tls["method"] != "TLS":
+            if tls.method != "TLS":
                 continue
             
             tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
             
-            tls_desc.set_tls_group(tls["tls_group"])
-            tls_desc.add_range(chain_id, tls["frag_id1"], chain_id, tls["frag_id2"], "ALL")
+            tls_desc.set_tls_group(tls.tls_group)
+            tls_desc.add_range(chain_id, tls.frag_id1, chain_id, tls.frag_id2, "ALL")
 
         tls_file.save(open(tlsout_path, "w"))
 
@@ -888,8 +888,8 @@ class HTMLReport(Report):
 
         ## loop over TLS groups and color
         for tls in cpartition.iter_tls_segments():
-            js.append('select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], tls["chain_id"]))
-            js.append('color [%d,%d,%d];' % (tls["color"]["rgbi"]))
+            js.append('select %s-%s:%s;' % (tls.frag_id1, tls.frag_id2, tls.chain_id))
+            js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
         ## select non-protein non-solvent and display
         js +=['select not protein and not solvent;',
@@ -954,8 +954,8 @@ class HTMLReport(Report):
                          tlsa.L3_chain.chain_id]
 
             for chain_id in chain_ids:
-                js.append('select %s-%s:%s;' % (tls["frag_id1"], tls["frag_id2"], chain_id))
-                js.append('color [%d,%d,%d];' % (tls["color"]["rgbi"]))
+                js.append('select %s-%s:%s;' % (tls.frag_id1, tls.frag_id2, chain_id))
+                js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
         ## select non-protein non-solvent and display
         js +=['select not protein and not solvent;',
@@ -1019,7 +1019,7 @@ class HTMLReport(Report):
         title = self.page_multi_chain_alignment["title"]
 
         l = [ self.html_head(title),
-              xself.html_title(title),
+              self.html_title(title),
 
               '<center>',
               '<a href="index.html">Back to Index</a>',
@@ -1199,7 +1199,7 @@ class ChainNTLSAnalysisReport(Report):
         
         for tls in self.cpartition.iter_tls_segments():
             ## don't write out bypass edges
-            if tls["method"] != "TLS":
+            if tls.method != "TLS":
                 continue
             l.append(self.html_tls_fit_histogram(tls))
         l.append(self.html_foot())
@@ -1273,7 +1273,7 @@ class ChainNTLSAnalysisReport(Report):
         his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chain, self.cpartition, tls)
 
         title = 'Distribution Histogram of TLS Group %s%s-%s%s' % (
-            self.chain_id, tls["frag_id1"], self.chain_id, tls["frag_id2"])
+            self.chain_id, tls.frag_id1, self.chain_id, tls.frag_id2)
         
         l = ['<center>',
              his.html_markup(title, ""),

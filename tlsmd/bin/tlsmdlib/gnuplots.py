@@ -220,15 +220,15 @@ class TranslationAnalysis(GNUPlot):
         self.write_data_file()
 
         script = _TRANSLATION_ANALYSIS_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.tls_list[0]["frag_id1"])
-        script = script.replace("<xrng2>", self.cpartition.tls_list[-1]["frag_id2"])
+        script = script.replace("<xrng1>", self.cpartition.tls_list[0].frag_id1)
+        script = script.replace("<xrng2>", self.cpartition.tls_list[-1].frag_id2)
         script = script.replace("<title>", "Translation Displacement Analysis of Atoms for %d TLS Groups" % (self.cpartition.ntls))
 
         ## line style
         ls = 0
         for tls in self.cpartition.iter_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
         ## plot list
         plist = []
@@ -253,8 +253,8 @@ class TranslationAnalysis(GNUPlot):
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
         for itls, tls in self.cpartition.enumerate_tls_segments():
-            tls_group = tls["tls_group"]
-            tls_info  = tls["model_tls_info"]
+            tls_group = tls.tls_group
+            tls_info  = tls.model_tls_info
             O         = tls_info["COR"]
 
             for atm in tls_group:
@@ -310,15 +310,15 @@ class LibrationAnalysis(GNUPlot):
         self.write_data_file()
 
         script = _LIBRATION_ANALYSIS_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.tls_list[0]["frag_id1"])
-        script = script.replace("<xrng2>", self.cpartition.tls_list[-1]["frag_id2"])
+        script = script.replace("<xrng1>", self.cpartition.tls_list[0].frag_id1)
+        script = script.replace("<xrng2>", self.cpartition.tls_list[-1].frag_id2)
         script = script.replace("<title>", "Screw displacement analysis of backbone atoms using %d TLS Groups" % (self.cpartition.ntls))
 
         ## line style
         ls = 0
         for tls in self.cpartition.iter_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
         ## plot list
         plist = []
@@ -343,8 +343,8 @@ class LibrationAnalysis(GNUPlot):
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
         for itls, tls in self.cpartition.enumerate_tls_segments():
-            tls_group = tls["tls_group"]
-            tls_info  = tls["model_tls_info"]
+            tls_group = tls.tls_group
+            tls_info  = tls.model_tls_info
             O         = tls_info["COR"]
 
             for atm in tls_group:
@@ -408,8 +408,8 @@ class CA_TLS_Differance_Plot(GNUPlot):
         self.write_data_file()
 
         script = _CA_TLS_DIFFERANCE_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.tls_list[0]["frag_id1"])
-        script = script.replace("<xrng2>", self.cpartition.tls_list[-1]["frag_id2"])
+        script = script.replace("<xrng1>", self.cpartition.tls_list[0].frag_id1)
+        script = script.replace("<xrng2>", self.cpartition.tls_list[-1].frag_id2)
         script = script.replace("<title>", "Deviation of Observed CA B Factors from TLS Model for %d Group Partition" % (self.cpartition.ntls))
 
         ## line style
@@ -418,7 +418,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         ls = 1
         for itls, tls in self.cpartition.enumerate_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
         ## plot list
         plist = []
@@ -439,7 +439,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         ncols = self.cpartition.num_tls_segments() + 1
         
         for itls, tls in self.cpartition.enumerate_tls_segments():
-            tls_group = tls["tls_group"]
+            tls_group = tls.tls_group
 
             T = tls_group.itls_T
             L = tls_group.itls_L
@@ -491,13 +491,13 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         basename  = "%s_CHAIN%s_TLS%s_%s_BoBc" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            tls["frag_id1"],
-            tls["frag_id2"])
+            tls.frag_id1,
+            tls.frag_id2)
 
         self.set_basename(basename)
 
         ## write out the data file
-        tls_group = tls["tls_group"]
+        tls_group = tls.tls_group
 
         T = tls_group.itls_T
         L = tls_group.itls_L
@@ -542,7 +542,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         fil.write("##\n")
         fil.write("## Structure ----------------: %s\n" % (self.chain.struct.structure_id))
         fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id))
-        fil.write("## TLS Group Residue Range --: %s-%s\n" % (tls["frag_id1"], tls["frag_id2"]))
+        fil.write("## TLS Group Residue Range --: %s-%s\n" % (tls.frag_id1, tls.frag_id2))
 
         for i in range(len(bins)):
             fil.write("%f %d\n" % (bin_names[i], bins[i]))
@@ -554,10 +554,10 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         script = script.replace("<txtfile>", self.txt_path)
 
         title = "Histogram of Observed B_{iso} - B_{tls} for TLS Group %s%s-%s%s" % (
-            tls["chain_id"], tls["frag_id1"], tls["chain_id"], tls["frag_id2"])
+            tls.chain_id, tls.frag_id1, tls.chain_id, tls.frag_id2)
                   
         script = script.replace("<title>", title)
-        script = script.replace("<rgb>", tls["color"]["rgbs"])
+        script = script.replace("<rgb>", tls.color.rgbs)
 
         return script
 
@@ -596,8 +596,8 @@ class BMeanPlot(GNUPlot):
         fil = open(data_path, "w")
 
         for itls, tls in self.cpartition.enumerate_tls_segments():
-            tls_group = tls["tls_group"]
-            segment   = tls["segment"]
+            tls_group = tls.tls_group
+            segment   = tls.segment
 
             for frag in segment:
                 ifrag = frag.ichain
@@ -617,8 +617,8 @@ class BMeanPlot(GNUPlot):
 
         ## Gnuplot Script
         script = _BMEAN_PLOT_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.tls_list[0]["frag_id1"])
-        script = script.replace("<xrng2>", self.cpartition.tls_list[-1]["frag_id2"])
+        script = script.replace("<xrng1>", self.cpartition.tls_list[0].frag_id1)
+        script = script.replace("<xrng2>", self.cpartition.tls_list[-1].frag_id2)
         script = script.replace("<title>", "Observed and TLS Calculated Mean B Factor Per Residue")
 
         ## line style
@@ -630,10 +630,10 @@ class BMeanPlot(GNUPlot):
         
         for tls in self.cpartition.iter_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
             if self.tls_group_titles:
-                title = 'title "%s-%s TLS"' % (tls["frag_id1"], tls["frag_id2"])
+                title = 'title "%s-%s TLS"' % (tls.frag_id1, tls.frag_id2)
             else:
                 title = 'notitle'
                 
@@ -703,7 +703,7 @@ class RMSDPlot(GNUPlot):
                 cols[1] = "%6.2f" % (CMTX1[0,j])
 
             for itls, tls in self.cpartition.enumerate_tls_segments():
-                segment = tls["segment"]
+                segment = tls.segment
                 if frag in segment:
                     cols[itls+2] = "%6.2f" % (CMTX[itls,j])
                     break
@@ -724,8 +724,8 @@ class RMSDPlot(GNUPlot):
 
         ## Gnuplot Script
         script = _RMSD_PLOT_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.tls_list[0]["frag_id1"])
-        script = script.replace("<xrng2>", self.cpartition.tls_list[-1]["frag_id2"])
+        script = script.replace("<xrng1>", self.cpartition.tls_list[0].frag_id1)
+        script = script.replace("<xrng2>", self.cpartition.tls_list[-1].frag_id2)
         script = script.replace("<title>", "TLS Model RMSD per Residue ")
 
         ## line style
@@ -737,9 +737,9 @@ class RMSDPlot(GNUPlot):
         ls = 1
         for itls, tls in self.cpartition.enumerate_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls["color"]["rgbs"])
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
-            title = 'title "%s-%s TLS"' % (tls["frag_id1"], tls["frag_id2"])
+            title = 'title "%s-%s TLS"' % (tls.frag_id1, tls.frag_id2)
             line_titles.append(title)
 
         if self.cpartition.ntls > 1:

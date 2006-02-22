@@ -136,7 +136,7 @@ class TLSConformationPredctionHypothosis(object):
     def calc_superposition(self, tls):
         plist = []
         msd = 0.0
-        segment = tls["segment"]
+        segment = tls.segment
 
         for frag1 in segment.iter_fragments():
             try:
@@ -154,27 +154,26 @@ class TLSConformationPredctionHypothosis(object):
                 msd += numpy.dot(d,d)
                     
         rmsd_pre_alignment = math.sqrt(msd / len(plist))
-        tls["rmsd_pre_alignment"] = rmsd_pre_alignment
+        tls.rmsd_pre_alignment = rmsd_pre_alignment
 
         sresult = Superposition.SuperimposePositions(plist)
-        tls["sresult"] = sresult
+        tls.sresult = sresult
 
         rotation = math.degrees(2.0 * math.acos(sresult.Q[0]))
         if rotation > 180.0:
             rotation = 360.0 - rotation
 
-        fragstr = "%s:%s-%s" % (self.chain.chain_id, tls["frag_id1"], tls["frag_id2"])
+        fragstr = "%s:%s-%s" % (self.chain.chain_id, tls.frag_id1, tls.frag_id2)
         print "TLS Group::%20s  Num Atoms::%4d  RMSD PRE ALIGN::%6.2f  RMSD::%6.2f  TRANSORM ROTATION::%6.2f" % (
             fragstr, len(plist), rmsd_pre_alignment, sresult.rmsd, rotation)
 
         ## screw displacement vector
         vscrew = AtomMath.normalize(numpy.array([sresult.Q[1],sresult.Q[2],sresult.Q[3]], float))
         print "superposition rotation vector: ",vscrew
-        tls["superposition_vscrew"] = vscrew * rotation
+        tls.superposition_vscrew = vscrew * rotation
 
         ## fit the isotropic TLS model to the group
-        tls_group = tls["tls_group"]
-        evals, evecs = numpy.linalg.eigenvectors(tls_group.itls_L)
+        evals, evecs = numpy.linalg.eigenvectors(tls.tls_group.itls_L)
 
         for i in range(3):
             eval = evals[i]

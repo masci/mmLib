@@ -15,8 +15,6 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 
-from mmLib import FileIO
-
 import const
 import conf
 
@@ -24,13 +22,59 @@ import conf
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 STYLE_SHEET = """
-BODY { background-color:white;margin-left:5%;margin-right:5%;border-left:5%;border-right:5%;margin-top:2%;border-top:2%; }
-.step_title { line-height:2.0em;font-size:large }
-.submit_table { padding:10px;border-width:thin;border-color:blue;border-style:solid;background-color:#eeeeee; }
-.inner_table { font-size:small;width:90%;padding:10px;border-width:thin;border-color:black;border-style:solid;background-color:#dddddd; }
-.inner_title { background-color:#ccccff; line-height:2.0em; }
-.ninner_table { font-size:small;width:95%;padding:2%;border-width:thin;
-                border-color:#aaaaaa;border-style:solid;background-color:#eeeeee }
+BODY {
+  background-color:white;
+  margin-left:5%;
+  margin-right:5%;
+  border-left:5%;
+  border-right:5%;
+  margin-top:2%;
+  border-top:2%; }
+
+.step_title {
+  line-height:2.0em;
+  font-size:large }
+  
+.submit_table {
+  padding:10px;
+  border-width:thin;
+  border-color:blue;
+  border-style:solid;
+  background-color:#eeeeee; }
+  
+.inner_table {
+  font-size:small;
+  width:90%;
+  padding:10px;
+  border-width:thin;
+  border-color:black;
+  border-style:solid;
+  background-color:#dddddd; }
+
+.inner_title {
+  background-color:#ccccff;
+  line-height:2.0em;
+}
+
+.ninner_table {
+  font-size:small;
+  width:95%;
+  padding:2%;
+  border-width:thin;
+  border-color:#aaaaaa;
+  border-style:solid;
+  background-color:#eeeeee; }
+
+.perror {
+  font-size:medium;
+  width:60%;
+  padding:10px;
+  border-width:thin;
+  border-color:#ff0000;
+  border-style:solid;
+  background-color:#ffaaaa;
+ }
+              
 """
 
 
@@ -622,7 +666,7 @@ def extract_job_edit_form(form, webtlsmdd):
         return False
 
     job_id = check_job_id(form, webtlsmdd)
-    if job_id==None:
+    if job_id == None:
         return False
 
     if form.has_key("user"):
@@ -686,28 +730,9 @@ def extract_job_edit_form(form, webtlsmdd):
         if plot_format in ["PNG", "SVG"]:
             webtlsmdd.job_data_set(job_id, "plot_format", plot_format)
 
-
     return True
 
 
-def remove_job(webtlsmdd, job_id):
-    """Removes job from database and deletes working directory and
-    contents.
-    """
-    job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
-
-    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
-
-        for root, dirs, files in os.walk(job_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-
-        os.rmdir(job_dir)
-
-    webtlsmdd.job_delete(job_id)
-         
 
 class Page(object):
     def __init__(self, form):
@@ -748,17 +773,18 @@ class ErrorPage(Page):
     
     def html_page(self):
         title = 'TLSMD: Error'
-        
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
-        x += html_nav_bar()
-        x += '<br>'
-        x += '<center><h3>A Error Occured</h3></center>'
-        if self.text!=None:
-            x += '<pre>%s</pre>' % (self.text)
-        x += self.html_foot()
-        return x
+
+        l = [self.html_head(title),
+             html_title(title),
+             html_nav_bar(),
+             '<br>',
+             '<center><p class="perror">A Error Occured<br>' ]
+
+        if self.text != None:
+            l.append('<pre>%s</pre>' % (self.text))
+
+        l.append(self.html_foot())
+        return "".join(l)
 
 
 class QueuePage(Page):
@@ -774,7 +800,7 @@ class QueuePage(Page):
             code = open(conf.ADMIN_PASSWORD_FILE, "r").read().strip()
 	except IOError:
             return False
-        return code==passcode
+        return code == passcode
 
     def rcsb_href(self, struct_id):
         if struct_id.lower()=="xxxx":
@@ -949,7 +975,7 @@ class QueuePage(Page):
     def html_queued_job_table(self, job_list):
         queued_list = []
         for jdict in job_list:
-            if jdict.get("state")=="queued":
+            if jdict.get("state") == "queued":
                 queued_list.append(jdict)
 
         x  = ''
@@ -973,7 +999,7 @@ class QueuePage(Page):
                                   
             x += '</tr>'
 
-        if len(queued_list)==0:
+        if len(queued_list) == 0:
 	    x += '<tr>'
 	    x += '<td colspan="4" align="center">'
 	    x += 'No Jobs Queued'
@@ -987,7 +1013,7 @@ class QueuePage(Page):
     def html_completed_job_table(self, job_list):
         completed_list = []
         for jdict in job_list:
-            if jdict["state"] in ["completed", "defunct"]:
+            if jdict.get("state") in ["completed", "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1014,7 +1040,7 @@ class QueuePage(Page):
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
             l.append('<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX"))))
-            l.append('<td>%s</td>' % (jdict["state"]))
+            l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
 
             if jdict.has_key("run_end_time") and jdict.has_key("run_start_time"):
@@ -1035,7 +1061,7 @@ class QueuePage(Page):
             if jdict.get("state") not in ["queued", "running", "completed"]:
                 limbo_list.append(jdict)
 
-        if len(limbo_list)==0:
+        if len(limbo_list) == 0:
             return None
 
         x  = ''
@@ -1054,7 +1080,7 @@ class QueuePage(Page):
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
-            x += '<td>%s</td>' % (jdict["state"])
+            x += '<td>%s</td>' % (jdict.get("state"))
             x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
                                   
             x += '</tr>'
@@ -1071,7 +1097,7 @@ class ExploreJobPage(Page):
 	    title = 'TLSMD: Explore Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
-	    x += '<center><h3>ERROR: Invalid Job ID</h3></center>'
+	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
 	    x += self.html_foot()
 	    return x
 	    
@@ -1094,7 +1120,7 @@ class AdminJobPage(Page):
 	    title = 'TLSMD: View Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
-	    x += '<center><h3>ERROR: Invalid Job ID</h3></center>'
+	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
 	    x += self.html_foot()
 	    return x
         
@@ -1106,7 +1132,7 @@ class AdminJobPage(Page):
 
         x += html_nav_bar()
 
-        if self.form.has_key("submit") and self.form["submit"].value=="Remove Job":
+        if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
         else:
             x += self.edit(job_id)
@@ -1120,7 +1146,7 @@ class AdminJobPage(Page):
         ## if the job is not in the "queued" state, then it is not
         ## safe to edit
         state = webtlsmdd.job_data_get(job_id, "state")
-        if state=="queued":
+        if state == "queued":
             extract_job_edit_form(self.form, webtlsmdd)
 
         ## get the state dictionary for the entire job
@@ -1128,7 +1154,7 @@ class AdminJobPage(Page):
         fdict["page"] = "admin"
         fdict["removebutton"] = True
             
-        if state=="running" or state=="completed":
+        if state == "running" or state == "completed":
             x += html_job_nav_bar(webtlsmdd, job_id)
             x += html_job_info_table(fdict)
         else:
@@ -1137,7 +1163,7 @@ class AdminJobPage(Page):
         return x
 
     def remove(self, job_id):
-        remove_job(webtlsmdd, job_id)
+        webtlsmdd.remove_job(job_id)
 
         x  = ''
         x += '<center>'
@@ -1196,170 +1222,55 @@ class Submit2Page(Page):
     def html_page(self):        
         title = 'TLSMD: Start a New Job'
         
-        x  = ''
-        x += self.html_head(title)
-        x += html_title(title)
+        l = [self.html_head(title),
+             html_title(title) ]
 
         try:
             job_id = self.prepare_submission()
         except SubmissionException, err:
-             x += html_nav_bar()
-             x += '<center><h3>ERROR:%s</h3></center>' % (err.html)
+             l.append(html_nav_bar())
+             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err.html))
         else:            
-            x += self.job_edit_form(job_id)
+            l.append(self.job_edit_form(job_id))
 
-        x += self.html_foot()
-        return x
+        l.append(self.html_foot())
+        return "".join(l)
 
-    def job_edit_form(self, job_id, show_warnings=False):
+    def job_edit_form(self, job_id, show_warnings = False):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "submit3"
-        x = html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
-        return x
-
-    def generate_security_code(self):
-        l = list(5 * string.ascii_letters) 
-        random.shuffle(l)
-	code = "".join(random.sample(l,8)) 
-	return code
+        return html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
 
     def prepare_submission(self):
-        if self.form.has_key("pdbfile")==False or self.form["pdbfile"].file==None:
+        if self.form.has_key("pdbfile") == False or self.form["pdbfile"].file == None:
             raise SubmissionException("No PDB file uploaded")
-	
-        ## make working directory
-        try:
-            os.chdir(conf.TLSMD_WORK_DIR)
-        except os.error, err:
-            raise SubmissionException('<p>Cannot change to working directory: %s</p>' % (str(err)))
 
-        job_id = webtlsmdd.job_new(self.generate_security_code())
-        os.umask(022)
-        try:
-            os.mkdir(job_id)
-        except os.error, err:
-            webtlsmdd.job_delete(job_id)
-            raise SubmissionException('<p>Cannot make directory: %s</p>' % (str(err)))
-
-        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-        os.chdir(job_dir)
-        webtlsmdd.job_data_set(job_id, "job_dir", job_dir)
-
+        ## allocate a new JobID
+        job_id = webtlsmdd.job_new()
+        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+        webtlsmdd.job_data_set(job_id, "ip_addr", ip_addr)
+        
         ## save PDB file
-        pdb_filename = "struct.pdb"
-
-        num_lines = 0
         infil = self.form["pdbfile"].file
-        outfil = open(pdb_filename,"w")
+        line_list = []
         while True:
             ln = infil.readline()
             if not ln:
                 break
-            outfil.write(ln)
-            num_lines += 1
-        outfil.close()    
+            line_list.append(ln)
 
         ## error out if there weren't many lines
-        if num_lines<10:
-            webtlsmdd.job_delete(job_id)
-            raise SubmissionException('<p>Only Recieved %d lines</p>' % (num_lines))
+        if len(line_list) < 10:
+            webtlsmdd.remove_job(job_id)
+            raise SubmissionException('Only Recieved %d lines' % (len(line_list)))
 
-        webtlsmdd.job_data_set(job_id, "pdb_filename", pdb_filename)
+        ## pass the PDB file to the application server
+        result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary("".join(line_list)))
+        if result != "":
+            raise SubmissionException(result)
 
-        job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
-        webtlsmdd.job_data_set(job_id, "job_url", job_url)
+        return job_id
 
-        log_url = "%s/log.txt" % (job_url)
-        webtlsmdd.job_data_set(job_id, "log_url", log_url)
-
-        analysis_dir      = "%s/ANALYSIS" % (job_dir)
-        analysis_base_url = "%s/ANALYSIS" % (job_url)
-        analysis_url      = "%s/ANALYSIS/index.html" % (job_url)
-        webtlsmdd.job_data_set(job_id, "analysis_dir", analysis_dir)
-        webtlsmdd.job_data_set(job_id, "analysis_base_url", analysis_base_url)
-        webtlsmdd.job_data_set(job_id, "analysis_url", analysis_url) 
-
-        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        webtlsmdd.job_data_set(job_id, "ip_addr", ip_addr)
-
-        ## submission time and initial state
-        webtlsmdd.job_data_set(job_id, "state", "submit1")
-        webtlsmdd.job_data_set(job_id, "submit_time", time.time())
-
-        ## now load the structure and build the submission form
-        struct = FileIO.LoadStructure(fil = pdb_filename)
-	if not struct.structure_id:
-	    struct.structure_id = "XXXX"
-
-        webtlsmdd.job_data_set(job_id, "structure_id", struct.structure_id)
-
-        ## Select Chains for Analysis
-        num_atoms          = 0
-        num_aniso_atoms    = 0
-        largest_chain_seen = 0
-
-        chains = []
-
-        for chain in struct.iter_chains():
-            naa = chain.count_amino_acids()
-            if naa<10:
-                continue
-
-            largest_chain_seen = max(naa, largest_chain_seen)
-
-            for atm in chain.iter_all_atoms():
-                num_atoms += 1
-                if atm.U!=None:
-                    num_aniso_atoms += 1
-
-            ## form name
-            cb_name = 'CHAIN%s' % (chain.chain_id)
-            
-            ## create chain description label cb_desc
-            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, chain.count_amino_acids())
-
-            listx = []
-            i = 0
-            for frag in chain.iter_fragments():
-                i += 1
-                if i>5: break
-                listx.append(frag.res_name)
-            cb_preview = string.join(listx, " ")
-            
-            cdict = {}
-            chains.append(cdict)
-            cdict["chain_id"] = chain.chain_id
-            cdict["length"]   = naa
-            cdict["name"]     = cb_name
-            cdict["desc"]     = cb_desc
-            cdict["preview"]  = cb_preview
-            cdict["selected"] = True
-
-        if largest_chain_seen>1700:
-            webtlsmdd.job_delete(job_id)
-	    strx = '<p>Your submitted structure contained a chain exceeding the 1700 residue limit</p>'
-            raise SubmissionException(strx)
-
-        webtlsmdd.job_data_set(job_id, "chains", chains)
-
-        ## defaults
-        webtlsmdd.job_data_set(job_id, "user", "")
-        webtlsmdd.job_data_set(job_id, "passwd", "")
-        webtlsmdd.job_data_set(job_id, "email", "")
-        webtlsmdd.job_data_set(job_id, "comment", "")
-        webtlsmdd.job_data_set(job_id, "private_job", False)
-        webtlsmdd.job_data_set(job_id, "plot_format", "PNG")
-
-        aniso_ratio = float(num_aniso_atoms)/float(num_atoms)
-        if aniso_ratio>0.90:
-            webtlsmdd.job_data_set(job_id, "tls_model", "ANISO")
-        else:
-            webtlsmdd.job_data_set(job_id, "tls_model", "ISOT")
-            
-        webtlsmdd.job_data_set(job_id, "weight", "")
-        webtlsmdd.job_data_set(job_id, "include_atoms", "ALL")
-
-	return job_id
 
 SUBMIT3_CAP1 = """\
 You may monitor the progress of your TLSMD submission by its Job ID
@@ -1376,7 +1287,7 @@ class Submit3Page(Page):
             job_id = self.complete_submission()
 	except SubmissionException, err:
 	    title = 'TLSMD: Job Submission Failed'
-            html  = '<center><h3>ERROR: %s</h3></center>' % (err.html)
+            html  = '<center><p class="perror">ERROR:<br>%s</p></center>' % (err.html)
 	else:
             title = 'TLSMD: Job Submission Succeeded'
 
@@ -1418,25 +1329,25 @@ class Submit3Page(Page):
 
         ## get job_id; verify job exists
         job_id = check_job_id(self.form, webtlsmdd)
-        if job_id==None:
+        if job_id == None:
             raise SubmissionException('Submission Error')
 
         ## make sure the job is in the right state to be submitted
 	state = webtlsmdd.job_data_get(job_id, "state")
-	if state=="queued":
+	if state == "queued":
 	    raise SubmissionException("Your job is already queued")
-    	elif state=="running":
+    	elif state == "running":
 	    raise SubmissionException("Your job is already running")
 
         ## verify the submission IP address
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
         ip_addr_verify = webtlsmdd.job_data_get(job_id, "ip_addr")
-        if ip_addr!=ip_addr_verify:
+        if ip_addr != ip_addr_verify:
             raise SubmissionException('Submission IP Address Mismatch')
 
         ## completely remove the job
-        if self.form["submit"].value=="Cancel Job Submission":
-            remove_job(webtlsmdd, job_id)
+        if self.form["submit"].value == "Cancel Job Submission":
+            webtlsmdd.remove_job(job_id)
             raise SubmissionException('You cancelled the job')
 
         extract_job_edit_form(self.form, webtlsmdd)
@@ -1454,22 +1365,22 @@ def main():
 
     if form.has_key("page"):
 
-        if form["page"].value=="explore":
+        if form["page"].value == "explore":
             page = ExploreJobPage(form)
 
-        elif form["page"].value=="admin":
+        elif form["page"].value == "admin":
             page = AdminJobPage(form)
 
-        elif form["page"].value=="submit1":
+        elif form["page"].value == "submit1":
             page = Submit1Page(form)
 
-        elif form["page"].value=="submit2":
+        elif form["page"].value == "submit2":
             page = Submit2Page(form)
 
-        elif form["page"].value=="submit3":
+        elif form["page"].value == "submit3":
             page = Submit3Page(form)
 
-    if page==None:
+    if page == None:
         page = QueuePage(form)
 
     try:
