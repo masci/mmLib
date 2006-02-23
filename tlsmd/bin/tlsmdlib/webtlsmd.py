@@ -66,15 +66,37 @@ BODY {
   background-color:#eeeeee; }
 
 .perror {
-  font-size:medium;
-  width:60%;
+  text-align: left;
+  font-size:x-small;
+  width:70%;
   padding:10px;
   border-width:thin;
   border-color:#ff0000;
   border-style:solid;
   background-color:#ffaaaa;
  }
-              
+
+.status_table {
+  background-color:#eeeeee;
+  font-size:x-small;
+  border-width:thin;
+  border-color:#aaaaaa;
+  border-style:solid;
+}
+
+.status_table_head {
+  background-color:#aaaadd;
+}
+
+.status_table_row1 {
+  background-color:#dddddd;
+}
+
+.status_table_row2 {
+  background-color:#eeeeee;
+}
+
+  
 """
 
 
@@ -142,13 +164,13 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
     """
-    analysis_dir = webtlsmdd.job_data_get(job_id, "analysis_dir")
+    analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
     analysis_index = os.path.join(analysis_dir, "index.html")
-    analysis_url = webtlsmdd.job_data_get(job_id, "analysis_url")
+    analysis_url = webtlsmdd.job_get_analysis_url(job_id)
 
-    job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
     logfile = os.path.join(job_dir, "log.txt")
-    log_url = webtlsmdd.job_data_get(job_id, "log_url")
+    log_url = webtlsmdd.job_get_log_url(job_id)
 
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
@@ -522,22 +544,22 @@ def html_job_info_table(fdict):
     x += '<td><b>%s</b></td></tr>' % (date)
 
     x += '<tr><td align="right">Processing Start Date: </td>'
-    if fdict.has_key("run_start_time"):
-        date = timestring(fdict["run_start_time"])
+    if fdict.has_key("run_time_begin"):
+        date = timestring(fdict["run_time_begin"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
 
     x += '<tr><td align="right">Processing End Date: </td>'
-    if fdict.has_key("run_end_time"):
-        date = timestring(fdict["run_end_time"])
+    if fdict.has_key("run_time_end"):
+        date = timestring(fdict["run_time_end"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
 
     x += '<tr><td align="right">Processing Time(HH:MM): </td>'
-    if fdict.has_key("run_end_time") and fdict.has_key("run_start_time"):
-        hours = timediffstring(fdict["run_start_time"], fdict["run_end_time"])
+    if fdict.has_key("run_time_end") and fdict.has_key("run_time_begin"):
+        hours = timediffstring(fdict["run_time_begin"], fdict["run_time_end"])
     else:
         hours = "---"
     x += '<td><b>%s</b></td></tr>' % (hours)
@@ -672,63 +694,53 @@ def extract_job_edit_form(form, webtlsmdd):
     if form.has_key("user"):
         user = form["user"].value.strip()
         if vet_data(user, 10):
-            webtlsmdd.job_data_set(job_id, "user", user)
-
-    if form.has_key("passwd"):
-        passwd = form["passwd"].value
-        if len(passwd)<10:
-            webtlsmdd.job_data_set(job_id, "passwd", passwd)
+            webtlsmdd.job_set_user(job_id, user)
 
     if form.has_key("private_job"):
-        webtlsmdd.job_data_set(job_id, "private_job", True)
+        webtlsmdd.job_set_private_job(job_id, True)
 
     if form.has_key("user_name"):
         user_name = form["user_name"].value.strip()
         user_name = user_name[:100]
-        webtlsmdd.job_data_set(job_id, "user_name", user_name)
+        webtlsmdd.job_set_user_name(job_id, user_name)
             
     if form.has_key("email"):
         email = form["email"].value.strip()
         if vet_email(email):
-            webtlsmdd.job_data_set(job_id, "email", email)
+            webtlsmdd.job_set_email(job_id, email)
 
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()
         if vet_data(structure_id, 4):
-            webtlsmdd.job_data_set(job_id, "structure_id", structure_id)
+            webtlsmdd.job_set_structure_id(job_id, structure_id)
 
-    if form.has_key("comment"):
-        comment = form["comment"].value.strip()
-        if vet_comment(comment):
-            webtlsmdd.job_data_set(job_id, "comment", comment)
-
-    chains = webtlsmdd.job_data_get(job_id, "chains")
+    chains = webtlsmdd.job_get_chains(job_id)
     for cdict in chains:
         if form.has_key(cdict["name"]):
             cdict["selected"] = True
         else:
             cdict["selected"] = False
-    webtlsmdd.job_data_set(job_id, "chains", chains)
+    webtlsmdd.job_set_chains(job_id, chains)
 
     if form.has_key("tls_model"):
         tls_model = form["tls_model"].value.strip()
         if tls_model in ["ISOT", "ANISO"]:
-            webtlsmdd.job_data_set(job_id, "tls_model", tls_model)
+            webtlsmdd.job_set_tls_model(job_id, tls_model)
 
     if form.has_key("weight"):
         weight = form["weight"].value.strip()
         if weight in ["NONE", "IUISO"]:
-            webtlsmdd.job_data_set(job_id, "weight", weight)
+            webtlsmdd.job_set_weight_model(job_id, weight)
 
     if form.has_key("include_atoms"):
         include_atoms = form["include_atoms"].value.strip()
         if include_atoms in ["ALL", "MAINCHAIN"]:
-            webtlsmdd.job_data_set(job_id, "include_atoms", include_atoms)
+            webtlsmdd.job_set_include_atoms(job_id, include_atoms)
 
     if form.has_key("plot_format"):
         plot_format = form["plot_format"].value.strip()
         if plot_format in ["PNG", "SVG"]:
-            webtlsmdd.job_data_set(job_id, "plot_format", plot_format)
+            webtlsmdd.job_set_plot_format(job_id, plot_format)
 
     return True
 
@@ -778,10 +790,12 @@ class ErrorPage(Page):
              html_title(title),
              html_nav_bar(),
              '<br>',
-             '<center><p class="perror">A Error Occured<br>' ]
-
+             '<center><p class="perror">Error<br>' ]
+        
         if self.text != None:
-            l.append('<pre>%s</pre>' % (self.text))
+            l.append(self.text)
+
+        l.append('</p></center>')
 
         l.append(self.html_foot())
         return "".join(l)
@@ -897,7 +911,7 @@ class QueuePage(Page):
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
     
     def chain_size_string(self, jdict):
-        if jdict.has_key("chains")==False:
+        if jdict.has_key("chains") == False:
             return "---"
 
         listx = []
@@ -924,7 +938,7 @@ class QueuePage(Page):
         ## get the job dictionary of the running job
         run_jdict = None
         for jdict in job_list:
-            if jdict.get("state")=="running":
+            if jdict.get("state") == "running":
                 run_jdict = jdict
                 break
 
@@ -933,14 +947,13 @@ class QueuePage(Page):
 
         x  = '<center>'
 	x += '<b>Running Jobs</b>'
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">'
-        x += '<tr style="background-color:#bbbbbb">'
+        x += '<table border="0" cellpadding="3" width="100%" class="status_table">'
+        x += '<tr class="status_table_head">'
         x += '<th>Job ID</th>'
-        x += '<th>Struct ID</th>'
+        x += '<th>Structure ID</th>'
 	x += '<th>Chain:Num Res</th>'
         x += '<th>Submission Date</th>'
-        x += '<th>Currently Processing</th>'
-        x += '<th>Processing Time<br>Used (HH:MM.SS)</th>'
+        x += '<th>Runing Time (HH:MM.SS)</th>'
         x += '</tr>'
 
         if jdict!=None:
@@ -949,13 +962,10 @@ class QueuePage(Page):
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
 	    x += '<td>%s</td>' % (self.chain_size_string(jdict))
-            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
+            x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
 
-            tls_seg = 'Chain <b>%s</b> %s%% Complete' % (jdict.get("run_chain_id", ""), jdict.get("pcomplete", ""))
-            x += '<td>%s</td>' % (tls_seg)
-
-            if jdict.has_key("run_start_time"):
-                 hours = timediffstring(jdict["run_start_time"], time.time())
+            if jdict.has_key("run_time_begin"):
+                 hours = timediffstring(jdict["run_time_begin"], time.time())
             else:
                  hours = "---"
             x += '<td align="right">%s</td>' % (hours)
@@ -963,7 +973,7 @@ class QueuePage(Page):
             x += '</tr>'
         else:
 	    x += '<tr>'
-	    x += '<td colspan="6" align="center">'
+	    x += '<td colspan="5" align="center">'
 	    x += 'No Jobs Running'
 	    x += '</td>'
 	    x += '</tr>'
@@ -978,37 +988,40 @@ class QueuePage(Page):
             if jdict.get("state") == "queued":
                 queued_list.append(jdict)
 
-        x  = ''
-        x += '<center>'
-	x += '<b>%d Queued Jobs</b>' % (len(queued_list))
-        x += '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">'
-        x += '<tr style="background-color:#bbbbbb">'
-        x += '<th>Job ID</th>'
-        x += '<th>Struct ID</th>'
-	x += '<th>Chain:Num Res</th>'
-        x += '<th>Submission Date</th>'
-        x += '</tr>'
+        l = ['<center>',
+             '<b>%d Queued Jobs</b>' % (len(queued_list)),
+             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<tr class="status_table_head">',
+             '<th>Job ID</th>',
+             '<th>Struct ID</th>',
+             '<th>Chain:Num Res</th>',
+             '<th>Submission Date</th>',
+             '</tr>']
 
+        row1 = True
         for jdict in queued_list:
-            x += '<tr>'
-            
-            x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
-            x += '<td>%s</td>' % (self.chain_size_string(jdict))	
-            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
-                                  
-            x += '</tr>'
+            if row1:
+                l.append('<tr class="status_table_row1">')
+            else:
+                l.append('<tr class="status_table_row2">')
+            row1 = not row1
+
+            l += ['<td>%s</td>' % (self.explore_href(jdict)),
+                  '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX"))),
+                  '<td>%s</td>' % (self.chain_size_string(jdict)),
+                  '<td>%s</td>' % (timestring(jdict["submit_time"])),
+                  '</tr>' ]
 
         if len(queued_list) == 0:
-	    x += '<tr>'
-	    x += '<td colspan="4" align="center">'
-	    x += 'No Jobs Queued'
-	    x += '</td>'
-	    x += '</tr>'
+	    l += ['<tr>',
+                  '<td colspan="4" align="center">',
+                  'No Jobs Queued',
+                  '</td>',
+                  '</tr>']
 
-        x += '</table>'
-        x += '</center>'
-        return x
+        l.append('</table></center>')
+        
+        return "".join(l)
 
     def html_completed_job_table(self, job_list):
         completed_list = []
@@ -1020,31 +1033,30 @@ class QueuePage(Page):
 
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
-             '<table border="0" cellpadding="3" width="100%" style="background-color:#eeeeee; font-size:x-small">',
-             '<tr style="background-color:#bbbbbb">',
+             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<tr class="status_table_head">',
              '<th>Job ID</th>',
              '<th>Struct ID</th>',
              '<th>Status</th>',
              '<th>Submission Date</th>',
-             '<th>Processing Time<br> Used (HH:MM.SS)</th>',
+             '<th>Processing Time (HH:MM.SS)</th>',
              '</tr>']
 
-        alt_color = True
-
+        row1 = True
         for jdict in completed_list:
-            if alt_color:
-                l.append('<tr style="background-color:#ddddee">')
+            if row1:
+                l.append('<tr class="status_table_row1">')
             else:
-                l.append('<tr>')
-            alt_color = not alt_color
+                l.append('<tr class="status_table_row2">')
+            row1 = not row1
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
             l.append('<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX"))))
             l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
 
-            if jdict.has_key("run_end_time") and jdict.has_key("run_start_time"):
-                hours = timediffstring(jdict["run_start_time"], jdict["run_end_time"])
+            if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
+                hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
 	    else:
 		hours = "---"
             l.append('<td align="right">%s</td>' % (hours))
@@ -1067,8 +1079,8 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
 	x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="0" width="100%" style="background-color:#eeeeee; font-size:x-small">'
-        x += '<tr style="background-color:#bbbbbb">'
+        x += '<table border="0" width="100%" class="status_table">'
+        x += '<tr class="status_table_head">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'
         x += '<th>State</th>'
@@ -1081,7 +1093,7 @@ class QueuePage(Page):
             x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
             x += '<td>%s</td>' % (jdict.get("state"))
-            x += '<td>%s</td>' % (timestring(jdict["submit_time"]))
+            x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
                                   
             x += '</tr>'
 
@@ -1116,7 +1128,7 @@ class ExploreJobPage(Page):
 class AdminJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
-	if job_id==None:
+	if job_id == None:
 	    title = 'TLSMD: View Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
@@ -1145,7 +1157,7 @@ class AdminJobPage(Page):
 
         ## if the job is not in the "queued" state, then it is not
         ## safe to edit
-        state = webtlsmdd.job_data_get(job_id, "state")
+        state = webtlsmdd.job_get_state(job_id)
         if state == "queued":
             extract_job_edit_form(self.form, webtlsmdd)
 
@@ -1248,7 +1260,7 @@ class Submit2Page(Page):
         ## allocate a new JobID
         job_id = webtlsmdd.job_new()
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        webtlsmdd.job_data_set(job_id, "ip_addr", ip_addr)
+        webtlsmdd.job_set_remote_addr(job_id, ip_addr)
         
         ## save PDB file
         infil = self.form["pdbfile"].file
@@ -1262,7 +1274,7 @@ class Submit2Page(Page):
         ## error out if there weren't many lines
         if len(line_list) < 10:
             webtlsmdd.remove_job(job_id)
-            raise SubmissionException('Only Recieved %d lines' % (len(line_list)))
+            raise SubmissionException('Only Recieved %d lines of upload' % (len(line_list)))
 
         ## pass the PDB file to the application server
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary("".join(line_list)))
@@ -1333,7 +1345,7 @@ class Submit3Page(Page):
             raise SubmissionException('Submission Error')
 
         ## make sure the job is in the right state to be submitted
-	state = webtlsmdd.job_data_get(job_id, "state")
+	state = webtlsmdd.job_get_state(job_id)
 	if state == "queued":
 	    raise SubmissionException("Your job is already queued")
     	elif state == "running":
@@ -1341,7 +1353,7 @@ class Submit3Page(Page):
 
         ## verify the submission IP address
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        ip_addr_verify = webtlsmdd.job_data_get(job_id, "ip_addr")
+        ip_addr_verify = webtlsmdd.job_get_remote_addr(job_id)
         if ip_addr != ip_addr_verify:
             raise SubmissionException('Submission IP Address Mismatch')
 
@@ -1354,7 +1366,7 @@ class Submit3Page(Page):
 
         ## if everything with the form is okay, then change
         ## the job state to queued
-        webtlsmdd.job_data_set(job_id, "state", "queued")
+        webtlsmdd.job_set_state(job_id, "queued")
 
         return job_id
 
@@ -1385,9 +1397,13 @@ def main():
 
     try:
         print page.html_page()
-    except xmlrpclib.Fault, err:
-        page = ErrorPage(form, "xmlrpclib.Fault: " +str(err))
+    except xmlrpclib.Fault, fault:
+        fault_html = "xmlrpclib.Fault:<br>fault code: %s<br>fault string: %s" % (
+            fault.faultCode, fault.faultString.replace("\n","<br>"))
+
+        page = ErrorPage(form, fault_html)
         print page.html_page()
+
     except socket.error, err:
         page = ErrorPage(form, "socket.error: " + str(err))
         print page.html_page()

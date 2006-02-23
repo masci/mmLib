@@ -16,17 +16,17 @@ import cPickle
 import bsddb
 
 import xmlrpclib
+import SocketServer
 import SimpleXMLRPCServer
 
 from mmLib import FileIO
+from tlsmdlib import conf, const, tls_calcs
 
-from tlsmdlib import conf, const
 
 
-def debug(text):
-    return
-    open("debug.txt", "a").write(text)
-
+def fatal(text):
+    sys.stderr.write("[FATAL ERROR] %s\n" % (text))
+    raise SystemExit
 
 def generate_security_code(code_length = 8):
     """Generates a random 8
@@ -37,98 +37,86 @@ def generate_security_code(code_length = 8):
     return code
 
 
-class WebTLSMD_XMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
-    def handle_error(self, request, client_address):
-        print "error!"
-        TCPServer.handle_error(self, request, client_address)
+class WebTLSMD_XMLRPCServer(SocketServer.ForkingMixIn,
+                            SimpleXMLRPCServer.SimpleXMLRPCServer):
+    pass
 
 
-class WebTLSMDDaemon2(object):
+class JobDatabase(object):
     def __init__(self, db_file):
         self.db_file = db_file
         self.db = bsddb.hashopen(self.db_file, "c")
-        self.retrieve_globals()
 
-    def store_dict(self, dbkey, dictx):
+        if self.retrieve_globals() == None:
+            self.init_globals()
+
+    def __store_dict(self, dbkey, dictx):
         self.db[dbkey] = cPickle.dumps(dictx)
         self.db.sync()
     
-    def retrieve_dict(self, dbkey):
+    def __retrieve_dict(self, dbkey):
         try:
             data = self.db[dbkey]
         except KeyError:
             return None
         return cPickle.loads(data)
 
+    def init_globals(self):
+        gdict = {}
+        gdict["next_job_num"] = 1
+        self.store_globals(gdict)
+
     def retrieve_globals(self):
         """Retrieves the globals dictionary from the database or
         creates one and returns it if one does not exist.
         """
-        gdict = self.retrieve_dict("GLOBALS")
-
-        ## no global dictionary; create one which is consistent with
-        ## the TLSMD jobs in the database
-        if gdict == None:
-            gdict = {}
-
-            job_list = self.job_list()
-            if len(job_list) == 0:
-                gdict["next_job_num"] = 1
-            else:
-                jdict = job_list[-1]
-                job_id = jdict["job_id"]
-                job_num = int(job_id[5:])
-                gdict["next_job_num"] = job_num + 1
-
-            self.store_globals(gdict)
-
-        debug("DATABASE GLOBALS\n")
-	for key, value in gdict.items():
-	    debug("%20s : %s\n" % (key, value))
-
-        return gdict
+        return self.__retrieve_dict("GLOBALS")
 
     def store_globals(self, gdict):
-        self.store_dict("GLOBALS", gdict)
+        self.__store_dict("GLOBALS", gdict)
 
     def store_jdict(self, jdict):
-        dbkey = jdict["job_id"]
-        self.store_dict(jdict["job_id"], jdict)
+        job_id = jdict["job_id"]
+        assert job_id.startswith("TLSMD")
+        self.__store_dict(job_id, jdict)
     
     def retrieve_jdict(self, job_id):
-        jdict = self.retrieve_dict(job_id)
-        for key, val in jdict.items():
-            if val==None:
-                debug("ERROR: JDICT for %s has key/value %s:None" % (jdict["job_id"], str(key)))
-        return jdict
+        assert job_id.startswith("TLSMD")
+        return self.__retrieve_dict(job_id)
 
-    def job_list(self):
-        """Returns a ordered list of all jdicts in the database
+    def delete_jdict(self, job_id):
+        assert job_id.startswith("TLSMD")
+        if not self.db.has_key(job_id):
+            return False
+        del self.db[job_id]
+        self.db.sync()
+        return True
+
+    def job_exists(self, job_id):
+        return self.db.has_key(job_id)
+
+    def jdict_list(self):
+        """Returns a sorted list of all jdicts in the database
         """
-	debug("calling job_list\n")
-
         ## retrieve all jdicts from database and 
         listx = []
         for dbkey in self.db.keys():
             if dbkey.startswith("TLSMD"):
-                debug("retrieving %s\n" % (dbkey))
-
                 jdict = self.retrieve_jdict(dbkey)
-                debug(str(jdict))
 
                 job_id = jdict["job_id"]
-                job_nums = job_id[5:]
-		j = job_nums.find("_")
-		if j>0:
+
+                if jdict.has_key("job_num"):
+                    job_num = jdict["job_num"]
+                else:
+                    job_nums = job_id[5:]
+                    j = job_nums.find("_")
                     job_nums = job_nums[:j]
 	
-                debug("job num = %s\n" % (job_nums))
-	
-		try:
-                    job_num = int(job_nums)
-                except ValueError:
-                    debug("ERROR: unable to determine job number for JOBID %s\n" % (dbkey))
-		    continue
+                    try:
+                        job_num = int(job_nums)
+                    except ValueError:
+                        fatal("unable to determine job number for database key %s" % (dbkey))
 		    
                 listx.append((job_num, jdict))
 
@@ -138,7 +126,6 @@ class WebTLSMDDaemon2(object):
         for job_num, jdict in listx:
             job_list.append(jdict)
 
-	debug(str(job_list))
         return job_list
 
     def job_new(self):
@@ -154,33 +141,9 @@ class WebTLSMDDaemon2(object):
         ## create job dictionary
         jdict = {}
         jdict["job_id"] = job_id
+        jdict["job_num"] = job_num
 	self.store_jdict(jdict)
         return job_id
-
-    def job_exists(self, job_id):
-        return self.db.has_key(job_id)
-
-    def job_get_dict(self, job_id):
-        jdict = self.retrieve_jdict(job_id)
-        if jdict==None:
-            return False
-        return jdict
-    
-    def job_get_dict_index(self, i):
-        job_list = self.job_list()
-        try:
-            jdict = job_list[i]
-        except IndexError:
-            return False
-        return jdict
-
-    def job_delete(self, job_id):
-        if not self.db.has_key(job_id):
-            return False
-
-        del self.db[job_id]
-        self.db.sync()
-        return True
 
     def job_data_set(self, job_id, key, value):
         jdict = self.retrieve_jdict(job_id)
@@ -193,8 +156,31 @@ class WebTLSMDDaemon2(object):
     def job_data_get(self, job_id, key):
         jdict = self.retrieve_jdict(job_id)
         if jdict == None:
+            return None
+        return jdict.get(key)
+
+
+class WebTLSMDDaemon(object):
+    def __init__(self, db_file):
+        self.jobdb = JobDatabase(db_file)
+        
+
+    def job_list(self):
+        """Returns a ordered list of all jdicts in the database
+        """
+        return self.jobdb.jdict_list()
+
+    def job_new(self):
+        return self.jobdb.job_new()
+        
+    def job_exists(self, job_id):
+        return self.jobdb.job_exists(job_id)
+
+    def job_get_dict(self, job_id):
+        jdict = self.jobdb.retrieve_jdict(job_id)
+        if jdict == None:
             return False
-        return jdict.get(key, False)
+        return jdict
 
     def get_next_queued_job_id(self):
         job_list = self.job_list()
@@ -222,33 +208,33 @@ class WebTLSMDDaemon2(object):
         
         job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
         os.chdir(job_dir)
-        self.job_data_set(job_id, "job_dir", job_dir)
+        self.jobdb.job_data_set(job_id, "job_dir", job_dir)
 
         ## save PDB file
         pdb_filename = "struct.pdb"
-        self.job_data_set(job_id, "pdb_filename", pdb_filename)
+        self.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
         filobj = open(pdb_filename, "w")
         filobj.write(struct_bin.data)
         filobj.close()
         
         job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
-        self.job_data_set(job_id, "job_url", job_url)
+        self.jobdb.job_data_set(job_id, "job_url", job_url)
 
         log_url = "%s/log.txt" % (job_url)
-        self.job_data_set(job_id, "log_url", log_url)
+        self.jobdb.job_data_set(job_id, "log_url", log_url)
 
         analysis_dir = "%s/ANALYSIS" % (job_dir)
-        self.job_data_set(job_id, "analysis_dir", analysis_dir)
+        self.jobdb.job_data_set(job_id, "analysis_dir", analysis_dir)
 
         analysis_base_url = "%s/ANALYSIS" % (job_url)
-        self.job_data_set(job_id, "analysis_base_url", analysis_base_url)
+        self.jobdb.job_data_set(job_id, "analysis_base_url", analysis_base_url)
 
         analysis_url = "%s/ANALYSIS/index.html" % (job_url)
-        self.job_data_set(job_id, "analysis_url", analysis_url)
+        self.jobdb.job_data_set(job_id, "analysis_url", analysis_url)
 
         ## submission time and initial state
-        self.job_data_set(job_id, "state", "submit1")
-        self.job_data_set(job_id, "submit_time", time.time())
+        self.jobdb.job_data_set(job_id, "state", "submit1")
+        self.jobdb.job_data_set(job_id, "submit_time", time.time())
 
         ## now load the structure and build the submission form
         try:
@@ -258,7 +244,7 @@ class WebTLSMDDaemon2(object):
             
 	if not struct.structure_id:
 	    struct.structure_id = "XXXX"
-        self.job_data_set(job_id, "structure_id", struct.structure_id)
+        self.jobdb.job_data_set(job_id, "structure_id", struct.structure_id)
 
         ## Select Chains for Analysis
         num_atoms          = 0
@@ -306,35 +292,34 @@ class WebTLSMDDaemon2(object):
             self.remove_job(job_id)
 	    return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
 
-        self.job_data_set(job_id, "chains", chains)
+        self.jobdb.job_data_set(job_id, "chains", chains)
 
         ## defaults
-        self.job_data_set(job_id, "user", "")
-        self.job_data_set(job_id, "passwd", "")
-        self.job_data_set(job_id, "email", "")
-        self.job_data_set(job_id, "comment", "")
-        self.job_data_set(job_id, "private_job", False)
-        self.job_data_set(job_id, "plot_format", "PNG")
+        self.jobdb.job_data_set(job_id, "user", "")
+        self.jobdb.job_data_set(job_id, "passwd", "")
+        self.jobdb.job_data_set(job_id, "email", "")
+        self.jobdb.job_data_set(job_id, "comment", "")
+        self.jobdb.job_data_set(job_id, "private_job", False)
+        self.jobdb.job_data_set(job_id, "plot_format", "PNG")
 
         aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
         if aniso_ratio > 0.90:
-            self.job_data_set(job_id, "tls_model", "ANISO")
+            self.jobdb.job_data_set(job_id, "tls_model", "ANISO")
         else:
-            self.job_data_set(job_id, "tls_model", "ISOT")
+            self.jobdb.job_data_set(job_id, "tls_model", "ISOT")
             
-        self.job_data_set(job_id, "weight", "")
-        self.job_data_set(job_id, "include_atoms", "ALL")
+        self.jobdb.job_data_set(job_id, "weight", "")
+        self.jobdb.job_data_set(job_id, "include_atoms", "ALL")
 
 	return ""
 
     def remove_job(self, job_id):
         """Removes the job from both the database and working directory.
         """
-        if not self.job_exists(job_id):
+        if not self.jobdb.job_exists(job_id):
             return False
         
-        job_dir = self.job_data_get(job_id, "job_dir")
-
+        job_dir = self.job_get_job_dir(job_id)
         if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
 
             for root, dirs, files in os.walk(job_dir, topdown = False):
@@ -345,38 +330,201 @@ class WebTLSMDDaemon2(object):
 
             os.rmdir(job_dir)
 
-        self.job_delete(job_id)
+        self.jobdb.delete_jdict(job_id)
         return True
+
+    def job_set_remote_addr(self, job_id, remote_addr):
+        self.jobdb.job_data_set(job_id, "ip_addr", remote_addr)
+        return remote_addr
+    def job_get_remote_addr(self, job_id):
+        return self.jobdb.job_data_get(job_id, "ip_addr")
+
+    def job_set_state(self, job_id, state):
+        self.jobdb.job_data_set(job_id, "state", state)
+        return state
+    def job_get_state(self, job_id):
+        return self.jobdb.job_data_get(job_id, "state")
+
+    def job_get_analysis_dir(self, job_id):
+        return self.jobdb.job_data_get(job_id, "analysis_dir")
+
+    def job_get_analysis_url(self, job_id):
+        return self.jobdb.job_data_get(job_id, "analysis_url")
+
+    def job_get_analysis_base_url(self, job_id):
+        return self.jobdb.job_data_get(job_id, "analysis_base_url")
+
+    def job_get_job_dir(self, job_id):
+        return self.jobdb.job_data_get(job_id, "job_dir")
+
+    def job_get_log_url(self, job_id):
+        return self.jobdb.job_data_get(job_id, "log_url")
+
+    def job_set_chains(self, job_id, chains):
+        self.jobdb.job_data_set(job_id, "chains", chains)
+        return chains
+    def job_get_chains(self, job_id):
+        return self.jobdb.job_data_get(job_id, "chains")
+
+    def job_set_user(self, job_id, user):
+        self.jobdb.job_data_set(job_id, "user", user)
+        return user
+    def job_get_user(self, job_id):
+        return self.jobdb.job_data_get(job_id, "user")
+
+    def job_set_user_name(self, job_id, user_name):
+        self.jobdb.job_data_set(job_id, "user_name", user_name)
+        return user_name
+    def job_get_user_name(self, job_id):
+        return self.jobdb.job_data_get(job_id, "user_name")
+    
+    def job_set_email(self, job_id, email):
+        self.jobdb.job_data_set(job_id, "email", email)
+        return email
+    def job_get_email(self, job_id):
+        return self.jobdb.job_data_get(job_id, "email")
+    
+    def job_set_private_job(self, job_id, private_job):
+        self.jobdb.job_data_set(job_id, "private_job", private_job)
+        return private_job
+    def job_get_private_job(self, job_id):
+        return self.jobdb.job_data_get(job_id, "private_job")
+
+    def job_set_structure_id(self, job_id, structure_id):
+        self.jobdb.job_data_set(job_id, "structure_id", structure_id)
+        return structure_id
+    def job_get_structure_id(self, job_id):
+        return self.jobdb.job_data_get(job_id, "structure_id")
+
+    def job_set_tls_model(self, job_id, tls_model):
+        self.jobdb.job_data_set(job_id, "tls_model", tls_model)
+        return tls_model
+    def job_get_tls_model(self, job_id):
+        return self.jobdb.job_data_get(job_id, "tls_model")
+
+    def job_set_tls_model(self, job_id, tls_model):
+        self.jobdb.job_data_set(job_id, "tls_model", tls_model)
+        return tls_model
+    def job_get_tls_model(self, job_id):
+        return self.jobdb.job_data_get(job_id, "tls_model")
+
+    def job_set_weight_model(self, job_id, weight_model):
+        self.jobdb.job_data_set(job_id, "weight", weight_model)
+        return weight_model
+    def job_get_weight_model(self, job_id):
+        return self.jobdb.job_data_get(job_id, "weight")
+
+    def job_set_include_atoms(self, job_id, include_atoms):
+        self.jobdb.job_data_set(job_id, "include_atoms", include_atoms)
+        return include_atoms
+    def job_get_include_atoms(self, job_id):
+        return self.jobdb.job_data_get(job_id, "include_atoms")
+
+    def job_set_plot_format(self, job_id, plot_format):
+        self.jobdb.job_data_set(job_id, "plot_format", plot_format)
+        return plot_format
+    def job_get_plot_format(self, job_id):
+        return self.jobdb.job_data_get(job_id, "plot_format")
         
+    def job_set_run_time_begin(self, job_id, run_time_begin):
+        self.jobdb.job_data_set(job_id, "run_time_begin", run_time_begin)
+        return run_time_begin
+    def job_get_run_time_begin(self, job_id):
+        return self.jobdb.job_data_get(job_id, "run_time_begin")
+
+    def job_set_run_time_end(self, job_id, run_time_end):
+        self.jobdb.job_data_set(job_id, "run_time_end", run_time_end)
+        return run_time_end
+    def job_get_run_time_end(self, job_id):
+        return self.jobdb.job_data_get(job_id, "run_time_end")
+
+
+    def refmac5_refinement_prep(self, job_id, chain_ntls):
+        """Called with a list of tuples (chain_id, ntls).
+        Generates PDB and TLSIN files for refinement with REFMAC5.
+        Returns a single string if there is an error, otherwise a
+        dictionary of results is returned.
+        """
+        struct_id = self.job_get_structure_id(job_id)
+        analysis_dir = self.job_get_analysis_dir(job_id)
+        analysis_base_url = self.job_get_analysis_base_url(job_id)
+
+        if not os.path.isdir(analysis_dir):
+            return "Job analysis directory does not exist"
+
+        old_dir = os.getcwd()
+        os.chdir(analysis_dir)
+        
+        ## input structure
+        pdbin  = "%s.pdb" % (struct_id)
+        if not os.path.isfile(pdbin):
+            pdbin = None
+            for pdbx in glob.glob("*.pdb"):
+                if len(pdbx) == 8:
+                    struct_id = pdbx[:4]
+                    pdbin = pdbx
+                    break
+            if pdbin == None:
+                os.chdir(old_dir)
+                return "Input PDB File %s Not Found" % (pdbin)
+
+        ## the per-chain TLSOUT files from TLSMD must be merged
+        tlsins = []
+        for chain_id, ntls in chain_ntls:
+            tlsin = "%s_CHAIN%s_NTLS%d.tlsout" % (struct_id, chain_id, ntls)
+            if not os.path.isfile(tlsin):
+                os.chdir(old_dir)
+                return "Input TLSIN File %s Not Found" % (tlsin)
+            tlsins.append(tlsin)
+
+        ## form unique pdbout/tlsout filenames
+        listx = [struct_id]
+        for chain_id, ntls in chain_ntls:
+            listx.append("CHAIN%s" % (chain_id))
+            listx.append("NTLS%d" % (ntls))
+        outbase ="_".join(listx)
+        pdbout = "%s.pdb" % (outbase)
+
+        ## the tlsout from this program is going to be the tlsin
+        ## for refinement, so it's important for the filename to have
+        ## the tlsin extension so the user is not confused
+        tlsout = "%s.tlsin" % (outbase)
+
+        ## make urls for linking
+        pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
+        tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
+
+        ## create the files
+        tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
+
+        os.chdir(old_dir)
+        return dict(pdbout = pdbout,
+                    pdbout_url = pdbout_url,
+                    tlsout = tlsout,
+                    tlsout_url = tlsout_url)
+        
+
     def run_server(self, host, port):
         xmlrpc_server = WebTLSMD_XMLRPCServer(
             (host, port),
             SimpleXMLRPCServer.SimpleXMLRPCRequestHandler,
             True)
 
-        xmlrpc_server.register_function(self.job_list,               "job_list")
-        xmlrpc_server.register_function(self.job_new,                "job_new")
-        xmlrpc_server.register_function(self.job_exists,             "job_exists")
-        xmlrpc_server.register_function(self.job_get_dict,           "job_get_dict")
-        xmlrpc_server.register_function(self.job_get_dict_index,     "job_get_dict_index")
-        xmlrpc_server.register_function(self.job_delete,             "job_delete")
-        xmlrpc_server.register_function(self.job_data_set,           "job_data_set")
-        xmlrpc_server.register_function(self.job_data_get,           "job_data_get")
-        xmlrpc_server.register_function(self.get_next_queued_job_id, "get_next_queued_job_id")
-        xmlrpc_server.register_function(self.set_structure_file,     "set_structure_file")
-        xmlrpc_server.register_function(self.remove_job,             "remove_job")
-        
+        xmlrpc_server.register_instance(self)
         xmlrpc_server.serve_forever()
 
 
 def main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
 
-    print "webtlsmdd.py xmlrpc server version %s" % (const.VERSION)
-    print "using database file %s" % (conf.WEBTLSMDD_DATABASE)
-    print "listening for incoming connections at %s" % (conf.WEBTLSMDD)
+    sys.stdout.write("webtlsmdd.py xmlrpc server version %s\n" % (const.VERSION))
+    sys.stdout.write("using database file...........................: %s\n" % (conf.WEBTLSMDD_DATABASE))
+    sys.stdout.write("listening for incoming connections at URL.....: %s\n" % (conf.WEBTLSMDD))
+    sys.stdout.write("job (working) directory.......................: %s\n" % (conf.TLSMD_WORK_DIR))
+
+    os.chdir(conf.TLSMD_WORK_DIR)
     
-    webtlsmdd = WebTLSMDDaemon2(conf.WEBTLSMDD_DATABASE)    
+    webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
     webtlsmdd.run_server("localhost", int(port))
 
 
