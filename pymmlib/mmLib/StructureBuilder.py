@@ -268,7 +268,7 @@ class StructureBuilder(object):
         for frag_list in polymer_model_dict.itervalues():
             num_chains = max(num_chains, len(frag_list))
 
-        for chain_index in range(num_chains):
+        for chain_index in xrange(num_chains):
             ## get next availible chain_id
             chain_id = next_chain_id("")
 
@@ -392,7 +392,7 @@ class StructureBuilder(object):
 
             ## now iterate through the fragment lists in parallel and assign
             ## the new chain_id and fragment_id
-            for i in range(max_frags):
+            for i in xrange(max_frags):
                 fragment_id_num += 1
                 
                 for frag_list in model_dict.itervalues():
@@ -404,7 +404,7 @@ class StructureBuilder(object):
                     ## assign new chain_id and fragment_id, than place the
                     ## atom in the structure
                     for atm in frag:
-                        atm.chain_id    = new_chain_id
+                        atm.chain_id = new_chain_id
                         atm.fragment_id = str(fragment_id_num)
                         self.struct.add_atom(atm, True)
 

@@ -635,18 +635,18 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
         ## create it if it doesn't exist
         site = None
         for site_x in self.site_list:
-            if site_x["site_id"]==site_id:
+            if site_x["site_id"] == site_id:
                 site = site_x
                 break
 
         ## new site dictionary
-        if site==None:
+        if site == None:
             site = {"site_id": site_id}
             self.site_list.append(site)
             setmapi(rec, "numRes", site, "num_residues")
 
         ## add the residue descriptions
-        for i in range(1, 5):
+        for i in (1, 2, 3, 4):
             chain_key = "chainID%d" % (i)
             res_name  = "resName%d" % (i)
             seq_key   = "seq%d" % (i)

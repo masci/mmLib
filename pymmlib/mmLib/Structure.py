@@ -1880,9 +1880,7 @@ class Fragment(object):
         self.default_alt_loc = alt_loc
 
         ishift = 0
-        for i in range(len(self.atom_order_list)):
-            atm = self.atom_order_list[i]
-
+        for i, atm in enumerate(self.atom_order_list):
             if isinstance(atm, Atom):
                 ## case 1: atom has no alt_locs
                 try:
@@ -3767,10 +3765,10 @@ class AtomList(list):
 def test_module():
     struct = Structure()
 
-    for mx in range(1, 4):
+    for mx in xrange(1, 4):
         mid = str(mx)
         for cid in ["A", "B", "C", "D"]:
-            for fx in range(1, 4): 
+            for fx in xrange(1, 4): 
                 fid = str(fx)
 
                 for name in ["N", "CA", "C", "O"]:

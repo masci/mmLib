@@ -1642,10 +1642,7 @@ class RecordProcessor(object):
         record_list = []
         prev_rec    = None
 
-        for i in range(len(self.pdb_file)):
-            ## get current record
-            rec = self.pdb_file[i]
-
+        for i, rec in enumerate(self.pdb_file):
             ## case 1: no previous record, this record is the beginning
             ##         of a new record list
             if prev_rec == None:

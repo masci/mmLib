@@ -304,36 +304,36 @@ def check_deps():
     ver_string = "%d.%d.%d" % (major, minor, mminor)
 
     too_old = False
-    if major<2:
+    if major < 2:
         too_old = True
-    elif major==2:
-        if minor<2:
+    elif major == 2:
+        if minor < 4:
             too_old = True
-        elif minor==2:
-            if mminor<1:
+        elif minor == 0:
+            if mminor < 1:
                 too_old = True
             
     if too_old==True:
-        print "ERROR: Python %s too old version >= 2.2.1 required." % (
+        print "ERROR: Python %s too old version >= 2.4.0 required." % (
             ver_string)
     else:
         print "OK:    Python %s Found." % (ver_string)
 
     ## check Python distutils
-    if DISTUTILS_FOUND==False:
+    if DISTUTILS_FOUND == False:
         print "ERROR: Python Distutils not found.  You may need to install"
         print "       the python-devel package for your Linux distribution."
     else:
         print "OK:    Python Distutils found."
 
-    ## check Python Numeric
-    print "Checking for Numeric Python..."
+    ## check NumPy
+    print "Checking for NumPy..."
     try:
-        import Numeric
+        import numpy
     except ImportError:
-        print "ERROR: Numeric Python not found."
+        print "ERROR: NumPy not found."
     else:
-        print "OK:    Numeric Python found."
+        print "OK:    NumPy found."
 
     ## check PyOpenGL
     print "Checking for Python OpenGL Bindings..."

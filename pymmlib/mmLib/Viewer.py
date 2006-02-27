@@ -221,7 +221,7 @@ class GLObject(object):
         pl2.reverse()
 
         ancestor = None
-        for i in range(min(len(pl1), len(pl2))):
+        for i in xrange(min(len(pl1), len(pl2))):
             if pl1[i] == pl2[i]:
                 ancestor = pl1[i]
             else:
@@ -1058,24 +1058,24 @@ class GLUnitCell(GLDrawList):
 
         rf, gf, bf = self.gldl_property_color_rgbf("a_color")
         self.driver.glr_set_material_rgb(rf, gf, bf)
-        for k in range(z1, z2+2):
-            for j in range(y1, y2+2):
+        for k in xrange(z1, z2+2):
+            for j in xrange(y1, y2+2):
                 p1 = x1*a + j*b + k*c
                 p2 = (x2+1)*a + j*b + k*c
                 self.driver.glr_tube(p1, p2, rad)
 
         rf, gf, bf = self.gldl_property_color_rgbf("b_color")
         self.driver.glr_set_material_rgb(rf, gf, bf)
-        for k in range(z1, z2+2):
-            for i in range(x1, x2+2):
+        for k in xrange(z1, z2+2):
+            for i in xrange(x1, x2+2):
                 p1 = i*a + y1*b + k*c
                 p2 = i*a + (y2+1)*b + k*c
                 self.driver.glr_tube(p1, p2, rad)
 
         rf, gf, bf = self.gldl_property_color_rgbf("c_color")
         self.driver.glr_set_material_rgb(rf, gf, bf)
-        for j in range(y1, y2+2):
-            for i in range(x1, x2+2):
+        for j in xrange(y1, y2+2):
+            for i in xrange(x1, x2+2):
                 p1 = i*a + j*b + z1*c
                 p2 = i*a + j*b + (z2+1)*c
                 self.driver.glr_tube(p1, p2, rad)

@@ -75,9 +75,9 @@ class XYZDict(object):
         center_geom_key = self.calc_geom_key(position)
         bounding_cube_blocks = int(radius / self.resolution) + 1
 
-        for i in range(-bounding_cube_blocks, bounding_cube_blocks+1):
-            for j in range(-bounding_cube_blocks, bounding_cube_blocks+1):
-                for k in range(-bounding_cube_blocks, bounding_cube_blocks+1):
+        for i in xrange(-bounding_cube_blocks, bounding_cube_blocks+1):
+            for j in xrange(-bounding_cube_blocks, bounding_cube_blocks+1):
+                for k in xrange(-bounding_cube_blocks, bounding_cube_blocks+1):
 
                     geom_key = ( center_geom_key[0] + i,
                                  center_geom_key[1] + j,
