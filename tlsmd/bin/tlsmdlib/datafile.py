@@ -55,7 +55,8 @@ class TLSMDFile(object):
             if tls.has_key(key):
                 tls_rec[key] = tls[key]
         
-        self.grh_db[db_key] = cPickle.dumps(tls_rec)
+        self.grh_db[db_key] = cPickle.dumps(
+            tls_rec, protocol = cPickle.HIGHEST_PROTOCOL)
         self.grh_db.sync()
 
 

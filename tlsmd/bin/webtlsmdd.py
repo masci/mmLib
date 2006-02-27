@@ -37,9 +37,26 @@ def generate_security_code(code_length = 8):
     return code
 
 
-class WebTLSMD_XMLRPCServer(SocketServer.ForkingMixIn,
-                            SimpleXMLRPCServer.SimpleXMLRPCServer):
-    pass
+class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
+    """Override the standard XMLRPC request handler to open the database before
+    calling the method.
+    """
+    def handle(self):
+        self.server.jobdb = JobDatabase(self.server.db_file)
+        return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
+
+
+class WebTLSMD_XMLRPCServer(
+            SocketServer.ForkingMixIn,
+            SimpleXMLRPCServer.SimpleXMLRPCServer):
+    """Use customized XMLRPC server which forks for requests and uses the customized
+    request handler.
+    """
+        def __init__(self, host_port):
+            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
+                self,
+                host_port, 
+                
 
 
 class JobDatabase(object):
@@ -162,9 +179,9 @@ class JobDatabase(object):
 
 class WebTLSMDDaemon(object):
     def __init__(self, db_file):
+        self.db_file = db_file
         self.jobdb = JobDatabase(db_file)
         
-
     def job_list(self):
         """Returns a ordered list of all jdicts in the database
         """
