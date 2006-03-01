@@ -52,7 +52,7 @@ def align_chains(chain1, chain2):
     chain1_equiv = {}
     chain2_equiv = {}
     
-    for i in range(len(seq1_align)):
+    for i in xrange(len(seq1_align)):
         frag1 = None
         frag2 = None
 
@@ -175,7 +175,7 @@ class TLSConformationPredctionHypothosis(object):
         ## fit the isotropic TLS model to the group
         evals, evecs = numpy.linalg.eigenvectors(tls.tls_group.itls_L)
 
-        for i in range(3):
+        for i in (0,1,2):
             eval = evals[i]
             evec = evecs[i]
             

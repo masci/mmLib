@@ -99,9 +99,7 @@ def calc_cross_prediction_matrix_rmsd(chain, cpartition):
         S = tls_group.itls_S
         O = tls_group.origin
 
-        for j in range(len(chain)):
-            frag = chain[j]
-
+        for j, frag in enumerate(chain):
             ## calculate a atom-normalized rmsd deviation for each residue
             n = 0
             delta2 = 0.0

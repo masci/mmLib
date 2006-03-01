@@ -42,7 +42,8 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
     calling the method.
     """
     def handle(self):
-        self.server.jobdb = JobDatabase(self.server.db_file)
+        
+        self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
         return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 
 
@@ -52,12 +53,13 @@ class WebTLSMD_XMLRPCServer(
     """Use customized XMLRPC server which forks for requests and uses the customized
     request handler.
     """
-        def __init__(self, host_port):
-            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
-                self,
-                host_port, 
+    def __init__(self, host_port):
+        SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
+            self,
+            host_port,
+            WebTLSMD_XMLRPCRequestHandler,
+            True)
                 
-
 
 class JobDatabase(object):
     def __init__(self, db_file):
@@ -180,7 +182,7 @@ class JobDatabase(object):
 class WebTLSMDDaemon(object):
     def __init__(self, db_file):
         self.db_file = db_file
-        self.jobdb = JobDatabase(db_file)
+        self.jobdb = None
         
     def job_list(self):
         """Returns a ordered list of all jdicts in the database
@@ -522,11 +524,8 @@ class WebTLSMDDaemon(object):
         
 
     def run_server(self, host, port):
-        xmlrpc_server = WebTLSMD_XMLRPCServer(
-            (host, port),
-            SimpleXMLRPCServer.SimpleXMLRPCRequestHandler,
-            True)
-
+        xmlrpc_server = WebTLSMD_XMLRPCServer((host, port))
+        xmlrpc_server.webtlsmdd = self
         xmlrpc_server.register_instance(self)
         xmlrpc_server.serve_forever()
 
@@ -548,7 +547,7 @@ def main():
 def inspect():
     database_path = sys.argv[2]
     
-    webtlsmdd = WebTLSMDDaemon2(database_path)
+    webtlsmdd = WebTLSMDDaemon(database_path)
 
     if sys.argv[1] == "list":
         for dbkey in webtlsmdd.db.keys():

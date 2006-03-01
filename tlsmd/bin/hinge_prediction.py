@@ -37,7 +37,7 @@ class TLSHingePredictionHypothosis(object):
         ifrag = 0
         ifrag_end = len(self.chain) - 2*win + 1
 
-        for ifrag in range(ifrag, ifrag_end):
+        for ifrag in xrange(ifrag, ifrag_end):
 
             ifrag1a = ifrag
             ifrag2a = ifrag+win-1

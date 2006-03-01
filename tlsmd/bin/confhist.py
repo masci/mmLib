@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## TLS Minimized Domains (TLSMD)
+## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -32,7 +32,7 @@ class SubSegConfs(object):
 
         ## initalize partition indexing
         self.I = []
-        for i in range(p - 1):
+        for i in xrange(p - 1):
             self.I.append(m * (i + 1))
 
     def calc_configurations(self):
@@ -49,7 +49,7 @@ class SubSegConfs(object):
         """
         make sure there are no partitions smaller than m
         """
-        for i in range(1, len(self.I)):
+        for i in xrange(1, len(self.I)):
             assert self.I[i]-self.I[i-1] >= self.m
 
     def go(self):
@@ -104,10 +104,10 @@ class ChainPartitonPointHistogram(object):
     def __init__(self, chain):
         self.chain = chain
         self.num_partitions = 0
-        self.pp_names = ["" for i in range(len(chain)+1)]
-        self.pp_freqs = [0  for i in range(len(chain)+1)]
+        self.pp_names = ["" for i in xrange(len(chain)+1)]
+        self.pp_freqs = [0  for i in xrange(len(chain)+1)]
 
-        for i in range(1, len(chain)):
+        for i in xrange(1, len(chain)):
             self.pp_names[i] = "%s:%s" % (chain[i-1], chain[i])
 
     def count(self, i):
@@ -117,7 +117,7 @@ class ChainPartitonPointHistogram(object):
         fil = open("cphistogram.txt","w")
 
         print "ChainPartitonPointHistogram"
-        for i in range(len(self.chain)+1):
+        for i in xrange(len(self.chain)+1):
             print "[%s]: %10d" % (self.pp_names[i], self.pp_freqs[i])
             fil.write("%d %d %f\n" % (i, int(self.chain[i-1].fragment_id), self.pp_freqs[i]))
 
@@ -129,7 +129,7 @@ class Histogram(object):
         self.hmax = hmax
         self.hmin = hmin
         self.bsize = (self.hmax - self.hmin) / self.nbins
-        self.bins = [0 for x in range(self.nbins)]
+        self.bins = [0 for x in xrange(self.nbins)]
         
     def count(self, val):
         bin = int((val - self.hmin) / self.bsize)
@@ -139,7 +139,7 @@ class Histogram(object):
         fil = open("histogram.txt","w")
 
         print "Histogram"
-        for i in range(len(self.bins)):
+        for i in xrange(len(self.bins)):
             bin_min = self.hmin + (i * self.bsize)
             bin_max = self.hmin + ((i+1) * self.bsize)
             print "[%f-%f]: %d" % (bin_min, bin_max, self.bins[i])
@@ -184,8 +184,8 @@ class ConfResidHistorgram(SubSegConfs):
         rmat = zeros((self.clen, self.clen), Float)
         rmatflag = zeros((self.clen, self.clen), Int)
 
-        for i in range(self.clen):
-            for j in range(i + self.m - 1, self.clen):
+        for i in xrange(self.clen):
+            for j in xrange(i + self.m - 1, self.clen):
 
                 frag_id1 = self.chain.fragment_list[i].fragment_id
                 frag_id2 = self.chain.fragment_list[j].fragment_id

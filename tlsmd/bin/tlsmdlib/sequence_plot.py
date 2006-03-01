@@ -125,7 +125,7 @@ class TLSSegmentAlignmentPlot(object):
         x_start = self.border_width
 
         ## draw plots
-        for i in range(num_plots):
+        for i in xrange(num_plots):
             cpartition = self.chain_partition_list[i]
             yo = self.border_width + (i * pheight) + (i * self.spacing)
             self.__plot_segmentation(idraw, img_width - 2*self.border_width, one_frag_width, (x_start, yo), cpartition)
@@ -143,8 +143,7 @@ class TLSSegmentAlignmentPlot(object):
         extra_tics.append(len(self.frag_list)-1)
 
         idraw.setink((0,0,0))
-        for i in range(len(self.frag_list)):
-            fid = self.frag_list[i]
+        for i, fid in enumerate(self.frag_list):
             try:
                 seq_res = int(str(fid))
             except ValueError:

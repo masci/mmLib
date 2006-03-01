@@ -28,7 +28,7 @@ class HCSSSP(object):
         D = numpy.zeros((hops+1, num_vertex), float) + infinity
 
         ## like BellmanFord, initialize the source vertex distance to 0.0
-        for i in range(hops+1):
+        for i in xrange(hops+1):
             D[i,0] = 0.0
 
         ## a 2D previous vertex matrix; the value at Pij is the
@@ -41,11 +41,11 @@ class HCSSSP(object):
         ## through the previous matrix -- this is a Python 2D matrix and
         ## not a Numerical Python 2d array
         T = []
-        for i in range(hops+1):
-            T.append([None for j in range(num_vertex)])
+        for i in xrange(hops+1):
+            T.append([None for j in xrange(num_vertex)])
 
         ## now run the minimization
-        for h in range(1, hops+1):
+        for h in xrange(1, hops+1):
             for edge in E:
                 self.HCSSSP_minimize_relax(D, P, T, edge, h)
 
@@ -94,7 +94,7 @@ class HCSSSP(object):
         D = numpy.zeros((hops+1, num_vertex), float)
 
         ## like BellmanFord, initialize the source vertex distance to 0.0
-        for i in range(hops+1):
+        for i in xrange(hops+1):
             D[i,0] = 0.0
 
         ## a 2D previous vertex matrix; the value at Pij is the
@@ -107,11 +107,11 @@ class HCSSSP(object):
         ## through the previous matrix -- this is a Python 2D matrix and
         ## not a Numerical Python 2d array
         T = []
-        for i in range(hops+1):
-            T.append([None for j in range(num_vertex)])
+        for i in xrange(hops+1):
+            T.append([None for j in xrange(num_vertex)])
 
         ## now run the minimization
-        for h in range(1, hops+1):
+        for h in xrange(1, hops+1):
             for edge in E:
                 self.HCSSSP_maximize_relax(D, P, T, edge, h)
 

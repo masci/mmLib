@@ -233,7 +233,7 @@ class TranslationAnalysis(GNUPlot):
         ## plot list
         plist = []
         ls = 0
-        for itls in range(self.cpartition.num_tls_segments()):
+        for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             
             for n in (0,1,2):
@@ -266,7 +266,7 @@ class TranslationAnalysis(GNUPlot):
                 except ValueError:
                     continue
                 
-                cols = ["?" for x in range(ncols)]
+                cols = ["?" for x in xrange(ncols)]
                 cols[0] = str(ifrag)
 
                 ## determine Tr translational eigenvalues
@@ -323,7 +323,7 @@ class LibrationAnalysis(GNUPlot):
         ## plot list
         plist = []
         ls = 0
-        for itls in range(self.cpartition.num_tls_segments()):
+        for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             
             for n in (0,1,2):
@@ -356,7 +356,7 @@ class LibrationAnalysis(GNUPlot):
                 except ValueError:
                     continue
                 
-                cols = ["?" for x in range(ncols)]
+                cols = ["?" for x in xrange(ncols)]
                 cols[0] = str(ifrag)
 
                 for n, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
@@ -425,7 +425,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         plist.append("0.0 notitle ls 1 with lines")
 
         ls = 1
-        for itls in range(self.cpartition.num_tls_segments()):
+        for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             x = '"%s" using 1:%d notitle ls %d with lines' % (self.txt_path, itls+2, ls)
             plist.append(x)
@@ -458,7 +458,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
                 b_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 bdiff = atm.temp_factor - b_tls
 
-                ltmp = ["?" for x in range(ncols)]
+                ltmp = ["?" for x in xrange(ncols)]
                 ltmp[0] = str(ifrag)
                 ltmp[itls+1] = "%6.2f" % (bdiff)
 
@@ -519,11 +519,11 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         brange    = (bdiff_max - bdiff_min) + 2.0
         num_bins  = int(brange)
         bin_width = brange / float(num_bins)
-        bins      = [0 for n in range(num_bins)]
+        bins      = [0 for n in xrange(num_bins)]
 
         ## name the bins with their mean value
         bin_names = []
-        for n in range(num_bins):
+        for n in xrange(num_bins):
             bin_mean = bdiff_min + (float(n) * bin_width) + (bin_width / 2.0)
             bin_names.append(bin_mean)
 
@@ -544,7 +544,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id))
         fil.write("## TLS Group Residue Range --: %s-%s\n" % (tls.frag_id1, tls.frag_id2))
 
-        for i in range(len(bins)):
+        for i in xrange(len(bins)):
             fil.write("%f %d\n" % (bin_names[i], bins[i]))
 
         fil.close()
@@ -604,7 +604,7 @@ class BMeanPlot(GNUPlot):
 
                 l = ['%5s  %5d  %6.2f' % (frag.fragment_id, ifrag, BISO1[ifrag])]
 
-                for i in range(self.cpartition.ntls):
+                for i in xrange(self.cpartition.ntls):
                     if i == itls:
                         l.append('  %6.2f' % (BISO[ifrag]))
                     else:
@@ -649,7 +649,7 @@ class BMeanPlot(GNUPlot):
         plist.append(x)
 
         ## second the TLS calculated bfactors
-        for i in range(self.cpartition.num_tls_segments()):
+        for i in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             x = '"%s" using 1:%d %s ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
             plist.append(x)
@@ -689,14 +689,14 @@ class RMSDPlot(GNUPlot):
 
         fil = open(self.txt_path, "w")
         
-        for j in range(n):
+        for j in xrange(n):
             frag = self.chain[j]
             try:
                 ifrag = int(str(frag.fragment_id))
             except ValueError:
                 continue
 
-            cols = ["?" for x in range(ncols)]
+            cols = ["?" for x in xrange(ncols)]
             cols[0] = str(ifrag)
 
             if CMTX1!=None:
@@ -729,7 +729,7 @@ class RMSDPlot(GNUPlot):
         script = script.replace("<title>", "TLS Model RMSD per Residue ")
 
         ## line style
-        line_titles = ["notitle" for x in range(self.cpartition.num_tls_segments())]
+        line_titles = ["notitle" for x in xrange(self.cpartition.num_tls_segments())]
 
         if self.cpartition.ntls > 1:
             script += 'set style line 1 lc rgb "#000000" lw 3\n'
@@ -753,7 +753,7 @@ class RMSDPlot(GNUPlot):
             plist.append('"%s" using 1:2 title "Rigid Chain" ls 1 with lines' % (self.txt_path))
 
         ls = 1
-        for itls in range(self.cpartition.num_tls_segments()):
+        for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             col = itls + 3
             x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, col, line_titles[itls], ls)

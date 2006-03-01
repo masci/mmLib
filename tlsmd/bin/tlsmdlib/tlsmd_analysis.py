@@ -26,7 +26,7 @@ def calc_include_atom(atm, reject_messages = False):
     if atm.position == None:
         return False
 
-    if atm.occupancy<0.1:
+    if atm.occupancy < 0.1:
         if reject_messages == True:
             print "calc_include_atom(%s): rejected because of low occupancy" % (atm)
 	return False
@@ -66,8 +66,8 @@ def iter_ij(num_vertex, min_len):
     of consecutive vertices to create, min_span is the minimum
     number of residues (fragments) a edge should span.
     """
-    for i in range(num_vertex):
-        for j in range(i + min_len, num_vertex):
+    for i in xrange(num_vertex):
+        for j in xrange(i + min_len, num_vertex):
             yield i, j
 
 
@@ -264,7 +264,7 @@ class ChainPartitionCollection(object):
 
         self.ntls_chain_partition_list = []
         
-        for ntls in range(1, self.max_ntls + 1):
+        for ntls in xrange(1, self.max_ntls + 1):
             cpartition = self.chain_optimizer.calc_chain_partition(ntls)
             if cpartition == None:
                 continue
@@ -339,7 +339,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
         vertices = []
-        for i in range(self.num_vertex):
+        for i in xrange(self.num_vertex):
 
             ## add the vertex label for i at Vi
             if i ==0 :
@@ -548,7 +548,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             return
         dest_j = len(self.V)-1
 
-        for h in range(1, hops+1):
+        for h in xrange(1, hops+1):
             print
             print "MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h)
             print "NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE"

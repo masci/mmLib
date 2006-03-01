@@ -358,7 +358,7 @@ class HTMLReport(Report):
         self.colors = []
 
         ## skip the first two colors which are black/white
-        for i in range(len(Colors.COLORS)):
+        for i in xrange(len(Colors.COLORS)):
             cname, rgbf = Colors.COLORS[i]
             color = ColorInfo(i, cname, rgbf, thumbnail_dir)
             self.colors.append(color)
@@ -1033,7 +1033,7 @@ class HTMLReport(Report):
 
         ## generate ntls number of plots and add them to the
         ## HTML document
-        for ntls in range(1, max_ntls + 1):
+        for ntls in xrange(1, max_ntls + 1):
 
             ## create a 2-tuple list of (chain_id, cpartiton) for
             ## each chain which a a TLSMD segmentation of h groups
