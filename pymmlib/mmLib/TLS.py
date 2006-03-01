@@ -571,7 +571,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         tls_desc_list = []
         tls_desc = None
         
-        for ln in fil.readlines():
+        for ln in fil.xreadlines():
             ln = ln.rstrip()
 
             ## search all regular expressions for a match

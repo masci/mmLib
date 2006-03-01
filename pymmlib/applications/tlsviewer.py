@@ -63,15 +63,14 @@ class DictListTreeView(gtk.TreeView):
         self.connect("button-release-event", self.button_release_event_cb)
 
         model_data_types = []
-        for i in range(len(self.column_list)):
+        for i in xrange(len(self.column_list)):
             model_data_types.append(gobject.TYPE_STRING)
 
         self.model = gtk.TreeStore(*model_data_types)
         self.set_model(self.model)
 
         ## add cell renderers
-        for i in range(len(self.column_list)):
-            column_desc = self.column_list[i]
+        for i, column_desc in enumerate(self.column_list):
             cell        = gtk.CellRendererText()
             column      = gtk.TreeViewColumn(column_desc, cell)
 
@@ -111,8 +110,7 @@ class DictListTreeView(gtk.TreeView):
         for dictX in self.dict_list:
             miter = self.model.append(None)
 
-            for i in range(len(self.column_list)):
-                column_desc = self.column_list[i]
+            for i, column_desc in enumerate(self.column_list):
                 self.model.set(miter, i, dictX.get(column_desc, ""))
 
 
@@ -833,7 +831,7 @@ class GLPropertyTreeControl(gtk.TreeView):
             except KeyError:
                 continue
             if expanded==gtk.TRUE:
-                for i in range(1, len(path)):
+                for i in xrange(1, len(path)):
                     self.expand_row(path[:i], gtk.FALSE)
 
         if selected_glo!=None:
@@ -847,7 +845,7 @@ class GLPropertyTreeControl(gtk.TreeView):
         for path, glo in self.path_glo_dict.items():
             if id(glo)==id(target_glo):
 
-                for i in range(1, len(path)):
+                for i in xrange(1, len(path)):
                     self.expand_row(path[:i], gtk.FALSE)
 
                 self.get_selection().select_path(path)

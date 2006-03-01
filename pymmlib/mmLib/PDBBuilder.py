@@ -297,7 +297,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
             
             res_name = rec.get("resName", "")
             gelement = Library.library_guess_element_from_name(name, res_name)
-            if gelement!=None:
+            if gelement != None:
                 atm_map["element"] = gelement
 
         ## additional atom information
@@ -321,7 +321,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
                 atm_map["fragment_id"] = "%d" % (rec["resSeq"])
                 
         ## add the model number for the atom
-        if self.model_num!=None:
+        if self.model_num != None:
             atm_map["model_id"] = self.model_num
 
         ## position

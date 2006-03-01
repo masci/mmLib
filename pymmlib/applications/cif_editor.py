@@ -333,7 +333,7 @@ class TableTreeControl(gtk.TreeView):
         (cif_row, iter, color) = data_tuple
 
         call_again = gtk.FALSE
-        for i in range(len(color)):
+        for i in xrange(len(color)):
             if color[i] > 0:
                 color[i] = max(0, color[i] - 5)
                 call_again = gtk.TRUE
@@ -355,7 +355,7 @@ class TableTreeControl(gtk.TreeView):
         
         row_list = []
 
-        for i in range(len(self.cif_table.columns)):
+        for i in xrange(len(self.cif_table.columns)):
             col_name = self.cif_table.columns[i]
 
             try:
@@ -1410,7 +1410,7 @@ class mmCIFEditor:
         assert isinstance(cif_table, mmCIF.mmCIFTable)
         
         ## do not allow duplicate column names
-        for j in range(len(cif_table.columns)):
+        for j in xrange(len(cif_table.columns)):
             if i != j and cif_table.columns[j] == col_name:
                 self.error(
                     "Name Change Error: Column names must be unique.")
@@ -1463,7 +1463,7 @@ class mmCIFEditor:
             cif_table.columns.insert(i, col_name)
 
         if col_val_list:
-            for i in range(len(cif_table)):
+            for i in xrange(len(cif_table)):
                 cif_table[i][col_name] = col_val_list[i]
         self.cif_table_column_insert_notify(cif_table, col_name)
 
@@ -1508,7 +1508,7 @@ class mmCIFEditor:
         self, cif_table, i, col_name, rebuild_list):
         assert isinstance(cif_table, mmCIF.mmCIFTable)
         self.cif_table_column_insert(cif_table, i, col_name, save_undo = False)
-        for i in range(len(cif_table)):
+        for i in xrange(len(cif_table)):
             cif_table[i][col_name] = rebuild_list[i]
 
     def cif_file_insert_data(self, cif_file, i, cif_data, save_undo = True):
@@ -1640,7 +1640,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
             if path == None or path == "":
                 return
             try:
-                fil = OpenFile(path, "r")
+                fil = open(path, "r")
             except IOError:
                 self.error("Unable to open file:\n%s" % (path))
                 return
@@ -2051,7 +2051,7 @@ class mmCIFDictionaryManager(list):
         """Loads a mmCIF dictionary into the manager
         """
         try:
-            fil = OpenFile(path, "r")
+            fil = open(path, "r")
         except IOError:
             return None
 
