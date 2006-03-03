@@ -1,5 +1,5 @@
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """Convert a Structure object to its PDBFile description.
@@ -180,13 +180,13 @@ def setmapfd(smap, skey, dmap, dkey, default=None):
     return True
 
 
-class PDBStructureBuilder(StructureBuilder.StructureBuilder):
+class PDBStructureBuilder(StructureBuilder.StructureBuilder, PDB.RecordProcessor):
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
         mmTypes.warning("PDB::%s %s" % (rec_name, text))
 
-    def get_fragment_id(self, rec, res_seq="resSeq", icode="iCode"):
+    def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
         fragment_id = None
         if rec.has_key(res_seq):
             fragment_id = str(rec[res_seq])
@@ -194,15 +194,14 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
                 fragment_id += rec[icode]
         return fragment_id
     
-    def read_start(self, fil, update_cb=None):
+    def read_start(self, fil, update_cb = None):
         self.pdb_file = PDB.PDBFile()
-        self.pdb_file.load_file(fil, update_cb)
+        self.pdb_file.load_file(fil)
 
     def load_atom(self, atm_map):
         """Override load_atom to maintain a serial_num->atm map.
         """
         atm = StructureBuilder.StructureBuilder.load_atom(self, atm_map)
-
         ## map PDB atom serial number -> Atom object
         try:
             self.atom_serial_map[atm_map["serial"]] = atm
@@ -229,7 +228,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
             return False
 
         ## process the coordinate records
-        self.pdb_file.record_processor(self, filter_func)
+        self.process_pdb_records(self.pdb_file, filter_func)
 
         ## load last atom read
         if self.atm_map:
@@ -260,7 +259,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder):
             return True
 
         ## process the non-coordinate records
-        self.pdb_file.record_processor(self, filter_func)
+        self.process_pdb_records(self.pdb_file, filter_func)
 
         ## load chemical bond informaton
         self.load_bonds(self.bond_map)

@@ -1,20 +1,18 @@
 #!/usr/bin/env python
-
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
 import os, sys
-
 from mmLib import PDB, Library
-
 
 AMINO_ACID13_DICT = {
     'A': 'ALA', 'C': 'CYS', 'E': 'GLU', 'D': 'ASP', 'G': 'GLY',
     'F': 'PHE', 'I': 'ILE', 'H': 'HIS', 'K': 'LYS', 'M': 'MET',
     'L': 'LEU', 'N': 'ASN', 'Q': 'GLN', 'P': 'PRO', 'S': 'SER',
     'R': 'ARG', 'T': 'THR', 'W': 'TRP', 'V': 'VAL', 'Y': 'TYR'}
+
 
 def usage():
     print "seq2seqres.py: convert a 1-letter protein sequence into"
@@ -23,13 +21,14 @@ def usage():
     print
     sys.exit(-1)
 
+
 def main(chain_id, sequence):
     pdb_file = PDB.PDBFile()
 
     ## parse sequence into 
     sequence3  = []
     i = 0
-    while i<len(sequence):
+    while i < len(sequence):
         c = sequence[i]
         if c=="(":
             sequence3.append(sequence[i+1:i+4])

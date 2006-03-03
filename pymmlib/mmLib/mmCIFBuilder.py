@@ -1,5 +1,5 @@
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """Convert a Structure object into its mmCIFFile description.
@@ -188,7 +188,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             setmapi_cif(atom_site, "pdbx_pdb_model_num",
                         atm_map,   "model_id")
 
-            if aniso_table!=None:
+            if aniso_table != None:
                 try:
                     aniso = aniso_dict[atom_site_id]
                 except KeyError:
@@ -254,7 +254,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         except KeyError:
             mmTypes.warning("read_unit_cell: cell table not found")
         else:
-            cell = cell_table.get_row(("entry_id", entry_id))
+            cell = cell_table.get_row1("entry_id", entry_id)
             if cell != None:
                 setmapf_cif(cell, "length_a", ucell_map, "a")
                 setmapf_cif(cell, "length_b", ucell_map, "b")
@@ -269,7 +269,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         except KeyError:
             mmTypes.warning("read_unit_cell: symmetry table not found")
         else:
-            symm = symmetry_table.get_row(("entry_id", entry_id))
+            symm = symmetry_table.get_row1("entry_id", entry_id)
             if symm != None:
                 setmaps_cif(symm, "space_group_name_H-M",
                             ucell_map, "space_group")
@@ -727,7 +727,7 @@ class mmCIFFileBuilder(object):
         if atm.sig_temp_factor!=None:
             asrow["B_iso_or_equiv_esd"] = atm.sig_temp_factor
 
-        if atm.U!=None:
+        if atm.U != None:
             aniso = self.get_table("atom_site_anisotrop")
             anrow = aniso.new_row()
 
@@ -740,30 +740,30 @@ class mmCIFFileBuilder(object):
             anrow["pdbx_auth_atom_id"] = asrow["auth_atom_id"]
             anrow["pdbx_auth_alt_id"]  = asrow["auth_alt_id"]
 
-            if atm.U[0,0]!=None:
+            if atm.U[0,0] != None:
                 anrow["U[1][1]"] = atm.U[0,0]
-            if atm.U[1,1]!=None:
+            if atm.U[1,1] != None:
                 anrow["U[2][2]"] = atm.U[1,1]
-            if atm.U[2,2]!=None:
+            if atm.U[2,2] != None:
                 anrow["U[3][3]"] = atm.U[2,2]
-            if atm.U[0,1]!=None:
+            if atm.U[0,1] != None:
                 anrow["U[1][2]"] = atm.U[0,1]
-            if atm.U[0,2]!=None:
+            if atm.U[0,2] != None:
                 anrow["U[1][3]"] = atm.U[0,2]
-            if atm.U[1,2]!=None:
+            if atm.U[1,2] != None:
                 anrow["U[2][3]"] = atm.U[1,2]
 
-            if atm.sig_U!=None:
-                if atm.sig_U[0,0]!=None:
+            if atm.sig_U != None:
+                if atm.sig_U[0,0] != None:
                     anrow["U[1][1]_esd"] = atm.sig_U[0,0]
-                if atm.sig_U[1,1]!=None:
+                if atm.sig_U[1,1] != None:
                     anrow["U[2][2]_esd"] = atm.sig_U[1,1]
-                if atm.sig_U[2,2]!=None:
+                if atm.sig_U[2,2] != None:
                     anrow["U[3][3]_esd"] = atm.sig_U[2,2]
-                if atm.sig_U[0,1]!=None:
+                if atm.sig_U[0,1] != None:
                     anrow["U[1][2]_esd"] = atm.sig_U[0,1]
-                if atm.sig_U[0,2]!=None:
+                if atm.sig_U[0,2] != None:
                     anrow["U[1][3]_esd"] = atm.sig_U[0,2]
-                if atm.sig_U[1,2]!=None:
+                if atm.sig_U[1,2] != None:
                     anrow["U[2][3]_esd"] = atm.sig_U[1,2]
 

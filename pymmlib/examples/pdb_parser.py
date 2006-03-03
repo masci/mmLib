@@ -1,59 +1,57 @@
 #!/usr/bin/env python
 ## This program exersizes the PDB parser by walking through a directory
-## of PDB files and processing each one.  The PDBProcessor class is a
+## of PDB files and processing each one.  The MyPDBProcessor class is a
 ## very simple custom PDB file processor
 
 import os, sys
 from mmLib import PDB
 
 
-class PDBProcessor(object):
+class MyPDBProcessor(PDB.RecordProcessor):
     """Implement callbacks for PDB record types.  If you want the callback
     with the raw mmLib.PDB classes, prefix the method name with 'process_',
     if you want callback argument to be the result of the mmLib.PDB record
     class's 'process' method, then use the prefix 'preprocess_'.
     Implement only the callback you want to handle.
     """
-    def process_HEADER(self, x):
-        print "HEADER"
-        print x
+    def process_HEADER(self, pdb_record):
+        print "REC: HEADER"
+        print pdb_record
         print
     
-    def preprocess_COMPND(self, x):
-        print "COMPND"
-        print x
+    def preprocess_COMPND(self, pdb_record):
+        print "REC: COMPND"
+        print pdb_record
         print
 
-    def preprocess_OBSLTE(self, x):
-        print "OBSLTE"
-        print x
+    def preprocess_OBSLTE(self, pdb_record):
+        print "REC: OBSLTE"
+        print pdb_record
         print
         
-    def preprocess_REVDAT(self, x):
-        print "REVDAT"
-        print x
+    def preprocess_REVDAT(self, pdb_record):
+        print "REC: REVDAT"
+        print pdb_record
         print
 
-    def preprocess_SPRSDE(self, x):
-        print "SPRSDE"
-        print x
+    def preprocess_SPRSDE(self, pdb_record):
+        print "REC: SPRSDE"
+        print pdb_record
         print
 
-    def preprocess_default(self, rec_name, x):
+    def process_default(self, pdb_record):
         """This method will be called, if it exists, for any PDB handler
         without its own method handler.
         """
-        print "-----",rec_name
-        print x
-        print
+        print "DEFAULT: "
+        print pdb_record
 
 
 def main(path):
-    pdb_file = PDB.PDBFile()
-    pdb_file.load_file(path)
+    fileobj = open(path, "r")
 
-    proc = PDBProcessor()
-    pdb_file.record_processor(proc)
+    proc = MyPDBProcessor()
+    proc.process_pdb_records(PDB.iter_pdb_records(iter(fileobj)))
 
 
 if __name__ == "__main__":

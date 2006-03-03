@@ -1,5 +1,5 @@
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """mmCIF file and mmCIF dictionary parser.  Files are parsed
@@ -71,39 +71,36 @@ class mmCIFRow(dict):
     def __getitem__(self, column):
         return dict.__getitem__(self, column.lower())
 
+    def getitem_lower(self, clower):
+        return dict.__getitem__(self, clower)
+
     def __delitem__(self, column):
         dict.__delitem__(self, column.lower())
 
     def get(self, column, default = None):
         return dict.get(self, column.lower(), default)
 
+    def get_lower(self, clower, default = None):
+        return dict.get(self, clower, default)
+
     def has_key(self, column):
         return dict.has_key(self, column.lower())
-
-    def mget(self, *keys):
-        """Return the fist value found for the given keys in the argument
-        list.
-        """
-        for key in keys:
-            try:
-                return self[key]
-            except KeyError:
-                continue
-        return None
 
 
 class mmCIFTable(list):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
     are stored as mmCIFRow classes.
     """
-    __slots__ = ["name", "columns", "data"]
+    __slots__ = ["name", "columns", "columns_lower", "data"]
 
-    def __init__(self, name, columns=None):
+    def __init__(self, name, columns = None):
         assert name != None
+
         list.__init__(self)
         self.name = name
         if columns == None:
-            self.columns = []
+            self.columns = list()
+            self.columns_lower = dict()
         else:
             self.set_columns(columns)
 
@@ -158,7 +155,7 @@ class mmCIFTable(list):
     def __delitem__(self, i):
         self.remove(self[i])
 
-    def get(self, x, default=None):
+    def get(self, x, default = None):
         try:
             return self[x]
         except KeyError:
@@ -180,57 +177,86 @@ class mmCIFTable(list):
         list.remove(self, row)
 
     def set_columns(self, columns):
+        """Sets the list of of column(subsection) names to the list of names in
+        columns.
         """
-        """
-        self.columns = []
+        self.columns = list()
+        self.columns_lower = dict()
         for column in columns:
-            self.columns.append(column.lower())
+            self.columns.append(column)
+            self.columns_lower[column.lower()] = column
 
     def append_column(self, column):
+        """Appends a column(subsection) name to the table.
         """
-        """
-        self.columns.append(column.lower())
+        clower = column.lower()
+        if clower in self.columns_lower:
+            i = self.columns.index(self.columns_lower[clower])
+            self.columns[i] = column
+            self.columns_lower[clower] = column
+        else:
+            self.columns.append(column)
+            self.columns_lower[column] = column.lower()
 
     def has_column(self, column):
+        """Tests if the table contains the column name.
         """
-        """
-        return column.lower() in self.columns
+        return column.lower() in self.columns_lower
 
+    def remove_column(self, column):
+        """Removes the column name from the table.
+        """
+        clower = column.lower()
+        if clower not in self.columns_lower:
+            return
+        self.columns.remove(self.columns_lower[clower])
+        del self.columns_lower[clower]
+        
     def autoset_columns(self):
         """Automaticly sets the mmCITable column names by inspecting all
         mmCIFRow objects it contains.
         """
-        column_used = {}
-
+        clower_used = {}
         for cif_row in self:
-            for column in cif_row.iterkeys():
-                column_used[column] = True                
-                if column not in self.columns:
-                    self.columns.append(column)
+            for clower in cif_row.iterkeys():
+                clower_used[clower] = True          
+                if clower not in self.columns_lower:
+                    self.append_column(clower)
+        for clower in self.columns_lower[:]:
+            if not clower_used.has_key(clower):
+                self.remove_column(clower)
 
-        for column in self.columns[:]:
-            if not column_used.has_key(column):
-                self.columns.remove(column)
+    def get_row1(self, clower, value):
+        """Return the first row which which has column data matching value.
+        """
+        for row in self:
+            if row.get_lower(clower) == value:
+                return row
+        return None
 
     def get_row(self, *args):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table,
         and returns the first matching row found.  The arguments are a
         variable list of tuples of the form:
-          (<column-name>, <column-value>)
+          (<lower-case-column-name>, <column-value>)
         For example:
           ger_row(('atom_id','CA'),('entity_id', '1'))
         returns the first matching row with atom_id==1 and entity_id==1.
         """
-        for cif_row in self:
-            try:
-                for (column, value) in args:
-                    if cif_row[column] != value:
-                        continue
-            except KeyError:
-                continue
-
-            return cif_row
-
+        if len(args) == 1:
+            clower, value = args[0]
+            for row in self:
+                if row.get_lower(clower) == value:
+                    return row
+        else:
+            for row in self:
+                match_row = True
+                for clower, value in args:
+                    if row.get_lower(clower) != value:
+                        match_row = False
+                        break
+                if match_row:
+                    return row
         return None
 
     def new_row(self):
@@ -245,25 +271,24 @@ class mmCIFTable(list):
         rows in the table.
         """
         for cif_row in self:
-            try:
-                for (column, value) in args:
-                    if cif_row[column] != value:
-                        continue
-            except KeyError:
-                continue
+            match_row = True
+            for clower, value in args:
+                if cif_row.get_lower(clower) != value:
+                    match_row = False
+                    break
+            if match_row:
+                yield cif_row
 
-            yield cif_row
-
-    def row_index_dict(self, key):
+    def row_index_dict(self, clower):
         """Return a dictionary mapping the value of the row's value in
         column 'key' to the row itself.  If there are multiple rows with
         the same key value, they will be overwritten with the last found
         row.
         """
-        dictx = {}
+        dictx = dict()
         for row in self:
             try:
-                dictx[row[key]] = row
+                dictx[row.getitem_lower(clower)] = row
             except KeyError:
                 pass
         return dictx
@@ -555,9 +580,9 @@ class mmCIFFileParser(object):
     data hierarchy.
     """
     def parse_file(self, fil, cif_file, update_cb = None):
-        self.update_cb   = update_cb
+        self.update_cb = update_cb
         self.line_number = 0
-        token_iter       = self.gen_token_iter(fil)
+        token_iter = self.gen_token_iter(fil)
 
         try:
             self.parse(token_iter, cif_file)
@@ -582,7 +607,7 @@ class mmCIFFileParser(object):
         if rword not in ("data", "loop", "global", "save", "stop"):
             return None, None
 
-        name  = tokx[i+1:]
+        name = tokx[i+1:]
         return rword, name
         
     def parse(self, token_iter, cif_file):
@@ -592,23 +617,23 @@ class mmCIFFileParser(object):
              manor.  These tokens are case-insensitive.
         """
 
-        cif_table_cache = {}
-        cif_data        = None
-        cif_table       = None
-        cif_row         = None
-        state           = ""
+        cif_table_cache = dict()
+        cif_data = None
+        cif_table = None
+        cif_row = None
+        state = ""
 
         ## ignore anything in the input file until a reserved word is
         ## found
-        while 1:
-            tblx,colx,strx,tokx = token_iter.next()
+        while True:
+            tblx, colx, strx, tokx = token_iter.next()
             if tokx == None:
                 continue
             rword, name = self.split_token(tokx)
             if rword != None:
                 break
         
-        while 1:
+        while True:
             ##
             ## PROCESS STATE CHANGES
             ##
@@ -634,7 +659,7 @@ class mmCIFFileParser(object):
                     self.syntax_error("unable to handle global_ syntax")
 
                 else:
-                    self.syntax_error("bad token #1: "+str(tokx))
+                    self.syntax_error("bad token #1: " + str(tokx))
 
             else:
                 self.syntax_error("bad token #2")
@@ -652,8 +677,7 @@ class mmCIFFileParser(object):
                     try:
                         cif_data.append(cif_table)
                     except AttributeError:
-                        self.syntax_error(
-                            "section not contained in data_ block")
+                        self.syntax_error("section not contained in data_ block")
                         return
 
                     cif_row = mmCIFRow()
@@ -674,7 +698,7 @@ class mmCIFFileParser(object):
 
                 ## get the next token from the file, it should be the data
                 ## keyed by the previous token
-                tx,cx,strx,tokx = token_iter.next()
+                tx, cx, strx, tokx = token_iter.next()
                 if tx != None or (strx == None and tokx == None):
                     self.syntax_error("missing data for _%s.%s" % (tblx,colx))
 
@@ -684,8 +708,7 @@ class mmCIFFileParser(object):
                     if rword != None:
                         if rword == "stop":
                             return
-                        self.syntax_error(
-                            "unexpected reserved word: %s" % (rword))
+                        self.syntax_error("unexpected reserved word: %s" % (rword))
 
                     if tokx != ".":
                         cif_row[colx] = tokx
@@ -696,7 +719,7 @@ class mmCIFFileParser(object):
                 else:
                     self.syntax_error("bad token #4")
 
-                tblx,colx,strx,tokx = token_iter.next()
+                tblx, colx, strx, tokx = token_iter.next()
                 continue
 
 
@@ -725,15 +748,14 @@ class mmCIFFileParser(object):
                 try:
                     cif_data.append(cif_table)
                 except AttributeError:
-                    self.syntax_error(
-                        "_loop section not contained in data_ block")
+                    self.syntax_error("_loop section not contained in data_ block")
                     return
 
                 cif_table.columns.append(colx)
 
                 ## read the remaining subsection definitions for the loop
-                while 1:
-                    tblx,colx,strx,tokx = token_iter.next()
+                while True:
+                    tblx, colx, strx, tokx = token_iter.next()
                     
                     if tblx == None:
                         break
@@ -757,7 +779,7 @@ class mmCIFFileParser(object):
                                 "unexpected reserved word: %s" % (rword))
                     
                 ## now read all the data 
-                while 1:
+                while True:
                     cif_row = mmCIFRow()
                     cif_table.append(cif_row)
 
@@ -847,7 +869,7 @@ class mmCIFFileParser(object):
             file_iter = FileIter(fil)
 
         ## parse file, yielding tokens for self.parser()
-        while 1:
+        while True:
             try:
                 ln = file_iter.next()
             except StopIteration:
@@ -857,7 +879,7 @@ class mmCIFFileParser(object):
                 fil_read_bytes += len(ln)
 
             ## make sure the line isn't too long
-            if len(ln)>MAX_LINE:
+            if len(ln) > MAX_LINE:
                 self.syntax_error("line exceeds maximum length")
 
             ## call update callback
@@ -894,7 +916,7 @@ class mmCIFFileParser(object):
             tok_iter = re_tok.finditer(ln)
 
             for tokm in tok_iter:
-                if tokm.groups() != (None,None,None,None):
+                if tokm.groups() != (None, None, None, None):
                     yield tokm.groups()
 
 
@@ -917,7 +939,7 @@ class mmCIFFileWriter(object):
         self.fil.write(x)
 
     def writeln(self, x = ""):
-        self.fil.write(x+"\n")
+        self.fil.write(x + "\n")
 
     def write_mstring(self, mstring):
         self.write(self.form_mstring(mstring))
@@ -956,13 +978,13 @@ class mmCIFFileWriter(object):
             return x, "mstring"
         
         if x.count(" ") != 0 or x.count("\t") != 0 or x.count("#") != 0:
-            if len(x)>MAX_LINE-2:
+            if len(x) > (MAX_LINE - 2):
                 return x, "mstring"
             if x.count("' ") != 0 or x.count('" ') != 0:
                 return x, "mstring"
             return x, "qstring"
 
-        if len(x)<MAX_LINE:
+        if len(x) < MAX_LINE:
             return x, "token"
         else:
             return x, "mstring"
@@ -1023,7 +1045,8 @@ class mmCIFFileWriter(object):
                 x, dtype = self.data_type(x0)
 
             if dtype == "token":
-                if len(x) > vmax: l.append("\n")
+                if len(x) > vmax:
+                    l.append("\n")
                 l.append("%s\n" % (x))
                 self.write("".join(l))
 
@@ -1110,7 +1133,7 @@ class mmCIFFileWriter(object):
             else:
                 llen += self.SPACING + lenx
 
-            if llen > MAX_LINE-1:
+            if llen > (MAX_LINE - 1):
                 wlist.append((None, None, None))
                 llen = lenx
 

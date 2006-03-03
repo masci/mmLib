@@ -1,4 +1,4 @@
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -308,7 +308,7 @@ class TLSFileFormat(object):
         pass
 
 
-class TLSFileFormatPDB(TLSFileFormat):
+class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
     """Reads TLS descriptions from the REMARK records in PDB files.  These
     records are only written by REFMAC5.
     """
@@ -331,13 +331,17 @@ class TLSFileFormatPDB(TLSFileFormat):
         return True
 
     def load(self, fil):
-        self.tls_desc      = None
-        self.tls_scrap     = {}
+        if isinstance(fil, str):
+            fileobj = open(fil, "r")
+        else:
+            fileobj = fil
+        
+        self.tls_desc = None
+        self.tls_scrap = {}
         self.tls_desc_list = []
-       
-        pdb_file = PDB.PDBFile()
-        pdb_file.load_file(fil)
-        pdb_file.record_processor(self)
+
+        filter_func = lambda pdb_record: isinstance(pdb_record, PDB.REMARK) 
+        self.process_pdb_records(PDB.iter_pdb_records(iter(fileobj)), filter_func) 
 
         return self.tls_desc_list
 

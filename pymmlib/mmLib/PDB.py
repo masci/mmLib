@@ -1,5 +1,5 @@
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """Brookhaven PDB v2.2 file parser.  All records in the PDB v2.2
@@ -1458,6 +1458,26 @@ PDBRecordOrder = [
 ## END PDB RECORD DEFINITIONS
 ###############################################################################
 
+def iter_pdb_records(iterable):
+    """Reads a sequence of PDB lines from iterable sequence and converts
+    them to the correct PDB record objects, then yields them.
+    """
+    iterable = iter(iterable)
+    for ln in iterable:
+        ## find the record data element for the given line
+        ln = ln.rstrip()
+        rname = ln[:6].ljust(6)
+
+        try:
+            pdb_record_class = PDBRecordMap[rname]
+        except KeyError:
+            continue
+
+        ## create/add/parse the record
+        pdb_record = pdb_record_class()
+        pdb_record.read(ln)
+        yield pdb_record
+            
 
 class PDBFile(list):
     """Class for managing a PDB file.  This class inherits from a Python
@@ -1476,55 +1496,16 @@ class PDBFile(list):
         assert isinstance(rec, PDBRecord)
         list.insert(self, i, rec)
 
-    def load_file(self, fil, update_cb = None):
+    def load_file(self, fil):
         """Loads a PDB file from File object fil.
         """
         if isinstance(fil, str):
             fileobj = open(fil, "r")
         else:
             fileobj = fil
-    
-        ## get file size for update callbacks
-        line_number    = 0
-        percent_done   = 0
-        fil_read_bytes = 0
 
-        ## some file objects do not support seek/tell
-        if hasattr(fil, "seek") and hasattr(fil, "tell"):
-            try:
-                fileobj.seek(0, 2)
-                fil_size_bytes = fileobj.tell()
-                fileobj.seek(0, 0)
-            except:
-                # this is a adverage file size ;)
-                fil_size_bytes = 1304189
-        else:
-            fil_size_bytes = 1304189
-
-        iterfil = iter(fileobj)
-        for ln in iterfil:
-            line_number    += 1
-            fil_read_bytes += len(ln)
-
-            ## call update callback
-            if update_cb != None:
-                pdone = (fil_read_bytes * 100)/fil_size_bytes
-                if pdone != percent_done and pdone <= 100:
-                    percent_done = pdone
-                    update_cb(percent_done)
-
-            ## find the record data element for the given line
-            ln = ln.rstrip()
-            rname = ln[:6].ljust(6)
-            
-            try:
-                pdb_record_class = PDBRecordMap[rname]
-            except KeyError:
-                continue
-
-            ## create/add/parse the record
-            pdb_record = pdb_record_class()
-            pdb_record.read(ln)
+        fileiter = iter(fileobj)
+        for pdb_record in iter_pdb_records(fileiter):
             self.append(pdb_record)
 
     def save_file(self, fil):
@@ -1541,59 +1522,11 @@ class PDBFile(list):
 
         fil.flush()
 
-    def record_processor(self, processor, filter_func = None):
-        """Iterates the PDB records in self, and searches for handling
-        methods in the processor object for reading the objects.  There
-        are several choices for methods names for the processor objects.
-        """
-        RecordProcessor(self, processor, filter_func)
-
 
 class RecordProcessor(object):
-    """Implements the PDBFile's record_processor algorithm.
     """
-    def __init__(self, pdb_file, processor, filter_func = None):
-        self.pdb_file = pdb_file
-        self.processor = processor
-        self.filter_func = filter_func
-
-        self.process()
-
-    def call_processor(self, recs):
-        """Invoke callbacks on self.processor for the given record list (recs).
-        """
-        if isinstance(recs, list):
-            rec = recs[0]
-        else:
-            rec = recs
-
-        ## check filter function, if given, to determine if the record
-        ## should be processed
-        if self.filter_func != None and not self.filter_func(rec):
-            return
-
-        ## form method names to search for
-        name = rec._name.strip()
-        process = "process_%s" % (name)
-        preprocess = "preprocess_%s" % (name)
-
-        ## call process handler for records
-        if hasattr(self.processor, process):
-            getattr(self.processor, process)(recs)
-        elif hasattr(self.processor, "process_default"):
-            self.processor.process_default(recs)
-
-        ## call preprocessor and processor for records
-        if hasattr(rec, "process"):
-            pfunc = getattr(rec, "process")
-            if hasattr(self.processor, preprocess):
-                pfunc_cb = getattr(self.processor, preprocess)
-                pfunc_cb(pfunc(recs))
-            elif hasattr(self.processor, "preprocess_default"):
-                pfunc_cb = getattr(self.processor, "preprocess_default")
-                pfunc_cb(name, pfunc(recs))
-
-    def is_sucsessive_record(self, prev_rec, rec):
+    """
+    def __is_sucsessive_record(self, prev_rec, rec):
         """Returns True if the current record looks like it is the sucessive
         PDB record in a list of records.  Filds like continuation and serNum
         are checked, as well as record name.
@@ -1609,7 +1542,7 @@ class RecordProcessor(object):
         ## check for "continuation" field continous records
         if prev_rec.has_key("continuation") or rec.has_key("continuation"):
             prev_continuation = prev_rec.get("continuation", 1)
-            continuation      = rec.get("continuation", 1)
+            continuation = rec.get("continuation", 1)
 
             if (prev_continuation + 1) == continuation:
                 return True
@@ -1619,7 +1552,7 @@ class RecordProcessor(object):
         ## check for "serNum" continuations
         if prev_rec.has_key("serNum") or rec.has_key("serNum"):
             prev_serial = prev_rec.get("serNum", 0)
-            serial      = rec.get("serNum", 0)
+            serial = rec.get("serNum", 0)
 
             if (prev_serial + 1) == serial:
                 return True
@@ -1628,55 +1561,93 @@ class RecordProcessor(object):
 
         return False
 
-    def is_multi_record(self, rec):
-        """Returns True if the record is a type supporting continuations
-        or multiple records.
+    def __call_processor_multi(self, record_list):
+        """Invake callbacks expecting a list of related PDB records.
         """
-        return hasattr(rec, "_multi_record")
+        rec = record_list[0]
+        
+        ## form method names to search for
+        name = rec.__class__.__name__
+        raw_process_method_symbol = "process_%s" % (name)
+        process_method_symbol = "preprocess_%s" % (name)
+
+        ## call process handler for records
+        if hasattr(self, raw_process_method_symbol):
+            getattr(self, raw_process_method_symbol)(record_list)
+        else:
+            self.process_default(record_list)
+
+        ## call preprocessor and processor for records
+        if hasattr(rec, "process"):
+            presult = getattr(rec, "process")(record_list)
+            if hasattr(self, process_method_symbol):
+                getattr(self, process_method_symbol)(presult)
+            else:
+                self.preprocess_default(presult)
     
-    def process(self):
+    def __call_processor(self, rec):
+        """Invoke callbacks on self.processor for the given record list (recs).
+        """
+        ## form method names to search for
+        name = rec.__class__.__name__
+        raw_process_method_symbol = "process_%s" % (name)
+        process_method_symbol = "preprocess_%s" % (name)
+
+        ## call process handler for records
+        if hasattr(self, raw_process_method_symbol):
+            getattr(self, raw_process_method_symbol)(rec)
+        else:
+            self.process_default(rec)
+
+        ## call preprocessor and processor for records
+        if hasattr(rec, "process"):
+            presult = getattr(rec, "process")(rec)
+            if hasattr(self, process_method_symbol):
+                getattr(self, process_method_symbol)(presult)
+            else:
+                self.preprocess_default(presult)
+    
+    def process_pdb_records(self, pdb_rec_iter, filter_func = None):
         """Iterates the PDB records in self, and searches for handling
         methods in the processor object for reading the objects.  There
         are several choices for methods names for the processor objects.
         """
-        record_list = []
-        prev_rec    = None
+        record_list = None
+        prev_rec = None
 
-        for i, rec in enumerate(self.pdb_file):
-            ## case 1: no previous record, this record is the beginning
-            ##         of a new record list
-            if prev_rec == None:
-                if self.is_multi_record(rec) == True:
+        for rec in pdb_rec_iter:
+            if prev_rec is not None:
+                if self.__is_sucsessive_record(prev_rec, rec):
                     record_list.append(rec)
-                    prev_rec = rec                    
-                else:
-                    self.call_processor(rec)
+                    prev_rec = rec
+                    continue
 
-            ## case 2: there is a previous record, and the current
-            ##         record is a continuation of it
-            elif self.is_sucsessive_record(prev_rec, rec) == True:
-                record_list.append(rec)
+                self.__call_processor_multi(record_list)
+                record_list = None
+                prev_rec = None
+
+            if filter_func and filter_func(rec) is False:
+                continue
+
+            if isinstance(rec, ATOM):
+                self.process_ATOM(rec)
+            elif hasattr(rec, "_multi_record"):
+                record_list = [rec]
                 prev_rec = rec
-
-            ## case 3: the current record is not a continuation of the
-            ##         previous record, so call the processor on the
-            ##         current record list and begin a new record list
             else:
-                if len(record_list) > 0:
-                    self.call_processor(record_list)
+                self.__call_processor(rec)
 
-                ## if the current record cannot be a multi-record entry
-                ## process it right away
-                if self.is_multi_record(rec) == True:
-                    record_list = [rec]
-                    prev_rec    = rec
-                else:
-                    self.call_processor(rec)
-                    record_list = []
-                    prev_rec    = None
+        if prev_rec:
+            self.__call_processor_multi(record_list)
 
-        if len(record_list) > 0:
-            self.call_processor(record_list)
+    def process_default(self, rec):
+        pass
+
+    def preprocess_default(self, rec):
+        pass
+
+    def process_ATOM(self, rec):
+        self.process_default(rec)
 
 
 ### <testing>

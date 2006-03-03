@@ -1,5 +1,5 @@
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 """Classes for representing biological macromolecules.
@@ -160,7 +160,7 @@ class Structure(object):
         """
         if self.default_model:
             return iter(self.default_model.chain_list)
-        return iter([])
+        return iter(list())
 
     def __contains__(self, model_chain_idx):
         """Returns True if item is a Model in the Structure, or a
@@ -324,7 +324,7 @@ class Structure(object):
         """
         if self.default_model:
             return iter(self.default_model.chain_list)
-        return iter([])
+        return iter(list())
 
     def iter_all_chains(self):
         """Iterates over all Chain objects in all Model objects.
@@ -650,7 +650,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_alpha_helicies()
-        return iter([])
+        return iter(list())
 
     def add_beta_sheet(self, beta_sheet):
         """Adds a BetaSheet to the default Model object.
@@ -663,7 +663,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_beta_sheets()
-        return iter([])
+        return iter(list())
 
     def add_site(self, site):
         """Adds a Site object to the default Model.
@@ -676,7 +676,7 @@ class Structure(object):
         """
         if self.default_model:
             return self.default_model.iter_sites()
-        return iter([])
+        return iter(list())
 
     def get_structure(self):
         """Returns self.
@@ -3340,17 +3340,23 @@ class AlphaHelix(object):
     def iter_fragments(self):
         """Iterates all Fragment objects in the AlphaHelix.
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_fragments()
 
     def iter_atoms(self):
         """Iterates all Atom objects in the AlphaHelix.
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_atoms()
 
     def iter_all_atoms(self):
         """Iterates all Atom objects in all AlphaHelix, plus any in
         non-default alt_loc conformations. 
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_all_atoms()
 
 
@@ -3502,17 +3508,23 @@ class Strand(object):
     def iter_fragments(self):
         """Iterates all Fragment objects.
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_fragments()
 
     def iter_atoms(self):
         """Iterates all Atom objects.
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_atoms()
 
     def iter_all_atoms(self):
         """Iterates all Atom objects plus any in non-default alt_loc
         conformations. 
         """
+        if self.segment == None:
+            return iter(list())
         return self.segment.iter_all_atoms()
 
 
