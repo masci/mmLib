@@ -61,10 +61,10 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
     """Builds a new Structure object by loading a mmCIF file.
     """
 
-    def read_start(self, fil, update_cb = None):
+    def read_start(self, filobj):
         ## parse the mmCIF file
-        self.cif_file =mmCIF. mmCIFFile()
-        self.cif_file.load_file(fil, update_cb)
+        self.cif_file = mmCIF. mmCIFFile()
+        self.cif_file.load_file(filobj)
 
         ## for a mmCIF file for a structure, assume the first data item
         ## contains the structure; if there is no data in the mmCIF
@@ -137,7 +137,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             if col in atom_site_table.columns:
                 label_count += 1
         
-        if auth_count>=label_count:
+        if auth_count >= label_count:
             self.set_atom_site_auth()
         else:
             self.set_atom_site_label()

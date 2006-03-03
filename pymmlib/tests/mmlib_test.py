@@ -9,7 +9,7 @@ import gc
 import numpy
 
 import test_util
-from mmLib.FileIO import decode_format
+from mmLib.FileIO import get_file_extension
 from mmLib import Structure, FileIO
 
 
@@ -572,10 +572,10 @@ def file_verify(path, struct, stats):
     """Use some independent parsers to verify some simple stats between the
     structure and the file description.
     """
-    if decode_format(path) == "PDB":
+    if get_file_extension(path) == "PDB":
         fil_stats = test_util.pdb_stats(path)
 
-    elif decode_format(path) == "CIF":
+    elif get_file_extension(path) == "CIF":
         fil_stats = test_util.cif_stats(path)
 
     print "File Atom Count------:",fil_stats["atoms"]
@@ -590,19 +590,19 @@ def save_verify(struct, stats):
     """
     ## pdb
     print "[temp.pdb]"
-    FileIO.SaveStructure(fil="temp.pdb", struct=struct, format="PDB")
+    FileIO.SaveStructure(fil = "temp.pdb", struct = struct, format = "PDB")
     pdb_struct = FileIO.LoadStructure(
         fil              = "temp.pdb",
-        build_properties = ("library_bonds",))
-
+        library_bonds    = True);
     cmp_struct(struct, pdb_struct)
     
     ## mmCIF
     print "[temp.cif]"
-    FileIO.SaveStructure(fil="temp.cif", struct=struct, format="CIF")
+    FileIO.SaveStructure(fil = "temp.cif", struct = struct, format = "CIF")
+    
     cif_struct = FileIO.LoadStructure(
         fil              = "temp.cif",
-        build_properties = ("library_bonds",))
+        library_bonds    = True)
     cmp_struct(struct, cif_struct)
     
 

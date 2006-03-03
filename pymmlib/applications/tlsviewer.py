@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
-## This code is part of the PyMMLib distrobution and governed by
+## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
@@ -2686,8 +2686,8 @@ class MainWindow(object):
         try:
             struct = FileIO.LoadStructure(
                 fil              = path,                
-                update_cb        = self.update_cb,
-                build_properties = ("library_bonds","distance_bonds"))
+                library_bonds    = True,
+                distance_bonds   = True)
 
         except IOError:
             self.set_statusbar("")

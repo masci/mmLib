@@ -1657,7 +1657,7 @@ def test_module():
         path = sys.argv[1]
     except IndexError:
         print "usage: PDB.py <PDB file path>"
-        sys.exit(1)
+        raise SystemExit
     pdbfil = PDBFile()
     pdbfil.load_file(path)
     pdbfil.save_file(sys.stdout)

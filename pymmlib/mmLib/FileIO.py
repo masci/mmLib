@@ -14,6 +14,10 @@ from PDB          import PDBFile
 from PDBBuilder   import PDBStructureBuilder, PDBFileBuilder
 
 
+class FileIOUnsupportedFormat(Exception):
+    pass
+
+
 def OpenFile(path, mode):
     """Right now this only supports opening GZip'ed files, in the future
     it might be extended for URLs.
@@ -31,22 +35,45 @@ def OpenFile(path, mode):
     return path
 
 
-def decode_format(path):
-    """Returns the 3-letter MIME code for the file format.
+def get_file_extension(path, default_extension = "PDB"):
+    """Returns the 3-letter extension of the filename.
     """
+    if not isinstance(path, str):
+        return default_extension
+    
     ## check/remove compressed file extention
-    if path and isinstance(path, str):
-        base, ext = os.path.splitext(path)
-        if ext.lower() in ['.z', '.gz', '.bz2']:
-            path = base
+    base, ext = os.path.splitext(path)
+    if ext.lower() in ('.z', '.gz', '.bz2'):
+        path = base
 
-        base, ext = os.path.splitext(path)
-        ext = ext.lower()
+    base, ext = os.path.splitext(path)
+    ext = ext.lower()
 
-        if ext == ".cif":
-            return "CIF"
+    if ext == ".cif":
+        return "CIF"
+    elif ext == ".pdb":
+        return "PDB"
 
-    return "PDB"
+    return default_extension
+
+def get_file_arg(args):
+    try:
+        fil = args["fil"]
+    except KeyError:
+        try:
+            fil = args["file"]
+        except KeyError:
+            raise TypeError,"LoadStructure(file=) argument required"
+
+    return fil
+
+
+def open_fileobj(fil, file_mode):
+    if isinstance(fil, str):
+        fileobj = OpenFile(fil, file_mode)
+    else:
+        fileobj = fil
+    return fileobj
 
 
 def LoadStructure(**args):
@@ -54,82 +81,66 @@ def LoadStructure(**args):
     Structure class and returns it.  The function takes 5 named arguments,
     one is required:
 
-    fil = <file object or path; required>
-    format = <PDB|CIF; defaults to PDB>
-    struct = <mmLib.Structure object to build on; defaults to createing new>
-    build_properties = <tuple of strings for the StructureBuilder>
+    file = <file object or path; required>
+    format = <'PDB'|'CIF'; defaults to 'PDB'>
+    structure = <mmLib.Structure object to build on; defaults to createing new>
+    sequence_from_structure = [True|False] <infer sequence from structure file, default False>
+    library_bonds = [True|False] <build bonds from monomer library, default False>
+    distance_bonds = [True|False] <build bonds from covalent distance calculations, default False>
     """
-    try:
-        fil = args["fil"]
-    except KeyError:
-        raise TypeError,"LoadStructure(fil=) argument required"
-
-    if isinstance(fil, str):
-        fileobj = OpenFile(fil, "r")
+    fil = get_file_arg(args)
+    
+    if not args.has_key("format"):
+        args["format"] = get_file_extension(fil)
     else:
-        fileobj = fil
+        args["format"] = args["format"].upper()
+    
+    args["fil"] = open_fileobj(fil, "r")
 
-    update_cb        = args.get("update_cb")
-    format           = args.get("format") or decode_format(fil)
-    struct           = args.get("struct") or args.get("structure")
-    build_properties = args.get("build_properties", ())
+    if args["format"] == "PDB":
+        return PDBStructureBuilder(**args).struct
+    elif args["format"] == "CIF":
+        return mmCIFStructureBuilder(**args).struct
 
-    if format == "PDB":
-        return PDBStructureBuilder(
-            fil              = fileobj,
-            update_cb        = update_cb,
-            build_properties = build_properties,
-            struct           = struct).struct
-
-    elif format == "CIF":
-        return mmCIFStructureBuilder(
-            fil              = fileobj,
-            update_cb        = update_cb,
-            build_properties = build_properties,
-            struct           = struct).struct
-
-    raise FileLoaderError, "Unsupported file format %s" % (str(fil))
+    raise FileIOUnsupportedFormat("Unsupported file format %s" % (str(fil)))
 
 
 def SaveStructure(**args):
     """Saves a Structure object into a supported file type.
-    fil = <file object or path; required>
-    struct = <mmLib.Structure object to save; required>
-    format = <PDB|CIF; defaults to PDB>
+    file = <file object or path; required>
+    structure = <mmLib.Structure object to save; required>
+    format = <'PDB' or 'CIF'; defaults to 'PDB'>
     """
-    try:
-        fil = args["fil"]
-    except KeyError:
-        raise TypeError,"LoadStructure(fil=) argument required"
-
-    if isinstance(fil, str):
-        fileobj = OpenFile(fil, "w")
+    fil = get_file_arg(args)
+    
+    if not args.has_key("format"):
+        args["format"] = get_file_extension(fil)
     else:
-        fileobj = fil
-        
+        args["format"] = args["format"].upper()
+    
+    fileobj = open_fileobj(fil, "w")
+    
     try:
         struct = args["struct"]
     except KeyError:
         try:
             struct = args["structure"]
         except KeyError:
-            raise TypeError,"LoadStructure(struct=) argument required"
+            raise TypeError,"LoadStructure(structure=) argument required"
 
-    format = args.get("format") or decode_format(fil)
-
-    if format == "PDB":
+    if args["format"] == "PDB":
         pdb_file = PDBFile()
         PDBFileBuilder(struct, pdb_file)
         pdb_file.save_file(fileobj)
         return
 
-    elif format == "CIF":
+    elif args["format"] == "CIF":
         cif_file = mmCIFFile()
         mmCIFFileBuilder(struct, cif_file)
         cif_file.save_file(fileobj)
         return
 
-    raise FileLoaderError, "Unsupported file format %s" % (str(fil))
+    raise FileIOUnsupportedFormat("Unsupported file format %s" % (str(fil)))
 
 
 ### <TESTING>

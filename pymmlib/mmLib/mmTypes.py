@@ -54,7 +54,7 @@ def fatal(x):
     """Fatal errors.
     """
     sys.stderr.write("[MMLIB:FATAL] %s\n" % (x))
-    sys.exit(-1)
+    raise SystemExit
     
 
 def warning(x):

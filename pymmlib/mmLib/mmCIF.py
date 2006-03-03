@@ -519,7 +519,7 @@ class mmCIFFile(list):
         except KeyError:
             return default
         
-    def load_file(self, fil, update_cb = None):
+    def load_file(self, fil):
         """Load and append the mmCIF data from file object fil into self.
         The fil argument must be a file object or implement its iterface.
         """
@@ -527,7 +527,7 @@ class mmCIFFile(list):
             fileobj = open(fil, "r")
         else:
             fileobj = fil
-        mmCIFFileParser().parse_file(fileobj, self, update_cb)
+        mmCIFFileParser().parse_file(fileobj, self)
 
     def save_file(self, fil):
         if isinstance(fil, str):
@@ -579,8 +579,7 @@ class mmCIFFileParser(object):
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
     data hierarchy.
     """
-    def parse_file(self, fil, cif_file, update_cb = None):
-        self.update_cb = update_cb
+    def parse_file(self, fil, cif_file):
         self.line_number = 0
         token_iter = self.gen_token_iter(fil)
 
@@ -808,7 +807,7 @@ class mmCIFFileParser(object):
             elif state == "RD_DATA":
                 cif_data = mmCIFData(tokx[5:])
                 cif_file.append(cif_data)
-                cif_table_cache = {}
+                cif_table_cache = dict()
                 cif_table = None
 
                 tblx,colx,strx,tokx = token_iter.next()
@@ -816,13 +815,13 @@ class mmCIFFileParser(object):
             elif state == "RD_SAVE":
                 cif_data = mmCIFSave(tokx[5:])
                 cif_file.append(cif_data)
-                cif_table_cache = {}
+                cif_table_cache = dict()
                 cif_table = None
 
                 tblx,colx,strx,tokx = token_iter.next()
                 
 
-    def gen_token_iter(self, fil):
+    def gen_token_iter(self, fileobj):
         re_tok = re.compile(
             r"(?:"
 
@@ -836,88 +835,42 @@ class mmCIFFileParser(object):
 
              ")")
 
-        ## get file size for update callbacks
-        percent_done = 0
-        fil_read_bytes = 0
-
-        ## some file objects do not support seek/tell
-        if hasattr(fil, "seek") and hasattr(fil, "tell"):
-            try:
-                fil.seek(0, 2)
-                fil_size_bytes = fil.tell()
-                fil.seek(0, 0)
-            except:
-                # this is a adverage file size ;)
-                fil_size_bytes = 1304189
-        else:
-            fil_size_bytes = 1304189
-
-        ## do we have fast Python, or slow Python?
-        try:
-            file_iter = iter(fil)
-        except TypeError:
-            class FileIter(object):
-                def __init__(self, fil):
-                    self.fil = fil
-                def next(self):
-                    ln = self.fil.readline()
-                    if ln == "":
-                        raise StopIteration
-                    else:
-                        return ln
-
-            file_iter = FileIter(fil)
+        file_iter = iter(fileobj)
 
         ## parse file, yielding tokens for self.parser()
         while True:
-            try:
-                ln = file_iter.next()
-            except StopIteration:
-                break
-            else:
-                self.line_number += 1
-                fil_read_bytes += len(ln)
-
-            ## make sure the line isn't too long
-            if len(ln) > MAX_LINE:
-                self.syntax_error("line exceeds maximum length")
-
-            ## call update callback
-            if self.update_cb != None:
-                pdone = (fil_read_bytes * 100)/fil_size_bytes
-                if pdone != percent_done and pdone <= 100:
-                    percent_done = pdone
-                    self.update_cb(percent_done)
+            ln = file_iter.next()
+            self.line_number += 1
 
             ## skip comments
             if ln.startswith("#"):
                 continue
+            
+            ## make sure the line isn't too long
+            if len(ln) > MAX_LINE:
+                self.syntax_error("line exceeds maximum length")
 
             ## semi-colen multi-line strings
             if ln.startswith(";"):
-                x = ln[1:]
-                while 1:
-                    try:
-                        ln = file_iter.next()
-                    except StopIteration:
-                        break
-                    else:
-                        self.line_number += 1
-                    
+                lmerge = [ln[1:]]
+                while True:
+                    ln = file_iter.next()
+                    self.line_number += 1
                     if ln.startswith(";"):
                         break
-                    x += ln
+                    lmerge.append(ln)
 
-                x = x.rstrip()
-                yield (None, None, x, None)
+                lmerge[-1] = lmerge[-1].rstrip()
+                yield (None, None, "".join(lmerge), None)
                 continue
 
             ## split line into tokens
             tok_iter = re_tok.finditer(ln)
 
             for tokm in tok_iter:
-                if tokm.groups() != (None, None, None, None):
-                    yield tokm.groups()
+                groups = tokm.groups()
+                if groups != (None, None, None, None):
+                    yield groups
 
 
 class mmCIFFileWriter(object):
@@ -1202,7 +1155,7 @@ def test_module():
         path = sys.argv[1]
     except IndexError:
         print "usage: mmCIF.py <mmCIF file path>"
-        sys.exit(1)
+        raise SystemExit
     cif = mmCIFDictionary()
     cif.load_file(path)
     cif.save_file(sys.stdout)

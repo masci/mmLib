@@ -14,37 +14,32 @@ class MyPDBProcessor(PDB.RecordProcessor):
     class's 'process' method, then use the prefix 'preprocess_'.
     Implement only the callback you want to handle.
     """
+    def process_ATOM(self, pdb_record):
+        pass
+
+    def process_ANISOU(self, pdb_record):
+        pass
+    
     def process_HEADER(self, pdb_record):
-        print "REC: HEADER"
-        print pdb_record
-        print
+        print "[REC HEADER]", pdb_record
     
     def preprocess_COMPND(self, pdb_record):
-        print "REC: COMPND"
-        print pdb_record
-        print
+        print "[REC COMPND]", pdb_record
 
     def preprocess_OBSLTE(self, pdb_record):
-        print "REC: OBSLTE"
-        print pdb_record
-        print
+        print "[REC OBSLTE]", pdb_record
         
     def preprocess_REVDAT(self, pdb_record):
-        print "REC: REVDAT"
-        print pdb_record
-        print
+        print "[REC REVDAT]", pdb_record
 
     def preprocess_SPRSDE(self, pdb_record):
-        print "REC: SPRSDE"
-        print pdb_record
-        print
+        print "[REC SPRSDE]", pdb_record
 
     def process_default(self, pdb_record):
         """This method will be called, if it exists, for any PDB handler
         without its own method handler.
         """
-        print "DEFAULT: "
-        print pdb_record
+        print "[DEFAULT]", pdb_record
 
 
 def main(path):

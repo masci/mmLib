@@ -27,39 +27,29 @@ class StructureBuilder(object):
     StructureBuilder must be subclassed with a working parse_format()
     method to implement a working builder.
     """
-    def __init__(self, **args):
-        mmTypes.debug("StructureBuilder.__init__()")
-        
+    def __init__(self,
+                 sequence_from_structure = False,
+                 library_bonds = False,
+                 distance_bonds = False,
+                 **args):
+
         ## allocate a new Structure object for building if one was not
         ## passed to the StructureBuilder
-        if args.get("structure")!=None:
+        if args.has_key("structure"):
             self.struct = args["structure"]
-        elif args.get("struct")!=None:
+        elif args.has_key("struct"):
             self.struct = args["struct"]
         else:
             self.struct = Structure.Structure()
 
         ## set structure_id
-        if args.get("structure_id")!=None:
+        if args.has_key("structure_id"):
             self.struct.structure_id = args["structure_id"]
 
         ## options
-        self.calc_sequence = args.get("calc_sequence", False)
-        self.library_bonds = args.get("library_bonds", False)
-        self.distance_bonds = args.get("distance_bonds", False)
-
-        ## what items are going to be built into the Structure graph
-        ## follow up with adding structural components which depend on
-        ## other components
-        mmTypes.debug("build_properties=%s" % (str(args.get("build_properties"))))
-        
-        self.build_properties = args.get("build_properties") or ()
-        if "calc_sequence" in self.build_properties:
-            self.calc_sequence = True
-        if "library_bonds" in self.build_properties:
-            self.library_bonds = True
-        if "distance_bonds" in self.build_properties:
-            self.distance_bonds = True
+        self.calc_sequence = sequence_from_structure
+        self.library_bonds = library_bonds
+        self.distance_bonds = distance_bonds
 
         ## caches used while building
         self.cache_chain = None
@@ -69,7 +59,8 @@ class StructureBuilder(object):
         self.halt = False
         
         ## build the structure by executing this fixed sequence of methods
-        self.read_start(args.get("fil"), args.get("update_cb"))
+        self.read_start(args["fil"])
+        
         if not self.halt: self.read_start_finalize()
         if not self.halt: self.read_atoms()
         if not self.halt: self.read_atoms_finalize()
@@ -79,10 +70,10 @@ class StructureBuilder(object):
         if not self.halt: self.read_end_finalize()
         ## self.struct is now built and ready for use
 
-        if self.halt==True:
-            mmTypes.fatal("self.halt==True")
+        if self.halt == True:
+            mmTypes.fatal("self.halt == True")
 
-    def read_start(self, fil, update_cb):
+    def read_start(self, fil):
         """This methods needs to be reimplemented in a functional subclass.
         This function is called with the file object (or any other object
         passed in to build a Structure from) to begin the reading process.
@@ -241,7 +232,7 @@ class StructureBuilder(object):
             ## fragment are: it has it have the same res_name, and its
             ## atom name cannot conflict with the names of atoms already in
             ## in the fragment
-            if atm.res_name!=current_polymer_res_name or current_polymer_name_dict.has_key(atm.name):
+            if atm.res_name != current_polymer_res_name or current_polymer_name_dict.has_key(atm.name):
                 
                 current_polymer_res_name  = atm.res_name
                 current_polymer_name_dict = {atm.name: True}
