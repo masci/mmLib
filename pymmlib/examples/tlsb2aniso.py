@@ -6,6 +6,7 @@
 
 import sys
 import getopt
+import numpy
 
 from mmLib import Constants, Structure, FileIO, TLS
 
@@ -39,7 +40,7 @@ def main(tlsin, struct_in, struct_out):
             atm.temp_factor = Constants.U2B * (numpy.trace(atm.U)/3.0)
 
     ## save the struct
-    FileLoader.SaveStructure(fil = struct_out, struct = struct)
+    FileIO.SaveStructure(fil = struct_out, struct = struct)
 
 
 if __name__ == "__main__":

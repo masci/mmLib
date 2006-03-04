@@ -6,6 +6,7 @@
 
 import sys
 import getopt
+import numpy
 
 from mmLib import FileIO, Structure, TLS, Constants
 
@@ -119,7 +120,7 @@ def main(path, opt_dict):
                     atm.temp_factor = 0.0
                     atm.U = None
                 else:
-                    atm.temp_factor = Constants.U2B * trace(Utls)/3.0
+                    atm.temp_factor = Constants.U2B * numpy.trace(Utls)/3.0
                     atm.U = Utls
 
         ## save the struct

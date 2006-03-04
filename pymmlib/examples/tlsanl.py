@@ -7,6 +7,7 @@
 import sys
 import re
 import string
+import numpy
 
 from mmLib import Constants, FileIO, Structure, PDB, TLS
 
@@ -59,11 +60,11 @@ def print_TLSGroup(tls):
 
     print
     print "TRACE OF TRANSLATION TENSOR               %.3f" % (
-        trace(tls.T))
+        numpy.trace(tls.T))
     print "MEAN TRANSLATION (TRACE/3)                %.3f" % (
-        trace(tls.T)/3.0)
+        numpy.trace(tls.T)/3.0)
     print "MEAN LIBRATION   (TRACE/3)                %.3f" % (
-        trace(tls.L * Constants.RAD2DEG2)/3.0)
+        numpy.trace(tls.L * Constants.RAD2DEG2)/3.0)
     print
 
     print_TLS(
@@ -96,9 +97,9 @@ def print_TLSGroup(tls):
         "S'", calcs["S'"])
 
     print
-    print "TRACE(T')/3.0   (A^2): %.3f" % (trace(calcs["T'"])/3.0)
-    print "TRACE(L')/3.0 (DEG^2): %.3f" % (trace(calcs["L'"])/3.0*Constants.RAD2DEG2)
-    print "TRACE(S')/3.0 (A*DEG): %.3f" % (trace(calcs["S'"])/3.0*Constants.RAD2DEG)
+    print "TRACE(T')/3.0   (A^2): %.3f" % (numpy.trace(calcs["T'"])/3.0)
+    print "TRACE(L')/3.0 (DEG^2): %.3f" % (numpy.trace(calcs["L'"])/3.0*Constants.RAD2DEG2)
+    print "TRACE(S')/3.0 (A*DEG): %.3f" % (numpy.trace(calcs["S'"])/3.0*Constants.RAD2DEG)
     print
 
     print
