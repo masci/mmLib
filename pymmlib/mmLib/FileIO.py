@@ -7,6 +7,7 @@ The mmCIF and PDB file formats are currently supported.
 """
 import os
 import types
+import popen2
 
 from mmCIF        import mmCIFFile
 from mmCIFBuilder import mmCIFStructureBuilder, mmCIFFileBuilder
@@ -16,6 +17,18 @@ from PDBBuilder   import PDBStructureBuilder, PDBFileBuilder
 
 class FileIOUnsupportedFormat(Exception):
     pass
+
+
+class ZCat(object):
+    def __init__(self, path):
+        self.path = path
+    def __iter__(self):
+        zcat = popen2.Popen3("/bin/zcat %s" % (self.path))
+        for ln in iter(zcat.fromchild):
+            yield ln
+        zcat.wait()
+    def readlines(self):
+        return iter(self)
 
 
 def OpenFile(path, mode):
@@ -30,6 +43,8 @@ def OpenFile(path, mode):
         if ext == ".gz":
             import gzip
             return gzip.open(path, mode)
+        elif ext == ".Z" and mode == "r":
+            return ZCat(path)
         return open(path, mode)
 
     return path

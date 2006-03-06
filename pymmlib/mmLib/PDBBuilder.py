@@ -124,63 +124,8 @@ def setmapf(smap, skey, dmap, dkey):
     return False
 
 
-def setmapsd(smap, skey, dmap, dkey):
-    """Sets the dmap/dkey with the string value from smap/skey or
-    default if not smap/skey value is found.
-    """
-    try:
-        dmap[dkey] = str(smap[skey])
-    except ValueError:
-        pass
-    except KeyError:
-        pass
-
-    if default==None:
-        return False
-
-    dmap[dkey] = default
-    return True
-
-
-def setmapid(smap, skey, dmap, dkey, default=None):
-    """Sets the dmap/dkey with the integer value from smap/skey or
-    default if not smap/skey value is found.
-    """
-    try:
-        dmap[dkey] = int(smap[skey])
-        return
-    except ValueError:
-        pass
-    except KeyError:
-        pass
-
-    if default==None:
-        return False
-
-    dmap[dkey] = default
-    return True
-
-
-def setmapfd(smap, skey, dmap, dkey, default=None):
-    """Sets the dmap/dkey with the float value from smap/skey or
-    default if not smap/skey value is found.
-    """
-    try:
-        dmap[dkey] = float(smap[skey])
-        return
-    except ValueError:
-        pass
-    except KeyError:
-        pass
-
-    if default==None:
-        return False
-
-    dmap[dkey] = default
-    return True
-
-
-class PDBStructureBuilder(StructureBuilder.StructureBuilder, PDB.RecordProcessor):
+class PDBStructureBuilder(StructureBuilder.StructureBuilder,
+                          PDB.RecordProcessor):
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
@@ -1015,27 +960,27 @@ class PDBFileBuilder(object):
         """DBREF,SEQADV,SEQRES,MODRES
         """
         for chain in self.struct.iter_chains():
-            sequence = chain.construct_sequence_list()
+            if len(chain.sequence) == 0:
+                continue
+
             sernum = 0
-            numres = len(sequence)
-            
+            seq_len = len(chain.sequence)            
             seq_index = 0
-            while seq_index < len(sequence):
-                
+            while seq_index < seq_len:
                 seqres = PDB.SEQRES()
                 self.pdb_file.append(seqres)
 
                 sernum += 1
                 seqres["serNum"]  = sernum
                 seqres["chainID"] = chain.chain_id
-                seqres["numRes"]  = numres
+                seqres["numRes"]  = seq_len
                 
                 for field in ["resName1","resName2","resName3","resName4",
                               "resName5","resName6","resName7","resName8",
                               "resName9","resName10","resName11","resName12",
                               "resName13"]:
                     try:
-                        seqres[field] = sequence[seq_index]
+                        seqres[field] = chain.sequence[seq_index]
                     except IndexError:
                         break
                     seq_index += 1

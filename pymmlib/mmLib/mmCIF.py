@@ -54,7 +54,7 @@ class mmCIFRow(dict):
 
     def __eq__(self, other):
         return id(self) == id(other)
-
+        
     def __deepcopy__(self, memo):
         cif_row = mmCIFRow()
         for key, val in self.iteritems():
@@ -67,6 +67,12 @@ class mmCIFRow(dict):
     def __setitem__(self, column, value):
         assert value != None
         dict.__setitem__(self, column.lower(), value)
+
+    def __getattr__(self, name):
+        try:
+            return self[name] 
+        except KeyError:
+            raise AttributeError(name)
 
     def __getitem__(self, column):
         return dict.__getitem__(self, column.lower())
@@ -86,6 +92,9 @@ class mmCIFRow(dict):
     def has_key(self, column):
         return dict.has_key(self, column.lower())
 
+    def has_key_lower(self, clower):
+        return dict.has_key(self, clower)
+    
 
 class mmCIFTable(list):
     """Contains columns and rows of data for a mmCIF section.  Rows of data
@@ -118,6 +127,12 @@ class mmCIFTable(list):
         rows of data.
         """
         return len(self) <= 1
+
+    def __getattr__(self, name):
+        try:
+            return self[name] 
+        except KeyError:
+            raise AttributeError(name)
     
     def __getitem__(self, x):
         """Retrieves mmCIFRow at index x from the table if the argument is
@@ -130,9 +145,7 @@ class mmCIFTable(list):
         elif isinstance(x, str):
             try:
                 return self[0][x]
-            except IndexError:
-                raise KeyError
-            except KeyError:
+            except (IndexError, KeyError):
                 raise KeyError
 
         raise TypeError, x
@@ -308,6 +321,9 @@ class mmCIFData(list):
         list.__init__(self)
         self.name = name
 
+    def __str__(self):
+        return "mmCIFData(name = %s)" % (self.name)
+
     def __deepcopy__(self, memo):
         data = mmCIFData(self.name)
         for table in self:
@@ -316,6 +332,12 @@ class mmCIFData(list):
 
     def __eq__(self, other):
         return id(self) == id(other)
+
+    def __getattr__(self, name):
+        try:
+            return self[name] 
+        except KeyError:
+            raise AttributeError(name)
     
     def __getitem__(self, x):
         if isinstance(x, int):
@@ -461,8 +483,18 @@ class mmCIFFile(list):
             cif_file.append(copy.deepcopy(data, memo))
         return cif_file
 
+    def __str__(self):
+        l = [str(cdata) for cdata in self]
+        return "mmCIFFile([%s])" % (", ".join(l))
+
     def __eq__(self, other):
         return id(self) == id(other)
+
+    def __getattr__(self, name):
+        try:
+            return self[name] 
+        except KeyError:
+            raise AttributeError(name)
 
     def __getitem__(self, x):
         """Retrieve a mmCIFData object by index or name.
@@ -555,11 +587,6 @@ class mmCIFFile(list):
         self.append(cif_data)
         return cif_data
 
-    def debug(self):
-        print "mmCIFFile"
-        for cdata in self:
-            cdata.debug()
-
 
 class mmCIFDictionary(mmCIFFile):
     """Class representing a mmCIF dictionary.  The constructor of this class
@@ -579,9 +606,9 @@ class mmCIFFileParser(object):
     a mmCIF file and convert it into the mmCIFData/mmCIFTable/mmCIFRow
     data hierarchy.
     """
-    def parse_file(self, fil, cif_file):
+    def parse_file(self, fileobj, cif_file):
         self.line_number = 0
-        token_iter = self.gen_token_iter(fil)
+        token_iter = self.gen_token_iter(fileobj)
 
         try:
             self.parse(token_iter, cif_file)
@@ -846,10 +873,6 @@ class mmCIFFileParser(object):
             if ln.startswith("#"):
                 continue
             
-            ## make sure the line isn't too long
-            if len(ln) > MAX_LINE:
-                self.syntax_error("line exceeds maximum length")
-
             ## semi-colen multi-line strings
             if ln.startswith(";"):
                 lmerge = [ln[1:]]

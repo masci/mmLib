@@ -61,7 +61,7 @@ class SuperpositionResults(object):
         return position
 
 
-def Superposition(src_points, dst_points):
+def SuperimposePoints(src_points, dst_points):
     """Takes two 1:1 set of points and returns a 3x3 rotation matrix and
     translation vector.
     """
@@ -145,7 +145,7 @@ def SuperimposePositions(position_tuple_list):
         a1[i] = pos1
         a2[i] = pos2
     
-    return Superposition(a1, a2)
+    return SuperimposePoints(a1, a2)
 
 
 def SuperimposeAtoms(atom_pair_list):
@@ -161,7 +161,7 @@ def SuperimposeAtoms(atom_pair_list):
         a1[i] = atm1.position
         a2[i] = atm2.position
     
-    return Superposition(a1, a2)
+    return SuperimposePoints(a1, a2)
 
 
 def SuperimposeAtomsOutlierRejection(alist, rmsd_cutoff = 1.0, max_cycles = 100):
@@ -217,14 +217,15 @@ def test_module():
     alist = []
  
     for atm1 in chn1.iter_atoms():
-        if atm1.name!="CA": continue
+        if atm1.name != "CA":
+            continue
 
         atm2 = chn2.get_equivalent_atom(atm1)
         if atm2 == None: continue
 
         alist.append((atm1, atm2))
 
-    sup = SuperpositionAtoms(alist)
+    sup = SuperimposeAtoms(alist)
 
     R = sup.R
     Q = sup.Q

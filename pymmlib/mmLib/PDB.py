@@ -30,6 +30,9 @@ class PDBValueError(PDBError):
 class PDBRecord(dict):
     """Base class for all PDB file records.
     """
+    _name = None
+    _field_list = None
+    
     def __str__(self):
         return self.write()
 

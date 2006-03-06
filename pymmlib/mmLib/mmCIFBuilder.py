@@ -16,9 +16,9 @@ import Structure
 def setmaps_cif(smap, skey, dmap, dkey):
     """For string converisons, treat [?.] as blank.
     """
-    if smap.has_key(skey):
-        x = smap[skey]
-        if x=="?" or x=="." or x=="":
+    if smap.has_key_lower(skey):
+        x = smap.getitem_lower(skey)
+        if x in ('', '?', '.'):
             return False
         dmap[dkey] = str(x)
         return True
@@ -28,14 +28,13 @@ def setmaps_cif(smap, skey, dmap, dkey):
 def setmapi_cif(smap, skey, dmap, dkey):
     """For integer converisons, treat [?.] as blank.
     """
-    if smap.has_key(skey):
-        x = smap[skey]
-        if x=="?" or x=="." or x=="":
+    if smap.has_key_lower(skey):
+        x = smap.getitem_lower(skey)
+        if x in ('', '?', '.'):
             return False
         try:
             dmap[dkey] = int(x)
         except ValueError:
-            mmTypes.warning("setmapi_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
@@ -44,14 +43,13 @@ def setmapi_cif(smap, skey, dmap, dkey):
 def setmapf_cif(smap, skey, dmap, dkey):
     """For float converisons, treat [?.] as blank.
     """
-    if smap.has_key(skey):
-        x = smap[skey]
-        if x=="?" or x=="." or x=="":
+    if smap.has_key_lower(skey):
+        x = smap.getitem_lower(skey)
+        if x in ('', '?', '.'):
             return False
         try:
             dmap[dkey] = float(x)
         except ValueError:
-            mmTypes.warning("setmapf_cif(%s=%s): ValueError" % (skey, smap[skey]))
             return False
         return True
     return False
@@ -63,7 +61,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
 
     def read_start(self, filobj):
         ## parse the mmCIF file
-        self.cif_file = mmCIF. mmCIFFile()
+        self.cif_file = mmCIF.mmCIFFile()
         self.cif_file.load_file(filobj)
 
         ## for a mmCIF file for a structure, assume the first data item
@@ -223,10 +221,15 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             if table.name not in skip_tables:
                 self.struct.cifdb.add_table(table)
 
+        self.read_sequence()
         ## read unit cell table
         self.read_unit_cell()
         ## read bond information
         self.read_struct_conn()
+
+    def read_sequence(self):
+        """Read the sequence 
+        """
 
     def read_structure_id(self):
         """Read the PDB ID.
@@ -245,34 +248,24 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         
         try:
             entry_id = self.cif_data["entry"]["id"]
-        except KeyError:
-            mmTypes.warning("read_unit_cell(): entry id not found")
-            return
-
-        try:
             cell_table = self.cif_data["cell"]
-        except KeyError:
-            mmTypes.warning("read_unit_cell: cell table not found")
-        else:
-            cell = cell_table.get_row1("entry_id", entry_id)
-            if cell != None:
-                setmapf_cif(cell, "length_a", ucell_map, "a")
-                setmapf_cif(cell, "length_b", ucell_map, "b")
-                setmapf_cif(cell, "length_c", ucell_map, "c")
-                setmapf_cif(cell, "angle_alpha", ucell_map, "alpha")
-                setmapf_cif(cell, "angle_beta", ucell_map, "beta")
-                setmapf_cif(cell, "angle_gamma", ucell_map, "gamma")
-                setmapi_cif(cell, "z_pdb", ucell_map, "z")
-
-        try:
             symmetry_table = self.cif_data["symmetry"]
         except KeyError:
-            mmTypes.warning("read_unit_cell: symmetry table not found")
-        else:
-            symm = symmetry_table.get_row1("entry_id", entry_id)
-            if symm != None:
-                setmaps_cif(symm, "space_group_name_H-M",
-                            ucell_map, "space_group")
+            return
+
+        cell = cell_table.get_row1("entry_id", entry_id)
+        if cell != None:
+            setmapf_cif(cell, "length_a", ucell_map, "a")
+            setmapf_cif(cell, "length_b", ucell_map, "b")
+            setmapf_cif(cell, "length_c", ucell_map, "c")
+            setmapf_cif(cell, "angle_alpha", ucell_map, "alpha")
+            setmapf_cif(cell, "angle_beta", ucell_map, "beta")
+            setmapf_cif(cell, "angle_gamma", ucell_map, "gamma")
+            setmapi_cif(cell, "z_pdb", ucell_map, "z")
+            
+        symm = symmetry_table.get_row1("entry_id", entry_id)
+        if symm != None:
+            setmaps_cif(symm, "space_group_name_H-M", ucell_map, "space_group")
         
         self.load_unit_cell(ucell_map)
 
@@ -484,7 +477,7 @@ class mmCIFFileBuilder(object):
 
     def get_entity_desc_from_sequence(self, sequence):
         for entity_desc in self.entity_list:
-            if entity_desc.has_key("sequence") and entity_desc["sequence"]==sequence:
+            if entity_desc.has_key("sequence") and entity_desc["sequence"] == sequence:
                 return entity_desc
         return None
 
@@ -512,28 +505,28 @@ class mmCIFFileBuilder(object):
             ## if the chain is a bio-polymer, it is one entity; come up
             ## with a name from its sequence and add it to the
             ## entity map
-            if chain.count_standard_residues()<3:
+            if chain.count_standard_residues() < 3:
                 continue
             
             ## calculate sequence and compare the sequence to chains
             ## already added so we can re-use the entity ID
-            sequence = chain.sequence_one_letter_code()
+            sequence = chain.sequence.one_letter_code()
             
             entity_desc = self.get_entity_desc_from_sequence(sequence)
 
             ## ADD POLYMER TO CURRENT ENTITY
-            if entity_desc!=None:
+            if entity_desc is not None:
                 entity_desc["chains"].append(chain)
                 entity_desc["chain_ids"].append(chain.chain_id)
                     
             ## NEW ENTITY
             else:
                 ## figure out what type of biopolymer this is
-                if (chain.count_amino_acids()/len(chain))>0.5:
+                if (chain.count_amino_acids() / len(chain)) > 0.5:
                     details   = "%d residue polypeptide" % (chain.count_amino_acids())
                     poly_type = "polypeptide(L)"
 
-                elif (chain.count_nucleic_acids()/len(chain))>0.5:
+                elif (chain.count_nucleic_acids() / len(chain)) > 0.5:
                     details   = "%d residue DNA/RNA" % (chain.count_nucleic_acids())
                     poly_type = "polydeoxyribonucleotide"
                     
@@ -553,8 +546,8 @@ class mmCIFFileBuilder(object):
                 self.entity_list.append(entity_desc)
                 
                 row  = entity.new_row()
-                row["id"]              = entity_desc["id"]
-                row["type"]            = "polymer"
+                row["id"] = entity_desc["id"]
+                row["type"] = "polymer"
                 row["ndb_description"] = details
 
                 ## incriment entity_id

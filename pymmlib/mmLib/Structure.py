@@ -17,6 +17,7 @@ import GeometryDict
 import AtomMath
 import Library
 import UnitCell
+import Sequence
 import mmCIFDB
 
 
@@ -707,7 +708,7 @@ class Structure(object):
             xyzdict = GeometryDict.XYZDict(2.0)
             
             for atm in model.iter_all_atoms():
-                if atm.position != None:
+                if atm.position is not None:
                     xyzdict.add(atm.position, atm)
 
             for (p1,atm1),(p2,atm2),dist in xyzdict.iter_contact_distance(2.5):
@@ -719,7 +720,7 @@ class Structure(object):
                     edesc1 = Library.library_get_element_desc(atm1.element)
                     edesc2 = Library.library_get_element_desc(atm2.element)
 
-                    if edesc1 == None or edesc2 == None:
+                    if edesc1 is None or edesc2 is None:
                         continue
 
                     bond_dist = edesc1.covalent_radius + edesc2.covalent_radius + 0.54
@@ -727,8 +728,8 @@ class Structure(object):
                     if dist > bond_dist:
                         continue
 
-                    if atm1.get_bond(atm2) == None:
-                        atm1.create_bond(atom=atm2, standard_res_bond=False)
+                    if atm1.get_bond(atm2) is None:
+                        atm1.create_bond(atom = atm2, standard_res_bond = False)
         
     def add_bonds_from_library(self):
         """Builds bonds for all Fragments in the Structure from bond
@@ -1177,6 +1178,9 @@ class Segment(object):
         self.fragment_list  = []
         self.fragment_dict  = {}
 
+        ## sequence associated with the segment
+        self.sequence = Sequence.Sequence()
+
     def __str__(self):
         try:
             return "Segment(%d:%s, %s...%s)" % (
@@ -1562,48 +1566,6 @@ class Segment(object):
                 yield bond
                 visited[bond] = True
 
-    def calc_sequence(self):
-        """Calculate the residue sequence of the Fragments contained in the
-        Segment object.  Returns a list of 3-letter residues codes of
-        the calculated sequence.
-        """
-        sequence_list = []
-        for frag in self.iter_fragments():
-            sequence_list.append(frag.res_name)
-        return sequence_list
-
-    def calc_sequence_one_letter_code(self):
-        """Return the one letter code representation of the sequence as
-        a string.
-        """
-        seqlist = []
-
-        for frag in self.iter_fragments():
-            mdesc = Library.library_get_monomer_desc(frag.res_name)
-
-            if mdesc != None and mdesc.one_letter_code:
-                seqlist.append(mdesc.one_letter_code)
-            else:
-                seqlist.append("X")
-
-        return "".join(seqlist)
-
-    def sequence_one_letter_code(self):
-        """Return the one letter code representation of the sequence as
-        a string.
-        """
-        seqlist = []
-
-        for res_name, frag in self.sequence_fragment_list:
-            mdesc = Library.library_get_monomer_desc(res_name)
-
-            if mdesc != None and mdesc.one_letter_code:
-                seqlist.append(mdesc.one_letter_code)
-            else:
-                seqlist.append("(%s)" % (res_name))
-
-        return "".join(seqlist)
-
     def get_chain(self):
         """Returns the Chain object this Segment is part of.
         """
@@ -1662,18 +1624,13 @@ class Chain(Segment):
 
         args["model_id"] = model_id
         args["chain_id"] = chain_id
-
         Segment.__init__(self, **args)
-
-        self.model                  = None
-        self.sequence_fragment_list = []
-
-        ## the sequence list contains a list 3-letter residue names
-        self.sequence = None
+        self.model = None
 
     def __str__(self):
         try:
-            return "Chain(%d:%s, %s...%s)" % (self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
+            return "Chain(%d:%s, %s...%s)" % (
+                self.model_id, self.chain_id, self.fragment_list[0], self.fragment_list[-1])
         except IndexError:
              return "Chain(%d:%s)" % (self.model_id, self.chain_id)
 

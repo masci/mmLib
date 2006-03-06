@@ -189,7 +189,7 @@ class Raster3DDriver(object):
                     fil.close()
 
         ## open r3d file, write header
-        if self.render_stdin!=None:
+        if self.render_stdin != None:
             stdin = self.render_stdin
         else:
             stdout, stdin, stderr = popen2.popen3(
@@ -217,7 +217,7 @@ class Raster3DDriver(object):
         ## close stdin to the render program
         stdin.close()
         
-        if self.render_stdin!=None:
+        if self.render_stdin != None:
             self.render_stdin = None
         else:
             stdout.read()

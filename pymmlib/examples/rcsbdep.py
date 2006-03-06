@@ -411,7 +411,7 @@ usage: rcsbdep.py [-f cif path] [-f cif path] ... <mmCIF OUTPUT FILE>
 
 def usage():
     print USAGE
-    sys.exit(-1)
+    raise SystemExit
 
 def vet_merge_cif_table_entry_id(cif_table, entry_id):
     """Gives a cif_table a proper vetting before it is merged.

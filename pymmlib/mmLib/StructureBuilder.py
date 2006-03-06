@@ -500,7 +500,7 @@ class StructureBuilder(object):
         in the sequence.
         """
         try:
-            chain_id      = sequence_map["chain_id"]
+            chain_id = sequence_map["chain_id"]
             sequence_list = sequence_map["sequence_list"]
         except KeyError:
             return
@@ -510,7 +510,7 @@ class StructureBuilder(object):
         for model in self.struct.iter_models():
             chain = model.get_chain(chain_id)
             if chain:
-                chain.set_sequence(sequence_list)
+                chain.sequence.set_from_three_letter(sequence_list)
 
 
     def load_alpha_helicies(self, helix_list):
@@ -632,20 +632,17 @@ class StructureBuilder(object):
         mmTypes.debug("read_end_finalize()")
         
         ## calculate sequences for all chains
-        if self.calc_sequence==True:
-            mmTypes.debug("read_end_finalize(): calc_sequence")
-            
+        if self.calc_sequence is True:
             for model in self.struct.iter_models():
                 for chain in model.iter_chains():
-                    chain.set_sequence(chain.calc_sequence())
+                    if len(chain.sequence) == 0:
+                        chain.sequence.set_from_fragments(chain.iter_fragments())
 
         ## build bonds as defined in the monomer library
-        if self.library_bonds==True:
-            mmTypes.debug("read_end_finalize(): library_bonds")
+        if self.library_bonds is True:
             self.struct.add_bonds_from_library()
 
         ## build bonds by covalent distance calculations
-        if self.distance_bonds==True:
-            mmTypes.debug("read_end_finalize(): distance_bonds")
+        if self.distance_bonds is True:
             self.struct.add_bonds_from_covalent_distance()
             

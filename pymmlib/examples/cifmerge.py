@@ -695,14 +695,15 @@ def usage():
     print '        values.'
     print
     print '    -f merge_filename'
-    print '        A mmCIF file to merge.'
-    print
+    print '        A mmCIF file to merge.  Use multiple times to merge'
+    print '        multiple files.'
+    print 
     print '    -n name'
     print '        Give the output mmCIF file data the argument name.  If'
     print '        no name is specified, XXXX is used.'
     print
-    
-    sys.exit(-1)
+
+    raise SystemExit
 
 
 def decode_change_arg(change_arg):
