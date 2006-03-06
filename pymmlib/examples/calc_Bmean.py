@@ -12,9 +12,7 @@ from mmLib import FileIO
 
 def main(path):
     ## load structure
-    struct = FileIO.LoadStructure(
-        fil = path,
-        build_properties = ("no_bonds",))
+    struct = FileIO.LoadStructure(file = path)
 
     num_atoms = 0
 

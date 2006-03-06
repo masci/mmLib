@@ -19,7 +19,7 @@ def usage():
     print
 
 def main(tlsin, struct_in, struct_out):
-    struct = FileIO.LoadStructure(fil = struct_in)
+    struct = FileIO.LoadStructure(file = struct_in)
 
     ## make the TLS groups
     fil = open(tlsin, "r")
@@ -40,7 +40,7 @@ def main(tlsin, struct_in, struct_out):
             atm.temp_factor = Constants.U2B * (numpy.trace(atm.U)/3.0)
 
     ## save the struct
-    FileIO.SaveStructure(fil = struct_out, struct = struct)
+    FileIO.SaveStructure(file = struct_out, struct = struct)
 
 
 if __name__ == "__main__":

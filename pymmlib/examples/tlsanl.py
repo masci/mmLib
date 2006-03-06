@@ -130,7 +130,7 @@ def print_TLSGroup(tls):
 
 def main(pdb_path, tls_out_path, calc_tls):
 
-    struct = FileIO.LoadStructure(fil = pdb_path)
+    struct = FileIO.LoadStructure(file = pdb_path)
 
     ## calculate one set of TLS tensors from all the amino acid atoms
     if calc_tls == True:

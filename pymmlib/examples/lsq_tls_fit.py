@@ -38,7 +38,7 @@ def usage():
 
 
 def main(path, opt_dict):
-    struct = FileIO.LoadStructure(fil = path)
+    struct = FileIO.LoadStructure(file = path)
 
     tls_group_list = []
 
@@ -125,7 +125,7 @@ def main(path, opt_dict):
 
         ## save the struct
         print "Saving XYZIN: %s" % (opt_dict["-p"])
-        FileIO.SaveStructure(fil = opt_dict["-p"], struct = struct)
+        FileIO.SaveStructure(file = opt_dict["-p"], struct = struct)
 
 
 if __name__ == "__main__":

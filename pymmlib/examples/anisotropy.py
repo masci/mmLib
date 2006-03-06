@@ -14,9 +14,7 @@ from mmLib import FileIO
 def main(path):
     ## load structure
     print "Loading ",path
-    struct = FileIO.LoadStructure(
-        fil = path,
-        build_properties = ("no_bonds",))
+    struct = FileIO.LoadStructure(file = path)
 
     ## list of anisotropic values
     anisou_list = []

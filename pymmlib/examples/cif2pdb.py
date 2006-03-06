@@ -62,12 +62,6 @@ if __name__ == '__main__':
     if pdb == "-":
         pdb = sys.stdout
 
-    struct = FileIO.LoadStructure(
-        fil = cif, 
-        format = "CIF" )
-    
-    FileIO.SaveStructure(
-        fil = pdb, 
-        structure = struct, 
-        format = "PDB")
+    struct = FileIO.LoadStructure(file = cif,  format = "CIF")
+    FileIO.SaveStructure(file = pdb,  structure = struct, format = "PDB")
 

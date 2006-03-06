@@ -24,7 +24,7 @@ def usage():
 
 def main(path, verbose):
     
-    struct = FileIO.LoadStructure(fil = path)
+    struct = FileIO.LoadStructure(file = path)
     print struct
 
     print "Alpha Helicies:"
