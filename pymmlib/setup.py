@@ -280,11 +280,10 @@ def make_doc():
     """This is a special function to generate the documentation with
     Epidoc.  It once used happydoc.
     """
-    happy = "/home/jpaint/build/HappyDoc-r2_1/happydoc"
-    os.system("%s -d doc/api_reference -t 'mmLib Documentation' --no-comments --no-private-names mmLib" % (happy))
-    return
+    #happy = "/home/jpaint/build/HappyDoc-r2_1/happydoc"
+    #os.system("%s -d doc/api_reference -t 'Python Macromolecular Library Module Documentation' -r --no-comments --no-private-names --author='Jay Painter <jpaint@u.washington.edu>' mmLib/*.py" % (happy))
 
-    os.system('epydoc --html --output doc/api_reference --name "mmLib Documentation" mmLib mmLib/Extensions') 
+    os.system('epydoc --html --output doc/api_reference --name "Python Macromolecular Library" mmLib/*.py') 
 
 
 def check_deps():
