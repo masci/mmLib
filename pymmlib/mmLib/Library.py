@@ -25,9 +25,14 @@ RCSB_MONOMER_DATA_PATH  = os.path.join(MMLIB_PATH, "Data", "Monomers")
 ###############################################################################
 ## Caches
 ##
-ELEMENT_CIF_FILE       = None
 ELEMENT_CACHE          = {}
 MONOMER_RES_NAME_CACHE = {}
+
+ELEMENT_CIF_FILE = mmCIF.mmCIFFile()
+ELEMENT_CIF_FILE.load_file(open(ELEMENT_DATA_PATH, "r"))
+        
+MMLIB_MONOMERS_CIF = mmCIF.mmCIFFile()
+MMLIB_MONOMERS_CIF.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
 
 ###############################################################################
 ## Constants
@@ -225,12 +230,6 @@ class MonomerDesc(object):
 def library_construct_element_desc(symbol):
     """Constructs the ElementDesc object for the given element symbol.
     """
-    ## only load elements.cif once
-    global ELEMENT_CIF_FILE
-    if ELEMENT_CIF_FILE == None:
-        ELEMENT_CIF_FILE = mmCIF.mmCIFFile()
-        ELEMENT_CIF_FILE.load_file(ELEMENT_DATA_PATH)
-
     cif_data = ELEMENT_CIF_FILE.get_data(symbol)
     if cif_data == None:
         mmTypes.warning("element description not found for %s" % (symbol))
@@ -250,7 +249,9 @@ def library_construct_element_desc(symbol):
     element_desc.covalent_radius = float(element.get("covalent_radius", 0.0))
     
     rgb8 = element["color_rgb"]
-    element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0, int(rgb8[3:5], 16) / 255.0, int(rgb8[5:7], 16) / 255.0)
+    element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0,
+                               int(rgb8[3:5], 16) / 255.0,
+                               int(rgb8[5:7], 16) / 255.0)
 
     return element_desc
 
@@ -316,19 +317,18 @@ def library_construct_monomer_desc(res_name):
     rcsb_cif_data = rcsb_cif_file[0]
 
     chem_comp = rcsb_cif_data.get_table("chem_comp")[0]
-
-    mon_desc.res_name     = chem_comp.get("res_name")
-    mon_desc.full_name    = chem_comp.get("name")
-    mon_desc.type         = chem_comp.get("type")
-    mon_desc.pdbx_type    = chem_comp.get("pdbx_type")
-    mon_desc.formula      = chem_comp.get("formula")
-    mon_desc.rcsb_class_1 = chem_comp.get("rcsb_class_1")
+    mon_desc.res_name     = chem_comp.get_lower("res_name")
+    mon_desc.full_name    = chem_comp.get_lower("name")
+    mon_desc.type         = chem_comp.get_lower("type")
+    mon_desc.pdbx_type    = chem_comp.get_lower("pdbx_type")
+    mon_desc.formula      = chem_comp.get_lower("formula")
+    mon_desc.rcsb_class_1 = chem_comp.get_lower("rcsb_class_1")
 
     chem_comp_atom = rcsb_cif_data.get_table("chem_comp_atom")
     if chem_comp_atom != None:
         for cif_row in chem_comp_atom:
-            name   = cif_row["atom_id"]
-            symbol = cif_row["type_symbol"]
+            name   = cif_row.getitem_lower("atom_id")
+            symbol = cif_row.getitem_lower("type_symbol")
             
             mon_desc.atom_list.append({"name": name, "symbol": symbol})
             mon_desc.atom_dict[name] = symbol
@@ -336,15 +336,12 @@ def library_construct_monomer_desc(res_name):
     chem_comp_bond = rcsb_cif_data.get_table("chem_comp_bond")
     if chem_comp_bond != None:
         for cif_row in chem_comp_bond:
-            atom1 = cif_row["atom_id_1"]
-            atom2 = cif_row["atom_id_2"]
+            atom1 = cif_row.getitem_lower("atom_id_1")
+            atom2 = cif_row.getitem_lower("atom_id_2")
             mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
 
     ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
-    mmlib_cif_file = mmCIF.mmCIFFile()
-    mmlib_cif_file.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
-
-    mmlib_cif_data = mmlib_cif_file.get_data(res_name)
+    mmlib_cif_data = MMLIB_MONOMERS_CIF.get_data(res_name)
     if mmlib_cif_data != None:
         ## get additional chemical information on amino acids
         chem_comp = mmlib_cif_data.get_table("chem_comp")
@@ -365,14 +362,13 @@ def library_construct_monomer_desc(res_name):
     if mon_type == "L-PEPTIDE LINKING":
         mon_desc.amino_acid = True
 
-    elif mon_type == "DNA LINKING" or mon_type=="RNA LINKING":
+    elif mon_type == "DNA LINKING" or mon_type == "RNA LINKING":
         mon_desc.nucleic_acid = True
 
     elif mon_type == "HOH" or mon_type == "WAT":
         mon_desc.water = True
 
     return mon_desc
-
     
 def library_get_monomer_desc(res_name):
     """Loads/caches/returns the monomer description objec MonomerDesc

@@ -14,7 +14,7 @@ from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
 
-from mmLib import FileLoader, Structure, Viewer, OpenGLDriver
+from mmLib import FileIO, Structure, Viewer, OpenGLDriver
 
 
 ## tweakers (tweakable constants)
@@ -354,9 +354,9 @@ class GLUT_Viewer(Viewer.GLViewer):
         info("loading: %s" % (path))
         
         try:
-            struct = FileLoader.LoadStructure(
-                fil              = path,
-                build_properties = ("library_bonds","distance_bonds"))
+            struct = FileIO.LoadStructure(
+                fil = path,
+                distance_bonds = True)
         except IOError:
             error("file not found: %s" % (path))
             return None
