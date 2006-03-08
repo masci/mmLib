@@ -5,16 +5,20 @@
 """Utility classes for loading, manipulating, and analyzing TLS parameters.
 """
 from __future__ import generators
+
 import re
-import sys
 import fpformat
-import string
 import math
 import numpy
 
-from mmLib import Constants, mmTypes, AtomMath, PDB, Structure, Viewer, Gaussian, Colors
-
-
+import Constants
+import mmTypes
+import AtomMath
+import PDB
+import Structure
+import Viewer
+import Gaussian
+import Colors
 
 ###############################################################################
 ## EXCEPTION BASE CLASS
@@ -562,7 +566,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         """
         if len(frag_id) == 0:
             return "."
-        if frag_id[-1] in string.digits:
+        if frag_id[-1].isdigit():
             frag_id += "."
         return frag_id
         
@@ -809,8 +813,10 @@ def calc_itls_uiso(T, L, S, position):
     zz = z*z
 
     ## note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 
-    u_tls = T + (L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy) - 2.0*L[0,1]*x*y -
-                 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
+    u_tls = T + (
+        L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy)
+        - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z
+        + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
     return u_tls
 
 def iter_itls_uiso(atom_iter, T, L, S, O):
