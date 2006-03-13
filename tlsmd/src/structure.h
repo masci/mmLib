@@ -37,6 +37,7 @@ public:
   int calc_group_num_atoms(int group_id);
   int calc_group_num_residues(int group_id);
   void calc_group_centroid(int group_id, double *x, double *y, double *z);
+  double calc_group_mean_uiso(int group_id);
   
   Atom *atoms;
   int num_atoms;

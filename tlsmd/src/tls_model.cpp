@@ -4,8 +4,12 @@
 // included as part of this package.
 #include "tls_model.h"
 
+TLSModel::TLSModel()
+  : origin_x(0.0), origin_y(0.0), origin_z(0.0) {
+}
+
 void
-IsotropicTLSModel::calc_uiso(double x, double y, double z, double *u_iso) {
+IsotropicTLSModel::calc_uiso(double x, double y, double z, double *uiso) {
   x -= origin_x;
   y -= origin_y;
   z -= origin_z;
@@ -16,7 +20,7 @@ IsotropicTLSModel::calc_uiso(double x, double y, double z, double *u_iso) {
   zz = z*z;
 
   /* note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 */
-  *u_iso = ITLS[ITLS_T]                     +
+  *uiso = ITLS[ITLS_T]                      +
            (       ITLS[ITLS_L11] * (zz+yy) + 
 	           ITLS[ITLS_L22] * (xx+zz) +
 	           ITLS[ITLS_L33] * (xx+yy) +
@@ -27,67 +31,6 @@ IsotropicTLSModel::calc_uiso(double x, double y, double z, double *u_iso) {
 	     2.0 * ITLS[ITLS_S2]  * y       +
              2.0 * ITLS[ITLS_S3]  * x )/3.0;
 }
-
-/* Sets the one row of matrix A starting at A[i,j] with the istropic
- * TLS model coefficents for a atom located at t position x, y, z with
- * least-squares weight w.  Matrix A is filled to coumn j+12.
- *
- * The matrix A(m,n) is filled in FORTRAN-style, that is, assuming
- * a column-major memory layout.  That's because, athough the
- * matrix is contructed in C, the SVD subroutine from LAPACK is 
- * written in FORTRAN.
- *
- */
-void 
-IsotropicTLSModel::reset_fit(int num_atoms) {
-  row = 0;
-  Axb.set_matrix_size(num_atoms, ITLS_NUM_PARAMS);
-  Axb.zero();
-}
-
-void
-IsotropicTLSModel::set_atom_params(double x, double y, double z, double uiso, double w) {
-  x -= origin_x;
-  y -= origin_y;
-  z -= origin_z;
-
-  int m;
-  double *A, *b;
-  A = Axb.A;
-  b = Axb.b;
-  m = Axb.num_rows;
-#define FA(__i, __j) A[__i + (m * __j)]
-
-  double xx, yy, zz, xy, xz, yz;
-  xx = x*x;
-  yy = y*y;
-  zz = z*z;
-  xy = x*y;
-  xz = x*z;
-  yz = y*z;
-
-  // set b
-  b[row] = w * uiso;
-
-  // T iso
-  FA(row, ITLS_T) = w * 1.0;
-
-  // l11, l22, l33, l12, l13, l23
-  FA(row, ITLS_L11) = w * ((zz + yy) / 3.0);
-  FA(row, ITLS_L22) = w * ((xx + zz) / 3.0);
-  FA(row, ITLS_L33) = w * ((xx + yy) / 3.0);
-  
-  FA(row, ITLS_L12) = w * ((-2.0 * xy) / 3.0);
-  FA(row, ITLS_L13) = w * ((-2.0 * xz) / 3.0);
-  FA(row, ITLS_L23) = w * ((-2.0 * yz) / 3.0);
-
-  FA(row, ITLS_S1)  = w * (( 2.0 * z) / 3.0);
-  FA(row, ITLS_S2)  = w * (( 2.0 * y) / 3.0);
-  FA(row, ITLS_S3)  = w * (( 2.0 * x) / 3.0);
-
-  next_atom();
-}
-
 
 // return the anisotropic TLS model predicted ADP in U for a atom 
 // located at coordinates x,y,z with respect to the ATLS origin
@@ -160,6 +103,91 @@ AnisotropicTLSModel::calc_U(double x, double y, double z, double U[6]) {
     -       ATLS[ATLS_S13]   * z;
 }
 
+FitTLSModel::FitTLSModel() 
+  : max_num_atoms(0), tls_model(0), row(0) {
+}
+
+void
+FitTLSModel::fit_params() {
+  Axb.svd();
+  Axb.solve_for_x(tls_model->get_params());
+}
+
+void
+FitIsotropicTLSModel::set_max_num_atoms(int num_atoms) {
+  Axb.set_max_matrix_size(num_atoms, ITLS_NUM_PARAMS);
+}
+
+void 
+FitIsotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  FitTLSModel::tls_model = tls_model;
+  row = 0;
+  Axb.set_matrix_size(num_atoms, ITLS_NUM_PARAMS);
+  Axb.zero();
+}
+
+// Sets the one row of matrix A starting at A[i,j] with the istropic
+// TLS model coefficents for a atom located at t position x, y, z with
+// least-squares weight w.  Matrix A is filled to coumn j+12.
+// 
+// The matrix A(m,n) is filled in FORTRAN-style, that is, assuming
+// a column-major memory layout.  That's because, athough the
+// matrix is contructed in C, the SVD subroutine from LAPACK is 
+// written in FORTRAN.
+void
+FitIsotropicTLSModel::set_data_point(double x, double y, double z, double uiso, double w) {
+  x -= tls_model->origin_x;
+  y -= tls_model->origin_y;
+  z -= tls_model->origin_z;
+
+  double *A = Axb.A;
+  double *b = Axb.b;
+  int m = Axb.num_rows;
+#define FA(__i, __j) A[__i + (m * __j)]
+
+  double xx, yy, zz, xy, xz, yz;
+  xx = x*x;
+  yy = y*y;
+  zz = z*z;
+  xy = x*y;
+  xz = x*z;
+  yz = y*z;
+
+  // set b
+  b[row] = w * uiso;
+
+  // T iso
+  FA(row, ITLS_T) = w * 1.0;
+
+  // l11, l22, l33, l12, l13, l23
+  FA(row, ITLS_L11) = w * ((zz + yy) / 3.0);
+  FA(row, ITLS_L22) = w * ((xx + zz) / 3.0);
+  FA(row, ITLS_L33) = w * ((xx + yy) / 3.0);
+  
+  FA(row, ITLS_L12) = w * ((-2.0 * xy) / 3.0);
+  FA(row, ITLS_L13) = w * ((-2.0 * xz) / 3.0);
+  FA(row, ITLS_L23) = w * ((-2.0 * yz) / 3.0);
+
+  FA(row, ITLS_S1)  = w * (( 2.0 * z) / 3.0);
+  FA(row, ITLS_S2)  = w * (( 2.0 * y) / 3.0);
+  FA(row, ITLS_S3)  = w * (( 2.0 * x) / 3.0);
+
+  ++row;
+}
+
+
+void
+FitAnisotropicTLSModel::set_max_num_atoms(int num_atoms) {
+  Axb.set_max_matrix_size(num_atoms * 6, ATLS_NUM_PARAMS);
+}
+
+void 
+FitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  FitTLSModel::tls_model = tls_model;
+  row = 0;
+  Axb.set_matrix_size(6 * num_atoms, ATLS_NUM_PARAMS);
+  Axb.zero();
+}
 
 // Sets the six rows of matrix A starting at A[i,j] with the anistropic
 // TLS model coefficents for a atom located at t position x, y, z with
@@ -169,24 +197,15 @@ AnisotropicTLSModel::calc_U(double x, double y, double z, double U[6]) {
 // a column-major memory layout.  That's because, athough the
 // matrix is contructed in C, the SVD subroutine from LAPACK is 
 // written in FORTRAN.
-void 
-AnisotropicTLSModel::reset_fit(int num_atoms) {
-  row = 0;
-  Axb.set_matrix_size(num_atoms * 6, ATLS_NUM_PARAMS);
-  Axb.zero();
-}
-
 void
-AnisotropicTLSModel::set_atom_params(double x, double y, double z, double U[6], double w) {
-  x -= origin_x;
-  y -= origin_y;
-  z -= origin_z;
+FitAnisotropicTLSModel::set_data_point(double x, double y, double z, double U[6], double w) {
+  x -= tls_model->origin_x;
+  y -= tls_model->origin_y;
+  z -= tls_model->origin_z;
 
-  int m;
-  double *A, *b;
-  A = Axb.A;
-  b = Axb.b;
-  m = Axb.num_rows;
+  double *A = Axb.A;
+  double *b = Axb.b;
+  int m = Axb.num_rows;
 #define FA(__i,__j) A[__i + (m * __j)]
 
   double xx, yy, zz, xy, xz, yz;
@@ -265,5 +284,5 @@ AnisotropicTLSModel::set_atom_params(double x, double y, double z, double U[6], 
   FA(rowU23, ATLS_S13)   = w *  -z;
 #undef FA
 
-  next_atom();
+  row += 6;
 }

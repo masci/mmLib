@@ -12,20 +12,15 @@ class TLSModelEngine {
 public:
   void set_num_atoms(int num_atoms);
 
-  void isotropic_fit_group(int group_id);
-  double isotropic_group_residual(int group_id);
-  void isotropic_fit_segment(int istart, int iend, double *residual);
-
-  void anisotropic_fit_group(int group_id);
-  double anisotropic_group_residual(int group_id);
-  void anisotropic_fit_segment(int istart, int iend, double *residual);
+  void isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual);
+  void anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual);
 
   Chain chain;
-  IsotropicTLSModel itls;
-  AnisotropicTLSModel atls;
 
  private:
-  void fit_group(int group_id, TLSModel &tls, double parameters[]);
+  FitIsotropicTLSModel fit_itls;
+  FitAnisotropicTLSModel fit_atls;
+
 };
 
 #endif // __TLS_MODEL_ENGINE__

@@ -77,7 +77,7 @@ Chain::calc_group_num_residues(int group_id) {
 
 void
 Chain::calc_group_centroid(int group_id, double *x, double *y, double *z) {
-  int n = 0;
+  int natoms = 0;
   double cx = 0.0;
   double cy = 0.0;
   double cz = 0.0;
@@ -85,19 +85,35 @@ Chain::calc_group_centroid(int group_id, double *x, double *y, double *z) {
   Atom *atom = atoms;
   for (int ia = 0; ia < num_atoms; ++ia, ++atom) {
     if (!atom->in_group(group_id)) continue;
-    ++n;
+    ++natoms;
     cx += atom->x;
     cy += atom->y;
     cz += atom->z;
   }
 
-  if (n > 0) {
-    *x = cx / n;
-    *y = cy / n;
-    *z = cz / n;
+  if (natoms > 0) {
+    *x = cx / natoms;
+    *y = cy / natoms;
+    *z = cz / natoms;
   } else {
     *x = 0.0;
     *y = 0.0;
     *z = 0.0;
   }
 }
+
+double
+Chain::calc_group_mean_uiso(int group_id) {
+  int natoms = 0;
+  double sum_uiso = 0.0;
+  Atom *atom = atoms;
+  for (int ia = 0; ia < num_atoms; ++ia, ++atom) {
+    if (atom->in_group(group_id)) {
+      ++natoms;
+      sum_uiso += atom->u_iso;
+    }
+  }
+  if (natoms == 0) return 0.0;
+  return sum_uiso / natoms;
+}
+

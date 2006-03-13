@@ -62,47 +62,81 @@
 
 class TLSModel {
  public:
+  TLSModel();
   virtual ~TLSModel() {}
 
-  virtual void reset_fit(int num_atoms) = 0;
-  virtual void next_atom() = 0;
-  virtual void set_atom_params(Atom *atom) = 0;
-      
+  virtual int num_params() = 0;
+  virtual double *get_params() = 0;
+
+  void set_origin(double x, double y, double z) {
+    origin_x = x; origin_y = y, origin_z = z;
+  }
+
   double origin_x;
   double origin_y;
   double origin_z;
-
-  int row;
-  DGESDD Axb;
 };
 
 
 class IsotropicTLSModel : public TLSModel {
  public:
-  virtual void reset_fit(int num_atoms);
-  virtual void next_atom() { ++row; }
-  virtual void set_atom_params(double x, double y, double z, double uiso, double w);
-  virtual void set_atom_params(Atom *atom) {
-    set_atom_params(atom->x, atom->y, atom->z, atom->u_iso, atom->sqrt_weight);
-  }
-
-  void calc_uiso(double x, double y, double z, double *u_iso);
-
+  virtual int num_params() { return ITLS_NUM_PARAMS; }
+  virtual double *get_params() { return ITLS; }
+  void calc_uiso(double x, double y, double z, double *uiso);
   double ITLS[ITLS_NUM_PARAMS];
 };
 
 
 class AnisotropicTLSModel : public TLSModel {
  public:
-  virtual void reset_fit(int num_atoms);
-  virtual void next_atom() { row += 6; }
-  void set_atom_params(double x, double y, double z, double U[6], double w);
-  virtual void set_atom_params(Atom *atom) {
-    set_atom_params(atom->x, atom->y, atom->z, atom->U, atom->sqrt_weight);
-  }
+  virtual int num_params() { return ATLS_NUM_PARAMS; }
+  virtual double *get_params() { return ATLS; }
   void calc_U(double x, double y, double z, double U[]);
-
   double ATLS[ATLS_NUM_PARAMS];
+};
+
+
+class IFitTLSModel {
+ public:
+  virtual ~IFitTLSModel() {}
+  virtual void set_max_num_atoms(int num_atoms)  = 0;
+  virtual void reset_fit(TLSModel *tls_model, int num_atoms) = 0;
+  virtual void set_atom_data_point(Atom *atom) = 0;
+  virtual void fit_params() = 0;
+};
+
+
+class FitTLSModel : public IFitTLSModel {
+ public:
+  FitTLSModel();
+  virtual void fit_params();
+
+  int max_num_atoms;
+  TLSModel *tls_model;
+  int row;
+  DGESDD Axb;
+};
+
+
+class FitIsotropicTLSModel : public FitTLSModel {
+ public:
+  virtual void set_max_num_atoms(int num_atoms);
+  virtual void reset_fit(TLSModel *tls_model, int num_atoms);
+  virtual void set_atom_data_point(Atom *atom) {
+    set_data_point(atom->x, atom->y, atom->z, atom->u_iso, atom->sqrt_weight);
+  }
+  void set_data_point(double x, double y, double z, double uiso, double w);
+};
+
+
+class FitAnisotropicTLSModel : public FitTLSModel {
+ public:
+  virtual void set_max_num_atoms(int num_atoms);
+  virtual void reset_fit(TLSModel *tls_model, int num_atoms);
+  virtual void set_atom_data_point(Atom *atom) {
+    set_data_point(atom->x, atom->y, atom->z, atom->U, atom->sqrt_weight);
+  }
+  void set_data_point(double x, double y, double z, double U[6], double w);
 };
 
 #endif // __TLS_MODEL_H__
