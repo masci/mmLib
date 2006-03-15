@@ -8,23 +8,27 @@
 #define NAME_LEN     8
 #define FRAG_ID_LEN  8
 
+namespace TLSMD {
+
 class Atom {
 public:
+  Atom();
+
   bool is_mainchain();
   bool in_group(int gid) { return gid == group_id; }
+  void set_group(int gid) { group_id = gid; }
 
   char    name[NAME_LEN];             /* atom name */
   char    frag_id[FRAG_ID_LEN];       /* fragment id (residue name) */
   int     ifrag;                      /* fragment index */
   double  x, y, z;
-  double  xtls, ytls, ztls;
   double  u_iso;
-  double  u_iso_tmp;
   double  U[6];
-  double  Utmp[6];
+  double  weight;
   double  sqrt_weight;
-  double  sqrt_weight_tmp;
-  int     group_id;
+
+ private:
+  int group_id;
 };
 
 class Chain {
@@ -42,5 +46,7 @@ public:
   Atom *atoms;
   int num_atoms;
 };
+
+} // namespace TLSMD
 
 #endif // __STRUCTURE_H__

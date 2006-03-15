@@ -58,7 +58,7 @@ static PyObject *LINEARTLS_ERROR = NULL;
 
 typedef struct {
   PyObject_HEAD
-  TLSModelEngine *tls_model_engine;
+  TLSMD::TLSModelEngine *tls_model_engine;
 } LinearTLSModel_Object;
 
 
@@ -79,7 +79,7 @@ LinearTLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   if (self == NULL) {
     return NULL;
   }
-  self->tls_model_engine = new TLSModelEngine();
+  self->tls_model_engine = new TLSMD::TLSModelEngine();
   return (PyObject *)self;
 }
 
@@ -91,18 +91,16 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   self = (LinearTLSModel_Object *) py_self;
 
   PyObject *xmlrpc_chain;
-  int num_atoms;
-
   if (!PyArg_ParseTuple(args, "O", &xmlrpc_chain)) {
     return NULL;
   }
 
   /* allocate and fill the new atoms array */
-  num_atoms = PyList_Size(xmlrpc_chain);
+  int num_atoms = PyList_Size(xmlrpc_chain);
   self->tls_model_engine->set_num_atoms(num_atoms);
   
   if (num_atoms > 0) {
-    Atom *atom = self->tls_model_engine->chain.atoms;
+    TLSMD::Atom *atom = self->tls_model_engine->chain.atoms;
     for (int i = 0; i < num_atoms; ++i, ++atom) {
       char *strx;
       PyObject *atm_desc, *tmp;
@@ -207,6 +205,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       if (!PyFloat_Check(tmp)) {
 	return NULL;
       }
+      atom->weight = PyFloat_AsDouble(tmp);
       atom->sqrt_weight = sqrt(PyFloat_AsDouble(tmp));
     }
   }
@@ -228,7 +227,7 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   }
 
   double residual;
-  IsotropicTLSModel itls_model;
+  TLSMD::IsotropicTLSModel itls_model;
   self->tls_model_engine->isotropic_fit_segment(istart, iend, itls_model, &residual);
 
   /* construct return dictioary with results */
@@ -277,7 +276,7 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   }
 
   double residual;
-  AnisotropicTLSModel atls_model;
+  TLSMD::AnisotropicTLSModel atls_model;
   self->tls_model_engine->anisotropic_fit_segment(istart, iend, atls_model, &residual);
 
   /* construct return dictioary with results */

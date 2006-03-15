@@ -8,6 +8,8 @@
 #include "structure.h"
 #include "tls_model.h"
 
+namespace TLSMD {
+
 class TLSModelEngine {
 public:
   void set_num_atoms(int num_atoms);
@@ -22,5 +24,7 @@ public:
   FitAnisotropicTLSModel fit_atls;
 
 };
+
+} // namespace TLSMD
 
 #endif // __TLS_MODEL_ENGINE__

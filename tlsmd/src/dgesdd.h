@@ -7,6 +7,8 @@
 
 // wrapper for LAPACK DGESDD subroutine
 
+namespace TLSMD {
+
 class DGESDD {
  public:
 
@@ -33,5 +35,7 @@ class DGESDD {
   int     LWORK;
   int    *IWORK;
 };
+
+} // namespace TLSMD
 
 #endif // __DGESDD_H__

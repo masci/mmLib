@@ -7,6 +7,8 @@
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
 
+namespace TLSMD {
+
 /* LAPACK */
 extern "C" void
 dgesdd_(char *, int*, int*, double*, int*, double*, double*, int *, double*, int*, double*, int*, int*, int*);
@@ -136,3 +138,5 @@ DGESDD::solve_for_x(double *x) {
 #undef FU
 #undef FVT
 }
+
+} // namespace TLSMD

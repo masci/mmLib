@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "tls_model_engine.h"
 
+namespace TLSMD {
 
 void
 FitTLSModel(Chain &chain, int group_id, IFitTLSModel &tls_fit, TLSModel &tls_model) {
@@ -38,12 +39,13 @@ IsotropicTLSResidual(Chain &chain, int group_id, IsotropicTLSModel &itls_model) 
   for (int ia = 0; ia < chain.num_atoms; ++ia, ++atom) {
     if (!atom->in_group(group_id)) continue;
     
-    double u_iso_tls;
-    itls_model.calc_uiso(atom->x, atom->y, atom->z, &u_iso_tls);
- 
-    double tmp = atom->sqrt_weight * (u_iso_tls - atom->u_iso);
-    chi2 += tmp * tmp;
-    sum_weight += atom->sqrt_weight;
+    double uiso_tls;
+    itls_model.calc_uiso(atom->x, atom->y, atom->z, &uiso_tls);
+
+    
+    double delta = atom->sqrt_weight * (uiso_tls - atom->u_iso);
+    chi2 += delta * delta;
+    sum_weight += atom->weight;
   }
 
   int num_residues = chain.calc_group_num_residues(group_id);
@@ -66,7 +68,7 @@ AnisotropicTLSResidual(Chain &chain, int group_id, AnisotropicTLSModel &atls_mod
     double delta = ((Utls[0] + Utls[1] + Utls[2]) - (atom->U[0] + atom->U[1] + atom->U[2])) / 3.0;
     double tmp = atom->sqrt_weight * delta;
     chi2 += tmp * tmp;
-    sum_weight += atom->sqrt_weight;
+    sum_weight += atom->weight;
   }
 
   int num_residues = chain.calc_group_num_residues(group_id);
@@ -79,7 +81,6 @@ TLSModelEngine::set_num_atoms(int num_atoms) {
   fit_itls.set_max_num_atoms(num_atoms);
   fit_atls.set_max_num_atoms(num_atoms);
 }
-
 
 void
 TLSModelEngine::isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual) {
@@ -98,3 +99,4 @@ TLSModelEngine::anisotropic_fit_segment(int istart, int iend, AnisotropicTLSMode
   *residual = AnisotropicTLSResidual(chain, group_id, atls_model);
 }
 
+} // namespace TLSMD

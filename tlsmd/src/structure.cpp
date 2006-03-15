@@ -7,6 +7,15 @@
 
 #include "structure.h"
 
+namespace TLSMD {
+
+Atom::Atom() 
+  : ifrag(0), x(0.0), y(0.0), z(0.0), u_iso(0.0), sqrt_weight(0.0), group_id(0) {
+  for (int i = 0; i < NAME_LEN; ++i) name[i] = '\0';
+  for (int i = 0; i < FRAG_ID_LEN; ++i) frag_id[i] = '\0';
+  for (int i = 0; i < 6; ++i) U[i] = 0.0;
+}
+
 bool 
 Atom::is_mainchain() {
   if (strcmp(name, "N")==0)  return true;
@@ -39,9 +48,9 @@ Chain::set_group_range(int group_id, int istart, int iend) {
   Atom *atom = atoms;
   for (int ia = 0; ia < num_atoms; ++ia, ++atom) {
     if (ia >= istart && ia <= iend) {
-      atom->group_id = group_id;
+      atom->set_group(group_id);
     } else {
-      atom->group_id = 0;
+      atom->set_group(0);
     }
   }
   calc_group_num_atoms(group_id);
@@ -117,3 +126,4 @@ Chain::calc_group_mean_uiso(int group_id) {
   return sum_uiso / natoms;
 }
 
+} // TLSMD

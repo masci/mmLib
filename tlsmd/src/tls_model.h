@@ -59,6 +59,7 @@
 #define ATLS_S32   19
 #define ATLS_NUM_PARAMS 20
 
+namespace TLSMD {
 
 class TLSModel {
  public:
@@ -77,7 +78,6 @@ class TLSModel {
   double origin_z;
 };
 
-
 class IsotropicTLSModel : public TLSModel {
  public:
   virtual int num_params() { return ITLS_NUM_PARAMS; }
@@ -86,7 +86,6 @@ class IsotropicTLSModel : public TLSModel {
   double ITLS[ITLS_NUM_PARAMS];
 };
 
-
 class AnisotropicTLSModel : public TLSModel {
  public:
   virtual int num_params() { return ATLS_NUM_PARAMS; }
@@ -94,7 +93,6 @@ class AnisotropicTLSModel : public TLSModel {
   void calc_U(double x, double y, double z, double U[]);
   double ATLS[ATLS_NUM_PARAMS];
 };
-
 
 class IFitTLSModel {
  public:
@@ -105,18 +103,17 @@ class IFitTLSModel {
   virtual void fit_params() = 0;
 };
 
-
 class FitTLSModel : public IFitTLSModel {
  public:
   FitTLSModel();
   virtual void fit_params();
 
+ protected:
   int max_num_atoms;
   TLSModel *tls_model;
   int row;
   DGESDD Axb;
 };
-
 
 class FitIsotropicTLSModel : public FitTLSModel {
  public:
@@ -125,9 +122,8 @@ class FitIsotropicTLSModel : public FitTLSModel {
   virtual void set_atom_data_point(Atom *atom) {
     set_data_point(atom->x, atom->y, atom->z, atom->u_iso, atom->sqrt_weight);
   }
-  void set_data_point(double x, double y, double z, double uiso, double w);
+  void set_data_point(double x, double y, double z, double uiso, double sqrt_weight);
 };
-
 
 class FitAnisotropicTLSModel : public FitTLSModel {
  public:
@@ -136,7 +132,12 @@ class FitAnisotropicTLSModel : public FitTLSModel {
   virtual void set_atom_data_point(Atom *atom) {
     set_data_point(atom->x, atom->y, atom->z, atom->U, atom->sqrt_weight);
   }
-  void set_data_point(double x, double y, double z, double U[6], double w);
+  void set_data_point(double x, double y, double z, double U[6], double sqrt_weight);
 };
+
+void CalcIsotropicTLSModelUIso(double ITLS[], double x, double y, double z, double *uiso);
+void CalcAnisotropicTLSModelU(double ATLS[], double x, double y, double z, double U[]);
+
+} // namespace TLSMD
 
 #endif // __TLS_MODEL_H__
