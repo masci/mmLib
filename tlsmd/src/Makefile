@@ -1,4 +1,4 @@
-TARGET    =lineartls.so
+TARGET    =tlsmdmodule.so
 INCLUDES  =-I/home/jpaint/local/include/python2.4
 DEFINES   =-D_UNIX
 CFLAGS 	  =-fPIC -g -O3 -Wall

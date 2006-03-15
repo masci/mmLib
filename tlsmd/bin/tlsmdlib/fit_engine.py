@@ -7,8 +7,7 @@
 from mmLib import Structure
 
 import conf
-import lineartls
-import nonlineartls
+import tlsmdmodule
 
 
 ###############################################################################
@@ -71,19 +70,19 @@ class XChain(object):
         state  = "find_istart"
 
         for icur in range(len(self.xmlrpc_chain)):
-            if state=="find_istart":
+            if state == "find_istart":
                 if Structure.fragment_id_ge(self.xmlrpc_chain[icur]["frag_id"], frag_id1):
                     state  = "find_iend"
                     istart = icur
-            elif state=="find_iend":
+            elif state == "find_iend":
                 if Structure.fragment_id_gt(self.xmlrpc_chain[icur]["frag_id"], frag_id2):
                     iend = icur - 1
                     break
 
-        if istart==None:
+        if istart == None:
             return None, None
 
-        if iend==None:
+        if iend == None:
             iend = len(self.xmlrpc_chain) - 1
 
         return istart, iend
@@ -155,7 +154,7 @@ class TLSGraphChainLinear(TLSGraphChain):
     """
     def __init__(self, name):
         TLSGraphChain.__init__(self, name)        
-        self.tls_model = lineartls.LinearTLSModel()
+        self.tls_model = tlsmdmodule.TLSModelAnalyzer()
 
 class TLSGraphChainLinearIsotropic(TLSGraphChainLinear):
     """Linear fit of TLS parameters to isotropically refined ADPs.
@@ -194,7 +193,7 @@ class TLSGraphChainNonlinear(TLSGraphChain):
     """
     def __init__(self, name):
         TLSGraphChain.__init__(self, name)
-        self.tls_model = nonlineartls.NLTLSModel()
+        self.tls_model = tlsmdmodule.TLSModelAnalyzer()
     
 class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
     """Nonlinear fit of TLS parameters to isotropically refined ADPs.
@@ -204,7 +203,7 @@ class TLSGraphChainNonlinearIsotropic(TLSGraphChainNonlinear):
         self.model_parameters = 10
         
     def fit_segment(self, istart, iend):
-        fdict = self.tls_model.isotropic_fit_segment(istart, iend)
+        fdict = self.tls_model.constrained_isotropic_fit_segment(istart, iend)
         fdict["lsq_residual"] = fdict["ilsqr"]
         return fdict
 
@@ -216,7 +215,7 @@ class TLSGraphChainNonlinearAnisotropic(TLSGraphChainNonlinear):
         self.model_parameters = 20
 
     def fit_segment(self, istart, iend):
-        fdict = self.tls_model.anisotropic_fit_segment(istart, iend)
+        fdict = self.tls_model.constrained_anisotropic_fit_segment(istart, iend)
         fdict["lsq_residual"] = fdict["alsqr"]
         return fdict
 

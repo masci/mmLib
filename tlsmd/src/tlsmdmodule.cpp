@@ -113,20 +113,19 @@ AnisotropicTLSModelToPyDict(TLSMD::AnisotropicTLSModel &atls_model, double resid
   return rdict;
 }
 
-// PYTHON INTERFACE
-// LinearTLSModel: Linear Fit of Isotropic and Anisotropic TLS Models
-
-static PyObject *LINEARTLS_ERROR = NULL;
-
+//
+// TLSModelAnalyzer Class
+//
+static PyObject *TLSMDMODULE_ERROR = NULL;
 
 typedef struct {
   PyObject_HEAD
   TLSMD::TLSModelEngine *tls_model_engine;
-} LinearTLSModel_Object;
+} TLSModelAnalyzer_Object;
 
 
 static void
-LinearTLSModel_dealloc(LinearTLSModel_Object* self) {
+TLSModelAnalyzer_dealloc(TLSModelAnalyzer_Object* self) {
   if (self->tls_model_engine) {
     delete self->tls_model_engine;
     self->tls_model_engine = 0;
@@ -136,9 +135,9 @@ LinearTLSModel_dealloc(LinearTLSModel_Object* self) {
 
 
 static PyObject *
-LinearTLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *)type->tp_alloc(type, 0);
+TLSModelAnalyzer_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *)type->tp_alloc(type, 0);
   if (self == NULL) {
     return NULL;
   }
@@ -148,10 +147,10 @@ LinearTLSModel_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 
 static PyObject *
-LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
+TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *) py_self;
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
 
   PyObject *xmlrpc_chain;
   if (!PyArg_ParseTuple(args, "O", &xmlrpc_chain)) {
@@ -173,7 +172,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set name */
       tmp = PyDict_GetItemString(atm_desc, "name");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "name not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "name not in atm_desc");
 	return NULL;
       }
       strx = PyString_AsString(tmp);
@@ -185,7 +184,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set frag_id */
       tmp = PyDict_GetItemString(atm_desc, "frag_id");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "frag_id not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "frag_id not in atm_desc");
 	return NULL;
       }
       strx = PyString_AsString(tmp);
@@ -197,7 +196,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set x, y, z coordinates */
       tmp = PyDict_GetItemString(atm_desc, "ifrag");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "ifrag not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "ifrag not in atm_desc");
 	return NULL;
       }
       if (!PyInt_Check(tmp)) {
@@ -208,7 +207,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* set x, y, z coordinates */
       tmp = PyDict_GetItemString(atm_desc, "x");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "x not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "x not in atm_desc");
 	return NULL;
       }
       if (!PyFloat_Check(tmp)) {
@@ -218,7 +217,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "y");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "y not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "y not in atm_desc");
 	return NULL;
       }
       if (!PyFloat_Check(tmp)) {
@@ -228,7 +227,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "z");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "z not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "z not in atm_desc");
 	return NULL;
       }
       if (!PyFloat_Check(tmp)) {
@@ -238,7 +237,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
       tmp = PyDict_GetItemString(atm_desc, "u_iso");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "u_iso not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "u_iso not in atm_desc");
 	return NULL;
       }
       if (!PyFloat_Check(tmp)) {
@@ -250,7 +249,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       for (int j = 0; j < U_NUM_PARAMS; j++) {
 	tmp = PyDict_GetItemString(atm_desc, U_PARAM_NAMES[j]);
 	if (tmp == NULL) {
-	  PyErr_SetString(LINEARTLS_ERROR, "uXX not in atm_desc");
+	  PyErr_SetString(TLSMDMODULE_ERROR, "uXX not in atm_desc");
 	  return NULL;
 	}
 	if (!PyFloat_Check(tmp)) {
@@ -262,7 +261,7 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       /* weight */
       tmp = PyDict_GetItemString(atm_desc, "weight");
       if (tmp == NULL) {
-	PyErr_SetString(LINEARTLS_ERROR, "weight not in atm_desc");
+	PyErr_SetString(TLSMDMODULE_ERROR, "weight not in atm_desc");
 	return NULL;
       }
       if (!PyFloat_Check(tmp)) {
@@ -279,10 +278,10 @@ LinearTLSModel_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
 
 
 static PyObject *
-LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
+TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *) py_self;
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
 
   int istart, iend;
   if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
@@ -297,9 +296,9 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 
 
 static PyObject *
-LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *) py_self;
+TLSModelAnalyzer_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
 
   int istart, iend;
   if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
@@ -314,9 +313,9 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
 
 
 static PyObject *
-LinearTLSModel_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *) py_self;
+TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
 
   int istart, iend;
   if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
@@ -331,9 +330,9 @@ LinearTLSModel_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *ar
 
 
 static PyObject *
-LinearTLSModel_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
-  LinearTLSModel_Object *self;
-  self = (LinearTLSModel_Object *) py_self;
+TLSModelAnalyzer_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
 
   int istart, iend;
   if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
@@ -347,42 +346,42 @@ LinearTLSModel_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *
 }
 
 
-static PyMethodDef LinearTLSModel_methods[] = {
+static PyMethodDef TLSModelAnalyzer_methods[] = {
     {"set_xmlrpc_chain", 
-     (PyCFunction) LinearTLSModel_set_xmlrpc_chain, 
+     (PyCFunction) TLSModelAnalyzer_set_xmlrpc_chain, 
      METH_VARARGS,
      "Sets the Python list containing one dictionary for each atom." },
 
     {"isotropic_fit_segment",
-     (PyCFunction) LinearTLSModel_isotropic_fit_segment, 
+     (PyCFunction) TLSModelAnalyzer_isotropic_fit_segment, 
      METH_VARARGS,
      "Performs a linear fit of the isotropic TLS model to the given atoms." },
 
     {"anisotropic_fit_segment",
-     (PyCFunction) LinearTLSModel_anisotropic_fit_segment, 
+     (PyCFunction) TLSModelAnalyzer_anisotropic_fit_segment, 
      METH_VARARGS,
      "Performs a linear fit of the anisotropic TLS model to the given atoms." },
 
     {"constrained_isotropic_fit_segment",
-     (PyCFunction) LinearTLSModel_constrained_isotropic_fit_segment, 
+     (PyCFunction) TLSModelAnalyzer_constrained_isotropic_fit_segment, 
      METH_VARARGS,
      "Performs a constrained fit of the isotropic TLS model to the given atoms." },
 
     {"constrained_anisotropic_fit_segment",
-     (PyCFunction) LinearTLSModel_constrained_anisotropic_fit_segment, 
+     (PyCFunction) TLSModelAnalyzer_constrained_anisotropic_fit_segment, 
      METH_VARARGS,
      "Performs a constrained fit of the anisotropic TLS model to the given atoms." },
 
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject LinearTLSModel_Type = {
+static PyTypeObject TLSModelAnalyzer_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "LinearTLSModel",          /*tp_name*/
-    sizeof(LinearTLSModel_Object), /*tp_basicsize*/
+    "TLSModelAnalyzer",          /*tp_name*/
+    sizeof(TLSModelAnalyzer_Object), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)LinearTLSModel_dealloc, /*tp_dealloc*/
+    (destructor)TLSModelAnalyzer_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -398,14 +397,14 @@ static PyTypeObject LinearTLSModel_Type = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "LinearTLSModel objects",  /* tp_doc */
+    "TLSModelAnalyzer objects",  /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
     0,		               /* tp_iternext */
-    LinearTLSModel_methods,    /* tp_methods */
+    TLSModelAnalyzer_methods,    /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -415,30 +414,30 @@ static PyTypeObject LinearTLSModel_Type = {
     0,                         /* tp_dictoffset */
     0,                         /* tp_init */
     0,                         /* tp_alloc */
-    LinearTLSModel_new,        /* tp_new */
+    TLSModelAnalyzer_new,        /* tp_new */
 };
 
 
-static PyMethodDef LINEARTLS_METHODS[] = {
+static PyMethodDef TLSMDMODULE_METHODS[] = {
   {NULL, NULL, 0, NULL}
 };
 
 
 extern "C" DL_EXPORT(void)
-initlineartls(void)
+inittlsmdmodule(void)
 {
-  if (PyType_Ready(&LinearTLSModel_Type) < 0)
+  if (PyType_Ready(&TLSModelAnalyzer_Type) < 0)
     return;
 
   PyObject *m;
-  m = Py_InitModule("lineartls", LINEARTLS_METHODS);
+  m = Py_InitModule("tlsmdmodule", TLSMDMODULE_METHODS);
   
-  LINEARTLS_ERROR = PyErr_NewException("lineartls.error", NULL, NULL);
-  Py_INCREF(LINEARTLS_ERROR);
-  PyModule_AddObject(m, "error", LINEARTLS_ERROR);
+  TLSMDMODULE_ERROR = PyErr_NewException("tlsmdmodule.error", NULL, NULL);
+  Py_INCREF(TLSMDMODULE_ERROR);
+  PyModule_AddObject(m, "error", TLSMDMODULE_ERROR);
 
 
-  /* add the LinearTLSModel class */
-  Py_INCREF(&LinearTLSModel_Type);
-  PyModule_AddObject(m, "LinearTLSModel", (PyObject *)&LinearTLSModel_Type);
+  /* add the TLSModelAnalyzer class */
+  Py_INCREF(&TLSModelAnalyzer_Type);
+  PyModule_AddObject(m, "TLSModelAnalyzer", (PyObject *)&TLSModelAnalyzer_Type);
 }

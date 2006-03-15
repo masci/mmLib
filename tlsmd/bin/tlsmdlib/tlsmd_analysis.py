@@ -7,6 +7,7 @@
 import sys
 import math
 import numpy
+import gc
 
 from mmLib import Constants, FileIO, TLS
 
@@ -17,7 +18,7 @@ import datafile
 import hcsssp
 import tls_calcs
 import fit_engine
-
+import tlsmdmodule
 
 def calc_include_atom(atm, reject_messages = False):
     """Filter out atoms from the model which will cause problems or
@@ -207,8 +208,8 @@ class TLSSegment(object):
 
 
 class ChainPartition(object):
-    """Collection object describing one multi-TLS group partitioning
-    of a protein chain.
+    """Collection of TLSSegment objects describing one multi-TLS
+    group partitioning of a protein chain.
     """
     def __init__(self, chain, ntls_constraint):
         self.chain           = chain
@@ -251,7 +252,7 @@ class ChainPartition(object):
 
 
 class ChainPartitionCollection(object):
-    """Contains the ChainPartition objects for a chain.
+    """Contains all the ChainPartition objects for a chain.
     """
     def __init__(self, struct, struct_file_path, chain, chain_optimizer):
         self.struct = struct
@@ -371,14 +372,14 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             
             if tlsdict == None:
                 print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
-                sys.exit(-1)
+                raise SystemExit
 
             if tlsdict.has_key("error") == True:
                 continue
 
             if tlsdict.has_key("lsq_residual") == False:
                 print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
-                sys.exit(-1)
+                raise SystemExit
 
             cost = tlsdict["lsq_residual"]
             frag_range = (frag_id1, frag_id2)
@@ -404,7 +405,6 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         ## free memory taken up from edges
         edges = None
-        import gc
         gc.collect()
 
         print "run_minimization(): ", misc.end_timing()
@@ -443,14 +443,13 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
     def __calc_nonlinear_fit(self, tls_group, segment):
         """Use the non-linear TLS model to calculate tensor values.
         """
-        import nonlineartls
-        nltls = nonlineartls.NLTLSModel()
+        nltls = tlsmdmodule.TLSModelAnalyzer()
 
         xlist = chain_to_xmlrpc_list(segment)
         nltls.set_xmlrpc_chain(xlist)
 
         ## anisotropic model
-        tlsdict = nltls.anisotropic_fit_segment(0, len(xlist)-1)
+        tlsdict = nltls.constrained_anisotropic_fit_segment(0, len(xlist)-1)
 
         tls_group.origin = numpy.array([tlsdict["x"], tlsdict["y"], tlsdict["z"]], float)
 
@@ -472,7 +471,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
               [tlsdict["s31"], tlsdict["s32"],       s33] ], float)
 
         ## isotropic model
-        itlsdict = nltls.isotropic_fit_segment(0, len(xlist)-1)
+        itlsdict = nltls.constrained_isotropic_fit_segment(0, len(xlist)-1)
         
         tls_group.itls_T = itlsdict["it"]
         
