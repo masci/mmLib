@@ -50,6 +50,69 @@ char *NL_ATLS_PARAM_NAMES[] = {
   "nl_s2211", "nl_s1133", "nl_s12", "nl_s13",  "nl_s23", "nl_s21", "nl_s31", "nl_s32"
 };
 
+static void
+AddTLSModelToPyDict(TLSMD::TLSModel &tls_model, PyObject *rdict) {
+  PyObject *py_floatx;
+
+  py_floatx = PyFloat_FromDouble(tls_model.origin_x);
+  PyDict_SetItemString(rdict, "x", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(tls_model.origin_y);
+  PyDict_SetItemString(rdict, "y", py_floatx);
+  Py_DECREF(py_floatx);
+
+  py_floatx = PyFloat_FromDouble(tls_model.origin_z);
+  PyDict_SetItemString(rdict, "z", py_floatx);
+  Py_DECREF(py_floatx);
+}
+
+static PyObject *
+IsotropicTLSModelToPyDict(TLSMD::IsotropicTLSModel &itls_model, double residual) {
+  PyObject *rdict = PyDict_New();
+
+  AddTLSModelToPyDict(itls_model, rdict);
+
+  PyObject *py_floatx;
+  py_floatx = PyFloat_FromDouble(residual);
+  PyDict_SetItemString(rdict, "ilsqr", py_floatx);
+  Py_DECREF(py_floatx);
+
+  int num_params = itls_model.num_params();
+  char **param_name = ITLS_PARAM_NAMES;
+  double *param = itls_model.get_params();
+  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
+    py_floatx = PyFloat_FromDouble(*param);
+    PyDict_SetItemString(rdict, *param_name, py_floatx);
+    Py_DECREF(py_floatx);
+  }
+    
+  return rdict;
+}
+
+static PyObject *
+AnisotropicTLSModelToPyDict(TLSMD::AnisotropicTLSModel &atls_model, double residual) {
+  PyObject *rdict = PyDict_New();
+
+  AddTLSModelToPyDict(atls_model, rdict);
+
+  PyObject *py_floatx;
+  py_floatx = PyFloat_FromDouble(residual);
+  PyDict_SetItemString(rdict, "alsqr", py_floatx);
+  Py_DECREF(py_floatx);
+
+  int num_params = atls_model.num_params();
+  char **param_name = ATLS_PARAM_NAMES;
+  double *param = atls_model.get_params();
+  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
+    py_floatx = PyFloat_FromDouble(*param);
+    PyDict_SetItemString(rdict, *param_name, py_floatx);
+    Py_DECREF(py_floatx);
+  }
+    
+  return rdict;
+}
+
 // PYTHON INTERFACE
 // LinearTLSModel: Linear Fit of Isotropic and Anisotropic TLS Models
 
@@ -229,39 +292,7 @@ LinearTLSModel_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   double residual;
   TLSMD::IsotropicTLSModel itls_model;
   self->tls_model_engine->isotropic_fit_segment(istart, iend, itls_model, &residual);
-
-  /* construct return dictioary with results */
-  PyObject *rdict = PyDict_New();
-
-  /* set minimization exit status */
-  PyObject *py_floatx;
-
-  py_floatx = PyFloat_FromDouble(itls_model.origin_x);
-  PyDict_SetItemString(rdict, "x", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(itls_model.origin_y);
-  PyDict_SetItemString(rdict, "y", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(itls_model.origin_z);
-  PyDict_SetItemString(rdict, "z", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(residual);
-  PyDict_SetItemString(rdict, "ilsqr", py_floatx);
-  Py_DECREF(py_floatx);
-
-  int num_params = itls_model.num_params();
-  char **param_name = ITLS_PARAM_NAMES;
-  double *param = itls_model.get_params();
-  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
-    py_floatx = PyFloat_FromDouble(*param);
-    PyDict_SetItemString(rdict, *param_name, py_floatx);
-    Py_DECREF(py_floatx);
-  }
-    
-  return rdict;
+  return IsotropicTLSModelToPyDict(itls_model, residual);
 }
 
 
@@ -278,39 +309,7 @@ LinearTLSModel_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   double residual;
   TLSMD::AnisotropicTLSModel atls_model;
   self->tls_model_engine->anisotropic_fit_segment(istart, iend, atls_model, &residual);
-
-  /* construct return dictioary with results */
-  PyObject *rdict = PyDict_New();
-
-  /* set minimization exit status */
-  PyObject *py_floatx;
-
-  py_floatx = PyFloat_FromDouble(atls_model.origin_x);
-  PyDict_SetItemString(rdict, "x", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(atls_model.origin_y);
-  PyDict_SetItemString(rdict, "y", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(atls_model.origin_z);
-  PyDict_SetItemString(rdict, "z", py_floatx);
-  Py_DECREF(py_floatx);
-
-  py_floatx = PyFloat_FromDouble(residual);
-  PyDict_SetItemString(rdict, "alsqr", py_floatx);
-  Py_DECREF(py_floatx);
-
-  int num_params = atls_model.num_params();
-  char **param_name = ATLS_PARAM_NAMES;
-  double *param = atls_model.get_params();
-  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
-    py_floatx = PyFloat_FromDouble(*param);
-    PyDict_SetItemString(rdict, *param_name, py_floatx);
-    Py_DECREF(py_floatx);
-  }
-    
-  return rdict;
+  return AnisotropicTLSModelToPyDict(atls_model, residual);
 }
 
 
@@ -324,8 +323,10 @@ LinearTLSModel_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *ar
     return NULL;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  double residual;
+  TLSMD::IsotropicTLSModel itls_model;
+  self->tls_model_engine->constrained_isotropic_fit_segment(istart, iend, itls_model, &residual);
+  return IsotropicTLSModelToPyDict(itls_model, residual);
 }
 
 
@@ -339,8 +340,10 @@ LinearTLSModel_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *
     return NULL;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  double residual;
+  TLSMD::AnisotropicTLSModel atls_model;
+  self->tls_model_engine->constrained_anisotropic_fit_segment(istart, iend, atls_model, &residual);
+  return AnisotropicTLSModelToPyDict(atls_model, residual);
 }
 
 

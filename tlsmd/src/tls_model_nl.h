@@ -65,7 +65,7 @@ class ConstrainedFitTLSModel : public IFitTLSModel {
  protected:
   void set_size(int nrows, int ncols);
 
-  static const double tolerance = 1E-3;
+  static const double tolerance = 1E-4;
 
   int num_rows;
   int num_cols;

@@ -7,6 +7,7 @@
 
 #include "structure.h"
 #include "tls_model.h"
+#include "tls_model_nl.h"
 
 namespace TLSMD {
 
@@ -17,12 +18,16 @@ public:
   void isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual);
   void anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual);
 
+  void constrained_isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual);
+  void constrained_anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual);
+
   Chain chain;
 
  private:
   FitIsotropicTLSModel fit_itls;
   FitAnisotropicTLSModel fit_atls;
-
+  ConstrainedFitIsotropicTLSModel cfit_itls;
+  ConstrainedFitAnisotropicTLSModel cfit_atls;
 };
 
 } // namespace TLSMD

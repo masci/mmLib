@@ -41,10 +41,9 @@ IsotropicTLSResidual(Chain &chain, int group_id, IsotropicTLSModel &itls_model) 
     
     double uiso_tls;
     itls_model.calc_uiso(atom->x, atom->y, atom->z, &uiso_tls);
-
     
-    double delta = atom->sqrt_weight * (uiso_tls - atom->u_iso);
-    chi2 += delta * delta;
+    double delta = uiso_tls - atom->u_iso;
+    chi2 += atom->weight * (delta * delta);
     sum_weight += atom->weight;
   }
 
@@ -66,8 +65,7 @@ AnisotropicTLSResidual(Chain &chain, int group_id, AnisotropicTLSModel &atls_mod
  
     // calculated residule is of trace only
     double delta = ((Utls[0] + Utls[1] + Utls[2]) - (atom->U[0] + atom->U[1] + atom->U[2])) / 3.0;
-    double tmp = atom->sqrt_weight * delta;
-    chi2 += tmp * tmp;
+    chi2 += atom->weight * (delta * delta);
     sum_weight += atom->weight;
   }
 
@@ -80,6 +78,8 @@ TLSModelEngine::set_num_atoms(int num_atoms) {
   chain.set_num_atoms(num_atoms);
   fit_itls.set_max_num_atoms(num_atoms);
   fit_atls.set_max_num_atoms(num_atoms);
+  cfit_itls.set_max_num_atoms(num_atoms);
+  cfit_atls.set_max_num_atoms(num_atoms);
 }
 
 void
@@ -96,6 +96,23 @@ TLSModelEngine::anisotropic_fit_segment(int istart, int iend, AnisotropicTLSMode
   int group_id = 1;
   chain.set_group_range(group_id, istart, iend);
   FitTLSModel(chain, group_id, fit_atls, atls_model);
+  *residual = AnisotropicTLSResidual(chain, group_id, atls_model);
+}
+
+void
+TLSModelEngine::constrained_isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual) {
+  int group_id = 1;
+  chain.set_group_range(group_id, istart, iend);
+  FitTLSModel(chain, group_id, cfit_itls, itls_model);
+  *residual = IsotropicTLSResidual(chain, group_id, itls_model);
+}
+
+void
+TLSModelEngine::constrained_anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual)
+{
+  int group_id = 1;
+  chain.set_group_range(group_id, istart, iend);
+  FitTLSModel(chain, group_id, cfit_atls, atls_model);
   *residual = AnisotropicTLSResidual(chain, group_id, atls_model);
 }
 

@@ -119,11 +119,13 @@ FitTLSModel::fit_params() {
 
 void
 FitIsotropicTLSModel::set_max_num_atoms(int num_atoms) {
+  max_num_atoms = num_atoms;
   Axb.set_max_matrix_size(num_atoms, ITLS_NUM_PARAMS);
 }
 
 void 
 FitIsotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  if (num_atoms > max_num_atoms) set_max_num_atoms(num_atoms);
   FitTLSModel::tls_model = tls_model;
   row = 0;
   Axb.set_matrix_size(num_atoms, ITLS_NUM_PARAMS);
@@ -179,14 +181,15 @@ FitIsotropicTLSModel::set_data_point(double x, double y, double z, double uiso, 
   ++row;
 }
 
-
 void
 FitAnisotropicTLSModel::set_max_num_atoms(int num_atoms) {
+  max_num_atoms = num_atoms;
   Axb.set_max_matrix_size(num_atoms * 6, ATLS_NUM_PARAMS);
 }
 
 void 
 FitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  if (num_atoms > max_num_atoms) set_max_num_atoms(num_atoms);
   FitTLSModel::tls_model = tls_model;
   row = 0;
   Axb.set_matrix_size(6 * num_atoms, ATLS_NUM_PARAMS);

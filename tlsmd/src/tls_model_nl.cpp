@@ -3,6 +3,7 @@
 // its license.  Please see the LICENSE file that should have been
 // included as part of this package.
 
+#include <stdio.h>
 #include <math.h>
 #include "tls_model_nl.h"
 
@@ -574,6 +575,7 @@ ConstrainedFitIsotropicTLSModel::set_max_num_atoms(int num_atoms) {
 
 void
 ConstrainedFitIsotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  if (num_atoms > max_num_atoms) set_max_num_atoms(num_atoms);
   ConstrainedFitIsotropicTLSModel::tls_model = tls_model;
   iatom = 0;
   idata_vector.resize(num_atoms);
@@ -581,24 +583,38 @@ ConstrainedFitIsotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
 
 void
 ConstrainedFitIsotropicTLSModel::set_data_point(double x, double y, double z, double uiso) {
-  idata_vector[iatom].x = x;
-  idata_vector[iatom].y = y;
-  idata_vector[iatom].z = z;
+  idata_vector[iatom].x = x - tls_model->origin_x;
+  idata_vector[iatom].y = y - tls_model->origin_y;
+  idata_vector[iatom].z = z - tls_model->origin_z;
   idata_vector[iatom].uiso = uiso;
   ++iatom;
 }
 
 void
 ConstrainedFitIsotropicTLSModel::fit_params() {
+  double mean_u_iso = 0.0;
+  std::vector<IsotropicDataPoint>::const_iterator idp;
+  for (idp = idata_vector.begin(); idp != idata_vector.end(); ++idp) {
+    mean_u_iso += idp->uiso;
+  }
+  mean_u_iso = mean_u_iso / idata_vector.size();
+
+  double NL_ITLS[ITLS_NUM_PARAMS];
+  for (int i = 0; i < ITLS_NUM_PARAMS; ++i) NL_ITLS[i] = 0.0;
+  NL_ITLS[NL_ITLS_T] = mean_u_iso;
+  NL_ITLS[NL_ITLS_LX] = 5.0 * DEG2RAD;
+  NL_ITLS[NL_ITLS_LY] = 5.0 * DEG2RAD;
+  NL_ITLS[NL_ITLS_LZ] = 5.0 * DEG2RAD;
+
+  g_pISolver = this;
   int info;
   int num_equations = idata_vector.size();
   int num_variables = ITLS_NUM_PARAMS;
   double tol = tolerance;
-
-  g_pISolver = this;
-  lmder1_(isotropic_lmder1_fcn, &num_equations, &num_variables, tls_model->get_params(), 
-	  fvec, fjac, &num_rows, &tol, &info, ipvt, wa, &lwa);
+  lmder1_(isotropic_lmder1_fcn, &num_equations, &num_variables, NL_ITLS, fvec, fjac, &num_equations, &tol, &info, ipvt, wa, &lwa);
   g_pISolver = 0;
+
+  calc_isotropic_tls_parameters(NL_ITLS, tls_model->get_params());
 }
 
 void
@@ -610,6 +626,7 @@ ConstrainedFitAnisotropicTLSModel::set_max_num_atoms(int num_atoms) {
 
 void
 ConstrainedFitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
+  if (num_atoms > max_num_atoms) set_max_num_atoms(num_atoms);
   ConstrainedFitAnisotropicTLSModel::tls_model = tls_model;
   iatom = 0;
   adata_vector.resize(num_atoms);
@@ -617,24 +634,40 @@ ConstrainedFitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms)
 
 void
 ConstrainedFitAnisotropicTLSModel::set_data_point(double x, double y, double z, double U[]) {
-  adata_vector[iatom].x = x;
-  adata_vector[iatom].y = y;
-  adata_vector[iatom].z = z;
+  adata_vector[iatom].x = x - tls_model->origin_x;
+  adata_vector[iatom].y = y - tls_model->origin_y;
+  adata_vector[iatom].z = z - tls_model->origin_z;
   for (int i = 0; i < 6; ++i) adata_vector[iatom].U[i] = U[i];
   ++iatom;
 }
 
 void
 ConstrainedFitAnisotropicTLSModel::fit_params() {
+  double mean_u_iso = 0.0;
+  std::vector<AnisotropicDataPoint>::const_iterator idp;
+  for (idp = adata_vector.begin(); idp != adata_vector.end(); ++idp) {
+    mean_u_iso += (idp->U[0] + idp->U[1] + idp->U[2]) / 3.0;
+  }
+  mean_u_iso = mean_u_iso / adata_vector.size();
+
+  double NL_ATLS[ATLS_NUM_PARAMS];
+  for (int i = 0; i < ATLS_NUM_PARAMS; ++i) NL_ATLS[i] = 0.0;
+  NL_ATLS[NL_ATLS_T11] = 1.0 * mean_u_iso;
+  NL_ATLS[NL_ATLS_T22] = 1.0 * mean_u_iso;
+  NL_ATLS[NL_ATLS_T33] = 1.0 * mean_u_iso;
+  NL_ATLS[NL_ATLS_LX] = 5.0 * DEG2RAD;
+  NL_ATLS[NL_ATLS_LY] = 5.0 * DEG2RAD;
+  NL_ATLS[NL_ATLS_LZ] = 5.0 * DEG2RAD;
+
+  g_pASolver = this;
   int info;
   int num_equations = 6 * adata_vector.size();
   int num_variables = ATLS_NUM_PARAMS;
   double tol = tolerance;
-
-  g_pASolver = this;
-  lmder1_(anisotropic_lmder1_fcn, &num_equations, &num_variables, tls_model->get_params(), 
-	  fvec, fjac, &num_rows, &tol, &info, ipvt, wa, &lwa);
+  lmder1_(anisotropic_lmder1_fcn, &num_equations, &num_variables, NL_ATLS, fvec, fjac, &num_equations, &tol, &info, ipvt, wa, &lwa);
   g_pASolver = 0;
+
+  calc_anisotropic_tls_parameters(NL_ATLS, tls_model->get_params());
 }
 
 } // namespace TLSMD
