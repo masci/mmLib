@@ -42,7 +42,6 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
     calling the method.
     """
     def handle(self):
-        
         self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
         return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 

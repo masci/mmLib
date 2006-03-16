@@ -10,7 +10,14 @@
 namespace TLSMD {
 
 Atom::Atom() 
-  : ifrag(0), x(0.0), y(0.0), z(0.0), u_iso(0.0), sqrt_weight(0.0), group_id(0) {
+  : ifrag(0), 
+    x(0.0), 
+    y(0.0), 
+    z(0.0), 
+    u_iso(0.0), 
+    weight(0.0),
+    sqrt_weight(0.0), 
+    group_id(0) {
   for (int i = 0; i < NAME_LEN; ++i) name[i] = '\0';
   for (int i = 0; i < FRAG_ID_LEN; ++i) frag_id[i] = '\0';
   for (int i = 0; i < 6; ++i) U[i] = 0.0;

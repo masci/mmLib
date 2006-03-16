@@ -36,7 +36,7 @@ def usage():
     print "Authors:"
     print "  Jay Painter <jpaint@u.washington.edu>"
     print
-    sys.exit(1)
+    raise SystemExit
 
 ###############################################################################
 ## main() functions for the various modes of execution

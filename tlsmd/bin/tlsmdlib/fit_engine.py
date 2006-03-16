@@ -122,7 +122,7 @@ class TLSGraphChain(object):
         ## in the correct places
         istart = self.xchain.get_istart(frag_id1)
         iend = self.xchain.get_iend(frag_id2)
-        if istart==None or iend==None:
+        if istart == None or iend == None:
             fit_info["error"] = "No Atoms In Segment"
             return fit_info
 

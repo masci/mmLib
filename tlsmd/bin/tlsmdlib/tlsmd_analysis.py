@@ -169,7 +169,7 @@ class TLSChainProcessor(object):
             
             self.num_subsegments += 1
             pcomplete = round(100.0 * self.num_subsegments / self.total_num_subsegments)
-            if pcomplete!=pcomplete_old:
+            if pcomplete != pcomplete_old:
                 self.prnt_percent_complete(pcomplete)
                 pcomplete_old = pcomplete
 
@@ -316,10 +316,17 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         self.frag_id_src  = None
         self.frag_id_dest = None
 
-        if self.frag_id_src==None and self.frag_id_dest==None:
+        if self.frag_id_src == None and self.frag_id_dest == None:
             self.chain = chain
         else:
             self.chain = chain[self.frag_id_src:self.frag_id_dest]
+
+        ## tls analyzer is necessary for re-fitting the partitions
+        ## chosen by the optimization (minimization)
+        self.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
+        xlist = chain_to_xmlrpc_list(self.chain)
+        self.tls_analyzer.set_xmlrpc_chain(xlist)
+        self.xchain = fit_engine.XChain(xlist)
 
         ## this is useful: for each fragment in the minimization
         ## set a attribute for its index position
@@ -440,16 +447,16 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         cpartition.normalize_residual()
         return cpartition
 
-    def __calc_nonlinear_fit(self, tls_group, segment):
+    def __calc_nonlinear_fit(self, tls):
         """Use the non-linear TLS model to calculate tensor values.
         """
-        nltls = tlsmdmodule.TLSModelAnalyzer()
-
-        xlist = chain_to_xmlrpc_list(segment)
-        nltls.set_xmlrpc_chain(xlist)
+        tls_group = tls.tls_group
+        
+        istart = self.xchain.get_istart(tls.frag_id1)
+        iend = self.xchain.get_iend(tls.frag_id2)
 
         ## anisotropic model
-        tlsdict = nltls.constrained_anisotropic_fit_segment(0, len(xlist)-1)
+        tlsdict = self.tls_analyzer.constrained_anisotropic_fit_segment(istart, iend)
 
         tls_group.origin = numpy.array([tlsdict["x"], tlsdict["y"], tlsdict["z"]], float)
 
@@ -471,7 +478,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
               [tlsdict["s31"], tlsdict["s32"],       s33] ], float)
 
         ## isotropic model
-        itlsdict = nltls.constrained_isotropic_fit_segment(0, len(xlist)-1)
+        itlsdict = self.tls_analyzer.constrained_isotropic_fit_segment(istart, iend)
         
         tls_group.itls_T = itlsdict["it"]
         
@@ -513,7 +520,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             tls.tls_group.itls_L = tls_group_cache.itls_L.copy()
             tls.tls_group.itls_S = tls_group_cache.itls_S.copy()
         else:
-            self.__calc_nonlinear_fit(tls.tls_group, tls.segment)
+            self.__calc_nonlinear_fit(tls)
             self.tls_cache[cache_key] = tls
         
         ## helpful additions
@@ -563,18 +570,18 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         curr_v = num_vertex - 1
         h      = hop_constraint
         
-        while curr_v>=0:
+        while curr_v >= 0:
             prev_vertex  = P[h,curr_v]
             vertex_label = V[curr_v].ljust(20)
 
-            if prev_vertex<0:
+            if prev_vertex < 0:
                 prev_vertex_label = "".ljust(20)
             else:
                 prev_vertex_label = V[prev_vertex].ljust(20)
 
             edge = T[h][curr_v]
 
-            if edge!=None:
+            if edge is not None:
                 i, j, cost, frag_range = edge
                 wr = cost / (j - i)
                 edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (i, j, cost, frag_range, wr)
