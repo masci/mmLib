@@ -47,16 +47,6 @@
 
 namespace TLSMD {
 
-struct IsotropicDataPoint {
-  double x, y, z;
-  double uiso;
-};
-
-struct AnisotropicDataPoint {
-  double x, y, z;
-  double U[6];
-};
-
 class ConstrainedFitTLSModel : public IFitTLSModel {
  public:
   ConstrainedFitTLSModel();
@@ -65,7 +55,7 @@ class ConstrainedFitTLSModel : public IFitTLSModel {
  protected:
   void set_size(int nrows, int ncols);
 
-  static const double tolerance = 1E-4;
+  static const double tolerance = 1E-6;
 
   int num_rows;
   int num_cols;
@@ -91,7 +81,11 @@ class ConstrainedFitIsotropicTLSModel : public ConstrainedFitTLSModel {
   virtual void fit_params();
   void set_data_point(double x, double y, double z, double uiso);
 
-  std::vector<IsotropicDataPoint> idata_vector;
+  struct DataPoint {
+    double x, y, z;
+    double uiso;
+  };
+  std::vector<DataPoint> idata_vector;
 };
 
 class ConstrainedFitAnisotropicTLSModel : public ConstrainedFitTLSModel {
@@ -104,7 +98,11 @@ class ConstrainedFitAnisotropicTLSModel : public ConstrainedFitTLSModel {
   virtual void fit_params();
   void set_data_point(double x, double y, double z, const double U[6]);
 
-  std::vector<AnisotropicDataPoint> adata_vector;
+  struct DataPoint {
+    double x, y, z;
+    double U[6];
+  };
+  std::vector<DataPoint> adata_vector;
 };
 
 } // namespace TLSMD

@@ -430,7 +430,7 @@ anisotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ATLS, double *A, int lda
   zero_dmatrix(A, m, n);
 
   int row = 0;
-  std::vector<AnisotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitAnisotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = g_pASolver->adata_vector.begin(); idp != g_pASolver->adata_vector.end(); ++idp) {
     set_anisotropic_jacobian(A, m, n, row, idp->x, idp->y, idp->z, dNL);
     row += 6;
@@ -445,7 +445,7 @@ anisotropic_lmder1_fcn_R(int m, int n, double *NL_ATLS, double *R) {
   calc_anisotropic_tls_parameters(NL_ATLS, ATLS);
 
   int row = 0;
-  std::vector<AnisotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitAnisotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = g_pASolver->adata_vector.begin(); idp != g_pASolver->adata_vector.end(); ++idp) {
     double U[6];
     CalcAnisotropicTLSModelU(ATLS, idp->x, idp->y, idp->z, U);
@@ -488,7 +488,7 @@ isotropic_lmder1_fcn_jacobian(int m, int n,double *NL_ITLS, double *A, int lda) 
   zero_dmatrix(A, m, n);
 
   int row = 0;
-  std::vector<IsotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitIsotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = g_pISolver->idata_vector.begin(); idp != g_pISolver->idata_vector.end(); ++idp, ++row) {
     set_isotropic_jacobian(A, m, n, row, idp->x, idp->y, idp->z, dNL);
   }
@@ -501,7 +501,7 @@ isotropic_lmder1_fcn_R(int m, int n, double *NL_ITLS, double *R) {
   calc_isotropic_tls_parameters(NL_ITLS, ITLS);
 
   int row = 0;
-  std::vector<IsotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitIsotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = g_pISolver->idata_vector.begin(); idp != g_pISolver->idata_vector.end(); ++idp, ++row) {
     double uiso;
     CalcIsotropicTLSModelUIso(ITLS, idp->x, idp->y, idp->z, &uiso);
@@ -593,7 +593,7 @@ ConstrainedFitIsotropicTLSModel::set_data_point(double x, double y, double z, do
 void
 ConstrainedFitIsotropicTLSModel::fit_params() {
   double mean_u_iso = 0.0;
-  std::vector<IsotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitIsotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = idata_vector.begin(); idp != idata_vector.end(); ++idp) {
     mean_u_iso += idp->uiso;
   }
@@ -644,7 +644,7 @@ ConstrainedFitAnisotropicTLSModel::set_data_point(double x, double y, double z, 
 void
 ConstrainedFitAnisotropicTLSModel::fit_params() {
   double mean_u_iso = 0.0;
-  std::vector<AnisotropicDataPoint>::const_iterator idp;
+  std::vector<ConstrainedFitAnisotropicTLSModel::DataPoint>::const_iterator idp;
   for (idp = adata_vector.begin(); idp != adata_vector.end(); ++idp) {
     mean_u_iso += (idp->U[0] + idp->U[1] + idp->U[2]) / 3.0;
   }
