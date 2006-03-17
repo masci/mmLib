@@ -8,7 +8,7 @@ import os
 import sys
 import xmlrpclib
 
-PARTITION_SERVER_URL = "http://localhost:10500"
+PARTITION_SERVER_URL = "http://skuld.bmsc.washington.edu:10500"
 
 class PartitionClient(object):
     def __init__(self, pserver_url):

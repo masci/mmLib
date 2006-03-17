@@ -8,7 +8,7 @@
 namespace TLSMD {
 
 void
-FitTLSModel(Chain &chain, int group_id, IFitTLSModel &tls_fit, TLSModel &tls_model) {
+FitTLSModel(const Chain &chain, int group_id, IFitTLSModel &tls_fit, TLSModel &tls_model) {
   // calculate the number of atoms to be fit
   int num_atoms = chain.calc_group_num_atoms(group_id);
 
@@ -21,22 +21,22 @@ FitTLSModel(Chain &chain, int group_id, IFitTLSModel &tls_fit, TLSModel &tls_mod
   // set the datapoints for the fit
   tls_fit.reset_fit(&tls_model, num_atoms);
  
-  Atom *atom = chain.atoms;
-  for (int ia = 0; ia < chain.num_atoms; ++ia, ++atom) {
+  std::vector<Atom>::const_iterator atom;
+  for (atom = chain.atoms.begin(); atom != chain.atoms.end(); ++atom) {
     if (!atom->in_group(group_id)) continue;
-    tls_fit.set_atom_data_point(atom);
+    tls_fit.set_atom_data_point(*atom);
   }
 
   tls_fit.fit_params();
 }
 
 double
-IsotropicTLSResidual(Chain &chain, int group_id, IsotropicTLSModel &itls_model) {
+IsotropicTLSResidual(const Chain &chain, int group_id, const IsotropicTLSModel &itls_model) {
   double chi2 = 0.0;
   double sum_weight = 0.0;
 
-  Atom *atom = chain.atoms;
-  for (int ia = 0; ia < chain.num_atoms; ++ia, ++atom) {
+  std::vector<Atom>::const_iterator atom;
+  for (atom = chain.atoms.begin(); atom != chain.atoms.end(); ++atom) {
     if (!atom->in_group(group_id)) continue;
     
     double uiso_tls;
@@ -52,12 +52,12 @@ IsotropicTLSResidual(Chain &chain, int group_id, IsotropicTLSModel &itls_model) 
 }
 
 double
-AnisotropicTLSResidual(Chain &chain, int group_id, AnisotropicTLSModel &atls_model) {
+AnisotropicTLSResidual(const Chain &chain, int group_id, const AnisotropicTLSModel &atls_model) {
   double chi2 = 0.0;
   double sum_weight = 0.0;
 
-  Atom *atom = chain.atoms;
-  for (int ia = 0; ia < chain.num_atoms; ++ia, ++atom) {
+  std::vector<Atom>::const_iterator atom;
+  for (atom = chain.atoms.begin(); atom != chain.atoms.end(); ++atom) {
     if (!atom->in_group(group_id)) continue;
     
     double Utls[6];

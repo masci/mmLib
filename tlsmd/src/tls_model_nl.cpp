@@ -633,7 +633,7 @@ ConstrainedFitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms)
 }
 
 void
-ConstrainedFitAnisotropicTLSModel::set_data_point(double x, double y, double z, double U[]) {
+ConstrainedFitAnisotropicTLSModel::set_data_point(double x, double y, double z, const double U[]) {
   adata_vector[iatom].x = x - tls_model->origin_x;
   adata_vector[iatom].y = y - tls_model->origin_y;
   adata_vector[iatom].z = z - tls_model->origin_z;

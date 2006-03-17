@@ -162,12 +162,14 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   self->tls_model_engine->set_num_atoms(num_atoms);
   
   if (num_atoms > 0) {
-    TLSMD::Atom *atom = self->tls_model_engine->chain.atoms;
-    for (int i = 0; i < num_atoms; ++i, ++atom) {
+    int ia = 0;
+    std::vector<TLSMD::Atom> &atoms = self->tls_model_engine->chain.atoms;
+    std::vector<TLSMD::Atom>::iterator atom;
+    for (atom = atoms.begin(); atom != atoms.end(); ++atom, ++ia) {
       char *strx;
       PyObject *atm_desc, *tmp;
 
-      atm_desc = PyList_GetItem(xmlrpc_chain, i);
+      atm_desc = PyList_GetItem(xmlrpc_chain, ia);
       
       /* set name */
       tmp = PyDict_GetItemString(atm_desc, "name");
@@ -179,7 +181,7 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       if (strx == NULL) {
 	return NULL;
       }
-      strncpy(atom->name, strx, NAME_LEN);
+      atom->name.assign(strx);
 	
       /* set frag_id */
       tmp = PyDict_GetItemString(atm_desc, "frag_id");
@@ -191,7 +193,7 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
       if (strx == NULL) {
 	return NULL;
       }
-      strncpy(atom->frag_id, strx, FRAG_ID_LEN);
+      atom->frag_id.assign(strx);
 
       /* set x, y, z coordinates */
       tmp = PyDict_GetItemString(atm_desc, "ifrag");

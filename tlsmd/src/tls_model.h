@@ -66,10 +66,10 @@ class TLSModel {
   TLSModel();
   virtual ~TLSModel() {}
 
-  virtual int num_params() = 0;
+  virtual int num_params() const = 0;
   virtual double *get_params() = 0;
 
-  void set_origin(double x, double y, double z) {
+  void set_origin(const double x, const double y, const double z) {
     origin_x = x; origin_y = y, origin_z = z;
   }
 
@@ -80,17 +80,17 @@ class TLSModel {
 
 class IsotropicTLSModel : public TLSModel {
  public:
-  virtual int num_params() { return ITLS_NUM_PARAMS; }
+  virtual int num_params() const { return ITLS_NUM_PARAMS; }
   virtual double *get_params() { return ITLS; }
-  void calc_uiso(double x, double y, double z, double *uiso);
+  void calc_uiso(double x, double y, double z, double *uiso) const;
   double ITLS[ITLS_NUM_PARAMS];
 };
 
 class AnisotropicTLSModel : public TLSModel {
  public:
-  virtual int num_params() { return ATLS_NUM_PARAMS; }
+  virtual int num_params() const { return ATLS_NUM_PARAMS; }
   virtual double *get_params() { return ATLS; }
-  void calc_U(double x, double y, double z, double U[]);
+  void calc_U(double x, double y, double z, double U[]) const;
   double ATLS[ATLS_NUM_PARAMS];
 };
 
@@ -99,7 +99,7 @@ class IFitTLSModel {
   virtual ~IFitTLSModel() {}
   virtual void set_max_num_atoms(int num_atoms)  = 0;
   virtual void reset_fit(TLSModel *tls_model, int num_atoms) = 0;
-  virtual void set_atom_data_point(Atom *atom) = 0;
+  virtual void set_atom_data_point(const Atom &atom) = 0;
   virtual void fit_params() = 0;
 };
 
@@ -119,8 +119,8 @@ class FitIsotropicTLSModel : public FitTLSModel {
  public:
   virtual void set_max_num_atoms(int num_atoms);
   virtual void reset_fit(TLSModel *tls_model, int num_atoms);
-  virtual void set_atom_data_point(Atom *atom) {
-    set_data_point(atom->x, atom->y, atom->z, atom->u_iso, atom->sqrt_weight);
+  virtual void set_atom_data_point(const Atom &atom) {
+    set_data_point(atom.x, atom.y, atom.z, atom.u_iso, atom.sqrt_weight);
   }
   void set_data_point(double x, double y, double z, double uiso, double sqrt_weight);
 };
@@ -129,14 +129,14 @@ class FitAnisotropicTLSModel : public FitTLSModel {
  public:
   virtual void set_max_num_atoms(int num_atoms);
   virtual void reset_fit(TLSModel *tls_model, int num_atoms);
-  virtual void set_atom_data_point(Atom *atom) {
-    set_data_point(atom->x, atom->y, atom->z, atom->U, atom->sqrt_weight);
+  virtual void set_atom_data_point(const Atom &atom) {
+    set_data_point(atom.x, atom.y, atom.z, atom.U, atom.sqrt_weight);
   }
-  void set_data_point(double x, double y, double z, double U[6], double sqrt_weight);
+  void set_data_point(double x, double y, double z, const double U[6], double sqrt_weight);
 };
 
-void CalcIsotropicTLSModelUIso(double ITLS[], double x, double y, double z, double *uiso);
-void CalcAnisotropicTLSModelU(double ATLS[], double x, double y, double z, double U[]);
+void CalcIsotropicTLSModelUIso(const double ITLS[], double x, double y, double z, double *uiso);
+void CalcAnisotropicTLSModelU(const double ATLS[], double x, double y, double z, double U[]);
 
 } // namespace TLSMD
 

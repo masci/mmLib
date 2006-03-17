@@ -7,13 +7,13 @@
 namespace TLSMD {
 
 void
-CalcIsotropicTLSModelUIso(double ITLS[], double x, double y, double z, double *uiso) {
+CalcIsotropicTLSModelUIso(const double ITLS[], double x, double y, double z, double *uiso) {
   double xx, yy, zz;
   xx = x*x;
   yy = y*y;
   zz = z*z;
 
-  /* note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23 */
+  // note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23
   *uiso = ITLS[ITLS_T]                      +
            (       ITLS[ITLS_L11] * (zz+yy) + 
 	           ITLS[ITLS_L22] * (xx+zz) +
@@ -29,7 +29,7 @@ CalcIsotropicTLSModelUIso(double ITLS[], double x, double y, double z, double *u
 // return the anisotropic TLS model predicted ADP in U for a atom 
 // located at coordinates x,y,z with respect to the ATLS origin
 void
-CalcAnisotropicTLSModelU(double ATLS[], double x, double y, double z, double U[]) {
+CalcAnisotropicTLSModelU(const double ATLS[], double x, double y, double z, double U[]) {
   double xx, yy, zz, xy, yz, xz;
   xx = x * x;
   yy = y * y;
@@ -98,12 +98,12 @@ TLSModel::TLSModel()
 }
 
 void
-IsotropicTLSModel::calc_uiso(double x, double y, double z, double *uiso) {
+IsotropicTLSModel::calc_uiso(double x, double y, double z, double *uiso) const {
   CalcIsotropicTLSModelUIso(ITLS, x - origin_x, y - origin_y, z - origin_z, uiso);
 }
 
 void
-AnisotropicTLSModel::calc_U(double x, double y, double z, double U[6]) {
+AnisotropicTLSModel::calc_U(double x, double y, double z, double U[6]) const {
   CalcAnisotropicTLSModelU(ATLS, x - origin_x, y - origin_y, z - origin_z, U);
 }
 
@@ -205,7 +205,7 @@ FitAnisotropicTLSModel::reset_fit(TLSModel *tls_model, int num_atoms) {
 // matrix is contructed in C, the SVD subroutine from LAPACK is 
 // written in FORTRAN.
 void
-FitAnisotropicTLSModel::set_data_point(double x, double y, double z, double U[6], double sqrt_weight) {
+FitAnisotropicTLSModel::set_data_point(double x, double y, double z, const double U[6], double sqrt_weight) {
   x -= tls_model->origin_x;
   y -= tls_model->origin_y;
   z -= tls_model->origin_z;

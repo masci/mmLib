@@ -85,8 +85,8 @@ class ConstrainedFitIsotropicTLSModel : public ConstrainedFitTLSModel {
  public:
   virtual void set_max_num_atoms(int num_atoms);
   virtual void reset_fit(TLSModel *tls_model, int num_atoms);
-  virtual void set_atom_data_point(Atom *atom) {
-    set_data_point(atom->x, atom->y, atom->z, atom->u_iso);
+  virtual void set_atom_data_point(const Atom& atom) {
+    set_data_point(atom.x, atom.y, atom.z, atom.u_iso);
   }
   virtual void fit_params();
   void set_data_point(double x, double y, double z, double uiso);
@@ -98,11 +98,11 @@ class ConstrainedFitAnisotropicTLSModel : public ConstrainedFitTLSModel {
  public:
   virtual void set_max_num_atoms(int num_atoms);
   virtual void reset_fit(TLSModel *tls_model, int num_atoms);
-  virtual void set_atom_data_point(Atom *atom) {
-    set_data_point(atom->x, atom->y, atom->z, atom->U);
+  virtual void set_atom_data_point(const Atom& atom) {
+    set_data_point(atom.x, atom.y, atom.z, atom.U);
   }
   virtual void fit_params();
-  void set_data_point(double x, double y, double z, double U[6]);
+  void set_data_point(double x, double y, double z, const double U[6]);
 
   std::vector<AnisotropicDataPoint> adata_vector;
 };
