@@ -38,6 +38,7 @@ public:
 
   void set_num_atoms(int na);
   void set_group_range(int group_id, int istart, int iend);
+  void set_group_range(int group_id, const std::string& frag_id1, const std::string& frag_id2);
   int calc_group_num_atoms(int group_id) const;
   int calc_group_num_residues(int group_id) const;
   void calc_group_centroid(int group_id, double *x, double *y, double *z) const;

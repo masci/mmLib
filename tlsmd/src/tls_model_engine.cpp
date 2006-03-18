@@ -31,37 +31,48 @@ FitTLSModel(const Chain &chain, int group_id, IFitTLSModel &tls_fit, TLSModel &t
 }
 
 double
-IsotropicTLSResidual(const Chain &chain, int group_id, const IsotropicTLSModel &itls_model) {
+IsotropicTLSResult(const Chain& chain, int group_id, IsotropicFitTLSModelResult& itls_result) {
+  int num_atoms = 0;
   double chi2 = 0.0;
   double sum_weight = 0.0;
 
   std::vector<Atom>::const_iterator atom;
   for (atom = chain.atoms.begin(); atom != chain.atoms.end(); ++atom) {
     if (!atom->in_group(group_id)) continue;
-    
+    ++num_atoms;
+
     double uiso_tls;
-    itls_model.calc_uiso(atom->x, atom->y, atom->z, &uiso_tls);
+    itls_result.itls_model.calc_uiso(atom->x, atom->y, atom->z, &uiso_tls);
     
     double delta = uiso_tls - atom->u_iso;
     chi2 += atom->weight * (delta * delta);
     sum_weight += atom->weight;
   }
 
+  itls_result.set_num_atoms(num_atoms);
+
   int num_residues = chain.calc_group_num_residues(group_id);
-  return num_residues * (chi2 / sum_weight);
+  itls_result.set_num_residues(num_residues);
+
+  double residual = num_residues * (chi2 / sum_weight);
+  itls_result.set_residual(residual);
+
+  return residual;
 }
 
-double
-AnisotropicTLSResidual(const Chain &chain, int group_id, const AnisotropicTLSModel &atls_model) {
+void
+AnisotropicTLSResult(const Chain& chain, int group_id, AnisotropicFitTLSModelResult& atls_result) {
+  int num_atoms = 0;
   double chi2 = 0.0;
   double sum_weight = 0.0;
 
   std::vector<Atom>::const_iterator atom;
   for (atom = chain.atoms.begin(); atom != chain.atoms.end(); ++atom) {
     if (!atom->in_group(group_id)) continue;
-    
+    ++num_atoms;
+
     double Utls[6];
-    atls_model.calc_U(atom->x, atom->y, atom->z, Utls);
+    atls_result.atls_model.calc_U(atom->x, atom->y, atom->z, Utls);
  
     // calculated residule is of trace only
     double delta = ((Utls[0] + Utls[1] + Utls[2]) - (atom->U[0] + atom->U[1] + atom->U[2])) / 3.0;
@@ -69,8 +80,13 @@ AnisotropicTLSResidual(const Chain &chain, int group_id, const AnisotropicTLSMod
     sum_weight += atom->weight;
   }
 
+  atls_result.set_num_atoms(num_atoms);
+
   int num_residues = chain.calc_group_num_residues(group_id);
-  return num_residues * (chi2 / sum_weight);
+  atls_result.set_num_residues(num_residues);
+
+  double residual = num_residues * (chi2 / sum_weight);
+  atls_result.set_residual(residual);
 }
 
 void 
@@ -83,37 +99,43 @@ TLSModelEngine::set_num_atoms(int num_atoms) {
 }
 
 void
-TLSModelEngine::isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual) {
+TLSModelEngine::isotropic_fit_segment(const std::string& frag_id1,
+				      const std::string& frag_id2, 
+				      IsotropicFitTLSModelResult& itls_result) {
   int group_id = 1;
-  chain.set_group_range(group_id, istart, iend);
-  FitTLSModel(chain, group_id, fit_itls, itls_model);
-  *residual = IsotropicTLSResidual(chain, group_id, itls_model);
+  chain.set_group_range(group_id, frag_id1, frag_id2);
+  FitTLSModel(chain, group_id, fit_itls, itls_result.get_tls_model());
+  IsotropicTLSResult(chain, group_id, itls_result);
 }
 
 void
-TLSModelEngine::anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual)
-{
+TLSModelEngine::anisotropic_fit_segment(const std::string& frag_id1,
+					const std::string& frag_id2,
+					AnisotropicFitTLSModelResult& atls_result) {
   int group_id = 1;
-  chain.set_group_range(group_id, istart, iend);
-  FitTLSModel(chain, group_id, fit_atls, atls_model);
-  *residual = AnisotropicTLSResidual(chain, group_id, atls_model);
+  chain.set_group_range(group_id, frag_id1, frag_id2);
+  FitTLSModel(chain, group_id, fit_atls, atls_result.get_tls_model());
+  AnisotropicTLSResult(chain, group_id, atls_result);
 }
 
 void
-TLSModelEngine::constrained_isotropic_fit_segment(int istart, int iend, IsotropicTLSModel &itls_model, double *residual) {
+TLSModelEngine::constrained_isotropic_fit_segment(const std::string& frag_id1,
+						  const std::string& frag_id2,
+						  IsotropicFitTLSModelResult& itls_result) {
   int group_id = 1;
-  chain.set_group_range(group_id, istart, iend);
-  FitTLSModel(chain, group_id, cfit_itls, itls_model);
-  *residual = IsotropicTLSResidual(chain, group_id, itls_model);
+  chain.set_group_range(group_id, frag_id1, frag_id2);
+  FitTLSModel(chain, group_id, cfit_itls, itls_result.get_tls_model());
+  IsotropicTLSResult(chain, group_id, itls_result);
 }
 
 void
-TLSModelEngine::constrained_anisotropic_fit_segment(int istart, int iend, AnisotropicTLSModel &atls_model, double *residual)
-{
+TLSModelEngine::constrained_anisotropic_fit_segment(const std::string& frag_id1,
+						    const std::string& frag_id2,
+						    AnisotropicFitTLSModelResult& atls_result) {
   int group_id = 1;
-  chain.set_group_range(group_id, istart, iend);
-  FitTLSModel(chain, group_id, cfit_atls, atls_model);
-  *residual = AnisotropicTLSResidual(chain, group_id, atls_model);
+  chain.set_group_range(group_id, frag_id1, frag_id2);
+  FitTLSModel(chain, group_id, cfit_atls, atls_result.get_tls_model());
+  AnisotropicTLSResult(chain, group_id, atls_result);
 }
 
 } // namespace TLSMD

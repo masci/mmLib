@@ -8,6 +8,48 @@ import numpy
 
 from mmLib import Constants, TLS, FileIO
 
+def tlsdict2tensors(tlsdict):
+    """Convert the result dictionaries returned by tlsmdmodule to NumPy
+    tensors.
+    """
+    origin = numpy.array([tlsdict["x"], tlsdict["y"], tlsdict["z"]], float)
+
+    T = numpy.array(
+        [ [tlsdict["t11"], tlsdict["t12"], tlsdict["t13"]],
+          [tlsdict["t12"], tlsdict["t22"], tlsdict["t23"]],
+          [tlsdict["t13"], tlsdict["t23"], tlsdict["t33"]] ], float)
+    
+    L = numpy.array(
+        [ [tlsdict["l11"], tlsdict["l12"], tlsdict["l13"]],
+          [tlsdict["l12"], tlsdict["l22"], tlsdict["l23"]],
+          [tlsdict["l13"], tlsdict["l23"], tlsdict["l33"]] ], float)
+    
+    s11, s22, s33 = TLS.calc_s11_s22_s33(tlsdict["s2211"], tlsdict["s1133"]) 
+        
+    S = numpy.array(
+        [ [       s11, tlsdict["s12"], tlsdict["s13"]],
+          [tlsdict["s21"],        s22, tlsdict["s23"]],
+          [tlsdict["s31"], tlsdict["s32"],       s33] ], float)
+
+    return T, L, S, origin
+
+def isotlsdict2tensors(itlsdict):
+    """Convert the result dictionaries returned by tlsmdmodule to NumPy
+    tensors.
+    """
+    origin = numpy.array([itlsdict["x"], itlsdict["y"], itlsdict["z"]], float)
+    
+    IT = itlsdict["it"]
+        
+    IL = numpy.array(
+        [ [itlsdict["il11"], itlsdict["il12"], itlsdict["il13"]],
+          [itlsdict["il12"], itlsdict["il22"], itlsdict["il23"]],
+          [itlsdict["il13"], itlsdict["il23"], itlsdict["il33"]] ], float)
+    
+    IS = numpy.array([itlsdict["is1"], itlsdict["is2"], itlsdict["is3"]], float)
+
+    return IT, IL, IS, origin 
+
 
 def calc_rmsd_tls_biso(tls_group):
     """Calculate the RMSD of the tls_group using the isotropic TLS model.

@@ -67,7 +67,8 @@ class TLSModel {
   virtual ~TLSModel() {}
 
   virtual int num_params() const = 0;
-  virtual double *get_params() = 0;
+  virtual double* get_params() = 0;
+  virtual const double* get_params() const = 0;
 
   void set_origin(const double x, const double y, const double z) {
     origin_x = x; origin_y = y, origin_z = z;
@@ -81,7 +82,8 @@ class TLSModel {
 class IsotropicTLSModel : public TLSModel {
  public:
   virtual int num_params() const { return ITLS_NUM_PARAMS; }
-  virtual double *get_params() { return ITLS; }
+  virtual double* get_params() { return ITLS; }
+  virtual const double* get_params() const { return ITLS; }
   void calc_uiso(double x, double y, double z, double *uiso) const;
   double ITLS[ITLS_NUM_PARAMS];
 };
@@ -89,7 +91,8 @@ class IsotropicTLSModel : public TLSModel {
 class AnisotropicTLSModel : public TLSModel {
  public:
   virtual int num_params() const { return ATLS_NUM_PARAMS; }
-  virtual double *get_params() { return ATLS; }
+  virtual double* get_params() { return ATLS; }
+  virtual const double* get_params() const { return ATLS; }
   void calc_U(double x, double y, double z, double U[]) const;
   double ATLS[ATLS_NUM_PARAMS];
 };

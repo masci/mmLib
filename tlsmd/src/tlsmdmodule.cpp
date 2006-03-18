@@ -51,10 +51,8 @@ char *NL_ATLS_PARAM_NAMES[] = {
 };
 
 static void
-AddTLSModelToPyDict(TLSMD::TLSModel &tls_model, PyObject *rdict) {
-  PyObject *py_floatx;
-
-  py_floatx = PyFloat_FromDouble(tls_model.origin_x);
+AddTLSModelToPyDict(const TLSMD::TLSModel &tls_model, PyObject *rdict) {
+  PyObject* py_floatx = PyFloat_FromDouble(tls_model.origin_x);
   PyDict_SetItemString(rdict, "x", py_floatx);
   Py_DECREF(py_floatx);
 
@@ -67,49 +65,62 @@ AddTLSModelToPyDict(TLSMD::TLSModel &tls_model, PyObject *rdict) {
   Py_DECREF(py_floatx);
 }
 
-static PyObject *
-IsotropicTLSModelToPyDict(TLSMD::IsotropicTLSModel &itls_model, double residual) {
-  PyObject *rdict = PyDict_New();
+static void
+AddFitTLSModelResultToPyDict(const TLSMD::FitTLSModelResult &tls_result,  PyObject *rdict) {
+  PyObject* py_intx = PyInt_FromLong(tls_result.get_num_atoms());
+  PyDict_SetItemString(rdict, "num_atoms", py_intx);
+  Py_DECREF(py_intx);
 
+  py_intx = PyInt_FromLong(tls_result.get_num_residues());
+  PyDict_SetItemString(rdict, "num_atoms", py_intx);
+  Py_DECREF(py_intx);
+
+  PyObject* py_floatx = PyFloat_FromDouble(tls_result.get_residual());
+  PyDict_SetItemString(rdict, "residual", py_floatx);
+  Py_DECREF(py_floatx);
+}
+
+static void
+AddIsotropicTLSModelToPyDict(const TLSMD::IsotropicTLSModel &itls_model, PyObject *rdict) {
   AddTLSModelToPyDict(itls_model, rdict);
 
-  PyObject *py_floatx;
-  py_floatx = PyFloat_FromDouble(residual);
-  PyDict_SetItemString(rdict, "ilsqr", py_floatx);
-  Py_DECREF(py_floatx);
-
   int num_params = itls_model.num_params();
-  char **param_name = ITLS_PARAM_NAMES;
-  double *param = itls_model.get_params();
+  char** param_name = ITLS_PARAM_NAMES;
+  const double* param = itls_model.get_params();
   for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
-    py_floatx = PyFloat_FromDouble(*param);
+    PyObject* py_floatx = PyFloat_FromDouble(*param);
     PyDict_SetItemString(rdict, *param_name, py_floatx);
     Py_DECREF(py_floatx);
   }
-    
+}
+
+static void
+AddAnisotropicTLSModelToPyDict(const TLSMD::AnisotropicTLSModel &atls_model, PyObject *rdict) {
+  AddTLSModelToPyDict(atls_model, rdict);
+
+  int num_params = atls_model.num_params();
+  char** param_name = ATLS_PARAM_NAMES;
+  const double* param = atls_model.get_params();
+  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
+    PyObject* py_floatx = PyFloat_FromDouble(*param);
+    PyDict_SetItemString(rdict, *param_name, py_floatx);
+    Py_DECREF(py_floatx);
+  }
+}
+
+static PyObject*
+IsotropicFitTLSModelResultToPyDict(const TLSMD::IsotropicFitTLSModelResult& itls_result) {
+  PyObject* rdict = PyDict_New();
+  AddIsotropicTLSModelToPyDict(itls_result.itls_model, rdict);
+  AddFitTLSModelResultToPyDict(itls_result, rdict);
   return rdict;
 }
 
-static PyObject *
-AnisotropicTLSModelToPyDict(TLSMD::AnisotropicTLSModel &atls_model, double residual) {
-  PyObject *rdict = PyDict_New();
-
-  AddTLSModelToPyDict(atls_model, rdict);
-
-  PyObject *py_floatx;
-  py_floatx = PyFloat_FromDouble(residual);
-  PyDict_SetItemString(rdict, "alsqr", py_floatx);
-  Py_DECREF(py_floatx);
-
-  int num_params = atls_model.num_params();
-  char **param_name = ATLS_PARAM_NAMES;
-  double *param = atls_model.get_params();
-  for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
-    py_floatx = PyFloat_FromDouble(*param);
-    PyDict_SetItemString(rdict, *param_name, py_floatx);
-    Py_DECREF(py_floatx);
-  }
-    
+static PyObject*
+AnisotropicFitTLSModelResultToPyDict(const TLSMD::AnisotropicFitTLSModelResult& atls_result) {
+  PyObject* rdict = PyDict_New();
+  AddAnisotropicTLSModelToPyDict(atls_result.atls_model, rdict);
+  AddFitTLSModelResultToPyDict(atls_result, rdict);
   return rdict;
 }
 
@@ -123,7 +134,6 @@ typedef struct {
   TLSMD::TLSModelEngine *tls_model_engine;
 } TLSModelAnalyzer_Object;
 
-
 static void
 TLSModelAnalyzer_dealloc(TLSModelAnalyzer_Object* self) {
   if (self->tls_model_engine) {
@@ -132,7 +142,6 @@ TLSModelAnalyzer_dealloc(TLSModelAnalyzer_Object* self) {
   }
   self->ob_type->tp_free((PyObject*)self);
 }
-
 
 static PyObject *
 TLSModelAnalyzer_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
@@ -144,7 +153,6 @@ TLSModelAnalyzer_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   self->tls_model_engine = new TLSMD::TLSModelEngine();
   return (PyObject *)self;
 }
-
 
 static PyObject *
 TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
@@ -278,75 +286,74 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   return Py_None;
 }
 
-
 static PyObject *
 TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
-  int istart, iend;
-  if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
+  char *cfrag_id1, *cfrag_id2;
+  if (!PyArg_ParseTuple(args, "ss", &cfrag_id1, &cfrag_id2)) {
     return NULL;
   }
+  std::string frag_id1(cfrag_id1);
+  std::string frag_id2(cfrag_id2);
 
-  double residual;
-  TLSMD::IsotropicTLSModel itls_model;
-  self->tls_model_engine->isotropic_fit_segment(istart, iend, itls_model, &residual);
-  return IsotropicTLSModelToPyDict(itls_model, residual);
+  TLSMD::IsotropicFitTLSModelResult itls_result;
+  self->tls_model_engine->isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
-
 
 static PyObject *
 TLSModelAnalyzer_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
-  int istart, iend;
-  if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
+  char *cfrag_id1, *cfrag_id2;
+  if (!PyArg_ParseTuple(args, "ss", &cfrag_id1, &cfrag_id2)) {
     return NULL;
   }
+  std::string frag_id1(cfrag_id1);
+  std::string frag_id2(cfrag_id2);
 
-  double residual;
-  TLSMD::AnisotropicTLSModel atls_model;
-  self->tls_model_engine->anisotropic_fit_segment(istart, iend, atls_model, &residual);
-  return AnisotropicTLSModelToPyDict(atls_model, residual);
+  TLSMD::AnisotropicFitTLSModelResult atls_result;
+  self->tls_model_engine->anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
-
 
 static PyObject *
 TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
-  int istart, iend;
-  if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
+  char *cfrag_id1, *cfrag_id2;
+  if (!PyArg_ParseTuple(args, "ss", &cfrag_id1, &cfrag_id2)) {
     return NULL;
   }
+  std::string frag_id1(cfrag_id1);
+  std::string frag_id2(cfrag_id2);
 
-  double residual;
-  TLSMD::IsotropicTLSModel itls_model;
-  self->tls_model_engine->constrained_isotropic_fit_segment(istart, iend, itls_model, &residual);
-  return IsotropicTLSModelToPyDict(itls_model, residual);
+  TLSMD::IsotropicFitTLSModelResult itls_result;
+  self->tls_model_engine->constrained_isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
-
 
 static PyObject *
 TLSModelAnalyzer_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
-  int istart, iend;
-  if (!PyArg_ParseTuple(args, "ii", &istart, &iend)) {
+  char *cfrag_id1, *cfrag_id2;
+  if (!PyArg_ParseTuple(args, "ss", &cfrag_id1, &cfrag_id2)) {
     return NULL;
   }
+  std::string frag_id1(cfrag_id1);
+  std::string frag_id2(cfrag_id2);
 
-  double residual;
-  TLSMD::AnisotropicTLSModel atls_model;
-  self->tls_model_engine->constrained_anisotropic_fit_segment(istart, iend, atls_model, &residual);
-  return AnisotropicTLSModelToPyDict(atls_model, residual);
+  TLSMD::AnisotropicFitTLSModelResult atls_result;
+  self->tls_model_engine->constrained_anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
-
 
 static PyMethodDef TLSModelAnalyzer_methods[] = {
     {"set_xmlrpc_chain", 
@@ -419,11 +426,9 @@ static PyTypeObject TLSModelAnalyzer_Type = {
     TLSModelAnalyzer_new,        /* tp_new */
 };
 
-
 static PyMethodDef TLSMDMODULE_METHODS[] = {
   {NULL, NULL, 0, NULL}
 };
-
 
 extern "C" DL_EXPORT(void)
 inittlsmdmodule(void)

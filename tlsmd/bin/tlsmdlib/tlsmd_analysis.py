@@ -93,13 +93,13 @@ def chain_to_xmlrpc_list(chain):
     xmlrpc_chain = []
 
     for atm in chain.iter_all_atoms():
-        if atm.include == False:
+        if atm.include is False:
             continue
 
         atm_desc = {}
         xmlrpc_chain.append(atm_desc)
 
-        atm_desc["name"]    = atm.name
+        atm_desc["name"] = atm.name
         atm_desc["frag_id"] = atm.fragment_id
 
         frag = atm.get_fragment()
@@ -124,6 +124,47 @@ def chain_to_xmlrpc_list(chain):
 
     return xmlrpc_chain
 
+
+def IsoADPDataSmoother(chain):
+    """Experimental data smoothing of temperature factors
+    """
+    tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
+    xlist = chain_to_xmlrpc_list(chain)
+    tls_analyzer.set_xmlrpc_chain(xlist)
+
+    num_frags = len(chain)
+
+    smooth_uiso = dict()
+    num_smooth = 3
+    ifrag_start = num_smooth
+    ifrag_end = num_frags - num_smooth - 1
+
+    for ifrag in xrange(ifrag_start, ifrag_end + 1):
+        smooth_frag = chain[ifrag]
+        frag1 = chain[ifrag - num_smooth]
+        frag2 = chain[ifrag + num_smooth]
+
+        tlsdict = tls_analyzer.isotropic_fit_segment(frag1.fragment_id, frag2.fragment_id)
+        IT, IL, IS, IOrigin = tls_calcs.isotlsdict2tensors(tlsdict)
+
+        for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+            smooth_uiso[atm] = uiso
+        
+        if ifrag == ifrag_start:
+            for i in range(ifrag_start):
+                smooth_frag = chain[i]
+                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+                    smooth_uiso[atm] = uiso
+        elif ifrag == ifrag_end:
+            for i in range(ifrag_end + 1, num_frags):
+                smooth_frag = chain[i]
+                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+                    smooth_uiso[atm] = uiso
+
+    for atm, uiso in smooth_uiso.iteritems():
+        atm.temp_factor = Constants.U2B * uiso
+        atm.U = numpy.identity(3, float) * uiso
+    
 
 class TLSChainProcessor(object):
     """Fits all possible residue subsegments of the given chain object
@@ -326,7 +367,6 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         self.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
         xlist = chain_to_xmlrpc_list(self.chain)
         self.tls_analyzer.set_xmlrpc_chain(xlist)
-        self.xchain = fit_engine.XChain(xlist)
 
         ## this is useful: for each fragment in the minimization
         ## set a attribute for its index position
@@ -451,43 +491,23 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         """Use the non-linear TLS model to calculate tensor values.
         """
         tls_group = tls.tls_group
-        
-        istart = self.xchain.get_istart(tls.frag_id1)
-        iend = self.xchain.get_iend(tls.frag_id2)
 
         ## anisotropic model
-        tlsdict = self.tls_analyzer.constrained_anisotropic_fit_segment(istart, iend)
-
-        tls_group.origin = numpy.array([tlsdict["x"], tlsdict["y"], tlsdict["z"]], float)
-
-        tls_group.T = numpy.array(
-            [ [tlsdict["t11"], tlsdict["t12"], tlsdict["t13"]],
-              [tlsdict["t12"], tlsdict["t22"], tlsdict["t23"]],
-              [tlsdict["t13"], tlsdict["t23"], tlsdict["t33"]] ], float)
-        
-        tls_group.L = numpy.array(
-            [ [tlsdict["l11"], tlsdict["l12"], tlsdict["l13"]],
-              [tlsdict["l12"], tlsdict["l22"], tlsdict["l23"]],
-              [tlsdict["l13"], tlsdict["l23"], tlsdict["l33"]] ], float)
-        
-        s11, s22, s33 = TLS.calc_s11_s22_s33(tlsdict["s2211"], tlsdict["s1133"]) 
-        
-        tls_group.S = numpy.array(
-            [ [       s11, tlsdict["s12"], tlsdict["s13"]],
-              [tlsdict["s21"],        s22, tlsdict["s23"]],
-              [tlsdict["s31"], tlsdict["s32"],       s33] ], float)
+        tlsdict = self.tls_analyzer.constrained_anisotropic_fit_segment(tls.frag_id1, tls.frag_id2)
+        T, L, S, origin = tls_calcs.tlsdict2tensors(tlsdict)
+        tls_group.T = T
+        tls_group.L = L
+        tls_group.S = S
+        tls_group.origin = origin
 
         ## isotropic model
-        itlsdict = self.tls_analyzer.constrained_isotropic_fit_segment(istart, iend)
-        
-        tls_group.itls_T = itlsdict["it"]
-        
-        tls_group.itls_L = numpy.array(
-            [ [itlsdict["il11"], itlsdict["il12"], itlsdict["il13"]],
-              [itlsdict["il12"], itlsdict["il22"], itlsdict["il23"]],
-              [itlsdict["il13"], itlsdict["il23"], itlsdict["il33"]] ], float)
+        itlsdict = self.tls_analyzer.constrained_isotropic_fit_segment(tls.frag_id1, tls.frag_id2)
+        IT, IL, IS, IOrigin = tls_calcs.isotlsdict2tensors(itlsdict)
+        tls_group.itls_T = IT
+        tls_group.itls_L = IL
+        tls_group.itls_S = IS
 
-        tls_group.itls_S = numpy.array([itlsdict["is1"], itlsdict["is2"], itlsdict["is3"]], float)
+        assert numpy.allclose(tls_group.origin, IOrigin)
 
     def __calc_tls_record_from_edge(self, edge):
         """Independently calculate the TLS parameters for the segment
@@ -752,6 +772,8 @@ class TLSMDAnalysis(object):
 	for chain in self.chains:
 	    for atm in chain.iter_all_atoms():
                 atm.include = calc_include_atom(atm)
+            IsoADPDataSmoother(chain)
+            
 	
     def construct_tls_segment_database(self):
         """Calculates the TLSGraph for each chain in self.chains, optionally

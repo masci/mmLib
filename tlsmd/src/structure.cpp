@@ -4,13 +4,17 @@
 // included as part of this package.
 #include <string.h>
 #include <stdio.h>
+#include <iostream>
+#include <sstream>
 
 #include "structure.h"
 
 namespace TLSMD {
 
 Atom::Atom() 
-  : ifrag(0), 
+  : name(""),
+    frag_id(""),
+    ifrag(0), 
     x(0.0), 
     y(0.0), 
     z(0.0), 
@@ -27,7 +31,8 @@ Atom::is_mainchain() const {
   return false;
 }
 
-Chain::Chain() {
+Chain::Chain()
+  : atoms() {
 }
 
 Chain::~Chain() {
@@ -49,7 +54,72 @@ Chain::set_group_range(int group_id, int istart, int iend) {
       atom->set_group(0);
     }
   }
-  calc_group_num_atoms(group_id);
+}
+
+inline bool
+frag_id_ge(const std::string& frag_id1, const std::string& frag_id2) {
+  std::istringstream ifrag_id1(frag_id1);
+  std::istringstream ifrag_id2(frag_id2);
+  int seq_num1, seq_num2;
+  
+  ifrag_id1 >> seq_num1;
+  ifrag_id2 >> seq_num2;
+
+  if (seq_num1 > seq_num2) return true;
+  if (seq_num1 < seq_num2) return false;
+
+  char icode1;
+  bool icode1_exists = ifrag_id1.get(icode1);
+
+  char icode2;
+  bool icode2_exists = ifrag_id2.get(icode2);
+
+  if (icode1_exists && icode2_exists) {
+    return icode1 >= icode2;
+  } else if (!icode1_exists && icode2_exists) {
+    return false;
+  }
+  
+  return true;
+}
+
+inline bool
+frag_id_le(const std::string& frag_id1, const std::string& frag_id2) {
+  std::istringstream ifrag_id1(frag_id1);
+  std::istringstream ifrag_id2(frag_id2);
+  int seq_num1, seq_num2;
+  
+  ifrag_id1 >> seq_num1;
+  ifrag_id2 >> seq_num2;
+
+  if (seq_num1 > seq_num2) return false;
+  if (seq_num1 < seq_num2) return true;
+
+  char icode1;
+  bool icode1_exists = ifrag_id1.get(icode1);
+
+  char icode2;
+  bool icode2_exists = ifrag_id2.get(icode2);
+
+  if (icode1_exists && icode2_exists) {
+    return icode1 <= icode2;
+  } else if (icode1_exists && !icode2_exists) {
+    return false;
+  }
+  
+  return true;
+}
+
+void
+Chain::set_group_range(int group_id, const std::string& frag_id1, const std::string& frag_id2) {
+  std::vector<Atom>::iterator atom;
+  for (atom = atoms.begin(); atom != atoms.end(); ++atom) {
+    if (frag_id_ge(atom->frag_id, frag_id1) && frag_id_le(atom->frag_id, frag_id2)) {
+      atom->set_group(group_id);
+    } else {
+      atom->set_group(0);
+    }
+  }
 }
 
 int
