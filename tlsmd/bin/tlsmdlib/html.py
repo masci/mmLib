@@ -9,7 +9,6 @@
 ##
 
 import os
-import popen2
 import time
 import numpy
 

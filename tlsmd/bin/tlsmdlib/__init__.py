@@ -1,8 +1,6 @@
 __all__ = [ "captions.py",
             "conf.py",
             "const.py",
-            "datafile.py",
-            "fit_engine.py",
             "gnuplots.py",
             "hcssp.py",
             "html.py",

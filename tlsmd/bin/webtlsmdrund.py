@@ -1,4 +1,4 @@
-#!/home/tlsmd/local/bin/python
+#!/home/jpaint/local/bin/python
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -56,8 +56,8 @@ def run_tlsmd(webtlsmdd, jdict):
     ## write the tlsmd execution command out to a file
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
-    stdout, stdin = popen2.popen4(tlsmd)
-    stdin.close()
+    pobj = popen2.Popen4(tlsmd)
+    pobj.tochild.close()
 
     logfil = open("log.txt", "w")
 
@@ -66,14 +66,14 @@ def run_tlsmd(webtlsmdd, jdict):
     time_begin      = None
     
     while True:
-        ln = stdout.readline()
+        ln = pobj.fromchild.readline()
 	if len(ln) == 0:
             break
 
         logfil.write(ln)
 	logfil.flush()
 
-    stdout.close()
+    pobj.wait()
     logfil.close()
 
 
@@ -222,11 +222,10 @@ def send_mail(job_id):
     message = message.replace("<ANALYSIS_URL>", analysis_url)
 
     ## send mail using msmtp
-    stdout, stdin = popen2.popen4([conf.MSMTP, email])
-    stdin.write(message)
-    stdout.close()
-    stdin.close()
-
+    pobj = popen2.Popen4([conf.MSMTP, email])
+    pobj.tochild.write(message)
+    pobj.wait()
+    
     log_write("Sent Mail to %s" % (email))
 
 if __name__=="__main__":

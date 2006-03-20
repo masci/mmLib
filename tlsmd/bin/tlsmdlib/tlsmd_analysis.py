@@ -14,10 +14,8 @@ from mmLib import Constants, FileIO, TLS
 import misc
 import const
 import conf
-import datafile
 import hcsssp
 import tls_calcs
-import fit_engine
 import tlsmdmodule
 
 def calc_include_atom(atm, reject_messages = False):
@@ -125,100 +123,6 @@ def chain_to_xmlrpc_list(chain):
     return xmlrpc_chain
 
 
-def IsoADPDataSmoother(chain):
-    """Experimental data smoothing of temperature factors
-    """
-    tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
-    xlist = chain_to_xmlrpc_list(chain)
-    tls_analyzer.set_xmlrpc_chain(xlist)
-
-    num_frags = len(chain)
-
-    smooth_uiso = dict()
-    num_smooth = 3
-    ifrag_start = num_smooth
-    ifrag_end = num_frags - num_smooth - 1
-
-    for ifrag in xrange(ifrag_start, ifrag_end + 1):
-        smooth_frag = chain[ifrag]
-        frag1 = chain[ifrag - num_smooth]
-        frag2 = chain[ifrag + num_smooth]
-
-        tlsdict = tls_analyzer.isotropic_fit_segment(frag1.fragment_id, frag2.fragment_id)
-        IT, IL, IS, IOrigin = tls_calcs.isotlsdict2tensors(tlsdict)
-
-        for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
-            smooth_uiso[atm] = uiso
-        
-        if ifrag == ifrag_start:
-            for i in range(ifrag_start):
-                smooth_frag = chain[i]
-                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
-                    smooth_uiso[atm] = uiso
-        elif ifrag == ifrag_end:
-            for i in range(ifrag_end + 1, num_frags):
-                smooth_frag = chain[i]
-                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
-                    smooth_uiso[atm] = uiso
-
-    for atm, uiso in smooth_uiso.iteritems():
-        atm.temp_factor = Constants.U2B * uiso
-        atm.U = numpy.identity(3, float) * uiso
-    
-
-class TLSChainProcessor(object):
-    """Fits all possible residue subsegments of the given chain object
-    with TLS parameters and stores the model parameters in the tlsmdfile
-    database file.
-    """
-    def __init__(self, tlsmdfile, chain, min_subsegment_len):
-        self.tlsmdfile = tlsmdfile
-        self.chain = chain
-
-        self.min_subsegment_len = min_subsegment_len
-        
-        self.fit_engine = fit_engine.NewTLSGraphChain(conf.globalconf.tls_model)
-        self.fit_engine.set_xmlrpc_chain(chain_to_xmlrpc_list(chain))
-
-        self.num_subsegments = 0
-        self.total_num_subsegments = calc_num_subsegments(
-            chain.count_fragments(), self.min_subsegment_len)
-
-    def prnt_percent_complete(self, p):
-        print "(%10d/%10d) %2d%% Complete" % (self.num_subsegments, self.total_num_subsegments, p)
-
-    def process_chain(self):
-        print "PROCESSING CHAIN: ", self.chain.chain_id
-
-        tlsmdfile = self.tlsmdfile
-
-        pcomplete = 0
-        pcomplete_old = 0
-
-        chain_id = self.chain.chain_id
-        
-        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
-            self.chain, self.min_subsegment_len):
-
-            if tlsmdfile.grh_get_tls_record(chain_id, frag_id1, frag_id2) == None:
-                fit_info = self.fit_engine.lsq_fit_segment(frag_id1, frag_id2)
-                fit_info["method"]  = "TLS"
-                fit_info["chain_id"] = chain_id
-                fit_info["frag_id1"] = frag_id1
-                fit_info["frag_id2"] = frag_id2
-                tlsmdfile.grh_append_tls_record(fit_info)
-            
-            self.num_subsegments += 1
-            pcomplete = round(100.0 * self.num_subsegments / self.total_num_subsegments)
-            if pcomplete != pcomplete_old:
-                self.prnt_percent_complete(pcomplete)
-                pcomplete_old = pcomplete
-
-        print
-        print "NUMBER OF CHAIN SUBSEGMENTS FIT WITH TLS PARAMETERS: (%d/%d)" % (
-            self.num_subsegments, self.total_num_subsegments)
-
-
 class TLSSegment(object):
     """Information on a TLS rigid body segment of a protein chain.
     """
@@ -226,7 +130,7 @@ class TLSSegment(object):
         self.chain_id = args["chain_id"]
         self.frag_id1 = args["frag_id1"]
         self.frag_id2 = args["frag_id2"]
-        self.lsq_residual = args["lsq_residual"]
+        self.lsq_residual = args["residual"]
         self.method = args["method"]
         self.num_atoms = args["num_atoms"]
 
@@ -338,10 +242,9 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
     the HCSSSP global optimization algorithm and a constraint on the number
     of TLS which can be used for the minimization.
     """
-    def __init__(self, tlsmdfile, chain, min_subsegment_len, nparts):
+    def __init__(self, chain, min_subsegment_len, nparts):
         hcsssp.HCSSSP.__init__(self)
 
-        self.tlsmdfile = tlsmdfile
         self.min_subsegment_len = min_subsegment_len
         self.nparts = nparts
 
@@ -367,6 +270,7 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         self.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
         xlist = chain_to_xmlrpc_list(self.chain)
         self.tls_analyzer.set_xmlrpc_chain(xlist)
+        self.fit_cache = dict()
 
         ## this is useful: for each fragment in the minimization
         ## set a attribute for its index position
@@ -384,60 +288,69 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
+        chain = self.chain
+        chain_id = self.chain.chain_id
+        min_subsegment_len = self.min_subsegment_len
+
+        ## choose the TLS Model to fit for the chain
+        fit_method = None
+        if conf.globalconf.tls_model == "ISOT":
+            fit_method = self.tls_analyzer.isotropic_fit_segment
+        elif conf.globalconf.tls_model == "ANISO":
+            fit_method = self.tls_analyzer.anisotropic_fit_segment
+        elif conf.globalconf.tls_model=="NLISOT":
+            fit_method = self.tls_analyzer.constrained_isotropic_fit_segment
+        elif conf.globalconf.tls_model=="NLANISO":
+            fit_method = self.tls_analyzer.constrained_anisotropic_fit_segment
+
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
         vertices = []
         for i in xrange(self.num_vertex):
-
             ## add the vertex label for i at Vi
-            if i ==0 :
+            if i == 0 :
                 vertex_label = "N-TERM"
-
             elif i == self.num_vertex - 1:
                 vertex_label = "C-TERM"
-
             else:
-                vertex_label = "%s{%s:%s}" % (self.chain.chain_id,
-                                              self.chain[i-1].fragment_id,
-                                              self.chain[i].fragment_id)
-
+                vertex_label = "%s{%s:%s}" % (chain_id, chain[i-1].fragment_id, chain[i].fragment_id)
             vertex_label = "V%d[%s]" % (i, vertex_label)
             vertices.append(vertex_label)
 
-        ## now build edges for the graph with weights given by the LSQ
-        ## residual of TLS group fits
-        grh_get_tls_record = self.tlsmdfile.grh_get_tls_record
-        
+        ## fit chain segments with TLS model and build residual graph to minimize
+        total_num_subsegments = calc_num_subsegments(chain.count_fragments(), min_subsegment_len)
+        num_subsegments = 0
+        pcomplete = 0
+        pcomplete_old = 0
         edges = []
-        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(
-            self.chain, self.min_subsegment_len):
-
-            tlsdict = grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
-
-            assert frag_id1 == tlsdict["frag_id1"]
-            assert frag_id2 == tlsdict["frag_id2"]
+        for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(chain, min_subsegment_len):
+            tlsdict = fit_method(frag_id1, frag_id2)
             
             if tlsdict == None:
-                print "[ERROR] no TLS group %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
+                print "[ERROR] no TLS group %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
                 raise SystemExit
-
-            if tlsdict.has_key("error") == True:
+            if tlsdict.has_key("error") is True:
                 continue
-
-            if tlsdict.has_key("lsq_residual") == False:
-                print "[ERROR] no lsq_residual! %s{%s..%s}" % (self.chain.chain_id, frag_id1, frag_id2)
+            if not tlsdict.has_key("residual"):
+                print "[ERROR] no residual! %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
                 raise SystemExit
 
-            cost = tlsdict["lsq_residual"]
+            cost = tlsdict["residual"]
             frag_range = (frag_id1, frag_id2)
             edge = (i, j, cost, frag_range)
             edges.append(edge)
 
-        ## perform the minimization
-        misc.start_timing()
+            self.fit_cache[frag_range] = tlsdict
 
+            num_subsegments += 1
+            pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
+            if pcomplete != pcomplete_old:
+                print "(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete)
+                pcomplete_old = pcomplete
+
+        ## perform the minimization
         if len(edges) > 0:
-            print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (self.chain.chain_id)
+            print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (chain_id)
         
             D, P, T = self.HCSSSP_minimize(vertices, edges, self.nparts)
 
@@ -447,14 +360,12 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
             self.P = P
             self.T = T
         else:
-            print "run_minimization(chain_id=%s): Unable to minimize" % (self.chain.chain_id)
+            print "run_minimization(chain_id=%s): Unable to minimize" % (chain_id)
             self.minimized = False
 
         ## free memory taken up from edges
         edges = None
         gc.collect()
-
-        print "run_minimization(): ", misc.end_timing()
 
     def calc_chain_partition(self, nparts):
         """Return a ChainPartition() object containing the optimal
@@ -517,8 +428,14 @@ class TLSChainMinimizer(hcsssp.HCSSSP):
 
         frag_id1, frag_id2 = frag_range
 
-        tlsdict = self.tlsmdfile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
-        tls = TLSSegment(**tlsdict)
+        tlsdict = self.fit_cache[(frag_id1, frag_id2)]
+
+        tls = TLSSegment(chain_id = self.chain.chain_id,
+                         frag_id1 = frag_id1,
+                         frag_id2 = frag_id2,
+                         method = "TLS",
+                         **tlsdict)
+
         tls.segment = self.chain[frag_id1:frag_id2]
 
         tls.tls_group = TLS.TLSGroup()
@@ -644,7 +561,6 @@ class TLSMDAnalysis(object):
         self.struct          = None
         self.struct_id       = None
         self.chains          = None
-        self.tlsmdfile       = None
 
     def run_optimization(self):
         """Run the TLSMD optimization on the structure.
@@ -657,8 +573,6 @@ class TLSMDAnalysis(object):
                 self.struct_id, conf.globalconf.tls_model,
                 conf.globalconf.weight_model)
 
-        self.tlsmdfile = datafile.TLSMDFile(self.tlsdb_file)
-
         ## select chains for analysis
         self.select_chains()
 
@@ -666,10 +580,6 @@ class TLSMDAnalysis(object):
         self.prnt_settings()
 
         self.set_atom_include_flags()
-
-        if not self.tlsdb_complete:
-            self.construct_tls_segment_database()
-        
         self.calc_chain_minimization()
 
         if self.struct2_file_path != None and self.struct2_chain_id != None:
@@ -772,31 +682,12 @@ class TLSMDAnalysis(object):
 	for chain in self.chains:
 	    for atm in chain.iter_all_atoms():
                 atm.include = calc_include_atom(atm)
-            IsoADPDataSmoother(chain)
-            
-	
-    def construct_tls_segment_database(self):
-        """Calculates the TLSGraph for each chain in self.chains, optionally
-        loading pre-computed graphs from the graph_file.  Any chains
-        which need TLSGraphs computed will be strored in the graph_file.
-        """
-        for chain in self.chains:
-            misc.begin_chain_timing(chain.chain_id)
-
-            chain_processor = TLSChainProcessor(
-                self.tlsmdfile, chain, conf.globalconf.min_subsegment_size)
-
-            print "BUILDING TLS SEGMENT DATABASE FOR %s" % (chain)
-            chain_processor.process_chain()
-
-            misc.end_chain_timing(chain.chain_id)
 
     def calc_chain_minimization(self):
         """Performs the TLS graph minimization on all TLSGraphs.
         """
         for chain in self.chains:
             tls_chain_minimizer = TLSChainMinimizer(
-                self.tlsmdfile,
                 chain,
                 conf.globalconf.min_subsegment_size,
                 conf.globalconf.nparts)

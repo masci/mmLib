@@ -47,12 +47,11 @@ class GNUPlot(object):
     def run_gnuplot(self, script):
         """Execute GNUPlot with the given script.
         """
-        stdout, stdin, stderr = popen2.popen3((self.gnuplot_path, ), 32768)
-        stdin.write(script)
-        stdin.close()
-        stdout.close()
-        stderr.close()
-
+        pobj = popen2.Popen4([self.gnuplot_path])
+        pobj.tochild.write(script)
+        pobj.tochild.close()
+        pobj.wait()
+        
     def output_png(self):
         """Runs gnuplot.  Expects self.plot_path and self.png_path to be set.
         """
