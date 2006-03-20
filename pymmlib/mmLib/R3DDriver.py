@@ -189,14 +189,15 @@ class Raster3DDriver(object):
                     fil.close()
 
         ## open r3d file, write header
+        pobj = None
         if self.render_stdin != None:
             stdin = self.render_stdin
         else:
-            stdout, stdin, stderr = popen2.popen3(
-                (self.render_program_path,
-                 "-png", self.render_png_path,
-                 "-gamma", "1.5"), 32768*4)
-
+            pobj = popen2.Popen4([self.render_program_path,
+                                  "-png", self.render_png_path,
+                                  "-gamma", "1.5"], 32768)
+            stdin = pobj.tochild
+            
         ## XXX: hack
         ##r3dfil = open("/tmp/raytrace.r3d","w")
         ##stdin = TeeWrite(stdin)
@@ -219,11 +220,8 @@ class Raster3DDriver(object):
         
         if self.render_stdin != None:
             self.render_stdin = None
-        else:
-            stdout.read()
-            stdout.close()
-            stderr.read()
-            stderr.close()            
+        elif pobj is not None:
+            pobj.wait()
 
     def glr_write_objects(self, stdin):
         """Write the graphic objects to the stdin file.
