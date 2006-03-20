@@ -21,7 +21,7 @@ TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
 TLSMD_WWW_ROOT         = "/home/jpaint/public_html"
 TLSMD_BASE_URL         = "/~jpaint"
 WEBTLSMDD              = "http://localhost:10200"
-WEBTLSMDD_DATABASE     = "webtlsmdd.db"
+WEBTLSMDD_DATABASE     = "/home/jpaint/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MSMTP                  = "/usr/bin/msmtp"
 ## END: CONFIGURATION PATHS AND URLS

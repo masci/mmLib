@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/home/tlsmd/local/bin/python
 ## TLS Minimized Domains (TLSMD)
 ## Copyright 200-20052 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -13,7 +13,7 @@ import SimpleXMLRPCServer
 
 from tlsmdlib import tlsmd_analysis
 
-SERVER_HOST_PORT = ("localhost", 10500)
+SERVER_HOST_PORT = ("", 10500)
 
 class Forking_XMLRPCServer(
             SocketServer.ForkingMixIn,
