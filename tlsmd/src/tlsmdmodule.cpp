@@ -286,6 +286,43 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
   return Py_None;
 }
 
+static bool
+PythonSegmentListToSegmentSet(PyObject *segment_list, TLSMD::Chain::SegmentSet* segment_set) {
+  int num_segments = PyList_Size(segment_list);
+
+  for (int is = 0; is < num_segments; ++is) {
+    PyObject* range = PyList_GetItem(segment_list, is);
+    
+    char *cfrag_id1, *cfrag_id2;
+    if (!PyArg_ParseTuple(range, "ss", &cfrag_id1, &cfrag_id2)) {
+      return false;
+    }
+    std::string frag_id1(cfrag_id1);
+    std::string frag_id2(cfrag_id2);
+    
+    segment_set->add_segment(frag_id1, frag_id2);
+  }
+
+  return true;
+}
+
+static PyObject *
+TLSModelAnalyzer_isotropic_fit(PyObject *py_self, PyObject *args)
+{
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
+
+  PyObject *segment_list;
+  if (!PyArg_ParseTuple(args, "O", &segment_list)) return NULL;
+
+  TLSMD::Chain::SegmentSet segment_set(&self->tls_model_engine->chain);
+  if (!PythonSegmentListToSegmentSet(segment_list, &segment_set)) return NULL;
+
+  TLSMD::IsotropicFitTLSModelResult itls_result;
+  self->tls_model_engine->isotropic_fit(segment_set, itls_result);
+  return IsotropicFitTLSModelResultToPyDict(itls_result);
+}
+
 static PyObject *
 TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
 {
@@ -302,6 +339,23 @@ TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   TLSMD::IsotropicFitTLSModelResult itls_result;
   self->tls_model_engine->isotropic_fit_segment(frag_id1, frag_id2, itls_result);
   return IsotropicFitTLSModelResultToPyDict(itls_result);
+}
+
+static PyObject *
+TLSModelAnalyzer_anisotropic_fit(PyObject *py_self, PyObject *args)
+{
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
+
+  PyObject *segment_list;
+  if (!PyArg_ParseTuple(args, "O", &segment_list)) return NULL;
+
+  TLSMD::Chain::SegmentSet segment_set(&self->tls_model_engine->chain);
+  if (!PythonSegmentListToSegmentSet(segment_list, &segment_set)) return NULL;
+
+  TLSMD::AnisotropicFitTLSModelResult atls_result;
+  self->tls_model_engine->anisotropic_fit(segment_set, atls_result);
+  return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 
 static PyObject *
@@ -322,6 +376,23 @@ TLSModelAnalyzer_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
 }
 
 static PyObject *
+TLSModelAnalyzer_constrained_isotropic_fit(PyObject *py_self, PyObject *args)
+{
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
+
+  PyObject *segment_list;
+  if (!PyArg_ParseTuple(args, "O", &segment_list)) return NULL;
+
+  TLSMD::Chain::SegmentSet segment_set(&self->tls_model_engine->chain);
+  if (!PythonSegmentListToSegmentSet(segment_list, &segment_set)) return NULL;
+
+  TLSMD::IsotropicFitTLSModelResult itls_result;
+  self->tls_model_engine->constrained_isotropic_fit(segment_set, itls_result);
+  return IsotropicFitTLSModelResultToPyDict(itls_result);
+}
+
+static PyObject *
 TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
@@ -336,6 +407,23 @@ TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *
   TLSMD::IsotropicFitTLSModelResult itls_result;
   self->tls_model_engine->constrained_isotropic_fit_segment(frag_id1, frag_id2, itls_result);
   return IsotropicFitTLSModelResultToPyDict(itls_result);
+}
+
+static PyObject *
+TLSModelAnalyzer_constrained_anisotropic_fit(PyObject *py_self, PyObject *args)
+{
+  TLSModelAnalyzer_Object *self;
+  self = (TLSModelAnalyzer_Object *) py_self;
+
+  PyObject *segment_list;
+  if (!PyArg_ParseTuple(args, "O", &segment_list)) return NULL;
+
+  TLSMD::Chain::SegmentSet segment_set(&self->tls_model_engine->chain);
+  if (!PythonSegmentListToSegmentSet(segment_list, &segment_set)) return NULL;
+
+  TLSMD::AnisotropicFitTLSModelResult atls_result;
+  self->tls_model_engine->constrained_anisotropic_fit(segment_set, atls_result);
+  return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 
 static PyObject *
@@ -361,20 +449,40 @@ static PyMethodDef TLSModelAnalyzer_methods[] = {
      METH_VARARGS,
      "Sets the Python list containing one dictionary for each atom." },
 
+    {"isotropic_fit",
+     (PyCFunction) TLSModelAnalyzer_isotropic_fit, 
+     METH_VARARGS,
+     "Performs a linear fit of the isotropic TLS model to a list of 2-tuple fragment id ranges." },
+
     {"isotropic_fit_segment",
      (PyCFunction) TLSModelAnalyzer_isotropic_fit_segment, 
      METH_VARARGS,
      "Performs a linear fit of the isotropic TLS model to the given atoms." },
+
+    {"anisotropic_fit",
+     (PyCFunction) TLSModelAnalyzer_anisotropic_fit, 
+     METH_VARARGS,
+     "Performs a linear fit of the anisotropic TLS model to a list of 2-tuple fragment id ranges." },
 
     {"anisotropic_fit_segment",
      (PyCFunction) TLSModelAnalyzer_anisotropic_fit_segment, 
      METH_VARARGS,
      "Performs a linear fit of the anisotropic TLS model to the given atoms." },
 
+    {"constrained_isotropic_fit",
+     (PyCFunction) TLSModelAnalyzer_constrained_isotropic_fit, 
+     METH_VARARGS,
+     "Performs a constrained fit of the isotropic TLS model to a list of 2-tuple fragment id ranges." },
+
     {"constrained_isotropic_fit_segment",
      (PyCFunction) TLSModelAnalyzer_constrained_isotropic_fit_segment, 
      METH_VARARGS,
      "Performs a constrained fit of the isotropic TLS model to the given atoms." },
+
+    {"constrained_anisotropic_fit",
+     (PyCFunction) TLSModelAnalyzer_constrained_anisotropic_fit, 
+     METH_VARARGS,
+     "Performs a constrained fit of the anisotropic TLS model to a list of 2-tuple fragment id ranges." },
 
     {"constrained_anisotropic_fit_segment",
      (PyCFunction) TLSModelAnalyzer_constrained_anisotropic_fit_segment, 

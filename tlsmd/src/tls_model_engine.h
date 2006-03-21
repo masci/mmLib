@@ -51,17 +51,30 @@ class TLSModelEngine {
 public:
   void set_num_atoms(int num_atoms);
 
+  
+  void isotropic_fit(Chain::SegmentSet& segment_set, 
+		     IsotropicFitTLSModelResult& itls_result);
+
   void isotropic_fit_segment(const std::string& frag_id1,
 			     const std::string& frag_id2,
 			     IsotropicFitTLSModelResult& itls_result);
-			     
+
+  void anisotropic_fit(Chain::SegmentSet& segment_set, 
+		       AnisotropicFitTLSModelResult& atls_result);
+
   void anisotropic_fit_segment(const std::string& frag_id1,
 			       const std::string& frag_id2,
 			       AnisotropicFitTLSModelResult& atls_result);
 
+  void constrained_isotropic_fit(Chain::SegmentSet& segment_set, 
+				 IsotropicFitTLSModelResult& itls_result);
+
   void constrained_isotropic_fit_segment(const std::string& frag_id1,
 					 const std::string& frag_id2,
 					 IsotropicFitTLSModelResult& itls_result);
+
+  void constrained_anisotropic_fit(Chain::SegmentSet& segment_set, 
+				   AnisotropicFitTLSModelResult& atls_result);
 
   void constrained_anisotropic_fit_segment(const std::string& frag_id1,
 					   const std::string& frag_id2,
