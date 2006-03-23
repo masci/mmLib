@@ -50,7 +50,6 @@ def isotlsdict2tensors(itlsdict):
 
     return IT, IL, IS, origin 
 
-
 def calc_rmsd_tls_biso(tls_group):
     """Calculate the RMSD of the tls_group using the isotropic TLS model.
     """
@@ -96,26 +95,26 @@ def calc_mean_biso_obs(chain):
 
 
 def calc_mean_biso_tls(chain, cpartition):
-    """Calculated the mean B value per residue in the chain as calculated in the chain optimization.
+    """Calculated the mean B value per residue in the chain
+    as calculated in the chain optimization.
     """
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
 
     for i, tls in cpartition.enumerate_tls_segments():
         tls_group = tls.tls_group
-        segment   = tls.segment
 
         T = tls_group.itls_T
         L = tls_group.itls_L
         S = tls_group.itls_S
         O = tls_group.origin
 
-        for frag in segment.iter_fragments():
+        for frag in tls.iter_fragments():
             n = 0
             b_sum_tls = 0.0
 
             for atm in frag.iter_all_atoms():
-                if atm.include == False:
+                if atm.include is False:
                     continue
 
                 n += 1

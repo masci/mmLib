@@ -209,14 +209,15 @@ class TLSSegmentAlignmentPlot(object):
 
         ## draw colored TLS segments
         for tls in cpartition.iter_tls_segments():
-            fid1 = FragmentID(tls.frag_id1)
-            fid2 = FragmentID(tls.frag_id2)
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                fid1 = FragmentID(frag_id1)
+                fid2 = FragmentID(frag_id2)
 
-            i1 = self.frag_list.index(fid1)
-            i2 = self.frag_list.index(fid2)
+                i1 = self.frag_list.index(fid1)
+                i2 = self.frag_list.index(fid2)
 
-            x1 = i1       * fwidth
-            x2 = (i2 + 1) * fwidth
+                x1 = i1       * fwidth
+                x2 = (i2 + 1) * fwidth
 
-            idraw.setink(tls.color.rgbi)
-            idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))
+                idraw.setink(tls.color.rgbi)
+                idraw.rectangle((x1+xo, yo, x2+xo, pheight+yo))

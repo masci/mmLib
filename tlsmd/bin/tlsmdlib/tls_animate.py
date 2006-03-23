@@ -89,7 +89,7 @@ class TLSAnimate(object):
                             position    = atm.position.copy())
                         cp_struct.add_atom(cp_atom, True)
 
-                elif frag.is_standard_residue()==False:
+                elif frag.is_standard_residue() == False:
                     for atm in frag.iter_atoms():
                         cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
@@ -169,9 +169,6 @@ class TLSAnimate(object):
         tls_info  = tls.model_tls_info
         cor       = tls_info["COR"]
 
-        frag_id1  = tls.frag_id1
-        frag_id2  = tls.frag_id2
-
         for n, Lx_rmsd, Lx_vec, Lx_rho, Lx_pitch in [
             (1, "L1_rmsd", "L1_eigen_vec", "L1_rho", "L1_pitch"),
             (2, "L2_rmsd", "L2_eigen_vec", "L2_rho", "L2_pitch"),
@@ -197,7 +194,8 @@ class TLSAnimate(object):
 
             chain = model.get_chain(chain_id)
 
-            for frag in iter_fragment_range(chain, frag_id1, frag_id2):
-                for atm in frag.iter_atoms():
-                    d = numpy.matrixmultiply(D, atm.position - Lorigin) + d_screw
-                    atm.position += d
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                for frag in iter_fragment_range(chain, frag_id1, frag_id2):
+                    for atm in frag.iter_atoms():
+                        d = numpy.matrixmultiply(D, atm.position - Lorigin) + d_screw
+                        atm.position += d

@@ -221,7 +221,6 @@ def html_tls_group_table(chain, cpartition, report_root = None):
     for tls in cpartition.iter_tls_segments():
         
         tls_group = tls.tls_group
-        tls_info  = tls.tls_info
         mtls_info = tls.model_tls_info
 
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
@@ -251,16 +250,16 @@ def html_tls_group_table(chain, cpartition, report_root = None):
             cpath = tls.color.thumbnail_path
 
         l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls.color.name),
-              '<td>%s-%s</td>' % (tls.frag_id1, tls.frag_id2),
-              '<td>%d</td>'    % (len(tls.segment)),
-              '<td>%d</td>'    % (len(tls_group)),
-              '<td>%5.1f</td>' % (tls_info["exp_mean_temp_factor"]),
-              '<td>%4.2f</td>' % (tls_info["exp_mean_anisotropy"]),
+              '<td>%s</td>' % (tls.display_label()),
+              '<td>%d</td>'    % (tls.num_residues()),
+              '<td>%d</td>'    % (tls.num_atoms()),
+              '<td>%5.1f</td>' % (tls.mean_b()),
+              '<td>%4.2f</td>' % (tls.mean_anisotropy()),
               '<td>%5.2f</td>' % (tls.rmsd_b),
               '<td>%s</td>'    % (t_data),
               '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
-              '<td>%5.1f</td>' % (tls_info["tls_mean_temp_factor"]),
-              '<td>%4.2f</td>' % (tls_info["tls_mean_anisotropy"]),
+              '<td>%5.1f</td>' % (tls.tls_mean_b()),
+              '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()),
               '</tr>']
 
     l.append('</table>')
@@ -755,7 +754,7 @@ class HTMLReport(Report):
                 if (tls.rmsd_pre_alignment - tls.sresult.rmsd) < 0.5:
                     continue
             
-            tls_name = "TLS_%s_%s" % (tls.frag_id1, tls.frag_id2)
+            tls_name = "TLS_%s" % (tls.filename_label())
             
             gl_tls_group = TLS.GLTLSGroup(
                 oatm_visible       = False,
@@ -783,6 +782,7 @@ class HTMLReport(Report):
             radius = max(radius, 0.30)
             radius = 0.15
             
+            #gl_tls_group.gl_atom_list.properties.update(trace = False, ball_stick = True, ball_stick_radius = radius)
             gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
             gl_tls_group.glo_update_properties(time = 0.25)
 
@@ -856,9 +856,9 @@ class HTMLReport(Report):
             
             tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
-            
             tls_desc.set_tls_group(tls.tls_group)
-            tls_desc.add_range(chain_id, tls.frag_id1, chain_id, tls.frag_id2, "ALL")
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
 
         tls_file.save(open(tlsout_path, "w"))
 
@@ -887,7 +887,7 @@ class HTMLReport(Report):
 
         ## loop over TLS groups and color
         for tls in cpartition.iter_tls_segments():
-            js.append('select %s-%s:%s;' % (tls.frag_id1, tls.frag_id2, tls.chain_id))
+            js.append('select %s;' % (tls.jmol_select()))
             js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
         ## select non-protein non-solvent and display
@@ -953,7 +953,7 @@ class HTMLReport(Report):
                          tlsa.L3_chain.chain_id]
 
             for chain_id in chain_ids:
-                js.append('select %s-%s:%s;' % (tls.frag_id1, tls.frag_id2, chain_id))
+                js.append('select %s;' % (tls.jmol_select()))
                 js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
         ## select non-protein non-solvent and display
@@ -1213,11 +1213,9 @@ class ChainNTLSAnalysisReport(Report):
         spanned by the tlsopt TLS groups.
         """
         tanalysis = gnuplots.TranslationAnalysis(self.chain, self.cpartition)
-
         l = ['<center>',
              tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", TRANSLATION_GRAPH_CAPTION),
              '</center>']
-        
         return "".join(l)
 
     def html_libration_analysis(self):
@@ -1225,11 +1223,9 @@ class ChainNTLSAnalysisReport(Report):
         spanned by the tlsopt TLS groups.
         """
         libration_analysis = gnuplots.LibrationAnalysis(self.chain, self.cpartition)
-        
         l = ['<center>',
              libration_analysis.html_markup("Screw Displacement Analysis", LIBRATION_GRAPH_CAPTION),
              '</center>']
-        
         return "".join(l)
 
     def html_ca_differance(self):
@@ -1237,47 +1233,36 @@ class ChainNTLSAnalysisReport(Report):
         spanned by the tlsopt TLS groups.
         """
         plot = gnuplots.CA_TLS_Differance_Plot(self.chain, self.cpartition)
-        
         l = ['<center>',
              plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", FIT_GRAPH_CAPTION),
              '</center>']
-
         return "".join(l)
 
     def html_bmean(self):
         """Mean B-Factor per residue.
         """
         self.bmean_plot = gnuplots.BMeanPlot(self.chain, self.cpartition)
-
         l = ['<center>',
              self.bmean_plot.html_markup("Mean BFactor Analysis",
                                          "Comparison of TLS predicted B factors with experimental (input) B factors."),
              '</center>']
-
         return "".join(l)
 
     def html_rmsd_plot(self):
         rmsd_plot = gnuplots.RMSDPlot(self.chain, self.cpartition)
-
         l = ['<center>',
              rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors", ""),
              '</center>']
-
         return "".join(l)
 
     def html_tls_fit_histogram(self, tls):
         """histogram of atomic U_ISO - U_TLS_ISO
         """
-        
         his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chain, self.cpartition, tls)
-
-        title = 'Distribution Histogram of TLS Group %s%s-%s%s' % (
-            self.chain_id, tls.frag_id1, self.chain_id, tls.frag_id2)
-        
+        title = 'Distribution Histogram of TLS Group %s' % (tls.display_label())
         l = ['<center>',
              his.html_markup(title, ""),
              '</center>']
-
         return "".join(l)
 
 
