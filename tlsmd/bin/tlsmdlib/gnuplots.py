@@ -212,7 +212,7 @@ class TranslationAnalysis(GNUPlot):
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            self.cpartition.ntls)
+            self.cpartition.num_tls_segments())
 
         self.set_basename(basename)
 
@@ -221,7 +221,7 @@ class TranslationAnalysis(GNUPlot):
         script = _TRANSLATION_ANALYSIS_TEMPLATE
         script = script.replace("<xrng1>", self.cpartition.first_frag_id())
         script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Translation Displacement Analysis of Atoms for %d TLS Groups" % (self.cpartition.ntls))
+        script = script.replace("<title>", "Translation Displacement Analysis of Atoms for %d TLS Groups" % (self.cpartition.num_tls_segments()))
 
         ## line style
         ls = 0
@@ -251,7 +251,7 @@ class TranslationAnalysis(GNUPlot):
 
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
             tls_info  = tls.model_tls_info
             O         = tls_info["COR"]
@@ -302,7 +302,7 @@ class LibrationAnalysis(GNUPlot):
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            self.cpartition.ntls)
+            self.cpartition.num_tls_segments())
         
         self.set_basename(basename)
 
@@ -311,7 +311,7 @@ class LibrationAnalysis(GNUPlot):
         script = _LIBRATION_ANALYSIS_TEMPLATE
         script = script.replace("<xrng1>", self.cpartition.first_frag_id())
         script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Screw displacement analysis of backbone atoms using %d TLS Groups" % (self.cpartition.ntls))
+        script = script.replace("<title>", "Screw displacement analysis of backbone atoms using %d TLS Groups" % (self.cpartition.num_tls_segments()))
 
         ## line style
         ls = 0
@@ -341,7 +341,7 @@ class LibrationAnalysis(GNUPlot):
 
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
 
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
             tls_info  = tls.model_tls_info
             O         = tls_info["COR"]
@@ -400,7 +400,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         basename = "%s_CHAIN%s_NTLS%s_CADIFF" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            self.cpartition.ntls)
+            self.cpartition.num_tls_segments())
 
         self.set_basename(basename)
 
@@ -409,13 +409,13 @@ class CA_TLS_Differance_Plot(GNUPlot):
         script = _CA_TLS_DIFFERANCE_TEMPLATE
         script = script.replace("<xrng1>", self.cpartition.first_frag_id())
         script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Deviation of Observed CA B Factors from TLS Model for %d Group Partition" % (self.cpartition.ntls))
+        script = script.replace("<title>", "Deviation of Observed CA B Factors from TLS Model for %d Group Partition" % (self.cpartition.num_tls_segments()))
 
         ## line style
         script += 'set style line 1 lc rgb "#000000" lw 1\n'
         
         ls = 1
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
@@ -437,7 +437,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         fil = open(self.txt_path, "w")
         ncols = self.cpartition.num_tls_segments() + 1
         
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
 
             T = tls_group.itls_T
@@ -580,7 +580,7 @@ class BMeanPlot(GNUPlot):
         basename = "%s_CHAIN%s_NTLS%s_BMEAN" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            self.cpartition.ntls)
+            self.cpartition.num_tls_segments())
 
         self.set_basename(basename)
 
@@ -591,7 +591,7 @@ class BMeanPlot(GNUPlot):
         data_path = "%s.txt" % (basename)
         fil = open(data_path, "w")
 
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
 
             for frag in tls.iter_fragments():
@@ -599,7 +599,7 @@ class BMeanPlot(GNUPlot):
 
                 l = ['%5s  %5d  %6.2f' % (frag.fragment_id, ifrag, BISO1[ifrag])]
 
-                for i in xrange(self.cpartition.ntls):
+                for i in xrange(self.cpartition.num_tls_segments()):
                     if i == itls:
                         l.append('  %6.2f' % (BISO[ifrag]))
                     else:
@@ -673,7 +673,7 @@ class RMSDPlot(GNUPlot):
     def write_data_file(self):
         ncols = self.cpartition.num_tls_segments() + 2
         
-        if self.cpartition.ntls > 1:
+        if self.cpartition.num_tls_segments() > 1:
             CMTX1 = tls_calcs.calc_cross_prediction_matrix_rmsd(
                 self.chain, self.chain.partition_collection.get_chain_partition(1))
         else:
@@ -697,7 +697,7 @@ class RMSDPlot(GNUPlot):
             if CMTX1!=None:
                 cols[1] = "%6.2f" % (CMTX1[0,j])
 
-            for itls, tls in self.cpartition.enumerate_tls_segments():
+            for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
                 if frag in tls.iter_fragments():
                     cols[itls+2] = "%6.2f" % (CMTX[itls,j])
                     break
@@ -710,7 +710,7 @@ class RMSDPlot(GNUPlot):
         basename = "%s_CHAIN%s_NTLS%s_RMSD" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
-            self.cpartition.ntls)
+            self.cpartition.num_tls_segments())
 
         self.set_basename(basename)
 
@@ -725,25 +725,25 @@ class RMSDPlot(GNUPlot):
         ## line style
         line_titles = ["notitle" for x in xrange(self.cpartition.num_tls_segments())]
 
-        if self.cpartition.ntls > 1:
+        if self.cpartition.num_tls_segments() > 1:
             script += 'set style line 1 lc rgb "#000000" lw 3\n'
 
         ls = 1
-        for itls, tls in self.cpartition.enumerate_tls_segments():
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             ls += 1
             script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
 
             title = 'title "%s TLS"' % (tls.display_label())
             line_titles.append(title)
 
-        if self.cpartition.ntls > 1:
+        if self.cpartition.num_tls_segments() > 1:
             ls += 1
             script += 'set style line %d lc rgb "#000000" lw 3\n' % (ls)
             
         ## plot list
         plist = []
 
-        if self.cpartition.ntls > 1:
+        if self.cpartition.num_tls_segments() > 1:
             plist.append('"%s" using 1:2 title "Rigid Chain" ls 1 with lines' % (self.txt_path))
 
         ls = 1

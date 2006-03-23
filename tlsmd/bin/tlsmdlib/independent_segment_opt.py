@@ -58,36 +58,14 @@ class ISOptimization(hcsssp.HCSSSP):
     def __init__(self, chain, min_subsegment_len, nparts):
         hcsssp.HCSSSP.__init__(self)
 
+        self.chain = chain
         self.min_subsegment_len = min_subsegment_len
         self.nparts = nparts
-
-        self.tls_cache = {}
 
         self.minimized = False
         self.D         = None
         self.P         = None
         self.T         = None
-
-        ## source and destination fragment IDs; these are the
-        ## begining and ending fragments(residues) of the chain
-        self.frag_id_src  = None
-        self.frag_id_dest = None
-
-        if self.frag_id_src == None and self.frag_id_dest == None:
-            self.chain = chain
-        else:
-            self.chain = chain[self.frag_id_src:self.frag_id_dest]
-
-        ## tls analyzer is necessary for re-fitting the partitions
-        ## chosen by the optimization (minimization)
-        self.fit_cache = dict()
-
-        ## this is useful: for each fragment in the minimization
-        ## set a attribute for its index position
-        ichain = 0
-        for frag in self.chain.iter_fragments():
-            frag.ichain = ichain
-            ichain = ichain + 1
         
         ## Initialize the vertex list based on the number of of
         ## residues in Chain.
@@ -147,10 +125,8 @@ class ISOptimization(hcsssp.HCSSSP):
 
             cost = tlsdict["residual"]
             frag_range = (frag_id1, frag_id2)
-            edge = (i, j, cost, frag_range)
+            edge = (i, j, cost, frag_range, tlsdict)
             edges.append(edge)
-
-            self.fit_cache[frag_range] = tlsdict
 
             num_subsegments += 1
             pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
@@ -177,6 +153,19 @@ class ISOptimization(hcsssp.HCSSSP):
         edges = None
         gc.collect()
 
+    def construct_tls_segment(self, edge):
+        """Returns a instance of TLSSegment fully constructed for
+        self.chain and the fragment range given in edge.
+        """
+        i, j, cost, frag_range, tlsdict = edge
+        tls = opt_containers.TLSSegment(chain_id = self.chain.chain_id,
+                                        segment_ranges = [frag_range],
+                                        method = "TLS",
+                                        residual = cost,
+                                        num_atoms = tlsdict["num_atoms"])
+        tls.fit_to_chain(self.chain)
+        return tls
+
     def construct_chain_partition(self, nparts):
         """Return a ChainPartition instance containing the optimal
         TLS description of self.chain using num_tls_segments.
@@ -189,21 +178,16 @@ class ISOptimization(hcsssp.HCSSSP):
 
         cpartition = opt_containers.ChainPartition(self.chain, nparts)
         
-        partition_num = 0
-        
         for hi, hj, edge in self.HCSSSP_path_iter(self.V, self.D, self.P, self.T, nparts):
-            if edge == None:
+            if edge is None:
                 continue
-            
-            i, j, cost, frag_range = edge
+            i, j, cost, frag_range, tlsdict = edge
             
             ## check if the edge is a bypass-edge type
             if len(frag_range) == 2:
                 print "segment %s-%s" % (frag_range[0], frag_range[1])
-                tls = self.__calc_tls_record_from_edge(edge)
-                tls.partition_num = partition_num
-                partition_num += 1
-                cpartition.add_tls_segment(tls)
+                tls_segment = self.construct_tls_segment(edge)
+                cpartition.add_tls_segment(tls_segment)
 
         return cpartition
 
@@ -222,91 +206,6 @@ class ISOptimization(hcsssp.HCSSSP):
                 partition_collection.insert_chain_partition(cpartition)
 
         return partition_collection
-
-    def __calc_nonlinear_fit(self, tls):
-        """Use the non-linear TLS model to calculate tensor values.
-        """
-        tls_group = tls.tls_group
-
-        ## anisotropic model
-        tlsdict = self.chain.tls_analyzer.constrained_anisotropic_fit(tls.segment_ranges)
-        T, L, S, origin = tls_calcs.tlsdict2tensors(tlsdict)
-        tls_group.T = T
-        tls_group.L = L
-        tls_group.S = S
-        tls_group.origin = origin
-
-        ## isotropic model
-        itlsdict = self.chain.tls_analyzer.constrained_isotropic_fit(tls.segment_ranges)
-        IT, IL, IS, IOrigin = tls_calcs.isotlsdict2tensors(itlsdict)
-        tls_group.itls_T = IT
-        tls_group.itls_L = IL
-        tls_group.itls_S = IS
-
-        assert numpy.allclose(tls_group.origin, IOrigin)
-
-    def __calc_tls_record_from_edge(self, edge):
-        """Independently calculate the TLS parameters for the segment
-        to verify correctness (internal check).
-        """
-        i, j, cost, frag_range = edge
-
-        frag_id1, frag_id2 = frag_range
-
-        tlsdict = self.fit_cache[(frag_id1, frag_id2)]
-
-        tls = opt_containers.TLSSegment(
-            chain_id = self.chain.chain_id,
-            segment_ranges = [(frag_id1, frag_id2)],
-            method = "TLS",
-            **tlsdict)
-
-        segment = self.chain[frag_id1:frag_id2]
-        tls.segments.append(segment)
-
-        tls.tls_group = TLS.TLSGroup()
-        for atm in segment.iter_all_atoms():
-            if atm.include == False:
-                continue
-            tls.tls_group.append(atm)
-
-        ## use the constrained TLS model to calculate tensor values
-        cache_key = (frag_id1, frag_id2)
-        if self.tls_cache.has_key(cache_key):
-            tlscache = self.tls_cache[cache_key]
-            tls_group_cache = tlscache.tls_group
-            tls.tls_group.origin = tls_group_cache.origin.copy()
-            tls.tls_group.T = tls_group_cache.T.copy()
-            tls.tls_group.L = tls_group_cache.L.copy()
-            tls.tls_group.S = tls_group_cache.S.copy()
-            tls.tls_group.itls_T = tls_group_cache.itls_T
-            tls.tls_group.itls_L = tls_group_cache.itls_L.copy()
-            tls.tls_group.itls_S = tls_group_cache.itls_S.copy()
-        else:
-            self.__calc_nonlinear_fit(tls)
-            self.tls_cache[cache_key] = tls
-        
-        ## helpful additions
-        tls_info  = tls.tls_group.calc_tls_info()
-        itls_info = TLS.calc_itls_center_of_reaction(
-            tls.tls_group.itls_T,
-            tls.tls_group.itls_L,
-            tls.tls_group.itls_S,
-            tls.tls_group.origin)
-
-        tls.tls_info = tls_info
-        tls.itls_info = itls_info
-
-        if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
-            tls.tls_group.model = "ISOT"
-            tls.model_tls_info = itls_info
-        elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
-            tls.tls_group.model = "ANISO"
-            tls.model_tls_info = tls_info
-
-        tls.rmsd_b = tls_calcs.calc_rmsd_tls_biso(tls.tls_group)
-
-        return tls
 
     def prnt_detailed_paths(self):
         """Debug
@@ -331,7 +230,7 @@ class ISOptimization(hcsssp.HCSSSP):
         
         ## start at the destination vertex
         curr_v = num_vertex - 1
-        h      = hop_constraint
+        h = hop_constraint
         
         while curr_v >= 0:
             prev_vertex  = P[h,curr_v]
@@ -345,7 +244,7 @@ class ISOptimization(hcsssp.HCSSSP):
             edge = T[h][curr_v]
 
             if edge is not None:
-                i, j, cost, frag_range = edge
+                i, j, cost, frag_range, tlsdict = edge
                 wr = cost / (j - i)
                 edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (i, j, cost, frag_range, wr)
             else:

@@ -3,27 +3,28 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-import sys
-import math
 import numpy
 
 from mmLib import Constants, TLS
 
 import atom_selection
+import tls_calcs
 import tlsmdmodule
 
 
-def IsotropicADPDataSmoother(chain):
+def IsotropicADPDataSmoother(chain, num_smooth = 1):
     """Experimental data smoothing of temperature factors
     """
+    print "SMOOTHING CHAIN %s ADPs" % (chain.chain_id)
+    print "SMOOTH WINDOW......................: %d" % (2 * num_smooth + 1)
+    
     tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
-    xlist = chain_to_xmlrpc_list(chain)
+    xlist = atom_selection.chain_to_xmlrpc_list(chain)
     tls_analyzer.set_xmlrpc_chain(xlist)
 
     num_frags = len(chain)
 
     smooth_uiso = dict()
-    num_smooth = 2
     ifrag_start = num_smooth
     ifrag_end = num_frags - num_smooth - 1
 

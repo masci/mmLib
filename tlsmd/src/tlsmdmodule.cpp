@@ -72,7 +72,7 @@ AddFitTLSModelResultToPyDict(const TLSMD::FitTLSModelResult &tls_result,  PyObje
   Py_DECREF(py_intx);
 
   py_intx = PyInt_FromLong(tls_result.get_num_residues());
-  PyDict_SetItemString(rdict, "num_atoms", py_intx);
+  PyDict_SetItemString(rdict, "num_residues", py_intx);
   Py_DECREF(py_intx);
 
   PyObject* py_floatx = PyFloat_FromDouble(tls_result.get_residual());

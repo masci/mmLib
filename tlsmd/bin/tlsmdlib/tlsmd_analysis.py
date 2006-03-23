@@ -17,7 +17,9 @@ import conf
 import atom_selection
 import tlsmdmodule
 import opt_containers
+import adp_smoothing
 import independent_segment_opt
+import cpartition_recombination
 
 
 class TLSMDAnalysis(object):
@@ -64,7 +66,7 @@ class TLSMDAnalysis(object):
         self.select_chains()
         self.prnt_settings()
         self.calc_chain_minimization()
-        #self.calc_chain_partition_recombination()
+        self.calc_chain_partition_recombination()
         
         if self.struct2_file_path != None and self.struct2_chain_id != None:
             self.calc_chain_partition_superposition()
@@ -88,8 +90,7 @@ class TLSMDAnalysis(object):
 
         ## load struct
         self.struct = FileIO.LoadStructure(
-            fil = self.struct_file_path,
-            build_properties = ("library_bonds","distance_bonds"))
+            fil = self.struct_file_path, distance_bonds = True)
 
         ## set the structure ID
         if conf.globalconf.struct_id != None:
@@ -144,27 +145,10 @@ class TLSMDAnalysis(object):
             ## count the number of amino acid residues in the chain
             if chain.count_amino_acids() < 10:
                 continue
-
-            ## ok, use the chain but use a segment and cut off
-            ## any leading and trailing non-amino acid residues
-            frag_id1 = None
-            for aa in chain.iter_amino_acids():
-                if frag_id1 is None:
-                    frag_id1 = aa.fragment_id
-                frag_id2 = aa.fragment_id
-                
-            segment = chain[frag_id1:frag_id2]
-            segments.append(segment)
-
-            ## Sets that atm.include attribute for each atom in the chains
-            ## being analyzed by tlsmd
-            for atm in segment.iter_all_atoms():
-                atm.include = atom_selection.calc_include_atom(atm)
             
+            segment = ConstructSegmentForAnalysis(chain)
+            segments.append(segment)
             segment.struct = self.struct
-            segment.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
-            xlist = atom_selection.chain_to_xmlrpc_list(segment)
-            segment.tls_analyzer.set_xmlrpc_chain(xlist)
         
         self.chains = segments
 
@@ -192,31 +176,9 @@ class TLSMDAnalysis(object):
             
     def calc_chain_partition_recombination(self):
         print
-        print "TLS SEGMENT RECOMBINATION: N INTO N-1"
-
+        print "TLS SEGMENT RECOMBINATION"
         for chain in self.chains:
-
-            improvements = []
-            prev_cpartition = None
-            for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-                if prev_cpartition is None:
-                    prev_cpartition = cpartition
-                    continue
-
-                print
-                print "%d->%d Segment Recombination beat(%8.6f)" % (ntls, ntls-1, prev_cpartition.residual())
-                combined_cp = ChainPartitionRecombination(cpartition)
-                print "%s %8.6f" % (combined_cp, combined_cp.residual())
-                
-                if combined_cp.residual() < prev_cpartition.residual():
-                    improvements.append(combined_cp)
-
-                prev_cpartition = cpartition
-
-            ## insert replacement ChainPartitions
-            for cpartition in improvements:
-                chain.partition_collection.insert_chain_partition(cpartition)
-
+            cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
                 
     def calc_chain_partition_superposition(self):
         import structcmp
@@ -245,3 +207,42 @@ class TLSMDAnalysis(object):
 
     def num_chains(self):
         return len(self.chains)
+
+
+def ConstructSegmentForAnalysis(chain):
+    """Returns a list of Segment instance from the
+    Chain instance which is properly modified for use in
+    the this application.
+    """
+    ## ok, use the chain but use a segment and cut off
+    ## any leading and trailing non-amino acid residues
+    frag_id1 = None
+    for aa in chain.iter_amino_acids():
+        if frag_id1 is None:
+            frag_id1 = aa.fragment_id
+        frag_id2 = aa.fragment_id
+
+    segment = chain[frag_id1:frag_id2]
+
+    ## this is useful: for each fragment in the minimization
+    ## set a attribute for its index position
+    for ichain, frag in enumerate(chain.iter_fragments()):
+        frag.ichain = ichain
+
+    ## Sets that atm.include attribute for each atom in the chains
+    ## being analyzed by tlsmd
+    for atm in segment.iter_all_atoms():
+        atm.include = atom_selection.calc_include_atom(atm)
+
+    ## apply data smooth if desired
+    #adp_smoothing.IsotropicADPDataSmoother(chain)
+
+    ## create a TLSModelAnalyzer instance for the chain, and
+    ## attach the instance to the chain for use by the rest of the
+    ## program
+    segment.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
+    xlist = atom_selection.chain_to_xmlrpc_list(segment)
+    segment.tls_analyzer.set_xmlrpc_chain(xlist)
+
+    return segment
+

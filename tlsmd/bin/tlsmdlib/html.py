@@ -346,7 +346,7 @@ class HTMLReport(Report):
         """Generated the self.colors dictionary of colors for the report,
         and also writes thumbnail .png images of all the colors.
         """
-        thumbnail_dir   = "colors"
+        thumbnail_dir = "colors"
 
         ## make the thumbnail subdirectory
         if not os.path.isdir(thumbnail_dir):
@@ -365,11 +365,12 @@ class HTMLReport(Report):
         ## chain spanning set of tls groups
         for chain in self.tlsmd_analysis.iter_chains():
             for cpartition in chain.partition_collection.iter_chain_partitions():
-                for tlsi, tls in cpartition.enumerate_tls_segments():
+
+                for tlsi, tls in enumerate(cpartition.iter_tls_segments()):
                     if tls.method == "TLS":
-                        tls.color = self.get_tls_color(tlsi)
+                        tls.set_color(self.get_tls_color(tlsi))
                     else:
-                        tls.color = self.colors[0]
+                        tls.set_color(self.colors[0])
 
     def get_tls_color(self, tls_index):
         """Returns the color dict description for a TLS segment of the
@@ -666,7 +667,7 @@ class HTMLReport(Report):
     def raster3d_render_tls_graph_path(self, chain, cpartition):
         """Render TLS visualizations using Raster3D.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.ntls)
+        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         png_path = "%s.png"   % (basename)
 
         misc.start_timing()
@@ -816,7 +817,7 @@ class HTMLReport(Report):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chain.chain_id, cpartition.ntls)
+        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         pdb_path = "%s.pdb" % (basename)
 
         ## temporarily set the atom temp_factor and U tensor to the Utls value
@@ -840,7 +841,7 @@ class HTMLReport(Report):
     def write_tlsout_file(self, chain, cpartition):
         """Writes the TLSOUT file for the segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.ntls)
+        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         tlsout_path = "%s.tlsout" % (basename)
 
         struct_id = self.struct_id
@@ -874,7 +875,7 @@ class HTMLReport(Report):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
         """
-        jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.ntls)
+        jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
         ## create the JMol script using cartoons and consistant
         ## coloring to represent the TLS groups
@@ -901,7 +902,7 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.ntls),
+             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.num_tls_segments()),
              '<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
              '</script>',
              '</head>',
@@ -921,7 +922,7 @@ class HTMLReport(Report):
         """Writes out the HTML page which will display the
         structure using the JMol Applet.
         """
-        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (self.struct_id, chain.chain_id, cpartition.ntls)
+        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
         html_path = "%s.html" % (basename)
         pdb_path  = "%s.pdb" % (basename)
@@ -971,7 +972,7 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.ntls),
+             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.num_tls_segments()),
              '<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
              '</script>',
              '</head>',
@@ -1028,7 +1029,7 @@ class HTMLReport(Report):
         ## figure out the maximum number of ntls in all chains
         max_ntls = 0
         for chain in self.tlsmd_analysis.iter_chains():
-            max_ntls = max(chain.partition_collection.max_ntls, max_ntls)
+            max_ntls = max(chain.partition_collection.max_ntls(), max_ntls)
 
         ## generate ntls number of plots and add them to the
         ## HTML document
@@ -1153,7 +1154,7 @@ class ChainNTLSAnalysisReport(Report):
         self.struct = chain.struct
         self.struct_id = chain.struct.structure_id
         self.chain_id = chain.chain_id
-        self.ntls = cpartition.ntls
+        self.ntls = cpartition.num_tls_segments()
 
         self.root  = ".."
         self.dir   = "%s_CHAIN%s_NTLS%d"  % (self.struct_id, self.chain_id, self.ntls)

@@ -4,22 +4,26 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 import math
+import copy
 import numpy
 
-from mmLib import Constants, TLS
+from mmLib import Constants, Structure, TLS
+
+import conf
+import tls_calcs
 
 
 class TLSSegment(object):
     """Information on a TLS rigid body segment of a protein chain.
     """
-    def __init__(self, **args):
-        self.chain_id = args["chain_id"]
-        self.segment_ranges = args["segment_ranges"]
-        self.lsq_residual = args["residual"]
-        self.method = args["method"]
-        self.num_atoms_ = args["num_atoms"]
+    def __init__(self, segment_ranges = [], **args):
+        self.segment_ranges = segment_ranges
+        self.chain_id = args.get("chain_id")
+        self.method = args.get("method")
+        self.__residual = args.get("residual")
+        self.__num_atoms = args.get("num_atoms")
 
-        ## added by TLSChainMinimizer
+        ## added by a call to the method fit_to_chain()
         self.tls_group = None
         self.tls_info = None
         self.itls_info = None
@@ -39,6 +43,9 @@ class TLSSegment(object):
     def __str__(self):
         return "%s:%s" % (self.chain_id, self.display_label())
 
+    def copy(self):
+        return copy.copy(self)
+
     def display_label(self):
         l = []
         for frag_id1, frag_id2 in self.segment_ranges:
@@ -56,6 +63,10 @@ class TLSSegment(object):
         for frag_id1, frag_id2 in self.segment_ranges:
             l.append("%s-%s:%s" % (frag_id1, frag_id2, self.chain_id))
         return ",".join(l)
+
+    def set_color(self, color):
+        assert self.color is None
+        self.color = color
 
     def num_segment_ranges(self):
         return len(self.segment_ranges)
@@ -78,7 +89,7 @@ class TLSSegment(object):
                 yield frag
 
     def num_atoms(self):
-        return self.num_atoms_
+        return self.__num_atoms
 
     def iter_atoms(self):
         for segment in self.segments:
@@ -104,9 +115,17 @@ class TLSSegment(object):
         return self.tls_info["tls_mean_anisotropy"]
     
     def residual(self):
-        return self.lsq_residual
+        return self.__residual
 
-    def reset(self, chain):
+    def fit_residual(self, chain):
+        tlsdict = chain.tls_analyizer.isotropic_fit(self.segment_ranges)
+        if tlsdict:
+            self.__residual = tlsdict["residual"]
+            self.__num_atoms = tlsdict["num_atoms"]
+            return self.__residual
+        return None
+
+    def fit_to_chain(self, chain):
         """Re-sets all derived information in the TLSSegment.
         """
         ## cut segment from chain using segment ranges
@@ -122,6 +141,11 @@ class TLSSegment(object):
                 if atm.include is True:
                     tls_group.append(atm)
         self.tls_group = tls_group
+
+        if len(self.tls_group) != self.num_atoms():
+            print "fit_to_chain: EEK! (%s) len(self.tls_group)=%d != self.num_atoms()=%d" % (
+                self, len(self.tls_group), self.num_atoms())
+            raise SystemExit
 
         ## fit the TLS group parameters
         self.fit_tls_parameters(chain)
@@ -175,7 +199,7 @@ class ChainPartition(object):
     """
     def __init__(self, chain, ntls):
         self.chain = chain
-        self.ntls = ntls
+        self.__ntls = ntls
         self.tls_list = []
 
     def __str__(self):
@@ -224,12 +248,6 @@ class ChainPartition(object):
     def iter_tls_segments(self):
         return iter(self.tls_list)
 
-    def enumerate_tls_segments(self):
-        i = 0
-        for tls in self.iter_tls_segments():
-            yield i, tls
-            i += 1
-
 
 class ChainPartitionCollection(object):
     """Contains all the ChainPartition objects for a chain.
@@ -246,10 +264,12 @@ class ChainPartitionCollection(object):
         """
         assert isinstance(cpartition, ChainPartition)
         for i, (ntls, cpart) in enumerate(self.ntls_chain_partition_list):
-            if ntls == cpartition.ntls:
+            if ntls == cpartition.num_tls_segments():
+                if cpart == cpartition:
+                    return
                 del self.ntls_chain_partition_list[i]
                 break
-        self.ntls_chain_partition_list.append((cpartition.ntls, cpartition))
+        self.ntls_chain_partition_list.append((cpartition.num_tls_segments(), cpartition))
         self.ntls_chain_partition_list.sort()
 
     def num_chain_partitions(self):

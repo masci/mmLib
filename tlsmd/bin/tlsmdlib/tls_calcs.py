@@ -101,7 +101,7 @@ def calc_mean_biso_tls(chain, cpartition):
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
 
-    for i, tls in cpartition.enumerate_tls_segments():
+    for i, tls in enumerate(cpartition.iter_tls_segments()):
         tls_group = tls.tls_group
 
         T = tls_group.itls_T
@@ -132,7 +132,7 @@ def calc_cross_prediction_matrix_rmsd(chain, cpartition):
 
     cmtx = numpy.zeros((num_tls, num_res), float)
 
-    for i, tls in cpartition.enumerate_tls_segments():
+    for i, tls in enumerate(cpartition.iter_tls_segments()):
         tls_group = tls.tls_group
 
         T = tls_group.itls_T
