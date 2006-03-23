@@ -2092,9 +2092,9 @@ class GLAtomList(GLDrawList):
 
             for frag in chain.iter_fragments():
 
-                if frag.is_amino_acid()==True:
-                    backbone_atoms = ("CA",)
-                elif frag.is_nucleic_acid()==True:
+                if frag.is_amino_acid() is True:
+                    backbone_atoms = ("N", "CA", "C")
+                elif frag.is_nucleic_acid() is True:
                     backbone_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
                 else:
                     last_atm = None
@@ -2107,7 +2107,11 @@ class GLAtomList(GLDrawList):
                         last_atm = None
                         continue
 
-                    if last_atm==None:
+                    if last_atm is None:
+                        last_atm = atm
+                        continue
+
+                    if AtomMath.length(atm.position - last_atm.position) > 2.0:
                         last_atm = atm
                         continue
 

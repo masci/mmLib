@@ -13,8 +13,39 @@ import conf
 import opt_containers
 
 
-def segment_range_cmp(range1, range2):
-    return Structure.fragment_id_cmp(range1[0], range2[0])
+def segment_range_cmp(segrange1, segrange2):
+    return Structure.fragment_id_cmp(segrange1[0], segrange2[0])
+
+
+def join_segment_ranges(chain, segrange1, segrange2):
+    tmp_segrange = segrange1 + segrange2
+    tmp_segrange.sort(segment_range_cmp)
+
+    if len(tmp_segrange) == 0:
+        return []
+    
+    segrange = []
+    frag1 = None
+    frag2 = None
+    
+    for fid1, fid2 in tmp_segrange:
+        xfrag1 = chain[fid1]
+        xfrag2 = chain[fid2]
+        if frag2 is not None:
+            if frag2.ichain == (xfrag1.ichain - 1):
+                frag2 = xfrag2
+                continue
+            segrange.append((frag1.fragment_id, frag2.fragment_id))
+        frag1 = xfrag1
+        frag2 = xfrag2
+    
+    segrange.append((frag1.fragment_id, frag2.fragment_id))
+
+    if tmp_segrange != segrange:
+        print "COMBINED ADJECENT RANGES: %s TO %s" % (tmp_segrange, segrange)
+
+    return segrange
+    
 
 def recombination2_iter(nparts):
     for part1 in xrange(0, nparts):
@@ -30,8 +61,7 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     """
     assert tls1.chain_id == tls2.chain_id
 
-    segment_ranges = tls1.segment_ranges + tls2.segment_ranges
-    segment_ranges.sort(segment_range_cmp)
+    segment_ranges = join_segment_ranges(chain, tls1.segment_ranges, tls2.segment_ranges)
     
     tls = opt_containers.TLSSegment(chain_id = tls1.chain_id,
                                     segment_ranges = segment_ranges,

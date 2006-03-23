@@ -102,6 +102,12 @@ def fragment_id_ge(frag_id1, frag_id2):
     """
     return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
 
+def fragment_id_cmp(frag_id1, frag_id2):
+    if fragment_id_lt(frag_id1, frag_id2):
+        return -1
+    if fragment_id_lt(frag_id1, frag_id2):
+        return 0
+    return 1
     
 class Structure(object):
     """The Structure object is the parent container object for the entire
