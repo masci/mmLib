@@ -1478,7 +1478,7 @@ class Segment(object):
             if frag.is_water():
                 yield frag
 
-    def add_atom(self, atom, delay_sort=False):
+    def add_atom(self, atom, delay_sort = False):
         """Adds a Atom.
         """
         assert isinstance(atom, Atom)
@@ -1992,13 +1992,29 @@ class Fragment(object):
         atom.fragment = self
 
     def remove_atom(self, atom):
-        """Finish Me
+        """Removes the Atom instance from the Fragment.
         """
-        assert isinstance(atom, Atom)
-        raise FinishMe()
+        assert atom.fragment == self
+        
+        if self.alt_loc_dict.has_key(atom.name):
+            altloc = self.alt_loc_dict[atom.name]
+            if altloc.has_key(atom.alt_loc):
+                altloc.remove_atom(atom)
+                if len(altloc) == 0:
+                    del self.alt_loc_dict[atom.name]
+                    self.atom_order_list.remove(altloc)
+                if atom in self.atom_list:
+                    self.atom_list.remove(atom)
+                    del self.atom_dict[atom.name]
+        else:
+            self.atom_order_list.remove(atom)
+            self.atom_list.remove(atom)
+            del self.atom_dict[atom.name]
 
-    def get_atom(self, name, alt_loc=None):
-        """Returns the matching Atom object contained in the Fragment.
+        atom.fragment = None
+
+    def get_atom(self, name, alt_loc = None):
+        """Returns the matching Atom instance contained in the Fragment.
         Returns None if a match is not found. If alt_loc is not given,
         then the default alt_loc is used.
         """
@@ -2492,6 +2508,13 @@ class Altloc(dict):
 
         self[atom.alt_loc] = atom
         atom.altloc = self
+
+    def remove_atom(self, atom):
+        """Removes the atom from this Altloc container.
+        """
+        assert atom.altloc == self
+        del self[atom.alt_loc]
+        atom.altloc = None
     
     def calc_next_alt_loc_id(self, atom):
         """Returns the next vacant alt_loc letter to be used for a key.
@@ -2586,7 +2609,7 @@ class Atom(object):
         self.charge          = charge
 
         ## position
-        if position != None:
+        if position is not None:
             self.position = position
         elif x != None and y != None and z != None:
             self.position = numpy.array([x, y, z], float)

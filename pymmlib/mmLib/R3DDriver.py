@@ -212,13 +212,12 @@ class Raster3DDriver(object):
         except IOError, err:
             mmTypes.warning("IOError while executing %s" % (self.render_program_path))
 	    mmTypes.warning(str(err))
-	    mmTypes.warning(stderr.read())
             return
 
         ## close stdin to the render program
         stdin.close()
         
-        if self.render_stdin != None:
+        if self.render_stdin is not None:
             self.render_stdin = None
         elif pobj is not None:
             pobj.wait()

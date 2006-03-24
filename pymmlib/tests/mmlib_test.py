@@ -494,6 +494,19 @@ def run_structure_tests(struct, stats):
                 bond_dict[bond] = True
                 bond_test(bond, atm, stats)
 
+    ## crazy test: remove all atoms, then add them back
+    print "ATOM REMOVEAL TEST"
+    print "STRUCT NUM ATOMS %d" % (struct.count_all_atoms())
+    alist = []
+    for atm in struct.iter_all_atoms():
+        alist.append(atm)
+    for atm in alist:
+        struct.remove_atom(atm)
+    print "AFTER REMOVAL NUM ATOMS %d" % (struct.count_all_atoms())
+    for atm in alist:
+        struct.add_atom(atm)
+    print "STRUCT NUM ATOMS(AFTERADD) %d" % (struct.count_all_atoms())
+
 
 def cmp_struct(struct1, struct2):
     """Compare two Structure objects.
