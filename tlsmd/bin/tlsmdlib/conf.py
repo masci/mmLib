@@ -39,7 +39,7 @@ JMOL_DIR               = "../../../jmol"
 ADP_PROB = 50
 
 ## number of TLS partitons for each chain
-NPARTS = 20
+NPARTS = 10
 
 ## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH = 800
@@ -52,7 +52,7 @@ class GlobalConfiguration(object):
         self.tls_model = "ISOT"
         self.weight_model = "UNIT"
         self.include_atoms = "ALL"
-        self.min_subsegment_size = 4
+        self.min_subsegment_size = 3
         self.adp_prob = ADP_PROB
         self.nparts = NPARTS
         self.verbose = False

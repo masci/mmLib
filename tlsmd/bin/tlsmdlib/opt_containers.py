@@ -22,6 +22,7 @@ class TLSSegment(object):
         self.method = args.get("method")
         self.__residual = args.get("residual")
         self.__num_atoms = args.get("num_atoms")
+        self.__num_residues = args.get("num_residues")
 
         ## added by a call to the method fit_to_chain()
         self.tls_group = None
@@ -78,6 +79,9 @@ class TLSSegment(object):
         return iter(self.segments)
 
     def num_residues(self):
+        return self.__num_residues
+
+    def num_residues_segment(self):
         n = 0
         for segment in self.segments:
             n += len(segment)
@@ -91,16 +95,16 @@ class TLSSegment(object):
     def num_atoms(self):
         return self.__num_atoms
 
-    def iter_atoms(self):
-        for segment in self.segments:
-            for atm in segment.iter_all_atoms():
-                yield atm
-
-    def num_segment_atoms(self):
+    def num_atoms_segment(self):
         n = 0
         for segment in self.segments:
             n += segment.count_all_atoms()
         return n
+
+    def iter_atoms(self):
+        for segment in self.segments:
+            for atm in segment.iter_all_atoms():
+                yield atm
 
     def mean_b(self):
         return self.tls_info["exp_mean_temp_factor"]

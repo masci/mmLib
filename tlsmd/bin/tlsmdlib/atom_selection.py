@@ -41,7 +41,7 @@ def calc_atom_weight(atm):
     assert atm.occupancy >= 0.0 and atm.occupancy <= 1.0
     return atm.occupancy
 
-def chain_to_xmlrpc_list(chain):
+def chain_to_xmlrpc_list(atom_iter):
     """Converts the Atoms of a Chain/Segment to a list of dictionaries 
     for transfer over xmlrpc.  Only the information required to fit
     TLS groups to the Atoms is set in the Atom dictionaries to
@@ -49,7 +49,7 @@ def chain_to_xmlrpc_list(chain):
     """
     xmlrpc_chain = []
 
-    for atm in chain.iter_all_atoms():
+    for atm in atom_iter:
         if atm.include is False:
             continue
 
@@ -59,8 +59,7 @@ def chain_to_xmlrpc_list(chain):
         atm_desc["name"] = atm.name
         atm_desc["frag_id"] = atm.fragment_id
 
-        frag = atm.get_fragment()
-        atm_desc["ifrag"] = chain.index(frag)
+        atm_desc["ifrag"] = 0
 
         atm_desc["x"] = atm.position[0]
         atm_desc["y"] = atm.position[1]

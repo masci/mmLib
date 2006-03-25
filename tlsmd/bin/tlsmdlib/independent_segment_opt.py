@@ -162,8 +162,8 @@ class ISOptimization(hcsssp.HCSSSP):
                                         segment_ranges = [frag_range],
                                         method = "TLS",
                                         residual = cost,
-                                        num_atoms = tlsdict["num_atoms"])
-        tls.fit_to_chain(self.chain)
+                                        num_atoms = tlsdict["num_atoms"],
+                                        num_residues = tlsdict["num_residues"])
         return tls
 
     def construct_chain_partition(self, nparts):
@@ -172,9 +172,6 @@ class ISOptimization(hcsssp.HCSSSP):
         """
         if not self.minimized:
             return None
-
-        print "Re-Fitting TLS Parameters of Optimized Chain %s Partitioned using %d TLS Groups" % (
-            self.chain.chain_id, nparts)
 
         cpartition = opt_containers.ChainPartition(self.chain, nparts)
         
@@ -185,7 +182,6 @@ class ISOptimization(hcsssp.HCSSSP):
             
             ## check if the edge is a bypass-edge type
             if len(frag_range) == 2:
-                print "segment %s-%s" % (frag_range[0], frag_range[1])
                 tls_segment = self.construct_tls_segment(edge)
                 cpartition.add_tls_segment(tls_segment)
 

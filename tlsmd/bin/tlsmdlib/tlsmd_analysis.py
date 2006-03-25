@@ -67,7 +67,8 @@ class TLSMDAnalysis(object):
         self.prnt_settings()
         self.calc_chain_minimization()
         self.calc_chain_partition_recombination()
-        
+        self.calc_visualization_tls_models()
+
         if self.struct2_file_path != None and self.struct2_chain_id != None:
             self.calc_chain_partition_superposition()
 
@@ -113,7 +114,7 @@ class TLSMDAnalysis(object):
         tls_file.load(fil)
 
         if len(tls_file.tls_desc_list)>0:
-            print "MERGING TLS GROUPS"
+            print "ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS"
             print "    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list))
 
             ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
@@ -179,7 +180,20 @@ class TLSMDAnalysis(object):
         print "TLS SEGMENT RECOMBINATION"
         for chain in self.chains:
             cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
+
+    def calc_visualization_tls_models(self):
+        print
+        print "CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION"
+        for chain in self.chains:
+            print "CHAIN %s" % (chain.chain_id)
+
+            for cpartition in chain.partition_collection.iter_chain_partitions():
+                print "TLS GROUPS: %d" % (cpartition.num_tls_segments())
                 
+                for tls in cpartition.iter_tls_segments():
+                    tls.fit_to_chain(cpartition.chain)
+        print
+            
     def calc_chain_partition_superposition(self):
         import structcmp
 
@@ -235,13 +249,13 @@ def ConstructSegmentForAnalysis(chain):
         atm.include = atom_selection.calc_include_atom(atm)
 
     ## apply data smooth if desired
-    #adp_smoothing.IsotropicADPDataSmoother(chain)
+    adp_smoothing.IsotropicADPDataSmoother(chain, 2)
 
     ## create a TLSModelAnalyzer instance for the chain, and
     ## attach the instance to the chain for use by the rest of the
     ## program
     segment.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
-    xlist = atom_selection.chain_to_xmlrpc_list(segment)
+    xlist = atom_selection.chain_to_xmlrpc_list(segment.iter_all_atoms())
     segment.tls_analyzer.set_xmlrpc_chain(xlist)
 
     return segment

@@ -10,6 +10,7 @@ from mmLib import Constants, Structure
 
 import const
 import conf
+import tree
 import opt_containers
 
 
@@ -40,10 +41,6 @@ def join_segment_ranges(chain, segrange1, segrange2):
         frag2 = xfrag2
     
     segrange.append((frag1.fragment_id, frag2.fragment_id))
-
-    if tmp_segrange != segrange:
-        print "COMBINED ADJECENT RANGES: %s TO %s" % (tmp_segrange, segrange)
-
     return segrange
     
 
@@ -67,8 +64,8 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
                                     segment_ranges = segment_ranges,
                                     residual = tlsdict["residual"],
                                     method = tls1.method,
-                                    num_atoms = tlsdict["num_atoms"])
-    tls.fit_to_chain(chain)
+                                    num_atoms = tlsdict["num_atoms"],
+                                    num_residues = tlsdict["num_residues"])
     return tls
 
 
@@ -100,8 +97,10 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
 
     recombination_list.sort()
     return_list = []
-    for i in range(num_return):
-        chain_residual, tls1, tls2, tlsdict = recombination_list[i]
+    for i, reco in enumerate(recombination_list):
+        if i >= num_return:
+            break
+        chain_residual, tls1, tls2, tlsdict = reco
         tls12 = JoinTLSSegments(tls1, tls2, cpartition.chain, tlsdict)
 
         combined_cp = opt_containers.ChainPartition(cpartition.chain, cpartition.num_tls_segments() - 1)
@@ -120,10 +119,26 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     return return_list
 
 
+def ExtendRecombinationTree(ptree, depth, width):
+    if depth == 0:
+        return
+    if ptree.empty():
+        combined_list = ChainPartitionRecombination(ptree.cp, width)
+        for combined_cp in combined_list:
+            child = tree.Tree()
+            child.cp = combined_cp
+            ptree.append(child)
+            ExtendRecombinationTree(child, depth - 1, width)
+    else:
+        for child in ptree.iter_children():
+            ExtendRecombinationTree(child, depth - 1, width)
+
 def ChainPartitionRecombinationOptimization(chain):
     ntls_best = {}
+    orig_best = {}
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
         ntls_best[ntls] = cpartition
+        orig_best[ntls] = cpartition
 
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
         if ntls < 2:
@@ -131,22 +146,40 @@ def ChainPartitionRecombinationOptimization(chain):
         
         print "%d INTO %d TO 2" % (ntls, ntls - 1)
 
-        tmp_cp = cpartition
-        while tmp_cp.num_tls_segments() > 1:
+        search_width = 3
+        search_depth = 3
 
-            combined_list = ChainPartitionRecombination(tmp_cp)
-            for combined_cp in combined_list:
-                tmp_ntls = combined_cp.num_tls_segments()
+        proot = tree.Tree()
+        proot.cp = cpartition
 
-                print "%s %8.6f(%8.6f) %d" % (combined_cp,
-                                              combined_cp.residual(),
-                                              ntls_best[tmp_ntls].residual(),
-                                              tmp_ntls)
+        while True:
+            ExtendRecombinationTree(proot, search_depth, search_width)
 
-                if combined_cp.residual() < ntls_best[tmp_ntls].residual():
-                    ntls_best[tmp_ntls] = combined_cp
+            max_depth = proot.depth()
+            best_at_depth = None
 
-                tmp_cp = combined_cp
+            for depth, ptree in proot.iter_depth_first():
+                if depth == max_depth:
+                    if best_at_depth is None or ptree.cp.residual() < best_at_depth.cp.residual():
+                        best_at_depth = ptree
+
+                tmp_ntls = ptree.cp.num_tls_segments()
+                if (ptree.cp.rmsd_b() + 0.05) < orig_best[tmp_ntls].rmsd_b():
+                    if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
+                        print "%s %5.2f(%5.2f) %d" % (ptree.cp,
+                                                      ptree.cp.rmsd_b(),
+                                                      ntls_best[tmp_ntls].rmsd_b(),
+                                                      tmp_ntls)
+                        ntls_best[tmp_ntls] = ptree.cp
+                    
+
+            ptree = best_at_depth
+            for i in xrange(max_depth - 1):
+                ptree = ptree.parent()
+
+            proot = ptree
+            if search_depth > max_depth:
+                break
 
     ## insert replacement ChainPartitions
     for ntls, cpartition in ntls_best.iteritems():
