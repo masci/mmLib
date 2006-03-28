@@ -314,6 +314,10 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         self.model_num = None
 
     def process_HEADER(self, rec):
+        self.struct.header = "%s:%s:%s" % (rec.get("idCode", ""),
+                                           rec.get("classification", ""),
+                                           rec.get("depDate", ""))
+        
         if rec.get("idCode"):
             self.load_structure_id(rec["idCode"])
         
@@ -325,6 +329,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
             "entry", "id", rec.get("idCode"))
 
     def preprocess_TITLE(self, title):
+        self.struct.title = title
         self.struct.cifdb.set_single("struct", "title", title)
 
     def preprocess_COMPND(self, compnd_list):
@@ -442,6 +447,10 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
             audit_author.append(mmCIF.mmCIFRow({"name": author}))
 
     def preprocess_EXPDTA(self, expdta_list):
+        for technique, details in expdta_list:
+            self.struct.experimental_method = technique
+            break
+        
         exptl = self.struct.cifdb.confirm_table("exptl")
         for (technique, details) in expdta_list:
             row = mmCIF.mmCIFRow({"method": technique})

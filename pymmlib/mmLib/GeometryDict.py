@@ -8,6 +8,7 @@
 from __future__ import generators
 import random
 import math
+import itertools
 
 
 class XYZDict(object):
@@ -103,7 +104,7 @@ class XYZDict(object):
             z = ipos[2] - position[2]
             d = math.sqrt(x*x + y*y + z*z)
 
-            if d<=radius:
+            if d <= radius:
                 yield geom_tuple
         
     def iter_contact_distance(self, distance):

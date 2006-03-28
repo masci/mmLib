@@ -118,14 +118,18 @@ class Structure(object):
     when iterating or retreiving Atom objects in the structure.
     """
     def __init__(self, **args):
-        self.structure_id     = args.get("structure_id") or "XXXX"
-        self.cifdb            = args.get("cifdb")        or mmCIFDB.mmCIFDB("XXXX")
-        self.unit_cell        = args.get("unit_cell")    or UnitCell.UnitCell()
+        self.structure_id = args.get("structure_id") or "XXXX"
+        self.header = None
+        self.title = None
+        self.experimental_method = None
+        self.cifdb = args.get("cifdb") or mmCIFDB.mmCIFDB("XXXX")
+
+        self.unit_cell = args.get("unit_cell") or UnitCell.UnitCell()
 
         self.default_alt_loc = "A"
-        self.default_model   = None
-        self.model_list      = []
-        self.model_dict      = {}
+        self.default_model = None
+        self.model_list = []
+        self.model_dict = {}
 
     def __str__(self):
         return "Struct(%s)" % (self.structure_id)
@@ -293,7 +297,7 @@ class Structure(object):
         try:
             model = self.model_dict[chain.model_id]
         except KeyError:
-            model = Model(model_id=chain.model_id)
+            model = Model(model_id = chain.model_id)
             self.add_model(model, delay_sort)
 
         model.add_chain(chain, delay_sort)
@@ -452,9 +456,8 @@ class Structure(object):
         """Returns True if the Structure contains amino or nucleic acids
         in the default Model.
         """
-        for frag in self.iter_fragments():
-            if frag.is_standard_residue():
-                return True
+        for frag in self.iter_standard_residues():
+            return True
         return False
 
     def count_standard_residues(self):
@@ -468,17 +471,15 @@ class Structure(object):
     def iter_standard_residues(self):
         """Iterates over standard residues in the default Model.
         """
-        for frag in self.iter_fragments():
-            if frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilter(fpred, self.iter_fragments())
 
     def has_non_standard_residues(self):
         """Returns True if there are non-standard residues in the default
         Model.
         """
-        for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
-                return True
+        for frag in self.iter_non_standard_residues():
+            return True
         return False
 
     def count_non_standard_residues(self):
@@ -494,33 +495,29 @@ class Structure(object):
         Non-standard residues are any Fragments which are not a amino or
         nucleic acid.
         """
-        for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilterfalse(fpred, self.iter_fragments())
 
     def has_waters(self):
         """Returns True if there are waters in the default Model.
         """
-        for frag in self.iter_fragments():
-            if frag.is_water():
-                return True
+        for frag in self.iter_waters():
+            return True
         return False
 
     def count_waters(self):
         """Counts all waters in the default Model.
         """
         n = 0
-        for frag in self.iter_fragments():
-            if frag.is_water():
-                n += 1
+        for frag in self.iter_waters():
+            n += 1
         return n
 
     def iter_waters(self):
         """Iterate over all waters in the default Model.
         """
-        for frag in self.iter_fragments():
-            if frag.is_water():
-                yield frag
+        fpred = lambda f: f.is_water()
+        return itertools.ifilter(fpred, self.iter_fragments())
 
     def add_atom(self, atom, delay_sort = False):
         """Adds a Atom object to the Structure.  If a collision occurs, a
@@ -949,9 +946,8 @@ class Model(object):
         return n
 
     def iter_standard_residues(self):
-        for frag in self.iter_fragments():
-            if frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilter(fpred, self.iter_fragments())
 
     def count_non_standard_residues(self):
         n = 0
@@ -965,9 +961,8 @@ class Model(object):
         return False
 
     def iter_non_standard_residues(self):
-        for frag in self.iter_fragments():
-            if not frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilterfalse(fpred, self.iter_fragments())
 
     def has_waters(self):
         for frag in self.iter_waters():
@@ -981,9 +976,8 @@ class Model(object):
         return n
 
     def iter_waters(self):
-        for frag in self.iter_fragments():
-            if frag.is_water():
-                yield frag
+        fpred = lambda f: f.is_water()
+        return itertools.ifilter(fpred, self.iter_fragments())
 
     def add_atom(self, atom, delay_sort=False):
         """XXX: Finish Me.
@@ -1390,9 +1384,8 @@ class Segment(object):
         return n
     
     def iter_amino_acids(self):
-        for frag in self.fragment_list:
-            if frag.is_amino_acid():
-                yield frag
+        fpred = lambda f: f.is_amino_acid()
+        return itertools.ifilter(fpred, self.fragment_list)
 
     def has_nucleic_acids(self):
         for frag in self.fragment_list:
@@ -1408,9 +1401,8 @@ class Segment(object):
         return n
 
     def iter_nucleic_acids(self):
-        for frag in self.fragment_list:
-            if frag.is_nucleic_acid():
-                yield frag
+        fpred = lambda f: f.is_nucleic_acid()
+        return itertools.ifilter(fpred, self.fragment_list)
 
     def has_standard_residues(self):
         for frag in self.fragment_list:
@@ -1426,9 +1418,8 @@ class Segment(object):
         return n
 
     def iter_standard_residues(self):
-        for frag in self.fragment_list:
-            if frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilter(fpred, self.fragment_list)
 
     def has_non_standard_residues(self):
         for frag in self.fragment_list:
@@ -1444,9 +1435,8 @@ class Segment(object):
         return n
 
     def iter_non_standard_residues(self):
-        for frag in self.fragment_list:
-            if not frag.is_standard_residue():
-                yield frag
+        fpred = lambda f: f.is_standard_residue()
+        return itertools.ifilterfalse(fpred, self.fragment_list)
 
     def has_waters(self):
         for frag in self.fragment_list:
@@ -1462,9 +1452,8 @@ class Segment(object):
         return n
 
     def iter_waters(self):
-        for frag in self.fragment_list:
-            if frag.is_water():
-                yield frag
+        fpred = lambda f: f.is_water()
+        return itertools.ifilter(fpred, self.fragment_list)
 
     def add_atom(self, atom, delay_sort = False):
         """Adds a Atom.
