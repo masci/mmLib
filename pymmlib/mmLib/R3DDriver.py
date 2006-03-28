@@ -142,7 +142,7 @@ class Raster3DDriver(object):
         ## self.zoom is the horizontal number of Angstroms shown in the
         ## image, this must be converted to the Raster3D zoom parameter
         ## which is the number of Angstroms of the shortest dimention
-        if pixel_width>pixel_height:
+        if pixel_width > pixel_height:
             r = float(pixel_height) / float(pixel_width)
             z = self.zoom * r
         else:
@@ -220,6 +220,7 @@ class Raster3DDriver(object):
         if self.render_stdin is not None:
             self.render_stdin = None
         elif pobj is not None:
+            pobj.fromchild.close()
             pobj.wait()
 
     def glr_write_objects(self, stdin):
