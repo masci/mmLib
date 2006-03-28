@@ -9,6 +9,7 @@ from __future__ import generators
 import copy
 import math
 import string
+import itertools
 import numpy
 
 import mmTypes
@@ -25,12 +26,6 @@ class StructureError(Exception):
     """Base class of errors raised by Structure objects.
     """
     pass
-
-class FinishMe(StructureError):
-    """Raised for API methods which are not implemented yet.
-    """
-    def __str__(self):
-        return "Please implement this method!"
 
 class ModelOverwrite(StructureError):
     """Raised by Structure.add_model() when a Model added to a Structure
@@ -870,8 +865,8 @@ class Model(object):
         """
         return len(self.chain_list)
 
-    def add_fragment(self, fragment, delay_sort=False):
-        """Finish Me.
+    def add_fragment(self, fragment, delay_sort = False):
+        """Adds a Fragment instance
         """
         assert isinstance(fragment, Fragment)
         assert fragment.model_id == self.model_id
@@ -1318,34 +1313,27 @@ class Segment(object):
         is taken from the beginning of this Segment, and if stop_frag_id
         is None it is taken to the end of this Segment.
         """
-        ## construct return segment
         segment = self.construct_segment()
 
-        ## if the start fragment_id is not given, then start adding
-        ## from the beginning of the Segment
-        if not start_frag_id:
-            addflag = True
+        if start_frag_id and stop_frag_id:
+            dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+            tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+            fragiter = itertools.takewhile(tpred, itertools.dropwhile(dpred, iter(self)))
+        elif start_frag_id and not stop_frag_id:
+            dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+            fragiter = itertools.dropwhile(dpred, iter(self))
+        elif not start_frag_id and stop_frag_id:
+            tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+            fragiter = itertools.takewhile(tpred, iter(self))
         else:
-            addflag = False
+            fragiter = iter(self)
 
-        for frag in self:
-            ## loop until the start_frag_id Fragment is found
-            if not addflag:
-                if fragment_id_ge(frag.fragment_id, start_frag_id):
-                    addflag = True
-                else:
-                    continue
-
-            ## stop when the stop_frag_id is found
-            if stop_frag_id:
-                if fragment_id_gt(frag.fragment_id, stop_frag_id):
-                    break
-
+        for frag in fragiter:
             segment.add_fragment(frag, True)
 
         return segment
-
-    def add_fragment(self, fragment, delay_sort=False):
+    
+    def add_fragment(self, fragment, delay_sort = False):
         """Adds a Fragment instance to the Segment.  If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         segment.

@@ -34,7 +34,16 @@ def matrixmultiply43(M, x):
                         M[1,0]*x[0] + M[1,1]*x[1] + M[1,2]*x[2] + M[1,3],
                         M[2,0]*x[0] + M[2,1]*x[1] + M[2,2]*x[2] + M[2,3]), float)
 
- 
+class TeeWrite(object):
+    def __init__(self, *fils):
+        self.fils = fils
+    def write(self, buff):
+        for fil in self.fils:
+            fil.write(buff)
+    def close(self):
+        for fil in self.fils:
+            fil.close()
+
 class Raster3DDriver(object):
     """Viewer.py graphics driver for producing a output file
     for the Raster3D ray tracer.
@@ -178,19 +187,10 @@ class Raster3DDriver(object):
     def glr_render_end(self):
         """Write out the input file for the render program.
         """
-        class TeeWrite(object):
-            def __init__(self, *fils):
-                self.fils = fils
-            def write(self, buff):
-                for fil in self.fils:
-                    fil.write(buff)
-            def close(self):
-                for fil in self.fils:
-                    fil.close()
-
         ## open r3d file, write header
         pobj = None
-        if self.render_stdin != None:
+
+        if self.render_stdin is not None:
             stdin = self.render_stdin
         else:
             pobj = popen2.Popen4([self.render_program_path,
@@ -198,7 +198,7 @@ class Raster3DDriver(object):
                                   "-gamma", "1.5"], 32768)
             stdin = pobj.tochild
             
-        ## XXX: hack
+        ## XXX: debug
         ##r3dfil = open("/tmp/raytrace.r3d","w")
         ##stdin = TeeWrite(stdin)
 
@@ -214,12 +214,11 @@ class Raster3DDriver(object):
 	    mmTypes.warning(str(err))
             return
 
-        ## close stdin to the render program
-        stdin.close()
-        
         if self.render_stdin is not None:
             self.render_stdin = None
-        elif pobj is not None:
+
+        if pobj is not None:
+            pobj.tochild.close()
             pobj.fromchild.close()
             pobj.wait()
 
