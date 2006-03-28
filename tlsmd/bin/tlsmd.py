@@ -135,7 +135,7 @@ def analysis_main(struct_path, opt_dict):
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvse:o:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:")
     except getopt.GetoptError:
         usage()
 
