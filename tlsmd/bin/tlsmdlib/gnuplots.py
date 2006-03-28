@@ -5,10 +5,12 @@
 ## included as part of this package.
 
 import popen2
+import itertools
 import numpy
 
 from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
 
+import table
 import misc
 import conf
 import tls_calcs
@@ -50,6 +52,7 @@ class GNUPlot(object):
         pobj = popen2.Popen4([self.gnuplot_path])
         pobj.tochild.write(script)
         pobj.tochild.close()
+        pobj.fromchild.close()
         pobj.wait()
         
     def output_png(self):
@@ -138,10 +141,11 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
             self.chain.chain_id)
         self.set_basename(basename)
 
-        fil = open(self.txt_path, "w")
+        tbl = table.StringTable(0, 3, "?")
         for ntls, cpartition in self.chain.partition_collection.iter_ntls_chain_partitions():
-            fil.write("%10d %f %f\n" % (ntls, cpartition.rmsd_b(), cpartition.residual()))
-        fil.close()
+            tbl.append_row(ntls, cpartition.rmsd_b(), cpartition.residual())
+
+        open(self.txt_path, "w").write(str(tbl))
 
         ## modify script template
         script = _LSQR_VS_TLS_SEGMENTS_TEMPLATE
@@ -247,39 +251,30 @@ class TranslationAnalysis(GNUPlot):
     def write_data_file(self):
         """Generate the data file and return the filename.
         """
-        fil = open(self.txt_path, "w")
-
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
+        nrows = len(self.cpartition.chain)
+        tbl = table.StringTable(nrows, ncols, "?")
+
+        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 0, frag_id_iter)
 
         for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
-            tls_info  = tls.model_tls_info
-            O         = tls_info["COR"]
+            tls_info = tls.model_tls_info
+            O = tls_info["COR"]
 
-            for atm in tls_group:
-                if atm.name != "CA":
-                    continue
+            ## determine Tr translational eigenvalues
+            t1 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr1_rmsd"]
+            t2 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr2_rmsd"]
+            t3 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr3_rmsd"]
 
-                try:
-                    ifrag = int(str(atm.fragment_id))
-                except ValueError:
-                    continue
-                
-                cols = ["?" for x in xrange(ncols)]
-                cols[0] = str(ifrag)
-
-                ## determine Tr translational eigenvalues
-                t1 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr1_rmsd"]
-                t2 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr2_rmsd"]
-                t3 = Gaussian.GAUSS3C[conf.ADP_PROB] * tls_info["Tr3_rmsd"]
-
-                if t1>0.0: cols[1 + 3*itls] = "%6.4f" % (t1)
-                if t2>0.0: cols[2 + 3*itls] = "%6.4f" % (t2)
-                if t3>0.0: cols[3 + 3*itls] = "%6.4f" % (t3)
-                
-                fil.write(" ".join(cols) + "\n")
-
-        fil.close()
+            for frag in tls.iter_fragments():
+                i = frag.ifrag
+                if t1 > 0.0: tbl[i, 1 + 3*itls] = "%6.4f" % (t1)
+                if t2 > 0.0: tbl[i, 2 + 3*itls] = "%6.4f" % (t2)
+                if t3 > 0.0: tbl[i, 3 + 3*itls] = "%6.4f" % (t3)
+        
+        open(self.txt_path, "w").write(str(tbl))
 
 
 _LIBRATION_ANALYSIS_TEMPLATE = """\
@@ -585,30 +580,24 @@ class BMeanPlot(GNUPlot):
         self.set_basename(basename)
 
         ## write data file
-        BISO1 = tls_calcs.calc_mean_biso_obs(self.chain)
+        BISO_OBS = tls_calcs.calc_mean_biso_obs(self.chain)
         BISO = tls_calcs.calc_mean_biso_tls(self.chain, self.cpartition)
 
-        data_path = "%s.txt" % (basename)
-        fil = open(data_path, "w")
-
+        nrows = len(self.cpartition.chain)
+        ncols = 3 + self.cpartition.num_tls_segments()
+        tbl = table.StringTable(nrows, ncols, "?")
+        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 0, frag_id_iter)
+        ifrag_iter = itertools.imap(lambda frag: frag.ifrag, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 1, ifrag_iter)
+        tbl.set_column(0, 2, BISO_OBS)
+        
         for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
-            tls_group = tls.tls_group
-
             for frag in tls.iter_fragments():
-                ifrag = frag.ichain
+                i = frag.ifrag
+                tbl[i, itls + 3] = BISO[i]
 
-                l = ['%5s  %5d  %6.2f' % (frag.fragment_id, ifrag, BISO1[ifrag])]
-
-                for i in xrange(self.cpartition.num_tls_segments()):
-                    if i == itls:
-                        l.append('  %6.2f' % (BISO[ifrag]))
-                    else:
-                        l.append('      ?')
-            
-                l.append('\n')
-                fil.write("".join(l))
-                
-        fil.close()
+        open(self.txt_path, "w").write(str(tbl))
 
         ## Gnuplot Script
         script = _BMEAN_PLOT_TEMPLATE
@@ -640,13 +629,13 @@ class BMeanPlot(GNUPlot):
 
         ## first the observed mean bfactors
         ls += 1
-        x = '"%s" using 1:%d title "Observed" ls %d with lines' % (data_path, 2+ls, ls)
+        x = '"%s" using 1:%d title "Observed" ls %d with lines' % (self.txt_path, 2+ls, ls)
         plist.append(x)
 
         ## second the TLS calculated bfactors
         for i in xrange(self.cpartition.num_tls_segments()):
             ls += 1
-            x = '"%s" using 1:%d %s ls %d with lines' % (data_path, 2+ls, line_titles[i], ls)
+            x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, 2+ls, line_titles[i], ls)
             plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"

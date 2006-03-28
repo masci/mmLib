@@ -245,6 +245,7 @@ def ConstructSegmentForAnalysis(chain):
     ## set a attribute for its index position
     for ichain, frag in enumerate(chain.iter_fragments()):
         frag.ichain = ichain
+        frag.ifrag = ichain
 
     ## Sets that atm.include attribute for each atom in the chains
     ## being analyzed by tlsmd
