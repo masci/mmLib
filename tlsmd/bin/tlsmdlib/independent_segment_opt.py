@@ -196,7 +196,7 @@ class ISOptimization(hcsssp.HCSSSP):
             nparts_max = self.nparts
 
         partition_collection = opt_containers.ChainPartitionCollection(self.chain)
-        for nparts in xrange(1, nparts_max):
+        for nparts in xrange(1, nparts_max + 1):
             cpartition = self.construct_chain_partition(nparts)
             if cpartition is not None:
                 partition_collection.insert_chain_partition(cpartition)
@@ -210,9 +210,9 @@ class ISOptimization(hcsssp.HCSSSP):
         
         if not self.minimized:
             return
-        dest_j = len(self.V)-1
+        dest_j = len(self.V) - 1
 
-        for h in xrange(1, hops+1):
+        for h in xrange(1, hops + 1):
             print
             print "MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h)
             print "NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE"

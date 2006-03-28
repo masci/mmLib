@@ -23,7 +23,7 @@ class TLSSegment(object):
         self.__residual = args.get("residual")
         self.__num_atoms = args.get("num_atoms")
         self.__num_residues = args.get("num_residues")
-
+        
         ## added by a call to the method fit_to_chain()
         self.tls_group = None
         self.tls_info = None
@@ -117,6 +117,9 @@ class TLSSegment(object):
 
     def tls_mean_anisotropy(self):
         return self.tls_info["tls_mean_anisotropy"]
+
+    def chi2(self):
+        return self.__residual / self.__num_residues
     
     def residual(self):
         return self.__residual
@@ -235,11 +238,17 @@ class ChainPartition(object):
         entire chain.
         """
         num_residues = 0
-        residual = 0.0
+        msd_sum = 0.0
         for tls in self.iter_tls_segments():
             num_residues += tls.num_residues()
-            residual += tls.residual()
-        return Constants.U2B * math.sqrt(residual / num_residues)
+            msd_sum += tls.residual()
+        return Constants.U2B * math.sqrt(msd_sum / num_residues)
+
+    def chi2(self):
+        chi2 = 0.0
+        for tls in self.iter_tls_segments():
+            chi2 += tls.chi2()
+        return chi2
 
     def is_valid(self):
         """Return True if the optimization is valid; otherwise, return False.

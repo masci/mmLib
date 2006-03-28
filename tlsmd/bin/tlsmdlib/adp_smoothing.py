@@ -39,7 +39,7 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
             atm_deltab.append((deltab, atm))
 
         sigma = math.sqrt((msd_sum / num_atoms))
-        sigma2 = 2 * sigma
+        sigma2 = 1.90 * sigma
 
         outliers = 0
         for deltab, atm in atm_deltab:
@@ -57,6 +57,7 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
 def IsotropicADPDataSmoother(chain, num_smooth = 1):
     """Experimental data smoothing of temperature factors
     """
+    print
     print "SMOOTHING CHAIN %s ADPs" % (chain.chain_id)
     print "SMOOTH WINDOW......................: %d" % (2 * num_smooth + 1)
     

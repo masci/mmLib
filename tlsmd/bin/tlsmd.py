@@ -20,17 +20,20 @@ def usage():
     print
     print "Command Line Usage:"
     print "  tlsmd.py  [-v ] verbose output "
+    print "            [-c <comma-seperated chain IDS>] process only given chain IDs"
     print "            [-x <URL of WebTLSMDD XMLRPC Server>]"
     print "            [-j <Job ID of WebTLSMDD Job>]"
-    print "            [-r <html report dir>]"
-    print "            [-d <TLS database file>]"
+    print "            [-r <html report dir>] write HTML report to directory"
+    print "            [-d <TLS database file>] set the name of the database file"
     print "            [-n] TLS database is complete"
     print "            [-m <tls model>] Models: ISOT(default)/ANISO/NLISOT/NLANISO"
     print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
     print "            [-i <struct_id>] Override struct_id in PDB file"
     print "            [-s] output Gnuplot plots using SVG"
-    print "            [-t struct.pdb:chain_id ]"
+    print "            [-t struct.pdb:chain_id ] compare TLS displacments with another structure"
+    print "            [-e] recombine linear TLSMD segments to find disjoint TLS groups"
+    print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues"
     print "            struct.pdb"
     print
     print "Authors:"
@@ -56,6 +59,16 @@ def analysis_main(struct_path, opt_dict):
     tlsdb_file        = opt_dict.get("-d")
     tlsdb_complete    = opt_dict.has_key("-n")
     chain_ids         = opt_dict.get("-c")
+
+    conf.globalconf.recombination = opt_dict.has_key("-e")
+
+    if opt_dict.has_key("-o"):
+        try:
+            nsmooth = int(opt_dict["-o"])
+        except ValueError:
+            print "[ERROR] -o argument must be a integer"
+            usage()
+        conf.globalconf.adp_smoothing = nsmooth
 
     if opt_dict.has_key("-t"):
         tpath, tchain_id = opt_dict["-t"].split(":")
@@ -115,14 +128,14 @@ def analysis_main(struct_path, opt_dict):
     anal.run_optimization()
 
     ## generate HTML report if a directory is given
-    if opt_dict.has_key("-r") and len(anal.chains)>0:
+    if opt_dict.has_key("-r") and len(anal.chains) > 0:
         report_dir = opt_dict["-r"]
         report = html.HTMLReport(anal)
         report.write(report_dir)
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvs")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvse:o:")
     except getopt.GetoptError:
         usage()
 

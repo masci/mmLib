@@ -57,9 +57,7 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     atoms, which should already have been performed.
     """
     assert tls1.chain_id == tls2.chain_id
-
     segment_ranges = join_segment_ranges(chain, tls1.segment_ranges, tls2.segment_ranges)
-    
     tls = opt_containers.TLSSegment(chain_id = tls1.chain_id,
                                     segment_ranges = segment_ranges,
                                     residual = tlsdict["residual"],
@@ -69,7 +67,7 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     return tls
 
 
-def ChainPartitionRecombination(cpartition, num_return = 1):
+def ChainPartitionRecombinationOld(cpartition, num_return = 1):
     """Returns a new TLSSegment object which is the best
     combination of any two TLSSegment instances in cpartition.
     """
@@ -87,8 +85,8 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         segment_ranges = tls1.segment_ranges + tls2.segment_ranges
         segment_ranges.sort(segment_range_cmp)
         tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
-        chain_residual = tlsdict["residual"]
-        
+
+        chain_residual = tlsdict["residual"]        
         for tls in tls_list:
             if tls != tls1 and tls != tls2:
                 chain_residual += tls.residual()
@@ -119,6 +117,52 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     return return_list
 
 
+def ChainPartitionRecombination(cpartition, num_return = 1):
+    """Returns a new TLSSegment object which is the best
+    combination of any two TLSSegment instances in cpartition.
+    """
+    chain = cpartition.chain
+    tls_list = cpartition.tls_list
+    tls_analyzer = chain.tls_analyzer
+    nparts = len(tls_list)
+
+    recombination_list = []
+
+    for part1, part2 in recombination2_iter(nparts):
+        tls1 = tls_list[part1]
+        tls2 = tls_list[part2]
+
+        segment_ranges = tls1.segment_ranges + tls2.segment_ranges
+        segment_ranges.sort(segment_range_cmp)
+        tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
+
+        residual_delta = (tlsdict["residual"] - (tls1.residual() + tls2.residual())) / tlsdict["num_residues"]
+        
+        recombination_list.append((residual_delta, tls1, tls2, tlsdict))
+
+    recombination_list.sort()
+    return_list = []
+    for i, reco in enumerate(recombination_list):
+        if i >= num_return:
+            break
+        residual_delta, tls1, tls2, tlsdict = reco
+        tls12 = JoinTLSSegments(tls1, tls2, cpartition.chain, tlsdict)
+
+        combined_cp = opt_containers.ChainPartition(cpartition.chain, cpartition.num_tls_segments() - 1)
+        return_list.append(combined_cp)
+        combined_cp.residual_delta = residual_delta
+
+        for tls in tls_list:
+            if tls == tls1:
+                combined_cp.add_tls_segment(tls12)
+                continue
+            if tls == tls2:
+                continue
+            combined_cp.add_tls_segment(tls.copy())
+
+    return return_list
+
+
 def ExtendRecombinationTree(ptree, depth, width):
     if depth == 0:
         return
@@ -133,7 +177,10 @@ def ExtendRecombinationTree(ptree, depth, width):
         for child in ptree.iter_children():
             ExtendRecombinationTree(child, depth - 1, width)
 
+
 def ChainPartitionRecombinationOptimization(chain):
+    visited = {}
+    
     ntls_best = {}
     orig_best = {}
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
@@ -146,7 +193,7 @@ def ChainPartitionRecombinationOptimization(chain):
         
         print "%d INTO %d TO 2" % (ntls, ntls - 1)
 
-        search_width = 3
+        search_width = 4
         search_depth = 3
 
         proot = tree.Tree()
@@ -160,18 +207,20 @@ def ChainPartitionRecombinationOptimization(chain):
 
             for depth, ptree in proot.iter_depth_first():
                 if depth == max_depth:
-                    if best_at_depth is None or ptree.cp.residual() < best_at_depth.cp.residual():
+                    if best_at_depth is None or ptree.cp.residual_delta < best_at_depth.cp.residual_delta:
                         best_at_depth = ptree
 
                 tmp_ntls = ptree.cp.num_tls_segments()
-                if (ptree.cp.rmsd_b() + 0.05) < orig_best[tmp_ntls].rmsd_b():
-                    if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
-                        print "%s %5.2f(%5.2f) %d" % (ptree.cp,
-                                                      ptree.cp.rmsd_b(),
-                                                      ntls_best[tmp_ntls].rmsd_b(),
-                                                      tmp_ntls)
-                        ntls_best[tmp_ntls] = ptree.cp
-                    
+
+                if not visited.has_key(ptree):
+                    visited[ptree] = True
+                    print "%s %5.2f(%5.2f) %d" % (ptree.cp,
+                                                  ptree.cp.rmsd_b(),
+                                                  ntls_best[tmp_ntls].rmsd_b(),
+                                                  tmp_ntls)
+
+                if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
+                    ntls_best[tmp_ntls] = ptree.cp
 
             ptree = best_at_depth
             for i in xrange(max_depth - 1):
@@ -186,6 +235,4 @@ def ChainPartitionRecombinationOptimization(chain):
         cp = chain.partition_collection.get_chain_partition(ntls)
         if cp != cpartition:
             chain.partition_collection.insert_chain_partition(cpartition)
-
-
 

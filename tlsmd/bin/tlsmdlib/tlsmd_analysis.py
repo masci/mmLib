@@ -176,6 +176,9 @@ class TLSMDAnalysis(object):
             chain.partition_collection.struct_file_path = self.struct_file_path
             
     def calc_chain_partition_recombination(self):
+        if not conf.globalconf.recombination:
+            return
+
         print
         print "TLS SEGMENT RECOMBINATION"
         for chain in self.chains:
@@ -249,7 +252,8 @@ def ConstructSegmentForAnalysis(chain):
         atm.include = atom_selection.calc_include_atom(atm)
 
     ## apply data smooth if desired
-    adp_smoothing.IsotropicADPDataSmoother(chain, 2)
+    if conf.globalconf.adp_smoothing > 0:
+        adp_smoothing.IsotropicADPDataSmoother(chain, conf.globalconf.adp_smoothing)
 
     ## create a TLSModelAnalyzer instance for the chain, and
     ## attach the instance to the chain for use by the rest of the

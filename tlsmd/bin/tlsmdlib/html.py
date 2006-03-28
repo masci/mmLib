@@ -781,16 +781,15 @@ class HTMLReport(Report):
             ## too big usually for good visualization -- cheat and scale it down
             radius = 0.5 * Gaussian.GAUSS3C[conf.ADP_PROB] * TLS.calc_rmsd(tiso)
             radius = max(radius, 0.30)
-            radius = 0.15
             
-            gl_tls_group.gl_atom_list.properties.update(
-                oatm_visible = True,
-                side_chain_visible = True,
-                trace = False,
-                ball_stick = True,
-                ball_stick_radius = radius)
+##             gl_tls_group.gl_atom_list.properties.update(
+##                 oatm_visible = True,
+##                 side_chain_visible = True,
+##                 trace = False,
+##                 ball_stick = True,
+##                 ball_stick_radius = radius)
 
-            #gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
+            gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
             gl_tls_group.glo_update_properties(time = 0.25)
 
         ## got target chain?

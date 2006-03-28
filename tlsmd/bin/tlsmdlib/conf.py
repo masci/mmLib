@@ -52,7 +52,7 @@ class GlobalConfiguration(object):
         self.tls_model = "ISOT"
         self.weight_model = "UNIT"
         self.include_atoms = "ALL"
-        self.min_subsegment_size = 3
+        self.min_subsegment_size = 4
         self.adp_prob = ADP_PROB
         self.nparts = NPARTS
         self.verbose = False
@@ -63,6 +63,8 @@ class GlobalConfiguration(object):
         self.start_time = time.time()
         self.target_struct_path = None
         self.target_struct_chain_id = None
+        self.recombination = False
+        self.adp_smoothing = 0
 
     def prnt(self):
         print "TLS Motion Determination (TLSMD) Version %s" % (const.VERSION)

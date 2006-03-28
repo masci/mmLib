@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+//#include <ext/hash_map>
 
 namespace TLSMD {
 
@@ -162,7 +163,8 @@ namespace TLSMD {
     std::vector<Atom> atoms;
     
   private:
-    
+    //std::hash_map<std::string, std::vector<Atom>::iterator> frag_id_lt_start_;
+    //std::hash_map<std::string, std::vector<Atom>::iterator> frag_id_le_end_;
   };
   
   int CalcNumAtoms(Chain::SegmentSet::AtomIterator atom, Chain::SegmentSet::AtomIterator end);
