@@ -473,8 +473,19 @@ class HTMLReport(Report):
 
         l = ['<center>',
              '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">',
-             '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>',
-             '<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
+             '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>']
+
+        if self.struct.title:
+            l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>' % (self.struct.title))
+                
+        if self.struct.title:
+            l.append('<tr style="background-color:#dddddd"><td>Hedding Summary</td><td><b>%s</b></td></tr>' % (self.struct.header))
+
+        if self.struct.experimental_method:
+            l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>' % (self.struct.experimental_method))
+
+             
+        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
              '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
              '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
              '</table>',

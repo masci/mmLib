@@ -282,6 +282,8 @@ TLSModelAnalyzer_set_xmlrpc_chain(PyObject *py_self, PyObject *args)
     }
   }
 
+  self->tls_model_engine->chain.map_frag_ids();
+
   Py_INCREF(Py_None);
   return Py_None;
 }

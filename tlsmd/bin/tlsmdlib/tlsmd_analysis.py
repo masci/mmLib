@@ -93,6 +93,10 @@ class TLSMDAnalysis(object):
         self.struct = FileIO.LoadStructure(
             fil = self.struct_file_path, distance_bonds = True)
 
+        print "HEADER..............................: %s" % (self.struct.header)
+        print "TITLE...............................: %s" % (self.struct.title)
+        print "EXPERIMENTAL METHOD.................: %s" % (self.struct.experimental_method)
+
         ## set the structure ID
         if conf.globalconf.struct_id != None:
             struct_id = conf.globalconf.struct_id

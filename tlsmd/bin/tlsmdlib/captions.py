@@ -80,9 +80,7 @@ by graphing the difference between the refined (input) main chain atom B factors
 and the corresponding B factors implied by the TLS model alone.  If the
 TLS model were a perfect description of the observed thermal motion
 described by the input structural model, this plot would consist of a
-line at 0. <b>Warning:</b> If the input structural model was itself generated
-by refinement of a similar TLS model, this will introduce a strong bias towards
-low residual differences.
+line at 0.
 """
 
 NO_VALID_CONFIGURATIONS = """\

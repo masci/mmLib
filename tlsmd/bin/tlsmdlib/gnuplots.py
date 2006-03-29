@@ -251,8 +251,8 @@ class TranslationAnalysis(GNUPlot):
     def write_data_file(self):
         """Generate the data file and return the filename.
         """
-        ncols = 1 + 3 * self.cpartition.num_tls_segments()
         nrows = len(self.cpartition.chain)
+        ncols = 1 + 3 * self.cpartition.num_tls_segments()
         tbl = table.StringTable(nrows, ncols, "?")
 
         frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
@@ -332,26 +332,25 @@ class LibrationAnalysis(GNUPlot):
     def write_data_file(self):
         """Generate the data file and return the filename.
         """
-        fil = open(self.txt_path, "w")
-
+        nrows = len(self.cpartition.chain)
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
+        tbl = table.StringTable(nrows, ncols, "?")
+
+        mpred = lambda f: f.fragment_id
+        frag_id_iter = itertools.imap(mpred, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 0, frag_id_iter)
 
         for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
-            tls_info  = tls.model_tls_info
-            O         = tls_info["COR"]
+            tls_info = tls.model_tls_info
+            O = tls_info["COR"]
 
-            for atm in tls_group:
-                if atm.name!="CA":
+            for frag in tls.iter_fragments():
+                atm = frag.get_atom("CA")
+                if atm is None:
                     continue
 
-                try:
-                    ifrag = int(str(atm.fragment_id))
-                except ValueError:
-                    continue
-                
-                cols = ["?" for x in xrange(ncols)]
-                cols[0] = str(ifrag)
+                i = frag.ifrag
 
                 for n, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
                     (0, "L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
@@ -367,12 +366,9 @@ class LibrationAnalysis(GNUPlot):
                         continue
 
                     dvec = TLS.calc_LS_displacement(O, Lval, Lvec, Lrho, Lpitch, atm.position, conf.ADP_PROB)
-                    d = AtomMath.length(dvec)
-                    cols[1 + 3*itls + n] = "%8.3f" % (d)
+                    tbl[i, 1 + 3*itls + n] = AtomMath.length(dvec)
 
-                fil.write(" ".join(cols) + "\n")
-
-        fil.close()
+        open(self.txt_path, "w").write(str(tbl))
 
 
 _CA_TLS_DIFFERANCE_TEMPLATE = """\
@@ -429,8 +425,12 @@ class CA_TLS_Differance_Plot(GNUPlot):
         return script
 
     def write_data_file(self):
-        fil = open(self.txt_path, "w")
+        nrows = len(self.cpartition.chain)
         ncols = self.cpartition.num_tls_segments() + 1
+        tbl = table.StringTable(nrows, ncols, "?")
+
+        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 0, frag_id_iter)
         
         for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
             tls_group = tls.tls_group
@@ -440,27 +440,16 @@ class CA_TLS_Differance_Plot(GNUPlot):
             S = tls_group.itls_S
             O = tls_group.origin
 
-            for atm in tls_group:
-                if atm.name!="CA":
+            for frag in tls.iter_fragments():
+                atm = frag.get_atom("CA")
+                if atm is None:
                     continue
-
-                try:
-                    ifrag = int(str(atm.fragment_id))
-                except ValueError:
-                    continue
-            
+                i = frag.ifrag
                 b_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
-                bdiff = atm.temp_factor - b_tls
+                tbl[i, itls + 1] = atm.temp_factor - b_tls
 
-                ltmp = ["?" for x in xrange(ncols)]
-                ltmp[0] = str(ifrag)
-                ltmp[itls+1] = "%6.2f" % (bdiff)
-
-                fil.write(" ".join(ltmp) + "\n")
+        open(self.txt_path, "w").write(str(tbl))
         
-        fil.close()
-
-
 
 _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE = """\
 set xlabel "B_{obs} - B_{tls}"
@@ -660,40 +649,24 @@ class RMSDPlot(GNUPlot):
         self.output_png()
 
     def write_data_file(self):
+        nrows = len(self.cpartition.chain)
         ncols = self.cpartition.num_tls_segments() + 2
-        
+
+        tbl = table.StringTable(nrows, ncols, "?")
+        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
+        tbl.set_column(0, 0, frag_id_iter)
+                
         if self.cpartition.num_tls_segments() > 1:
             CMTX1 = tls_calcs.calc_cross_prediction_matrix_rmsd(
                 self.chain, self.chain.partition_collection.get_chain_partition(1))
-        else:
-            CMTX1 = None
+            tbl.set_column(0, 1, CMTX1)
 
         CMTX = tls_calcs.calc_cross_prediction_matrix_rmsd(self.chain, self.cpartition)
         m, n = CMTX.shape
+        for itls in range(m):
+            tbl.set_column(0, itls + 2, CMTX[itls])
 
-        fil = open(self.txt_path, "w")
-        
-        for j in xrange(n):
-            frag = self.chain[j]
-            try:
-                ifrag = int(str(frag.fragment_id))
-            except ValueError:
-                continue
-
-            cols = ["?" for x in xrange(ncols)]
-            cols[0] = str(ifrag)
-
-            if CMTX1!=None:
-                cols[1] = "%6.2f" % (CMTX1[0,j])
-
-            for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
-                if frag in tls.iter_fragments():
-                    cols[itls+2] = "%6.2f" % (CMTX[itls,j])
-                    break
-
-            fil.write(" ".join(cols) + "\n")
-                
-        fil.close()
+        open(self.txt_path, "w").write(str(tbl))
 
     def make_script(self):
         basename = "%s_CHAIN%s_NTLS%s_RMSD" % (
