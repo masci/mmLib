@@ -174,16 +174,6 @@ Chain::SegmentSet::add_segment(const std::string& frag_id1, const std::string& f
   add_segment(chain_->frag_id_begin(frag_id1), chain_->frag_id_end(frag_id2));
 }
 
-void
-Chain::SegmentSet::add_segment_slow(const std::string& frag_id1, const std::string& frag_id2) {
-  std::vector<Atom>::iterator atom;
-  for (atom = chain_->atoms.begin(); atom != chain_->atoms.end() && frag_id_lt(atom->frag_id, frag_id1); ++atom);
-  std::vector<Atom>::iterator first = atom;
-  for (; atom != chain_->atoms.end() && frag_id_le(atom->frag_id, frag_id2); ++atom);
-  std::vector<Atom>::iterator last = atom;
-  add_segment(first, last);
-}
-
 Chain::Chain() : atoms(), frag_id_begin_map_(0), frag_id_end_map_(0) {}
 
 Chain::~Chain() {
@@ -194,6 +184,8 @@ Chain::~Chain() {
 void
 Chain::set_num_atoms(int na) {
   atoms.resize(na);
+  delete frag_id_begin_map_;
+  delete frag_id_end_map_;
 }
 
 void
@@ -217,6 +209,23 @@ Chain::map_frag_ids() {
   }
   (*frag_id_end_map_)[*last_frag_id] = atom;
 }
+
+bool
+Chain::has_frag_id(const std::string& frag_id) const {
+  return frag_id_begin_map_->has_key(frag_id) && frag_id_end_map_->has_key(frag_id);
+}
+
+const std::vector<Atom>::iterator& 
+Chain::frag_id_begin(const std::string& frag_id) const {
+  assert(frag_id_begin_map_ != 0);
+  return (*frag_id_begin_map_)[frag_id];
+}
+
+const std::vector<Atom>::iterator& 
+Chain::frag_id_end(const std::string& frag_id) const {
+  assert(frag_id_end_map_ != 0);
+  return (*frag_id_end_map_)[frag_id];
+} 
 
 int
 CalcNumAtoms(Chain::SegmentSet::AtomIterator atom, Chain::SegmentSet::AtomIterator end) {

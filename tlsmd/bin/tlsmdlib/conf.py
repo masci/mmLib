@@ -42,7 +42,7 @@ ADP_PROB = 50
 NPARTS = 10
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 800
+VIS_WIDTH = 640
 
 ## the JMol viewer is a square window, generated with this pixel size
 JMOL_SIZE = 600

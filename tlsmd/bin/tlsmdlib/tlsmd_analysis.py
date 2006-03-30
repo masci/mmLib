@@ -230,7 +230,7 @@ class TLSMDAnalysis(object):
         return len(self.chains)
 
 
-def ConstructSegmentForAnalysis(chain):
+def ConstructSegmentForAnalysis(raw_chain):
     """Returns a list of Segment instance from the
     Chain instance which is properly modified for use in
     the this application.
@@ -238,18 +238,18 @@ def ConstructSegmentForAnalysis(chain):
     ## ok, use the chain but use a segment and cut off
     ## any leading and trailing non-amino acid residues
     frag_id1 = None
-    for aa in chain.iter_amino_acids():
+    for aa in raw_chain.iter_amino_acids():
         if frag_id1 is None:
             frag_id1 = aa.fragment_id
         frag_id2 = aa.fragment_id
 
-    segment = chain[frag_id1:frag_id2]
-
+    segment = raw_chain[frag_id1:frag_id2]
+    print "SELECTING RANGE %s-%s; GOT RANGE %s-%s" % (frag_id1, frag_id2, segment[0].fragment_id, segment[-1].fragment_id)
+    
     ## this is useful: for each fragment in the minimization
     ## set a attribute for its index position
-    for ichain, frag in enumerate(chain.iter_fragments()):
-        frag.ichain = ichain
-        frag.ifrag = ichain
+    for i, frag in enumerate(segment.iter_fragments()):
+        frag.ifrag = i
 
     ## Sets that atm.include attribute for each atom in the chains
     ## being analyzed by tlsmd
@@ -258,7 +258,7 @@ def ConstructSegmentForAnalysis(chain):
 
     ## apply data smooth if desired
     if conf.globalconf.adp_smoothing > 0:
-        adp_smoothing.IsotropicADPDataSmoother(chain, conf.globalconf.adp_smoothing)
+        adp_smoothing.IsotropicADPDataSmoother(segment, conf.globalconf.adp_smoothing)
 
     ## create a TLSModelAnalyzer instance for the chain, and
     ## attach the instance to the chain for use by the rest of the

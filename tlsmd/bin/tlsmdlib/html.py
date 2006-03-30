@@ -472,8 +472,7 @@ class HTMLReport(Report):
             include_atoms = "All Protein Atoms"
 
         l = ['<center>',
-             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">',
-             '<tr style="background-color:#cccccc"><th>Program Option</th><th>Setting</th></tr>']
+             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">']
 
         if self.struct.title:
             l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>' % (self.struct.title))
@@ -486,7 +485,7 @@ class HTMLReport(Report):
 
              
         l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
-             '<tr><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
+             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
              '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
              '</table>',
              '</center>']

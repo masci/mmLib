@@ -83,13 +83,14 @@ def calc_mean_biso_obs(chain):
         b_sum_obs = 0.0
 
         for atm in frag.iter_all_atoms():
-            if atm.include == False: continue
+            if atm.include == False:
+                continue
 
             n += 1
             b_sum_obs += atm.temp_factor
 
-        if n>0:
-            biso[frag.ichain] = b_sum_obs / n
+        if n > 0:
+            biso[frag.ifrag] = b_sum_obs / n
 
     return biso
 
@@ -121,7 +122,7 @@ def calc_mean_biso_tls(chain, cpartition):
                 b_sum_tls += Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
 
             if n > 0:
-                biso[frag.ichain] =  b_sum_tls / n
+                biso[frag.ifrag] =  b_sum_tls / n
 
     return biso
 

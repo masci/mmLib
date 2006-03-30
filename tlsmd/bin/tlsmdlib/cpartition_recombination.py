@@ -33,7 +33,7 @@ def join_segment_ranges(chain, segrange1, segrange2):
         xfrag1 = chain[fid1]
         xfrag2 = chain[fid2]
         if frag2 is not None:
-            if frag2.ichain == (xfrag1.ichain - 1):
+            if frag2.ifrag == (xfrag1.ifrag - 1):
                 frag2 = xfrag2
                 continue
             segrange.append((frag1.fragment_id, frag2.fragment_id))

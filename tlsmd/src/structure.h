@@ -21,7 +21,7 @@ namespace TLSMD {
       : name(other.name), frag_id(other.frag_id), x(other.x), y(other.y), z(other.z), 
       u_iso(other.u_iso), weight(other.weight), sqrt_weight(other.sqrt_weight) {
       for (int i = 0; i < 6; ++i) U[i] = other.U[i];
-    }    
+    }
     Atom& operator=(const Atom& other) {
       name = other.name;
       frag_id = other.frag_id;
@@ -150,7 +150,6 @@ namespace TLSMD {
 	segments_.push_back(Segment(first, last));
       }
       void add_segment(const std::string& frag_id1, const std::string& frag_id2);
-      void add_segment_slow(const std::string& frag_id1, const std::string& frag_id2);
       AtomIterator begin() { 
 	return AtomIterator(segments_.begin(), segments_.end()); 
       }
@@ -170,17 +169,9 @@ namespace TLSMD {
 
     void set_num_atoms(int na);
     void map_frag_ids();
-    bool has_frag_id(const std::string& frag_id) const {
-      return frag_id_begin_map_->has_key(frag_id) && frag_id_end_map_->has_key(frag_id);
-    }
-    const std::vector<Atom>::iterator& frag_id_begin(const std::string& frag_id) const {
-      assert(frag_id_begin_map_ != 0);
-      return (*frag_id_begin_map_)[frag_id];
-    }
-    const std::vector<Atom>::iterator& frag_id_end(const std::string& frag_id) const {
-      assert(frag_id_end_map_ != 0);
-      return (*frag_id_end_map_)[frag_id];
-    } 
+    bool has_frag_id(const std::string& frag_id) const;
+    const std::vector<Atom>::iterator& frag_id_begin(const std::string& frag_id) const;
+    const std::vector<Atom>::iterator& frag_id_end(const std::string& frag_id) const;
 
     std::vector<Atom> atoms;
 
