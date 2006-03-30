@@ -477,7 +477,7 @@ class HTMLReport(Report):
         if self.struct.title:
             l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>' % (self.struct.title))
                 
-        if self.struct.title:
+        if self.struct.header:
             l.append('<tr style="background-color:#dddddd"><td>Hedding Summary</td><td><b>%s</b></td></tr>' % (self.struct.header))
 
         if self.struct.experimental_method:
