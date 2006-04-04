@@ -12,6 +12,7 @@ from __future__ import generators
 
 import re
 import copy
+import itertools
 
 ##
 ## DATA STRUCTURES FOR HOLDING CIF INFORMATION
@@ -242,9 +243,10 @@ class mmCIFTable(list):
     def get_row1(self, clower, value):
         """Return the first row which which has column data matching value.
         """
-        for row in self:
-            if row.get_lower(clower) == value:
-                return row
+        fpred = lambda r: r.get_lower(clower) == value
+        itertools.ifilter(fpred, self)
+        for row in itertools.ifilter(fpred, self):
+            return row
         return None
 
     def get_row(self, *args):

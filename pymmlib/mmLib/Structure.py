@@ -98,12 +98,30 @@ def fragment_id_ge(frag_id1, frag_id2):
     return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
 
 def fragment_id_cmp(frag_id1, frag_id2):
+    """Compare two fragment ids.
+    """
     if fragment_id_lt(frag_id1, frag_id2):
         return -1
     if fragment_id_lt(frag_id1, frag_id2):
         return 0
     return 1
-    
+
+def iter_fragments(fragiter, start_frag_id = None, stop_frag_id = None):
+    """Given a fragment iterator and a start and end fragment id,
+    return a iterator which yields only fragments within the range.
+    """
+    if start_frag_id and stop_frag_id:
+        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+        return itertools.takewhile(tpred, itertools.dropwhile(dpred, fragiter))
+    elif start_frag_id and not stop_frag_id:
+        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+        return itertools.dropwhile(dpred, fragiter)
+    elif not start_frag_id and stop_frag_id:
+        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+        return itertools.takewhile(tpred, fragiter)
+    return fragiter
+
 class Structure(object):
     """The Structure object is the parent container object for the entire
     macromolecular data structure.  It contains a list of the Chain objects
@@ -980,8 +998,6 @@ class Model(object):
         return itertools.ifilter(fpred, self.iter_fragments())
 
     def add_atom(self, atom, delay_sort=False):
-        """XXX: Finish Me.
-        """
         assert isinstance(atom, Atom)
         assert atom.model_id == self.model_id
 
@@ -1307,24 +1323,10 @@ class Segment(object):
         is taken from the beginning of this Segment, and if stop_frag_id
         is None it is taken to the end of this Segment.
         """
+        fragiter = iter_fragments(iter(self.fragment_list), start_frag_id, stop_frag_id)
         segment = self.construct_segment()
-
-        if start_frag_id and stop_frag_id:
-            dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
-            tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
-            fragiter = itertools.takewhile(tpred, itertools.dropwhile(dpred, iter(self)))
-        elif start_frag_id and not stop_frag_id:
-            dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
-            fragiter = itertools.dropwhile(dpred, iter(self))
-        elif not start_frag_id and stop_frag_id:
-            tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
-            fragiter = itertools.takewhile(tpred, iter(self))
-        else:
-            fragiter = iter(self)
-
         for frag in fragiter:
             segment.add_fragment(frag, True)
-
         return segment
     
     def add_fragment(self, fragment, delay_sort = False):
@@ -1358,12 +1360,12 @@ class Segment(object):
             return self.fragment_dict[fragment_id]
         return None
 
-    def iter_fragments(self):
+    def iter_fragments(self, frag_id_begin = None, frag_id_end = None):
         """Iterates over all Fragment objects.  The iteration is performed
         in order according to the Fragment's position within the Segment
         object.
         """
-        return iter(self.fragment_list)
+        return iter_fragments(iter(self.fragment_list), frag_id_begin, frag_id_end)
 
     def count_fragments(self):
         """Return the number of Fragment objects.
