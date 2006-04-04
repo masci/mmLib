@@ -99,41 +99,48 @@ Chain::FragmentIDMap::FragmentIDMap(const std::string& frag_id1, const std::stri
 
 std::vector<Atom>::iterator& 
 Chain::FragmentIDMap::operator[](const std::string& frag_id) {
-  int seq_num_idx, icode_idx;
+  std::size_t seq_num_idx, icode_idx;
   bool has_icode = splitidx(frag_id, seq_num_idx, icode_idx);
-  int sz = seq_num_table_.size();
-  assert(seq_num_idx >= 0 && seq_num_idx <= sz);
   SeqNumCell_& cell = seq_num_table_[seq_num_idx];
   if (has_icode) {
-    sz = cell.icode_table_.size();
+    std::size_t sz = cell.icode_table_.size();
     if (icode_idx >= sz) {
       std::cout << "ADDING ICODE " << seq_num_idx + seq_num1_ << ":" << icode_idx;
       cell.icode_table_.resize(icode_idx + 1);
+      cell.icode_table_has_key_.resize(icode_idx + 1, false);
     }
+    cell.icode_table_has_key_[icode_idx] = true;
     return cell.icode_table_[icode_idx];
   }
+  seq_num_table_has_key_[seq_num_idx] = true;
   return cell.value_;
 }
 
 const std::vector<Atom>::iterator&
 Chain::FragmentIDMap::operator[](const std::string& frag_id) const {
-  int seq_num_idx, icode_idx;
+  std::size_t seq_num_idx, icode_idx;
   bool has_icode = splitidx(frag_id, seq_num_idx, icode_idx);
-  int sz = seq_num_table_.size();
-  assert(seq_num_idx >= 0 && seq_num_idx <= sz);
   const SeqNumCell_& cell = seq_num_table_[seq_num_idx];
   if (has_icode) {
-    sz = cell.icode_table_.size();
-    assert(icode_idx < sz);
+    if (icode_idx >= cell.icode_table_.size() || !cell.icode_table_has_key_[icode_idx]) {
+      throw FragmentIDNotFound(frag_id);
+    }
     return cell.icode_table_[icode_idx];
+  }
+  if (!seq_num_table_has_key_[seq_num_idx]) {
+    throw FragmentIDNotFound(frag_id);
   }
   return cell.value_;
 }
 
 bool
 Chain::FragmentIDMap::has_key(const std::string& frag_id) const {
-  std::vector<Atom>::iterator def;
-  return (*this)[frag_id] != def;
+  try {
+    (*this)[frag_id];
+  } catch(FragmentIDNotFound fnf) {
+    return false;
+  }
+  return true;
 }
 
 void 
@@ -143,7 +150,9 @@ Chain::FragmentIDMap::reset(const std::string& frag_id1, const std::string& frag
   split(frag_id1, seq_num1, icode1);
   split(frag_id2, seq_num2, icode2);
   seq_num1_ = seq_num1;
-  seq_num_table_.resize(seq_num2 - seq_num1 + 1);
+  std::size_t sz = seq_num2 - seq_num1 + 1;
+  seq_num_table_.resize(sz);
+  seq_num_table_has_key_.resize(sz, false);
 }
 
 bool
@@ -154,14 +163,19 @@ Chain::FragmentIDMap::split(const std::string& frag_id, int& seq_num, char& icod
 }
 
 bool
-Chain::FragmentIDMap::splitidx(const std::string& frag_id, int& seq_num_idx, int& icode_idx) const {
+Chain::FragmentIDMap::splitidx(const std::string& frag_id, std::size_t& seq_num_idx, std::size_t& icode_idx) const {
   int seq_num;
   char icode;
-  bool has_icode = split(frag_id, seq_num, icode);
+  bool has_icode = split(frag_id, seq_num, icode);  
   seq_num_idx = seq_num - seq_num1_;
+  if (seq_num_idx < 0 || seq_num_idx >= seq_num_table_.size()) {
+    throw FragmentIDNotFound(frag_id);
+  }
   if (has_icode) {
-    assert(icode > 64 && icode < 91);
-    icode_idx = icode - 64;
+    if (icode < 65 || icode > 90) {
+      throw FragmentIDNotFound(frag_id);
+    }
+    icode_idx = icode - 65;
   }
   return has_icode;
 }
@@ -170,7 +184,6 @@ Chain::SegmentSet::SegmentSet(Chain* chain) : chain_(chain), segments_() {}
 
 void
 Chain::SegmentSet::add_segment(const std::string& frag_id1, const std::string& frag_id2) {
-  assert(chain_->has_frag_id(frag_id1) && chain_->has_frag_id(frag_id2));
   add_segment(chain_->frag_id_begin(frag_id1), chain_->frag_id_end(frag_id2));
 }
 

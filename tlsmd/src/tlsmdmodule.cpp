@@ -302,15 +302,21 @@ PythonSegmentListToSegmentSet(PyObject *segment_list, TLSMD::Chain::SegmentSet* 
     std::string frag_id1(cfrag_id1);
     std::string frag_id2(cfrag_id2);
     
-    segment_set->add_segment(frag_id1, frag_id2);
+    try {
+	segment_set->add_segment(frag_id1, frag_id2);
+    } catch(TLSMD::Chain::FragmentIDMap::FragmentIDNotFound fnf) {
+      std::string msg;
+      msg = "fragment id not found: " + fnf.frag_id();
+      PyErr_SetString(TLSMDMODULE_ERROR, msg.c_str());
+      return false;
+    }
   }
 
   return true;
 }
 
-static PyObject *
-TLSModelAnalyzer_isotropic_fit(PyObject *py_self, PyObject *args)
-{
+static PyObject*
+TLSModelAnalyzer_isotropic_fit(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
@@ -325,9 +331,8 @@ TLSModelAnalyzer_isotropic_fit(PyObject *py_self, PyObject *args)
   return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
 
-static PyObject *
-TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
-{
+static PyObject*
+TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
@@ -339,13 +344,19 @@ TLSModelAnalyzer_isotropic_fit_segment(PyObject *py_self, PyObject *args)
   std::string frag_id2(cfrag_id2);
 
   TLSMD::IsotropicFitTLSModelResult itls_result;
-  self->tls_model_engine->isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  try {
+    self->tls_model_engine->isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  } catch(TLSMD::Chain::FragmentIDMap::FragmentIDNotFound fnf) {
+    std::string msg;
+    msg = "fragment id not found: " + fnf.frag_id();
+    PyErr_SetString(TLSMDMODULE_ERROR, msg.c_str());
+    return false;
+  }
   return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
 
-static PyObject *
-TLSModelAnalyzer_anisotropic_fit(PyObject *py_self, PyObject *args)
-{
+static PyObject*
+TLSModelAnalyzer_anisotropic_fit(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
@@ -360,7 +371,7 @@ TLSModelAnalyzer_anisotropic_fit(PyObject *py_self, PyObject *args)
   return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 
-static PyObject *
+static PyObject*
 TLSModelAnalyzer_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
@@ -373,13 +384,20 @@ TLSModelAnalyzer_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   std::string frag_id2(cfrag_id2);
 
   TLSMD::AnisotropicFitTLSModelResult atls_result;
-  self->tls_model_engine->anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  try {
+    self->tls_model_engine->anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  } catch(TLSMD::Chain::FragmentIDMap::FragmentIDNotFound fnf) {
+    std::string msg;
+    msg = "fragment id not found: " + fnf.frag_id();
+    PyErr_SetString(TLSMDMODULE_ERROR, msg.c_str());
+    return false;
+  }
+
   return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 
-static PyObject *
-TLSModelAnalyzer_constrained_isotropic_fit(PyObject *py_self, PyObject *args)
-{
+static PyObject*
+TLSModelAnalyzer_constrained_isotropic_fit(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
 
@@ -394,7 +412,7 @@ TLSModelAnalyzer_constrained_isotropic_fit(PyObject *py_self, PyObject *args)
   return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
 
-static PyObject *
+static PyObject*
 TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
@@ -407,11 +425,18 @@ TLSModelAnalyzer_constrained_isotropic_fit_segment(PyObject *py_self, PyObject *
   std::string frag_id2(cfrag_id2);
 
   TLSMD::IsotropicFitTLSModelResult itls_result;
-  self->tls_model_engine->constrained_isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  try {
+    self->tls_model_engine->constrained_isotropic_fit_segment(frag_id1, frag_id2, itls_result);
+  } catch(TLSMD::Chain::FragmentIDMap::FragmentIDNotFound fnf) {
+    std::string msg;
+    msg = "fragment id not found: " + fnf.frag_id();
+    PyErr_SetString(TLSMDMODULE_ERROR, msg.c_str());
+    return false;
+  }
   return IsotropicFitTLSModelResultToPyDict(itls_result);
 }
 
-static PyObject *
+static PyObject*
 TLSModelAnalyzer_constrained_anisotropic_fit(PyObject *py_self, PyObject *args)
 {
   TLSModelAnalyzer_Object *self;
@@ -428,7 +453,7 @@ TLSModelAnalyzer_constrained_anisotropic_fit(PyObject *py_self, PyObject *args)
   return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 
-static PyObject *
+static PyObject*
 TLSModelAnalyzer_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject *args) {
   TLSModelAnalyzer_Object *self;
   self = (TLSModelAnalyzer_Object *) py_self;
@@ -441,7 +466,14 @@ TLSModelAnalyzer_constrained_anisotropic_fit_segment(PyObject *py_self, PyObject
   std::string frag_id2(cfrag_id2);
 
   TLSMD::AnisotropicFitTLSModelResult atls_result;
-  self->tls_model_engine->constrained_anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  try {
+    self->tls_model_engine->constrained_anisotropic_fit_segment(frag_id1, frag_id2, atls_result);
+  } catch(TLSMD::Chain::FragmentIDMap::FragmentIDNotFound fnf) {
+    std::string msg;
+    msg = "fragment id not found: " + fnf.frag_id();
+    PyErr_SetString(TLSMDMODULE_ERROR, msg.c_str());
+    return false;
+  }
   return AnisotropicFitTLSModelResultToPyDict(atls_result);
 }
 

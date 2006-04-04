@@ -81,11 +81,10 @@ DGESDD::svd() {
   return true;
 }
 
-/* solve for x given the singular value decomposition of a matrix
- * into U, S, and Vt 
- */
+// solve for x given the singular value decomposition of a matrix
+// into U, S, and Vt 
 void 
-DGESDD::solve_for_x(double *x) {
+DGESDD::solve_for_x(double* x) {
 #define FU(__i, __j)   U[__i + (m * __j)]
 #define FVT(__i, __j)  VT[__i + (n * __j)]
 
@@ -95,15 +94,13 @@ DGESDD::solve_for_x(double *x) {
   m = num_rows;
   n = num_cols;
 
-  /* invert the diagonal matrix S in place, and filter out any
-   * unusually small singular values
-   */
-
-  for (smax = S[0], i = 1; i < n; i++) {
+  // invert the diagonal matrix S in place, and filter out any
+  // unusually small singular values
+  for (smax = S[0], i = 1; i < n; ++i) {
     smax = MAX(smax, S[i]);
   }
-  scutoff = smax * 1E-10;
-  for (i = 0; i < n; i++) {
+  scutoff = smax * 1E-20;
+  for (i = 0; i < n; ++i) {
     if (S[i] > scutoff) {
       S[i] = 1.0 / S[i];
     } else {
@@ -111,25 +108,24 @@ DGESDD::solve_for_x(double *x) {
     }
   }
 
-  /* matrix multiply Ut(n,m)*b(m) and store the result in x
-   */
+  // matrix multiply Ut(n,m)*b(m) and store the result in x
   for (i = 0; i < n; i++) {
     dtmp = 0.0;
-    for (j = 0; j < m; j++) {
+    for (j = 0; j < m; ++j) {
       dtmp += FU(j,i) * b[j];
     }
     WORK[i] = dtmp;
   }
 
-  /* matrix multiply inverse-S by Ut*b */
-  for (i = 0; i < n; i++) {
+  // matrix multiply inverse-S by Ut*b
+  for (i = 0; i < n; ++i) {
     WORK[i] *= S[i];
   }
 
-  /* matrix multiple V*x */
-  for (i = 0; i < n; i++) {
+  // matrix multiple V*x
+  for (i = 0; i < n; ++i) {
     dtmp = 0.0;
-    for (j = 0; j < n; j++) {
+    for (j = 0; j < n; ++j) {
       dtmp += FVT(j,i) * WORK[j];
     }
     x[i] = dtmp;

@@ -58,6 +58,17 @@ namespace TLSMD {
     class FragmentIDMap {
       // custom hash table for fragment ids
     public:
+
+      class FragmentIDNotFound {
+	// exception
+      public:
+	FragmentIDNotFound(const std::string& __frag_id) : frag_id_(__frag_id) {}
+	FragmentIDNotFound(const FragmentIDNotFound& other) : frag_id_(other.frag_id_) {}
+	const std::string& frag_id() const { return frag_id_; }
+      private:
+	std::string frag_id_;
+      };
+
       FragmentIDMap(const Chain& chain);
       FragmentIDMap(const std::string& frag_id1, const std::string& frag_id2);
       std::vector<Atom>::iterator& operator[](const std::string& frag_id);
@@ -66,13 +77,15 @@ namespace TLSMD {
     private:
       void reset(const std::string& frag_id1, const std::string& frag_id2);
       bool split(const std::string& frag_id, int& seq_num, char& icode) const;
-      bool splitidx(const std::string& frag_id, int& seq_num_idx, int& icode_idx) const;
+      bool splitidx(const std::string& frag_id, std::size_t& seq_num_idx, std::size_t& icode_idx) const;
       struct SeqNumCell_ {
 	std::vector<Atom>::iterator value_;
 	std::vector<std::vector<Atom>::iterator> icode_table_;
+	std::vector<bool> icode_table_has_key_;
       };
       int seq_num1_;
       std::vector<SeqNumCell_> seq_num_table_;
+      std::vector<bool> seq_num_table_has_key_;
     }; // FragmentIDMap
     
     class Segment {

@@ -50,6 +50,30 @@ def isotlsdict2tensors(itlsdict):
 
     return IT, IL, IS, origin 
 
+class ITLSParameters(object):
+    def __init__(self, arg):
+        if isinstance(arg, ITLSParameters):
+            self.IT = arg.IT.copy()
+            self.IL = arg.IL.copy()
+            self.IS = arg.IS.copy()
+            self.IO = arg.IO.copy()
+        elif isinstance(arg, dict):
+            self.IT, self.IL, self.IS, self.IO = isotlsdict2tensors(arg)
+        else:
+            raise ValueError
+
+class TLSParameters(object):
+    def __init__(self, arg):
+        if isinstance(arg, TLSParameters):
+            self.T = arg.T.copy()
+            self.L = arg.L.copy()
+            self.S = arg.S.copy()
+            self.O = arg.O.copy()
+        elif isinstance(arg, dict):
+            self.T, self.L, self.S, self.O = tlsdict2tensors(arg)
+        else:
+            raise ValueError
+
 def calc_rmsd_tls_biso(tls_group):
     """Calculate the RMSD of the tls_group using the isotropic TLS model.
     """
@@ -143,20 +167,20 @@ def calc_cross_prediction_matrix_rmsd(chain, cpartition):
 
         for j, frag in enumerate(chain):
             ## calculate a atom-normalized rmsd deviation for each residue
-            n = 0
-            delta2 = 0.0
+            num_atoms = 0
+            msd_sum = 0.0
 
             for atm in frag.iter_all_atoms():
                 if atm.include == False:
                     continue
 
-                n += 1
+                num_atoms += 1
                 b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 delta = atm.temp_factor - b_iso_tls
-                delta2 += delta**2
+                msd_sum += delta**2
 
-            if n>0:
-                msd = delta2 / n
+            if num_atoms > 0:
+                msd = msd_sum / num_atoms
                 rmsd = math.sqrt(msd)
 
                 ## set the cross prediction matrix
@@ -174,15 +198,11 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
     ## load and construct TLS groups
     tls_group_list = []
-
     tls_file = TLS.TLSFile()
     tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
-
     tls_file_format = TLS.TLSFileFormatTLSOUT()
-
     for tlsin in tlsin_list:
         tls_desc_list = tls_file_format.load(open(tlsin, "r"))
-
         for tls_desc in tls_desc_list:
             tls_file.tls_desc_list.append(tls_desc)
             tls_group = tls_desc.construct_tls_group_with_atoms(struct)
@@ -197,39 +217,14 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         min_Uiso = 0.0
         max_Uiso = 0.0
 
-        n         = 0
-        sum_diff2 = 0.0
-
         for atm, Utls in tls_group.iter_atm_Utls():
-            for aatm in atm.iter_alt_loc():
-                tls_tf = numpy.trace(Utls)/3.0
-                ref_tf = numpy.trace(aatm.get_U())/3.0
-
-                n += 1
-                sum_diff2 += (tls_tf - ref_tf)**2
+            tls_tf = numpy.trace(Utls) / 3.0
+            ref_tf = numpy.trace(atm.get_U()) / 3.0
                 
-                if ref_tf > tls_tf:
-                    max_Uiso = max(ref_tf - tls_tf, max_Uiso)
-                else:
-                    min_Uiso = max(tls_tf - ref_tf, min_Uiso)
-
-        msd = sum_diff2 / n
-        rmsd = math.sqrt(msd)
-
-        ## report the percentage of atoms with Uiso within the RMSD
-        ntotal = 0
-        nrmsd  = 0
-        
-        for atm, Utls in tls_group.iter_atm_Utls():
-            for aatm in atm.iter_alt_loc():
-                tls_tf = numpy.trace(Utls)/3.0
-                ref_tf = numpy.trace(aatm.get_U())/3.0
-
-                ntotal += 1
-                deviation = math.sqrt((tls_tf - ref_tf)**2)
-                
-                if deviation <= rmsd:
-                    nrmsd += 1
+            if ref_tf > tls_tf:
+                max_Uiso = max(ref_tf - tls_tf, max_Uiso)
+            else:
+                min_Uiso = max(tls_tf - ref_tf, min_Uiso)
 
         ## reduce the TLS group T tensor by min_Uiso so that
         ## a PDB file can be written out where all atoms
@@ -248,11 +243,10 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         T[1,1] = T[1,1] - min_Uiso
         T[2,2] = T[2,2] - min_Uiso
 
-        ## now take half of the smallest principal component of T and
+        ## now take some of the smallest principal component of T and
         ## move it into the individual atomic temperature factors
-
         min_T    = min(T[0,0], min(T[1,1], T[2,2]))
-        sub_T    = min_T * 0.80
+        sub_T    = min_T * 0.50
         add_Uiso = min_T - sub_T
         
         T[0,0] = T[0,0] - sub_T
@@ -260,23 +254,24 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         T[2,2] = T[2,2] - sub_T
         
         ## rotate T back to original orientation
-        tls_group.T = numpy.matrixmultiply(numpy.transpose(TR), numpy.matrixmultiply(T, TR))
+        tls_group.T = numpy.matrixmultiply(
+            numpy.transpose(TR),
+            numpy.matrixmultiply(T, TR))
 
         ## reset the TLS tensor values in the TLSDesc object so they can be saved
         tls_group.tls_desc.set_tls_group(tls_group)
         
         ## set atm.temp_factor
         for atm, Utls in tls_group.iter_atm_Utls():
-            for aatm in atm.iter_alt_loc():
-                tls_tf = numpy.trace(Utls)/3.0
-                ref_tf = numpy.trace(aatm.get_U())/3.0
-                
-                if ref_tf > tls_tf:
-                    aatm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*Constants.U2B
-                    aatm.U = None
-                else:
-                    aatm.temp_factor = (add_Uiso) * Constants.U2B
-                    aatm.U = None
+            tls_tf = numpy.trace(Utls) / 3.0
+            ref_tf = numpy.trace(atm.get_U()) / 3.0
+
+            if ref_tf > tls_tf:
+                atm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*Constants.U2B
+                atm.U = None
+            else:
+                atm.temp_factor = (add_Uiso) * Constants.U2B
+                atm.U = None
 
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))

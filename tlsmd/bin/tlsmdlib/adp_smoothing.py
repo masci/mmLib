@@ -39,7 +39,7 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
             atm_deltab.append((deltab, atm))
 
         sigma = math.sqrt((msd_sum / num_atoms))
-        sigma2 = 1.90 * sigma
+        sigma2 = 2.0 * sigma
 
         outliers = 0
         for deltab, atm in atm_deltab:

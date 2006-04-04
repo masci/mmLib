@@ -43,12 +43,15 @@ def iter_chain_subsegment_descs(chain, min_len):
     with a minimum size of min_span fragments.  The segments are yielded
     as Python dictionaries containing a description of the subsegment.
     """
-    num_vertex = len(chain) + 1    
-    for vertex_i, vertex_j in iter_ij(num_vertex, min_len):
-        frag_id1 = chain.fragment_list[vertex_i].fragment_id
-        frag_id2 = chain.fragment_list[vertex_j-1].fragment_id
-        yield frag_id1, frag_id2, vertex_i, vertex_j
+    frag_ids = []
+    for frag in chain.iter_fragments():
+        frag_ids.append(frag.fragment_id)
 
+    num_vertex = len(frag_ids) + 1    
+    for vertex_i, vertex_j in iter_ij(num_vertex, min_len):
+        frag_id1 = frag_ids[vertex_i]
+        frag_id2 = frag_ids[vertex_j-1]
+        yield frag_id1, frag_id2, vertex_i, vertex_j
 
 class ISOptimization(hcsssp.HCSSSP):
     """Finds the minimal TLS description of a given Chain instance using
@@ -63,24 +66,11 @@ class ISOptimization(hcsssp.HCSSSP):
         self.nparts = nparts
 
         self.minimized = False
-        self.D         = None
-        self.P         = None
-        self.T         = None
-        
-        ## Initialize the vertex list based on the number of of
-        ## residues in Chain.
-        self.num_vertex = len(self.chain) + 1
+        self.D = None
+        self.P = None
+        self.T = None
 
-    def run_minimization(self):
-        """Run the HCSSSP minimization on the self.V,self.E graph, resulting
-        in the creation of the self.D, self.P, and self.T arrays which
-        contain 
-        """
-        chain = self.chain
-        chain_id = self.chain.chain_id
-        min_subsegment_len = self.min_subsegment_len
-
-        ## choose the TLS Model to fit for the chain
+    def get_fit_method(self, chain):
         fit_method = None
         if conf.globalconf.tls_model == "ISOT":
             fit_method = chain.tls_analyzer.isotropic_fit_segment
@@ -90,15 +80,29 @@ class ISOptimization(hcsssp.HCSSSP):
             fit_method = chain.tls_analyzer.constrained_isotropic_fit_segment
         elif conf.globalconf.tls_model=="NLANISO":
             fit_method = chain.tls_analyzer.constrained_anisotropic_fit_segment
+        return fit_method
+
+    def run_minimization(self):
+        """Run the HCSSSP minimization on the self.V,self.E graph, resulting
+        in the creation of the self.D, self.P, and self.T arrays which
+        contain 
+        """
+        chain = self.chain
+        chain_id = self.chain.chain_id
+        min_subsegment_len = self.min_subsegment_len
+        num_vertex = len(chain) + 1
+
+        ## choose the TLS Model to fit for the chain
+        fit_method = self.get_fit_method(chain)
 
         ## build the vertex labels to reflect the protein structure
         ## the graph spans
         vertices = []
-        for i in xrange(self.num_vertex):
+        for i in xrange(num_vertex):
             ## add the vertex label for i at Vi
             if i == 0 :
                 vertex_label = "N-TERM"
-            elif i == self.num_vertex - 1:
+            elif i == num_vertex - 1:
                 vertex_label = "C-TERM"
             else:
                 vertex_label = "%s{%s:%s}" % (chain_id, chain[i-1].fragment_id, chain[i].fragment_id)
@@ -113,7 +117,13 @@ class ISOptimization(hcsssp.HCSSSP):
         edges = []
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(chain, min_subsegment_len):
             tlsdict = fit_method(frag_id1, frag_id2)
-            
+
+            num_subsegments += 1
+            pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
+            if pcomplete != pcomplete_old:
+                print "(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete)
+                pcomplete_old = pcomplete
+
             if tlsdict == None:
                 print "[ERROR] no TLS group %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
                 raise SystemExit
@@ -123,16 +133,22 @@ class ISOptimization(hcsssp.HCSSSP):
                 print "[ERROR] no residual! %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
                 raise SystemExit
 
-            cost = tlsdict["residual"]
+            residual = tlsdict["residual"]
+            num_atoms = tlsdict["num_atoms"]
+            num_residues = tlsdict["num_residues"]
+            msd = residual / num_residues
+            rmsd = math.sqrt(msd)
+            rmsd_b = rmsd * Constants.U2B
+            chi2 = msd * num_atoms
+
+            if num_atoms < 40:
+                continue
+
+            cost = residual
+
             frag_range = (frag_id1, frag_id2)
             edge = (i, j, cost, frag_range, tlsdict)
             edges.append(edge)
-
-            num_subsegments += 1
-            pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
-            if pcomplete != pcomplete_old:
-                print "(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete)
-                pcomplete_old = pcomplete
 
         ## perform the minimization
         if len(edges) > 0:

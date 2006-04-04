@@ -24,8 +24,6 @@ def usage():
     print "            [-x <URL of WebTLSMDD XMLRPC Server>]"
     print "            [-j <Job ID of WebTLSMDD Job>]"
     print "            [-r <html report dir>] write HTML report to directory"
-    print "            [-d <TLS database file>] set the name of the database file"
-    print "            [-n] TLS database is complete"
     print "            [-m <tls model>] Models: ISOT(default)/ANISO/NLISOT/NLANISO"
     print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
@@ -56,8 +54,6 @@ def analysis_main(struct_path, opt_dict):
     basename, ext       = os.path.splitext(filename)
 
     ## set option vars and defaults
-    tlsdb_file        = opt_dict.get("-d")
-    tlsdb_complete    = opt_dict.has_key("-n")
     chain_ids         = opt_dict.get("-c")
 
     conf.globalconf.recombination = opt_dict.has_key("-e")
@@ -120,8 +116,6 @@ def analysis_main(struct_path, opt_dict):
     anal = tlsmd_analysis.TLSMDAnalysis(
         struct_file_path    = struct_path,
         sel_chain_ids       = chain_ids,
-        tlsdb_file          = tlsdb_file,
-        tlsdb_complete      = tlsdb_complete,
         struct2_file_path   = conf.globalconf.target_struct_path,
         struct2_chain_id    = conf.globalconf.target_struct_chain_id)
     

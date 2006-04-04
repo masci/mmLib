@@ -9,7 +9,7 @@ import math
 import numpy
 import gc
 
-from mmLib import Constants, FileIO, TLS
+from mmLib import Constants, FileIO, TLS, Structure
 
 import misc
 import const
@@ -29,45 +29,38 @@ class TLSMDAnalysis(object):
                  struct_file_path  = None,
                  struct2_file_path = None,
                  struct2_chain_id  = None,
-                 sel_chain_ids     = None,
-                 tlsdb_file        = None,
-                 tlsdb_complete    = False):
+                 sel_chain_ids     = None):
 
         conf.globalconf.prnt()
 
-        self.struct_file_path     = struct_file_path
-        self.struct2_file_path    = struct2_file_path
-        self.struct2_chain_id     = struct2_chain_id
-        self.target_chain         = None
+        self.struct_file_path = struct_file_path
+        self.struct2_file_path = struct2_file_path
+        self.struct2_chain_id = struct2_chain_id
+        self.target_chain = None
 
-        if sel_chain_ids is not None:
+        if isinstance(sel_chain_ids, str):
             self.sel_chain_ids = sel_chain_ids.split(",")
+        elif isinstance(sel_chain_ids, list):
+            self.sel_chain_ids = sel_chain_ids
         else:
             self.sel_chain_ids = None
 
-        self.tlsdb_file      = tlsdb_file
-        self.tlsdb_complete  = tlsdb_complete
+        self.struct = None
+        self.struct_id = None
+        self.chains = None
 
-        self.struct          = None
-        self.struct_id       = None
-        self.chains          = None
-
-    def run_optimization(self):
-        """Run the TLSMD optimization on the structure.
-        """
         self.load_struct()
-
-        ## auto name of tlsdb file then open
-        if self.tlsdb_file is None:
-            self.tlsdb_file = "%s_%s_%s.db" % (
-                self.struct_id, conf.globalconf.tls_model,
-                conf.globalconf.weight_model)
-
         self.select_chains()
         self.prnt_settings()
+
+    def run_optimization(self, no_visualization = False):
+        """Run the TLSMD optimization on the structure.
+        """
         self.calc_chain_minimization()
         self.calc_chain_partition_recombination()
-        self.calc_visualization_tls_models()
+
+        if not no_visualization:
+            self.calc_visualization_tls_models()
 
         if self.struct2_file_path != None and self.struct2_chain_id != None:
             self.calc_chain_partition_superposition()
@@ -81,7 +74,6 @@ class TLSMDAnalysis(object):
         print "STRUCTURE FILE.....................: %s" % (self.struct_file_path)
         print "STRUCTURE ID.......................: %s" % (self.struct_id)
         print "CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
-        print "DATABASE FILE PATH.................: %s" % (self.tlsdb_file)
         print
         
     def load_struct(self):
@@ -229,36 +221,41 @@ class TLSMDAnalysis(object):
     def num_chains(self):
         return len(self.chains)
 
+    def get_chain(self, chain_id):
+        for chain in self.iter_chains():
+            if chain.chain_id == chain_id:
+                return chain
+        return None
 
+        
 def ConstructSegmentForAnalysis(raw_chain):
     """Returns a list of Segment instance from the
     Chain instance which is properly modified for use in
     the this application.
     """
-    ## ok, use the chain but use a segment and cut off
-    ## any leading and trailing non-amino acid residues
-    frag_id1 = None
-    for aa in raw_chain.iter_amino_acids():
-        if frag_id1 is None:
-            frag_id1 = aa.fragment_id
-        frag_id2 = aa.fragment_id
-
-    segment = raw_chain[frag_id1:frag_id2]
-    print "SELECTING RANGE %s-%s; GOT RANGE %s-%s" % (frag_id1, frag_id2, segment[0].fragment_id, segment[-1].fragment_id)
-    
-    ## this is useful: for each fragment in the minimization
-    ## set a attribute for its index position
-    for i, frag in enumerate(segment.iter_fragments()):
-        frag.ifrag = i
-
     ## Sets that atm.include attribute for each atom in the chains
     ## being analyzed by tlsmd
-    for atm in segment.iter_all_atoms():
+    for atm in raw_chain.iter_all_atoms():
         atm.include = atom_selection.calc_include_atom(atm)
+
+    ## ok, use the chain but use a segment and cut off
+    ## any leading and trailing non-amino acid residues
+    ## do not include a fragment with no included atoms
+    segment = Structure.Segment(chain_id = raw_chain.chain_id)
+    for frag in raw_chain.iter_amino_acids():
+        for atm in frag.iter_all_atoms():
+            if atm.include:
+                segment.add_fragment(frag)
+                break
 
     ## apply data smooth if desired
     if conf.globalconf.adp_smoothing > 0:
         adp_smoothing.IsotropicADPDataSmoother(segment, conf.globalconf.adp_smoothing)
+
+    ## this is useful: for each fragment in the minimization
+    ## set a attribute for its index position
+    for i, frag in enumerate(segment.iter_fragments()):
+        frag.ifrag = i
 
     ## create a TLSModelAnalyzer instance for the chain, and
     ## attach the instance to the chain for use by the rest of the
