@@ -81,13 +81,13 @@ def calc_orientation(struct, chain):
     """
     ori = {}
 
-    def iter_protein_atoms(sobjx):
-        for fragx in sobjx.iter_amino_acids():
+    def iter_atoms(sobjx):
+        for fragx in sobjx.iter_standard_residues():
             for atmx in fragx.iter_atoms():
-                if atmx.name in ["N","CA","C","O","CB"]: yield atmx
+                yield atmx
 
-    centroids, Rs = calc_inertia_tensor(iter_protein_atoms(struct))
-    centroidc, Rc = calc_inertia_tensor(iter_protein_atoms(chain))
+    centroids, Rs = calc_inertia_tensor(iter_atoms(struct))
+    centroidc, Rc = calc_inertia_tensor(iter_atoms(chain))
 
     R = Rs
     centroid = centroidc
@@ -102,7 +102,7 @@ def calc_orientation(struct, chain):
     min_z = 0.0
     max_z = 0.0
 
-    for atm in iter_protein_atoms(chain):
+    for atm in iter_atoms(chain):
         x  = numpy.matrixmultiply(R, atm.position - centroid)
 
         if first_atm==True:

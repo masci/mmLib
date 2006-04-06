@@ -22,10 +22,10 @@ from mmLib import FileIO
 from tlsmdlib import conf, const, tls_calcs
 
 
-
 def fatal(text):
     sys.stderr.write("[FATAL ERROR] %s\n" % (text))
     raise SystemExit
+
 
 def generate_security_code(code_length = 8):
     """Generates a random 8
@@ -35,29 +35,6 @@ def generate_security_code(code_length = 8):
     code = "".join(random.sample(codelist, code_length)) 
     return code
 
-
-class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
-    """Override the standard XMLRPC request handler to open the database before
-    calling the method.
-    """
-    def handle(self):
-        self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
-        return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
-
-
-class WebTLSMD_XMLRPCServer(
-            SocketServer.ForkingMixIn,
-            SimpleXMLRPCServer.SimpleXMLRPCServer):
-    """Use customized XMLRPC server which forks for requests and uses the customized
-    request handler.
-    """
-    def __init__(self, host_port):
-        SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
-            self,
-            host_port,
-            WebTLSMD_XMLRPCRequestHandler,
-            True)
-                
 
 class JobDatabase(object):
     def __init__(self, db_file):
@@ -79,8 +56,7 @@ class JobDatabase(object):
         return cPickle.loads(data)
 
     def init_globals(self):
-        gdict = {}
-        gdict["next_job_num"] = 1
+        gdict = dict(next_job_num = 1)
         self.store_globals(gdict)
 
     def retrieve_globals(self):
@@ -177,6 +153,239 @@ class JobDatabase(object):
         return jdict.get(key)
 
 
+def SetStructureFile(webtlsmdd, job_id, struct_bin):
+    """Creates job directory, saves structure file to the job directory,
+    and sets all jdict defaults.
+    """
+    if not webtlsmdd.job_exists(job_id):
+        return False
+
+    try:
+        os.chdir(conf.TLSMD_WORK_DIR)
+    except OSError:
+        return "Unable to change to conf.TLSMD_WORK_DIR = '%s'" % (conf.TLSMD_WORK_DIR)
+
+    try:
+        os.mkdir(job_id)
+    except OSError:
+        return "Unable to make job directory %s" % (job_id)
+
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    os.chdir(job_dir)
+    webtlsmdd.jobdb.job_data_set(job_id, "job_dir", job_dir)
+
+    ## save PDB file
+    pdb_filename = "struct.pdb"
+    webtlsmdd.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
+    filobj = open(pdb_filename, "w")
+    filobj.write(struct_bin.data)
+    filobj.close()
+
+    job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
+    webtlsmdd.jobdb.job_data_set(job_id, "job_url", job_url)
+
+    log_url = "%s/log.txt" % (job_url)
+    webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
+
+    analysis_dir = "%s/ANALYSIS" % (job_dir)
+    webtlsmdd.jobdb.job_data_set(job_id, "analysis_dir", analysis_dir)
+
+    analysis_base_url = "%s/ANALYSIS" % (job_url)
+    webtlsmdd.jobdb.job_data_set(job_id, "analysis_base_url", analysis_base_url)
+
+    analysis_url = "%s/ANALYSIS/index.html" % (job_url)
+    webtlsmdd.jobdb.job_data_set(job_id, "analysis_url", analysis_url)
+
+    ## submission time and initial state
+    webtlsmdd.jobdb.job_data_set(job_id, "state", "submit1")
+    webtlsmdd.jobdb.job_data_set(job_id, "submit_time", time.time())
+
+    ## now load the structure and build the submission form
+    try:
+        struct = FileIO.LoadStructure(fil = pdb_filename)
+    except:
+        return "The Python Macromolecular Library was unable to load your structure file."
+
+    if not struct.structure_id:
+        struct.structure_id = "XXXX"
+    webtlsmdd.jobdb.job_data_set(job_id, "structure_id", struct.structure_id)
+
+    ## Select Chains for Analysis
+    num_atoms = 0
+    num_aniso_atoms = 0
+    largest_chain_seen = 0
+
+    chains = []
+    for chain in struct.iter_chains():
+        naa = chain.count_amino_acids()
+        nna = chain.count_nucleic_acids()
+
+        if naa > 0 and nna == 0:
+            num_frags = naa
+        elif nna > 0 and naa == 0:
+            num_frags = nna
+        else:
+            continue
+
+        if num_frags < 10:
+            continue
+
+        largest_chain_seen = max(num_frags, largest_chain_seen)
+
+        ## form name
+        cb_name = 'CHAIN%s' % (chain.chain_id)
+
+        ## create chain description label cb_desc
+        if naa > 0:
+            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, num_frags)
+        elif nna > 0:
+            cb_desc = 'Chain %s (%d Nucleic Acid Residues)' % (chain.chain_id, num_frags)
+        else:
+            continue
+            
+        for atm in chain.iter_all_atoms():
+            num_atoms += 1
+            if atm.U is not None:
+                num_aniso_atoms += 1
+
+        listx = []
+        i = 0
+        for frag in chain.iter_fragments():
+            i += 1
+            if i > 5:
+                break
+            listx.append(frag.res_name)
+        cb_preview = string.join(listx, " ")
+
+        cdict = {}
+        chains.append(cdict)
+        cdict["chain_id"] = chain.chain_id
+        cdict["length"] = num_frags
+        cdict["name"] = cb_name
+        cdict["desc"] = cb_desc
+        cdict["preview"] = cb_preview
+        cdict["selected"] = True
+
+    if num_atoms < 1:
+        webtlsmdd.remove_job(job_id)
+        return 'Your submitted structure contained no atoms'
+
+    if largest_chain_seen > 1700:
+        webtlsmdd.remove_job(job_id)
+        return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
+
+    webtlsmdd.jobdb.job_data_set(job_id, "chains", chains)
+
+    ## defaults
+    webtlsmdd.jobdb.job_data_set(job_id, "user", "")
+    webtlsmdd.jobdb.job_data_set(job_id, "passwd", "")
+    webtlsmdd.jobdb.job_data_set(job_id, "email", "")
+    webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
+    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False)
+    webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
+
+    try:
+        aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
+    except ZeroDivisionError:
+        return 'Your submitted structure contained no atoms'
+
+    if aniso_ratio > 0.90:
+        webtlsmdd.jobdb.job_data_set(job_id, "tls_model", "ANISO")
+    else:
+        webtlsmdd.jobdb.job_data_set(job_id, "tls_model", "ISOT")
+
+    webtlsmdd.jobdb.job_data_set(job_id, "weight", "")
+    webtlsmdd.jobdb.job_data_set(job_id, "include_atoms", "ALL")
+
+    return ""
+
+
+def RemoveJob(webtlsmdd, job_id):
+    """Removes the job from both the database and working directory.
+    """
+    if not webtlsmdd.jobdb.job_exists(job_id):
+        return False
+
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+
+        for root, dirs, files in os.walk(job_dir, topdown = False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+
+        os.rmdir(job_dir)
+
+    webtlsmdd.jobdb.delete_jdict(job_id)
+    return True
+
+
+def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
+    """Called with a list of tuples (chain_id, ntls).
+    Generates PDB and TLSIN files for refinement with REFMAC5.
+    Returns a single string if there is an error, otherwise a
+    dictionary of results is returned.
+    """
+    struct_id = webtlsmdd.job_get_structure_id(job_id)
+    analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
+    analysis_base_url = webtlsmdd.job_get_analysis_base_url(job_id)
+
+    if not os.path.isdir(analysis_dir):
+        return "Job analysis directory does not exist"
+
+    old_dir = os.getcwd()
+    os.chdir(analysis_dir)
+
+    ## input structure
+    pdbin  = "%s.pdb" % (struct_id)
+    if not os.path.isfile(pdbin):
+        pdbin = None
+        for pdbx in glob.glob("*.pdb"):
+            if len(pdbx) == 8:
+                struct_id = pdbx[:4]
+                pdbin = pdbx
+                break
+        if pdbin == None:
+            os.chdir(old_dir)
+            return "Input PDB File %s Not Found" % (pdbin)
+
+    ## the per-chain TLSOUT files from TLSMD must be merged
+    tlsins = []
+    for chain_id, ntls in chain_ntls:
+        tlsin = "%s_CHAIN%s_NTLS%d.tlsout" % (struct_id, chain_id, ntls)
+        if not os.path.isfile(tlsin):
+            os.chdir(old_dir)
+            return "Input TLSIN File %s Not Found" % (tlsin)
+        tlsins.append(tlsin)
+
+    ## form unique pdbout/tlsout filenames
+    listx = [struct_id]
+    for chain_id, ntls in chain_ntls:
+        listx.append("CHAIN%s" % (chain_id))
+        listx.append("NTLS%d" % (ntls))
+    outbase ="_".join(listx)
+    pdbout = "%s.pdb" % (outbase)
+
+    ## the tlsout from this program is going to be the tlsin
+    ## for refinement, so it's important for the filename to have
+    ## the tlsin extension so the user is not confused
+    tlsout = "%s.tlsin" % (outbase)
+
+    ## make urls for linking
+    pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
+    tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
+
+    ## create the files
+    tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
+
+    os.chdir(old_dir)
+    return dict(pdbout = pdbout,
+                pdbout_url = pdbout_url,
+                tlsout = tlsout,
+                tlsout_url = tlsout_url)
+
+    
 class WebTLSMDDaemon(object):
     def __init__(self, db_file):
         self.db_file = db_file
@@ -210,154 +419,12 @@ class WebTLSMDDaemon(object):
         """Creates job directory, saves structure file to the job directory,
         and sets all jdict defaults.
         """
-        if not self.job_exists(job_id):
-            return False
-
-        try:
-            os.chdir(conf.TLSMD_WORK_DIR)
-        except OSError:
-            return "Unable to change to conf.TLSMD_WORK_DIR = '%s'" % (conf.TLSMD_WORK_DIR)
-
-        try:
-            os.mkdir(job_id)
-        except OSError:
-            return "Unable to make job directory %s" % (job_id)
-        
-        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-        os.chdir(job_dir)
-        self.jobdb.job_data_set(job_id, "job_dir", job_dir)
-
-        ## save PDB file
-        pdb_filename = "struct.pdb"
-        self.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
-        filobj = open(pdb_filename, "w")
-        filobj.write(struct_bin.data)
-        filobj.close()
-        
-        job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
-        self.jobdb.job_data_set(job_id, "job_url", job_url)
-
-        log_url = "%s/log.txt" % (job_url)
-        self.jobdb.job_data_set(job_id, "log_url", log_url)
-
-        analysis_dir = "%s/ANALYSIS" % (job_dir)
-        self.jobdb.job_data_set(job_id, "analysis_dir", analysis_dir)
-
-        analysis_base_url = "%s/ANALYSIS" % (job_url)
-        self.jobdb.job_data_set(job_id, "analysis_base_url", analysis_base_url)
-
-        analysis_url = "%s/ANALYSIS/index.html" % (job_url)
-        self.jobdb.job_data_set(job_id, "analysis_url", analysis_url)
-
-        ## submission time and initial state
-        self.jobdb.job_data_set(job_id, "state", "submit1")
-        self.jobdb.job_data_set(job_id, "submit_time", time.time())
-
-        ## now load the structure and build the submission form
-        try:
-            struct = FileIO.LoadStructure(fil = pdb_filename)
-        except:
-            return "The Python Macromolecular Library was unable to load your structure file."
-            
-	if not struct.structure_id:
-	    struct.structure_id = "XXXX"
-        self.jobdb.job_data_set(job_id, "structure_id", struct.structure_id)
-
-        ## Select Chains for Analysis
-        num_atoms = 0
-        num_aniso_atoms = 0
-        largest_chain_seen = 0
-
-        chains = []
-        for chain in struct.iter_chains():
-            naa = chain.count_amino_acids()
-            nna = chain.count_nucleic_acids()
-            if max(naa, nna) < 10:
-                continue
-
-            largest_chain_seen = max(naa, largest_chain_seen)
-
-            for atm in chain.iter_all_atoms():
-                num_atoms += 1
-                if atm.U != None:
-                    num_aniso_atoms += 1
-
-            ## form name
-            cb_name = 'CHAIN%s' % (chain.chain_id)
-            
-            ## create chain description label cb_desc
-            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, naa)
-
-            listx = []
-            i = 0
-            for frag in chain.iter_fragments():
-                i += 1
-                if i > 5:
-                    break
-                listx.append(frag.res_name)
-            cb_preview = string.join(listx, " ")
-            
-            cdict = {}
-            chains.append(cdict)
-            cdict["chain_id"] = chain.chain_id
-            cdict["length"] = naa
-            cdict["name"] = cb_name
-            cdict["desc"] = cb_desc
-            cdict["preview"] = cb_preview
-            cdict["selected"] = True
-
-        if num_atoms < 1:
-            self.remove_job(job_id)
-            return 'Your submitted structure contained no atoms'
-
-        if largest_chain_seen > 1700:
-            self.remove_job(job_id)
-	    return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
-
-        self.jobdb.job_data_set(job_id, "chains", chains)
-
-        ## defaults
-        self.jobdb.job_data_set(job_id, "user", "")
-        self.jobdb.job_data_set(job_id, "passwd", "")
-        self.jobdb.job_data_set(job_id, "email", "")
-        self.jobdb.job_data_set(job_id, "comment", "")
-        self.jobdb.job_data_set(job_id, "private_job", False)
-        self.jobdb.job_data_set(job_id, "plot_format", "PNG")
-
-        try:
-            aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
-        except ZeroDivisionError:
-            return 'Your submitted structure contained no atoms'
-                
-        if aniso_ratio > 0.90:
-            self.jobdb.job_data_set(job_id, "tls_model", "ANISO")
-        else:
-            self.jobdb.job_data_set(job_id, "tls_model", "ISOT")
-            
-        self.jobdb.job_data_set(job_id, "weight", "")
-        self.jobdb.job_data_set(job_id, "include_atoms", "ALL")
-
-	return ""
+        return SetStructureFile(self, job_id, struct_bin)
 
     def remove_job(self, job_id):
         """Removes the job from both the database and working directory.
         """
-        if not self.jobdb.job_exists(job_id):
-            return False
-        
-        job_dir = self.job_get_job_dir(job_id)
-        if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
-
-            for root, dirs, files in os.walk(job_dir, topdown = False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-
-            os.rmdir(job_dir)
-
-        self.jobdb.delete_jdict(job_id)
-        return True
+        return RemoveJob(self, job_id)
 
     def job_set_remote_addr(self, job_id, remote_addr):
         self.jobdb.job_data_set(job_id, "ip_addr", remote_addr)
@@ -464,81 +531,41 @@ class WebTLSMDDaemon(object):
     def job_get_run_time_end(self, job_id):
         return self.jobdb.job_data_get(job_id, "run_time_end")
 
-
     def refmac5_refinement_prep(self, job_id, chain_ntls):
         """Called with a list of tuples (chain_id, ntls).
         Generates PDB and TLSIN files for refinement with REFMAC5.
         Returns a single string if there is an error, otherwise a
         dictionary of results is returned.
         """
-        struct_id = self.job_get_structure_id(job_id)
-        analysis_dir = self.job_get_analysis_dir(job_id)
-        analysis_base_url = self.job_get_analysis_base_url(job_id)
+        return Refmac5RefinementPrep(self, job_id, chain_ntls)
 
-        if not os.path.isdir(analysis_dir):
-            return "Job analysis directory does not exist"
 
-        old_dir = os.getcwd()
-        os.chdir(analysis_dir)
-        
-        ## input structure
-        pdbin  = "%s.pdb" % (struct_id)
-        if not os.path.isfile(pdbin):
-            pdbin = None
-            for pdbx in glob.glob("*.pdb"):
-                if len(pdbx) == 8:
-                    struct_id = pdbx[:4]
-                    pdbin = pdbx
-                    break
-            if pdbin == None:
-                os.chdir(old_dir)
-                return "Input PDB File %s Not Found" % (pdbin)
+class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
+    """Override the standard XMLRPC request handler to open the database before
+    calling the method.
+    """
+    def handle(self):
+        self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
+        return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 
-        ## the per-chain TLSOUT files from TLSMD must be merged
-        tlsins = []
-        for chain_id, ntls in chain_ntls:
-            tlsin = "%s_CHAIN%s_NTLS%d.tlsout" % (struct_id, chain_id, ntls)
-            if not os.path.isfile(tlsin):
-                os.chdir(old_dir)
-                return "Input TLSIN File %s Not Found" % (tlsin)
-            tlsins.append(tlsin)
 
-        ## form unique pdbout/tlsout filenames
-        listx = [struct_id]
-        for chain_id, ntls in chain_ntls:
-            listx.append("CHAIN%s" % (chain_id))
-            listx.append("NTLS%d" % (ntls))
-        outbase ="_".join(listx)
-        pdbout = "%s.pdb" % (outbase)
-
-        ## the tlsout from this program is going to be the tlsin
-        ## for refinement, so it's important for the filename to have
-        ## the tlsin extension so the user is not confused
-        tlsout = "%s.tlsin" % (outbase)
-
-        ## make urls for linking
-        pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
-        tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
-
-        ## create the files
-        tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
-
-        os.chdir(old_dir)
-        return dict(pdbout = pdbout,
-                    pdbout_url = pdbout_url,
-                    tlsout = tlsout,
-                    tlsout_url = tlsout_url)
-        
-
-    def run_server(self, host, port):
-        xmlrpc_server = WebTLSMD_XMLRPCServer((host, port))
-        xmlrpc_server.webtlsmdd = self
-        xmlrpc_server.register_instance(self)
-        xmlrpc_server.serve_forever()
-
+class WebTLSMD_XMLRPCServer(
+            SocketServer.ForkingMixIn,
+            SimpleXMLRPCServer.SimpleXMLRPCServer):
+    """Use customized XMLRPC server which forks for requests and uses the customized
+    request handler.
+    """
+    def __init__(self, host_port):
+        SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
+            self,
+            host_port,
+            WebTLSMD_XMLRPCRequestHandler,
+            True)
+                
 
 def main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
+    host_port = ("localhost", int(port))
 
     sys.stdout.write("webtlsmdd.py xmlrpc server version %s\n" % (const.VERSION))
     sys.stdout.write("using database file...........................: %s\n" % (conf.WEBTLSMDD_DATABASE))
@@ -548,7 +575,10 @@ def main():
     os.chdir(conf.TLSMD_WORK_DIR)
     
     webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
-    webtlsmdd.run_server("localhost", int(port))
+    xmlrpc_server = WebTLSMD_XMLRPCServer(host_port)
+    xmlrpc_server.webtlsmdd = webtlsmdd
+    xmlrpc_server.register_instance(webtlsmdd)
+    xmlrpc_server.serve_forever()
 
 
 def inspect():
@@ -571,11 +601,11 @@ def usage():
     
 
 if __name__=="__main__":
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         try:
             main()
         except KeyboardInterrupt:
-            pass
+            raise SystemExit
     else:
         inspect()
     sys.exit(0)

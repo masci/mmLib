@@ -140,7 +140,10 @@ class TLSMDAnalysis(object):
                     continue
 
             ## count the number of amino acid residues in the chain
-            if chain.count_amino_acids() < 10:
+            naa = chain.count_amino_acids()
+            nna = chain.count_nucleic_acids()
+            num_frags = max(naa, nna)
+            if num_frags < 10:
                 continue
             
             segment = ConstructSegmentForAnalysis(chain)
@@ -241,8 +244,16 @@ def ConstructSegmentForAnalysis(raw_chain):
     ## ok, use the chain but use a segment and cut off
     ## any leading and trailing non-amino acid residues
     ## do not include a fragment with no included atoms
+    naa = chain.count_amino_acids()
+    nna = chain.count_nucleic_acids()
+
+    if naa > nna:
+        iter_residues = raw_chain.iter_amino_acids()
+    elif nna > naa:
+        iter_residues = raw_chain.iter_nucleic_acids()
+        
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
-    for frag in raw_chain.iter_amino_acids():
+    for frag in iter_residues:
         for atm in frag.iter_all_atoms():
             if atm.include:
                 segment.add_fragment(frag)

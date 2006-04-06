@@ -144,17 +144,14 @@ def testmain():
     import tlsmd_analysis
     
     struct = FileIO.LoadStructure(
-        fil="/home/jpaint/public_html/hag/loc_lambda_1_type_light_chai/4BJL.pdb")
+        file = "/home/jpaint/mymmlib/struct/movedb/domain-hinge/groel/1KP8.pdb")
     chain = tlsmd_analysis.ConstructSegmentForAnalysis(struct.get_chain("A"))
     
     cpartition = opt_containers.ChainPartition(chain, 3)
     groups = [
-        [("1", "10")],
-        [("11", "80")],
-        [("81", "84")],
-        [("85", "140")],
-        [("141", "205")],
-        [("206", "216")] ]
+        [("2", "135"), ("411", "525")],
+        [("136", "190"), ("375", "410")],
+        [("191", "374")]]
     
     for segment_ranges in groups:
         tls = opt_containers.TLSSegment(segment_ranges)
@@ -163,9 +160,21 @@ def testmain():
     cpartition.fit_residual()
     
     partitions = ChainPartitionList(cpartition)
-    print partitions
+    print partitions,  cpartition.residual()
 
-    print "Move 0 left"
+    for part in partitions:
+        print "PARTITION ",part
+        part.move_left(10)
+        for x in range(20):
+            try:
+                part.move_right()
+            except ValueError:
+                print "reached limit"
+            print str(partitions).replace(" ",""), cpartition.residual()
+        part.move_left(10)
+
+    return
+    
     for x in range(60):
         try:
             partitions[2].move_right()

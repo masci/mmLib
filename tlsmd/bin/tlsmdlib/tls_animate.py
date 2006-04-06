@@ -67,13 +67,8 @@ class TLSAnimate(object):
                 if frag.is_water() == True:
                     continue
 
-                elif frag.is_amino_acid() == True and include_chain:
+                elif frag.is_standard_residue() == True and include_chain:
                     for atm in frag.iter_atoms():
-
-                        ## we only want main-chain atoms necessary for
-                        ## generating cartoon/trace
-                        #if atm.name not in ["N","CA","C","O"]:
-                        #    continue
 
                         if atm.name != "CA":
                             continue
