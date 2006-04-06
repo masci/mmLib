@@ -67,56 +67,6 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     return tls
 
 
-def ChainPartitionRecombinationOld(cpartition, num_return = 1):
-    """Returns a new TLSSegment object which is the best
-    combination of any two TLSSegment instances in cpartition.
-    """
-    chain = cpartition.chain
-    tls_list = cpartition.tls_list
-    tls_analyzer = chain.tls_analyzer
-    nparts = len(tls_list)
-
-    recombination_list = []
-
-    for part1, part2 in recombination2_iter(nparts):
-        tls1 = tls_list[part1]
-        tls2 = tls_list[part2]
-
-        segment_ranges = tls1.segment_ranges + tls2.segment_ranges
-        segment_ranges.sort(segment_range_cmp)
-        tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
-
-        chain_residual = tlsdict["residual"]        
-        for tls in tls_list:
-            if tls != tls1 and tls != tls2:
-                chain_residual += tls.residual()
-
-        recombination_list.append((chain_residual, tls1, tls2, tlsdict))
-
-    recombination_list.sort()
-    return_list = []
-    for i, reco in enumerate(recombination_list):
-        if i >= num_return:
-            break
-        chain_residual, tls1, tls2, tlsdict = reco
-        tls12 = JoinTLSSegments(tls1, tls2, cpartition.chain, tlsdict)
-
-        combined_cp = opt_containers.ChainPartition(cpartition.chain, cpartition.num_tls_segments() - 1)
-        return_list.append(combined_cp)
-
-        for tls in tls_list:
-            if tls == tls1:
-                combined_cp.add_tls_segment(tls12)
-                continue
-            if tls == tls2:
-                continue
-            combined_cp.add_tls_segment(tls.copy())
-
-        assert numpy.allclose(chain_residual, combined_cp.residual())
-
-    return return_list
-
-
 def ChainPartitionRecombination(cpartition, num_return = 1):
     """Returns a new TLSSegment object which is the best
     combination of any two TLSSegment instances in cpartition.
@@ -125,6 +75,8 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     tls_list = cpartition.tls_list
     tls_analyzer = chain.tls_analyzer
     nparts = len(tls_list)
+
+    cpartition.recombination_matrix = numpy.zeros((nparts, nparts), float)
 
     recombination_list = []
 
@@ -137,8 +89,9 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
 
         residual_delta = (tlsdict["residual"] - (tls1.residual() + tls2.residual())) / tlsdict["num_residues"]
-        
         recombination_list.append((residual_delta, tls1, tls2, tlsdict))
+        cpartition.recombination_matrix[part1, part2] = residual_delta
+        cpartition.recombination_matrix[part2, part1] = residual_delta
 
     recombination_list.sort()
     return_list = []
@@ -193,8 +146,8 @@ def ChainPartitionRecombinationOptimization(chain):
         
         print "%d INTO %d TO 2" % (ntls, ntls - 1)
 
-        search_width = 4
-        search_depth = 3
+        search_width = 1
+        search_depth = 1
 
         proot = tree.Tree()
         proot.cp = cpartition

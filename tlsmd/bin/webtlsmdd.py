@@ -264,14 +264,15 @@ class WebTLSMDDaemon(object):
         self.jobdb.job_data_set(job_id, "structure_id", struct.structure_id)
 
         ## Select Chains for Analysis
-        num_atoms          = 0
-        num_aniso_atoms    = 0
+        num_atoms = 0
+        num_aniso_atoms = 0
         largest_chain_seen = 0
 
         chains = []
         for chain in struct.iter_chains():
             naa = chain.count_amino_acids()
-            if naa < 10:
+            nna = chain.count_nucleic_acids()
+            if max(naa, nna) < 10:
                 continue
 
             largest_chain_seen = max(naa, largest_chain_seen)
@@ -285,7 +286,7 @@ class WebTLSMDDaemon(object):
             cb_name = 'CHAIN%s' % (chain.chain_id)
             
             ## create chain description label cb_desc
-            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, chain.count_amino_acids())
+            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, naa)
 
             listx = []
             i = 0
@@ -305,6 +306,10 @@ class WebTLSMDDaemon(object):
             cdict["preview"] = cb_preview
             cdict["selected"] = True
 
+        if num_atoms < 1:
+            self.remove_job(job_id)
+            return 'Your submitted structure contained no atoms'
+
         if largest_chain_seen > 1700:
             self.remove_job(job_id)
 	    return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
@@ -319,7 +324,11 @@ class WebTLSMDDaemon(object):
         self.jobdb.job_data_set(job_id, "private_job", False)
         self.jobdb.job_data_set(job_id, "plot_format", "PNG")
 
-        aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
+        try:
+            aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
+        except ZeroDivisionError:
+            return 'Your submitted structure contained no atoms'
+                
         if aniso_ratio > 0.90:
             self.jobdb.job_data_set(job_id, "tls_model", "ANISO")
         else:

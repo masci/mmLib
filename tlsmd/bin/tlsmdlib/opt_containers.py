@@ -125,7 +125,9 @@ class TLSSegment(object):
         return self.__residual
 
     def fit_residual(self, chain):
-        tlsdict = chain.tls_analyizer.isotropic_fit(self.segment_ranges)
+        """Calculate the TLS model residual.
+        """
+        tlsdict = chain.tls_analyzer.isotropic_fit(self.segment_ranges)
         if tlsdict:
             self.__residual = tlsdict["residual"]
             self.__num_atoms = tlsdict["num_atoms"]
@@ -261,6 +263,9 @@ class ChainPartition(object):
     def iter_tls_segments(self):
         return iter(self.tls_list)
 
+    def fit_residual(self):
+        for tls in self.iter_tls_segments():
+            tls.fit_residual(self.chain)
 
 
 class ChainPartitionCollection(object):

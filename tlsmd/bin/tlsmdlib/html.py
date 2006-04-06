@@ -25,6 +25,7 @@ import const
 import conf
 import gnuplots
 import sequence_plot
+import table
 
 from captions             import *
 from tls_animate          import TLSAnimate, TLSAnimateFailure
@@ -1211,6 +1212,8 @@ class ChainNTLSAnalysisReport(Report):
              self.html_libration_analysis(),'<br>',
              self.html_ca_differance(),'<br>',
              self.html_rmsd_plot()]
+
+        self.tls_segment_recombination()
         
         for tls in self.cpartition.iter_tls_segments():
             ## don't write out bypass edges
@@ -1281,5 +1284,11 @@ class ChainNTLSAnalysisReport(Report):
              '</center>']
         return "".join(l)
 
+    def tls_segment_recombination(self):
+        if not hasattr(self.cpartition, "recombination_matrix"):
+            return
 
-
+        tbl = table.StringTableFromMatrix(self.cpartition.recombination_matrix)
+        filename = "%s_CHAIN%s_NTLS%s_RECOMBINATION.txt" % (
+            self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
+        open(filename, "w").write(str(tbl))

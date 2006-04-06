@@ -57,6 +57,19 @@ class StringTable(object):
         return len(self.__data), max(itertools.imap(len, self.__data))
 
 
+def StringTableFromMatrix(matrix):
+    """Return a StringTable instance with the dimentions and
+    values of the argument matrix.
+    """
+    m, n = matrix.shape
+    tbl = StringTable(m, n, "0.0")
+    for i in range(m):
+        for j in range(n):
+            tbl[i,j] = matrix[i,j]
+    return tbl
+
+
+## testing
 def testmain():
     t = StringTable(0, 0)
 
@@ -72,7 +85,6 @@ def testmain():
     t = StringTable(5, 5, "*")
     t[3,4] = 5.0
     print str(t)
-
 
 if __name__ == "__main__":
     testmain()
