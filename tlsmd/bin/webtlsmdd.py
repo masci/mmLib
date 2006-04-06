@@ -219,13 +219,11 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     for chain in struct.iter_chains():
         naa = chain.count_amino_acids()
         nna = chain.count_nucleic_acids()
-
-        if naa > 0 and nna == 0:
+        num_frags = 0
+        if naa > 0:
             num_frags = naa
-        elif nna > 0 and naa == 0:
+        elif nna > 0:
             num_frags = nna
-        else:
-            continue
 
         if num_frags < 10:
             continue

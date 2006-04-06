@@ -244,8 +244,8 @@ def ConstructSegmentForAnalysis(raw_chain):
     ## ok, use the chain but use a segment and cut off
     ## any leading and trailing non-amino acid residues
     ## do not include a fragment with no included atoms
-    naa = chain.count_amino_acids()
-    nna = chain.count_nucleic_acids()
+    naa = raw_chain.count_amino_acids()
+    nna = raw_chain.count_nucleic_acids()
 
     if naa > nna:
         iter_residues = raw_chain.iter_amino_acids()
