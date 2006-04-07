@@ -696,7 +696,7 @@ class HTMLReport(Report):
                 show_chain[chx.chain_id] = True
                 continue
             
-            if chx.count_fragments() >= 20:
+            if chx.count_amino_acids() >= 100:
                 show_chain[chx.chain_id] = False
                 continue
             
@@ -740,34 +740,56 @@ class HTMLReport(Report):
                 continue
 
             if gl_chain.chain.chain_id == chain.chain_id:
-                gl_chain.properties.update(
-                    oatm_visible       = False,
-                    side_chain_visible = False,
-                    hetatm_visible     = True,
-                    lines              = False,
-                    ball_stick         = False,
-                    trace              = True,
-                    trace_radius       = 0.25,
-                    trace_color        = "0.80,0.80,0.80", )
+
+                if gl_chain.chain.has_amino_acids():
+                    gl_chain.properties.update(
+                        lines              = False,
+                        trace              = True,
+                        trace_radius       = 0.25,
+                        trace_color        = "0.80,0.80,0.80")
+                elif gl_chain.chain.has_nucleic_acids():
+                    gl_chain.properties.update(
+                        lines              = False,
+                        ball_stick         = True,
+                        ball_stick_radius  = 0.25,
+                        color              = "0.80,0.80,0.80")
             else:
-                gl_chain.properties.update(
-                    visible       = True,
-                    ball_stick    = False,
-                    cpk           = True)
+                if gl_chain.chain.has_amino_acids():
+                    gl_chain.properties.update(
+                        lines              = False,
+                        trace              = True,
+                        trace_radius       = 0.25,
+                        trace_color        = "0.80,0.80,0.80")
+                elif gl_chain.chain.has_nucleic_acids():
+                    gl_chain.properties.update(
+                        hetatm_visible     = True,
+                        trace              = True,
+                        trace_radius       = 0.5,
+                        ball_stick         = True,
+                        ball_stick_radius  = 0.25,
+                        color              = "0.80,0.80,0.80")
+                else:
+                    gl_chain.properties.update(
+                        visible           = True,
+                        ball_stick        = True,
+                        ball_stick_radius = 0.25,
+                        cpk               = False)
 
         ## add the TLS group visualizations
+        has_amino_acids = cpartition.chain.has_amino_acids()
+        has_nucleic_acids = cpartition.chain.has_nucleic_acids()
+        
         for tls in cpartition.iter_tls_segments():
             if tls.method != "TLS":
                 continue
 
-            if self.tlsmd_analysis.target_chain != None:
+            if self.tlsmd_analysis.target_chain is not None:
                 if tls.rmsd_pre_alignment <= 0.8:
                     continue
                 if (tls.rmsd_pre_alignment - tls.sresult.rmsd) < 0.5:
                     continue
             
             tls_name = "TLS_%s" % (tls.filename_label())
-            
             gl_tls_group = TLS.GLTLSGroup(
                 oatm_visible       = False,
                 side_chain_visible = False,
@@ -775,13 +797,14 @@ class HTMLReport(Report):
                 adp_prob           = conf.ADP_PROB,
                 L_axis_scale       = 2.0,
                 L_axis_radius      = 0.20,
-		both_phases        = True,
+                both_phases        = True,
                 tls_group          = tls.tls_group,
                 tls_info           = tls.model_tls_info,
                 tls_name           = tls_name,
                 tls_color          = tls.color.name)
-            gl_struct.glo_add_child(gl_tls_group)
 
+            gl_struct.glo_add_child(gl_tls_group)
+            
             if tls.superposition_vscrew != None:
                 gl_tls_group.properties.update(COR_vector = tls.superposition_vscrew)
 
@@ -790,21 +813,24 @@ class HTMLReport(Report):
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
 
             ## too big usually for good visualization -- cheat and scale it down
-            radius = 0.5 * Gaussian.GAUSS3C[conf.ADP_PROB] * TLS.calc_rmsd(tiso)
-            radius = max(radius, 0.30)
-            
-##             gl_tls_group.gl_atom_list.properties.update(
-##                 oatm_visible = True,
-##                 side_chain_visible = True,
-##                 trace = False,
-##                 ball_stick = True,
-##                 ball_stick_radius = radius)
+            radius = 0.30
 
-            gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
+            if has_amino_acids:
+                gl_tls_group.gl_atom_list.properties.update(trace_radius = radius)
+
+            elif has_nucleic_acids:
+                gl_tls_group.gl_atom_list.properties.update(
+                    oatm_visible = True,
+                    side_chain_visible = True,
+                    trace = True,
+                    trace_radius = 0.25,
+                    ball_stick = True,
+                    ball_stick_radius = radius)
+
             gl_tls_group.glo_update_properties(time = 0.25)
 
         ## got target chain?
-        if self.tlsmd_analysis.target_chain != None:
+        if self.tlsmd_analysis.target_chain is not None:
             gl_chain = Viewer.GLChain(chain = self.tlsmd_analysis.target_chain)
             gl_chain.properties.update(
                     oatm_visible       = False,

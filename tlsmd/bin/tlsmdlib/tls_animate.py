@@ -7,6 +7,7 @@
 import copy
 import string
 import math
+import itertools
 import numpy
 
 from mmLib import Structure, FileIO, Gaussian, AtomMath, TLS
@@ -15,6 +16,13 @@ import conf
 
 TWO_PI = 2.0 * math.pi
 
+DISPLACE_ATOM_NAME_DICT = {
+    "CA": True, "P": True, "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True
+    }
+
+def iter_filter_atoms(atom_iter):
+    filter = lambda atm: DISPLACE_ATOM_NAME_DICT.has_key(atm.name)
+    return itertools.ifilter(filter, atom_iter)
 
 def iter_fragment_range(chain, frag_id1, frag_id2):
     for frag in chain.iter_fragments():
@@ -68,11 +76,8 @@ class TLSAnimate(object):
                     continue
 
                 elif frag.is_standard_residue() == True and include_chain:
-                    for atm in frag.iter_atoms():
 
-                        if atm.name != "CA":
-                            continue
-                        
+                    for atm in iter_filter_atoms(frag.iter_atoms()):
                         cp_atom = Structure.Atom(
                             chain_id    = atm.chain_id,
                             fragment_id = atm.fragment_id,
@@ -190,7 +195,7 @@ class TLSAnimate(object):
             chain = model.get_chain(chain_id)
 
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
-                for frag in iter_fragment_range(chain, frag_id1, frag_id2):
+                for frag in Structure.iter_fragments(chain.iter_fragments(), frag_id1, frag_id2):
                     for atm in frag.iter_atoms():
                         d = numpy.matrixmultiply(D, atm.position - Lorigin) + d_screw
                         atm.position += d

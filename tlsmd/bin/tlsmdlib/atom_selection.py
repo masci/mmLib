@@ -4,11 +4,16 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 import numpy
+import itertools
 
-from mmLib import Constants
+from mmLib import Constants, Library
 
 import conf
 import const
+
+def iter_mainchain_atoms(atom_iter):
+    filter = lambda atm: const.MAINCHAIN_ATOMS.has_key(atm.res_name)
+    return itertools.ifilter(filter, atom_iter)
 
 def calc_include_atom(atm, reject_messages = False):
     """Filter out atoms from the model which will cause problems or
@@ -28,7 +33,7 @@ def calc_include_atom(atm, reject_messages = False):
         return False
 
     elif conf.globalconf.include_atoms == "MAINCHAIN":
-        if atm.name not in const.MAINCHAIN_ATOMS:
+        if const.MAINCHAIN_ATOM_DICT.has_key(atom.name) is False:
             if reject_messages == True:
                 print "calc_include_atom(%s): rejected non-mainchain atom" % (atm)
             return False
@@ -49,10 +54,8 @@ def chain_to_xmlrpc_list(atom_iter):
     """
     xmlrpc_chain = []
 
+    atom_iter = itertools.ifilter(lambda atm: atm.include, atom_iter)
     for atm in atom_iter:
-        if atm.include is False:
-            continue
-
         atm_desc = {}
         xmlrpc_chain.append(atm_desc)
 

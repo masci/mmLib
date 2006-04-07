@@ -4,7 +4,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-import popen2
+import subprocess
 import itertools
 import numpy
 
@@ -49,10 +49,14 @@ class GNUPlot(object):
     def run_gnuplot(self, script):
         """Execute GNUPlot with the given script.
         """
-        pobj = popen2.Popen4([self.gnuplot_path])
-        pobj.tochild.write(script)
-        pobj.tochild.close()
-        pobj.fromchild.close()
+        pobj = subprocess.Popen([self.gnuplot_path],
+                                stdin = subprocess.PIPE,
+                                stdout = subprocess.PIPE,
+                                stderr = subprocess.STDOUT,
+                                close_fds = True,
+                                bufsize = 8192)
+        pobj.stdin.write(script)
+        pobj.stdin.close()
         pobj.wait()
         
     def output_png(self):
@@ -546,7 +550,7 @@ _BMEAN_PLOT_TEMPLATE = """\
 set xlabel "Residue"
 set xrange [<xrng1>:<xrng2>]
 set ylabel "<B>"
-set yrange [0.0]
+set yrange [0.0:]
 set format y "%5.2f"
 set title "<title>"
 set datafile missing "?"

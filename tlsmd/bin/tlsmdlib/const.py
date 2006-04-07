@@ -21,6 +21,12 @@ AUTHOR        = "Jay Painter"
 EMAIL         = "jpaint@u.washington.edu"
 
 ## mainchain atom definitions
-MAINCHAIN_ATOMS = ["N","CA","C","O","CB"]
+AMINO_ACID_MAINCHAIN_ATOMS = ["N", "CA", "C", "O", "CB"]
+NUCLEIC_ACID_MAINCHAIN_ATOMS = ["P", "O5*", "C5*", "C4*", "C3*", "O3*"]
+MAINCHAIN_ATOMS = AMINO_ACID_MAINCHAIN_ATOMS + NUCLEIC_ACID_MAINCHAIN_ATOMS
+MAINCHAIN_ATOM_DICT = {}
+for res_name in MAINCHAIN_ATOMS:
+    MAINCHAIN_ATOM_DICT[res_name] = True
+    
 
 
