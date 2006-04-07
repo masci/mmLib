@@ -194,12 +194,18 @@ class Raster3DDriver(object):
             stdin = self.render_stdin
         else:
             cmdlist = [self.render_program_path, "-png", self.render_png_path, "-gamma", "1.5"]
-            pobj = subprocess.Popen(cmdlist, 
-                                    stdin = subprocess.PIPE,
-                                    stdout = subprocess.PIPE,
-                                    stderr = subprocess.STDOUT,
-                                    close_fds = True,
-                                    bufsize = 32768)
+            try:
+                pobj = subprocess.Popen(cmdlist, 
+                                        stdin = subprocess.PIPE,
+                                        stdout = subprocess.PIPE,
+                                        stderr = subprocess.STDOUT,
+                                        close_fds = True,
+                                        bufsize = 32768)
+            except OSError:
+                mmTypes.warning("the render program failed to execute from path: %s" % (
+                    self.render_program_path))
+                return
+                
             stdin = pobj.stdin
             
         ## XXX: debug
