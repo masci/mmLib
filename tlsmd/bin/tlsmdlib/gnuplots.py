@@ -49,12 +49,17 @@ class GNUPlot(object):
     def run_gnuplot(self, script):
         """Execute GNUPlot with the given script.
         """
-        pobj = subprocess.Popen([self.gnuplot_path],
-                                stdin = subprocess.PIPE,
-                                stdout = subprocess.PIPE,
-                                stderr = subprocess.STDOUT,
-                                close_fds = True,
-                                bufsize = 8192)
+        try:
+            pobj = subprocess.Popen([self.gnuplot_path],
+                                    stdin = subprocess.PIPE,
+                                    stdout = subprocess.PIPE,
+                                    stderr = subprocess.STDOUT,
+                                    close_fds = True,
+                                    bufsize = 8192)
+        except OSError:
+            print "[ERROR] gnuplot failed to execute from path: %s" % (self.gnuplot_path)
+            return
+            
         pobj.stdin.write(script)
         pobj.stdin.close()
         pobj.wait()

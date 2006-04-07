@@ -10,7 +10,7 @@ import sys
 import time
 import re
 import fcntl
-import popen2
+import subprocess
 import xmlrpclib
 
 
@@ -56,8 +56,12 @@ def run_tlsmd(webtlsmdd, jdict):
     ## write the tlsmd execution command out to a file
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
-    pobj = popen2.Popen4(tlsmd)
-    pobj.tochild.close()
+    pobj = subprocess.Popen(tlsmd,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.STDOUT,
+                            close_fds = True,
+                            bufsize = 8192)
 
     logfil = open("log.txt", "w")
 
@@ -66,7 +70,7 @@ def run_tlsmd(webtlsmdd, jdict):
     time_begin      = None
     
     while True:
-        ln = pobj.fromchild.readline()
+        ln = pobj.stdout.readline()
 	if len(ln) == 0:
             break
 
@@ -108,7 +112,7 @@ def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.
     """
     job_id = webtlsmdd.get_next_queued_job_id()
-    if job_id == False:
+    if job_id == "":
         return None
 
     ## change state of the job and re-load to catch
@@ -169,7 +173,7 @@ def main():
     while True:
         jdict = get_job(webtlsmdd)
         if jdict == None:
-            time.sleep(2.0)
+            time.sleep(5.0)
             continue
 
         run_job(webtlsmdd, jdict)

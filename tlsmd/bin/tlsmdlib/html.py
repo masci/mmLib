@@ -764,7 +764,7 @@ class HTMLReport(Report):
                     gl_chain.properties.update(
                         hetatm_visible     = True,
                         trace              = True,
-                        trace_radius       = 0.5,
+                        trace_radius       = 0.35,
                         ball_stick         = True,
                         ball_stick_radius  = 0.25,
                         color              = "0.80,0.80,0.80")

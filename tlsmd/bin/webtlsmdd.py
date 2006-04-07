@@ -405,10 +405,10 @@ class WebTLSMDDaemon(object):
 
     def get_next_queued_job_id(self):
         job_list = self.job_list()
-	for jdict in job_list:
+        for jdict in job_list:
             if jdict.get("state") == "running" or jdict.get("state") == "queued":
                 return jdict["job_id"]
-	return False
+        return ""
 
     def set_structure_file(self, job_id, struct_bin):
         """Creates job directory, saves structure file to the job directory,

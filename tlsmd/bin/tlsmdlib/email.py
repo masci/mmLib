@@ -6,7 +6,7 @@
 
 import os
 import sys
-import popen2
+import subprocess
 import traceback
 
 import conf
@@ -22,8 +22,13 @@ def SendEmail(address, subject, body):
              body]
 
     ## send mail using msmtp
-    pobj = popen2.Popen4([conf.MSMTP, address])
-    pobj.tochild.write("\n".join(mlist))
+    pobj = subprocess.Popen([conf.MSMTP, address],
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.STDOUT,
+                            close_fds = True,
+                            bufsize = 8192)
+    pobj.stdin.write("\n".join(mlist))
     pobj.wait()
     
 
