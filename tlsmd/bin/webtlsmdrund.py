@@ -130,7 +130,7 @@ def get_job(webtlsmdd):
     if jdict == None:
         return None
 
-    tlsmd = [conf.TLSMD_PROGRAM_PATH, "-rANALYSIS" ]
+    tlsmd = [conf.TLSMD_PROGRAM_PATH, "-b", "-rANALYSIS" ]
 
     ## Job ID and webtlsmdd URL
     tlsmd.append("-j%s" % (job_id))
@@ -227,7 +227,7 @@ def send_mail(job_id):
     email.SendEmail(
         address, 
         "Your TLSMD Job %s is Complete" % (job_id),
-        message.replace("<ANALYSIS_URL>", analysis_url))
+        EMAIL_MESSAGE.replace("<ANALYSIS_URL>", analysis_url))
     
     log_write("sent mail to: %s" % (address))
 

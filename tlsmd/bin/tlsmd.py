@@ -32,6 +32,7 @@ def usage():
     print "            [-t struct.pdb:chain_id ] compare TLS displacments with another structure"
     print "            [-e] recombine linear TLSMD segments to find disjoint TLS groups"
     print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues"
+    print "            [-b] email traceback to this address if a Python exception occurs"
     print "            struct.pdb"
     print
     print "Authors:"
@@ -119,14 +120,14 @@ def analysis_main(struct_path, opt_dict):
             sel_chain_ids       = chain_ids,
             html_report_dir     = opt_dict.get("-r"))
     except:
-        if opt_dict.has_key("-w"):
+        if opt_dict.has_key("-b"):
             email.SendTracebackEmail("tlsmd.py traceback")
         raise
 
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:w:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:b")
     except getopt.GetoptError:
         usage()
 
