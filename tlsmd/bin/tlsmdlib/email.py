@@ -13,7 +13,7 @@ import conf
 
 def SendEmail(address, subject, body):
     if not os.path.isfile(conf.MSMTP):
-        sys.stderr.write("Mail Client %s Not Found" % (conf.MSMTP))
+        sys.stderr.write("mail client not found: %s" % (conf.MSMTP))
         return
     
     mlist = ["To: %s" % (address),
@@ -22,12 +22,17 @@ def SendEmail(address, subject, body):
              body]
 
     ## send mail using msmtp
-    pobj = subprocess.Popen([conf.MSMTP, address],
-                            stdin = subprocess.PIPE,
-                            stdout = subprocess.PIPE,
-                            stderr = subprocess.STDOUT,
-                            close_fds = True,
-                            bufsize = 8192)
+    try:
+        pobj = subprocess.Popen([conf.MSMTP, address],
+                                stdin = subprocess.PIPE,
+                                stdout = subprocess.PIPE,
+                                stderr = subprocess.STDOUT,
+                                close_fds = True,
+                                bufsize = 8192)
+    except OSError:
+        sys.stderr.write("[ERROR] mail client failed to execute: %s" % (conf.MSMTP))
+        return
+        
     pobj.stdin.write("\n".join(mlist))
     pobj.wait()
     
