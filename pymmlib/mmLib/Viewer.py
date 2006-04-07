@@ -69,9 +69,9 @@ class GLObject(object):
     def glo_name(self):
         """Returns the GLObject name.
         """
-        if self.__globject_properties_name!=None:
+        if self.__globject_properties_name is not None:
             return self.__globject_properties_name
-        elif self.__globject_properties_id!=None:
+        elif self.__globject_properties_id is not None:
             return "%s(%s)" % (self.__class__.__name__, self.__globject_properties_id)
         else:
             return self.__class__.__name__
@@ -84,8 +84,8 @@ class GLObject(object):
     def glo_add_child(self, child):
         assert isinstance(child, GLObject)
         assert child!=self
-        assert self.glo_is_descendant_of(child)==False
-        assert child.__globject_parent==None
+        assert self.glo_is_descendant_of(child) is False
+        assert child.__globject_parent is None
         child.__globject_parent = self
         self.__globject_children.append(child)
 
@@ -95,8 +95,8 @@ class GLObject(object):
         """
         assert isinstance(child, GLObject)
         assert child!=self
-        assert self.glo_is_descendant_of(child)==False
-        assert child.__globject_parent==None
+        assert self.glo_is_descendant_of(child) is False
+        assert child.__globject_parent is None
         child.__globject_parent = self
         self.__globject_children.insert(0, child)
             
@@ -105,8 +105,8 @@ class GLObject(object):
         """
         assert isinstance(child, GLObject)
         assert child!=self
-        assert self.glo_is_descendant_of(child)==False
-        assert child.__globject_parent==None
+        assert self.glo_is_descendant_of(child) is False
+        assert child.__globject_parent is None
         child.__globject_parent = self
         self.__globject_children.append(child)
         
@@ -122,7 +122,7 @@ class GLObject(object):
         """The GLObject removes itself from its parent.
         """
         parent = self.__globject_parent
-        if parent==None:
+        if parent is None:
             return
         parent.glo_remove_child(self)
         
@@ -299,7 +299,7 @@ class GLObject(object):
         a child property.
         """
         prop_desc = self.glo_get_property_desc(name)
-        if prop_desc==None:
+        if prop_desc is None:
             raise ValueError, "GLObject.glo_link_child_property(x, y, z) parent has no property: %s" % (name)
 
         link_dict = {"gl_object": child_gl_object_id,
@@ -327,7 +327,7 @@ class GLObject(object):
         for glo_id in glo_id_path.split("/"):
             parent = child
             child = parent.glo_get_child(glo_id)
-            if child==None:
+            if child is None:
                 return False
             
         return child
@@ -352,7 +352,7 @@ class GLObject(object):
                 self.properties[name] = prop_desc["default"]
 
             ## if the update callbacks are to be triggered on initialization
-            if prop_desc["update_on_init"]==True:
+            if prop_desc["update_on_init"] is True:
                  updates[name] = self.properties[name]
 
                  ## add changes to actions list
@@ -392,7 +392,7 @@ class GLObject(object):
             name = prop_desc["name"]
 
             ## continue if this property is not being updated
-            if args.has_key(name)==False:
+            if args.has_key(name) is False:
                 continue
 
             ## update_on_set:
@@ -403,20 +403,20 @@ class GLObject(object):
             ##     is changed.
             do_update = False
 
-            if prop_desc["update_on_set"]==True:
+            if prop_desc["update_on_set"] is True:
                 do_update = True
 
-            elif prop_desc["update_on_changed"]==True:
+            elif prop_desc["update_on_changed"] is True:
 
                 ## special handling for Numeric/Numarray types
                 if isinstance(self.properties[name], numpy.ArrayType):
-                    if numpy.allclose(self.properties[name], args[name])==False:
+                    if not numpy.allclose(self.properties[name], args[name]):
                         do_update = True
 
                 elif self.properties[name]!=args[name]:
                     do_update = True
             
-            if do_update==True:
+            if do_update is True:
                 
                 if isinstance(args[name], GLPropertyDefault):
                     self.properties[name] = prop_desc["default"]
@@ -436,7 +436,7 @@ class GLObject(object):
                         if prop_action not in actions:
                             actions.append(prop_action)
 
-            if do_update==True:
+            if do_update is True:
                 ## propagate updates for linked properties
                 try:
                     linked_props = prop_desc["link"]
@@ -464,9 +464,9 @@ class GLObject(object):
         for glo_id in path:
             parent = child
             child = parent.glo_get_child(glo_id)
-            if child==None:
+            if child is None:
                 break
-        if child==None:
+        if child is None:
             return False
 
         child.glo_update_properties(**{prop_name: value})
@@ -492,7 +492,7 @@ class GLObject(object):
         is not a child of a GLStructure.
         """
         gl_object = self
-        while gl_object!=None and isinstance(gl_object, GLStructure)==False:
+        while gl_object is not None and not isinstance(gl_object, GLStructure):
             gl_object = gl_object.__globject_parent
         return gl_object
 
@@ -605,7 +605,7 @@ class GLDrawList(GLObject):
 
                 ## check if the opacity flag of the draw list changed
                 op = draw_method["opacity_property"]
-                if op!=None:
+                if op is not None:
                     draw_method["transparent"] = self.properties[op]<1.0
 
     def gldl_redraw(self):
@@ -691,7 +691,7 @@ class GLDrawList(GLObject):
     def gldl_draw_method_compile(self, draw_method):
         """Compiles a draw method.
         """
-        assert self.driver!=None
+        assert self.driver is not None
         
         mid = self.driver.glr_compile_start(draw_method)
         draw_method["func"]()
@@ -701,7 +701,7 @@ class GLDrawList(GLObject):
     def gldl_draw_method_delete_compiled(self, draw_method):
         """Deletes the compiled draw list in the current driver.
         """
-        assert self.driver!=None
+        assert self.driver is not None
         
         if self.driver.glr_compile_exists(draw_method):
             self.driver.glr_compile_delete(draw_method)
@@ -718,7 +718,7 @@ class GLDrawList(GLObject):
     def gldl_push_matrix(self):
         """Rotate and translate to the correct position for drawing.
         """
-        assert self.driver!=None
+        assert self.driver is not None
 
         self.driver.glr_push_matrix()
 
@@ -734,7 +734,7 @@ class GLDrawList(GLObject):
     def gldl_pop_matrix(self):
         """Pop the roatated/translated position.
         """
-        assert self.driver!=None
+        assert self.driver is not None
         
         self.driver.glr_pop_matrix()
 
@@ -743,7 +743,7 @@ class GLDrawList(GLObject):
         render the scene.  Rendering the scene can be bypassed if
         this method is called with render = False.
         """
-        if self.properties["visible"]==False:
+        if self.properties["visible"] is False:
             return
 
         self.driver = driver
@@ -776,8 +776,8 @@ class GLDrawList(GLObject):
             ## check if the draw method is currently visible
             ## skip it if it is not visible
             visable_property_name = draw_method["visible_property"]
-            if visable_property_name!=None:
-                if self.properties[visable_property_name]==False:
+            if visable_property_name is not None:
+                if self.properties[visable_property_name] is False:
                     continue
 
             ## transparent methods are only drawn when during the second
@@ -787,7 +787,7 @@ class GLDrawList(GLObject):
 
             ## some draw lists may be not be compiled into a OpenGL draw
             ## list, these have to be redrawn every time
-            if draw_method["no_gl_compile"]==True or not self.driver.glr_compile_supported():
+            if draw_method["no_gl_compile"] is True or not self.driver.glr_compile_supported():
                 draw_method["func"]()
 
             else:
@@ -1473,7 +1473,7 @@ class GLAtomList(GLDrawList):
                 min_tf = None
                 max_tf = None
                 for atm in self.glal_iter_atoms():
-                    if min_tf==None:
+                    if min_tf is None:
                         min_tf = atm.temp_factor
                         max_tf = atm.temp_factor
                         continue
@@ -1529,13 +1529,13 @@ class GLAtomList(GLDrawList):
         and translation operators are generated by GLStructure/UnitCell
         classes.
         """
-        if self.properties["symmetry"]==False:
+        if self.properties["symmetry"] is False:
             yield True
             
         else:
 
             gl_struct = self.glo_get_glstructure()
-            if gl_struct == None:
+            if gl_struct is None:
                 yield True
 
             else:
@@ -1615,28 +1615,28 @@ class GLAtomList(GLDrawList):
         hydrogen_visible   = self.properties["hydrogen_visible"]
 
         for atm in self.glal_iter_atoms():
-            if hydrogen_visible==False:
+            if hydrogen_visible is False:
                 if atm.element=="H":
                     yield atm, False
                     continue
 
             frag = atm.get_fragment()
             
-            if frag.is_amino_acid() == True:
-                if oatm_visible == False and atm.name == "O":
+            if frag.is_amino_acid():
+                if oatm_visible is False and atm.name == "O":
                     yield atm, False                    
                     continue
                 
-                elif main_chain_visible == True and side_chain_visible == True:
+                elif main_chain_visible and side_chain_visible:
                     yield atm, True
                     continue
                 
-                elif main_chain_visible == True and side_chain_visible == False:
+                elif main_chain_visible and not side_chain_visible:
                     if atm.name in aa_bb_atoms:
                         yield atm, True
                         continue
                     
-                elif main_chain_visible == False and side_chain_visible == True:
+                elif not main_chain_visible and side_chain_visible:
                     if atm.name not in aa_bb_atoms:
                         yield atm, True
                         continue
@@ -1644,17 +1644,17 @@ class GLAtomList(GLDrawList):
                 yield atm, False
                 continue
 
-            elif frag.is_nucleic_acid()==True:
-                if main_chain_visible==True and side_chain_visible==True:
+            elif frag.is_nucleic_acid():
+                if main_chain_visible and side_chain_visible:
                     yield atm, True
                     continue
                 
-                elif main_chain_visible==True and side_chain_visible==False:
+                elif main_chain_visible and not side_chain_visible:
                     if atm.name in na_bb_atoms:
                         yield atm, True
                         continue
                     
-                elif main_chain_visible==False and side_chain_visible==True:
+                elif not main_chain_visible and side_chain_visible:
                     if atm.name not in na_bb_atoms:
                         yield atm, True
                         continue
@@ -1662,15 +1662,15 @@ class GLAtomList(GLDrawList):
                 yield atm, False
                 continue
 
-            elif frag.is_water()==True:
-                if water_visible==True:
+            elif frag.is_water() is True:
+                if water_visible is True:
                     yield atm, True
                     continue
                 
                 yield atm, False
                 continue
 
-            elif hetatm_visible==True:
+            elif hetatm_visible is True:
                 yield atm, True
                 continue
 
@@ -1684,12 +1684,12 @@ class GLAtomList(GLDrawList):
         """
         self.glal_hidden_atoms_dict  = {}
         self.glal_visible_atoms_dict = {}
-        self.glal_xyzdict           = GeometryDict.XYZDict(5.0)
+        self.glal_xyzdict = GeometryDict.XYZDict(5.0)
 
         for atm, visible in self.glal_iter_atoms_filtered():
             pos = self.glal_calc_position(atm.position)
 
-            if visible==True:
+            if visible is True:
                 self.glal_visible_atoms_dict[atm] = pos
                 self.glal_xyzdict.add(pos, atm)
             else:
@@ -1698,7 +1698,7 @@ class GLAtomList(GLDrawList):
     def glal_iter_visible_atoms(self):
         """Iterate over all visible atoms yielding the 2-tuple (atm, position).
         """
-        if self.glal_visible_atoms_dict==None:
+        if self.glal_visible_atoms_dict is None:
             self.glal_rebuild_atom_dicts()
 
         for atm, pos in self.glal_visible_atoms_dict.iteritems():
@@ -1708,7 +1708,7 @@ class GLAtomList(GLDrawList):
         """Calculate a position vector with respect to the
         proeprty: atom_origin.
         """
-        if self.properties["atom_origin"]!=None:
+        if self.properties["atom_origin"] is not None:
              return position - self.properties["atom_origin"]
         return position
     
@@ -1914,7 +1914,7 @@ class GLAtomList(GLDrawList):
         
         for atm, pos in self.glal_iter_visible_atoms():
             edesc = Library.library_get_element_desc(atm.element)
-            if edesc!=None:
+            if edesc is not None:
                 radius = edesc.vdw_radius
             else:
                 radius = 2.0
@@ -1939,7 +1939,7 @@ class GLAtomList(GLDrawList):
         for atm, pos in self.glal_iter_visible_atoms():
             rgb = self.glal_calc_color_Uaxes(atm)
             U = self.glal_calc_U(atm)
-            if U==None:
+            if U is None:
                 continue
             glr_Uaxes(pos, U, prob, rgb, 1.0)
 
@@ -1959,19 +1959,19 @@ class GLAtomList(GLDrawList):
         
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
-            if U==None:
+            if U is None:
                 continue
 
             r, g, b = self.glal_calc_color_Uellipse(atm) 
             
-            if show_sig_u==True and atm.sig_U!=None:
+            if show_sig_u is True and atm.sig_U is not None:
                 glr_set_material_rgba(r, g, b,sig_u_opacity)
                 glr_Uellipse(pos, U - atm.sig_U, prob)
 
             glr_set_material_rgba(r, g, b, opacity)
             glr_Uellipse(pos, U, prob)
 
-            if show_sig_u==True and atm.sig_U!=None:
+            if show_sig_u is True and atm.sig_U is not None:
                 glr_set_material_rgba(r, g, b,sig_u_opacity)
                 glr_Uellipse(pos, U + atm.sig_U, prob)
 
@@ -1987,7 +1987,7 @@ class GLAtomList(GLDrawList):
 
         for atm, pos in self.glal_iter_visible_atoms():
             U = self.glal_calc_U(atm)
-            if U==None:
+            if U is None:
                 continue
 
             r, g, b = self.glal_calc_color_Urms(atm)        
@@ -2093,25 +2093,30 @@ class GLAtomList(GLDrawList):
             for frag in chain.iter_fragments():
 
                 if frag.is_amino_acid() is True:
-                    backbone_atoms = ("N", "CA", "C")
+                    backbone_atoms = ["CA"]
+                    prev_atom_path = ["N", "C", "CA"]
                 elif frag.is_nucleic_acid() is True:
-                    backbone_atoms = ("P", "O5*", "C5*", "C4*", "C3*", "O3*")
+                    backbone_atoms = ["P", "O5*", "C5*", "C4*", "C3*", "O3*"]
+                    prev_atom_path = None
                 else:
                     last_atm = None
+                    prev_atom_path = None
                     continue
 
                 for name in backbone_atoms:
-                    try:
-                        atm = frag[name]
-                    except KeyError:
+                    atm = frag.get_atom(name)
+                    if atm is None:
                         last_atm = None
                         continue
 
-                    if last_atm is None:
-                        last_atm = atm
-                        continue
+                    if prev_atom_path is not None:
+                        prev_atm = atm.get_bonded_atom(prev_atom_path)
+                        if prev_atm != last_atm:
+                            print "prev_atm != last_atm", prev_atm, last_atm
+                            last_atm = atm
+                            continue
 
-                    if AtomMath.length(atm.position - last_atm.position) > 2.0:
+                    if last_atm is None:
                         last_atm = atm
                         continue
 
@@ -2152,7 +2157,7 @@ class GLAtomList(GLDrawList):
 
                     last_atm = atm
 
-            if last_atm!=None:
+            if last_atm is not None:
                 for laa in last_atm.iter_alt_loc():
                     lpos = self.glal_calc_position(laa.position)
                     glr_sphere(lpos, trace_radius, 10)
@@ -2548,7 +2553,7 @@ class GLViewer(GLObject):
         for atm in aa_atom_iter(struct):
             x  = numpy.matrixmultiply(R, atm.position - centroid)
 
-            if first_atm==True:
+            if first_atm is True:
                 first_atm = False
 
                 min_x = max_x = x[0]
@@ -2602,7 +2607,7 @@ class GLViewer(GLObject):
         self.glv_add_draw_list(gl_struct)
 
         ori = self.glv_calc_struct_orientation(struct)
-        if ori!=None:
+        if ori is not None:
             self.properties.update(
                 R         = ori["R"],
                 cor       = ori["centroid"],

@@ -11,10 +11,10 @@ import time
 import string
 import random
 import traceback
-
+import signal
 import cPickle
 import bsddb
-
+import socket
 import xmlrpclib
 import SocketServer
 import SimpleXMLRPCServer
@@ -466,9 +466,9 @@ class WebTLSMDDaemon(object):
     def job_get_user_name(self, job_id):
         return self.jobdb.job_data_get(job_id, "user_name")
     
-    def job_set_email(self, job_id, email):
-        self.jobdb.job_data_set(job_id, "email", email)
-        return email
+    def job_set_email(self, job_id, email_address):
+        self.jobdb.job_data_set(job_id, "email", email_address)
+        return email_address
     def job_get_email(self, job_id):
         return self.jobdb.job_data_get(job_id, "email")
     
@@ -558,6 +558,9 @@ class WebTLSMD_XMLRPCServer(
             False)
                 
 
+def handle_SIGCHLD(signum, frame):
+    os.waitpid(-1, os.WNOHANG)
+
 def main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
     host_port = ("localhost", int(port))
@@ -568,9 +571,17 @@ def main():
     sys.stdout.write("job (working) directory.......................: %s\n" % (conf.TLSMD_WORK_DIR))
 
     os.chdir(conf.TLSMD_WORK_DIR)
+
+    signal.signal(signal.SIGCHLD, handle_SIGCHLD)
     
     webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
-    xmlrpc_server = WebTLSMD_XMLRPCServer(host_port)
+
+    try:
+        xmlrpc_server = WebTLSMD_XMLRPCServer(host_port)
+    except socket.error:
+        sys.stderr.write("[ERROR] unable to bint to host,port: %s\n" % (str(host_port)))
+        raise SystemExit
+
     xmlrpc_server.webtlsmdd = webtlsmdd
     xmlrpc_server.register_instance(webtlsmdd)
     xmlrpc_server.serve_forever()

@@ -492,7 +492,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
                 break
 
         ## new helix dictionary
-        if helix==None:
+        if helix is None:
             helix = {"helix_id": helix_id}
             self.helix_list.append(helix)
 
@@ -503,11 +503,11 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         setmaps(rec, "endChainID",  helix, "chain_id2")
         
         frag_id1 = self.get_fragment_id(rec, "initSeqNum", "initICode")
-        if frag_id1!=None:
+        if frag_id1 is not None:
             helix["frag_id1"] = frag_id1
 
         frag_id2 = self.get_fragment_id(rec, "endSeqNum", "endICode")
-        if frag_id2!=None:
+        if frag_id2 is not None:
             helix["frag_id2"] = frag_id2
 
         setmaps(rec, "helixClass", helix, "helix_class")
@@ -529,7 +529,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
                 break
 
         ## new sheet dictionary
-        if sheet==None:
+        if sheet is None:
             sheet = {"sheet_id": sheet_id}
             self.beta_sheet_list.append(sheet)
             setmapi(rec, "numStrands", sheet, "num_strands")
@@ -540,13 +540,13 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         setmaps(rec, "initResName", strand, "res_name1")
         setmaps(rec, "initChainID", strand, "chain_id1")
         frag_id1 = self.get_fragment_id(rec, "initSeqNum", "initICode")
-        if frag_id1!=None:
+        if frag_id1 is not None:
             strand["frag_id1"] = frag_id1
 
         setmaps(rec, "endResName", strand, "res_name2")
         setmaps(rec, "endChainID", strand, "chain_id2")
         frag_id2 = self.get_fragment_id(rec, "endSeqNum", "endICode")
-        if frag_id2!=None:
+        if frag_id2 is not None:
             strand["frag_id2"] = frag_id2
 
         ## sense
@@ -560,14 +560,14 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         setmaps(rec, "curResName", strand, "reg_res_name")
         setmaps(rec, "curChainID", strand, "reg_chain_id")
         reg_frag_id = self.get_fragment_id(rec, "curResSeq", "curICode")
-        if reg_frag_id!=None:
+        if reg_frag_id is not None:
             strand["reg_frag_id"] = reg_frag_id
         setmaps(rec, "curAtom", strand, "reg_atom")
 
         setmaps(rec, "prevResName", strand, "reg_prev_res_name")
         setmaps(rec, "prevChainID", strand, "reg_prev_chain_id")
         reg_prev_frag_id = self.get_fragment_id(rec, "prevResSeq", "prevICode")
-        if reg_prev_frag_id!=None:
+        if reg_prev_frag_id is not None:
             strand["reg_prev_frag_id"] = reg_prev_frag_id
         setmaps(rec, "prevAtom", strand, "reg_prev_atom")
 
@@ -1101,7 +1101,7 @@ class PDBFileBuilder(object):
             key_index = 0
             for frag_dict in site.fragment_dict_list:
 
-                if site_pdb==None or key_index==4:
+                if site_pdb is None or key_index==4:
                     serial_num += 1
 
                     key_index = 0
@@ -1231,21 +1231,21 @@ class PDBFileBuilder(object):
         atom_rec["element"]     = atm.element
         atom_rec["altLoc"]      = atm.alt_loc
 
-        if atm.position!=None:
-            if atm.position[0]!=None:
+        if atm.position is not None:
+            if atm.position[0] is not None:
                 atom_rec["x"] = atm.position[0]
-            if atm.position[1]!=None:
+            if atm.position[1] is not None:
                 atom_rec["y"] = atm.position[1]
-            if atm.position[2]!=None:
+            if atm.position[2] is not None:
                 atom_rec["z"] = atm.position[2]
 
-        if atm.occupancy!=None:
+        if atm.occupancy is not None:
             atom_rec["occupancy"] = atm.occupancy
 
-        if atm.temp_factor!=None:
+        if atm.temp_factor is not None:
             atom_rec["tempFactor"] = atm.temp_factor
 
-        if atm.charge!=None:
+        if atm.charge is not None:
             atom_rec["charge"] = atm.charge
 
         def atom_common(arec1, arec2):
@@ -1268,55 +1268,55 @@ class PDBFileBuilder(object):
             if arec1.has_key("charge"):
                 arec2["charge"] = arec1["charge"]
 
-        if atm.sig_position!=None:
+        if atm.sig_position is not None:
             sigatm_rec = PDB.SIGATM()
             self.pdb_file.append(sigatm_rec)
             atom_common(atom_rec, sigatm_rec)
 
-            if atm.sig_position[0]!=None:
+            if atm.sig_position[0] is not None:
                 sigatm_rec["sigX"] = atm.sig_position[0]
-            if atm.sig_position[1]!=None:
+            if atm.sig_position[1] is not None:
                 sigatm_rec["sigY"] = atm.sig_position[1]
-            if atm.sig_position[2]!=None:
+            if atm.sig_position[2] is not None:
                 sigatm_rec["sigZ"] = atm.sig_position[2]
-            if atm.sig_temp_factor!=None:
+            if atm.sig_temp_factor is not None:
                 sigatm_rec["sigTempFactor"] = atm.sig_temp_factor
-            if atm.sig_occupancy!=None:
+            if atm.sig_occupancy is not None:
                 sigatm_rec["sigOccupancy"] = atm.sig_occupancy
 
-        if atm.U!=None:
+        if atm.U is not None:
             anisou_rec = PDB.ANISOU()
             self.pdb_file.append(anisou_rec)
             atom_common(atom_rec, anisou_rec)
 
-            if atm.U[0,0]!=None:
+            if atm.U[0,0] is not None:
                 anisou_rec["u[0][0]"] = int(round(atm.U[0,0] * 10000.0))
-            if atm.U[1,1]!=None:
+            if atm.U[1,1] is not None:
                 anisou_rec["u[1][1]"] = int(round(atm.U[1,1] * 10000.0))
-            if atm.U[2,2]!=None:
+            if atm.U[2,2] is not None:
                 anisou_rec["u[2][2]"] = int(round(atm.U[2,2] * 10000.0))
-            if atm.U[0,1]!=None:
+            if atm.U[0,1] is not None:
                 anisou_rec["u[0][1]"] = int(round(atm.U[0,1] * 10000.0))
-            if atm.U[0,2]!=None:
+            if atm.U[0,2] is not None:
                 anisou_rec["u[0][2]"] = int(round(atm.U[0,2] * 10000.0))
-            if atm.U[1,2]!=None:
+            if atm.U[1,2] is not None:
                 anisou_rec["u[1][2]"] = int(round(atm.U[1,2] * 10000.0))
 
-        if atm.sig_U!=None:
+        if atm.sig_U is not None:
             siguij_rec = PDB.SIGUIJ()
             self.pdb_file.append(siguij_rec)
             atom_common(atom_rec, siguij_rec)
 
-            if atm.sig_U[0,0]!=None:
+            if atm.sig_U[0,0] is not None:
                 siguij_rec["u[0][0]"] = int(round(atm.sig_U[0,0] * 10000.0))
-            if atm.sig_U[1,1]!=None:
+            if atm.sig_U[1,1] is not None:
                 siguij_rec["u[1][1]"] = int(round(atm.sig_U[1,1] * 10000.0))
-            if atm.sig_U[2,2]!=None:
+            if atm.sig_U[2,2] is not None:
                 siguij_rec["u[2][2]"] = int(round(atm.sig_U[2,2] * 10000.0))
-            if atm.sig_U[0,1]!=None:
+            if atm.sig_U[0,1] is not None:
                 siguij_rec["u[0][1]"] = int(round(atm.sig_U[0,1] * 10000.0))
-            if atm.sig_U[0,2]!=None:
+            if atm.sig_U[0,2] is not None:
                 siguij_rec["u[0][2]"] = int(round(atm.sig_U[0,2] * 10000.0))
-            if atm.sig_U[1,2]!=None:
+            if atm.sig_U[1,2] is not None:
                 siguij_rec["u[1][2]"] = int(round(atm.sig_U[1,2] * 10000.0))
 

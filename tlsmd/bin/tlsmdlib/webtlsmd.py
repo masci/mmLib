@@ -669,8 +669,8 @@ def vet_data(data, max_len):
         return False
     return True
 
-def vet_email(email):
-    if len(email)>45:
+def vet_email(email_address):
+    if len(email_address) > 45:
         return False
     return True
 
@@ -705,9 +705,9 @@ def extract_job_edit_form(form, webtlsmdd):
         webtlsmdd.job_set_user_name(job_id, user_name)
             
     if form.has_key("email"):
-        email = form["email"].value.strip()
-        if vet_email(email):
-            webtlsmdd.job_set_email(job_id, email)
+        email_address = form["email"].value.strip()
+        if vet_email(email_address):
+            webtlsmdd.job_set_email(job_id, email_address)
 
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()

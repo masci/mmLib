@@ -67,7 +67,7 @@ class PDBRecord(dict):
             s = self.get(field, "")
 
             ## if the data is blank, then just add the spaces and continue
-            if s == None or s == "":
+            if s is None or s == "":
                 ln += " " * field_char_len
                 continue
 
@@ -146,7 +146,7 @@ class PDBRecord(dict):
         retval = ""
         for rec in rec_list:
             x = rec.get(field)
-            if x != None:
+            if x is not None:
                 retval += x
         return retval
 
@@ -223,7 +223,7 @@ class PDBRecord(dict):
                     break
 
             ## new dictx if not found
-            if dictx == None:
+            if dictx is None:
                 dictx = {primary_key: pkey}
                 listx.append(dictx)
 
@@ -345,7 +345,7 @@ class CAVEAT(PDBRecord):
         cavet_list = []
         for rec in recs:
             idCode = rec.get("idCode")
-            if idCode == None:
+            if idCode is None:
                 continue
 
             ## search for cavet entry with same idCode
@@ -356,13 +356,13 @@ class CAVEAT(PDBRecord):
                     break
 
             ## create new cavet dict if necessary
-            if cav == None:
+            if cav is None:
                 cav = {"idCode" : idCode}
                 cavet_list.append(cav)
 
             ## add comment
             comment = rec.get("comment")
-            if comment != None:
+            if comment is not None:
                 if cav.has_key("comment"):
                     cav["comment"] += comment
                 else:
@@ -472,7 +472,7 @@ class EXPDTA(PDBRecord):
                     cmnt = item[len(techx):].strip() or None
                     break
 
-            if tech != None:
+            if tech is not None:
                 expdta_list.append((tech, cmnt))
 
         return expdta_list

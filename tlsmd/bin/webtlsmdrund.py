@@ -11,6 +11,7 @@ import time
 import re
 import fcntl
 import subprocess
+import socket
 import xmlrpclib
 
 
@@ -111,7 +112,12 @@ def run_job(webtlsmdd, jdict):
 def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.
     """
-    job_id = webtlsmdd.get_next_queued_job_id()
+    try:
+        job_id = webtlsmdd.get_next_queued_job_id()
+    except socket.error:
+        log_write("[ERROR] unable to connect to webtlsmdd.py")
+        raise SystemExit
+
     if job_id == "":
         return None
 
@@ -197,24 +203,24 @@ Ethan Merritt <merritt@u.washington.edu>
 
 def send_mail(job_id):
     if not os.path.isfile(conf.MSMTP):
-        log_write("Mail Client %s Not Found" % (conf.MSMTP))
+        log_write("mail client not found: %s" % (conf.MSMTP))
         return
     
     webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
     jdict = webtlsmdd.job_get_dict(job_id)
     if jdict == False:
-        print "Unable to find Job ID %s" % (job_id)
+        log_write("job_id not found: %s" % (job_id))
         return
 
     address = jdict.get("email", "")
-    if len(email) == 0:
-        print "No email address"
+    if len(address) == 0:
+        log_write("no email address")
         return
 
     analysis_url = jdict.get("analysis_url", "")
     if len(analysis_url)==0:
-        print "Invalid analysis URL"
+        log_write("no analysis_url")
         return
 
     ## send mail using msmtp
@@ -223,7 +229,7 @@ def send_mail(job_id):
         "Your TLSMD Job %s is Complete" % (job_id),
         message.replace("<ANALYSIS_URL>", analysis_url))
     
-    log_write("Sent Mail to %s" % (email))
+    log_write("sent mail to: %s" % (address))
 
 if __name__=="__main__":
     if len(sys.argv) == 2:

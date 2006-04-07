@@ -234,7 +234,7 @@ class Structure(object):
             raise ModelOverwrite()
 
         ## set default model if not set
-        if self.default_model == None:
+        if self.default_model is None:
             self.default_model = model
 
         self.model_list.append(model)
@@ -329,7 +329,7 @@ class Structure(object):
     def get_chain(self, chain_id):
         """Returns the Chain object matching the chain_id charactor.
         """
-        if self.default_model == None:
+        if self.default_model is None:
             return None
         if self.default_model.chain_dict.has_key(chain_id):
             return self.default_model.chain_dict[chain_id]
@@ -389,7 +389,7 @@ class Structure(object):
         The iteration is performed in order according the the parent
         Chain's chain_id, and the Fragment's positioin within the chain.
         """
-        if self.default_model == None:
+        if self.default_model is None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -580,7 +580,7 @@ class Structure(object):
         default alt_loc.  The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
-        if self.default_model == None:
+        if self.default_model is None:
             raise StopIteration
         
         for chain in self.default_model.chain_list:
@@ -658,7 +658,7 @@ class Structure(object):
     def add_alpha_helix(self, alpha_helix):
         """Adds a AlphaHelix to the default Model object.
         """
-        assert self.default_model != None
+        assert self.default_model is not None
         self.default_model.add_alpha_helix(alpha_helix)
 
     def iter_alpha_helicies(self):
@@ -672,7 +672,7 @@ class Structure(object):
     def add_beta_sheet(self, beta_sheet):
         """Adds a BetaSheet to the default Model object.
         """
-        assert self.default_model != None
+        assert self.default_model is not None
         self.default_model.add_beta_sheet(beta_sheet)
         
     def iter_beta_sheets(self):
@@ -685,7 +685,7 @@ class Structure(object):
     def add_site(self, site):
         """Adds a Site object to the default Model.
         """
-        assert self.default_model != None
+        assert self.default_model is not None
         self.default_model.add_site(site)
 
     def iter_sites(self):
@@ -1151,9 +1151,9 @@ class Model(object):
         """
         assert isinstance(model_id, int)
 
-        if self.structure != None:
+        if self.structure is not None:
             chk_model = self.structure.get_model(model_id)
-            if chk_model != None or chk_model != self:
+            if chk_model is not None or chk_model != self:
                 raise ModelOverwrite()
 
         self.model_id = model_id
@@ -1161,7 +1161,7 @@ class Model(object):
         for chain in self.iter_chains():
             chain.set_model_id(model_id)
 
-        if self.structure != None:
+        if self.structure is not None:
             self.structure.model_list.sort()
 
 
@@ -1261,9 +1261,9 @@ class Segment(object):
             stop  = fragment_idx.stop
             
             ## check for index (list) slicing
-            if (start == None and stop == None) or \
-               (start == None and isinstance(stop, int)) or \
-               (stop == None  and isinstance(start, int)) or \
+            if (start is None and stop is None) or \
+               (start is None and isinstance(stop, int)) or \
+               (stop is None  and isinstance(start, int)) or \
                (isinstance(start, int) and isinstance(stop, int)):
 
                 segment = self.construct_segment()
@@ -1272,8 +1272,8 @@ class Segment(object):
                 return segment
             
             ## check for fragment_id slicing
-            if (start == None and isinstance(stop, str)) or \
-               (stop == None  and isinstance(start, str)) or \
+            if (start is None and isinstance(stop, str)) or \
+               (stop is None  and isinstance(start, str)) or \
                (isinstance(start, str) and isinstance(stop, str)):
 
                 return self.construct_sub_segment(start, stop)
@@ -1689,15 +1689,15 @@ class Chain(Segment):
         for all objects in the Structure hierarchy.
         """
         ## check for conflicting chain_id in the structure
-        if self.model != None:
+        if self.model is not None:
             chk_chain = self.model.get_chain(chain_id)
-            if chk_chain != None or chk_chain != self:
+            if chk_chain is not None or chk_chain != self:
                 raise ChainOverwrite()
 
         Segment.set_chain_id(self, chain_id)
 
         ## resort the parent structure
-        if self.model != None:
+        if self.model is not None:
             self.model.chain_list.sort()
 
 
@@ -2094,7 +2094,7 @@ class Fragment(object):
         from the monomer library.
         """
         mdesc = Library.library_get_monomer_desc(self.res_name)
-        if mdesc == None:
+        if mdesc is None:
             return
 
         for bond in mdesc.bond_list:
@@ -2155,9 +2155,9 @@ class Fragment(object):
         """
         assert isinstance(fragment_id, str)
 
-        if self.chain != None:
+        if self.chain is not None:
             chk_frag = self.chain.get_fragment(fragment_id)
-            if chk_frag != None or chk_frag != self:
+            if chk_frag is not None or chk_frag != self:
                 raise FragmentOverwrite()
 
         self.fragment_id = fragment_id
@@ -2165,7 +2165,7 @@ class Fragment(object):
         for atm in self.iter_atoms():
             atm.set_fragment_id(fragment_id)
 
-        if self.chain != None:
+        if self.chain is not None:
             self.chain.sort()
 
     def set_res_name(self, res_name):
@@ -2208,13 +2208,13 @@ class Residue(Fragment):
 
         ## XXX: fixme
         next_res = self.get_offset_residue(1)
-        if next_res == None:
+        if next_res is None:
             return
 
         mdesc1 = Library.library_get_monomer_desc(self.res_name)
         mdesc2 = Library.library_get_monomer_desc(next_res.res_name)
 
-        if mdesc1 == None or mdesc2 == None:
+        if mdesc1 is None or mdesc2 is None:
             return
 
         for (name1, name2) in mdesc1.get_polymer_bond_list(self, next_res):
@@ -2318,7 +2318,7 @@ class AminoAcidResidue(Residue):
         not have a Psi torsion angle.
         """
         next_res = self.get_offset_residue(1)
-        if next_res == None:
+        if next_res is None:
             return None
 
         aN  = self.get_atom('N')
@@ -2333,7 +2333,7 @@ class AminoAcidResidue(Residue):
         not have a Phi torsion angle.
         """
         prev_res = self.get_offset_residue(-1)
-        if prev_res == None:
+        if prev_res is None:
             return None
 
         paC = prev_res.get_atom('C')
@@ -2348,7 +2348,7 @@ class AminoAcidResidue(Residue):
         not have a Omega torsion angle.
         """
         next_res = self.get_offset_residue(1)
-        if next_res == None:
+        if next_res is None:
             return None
 
         aCA  = self.get_atom('CA')
@@ -2363,11 +2363,11 @@ class AminoAcidResidue(Residue):
         will return None.
         """
         prev_res = self.get_offset_residue(-1)
-        if prev_res == None:
+        if prev_res is None:
             return None
 
         prev_omega = prev_res.calc_torsion_omega()
-        if prev_omega == None:
+        if prev_omega is None:
             return None
 
         if abs(prev_omega) <= (math.pi/2.0):
@@ -2590,22 +2590,22 @@ class Atom(object):
         ## position
         if position is not None:
             self.position = position
-        elif x != None and y != None and z != None:
+        elif x is not None and y is not None and z is not None:
             self.position = numpy.array([x, y, z], float)
         else:
             self.position = None
 
         ## sig_position
-        if sig_position != None:
+        if sig_position is not None:
             self.sig_position = sig_position
-        elif sig_x != None and sig_y != None and sig_z != None:
+        elif sig_x is not None and sig_y is not None and sig_z is not None:
             self.sig_position = numpy.array([sig_x, sig_y, sig_z], float)
         else:
             self.sig_position = None
 
-        if U != None:
+        if U is not None:
             self.U = U
-        elif u11 != None:
+        elif u11 is not None:
             self.U = numpy.array(
                 [ [u11, u12, u13],
                   [u12, u22, u23],
@@ -2613,9 +2613,9 @@ class Atom(object):
         else:
             self.U = None
 
-        if sig_U != None:
+        if sig_U is not None:
             self.sig_U = sig_U
-        elif sig_u11 != None:
+        elif sig_u11 is not None:
             self.sig_U = numpy.array(
                 [ [sig_u11, sig_u12, sig_u13],
                   [sig_u12, sig_u22, sig_u23],
@@ -2654,14 +2654,21 @@ class Atom(object):
             sig_U           = copy.deepcopy(self.sig_U))
         
         for bond in self.bond_list:
-            bond_cpy = copy.deepcopy(bond, memo)
-            atom_cpy.bond_list.append(bond_cpy)
-            
-            if bond_cpy.atom1 == None:
-                bond_cpy.atom1 = atom_cpy
-            elif bond_cpy.atom2 == None:
-                bond_cpy.atom2 = atom_cpy
+            partner = bond.get_partner(self)
+            if memo.has_key(id(partner)):
+                partner_cpy = memo[id(partner)]
+                bond_cpy = copy.deepcopy(bond, memo)
 
+                if bond.atom1 == self:
+                    bond_cpy.atom1 = atom_cpy
+                    bond_cpy.atom2 = partner_cpy
+                else:
+                    bond_cpy.atom1 = partner_cpy
+                    bond_cpy.atom2 = atom_cpy
+                
+                atom_cpy.bond_list.append(bond_cpy)
+                partner_cpy.bond_list.append(bond_cpy)
+        
         return atom_cpy
 
     def __lt__(self, other):
@@ -2777,7 +2784,7 @@ class Atom(object):
         """
         assert isinstance(alt_loc, str)
         
-        if self.altloc == None:
+        if self.altloc is None:
             if self.alt_loc == alt_loc:
                 return self
             raise KeyError, alt_loc
@@ -2788,7 +2795,7 @@ class Atom(object):
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
-        if self.altloc == None:
+        if self.altloc is None:
             yield self
 
         else:
@@ -2802,13 +2809,13 @@ class Atom(object):
         the Atom.  The argument can be a alt_loc label, or a Atom object.
         """
         if isinstance(atom_alt_loc, Atom):
-            if self.altloc == None:
+            if self.altloc is None:
                 return atom_alt_loc == self
             else:
                 return self.altloc[atom_alt_loc.alt_loc] == atom_alt_loc
 
         elif isinstance(atom_alt_loc, str):
-            if self.altloc == None:
+            if self.altloc is None:
                 return atom_alt_loc == self.alt_loc
             else:
                 return self.altloc.__contains__(atom_alt_loc)
@@ -2821,7 +2828,7 @@ class Atom(object):
         try:
             self.fragment.remove_atom(atom)
         except AttributeError:
-            if self.altloc != None and self.altloc.has_key(atom.alt_loc):
+            if self.altloc is not None and self.altloc.has_key(atom.alt_loc):
                 del self.altloc[atom.alt_loc]
 
     def get_alt_loc(self, alt_loc):
@@ -2877,8 +2884,8 @@ class Atom(object):
         """
         assert isinstance(atom, Atom)
 
-        if self.altloc == None:
-            if atom.altloc == None:
+        if self.altloc is None:
+            if atom.altloc is None:
                 ## case 1: self has no alt_loc, atom no alt_loc
                 self.create_bond(
                     atom              = atom,
@@ -2898,7 +2905,7 @@ class Atom(object):
 
 
         else:
-            if atom.altloc == None:
+            if atom.altloc is None:
                 ## case 3: self has alt_loc, atom has no alt_loc
                 for (alt_loc, atmx) in self.altloc.iteritems():
                     atmx.create_bond(
@@ -2940,7 +2947,27 @@ class Atom(object):
         """Iterates over all the Atoms bonded to self.
         """
         for bond in self.iter_bonds():
-            yield bond.get_partner(self)
+            partner = bond.get_partner(self)
+            assert partner is not None
+            yield partner
+
+    def get_bonded_atom(self, name_list):
+        """From atom, follow the bonding path specified by
+        a sequence of atom names given in name_list and return the last
+        atom instance in the list.  Returns None if any atom in the
+        bonding path cannot be found.
+        """
+        current_atom = self
+        for name in name_list:
+            moveto_atom = None
+            for atom in current_atom.iter_bonded_atoms():
+                if atom.name == name:
+                    moveto_atom = atom
+                    break
+            if moveto_atom is None:
+                return None
+            current_atom = moveto_atom
+        return current_atom        
 
     def get_fragment(self):
         """Returns the parent Fragment object.
@@ -2979,7 +3006,7 @@ class Atom(object):
     def calc_Uiso(self):
         """Calculates the Uiso tensor from the Atom's temperature factor.
         """
-        if self.temp_factor == None:
+        if self.temp_factor is None:
             return None
         return numpy.identity(3, float) * (self.temp_factor * Constants.B2U)
 
@@ -2987,7 +3014,7 @@ class Atom(object):
         """Returns the Atoms's U tensor if it exists, otherwise returns
         the isotropic U tensor calculated by self.calc_Uiso
         """
-        if self.U != None:
+        if self.U is not None:
             return self.U
         return self.calc_Uiso()
 
@@ -2997,7 +3024,7 @@ class Atom(object):
         symmetric tensor defined by U.
         """
         ## no Anisotropic values, we have a spherical isotropic atom
-        if self.U == None:
+        if self.U is None:
             return 1.0
 
         evals = numpy.linalg.eigenvalues(self.U)
@@ -3009,7 +3036,7 @@ class Atom(object):
         3-tuple of the eigenvalue ratios: (e1/e2, e1/e3, e2/e3)
         """
         ## no Anisotropic values, we have a spherical atom
-        if self.U == None:
+        if self.U is None:
             return (1.0, 1.0, 1.0)
 
         e1, e2, e3 = numpy.linalg.eigenvalues(self.U)
@@ -3226,11 +3253,11 @@ class AlphaHelix(object):
         to AlphaHelix objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
-        assert segment == None or isinstance(segment, Segment)
+        assert segment is None or isinstance(segment, Segment)
         self.segment = segment
 
         ## just return if the segment is None
-        if segment == None:
+        if segment is None:
             return
 
         ## reset AlphaHelix description with the description derived
@@ -3305,14 +3332,14 @@ class AlphaHelix(object):
     def iter_fragments(self):
         """Iterates all Fragment objects in the AlphaHelix.
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_fragments()
 
     def iter_atoms(self):
         """Iterates all Atom objects in the AlphaHelix.
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_atoms()
 
@@ -3320,7 +3347,7 @@ class AlphaHelix(object):
         """Iterates all Atom objects in all AlphaHelix, plus any in
         non-default alt_loc conformations. 
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_all_atoms()
 
@@ -3393,10 +3420,10 @@ class Strand(object):
         to Strand objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
-        assert segment == None or isinstance(segment, Segment)
+        assert segment is None or isinstance(segment, Segment)
 
         self.segment = segment
-        if segment == None:
+        if segment is None:
             return
 
         ## reset Strand description with the description derived
@@ -3473,14 +3500,14 @@ class Strand(object):
     def iter_fragments(self):
         """Iterates all Fragment objects.
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_fragments()
 
     def iter_atoms(self):
         """Iterates all Atom objects.
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_atoms()
 
@@ -3488,7 +3515,7 @@ class Strand(object):
         """Iterates all Atom objects plus any in non-default alt_loc
         conformations. 
         """
-        if self.segment == None:
+        if self.segment is None:
             return iter(list())
         return self.segment.iter_all_atoms()
 
@@ -3586,7 +3613,7 @@ class Site(object):
         values in fragment_dict to reflect the new Fragment object.  The
         fragment_dict is added to the Site if it is not already in it.
         """
-        if fragment != None:
+        if fragment is not None:
             fragment_dict["fragment"]    = fragment
             fragment_dict["chain_id"]    = fragment.chain_id
             fragment_dict["frag_id"]     = fragment.fragment_id
@@ -3660,7 +3687,7 @@ class AtomList(list):
         num      = 0
         centroid = numpy.zeros(3, float)
         for atm in self:
-            if atm.position != None:
+            if atm.position is not None:
                 centroid += atm.position
                 num += 1
         return centroid / num
@@ -3673,7 +3700,7 @@ class AtomList(list):
         adv_tf = 0.0
 
         for atm in self:
-            if atm.temp_factor != None:
+            if atm.temp_factor is not None:
                 adv_tf += atm.temp_factor
                 num_tf += 1
 
@@ -3691,7 +3718,7 @@ class AtomList(list):
             ## use the atom's U matrix if it exists, otherwise use the
             ## temperature factor
 
-            if atm.U != None:
+            if atm.U is not None:
                 adv_U += atm.U
                 num_U += 1
 
