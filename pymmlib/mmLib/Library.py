@@ -150,6 +150,24 @@ AMINO_ACID13_DICT = {
     'L': 'LEU', 'N': 'ASN', 'Q': 'GLN', 'P': 'PRO', 'S': 'SER',
     'R': 'ARG', 'T': 'THR', 'W': 'TRP', 'V': 'VAL', 'Y': 'TYR'}
 
+NUCLEIC_ACID_LIST = ["A", "G", "C", "T", "U"]
+
+NUCLEIC_ACID_RES_NAME_DICT = {
+    "C": "C", "C+": "C", "Cr": "C", "+C": "C",
+    "G": "G", "G+": "G", "Gr": "G", "+G": "G",
+    "A": "A", "A+": "A", "Ar": "A", "+A": "A",
+    "T": "T", "T+": "T", "Tr": "T", "+T": "T",
+    "U": "U", "U+": "U", "Ur": "U", "+U": "U",
+    }
+
+ALT_RES_NAME_DICT = {
+    "C+": "C", "Cr": "C", "+C": "C",
+    "G+": "G", "Gr": "G", "+G": "G",
+    "A+": "A", "Ar": "A", "+A": "A",
+    "T+": "T", "Tr": "T", "+T": "T",
+    "U+": "U", "Ur": "U", "+U": "U",
+    }
+    
 ###############################################################################
 ## Library Description Objects
 ##
@@ -280,20 +298,10 @@ def library_get_element_desc(symbol):
 def library_construct_monomer_desc(res_name):
     """Constructs the MonomerDesc object for the given residue name.
     """
-    ## this hack is necessary beause most PDB files do not have
-    ## a indicator in the 3-letter-code for RNA or DNA
-    dna_map = {
-        "C+": "C", "Cr": "C", "+C": "C",
-        "G+": "G", "Gr": "G", "+G": "G",
-        "A+": "A", "Ar": "A", "+A": "A",
-        "T+": "T", "Tr": "T", "+T": "T",
-        "U+": "U", "Ur": "U", "+U": "U",
-        }
+    if ALT_RES_NAME_DICT.has_key(res_name):
+        lookup_name = ALT_RES_NAME_DICT[res_name]
 
-    try:
-        lookup_name = dna_map[res_name]
-    except KeyError:
-        lookup_name = res_name.upper()
+    lookup_name = res_name.upper()
 
     ## form path to locate the monomer library file
     try:
@@ -325,7 +333,7 @@ def library_construct_monomer_desc(res_name):
     mon_desc.rcsb_class_1 = chem_comp.get_lower("rcsb_class_1")
 
     chem_comp_atom = rcsb_cif_data.get_table("chem_comp_atom")
-    if chem_comp_atom != None:
+    if chem_comp_atom is not None:
         for cif_row in chem_comp_atom:
             name   = cif_row.getitem_lower("atom_id")
             symbol = cif_row.getitem_lower("type_symbol")
@@ -334,7 +342,7 @@ def library_construct_monomer_desc(res_name):
             mon_desc.atom_dict[name] = symbol
 
     chem_comp_bond = rcsb_cif_data.get_table("chem_comp_bond")
-    if chem_comp_bond != None:
+    if chem_comp_bond is not None:
         for cif_row in chem_comp_bond:
             atom1 = cif_row.getitem_lower("atom_id_1")
             atom2 = cif_row.getitem_lower("atom_id_2")
@@ -342,16 +350,16 @@ def library_construct_monomer_desc(res_name):
 
     ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
     mmlib_cif_data = MMLIB_MONOMERS_CIF.get_data(res_name)
-    if mmlib_cif_data != None:
+    if mmlib_cif_data is not None:
         ## get additional chemical information on amino acids
         chem_comp = mmlib_cif_data.get_table("chem_comp")
-        if chem_comp != None:
+        if chem_comp is not None:
             mon_desc.one_letter_code = chem_comp["one_letter_code"]
             mon_desc.chem_type = chem_comp["chem_type"]
 
         ## get torsion angle definitions
         torsion_angles = mmlib_cif_data.get_table("torsion_angles")
-        if torsion_angles != None:
+        if torsion_angles is not None:
             for cif_row in torsion_angles:
                 mon_desc.torsion_angle_dict[cif_row["name"]] = (
                     cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              

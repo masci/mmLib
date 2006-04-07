@@ -7,7 +7,7 @@ for the Raster3D ray tracer.
 """
 from __future__  import generators
 
-import popen2
+import subprocess
 import copy
 import random
 import math
@@ -193,10 +193,14 @@ class Raster3DDriver(object):
         if self.render_stdin is not None:
             stdin = self.render_stdin
         else:
-            pobj = popen2.Popen4([self.render_program_path,
-                                  "-png", self.render_png_path,
-                                  "-gamma", "1.5"], 32768)
-            stdin = pobj.tochild
+            cmdlist = [self.render_program_path, "-png", self.render_png_path, "-gamma", "1.5"]
+            pobj = subprocess.Popen(cmdlist, 
+                                    stdin = subprocess.PIPE,
+                                    stdout = subprocess.PIPE,
+                                    stderr = subprocess.STDOUT,
+                                    close_fds = True,
+                                    bufsize = 32768)
+            stdin = pobj.stdin
             
         ## XXX: debug
         ##r3dfil = open("/tmp/raytrace.r3d","w")
@@ -218,8 +222,7 @@ class Raster3DDriver(object):
             self.render_stdin = None
 
         if pobj is not None:
-            pobj.tochild.close()
-            pobj.fromchild.close()
+            pobj.stdin.close()
             pobj.wait()
 
     def glr_write_objects(self, stdin):

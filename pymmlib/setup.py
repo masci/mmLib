@@ -400,7 +400,6 @@ def buildlib():
     print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
 
     import mmLib.mmCIF
-    import gc
 
     cif_file = mmLib.mmCIF.mmCIFFile()
     cif_file.load_file(TMP_PATH)
@@ -409,8 +408,6 @@ def buildlib():
         os.mkdir(LIB_PATH)
 
     while len(cif_file)>0:
-        gc.collect()
-
         cif_data = cif_file[0]
         cif_file.remove(cif_data)
 
