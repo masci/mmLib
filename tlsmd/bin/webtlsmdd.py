@@ -10,6 +10,7 @@ import sys
 import time
 import string
 import random
+import traceback
 
 import cPickle
 import bsddb
@@ -19,7 +20,7 @@ import SocketServer
 import SimpleXMLRPCServer
 
 from mmLib import FileIO
-from tlsmdlib import conf, const, tls_calcs
+from tlsmdlib import conf, const, tls_calcs, email
 
 
 def fatal(text):
@@ -105,11 +106,7 @@ class JobDatabase(object):
                     job_nums = job_id[5:]
                     j = job_nums.find("_")
                     job_nums = job_nums[:j]
-	
-                    try:
-                        job_num = int(job_nums)
-                    except ValueError:
-                        fatal("unable to determine job number for database key %s" % (dbkey))
+                    job_num = int(job_nums)
 		    
                 listx.append((job_num, jdict))
 

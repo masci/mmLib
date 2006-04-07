@@ -14,7 +14,7 @@ import popen2
 import xmlrpclib
 
 
-from tlsmdlib import const, conf
+from tlsmdlib import const, conf, email
 
 
 def log_write(x):
@@ -176,9 +176,6 @@ def main():
 
 
 MAIL_MESSAGE = """\
-To: <EMAIL>
-Subject: Your TLSMD Job <JOB_ID> is Complete
-
 This is a automated message sent to you by the TLS Motion 
 Determination (TLSMD) Server to inform you the analysis of the structure
 you submitted is complete.  The link below will take you directly
@@ -206,7 +203,7 @@ def send_mail(job_id):
         print "Unable to find Job ID %s" % (job_id)
         return
 
-    email = jdict.get("email", "")
+    address = jdict.get("email", "")
     if len(email) == 0:
         print "No email address"
         return
@@ -216,20 +213,16 @@ def send_mail(job_id):
         print "Invalid analysis URL"
         return
 
-    message = MAIL_MESSAGE
-    message = message.replace("<EMAIL>", email)
-    message = message.replace("<JOB_ID>", job_id)
-    message = message.replace("<ANALYSIS_URL>", analysis_url)
-
     ## send mail using msmtp
-    pobj = popen2.Popen4([conf.MSMTP, email])
-    pobj.tochild.write(message)
-    pobj.wait()
+    email.SendEmail(
+        address, 
+        "Your TLSMD Job %s is Complete" % (job_id),
+        message.replace("<ANALYSIS_URL>", analysis_url))
     
     log_write("Sent Mail to %s" % (email))
 
 if __name__=="__main__":
-    if len(sys.argv)==2:
+    if len(sys.argv) == 2:
         send_mail(sys.argv[1])
     else:
         main()

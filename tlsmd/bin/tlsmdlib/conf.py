@@ -24,6 +24,7 @@ WEBTLSMDD              = "http://localhost:10200"
 WEBTLSMDD_DATABASE     = "/home/jpaint/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MSMTP                  = "/usr/bin/msmtp"
+TRACEBACK_EMAIL        = "jpaint@u.washington.edu"
 ## END: CONFIGURATION PATHS AND URLS
 
 

@@ -8,10 +8,10 @@
 import os
 import sys
 import getopt
+import traceback
 
-from tlsmdlib import conf
-from tlsmdlib import tlsmd_analysis
-from tlsmdlib import html
+from tlsmdlib import conf, tlsmd_analysis, email
+
 
 def usage():
     print "tlsmd.py - search for TLS rigid domains in x-ray crystal"
@@ -38,6 +38,7 @@ def usage():
     print "  Jay Painter <jpaint@u.washington.edu>"
     print
     raise SystemExit
+
 
 ###############################################################################
 ## main() functions for the various modes of execution
@@ -112,24 +113,20 @@ def analysis_main(struct_path, opt_dict):
             usage()
         conf.globalconf.include_atoms = val
 
-    ## create the analysis processor and load the structure, select chains
-    anal = tlsmd_analysis.TLSMDAnalysis(
-        struct_file_path    = struct_path,
-        sel_chain_ids       = chain_ids,
-        struct2_file_path   = conf.globalconf.target_struct_path,
-        struct2_chain_id    = conf.globalconf.target_struct_chain_id)
-    
-    anal.run_optimization()
+    try:
+        tlsmd_analysis.TLSMD_Main(
+            struct_file_path    = struct_path,
+            sel_chain_ids       = chain_ids,
+            html_report_dir     = opt_dict.get("-r"))
+    except:
+        if opt_dict.has_key("-w"):
+            email.SendTracebackEmail("tlsmd.py traceback")
+        raise
 
-    ## generate HTML report if a directory is given
-    if opt_dict.has_key("-r") and len(anal.chains) > 0:
-        report_dir = opt_dict["-r"]
-        report = html.HTMLReport(anal)
-        report.write(report_dir)
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:")
+        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:w:")
     except getopt.GetoptError:
         usage()
 

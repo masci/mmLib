@@ -20,6 +20,32 @@ import opt_containers
 import adp_smoothing
 import independent_segment_opt
 import cpartition_recombination
+import html
+
+
+def TLSMD_Main(struct_file_path  = None,
+               sel_chain_ids     = None,
+               html_report_dir   = None):
+
+    ## create the analysis processor and load the structure, select chains
+    analysis = TLSMDAnalysis(
+        struct_file_path    = struct_file_path,
+        sel_chain_ids       = sel_chain_ids,
+        struct2_file_path   = conf.globalconf.target_struct_path,
+        struct2_chain_id    = conf.globalconf.target_struct_chain_id)
+    
+    IndependentTLSSegmentOptimization(analysis)
+
+    if conf.globalconf.recombination:
+        RecombineIndependentTLSSegments(analysis)
+
+    if analysis.struct2_file_path is not None and analysis.struct2_chain_id is not None:
+        SumperimposeHomologousStructure(analysis)
+
+    if html_report_dir is not None and analysis.num_chains() > 0:
+        FitConstrainedTLSModel(analysis)
+        report = html.HTMLReport(analysis)
+        report.write(html_report_dir)
 
 
 class TLSMDAnalysis(object):
@@ -45,25 +71,12 @@ class TLSMDAnalysis(object):
         else:
             self.sel_chain_ids = None
 
-        self.struct = None
-        self.struct_id = None
+        self.struct = LoadStructure(self.struct_file_path)
+        self.struct_id = self.struct.structure_id
         self.chains = None
 
-        self.load_struct()
         self.select_chains()
         self.prnt_settings()
-
-    def run_optimization(self, no_visualization = False):
-        """Run the TLSMD optimization on the structure.
-        """
-        self.calc_chain_minimization()
-        self.calc_chain_partition_recombination()
-
-        if not no_visualization:
-            self.calc_visualization_tls_models()
-
-        if self.struct2_file_path != None and self.struct2_chain_id != None:
-            self.calc_chain_partition_superposition()
 
     def prnt_settings(self):
         chain_ids = []
@@ -76,56 +89,6 @@ class TLSMDAnalysis(object):
         print "CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
         print
         
-    def load_struct(self):
-        """Loads Structure, chooses a unique struct_id string.
-        """
-        print "LOADING STRUCTURE..................: %s" % (self.struct_file_path)
-
-        ## load struct
-        self.struct = FileIO.LoadStructure(
-            fil = self.struct_file_path, distance_bonds = True)
-
-        print "HEADER..............................: %s" % (self.struct.header)
-        print "TITLE...............................: %s" % (self.struct.title)
-        print "EXPERIMENTAL METHOD.................: %s" % (self.struct.experimental_method)
-
-        ## set the structure ID
-        if conf.globalconf.struct_id != None:
-            struct_id = conf.globalconf.struct_id
-        else:
-            struct_id = self.struct.structure_id
-            conf.globalconf.struct_id = struct_id
-
-        self.struct.structure_id = struct_id
-        self.struct_id = struct_id
-
-        print
-
-        ## if there are REFMAC5 TLS groups in the REMARK records of
-        ## the PDB file, then add those in
-        tls_file = TLS.TLSFile()
-        tls_file.set_file_format(TLS.TLSFileFormatPDB())
-
-        fil = open(self.struct_file_path, "r")
-        tls_file.load(fil)
-
-        if len(tls_file.tls_desc_list)>0:
-            print "ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS"
-            print "    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list))
-
-            ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
-            for tls_desc in tls_file.tls_desc_list:
-                tls_group = tls_desc.construct_tls_group_with_atoms(self.struct)
-
-                print "    TLS GROUP: %s" % (tls_group.name)
-                
-                for atm, Utls in tls_group.iter_atm_Utls():
-                    bresi = atm.temp_factor
-                    atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
-                    atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
-            
-            print
-
     def select_chains(self):
         """Selects chains for analysis.
         """
@@ -152,72 +115,6 @@ class TLSMDAnalysis(object):
         
         self.chains = segments
 
-    def calc_chain_minimization(self):
-        """Performs the TLS graph minimization on all TLSGraphs.
-        """
-        for chain in self.chains:
-            isopt = independent_segment_opt.ISOptimization(
-                chain,
-                conf.globalconf.min_subsegment_size,
-                conf.globalconf.nparts)
-            
-            isopt.run_minimization()
-            if not isopt.minimized:
-                continue
-
-            print
-            print "="*79
-            print "MINIMIZING CHAIN %s" % (chain)
-            isopt.prnt_detailed_paths()
-
-            chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
-            chain.partition_collection.struct = self.struct
-            chain.partition_collection.struct_file_path = self.struct_file_path
-            
-    def calc_chain_partition_recombination(self):
-        if not conf.globalconf.recombination:
-            return
-
-        print
-        print "TLS SEGMENT RECOMBINATION"
-        for chain in self.chains:
-            cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
-
-    def calc_visualization_tls_models(self):
-        print
-        print "CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION"
-        for chain in self.chains:
-            print "CHAIN %s" % (chain.chain_id)
-
-            for cpartition in chain.partition_collection.iter_chain_partitions():
-                print "TLS GROUPS: %d" % (cpartition.num_tls_segments())
-                
-                for tls in cpartition.iter_tls_segments():
-                    tls.fit_to_chain(cpartition.chain)
-        print
-            
-    def calc_chain_partition_superposition(self):
-        import structcmp
-
-        target_struct = FileIO.LoadStructure(fil = self.struct2_file_path)
-        target_chain = target_struct.get_chain(self.struct2_chain_id)
-
-        if target_chain == None:
-            print "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
-                target_struct, target_chain)
-            return
-
-        self.target_chain = target_chain
-        
-        for chain in self.iter_chains():
-            print
-            print "Superimposing Chain.............%s" % (chain.chain_id)
-            hyp = structcmp.TLSConformationPredctionHypothosis(chain, target_chain)
-            for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-                print
-                print "Number of TLS Segments........: %d" % (ntls)
-                hyp.add_conformation_prediction_to_chain_partition(cpartition)
-
     def iter_chains(self):
         return iter(self.chains)
 
@@ -229,6 +126,60 @@ class TLSMDAnalysis(object):
             if chain.chain_id == chain_id:
                 return chain
         return None
+
+
+def LoadStructure(struct_file_path):
+    """Loads Structure, chooses a unique struct_id string.
+    Also, search the REMARK records for TLS group records.  If they
+    are found, then add the TLS group ADP magnitude to the B facors of
+    the ATOM records.
+    """
+    print "LOADING STRUCTURE..................: %s" % (struct_file_path)
+
+    ## load struct
+    struct = FileIO.LoadStructure(
+        fil = struct_file_path, distance_bonds = True)
+
+    print "HEADER..............................: %s" % (struct.header)
+    print "TITLE...............................: %s" % (struct.title)
+    print "EXPERIMENTAL METHOD.................: %s" % (struct.experimental_method)
+
+    ## set the structure ID
+    if conf.globalconf.struct_id is not None:
+        struct_id = conf.globalconf.struct_id
+    else:
+        struct_id = struct.structure_id
+        conf.globalconf.struct_id = struct_id
+    struct.structure_id = struct_id
+
+    print
+
+    ## if there are REFMAC5 TLS groups in the REMARK records of
+    ## the PDB file, then add those in
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatPDB())
+
+    fil = open(struct_file_path, "r")
+    tls_file.load(fil)
+
+    if len(tls_file.tls_desc_list) > 0:
+        print "ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS"
+        print "    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list))
+
+        ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
+        for tls_desc in tls_file.tls_desc_list:
+            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+
+            print "    TLS GROUP: %s" % (tls_group.name)
+
+            for atm, Utls in tls_group.iter_atm_Utls():
+                bresi = atm.temp_factor
+                atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
+                atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
+
+        print
+
+    return struct
 
         
 def ConstructSegmentForAnalysis(raw_chain):
@@ -277,3 +228,76 @@ def ConstructSegmentForAnalysis(raw_chain):
 
     return segment
 
+
+def IndependentTLSSegmentOptimization(analysis):
+    """Performs the TLS graph minimization on all TLSGraphs.
+    """
+    for chain in analysis.chains:
+        isopt = independent_segment_opt.ISOptimization(
+            chain,
+            conf.globalconf.min_subsegment_size,
+            conf.globalconf.nparts)
+
+        isopt.run_minimization()
+        if not isopt.minimized:
+            continue
+
+        print
+        print "="*79
+        print "MINIMIZING CHAIN %s" % (chain)
+        isopt.prnt_detailed_paths()
+
+        chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
+        chain.partition_collection.struct = analysis.struct
+        chain.partition_collection.struct_file_path = analysis.struct_file_path
+
+
+def RecombineIndependentTLSSegments(analysis):
+    if not conf.globalconf.recombination:
+        return
+
+    print
+    print "TLS SEGMENT RECOMBINATION"
+    for chain in analysis.chains:
+        cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
+
+
+def FitConstrainedTLSModel(analysis):
+    """
+    """
+    print
+    print "CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION"
+    for chain in analysis.iter_chains():
+        print "CHAIN %s" % (chain.chain_id)
+
+        for cpartition in chain.partition_collection.iter_chain_partitions():
+            print "TLS GROUPS: %d" % (cpartition.num_tls_segments())
+
+            for tls in cpartition.iter_tls_segments():
+                tls.fit_to_chain(cpartition.chain)
+    print
+
+
+def SumperimposeHomologousStructure(analysis):
+    """
+    """
+    import structcmp
+
+    target_struct = FileIO.LoadStructure(fil = analysis.struct2_file_path)
+    target_chain = target_struct.get_chain(analysis.struct2_chain_id)
+
+    if target_chain == None:
+        print "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
+            target_struct, target_chain)
+        return
+
+    analysis.target_chain = target_chain
+
+    for chain in analysis.iter_chains():
+        print
+        print "Superimposing Chain.............%s" % (chain.chain_id)
+        hyp = structcmp.TLSConformationPredctionHypothosis(chain, target_chain)
+        for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
+            print
+            print "Number of TLS Segments........: %d" % (ntls)
+            hyp.add_conformation_prediction_to_chain_partition(cpartition)
