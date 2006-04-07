@@ -200,7 +200,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
         """
         gl_drawable = gtk.gtkgl.DrawingArea.get_gl_drawable(self)
         gl_context  = gtk.gtkgl.DrawingArea.get_gl_context(self)
-        if gl_drawable==None or gl_context==None:
+        if gl_drawable is None or gl_context is None:
             return False
         
 	if not gl_drawable.gl_begin(gl_context):
@@ -294,7 +294,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
     def gtk_glv_raytrace(self, path=None):
         """Raytrace using Raster3D and display in modal dialog.
         """
-        if path==None:
+        if path is None:
             path = "/tmp/raytrace.png"
 
         self.r3d_driver.glr_set_render_png_path(path)
@@ -539,7 +539,7 @@ class GLPropertyEditor(gtk.Notebook):
             if prop.get("read_only", False)==True:
                 widget = gtk.Label()
             else:
-                if prop.get("range")!=None:
+                if prop.get("range") is not None:
                     ## range format: min-max,step
                     min_max, step = prop["range"].split(",")
                     min, max      = min_max.split("-")
@@ -553,7 +553,7 @@ class GLPropertyEditor(gtk.Notebook):
                     widget.set_range(float(min), float(max))
                     widget.set_increments(float(step), float(step))
 
-                elif prop.get("spin")!=None:
+                elif prop.get("spin") is not None:
                     ## range format: min-max,step
                     min_max, step = prop["spin"].split(",")
                     min, max      = min_max.split("-")
@@ -573,7 +573,7 @@ class GLPropertyEditor(gtk.Notebook):
             if prop.get("read_only", False)==True:
                 widget = gtk.Label()
             else:
-                if prop.get("range")!=None:
+                if prop.get("range") is not None:
                     ## range format: min-max,step
                     min_max, step = prop["range"].split(",")
                     min, max      = min_max.split("-")
@@ -587,7 +587,7 @@ class GLPropertyEditor(gtk.Notebook):
                     widget.set_range(min, max)
                     widget.set_increments(step, step)
 
-                elif prop.get("spin")!=None:
+                elif prop.get("spin") is not None:
                     ## range format: min-max,step
                     min_max, step = prop["spin"].split(",")
                     min, max      = min_max.split("-")
@@ -645,9 +645,9 @@ class GLPropertyEditor(gtk.Notebook):
                     text = "<small>%d</small>" % (self.gl_object.properties[name])
                     widget.set_markup(text)
                 else:
-                    if prop_desc.get("range")!=None:
+                    if prop_desc.get("range") is not None:
                         widget.set_value( float(self.gl_object.properties[name]))
-                    elif prop_desc.get("spin")!=None:
+                    elif prop_desc.get("spin") is not None:
                         widget.set_value(float(self.gl_object.properties[name]))
                     else:
                         text = str(self.gl_object.properties[name])
@@ -657,9 +657,9 @@ class GLPropertyEditor(gtk.Notebook):
                 if prop_desc.get("read_only", False)==True:
                     widget.set_markup("<small>%12.6f</small>" % (self.gl_object.properties[name]))
                 else:
-                    if prop_desc.get("range")!=None:
+                    if prop_desc.get("range") is not None:
                         widget.set_value(self.gl_object.properties[name])
-                    elif prop_desc.get("spin")!=None:
+                    elif prop_desc.get("spin") is not None:
                         widget.set_value(self.gl_object.properties[name])
                     else:
                         text = str(self.gl_object.properties[name])
@@ -706,9 +706,9 @@ class GLPropertyEditor(gtk.Notebook):
                     update_dict[name] = False
 
             elif prop["type"]=="integer":
-                if prop.get("range")!=None:
+                if prop.get("range") is not None:
                     update_dict[name] = int(widget.get_value())
-                elif prop.get("spin")!=None:
+                elif prop.get("spin") is not None:
                     update_dict[name] = int(widget.get_value())
                 else:
                     try:
@@ -717,9 +717,9 @@ class GLPropertyEditor(gtk.Notebook):
                         pass
                     
             elif prop["type"]=="float":
-                if prop.get("range")!=None:
+                if prop.get("range") is not None:
                     update_dict[name] = float(widget.get_value())
-                elif prop.get("spin")!=None:
+                elif prop.get("spin") is not None:
                     update_dict[name] = float(widget.get_value())
                 else:
                     try:
@@ -796,7 +796,7 @@ class GLPropertyTreeControl(gtk.TreeView):
         ## so it can be restored after the reset if it hasn't
         ## been removed
         model, miter = self.get_selection().get_selected()
-        if miter!=None:
+        if miter is not None:
             selected_glo = self.path_glo_dict[model.get_path(miter)]
         else:
             selected_glo = None
@@ -834,7 +834,7 @@ class GLPropertyTreeControl(gtk.TreeView):
                 for i in xrange(1, len(path)):
                     self.expand_row(path[:i], gtk.FALSE)
 
-        if selected_glo!=None:
+        if selected_glo is not None:
             self.select_gl_object(selected_glo)
 
     def select_gl_object(self, target_glo):
@@ -1156,7 +1156,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
         GLObject is selected
         """
         ## remove the current property editor if there is one
-        if self.gl_prop_editor!=None:
+        if self.gl_prop_editor is not None:
             if self.gl_prop_editor.gl_object==glo:
                 return
 
@@ -1337,7 +1337,7 @@ class TLSDialog(gtk.Dialog):
 
         if response==gtk.RESPONSE_OK:
             path = file_sel.get_filename()
-            if path!=None and path!="":
+            if path is not None and path!="":
                 self.load_TLSOUT(path)
 
         file_sel.destroy()
@@ -2257,7 +2257,7 @@ class StructureContext(object):
         """
         entry_id = self.struct.structure_id
 
-        if entry_id!=None and entry_id!="":
+        if entry_id is not None and entry_id!="":
             return entry_id
 
         if hasattr(self.struct, "path"):
@@ -2440,7 +2440,7 @@ class MainWindow(object):
         """File->Close Structure
         Closes the currently selected structure.
         """
-        if self.selected_sc!=None:
+        if self.selected_sc is not None:
             self.remove_sc(self.selected_sc)
         
     def file_close_tab(self, *args):
@@ -2448,7 +2448,7 @@ class MainWindow(object):
         Closes the current viewable tab.
         """
         tab = self.get_current_tab()
-        if tab==None:
+        if tab is None:
             return
 
         ## remove all structures 
@@ -2474,12 +2474,12 @@ class MainWindow(object):
         """Edit->Properties (GLPropertyBrowserDialog)
         """
         tab = self.get_current_tab()
-        if tab!=None:
+        if tab is not None:
             self.present_gl_prop_browser(tab)
 
     def tools_raster3d_ray(self, *args):
         tab = self.get_current_tab()
-        if tab!=None:
+        if tab is not None:
             gl_viewer = tab["gl_viewer"]
             gl_viewer.gtk_glv_raytrace()
 
@@ -2488,7 +2488,7 @@ class MainWindow(object):
         Launches the TLS Analysis dialog on the currently selected
         StructureContext.
         """
-        if self.selected_sc==None:
+        if self.selected_sc is None:
             return
 
         sc = self.selected_sc
@@ -2639,7 +2639,7 @@ class MainWindow(object):
         i = 1
         for scx in self.sc_list:
             m = re_struct_id.match(scx.struct_id)
-            assert m!=None
+            assert m is not None
             
             if m.group(1)==struct_id:
                 i = max(i, int(m.group(2)) + 1)
@@ -2653,7 +2653,7 @@ class MainWindow(object):
             tab = self.add_tab()
         else:
             tab = self.get_current_tab()
-            if tab==None:
+            if tab is None:
                 tab = self.add_tab()
 
         ## add the StructureContext to the tab's sc_list
@@ -2721,7 +2721,7 @@ class MainWindow(object):
 
         ## special handling if setting the current StructureContext
         ## to None
-        if sc==None:
+        if sc is None:
 
             ## uncheck all Structure menu items
             structs = self.item_factory.get_item("/Structures")
@@ -2837,7 +2837,7 @@ class ViewerApp(object):
         mw = MainWindow(self.window_quit_notify)
         self.window_list.append(mw)
 
-        if path!=None:
+        if path is not None:
             gobject.timeout_add(25, mw.load_file, path)
 
     def window_quit_notify(self, window, mw):
@@ -2850,6 +2850,8 @@ class ViewerApp(object):
 
 ### <MAIN>
 if __name__=="__main__":
+    glutInit(sys.argv)
+    
     try:
         first_path = sys.argv[1]
     except IndexError:

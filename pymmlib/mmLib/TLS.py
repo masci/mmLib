@@ -149,7 +149,7 @@ class TLSGroupDesc(object):
         """Returns True if the T,L,S tensors are not set, or are set
         with values of zero.
         """
-        if self.T == None or self.L == None or self.S == None:
+        if self.T is None or self.L is None or self.S is None:
             return True
         return False
 
@@ -171,7 +171,7 @@ class TLSGroupDesc(object):
             assert chain_id1 == chain_id2
 
             chain1 = struct.get_chain(chain_id1)
-            if chain1 == None:
+            if chain1 is None:
                 mmTypes.warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
                 continue
 
@@ -194,16 +194,16 @@ class TLSGroupDesc(object):
         else:
             tls_group.name = self.name
 
-        if self.origin != None:
+        if self.origin is not None:
             tls_group.set_origin(self.origin[0], self.origin[1], self.origin[2])
 
-        if self.T != None:
+        if self.T is not None:
             tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2], self.T[0,1], self.T[0,2], self.T[1,2])
 
-        if self.L != None:
+        if self.L is not None:
             tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2], self.L[0,1], self.L[0,2], self.L[1,2])
 
-        if self.S != None:
+        if self.S is not None:
             ## s2211, s1133, s12, s13, s23, s21, s31, s32)
             tls_group.set_S(
                 self.S[1,1] - self.S[0,0],
@@ -248,14 +248,14 @@ class TLSFile(object):
     def load(self, fil, path=None):
         """Load TLS description file using the current TLSFileFormat instance.
         """
-        assert self.file_format != None
+        assert self.file_format is not None
         self.path = path
         self.tls_desc_list = self.file_format.load(fil)
         
     def save(self, fil, path=None):
         """Save TLS description file using the curent TLSFileFormat instance.
         """
-        assert self.file_format != None
+        assert self.file_format is not None
         self.path = path
         self.file_format.save(fil, self.tls_desc_list)
 
@@ -267,7 +267,7 @@ class TLSFile(object):
 
         for tls_desc in self.tls_desc_list:
             tls_group = tls_desc.construct_tls_group(struct)
-            if tls_group != None:
+            if tls_group is not None:
                 tls_group_list.append(tls_group)
 
         return tls_group_list
@@ -281,7 +281,7 @@ class TLSFile(object):
 
         for tls_desc in self.tls_desc_list:
             tls_group = tls_desc.construct_tls_group_with_atoms(struct)
-            if tls_group != None:
+            if tls_group is not None:
                 tls_group_list.append(tls_group)
 
         return tls_group_list
@@ -415,11 +415,11 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
         text = rec["text"]
         for (re_key, re_tls) in self.pdb_regex_dict.items():
             mx = re_tls.match(text)
-            if mx != None:
+            if mx is not None:
                 break
 
         ## no match
-        if mx == None:
+        if mx is None:
             return
 
         if re_key == "group":
@@ -585,23 +585,23 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             ## search all regular expressions for a match
             for (re_key, re_tls) in self.tlsout_regex_dict.items():
                 mx = re_tls.match(ln)
-                if mx != None:
+                if mx is not None:
                     break
 
             ## no match was found for the line
-            if mx==None:
+            if mx is None:
                 continue
             
-            ## do not allow a match if tls_info == None, because then
+            ## do not allow a match if tls_info is None, because then
             ## somehow we've missed the TLS group begin line
-            if tls_desc==None and re_key!="group":
+            if tls_desc is None and re_key!="group":
                 raise TLSFileFormatError()
 
             if re_key == "group":
                 tls_desc = TLSGroupDesc()
                 tls_desc_list.append(tls_desc)
 
-                if mx.group(1)!=None:
+                if mx.group(1) is not None:
                     tls_desc.set_name(mx.group(1))
 
             elif re_key == "origin":
@@ -674,17 +674,17 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 chain_id1, frag_id1.rjust(5),
                 chain_id2, frag_id2.rjust(5), sel))
 
-        if tls_desc.origin!=None:
+        if tls_desc.origin is not None:
             listx.append("ORIGIN   %8.4f %8.4f %8.4f" % (
                 tls_desc.origin[0], tls_desc.origin[1], tls_desc.origin[2]))
 
-        if tls_desc.T!=None:
+        if tls_desc.T is not None:
             ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
             listx.append("T   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
                 tls_desc.T[0,0], tls_desc.T[1,1], tls_desc.T[2,2],
                 tls_desc.T[0,1], tls_desc.T[0,2], tls_desc.T[1,2]))
 
-        if tls_desc.L!=None:
+        if tls_desc.L is not None:
             ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
             listx.append("L   %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f" % (
                 tls_desc.L[0,0] * Constants.RAD2DEG2,
@@ -694,7 +694,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                 tls_desc.L[0,2] * Constants.RAD2DEG2,
                 tls_desc.L[1,2] * Constants.RAD2DEG2))
 
-        if tls_desc.S!=None:
+        if tls_desc.S is not None:
             ## REFMAC ORDER:
             ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
             listx.append(
@@ -1242,7 +1242,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
         iU11 = i * 6
         
         ## is this fit weighted?
-        if weight_dict!=None:
+        if weight_dict is not None:
             w = math.sqrt(weight_dict[atm])
         else:
             w = 1.0
@@ -1606,7 +1606,7 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
         i += 1
         iU11 = i * 6
 
-        if weight_dict==None:
+        if weight_dict is None:
             w = 1.0
         else:
             w = math.sqrt(weight_dict[atm])
@@ -1757,7 +1757,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     i = 20
     iL11p = {}
     for frag in segment.iter_fragments():
-        if CA_PIVOT_ATOMS.get(frag.res_name)!=None:
+        if CA_PIVOT_ATOMS.get(frag.res_name) is not None:
             num_pivot_frags += 1
             iL11p[frag] = i
             i += 6
@@ -1793,9 +1793,9 @@ def calc_TLSCA_least_squares_fit(segment, origin):
 
             ## get the name of the pivot atom for this resiude
             patom_name = CA_PIVOT_ATOMS.get(frag.res_name)
-            if patom_name!=None:
+            if patom_name is not None:
                 patm = frag.get_atom(patom_name)
-                assert patm!=None
+                assert patm is not None
 
                 iL11 = iL11p[frag]
                 xs, ys, zs = atm.position - patm.position
@@ -2121,7 +2121,7 @@ class TLSStructureAnalysis(object):
         for chain in self.struct.iter_chains():
 
             ## skip some chains
-            if chain_ids!=None and chain.chain_id not in chain_ids:
+            if chain_ids is not None and chain.chain_id not in chain_ids:
                 continue
 
             ## don't bother with non-biopolymers and small chains
@@ -2511,7 +2511,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
                 screw = axis * (rot * pitch)
                 
                 if numpy.allclose(rot, 0.0):
-                    if zero_rot==True:
+                    if zero_rot:
                         continue
                     zero_rot = True
                     
@@ -2579,10 +2579,10 @@ class GLTLSAtomList(Viewer.GLAtomList):
             if atm.name != "CA":
                 continue
 
-            if v1==None:
+            if v1 is None:
                 v1 = atm.position - COR
                 continue
-            elif v2==None:
+            elif v2 is None:
                 v2 = atm.position - COR
                 driver.glr_normal(numpy.cross(v1, v2))
                 driver.glr_vertex3(0.0, 0.0, 0.0)
@@ -3283,7 +3283,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         else:
 
             gl_struct = self.glo_get_glstructure()
-            if gl_struct==None:
+            if gl_struct is None:
                 yield True
 
             else:
@@ -3309,7 +3309,7 @@ class GLTLSGroup(Viewer.GLDrawList):
             Utls = calc_Utls(T, L, S, atm.position - o)
 
             if self.properties["add_biso"] == True:
-                if atm.temp_factor != None:
+                if atm.temp_factor is not None:
                     Utls = Utls + (Constants.B2U * atm.temp_factor * numpy.identity(3, float))
             
             yield atm, Utls

@@ -249,7 +249,7 @@ def library_construct_element_desc(symbol):
     """Constructs the ElementDesc object for the given element symbol.
     """
     cif_data = ELEMENT_CIF_FILE.get_data(symbol)
-    if cif_data == None:
+    if cif_data is None:
         mmTypes.warning("element description not found for %s" % (symbol))
         return None
 
@@ -287,7 +287,7 @@ def library_get_element_desc(symbol):
         pass
 
     element_desc = library_construct_element_desc(symbol)
-    if element_desc == None:
+    if element_desc is None:
         mmTypes.warning("element description not found for %s" % (symbol))
         return None
     
@@ -300,8 +300,8 @@ def library_construct_monomer_desc(res_name):
     """
     if ALT_RES_NAME_DICT.has_key(res_name):
         lookup_name = ALT_RES_NAME_DICT[res_name]
-
-    lookup_name = res_name.upper()
+    else:
+        lookup_name = res_name.upper()
 
     ## form path to locate the monomer library file
     try:
@@ -310,10 +310,11 @@ def library_construct_monomer_desc(res_name):
         return None
 
     fil_name = "%s.cif" % (lookup_name.upper())
-    path     = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
+    path = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
 
     if not os.path.isfile(path):
-        mmTypes.warning("monomer description not found for %s" % (res_name))
+        mmTypes.warning("monomer description not found for '%s'->'%s'" % (
+            res_name, path))
         return None
 
     ## generate monomer description    
@@ -390,7 +391,7 @@ def library_get_monomer_desc(res_name):
         pass
 
     mon_desc = library_construct_monomer_desc(res_name)
-    if mon_desc == None:
+    if mon_desc is None:
         return None
 
     MONOMER_RES_NAME_CACHE[res_name] = mon_desc
@@ -403,7 +404,7 @@ def library_is_amino_acid(res_name):
     assert isinstance(res_name, str)
 
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc == None:
+    if mdesc is None:
         return False
 
     return mdesc.is_amino_acid()
@@ -415,7 +416,7 @@ def library_is_nucleic_acid(res_name):
     assert isinstance(res_name, str)
 
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc == None:
+    if mdesc is None:
         return False
 
     return mdesc.is_nucleic_acid()
@@ -443,10 +444,10 @@ def library_guess_element_from_name(name0, res_name):
 
     ## try the easy way out -- look up the atom in the monomer dictionary
     mdesc = library_get_monomer_desc(res_name)
-    if mdesc != None:
+    if mdesc is not None:
         if mdesc.atom_dict.has_key(name):
             symbol = mdesc.atom_dict[name]
-            if symbol != None:
+            if symbol is not None:
                 return symbol
 
         if mdesc.is_amino_acid() and name == "OXT":
