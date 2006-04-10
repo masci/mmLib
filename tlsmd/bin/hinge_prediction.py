@@ -74,7 +74,7 @@ class TLSHingePredictionHypothosis(object):
 
     def run(self, plotfileprefix):
         if self.run_tlsmd:
-            self.tlsmd.run_optimization(True)
+            tlsmd_analysis.IndependentTLSSegmentOptimization(self.tlsmd)
         
         for chain in self.tlsmd.iter_chains():
             self.set_chain(chain)

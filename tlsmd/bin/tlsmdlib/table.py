@@ -18,6 +18,10 @@ class StringTable(object):
         value = str(value)
         self.__data[i][j] = value
         self.__column_width[j] = max(self.__column_width[j], len(value))
+
+    def __getitem__(self, location):
+        i, j = location
+        return self.__data[i][j]
         
     def __str__(self):
         field_width = [w + self.__spacing for w in self.__column_width]

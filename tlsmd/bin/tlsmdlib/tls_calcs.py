@@ -151,7 +151,7 @@ def calc_mean_biso_tls(chain, cpartition):
     return biso
 
 
-def calc_cross_prediction_matrix_rmsd(chain, cpartition):
+def calc_residue_mean_rmsd(chain, cpartition):
     num_tls = cpartition.num_tls_segments()
     num_res = chain.count_fragments()
 

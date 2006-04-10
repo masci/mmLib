@@ -16,6 +16,26 @@ import conf
 import tls_calcs
 
 
+def FormatFigureHTML(title, caption, figure_html):
+    if caption:
+        l = ['<tr><td align="center">',
+             '<p style="padding:2%%;background-color:#eeeeee;border-style:dashed;border-width:thin;border-color:black">%s</p>' % (caption),
+             '</td></tr>']
+        cap_html = "".join(l)
+    else:
+        cap_html = ""
+
+    l = ['<table style="width:80%">',
+         '<tr><th style="font-size:large">%s</th></tr>' % (title),
+         '<tr><td align="center">',
+         figure_html,
+         '</td></tr>',
+         cap_html,
+         '</table>']
+
+    return "".join(l)
+
+
 class GNUPlot(object):
     """Provides useful methods for subclasses which need to run gnuplot.
     """
@@ -105,26 +125,9 @@ class GNUPlot(object):
         else:
             return '<img src="%s" alt="%s">' % (self.png_path, alt_text)
         
-    def html_markup(self, title, caption, alt_text=None):
-        if caption:
-            l = ['<tr><td align="center">',
-                 '<p style="padding:2%%;background-color:#eeeeee;border-style:dashed;border-width:thin;border-color:black">%s</p>' % (caption),
-                 '</td></tr>']
-            cap_html = "".join(l)
-        else:
-            cap_html = ""
-                
-        l = ['<table style="width:80%">',
-             '<tr><th style="font-size:large">%s</th></tr>' % (title),
-
-             '<tr><td align="center">',
-             self.html_link(alt_text),
-             '</td></tr>',
-             cap_html,
-             '</table>']
-
-        return "".join(l)
-
+    def html_markup(self, title, caption, alt_text = None):
+        return FormatFigureHTML(title, caption, self.html_link(alt_text))
+        
 
 _LSQR_VS_TLS_SEGMENTS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
@@ -666,14 +669,15 @@ class RMSDPlot(GNUPlot):
         tbl.set_column(0, 0, frag_id_iter)
                 
         if self.cpartition.num_tls_segments() > 1:
-            CMTX1 = tls_calcs.calc_cross_prediction_matrix_rmsd(
+            CMTX1 = tls_calcs.calc_residue_mean_rmsd(
                 self.chain, self.chain.partition_collection.get_chain_partition(1))
-            tbl.set_column(0, 1, CMTX1)
+            tbl.set_column(0, 1, CMTX1[0])
 
-        CMTX = tls_calcs.calc_cross_prediction_matrix_rmsd(self.chain, self.cpartition)
-        m, n = CMTX.shape
-        for itls in range(m):
-            tbl.set_column(0, itls + 2, CMTX[itls])
+        CMTX = tls_calcs.calc_residue_mean_rmsd(self.chain, self.cpartition)
+        for itls, tls in enumerate(self.cpartition.iter_tls_segments()):
+            for frag in tls.iter_fragments():
+                ifrag = frag.ifrag
+                tbl[ifrag, itls + 2] = CMTX[itls, ifrag]
 
         open(self.txt_path, "w").write(str(tbl))
 
@@ -727,7 +731,4 @@ class RMSDPlot(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
         
         return script
-
-    
-
 

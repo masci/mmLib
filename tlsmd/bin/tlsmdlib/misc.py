@@ -32,3 +32,8 @@ def rgb_f2i(rgb):
     gi = int(255.0 * g)
     bi = int(255.0 * b)
     return (ri, gi, bi)
+
+def rgb_f2s(rgbf):
+    rgbs = "#%2x%2x%2x" % rgb_f2i(rgbf)
+    rgbs = rgbs.replace(" ", "0")
+    return rgbs

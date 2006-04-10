@@ -26,9 +26,8 @@ import conf
 import gnuplots
 import sequence_plot
 import table
-
-from captions             import *
-from tls_animate          import TLSAnimate, TLSAnimateFailure
+import captions
+from tls_animate import TLSAnimate, TLSAnimateFailure
 
 
 def calc_inertia_tensor(atom_iter):
@@ -160,12 +159,9 @@ class ColorInfo(object):
         self.name = name
         self.rgbf = rgbf
         self.rgbi = misc.rgb_f2i(rgbf)
+        self.rgbs = misc.rgb_f2s(rgbf)
         self.thumbnail_dir = thumbnail_dir
         self.thumbnail_size = thumbnail_size
-
-        rgbs = "#%2x%2x%2x" % misc.rgb_f2i(rgbf)
-        rgbs = rgbs.replace(" ", "0")
-        self.rgbs = rgbs
 
         self.thumbnail_path = os.path.join(thumbnail_dir, "%s.png" % (name))
         img = Image.new("RGBA", thumbnail_size, self.rgbi)
@@ -430,7 +426,7 @@ class HTMLReport(Report):
              '<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>',
-             '<p style="font-size:small">%s</p>' % (MOTION_ANALYSIS_TEXT)]
+             '<p style="font-size:small">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
         for xdict in self.pages_chain_motion_analysis:
             l.append('<p><a href="%s">%s</a></p>' % (xdict["href"], xdict["title"]))
@@ -438,7 +434,7 @@ class HTMLReport(Report):
         l +=['<br>',
              ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
-             '<p style="font-size:small">%s</p>' % (MULTI_CHAIN_ALIGNMENT_TEXT)]
+             '<p style="font-size:small">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
 
         if self.page_multi_chain_alignment!=None:
             l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
@@ -448,7 +444,7 @@ class HTMLReport(Report):
         l +=['<br>',
              ## REFINEMENT PREP
              '<center><h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3></center>',
-             '<p style="font-size:small">%s</p>' % (REFINEMENT_PREP_TEXT),
+             '<p style="font-size:small">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
              '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"]),
              self.html_foot()]
         
@@ -552,7 +548,7 @@ class HTMLReport(Report):
         title = 'Chain %s Optimization Residual' % (chain.chain_id)
 
         l = ['<center>',
-             gp.html_markup(title, LSQR_CAPTION),
+             gp.html_markup(title, captions.LSQR_CAPTION),
              '</center>']
         
         return "".join(l)
@@ -588,7 +584,7 @@ class HTMLReport(Report):
              '</tr>',
              '</table>',
              '</center>',
-             '<p>%s</p>' % (SEG_ALIGN_CAPTION)]
+             '<p>%s</p>' % (captions.SEG_ALIGN_CAPTION)]
         
         return "".join(l)
 
@@ -809,7 +805,7 @@ class HTMLReport(Report):
             if tls.superposition_vscrew != None:
                 gl_tls_group.properties.update(COR_vector = tls.superposition_vscrew)
 
-            ## set width of trace according to the group's translational tensor trace
+            ## set width of trace according to the group's translationral tensor trace
             mtls_info = tls.model_tls_info
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
 
@@ -1152,7 +1148,7 @@ class HTMLReport(Report):
              '<br>',
              '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL),
              '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id),
-             '<p>%s</p>' % (REFINEMENT_PREP_INFO),
+             '<p>%s</p>' % (captions.REFINEMENT_PREP_INFO),
              '<center><table><tr><td>',
              plot.html_link(),
              '</td></tr><tr><td>',
@@ -1235,6 +1231,7 @@ class ChainNTLSAnalysisReport(Report):
 
              self.html_tls_group_table(),'<br>',
              self.html_bmean(),'<br>',
+             self.tls_segment_recombination(),'<br>',
              self.html_translation_analysis(),'<br>',
              self.html_libration_analysis(),'<br>',
              self.html_ca_differance(),'<br>',
@@ -1260,7 +1257,7 @@ class ChainNTLSAnalysisReport(Report):
         """
         tanalysis = gnuplots.TranslationAnalysis(self.chain, self.cpartition)
         l = ['<center>',
-             tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", TRANSLATION_GRAPH_CAPTION),
+             tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", captions.TRANSLATION_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
@@ -1270,7 +1267,7 @@ class ChainNTLSAnalysisReport(Report):
         """
         libration_analysis = gnuplots.LibrationAnalysis(self.chain, self.cpartition)
         l = ['<center>',
-             libration_analysis.html_markup("Screw Displacement Analysis", LIBRATION_GRAPH_CAPTION),
+             libration_analysis.html_markup("Screw Displacement Analysis", captions.LIBRATION_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
@@ -1280,7 +1277,7 @@ class ChainNTLSAnalysisReport(Report):
         """
         plot = gnuplots.CA_TLS_Differance_Plot(self.chain, self.cpartition)
         l = ['<center>',
-             plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", FIT_GRAPH_CAPTION),
+             plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", captions.FIT_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
@@ -1312,10 +1309,56 @@ class ChainNTLSAnalysisReport(Report):
         return "".join(l)
 
     def tls_segment_recombination(self):
-        if not hasattr(self.cpartition, "recombination_matrix"):
-            return
+        if not hasattr(self.cpartition, "rmsd_b_mtx"):
+            return ""
 
-        tbl = table.StringTableFromMatrix(self.cpartition.recombination_matrix)
+        rmatrix = self.cpartition.rmsd_b_mtx
+
+        tbl = table.StringTableFromMatrix(rmatrix)
         filename = "%s_CHAIN%s_NTLS%s_RECOMBINATION.txt" % (
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
+        
         open(filename, "w").write(str(tbl))
+
+        m, n = rmatrix.shape
+        tbl = table.StringTable(m + 1, n + 1, '<td></td>')
+        
+        ## label top and left table margins
+        for i, tls in enumerate(self.cpartition.iter_tls_segments()):
+            tbl[i + 1, 0] = '<td style="background-color:%s">%s</td>' % (tls.color.rgbs, tls.display_label())
+            tbl[0, i + 1] = tbl[i + 1, 0]
+
+        ## recombination values
+
+        ## determine min/max values for coloring
+        min_rmsd_b = rmatrix[0, 0]
+        max_rmsd_b = rmatrix[0, 0]
+        for i in xrange(m):
+            for j in xrange(n):
+                min_rmsd_b = min(min_rmsd_b, rmatrix[i, j])
+                max_rmsd_b = max(max_rmsd_b, rmatrix[i, j])
+        b_range = max_rmsd_b - min_rmsd_b
+
+        for i in xrange(m):
+            for j in xrange(n):
+                scale = (rmatrix[i, j] - min_rmsd_b) / b_range
+                bright = 1.0 - (0.75 * scale)
+                rgbs = misc.rgb_f2s((bright, bright, bright))
+                tbl[i + 1, j + 1] = '<td style="background-color:%s;padding:5px;font-size:x-small">%6.2f</td>' % (
+                    rgbs, rmatrix[i, j])
+
+        l = ['<table style="background-color:#bbbbff;border-width:thin;border-color:black;border-style:solid">\n']
+        for i in xrange(m + 1):
+            l.append('<tr>')
+            for j in xrange(n + 1):
+                l.append(tbl[i, j])
+            l.append('</tr>\n')
+        l += ['</table>\n']
+
+        l2 = ['<center>',
+              gnuplots.FormatFigureHTML("RMSD B Values of Combined TLS Groups",
+                                        captions.TLS_GROUP_RECOMBINATION,
+                                        "".join(l)),
+              '</center>']
+        
+        return "".join(l2)

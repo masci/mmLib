@@ -76,22 +76,33 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     tls_analyzer = chain.tls_analyzer
     nparts = len(tls_list)
 
-    cpartition.recombination_matrix = numpy.zeros((nparts, nparts), float)
+    ## set the diagonal to the rmsd_b of the individual groups
+    rmsd_b_mtx = numpy.zeros((nparts, nparts), float)
+    for i, tls in enumerate(tls_list):
+        rmsd_b_mtx[i,i] = tls.residual_rmsd_b()
 
     recombination_list = []
 
-    for part1, part2 in recombination2_iter(nparts):
-        tls1 = tls_list[part1]
-        tls2 = tls_list[part2]
+    for i, j in recombination2_iter(nparts):
+        tls1 = tls_list[i]
+        tls2 = tls_list[j]
 
         segment_ranges = tls1.segment_ranges + tls2.segment_ranges
         segment_ranges.sort(segment_range_cmp)
         tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
 
-        residual_delta = (tlsdict["residual"] - (tls1.residual() + tls2.residual())) / tlsdict["num_residues"]
+        residual = tlsdict["residual"]
+        num_residues = tlsdict["num_residues"]
+        msd = residual / num_residues
+        rmsd_b = Constants.U2B * math.sqrt(msd)
+
+        rmsd_b_mtx[i, j] = rmsd_b
+        rmsd_b_mtx[j, i] = rmsd_b
+        
+        residual_delta = (residual - (tls1.residual() + tls2.residual())) / num_residues
         recombination_list.append((residual_delta, tls1, tls2, tlsdict))
-        cpartition.recombination_matrix[part1, part2] = residual_delta
-        cpartition.recombination_matrix[part2, part1] = residual_delta
+
+    cpartition.rmsd_b_mtx = rmsd_b_mtx
 
     recombination_list.sort()
     return_list = []
@@ -182,10 +193,11 @@ def ChainPartitionRecombinationOptimization(chain):
             proot = ptree
             if search_depth > max_depth:
                 break
-
+            
     ## insert replacement ChainPartitions
-    for ntls, cpartition in ntls_best.iteritems():
-        cp = chain.partition_collection.get_chain_partition(ntls)
-        if cp != cpartition:
-            chain.partition_collection.insert_chain_partition(cpartition)
+    if conf.globalconf.recombination:
+        for ntls, cpartition in ntls_best.iteritems():
+            cp = chain.partition_collection.get_chain_partition(ntls)
+            if cp != cpartition:
+                chain.partition_collection.insert_chain_partition(cpartition)
 

@@ -87,3 +87,11 @@ NO_VALID_CONFIGURATIONS = """\
 TLSMD was unable to optimize this chain.  This is due to known limitation
 in this beta version of TLSMD which will be fixed in a upcoming version.
 """
+
+TLS_GROUP_RECOMBINATION = """\
+The TLSMD optimization algorithm models TLS groups as sequential segments
+of a protein or DNA/RNA chain.  This matrix shows the RMSD B values of the
+individual groups on the diagonal, and the RMSD B values of combined groups as
+off-diagonal elements.  This helps identify non-contiguous protein
+segments which may be combined into a single TLS group.
+"""

@@ -120,7 +120,10 @@ class TLSSegment(object):
 
     def chi2(self):
         return self.__residual / self.__num_residues
-    
+
+    def residual_rmsd_b(self):
+        return Constants.U2B * math.sqrt(self.residual() / self.__num_residues)
+
     def residual(self):
         return self.__residual
 

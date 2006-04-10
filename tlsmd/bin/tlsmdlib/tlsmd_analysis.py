@@ -35,9 +35,7 @@ def TLSMD_Main(struct_file_path  = None,
         struct2_chain_id    = conf.globalconf.target_struct_chain_id)
     
     IndependentTLSSegmentOptimization(analysis)
-
-    if conf.globalconf.recombination:
-        RecombineIndependentTLSSegments(analysis)
+    RecombineIndependentTLSSegments(analysis)
 
     if analysis.struct2_file_path is not None and analysis.struct2_chain_id is not None:
         SumperimposeHomologousStructure(analysis)
@@ -253,9 +251,6 @@ def IndependentTLSSegmentOptimization(analysis):
 
 
 def RecombineIndependentTLSSegments(analysis):
-    if not conf.globalconf.recombination:
-        return
-
     print
     print "TLS SEGMENT RECOMBINATION"
     for chain in analysis.chains:
