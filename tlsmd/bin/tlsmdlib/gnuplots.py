@@ -82,7 +82,8 @@ class GNUPlot(object):
             
         pobj.stdin.write(script)
         pobj.stdin.close()
-	print pobj.stdout.read()
+	pobj.stdout.read()
+        pobj.stdout.close()
         pobj.wait()
         
     def output_png(self):

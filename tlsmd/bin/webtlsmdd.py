@@ -31,6 +31,7 @@ def fatal(text):
 def generate_security_code(code_length = 8):
     """Generates a random 8
     """
+    random.seed()
     codelist = list(5 * string.ascii_letters) 
     random.shuffle(codelist)
     code = "".join(random.sample(codelist, code_length)) 
@@ -42,7 +43,7 @@ class JobDatabase(object):
         self.db_file = db_file
         self.db = bsddb.hashopen(self.db_file, "c")
 
-        if self.retrieve_globals() == None:
+        if self.retrieve_globals() is None:
             self.init_globals()
 
     def __store_dict(self, dbkey, dictx):
@@ -141,7 +142,7 @@ class JobDatabase(object):
 
     def job_data_set(self, job_id, key, value):
         jdict = self.retrieve_jdict(job_id)
-        if jdict == None:
+        if jdict is None:
             return False
         jdict[key] = value
         self.store_jdict(jdict)
@@ -149,7 +150,7 @@ class JobDatabase(object):
 
     def job_data_get(self, job_id, key):
         jdict = self.retrieve_jdict(job_id)
-        if jdict == None:
+        if jdict is None:
             return None
         value = jdict.get(key)
 	if isinstance(value, unicode):
@@ -348,7 +349,7 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
                 struct_id = pdbx[:4]
                 pdbin = pdbx
                 break
-        if pdbin == None:
+        if pdbin is None:
             os.chdir(old_dir)
             return "Input PDB File %s Not Found" % (pdbin)
 
@@ -406,7 +407,7 @@ class WebTLSMDDaemon(object):
 
     def job_get_dict(self, job_id):
         jdict = self.jobdb.retrieve_jdict(job_id)
-        if jdict == None:
+        if jdict is None:
             return False
         return jdict
 
