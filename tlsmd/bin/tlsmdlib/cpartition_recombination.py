@@ -10,6 +10,7 @@ from mmLib import Constants, Structure
 
 import const
 import conf
+import console
 import tree
 import opt_containers
 
@@ -155,7 +156,7 @@ def ChainPartitionRecombinationOptimization(chain):
         if ntls < 2:
             continue
         
-        print "%d INTO %d TO 2" % (ntls, ntls - 1)
+        console.stdoutln("%d INTO %d TO 2" % (ntls, ntls - 1))
 
         search_width = 1
         search_depth = 1
@@ -178,10 +179,11 @@ def ChainPartitionRecombinationOptimization(chain):
 
                 if not visited.has_key(ptree):
                     visited[ptree] = True
-                    print "%s %5.2f(%5.2f) %d" % (ptree.cp,
-                                                  ptree.cp.rmsd_b(),
-                                                  ntls_best[tmp_ntls].rmsd_b(),
-                                                  tmp_ntls)
+                    console.stdoutln(
+                        "%s %5.2f(%5.2f) %d" % (ptree.cp,
+                                                ptree.cp.rmsd_b(),
+                                                ntls_best[tmp_ntls].rmsd_b(),
+                                                tmp_ntls))
 
                 if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
                     ntls_best[tmp_ntls] = ptree.cp

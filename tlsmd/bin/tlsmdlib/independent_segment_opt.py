@@ -12,6 +12,7 @@ from mmLib import Constants, TLS
 import misc
 import const
 import conf
+import console
 import atom_selection
 import hcsssp
 import tls_calcs
@@ -121,16 +122,16 @@ class ISOptimization(hcsssp.HCSSSP):
             num_subsegments += 1
             pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
             if pcomplete != pcomplete_old:
-                print "(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete)
+                console.stdoutln("(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete))
                 pcomplete_old = pcomplete
 
             if tlsdict == None:
-                print "[ERROR] no TLS group %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
+                console.stderrln("no TLS group %s{%s..%s}" % (chain_id, frag_id1, frag_id2))
                 raise SystemExit
             if tlsdict.has_key("error") is True:
                 continue
             if not tlsdict.has_key("residual"):
-                print "[ERROR] no residual! %s{%s..%s}" % (chain_id, frag_id1, frag_id2)
+                console.stderrln("no residual! %s{%s..%s}" % (chain_id, frag_id1, frag_id2))
                 raise SystemExit
 
             residual = tlsdict["residual"]
@@ -152,7 +153,7 @@ class ISOptimization(hcsssp.HCSSSP):
 
         ## perform the minimization
         if len(edges) > 0:
-            print "run_minimization(chain_id=%s): HCSSSP Minimizing..." % (chain_id)
+            console.stdoutln("run_minimization(chain_id=%s): HCSSSP Minimizing..." % (chain_id))
         
             D, P, T = self.HCSSSP_minimize(vertices, edges, self.nparts)
 
@@ -162,7 +163,7 @@ class ISOptimization(hcsssp.HCSSSP):
             self.P = P
             self.T = T
         else:
-            print "run_minimization(chain_id=%s): Unable to minimize" % (chain_id)
+            console.stdoutln("run_minimization(chain_id=%s): Unable to minimize" % (chain_id))
             self.minimized = False
 
         ## free memory taken up from edges
@@ -229,9 +230,9 @@ class ISOptimization(hcsssp.HCSSSP):
         dest_j = len(self.V) - 1
 
         for h in xrange(1, hops + 1):
-            print
-            print "MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h)
-            print "NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE"
+            console.endln()
+            console.stdoutln("MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h))
+            console.stdoutln("NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE")
             self.__detailed_path(self.V, self.D, self.P, self.T, h)
 
     def __detailed_path(self, V, D, P, T, hop_constraint):
@@ -261,9 +262,10 @@ class ISOptimization(hcsssp.HCSSSP):
                 edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (i, j, cost, frag_range, wr)
             else:
                 edge_label = ""
-                 
-            print "%s   %3d     %10.4f   %s   %s" % (
-                vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label)
+
+            console.stdoutln(
+                "%s   %3d     %10.4f   %s   %s" % (
+                vertex_label, h, D[h,curr_v], prev_vertex_label, edge_label))
 
             curr_v = prev_vertex
             h -= 1

@@ -14,6 +14,7 @@ from mmLib import Constants, FileIO, TLS, Structure
 import misc
 import const
 import conf
+import console
 import atom_selection
 import tlsmdmodule
 import opt_containers
@@ -81,11 +82,11 @@ class TLSMDAnalysis(object):
         for chain in self.chains:
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
-        
-        print "STRUCTURE FILE.....................: %s" % (self.struct_file_path)
-        print "STRUCTURE ID.......................: %s" % (self.struct_id)
-        print "CHAIN IDs SELECTED FOR ANALYSIS....: %s" % (cids)
-        print
+
+        console.kvformat("STRUCTURE FILE", self.struct_file_path)
+        console.kvformat("STRUCTURE ID", self.struct_id)
+        console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids)
+        console.endln()
         
     def select_chains(self):
         """Selects chains for analysis.
@@ -132,16 +133,16 @@ def LoadStructure(struct_file_path):
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
-    print "LOADING STRUCTURE..................: %s" % (struct_file_path)
+    console.kvformat("LOADING STRUCTURE", struct_file_path)
 
     ## load struct
     struct = FileIO.LoadStructure(
         fil = struct_file_path, distance_bonds = True)
 
-    print "HEADER..............................: %s" % (struct.header)
-    print "TITLE...............................: %s" % (struct.title)
-    print "EXPERIMENTAL METHOD.................: %s" % (struct.experimental_method)
-
+    console.kvformat("HEADER", struct.header)
+    console.kvformat("TITLE", struct.title)
+    console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method)
+    
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
         struct_id = conf.globalconf.struct_id
@@ -150,7 +151,7 @@ def LoadStructure(struct_file_path):
         conf.globalconf.struct_id = struct_id
     struct.structure_id = struct_id
 
-    print
+    console.endln()
 
     ## if there are REFMAC5 TLS groups in the REMARK records of
     ## the PDB file, then add those in
@@ -161,21 +162,19 @@ def LoadStructure(struct_file_path):
     tls_file.load(fil)
 
     if len(tls_file.tls_desc_list) > 0:
-        print "ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS"
-        print "    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list))
+        console.stdoutln("ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS")
+        console.stdoutln("    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list)))
 
         ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
         for tls_desc in tls_file.tls_desc_list:
             tls_group = tls_desc.construct_tls_group_with_atoms(struct)
-
-            print "    TLS GROUP: %s" % (tls_group.name)
-
+            console.stdoutln("    TLS GROUP: %s" % (tls_group.name))
             for atm, Utls in tls_group.iter_atm_Utls():
                 bresi = atm.temp_factor
                 atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
                 atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
 
-        print
+        console.endln()
 
     return struct
 
@@ -240,9 +239,9 @@ def IndependentTLSSegmentOptimization(analysis):
         if not isopt.minimized:
             continue
 
-        print
-        print "="*79
-        print "MINIMIZING CHAIN %s" % (chain)
+        console.endln()
+        console.stdoutln("="*79)
+        console.stdoutln("MINIMIZING CHAIN %s" % (chain))
         isopt.prnt_detailed_paths()
 
         chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
@@ -251,8 +250,8 @@ def IndependentTLSSegmentOptimization(analysis):
 
 
 def RecombineIndependentTLSSegments(analysis):
-    print
-    print "TLS SEGMENT RECOMBINATION"
+    console.endln()
+    console.stdoutln("TLS SEGMENT RECOMBINATION")
     for chain in analysis.chains:
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
 
@@ -260,17 +259,15 @@ def RecombineIndependentTLSSegments(analysis):
 def FitConstrainedTLSModel(analysis):
     """
     """
-    print
-    print "CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION"
+    console.endln()
+    console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION")
     for chain in analysis.iter_chains():
-        print "CHAIN %s" % (chain.chain_id)
-
+        console.stdoutln("CHAIN %s" % (chain.chain_id))
         for cpartition in chain.partition_collection.iter_chain_partitions():
-            print "TLS GROUPS: %d" % (cpartition.num_tls_segments())
-
+            console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments()))
             for tls in cpartition.iter_tls_segments():
                 tls.fit_to_chain(cpartition.chain)
-    print
+    console.endln()
 
 
 def SumperimposeHomologousStructure(analysis):
@@ -281,18 +278,19 @@ def SumperimposeHomologousStructure(analysis):
     target_struct = FileIO.LoadStructure(fil = analysis.struct2_file_path)
     target_chain = target_struct.get_chain(analysis.struct2_chain_id)
 
-    if target_chain == None:
-        print "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
-            target_struct, target_chain)
+    if target_chain is None:
+        console.stderrln(
+            "UNABLE TO LOAD TARGET STRUCTURE/CHAIN: %s:%s" % (
+            target_struct, target_chain))
         return
 
     analysis.target_chain = target_chain
 
     for chain in analysis.iter_chains():
-        print
-        print "Superimposing Chain.............%s" % (chain.chain_id)
+        console.endln()
+        console.kvformat("Superimposing Chain", chain.chain_id)
         hyp = structcmp.TLSConformationPredctionHypothosis(chain, target_chain)
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-            print
-            print "Number of TLS Segments........: %d" % (ntls)
+            console.endln()
+            console.stdoutln("Number of TLS Segments........: %d" % (ntls))
             hyp.add_conformation_prediction_to_chain_partition(cpartition)

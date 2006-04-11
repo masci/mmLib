@@ -10,6 +10,7 @@ from mmLib import Constants, Library
 
 import conf
 import const
+import console
 
 def iter_mainchain_atoms(atom_iter):
     filter = lambda atm: const.MAINCHAIN_ATOMS.has_key(atm.res_name)
@@ -24,18 +25,18 @@ def calc_include_atom(atm, reject_messages = False):
 
     if atm.occupancy < 0.1:
         if reject_messages == True:
-            print "calc_include_atom(%s): rejected because of low occupancy" % (atm)
+            console.stdoutln("calc_include_atom(%s): rejected because of low occupancy" % (atm))
 	return False
     
     if numpy.trace(atm.get_U()) <= const.TSMALL:
         if reject_messages == True:
-            print "calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm)
+            console.stdoutln("calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm))
         return False
 
     elif conf.globalconf.include_atoms == "MAINCHAIN":
         if const.MAINCHAIN_ATOM_DICT.has_key(atom.name) is False:
             if reject_messages == True:
-                print "calc_include_atom(%s): rejected non-mainchain atom" % (atm)
+                console.stdoutln("calc_include_atom(%s): rejected non-mainchain atom" % (atm))
             return False
     
     return True

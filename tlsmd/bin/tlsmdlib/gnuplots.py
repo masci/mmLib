@@ -10,6 +10,7 @@ import numpy
 
 from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
 
+import console
 import table
 import misc
 import conf
@@ -77,7 +78,7 @@ class GNUPlot(object):
                                     close_fds = True,
                                     bufsize = 8192)
         except OSError:
-            print "[ERROR] gnuplot failed to execute from path: %s" % (self.gnuplot_path)
+            console.stderrln("gnuplot failed to execute from path: %s" % (self.gnuplot_path))
             return
             
         pobj.stdin.write(script)
@@ -92,7 +93,7 @@ class GNUPlot(object):
         script0 = self.make_script()
         
         ## if a basename is given, then write the GnuPlot script as a file
-        print "GNUPLot: Saving %s" % (self.png_path)
+        console.stdoutln("GNUPLot: Saving %s" % (self.png_path))
 
         ## set output size
         l = ['set term png font "%s" %d size %d,%d enhanced' % (self.font_path, self.font_size, self.width, self.height),

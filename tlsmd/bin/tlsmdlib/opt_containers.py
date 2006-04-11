@@ -10,6 +10,7 @@ import numpy
 from mmLib import Constants, Structure, TLS
 
 import conf
+import console
 import tls_calcs
 
 
@@ -155,8 +156,9 @@ class TLSSegment(object):
         self.tls_group = tls_group
 
         if len(self.tls_group) != self.num_atoms():
-            print "fit_to_chain: EEK! (%s) len(self.tls_group)=%d != self.num_atoms()=%d" % (
-                self, len(self.tls_group), self.num_atoms())
+            console.stderrln(
+                "fit_to_chain: EEK! (%s) len(self.tls_group)=%d != self.num_atoms()=%d" % (
+                self, len(self.tls_group), self.num_atoms()))
             raise SystemExit
 
         ## fit the TLS group parameters

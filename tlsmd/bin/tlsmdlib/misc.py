@@ -5,6 +5,7 @@
 ## included as part of this package.
 
 import time
+import console
 
 _STIME = 0.0
 
@@ -18,10 +19,10 @@ def end_timing():
     return "Computation Time: %5.2f sec" % (tm)
 
 def begin_chain_timing(chain_id):
-    print "BEGIN TIMING CHAIN %s %f" % (chain_id, time.time())
+    console.stdoutln("BEGIN TIMING CHAIN %s %f" % (chain_id, time.time()))
 
 def end_chain_timing(chain_id):
-    print "END TIMING CHAIN %s %f" % (chain_id, time.time())
+    console.stdoutln("END TIMING CHAIN %s %f" % (chain_id, time.time()))
 
 def rgb_f2i(rgb):
     """Transforms the float 0.0-1.0 RGB color values to

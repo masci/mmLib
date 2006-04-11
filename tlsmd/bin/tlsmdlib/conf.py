@@ -15,6 +15,7 @@ $TLSMD_ROOT/examples
 import os
 import time
 import const
+import console
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
@@ -27,6 +28,10 @@ MSMTP                  = "/usr/bin/msmtp"
 TRACEBACK_EMAIL        = "jay.painter@gmail.com"
 ## END: CONFIGURATION PATHS AND URLS
 
+## override default configuration
+ALTCONF = "/etc/tlsmd.conf"
+if os.path.exists(ALTCONF):
+    execfile(ALTCONF)
 
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
@@ -68,13 +73,13 @@ class GlobalConfiguration(object):
         self.adp_smoothing = 0
 
     def prnt(self):
-        print "TLS Motion Determination (TLSMD) Version %s" % (const.VERSION)
-        print
-        print "TLS PARAMETER FIT ENGINE...........: %s" % (self.tls_model)
-        print "MIN_SUBSEGMENT_SIZE................: %d" % (self.min_subsegment_size)
-        print "ATOM B-FACTOR WEIGHT_MODEL.........: %s" % (self.weight_model)
-        print "PROTEIN ATOMS CONSIDERED...........: %s" % (self.include_atoms)
-        print
+        console.stdoutln("TLS Motion Determination (TLSMD) Version %s" % (const.VERSION))
+        console.endln()
+        console.kvformat("TLS PARAMETER FIT ENGINE", self.tls_model)
+        console.kvformat("MIN_SUBSEGMENT_SIZE", self.min_subsegment_size)
+        console.kvformat("ATOM B-FACTOR WEIGHT_MODEL", self.weight_model)
+        console.kvformat("PROTEIN ATOMS CONSIDERED", self.include_atoms)
+        console.endln()
 
     def verify(self):
         assert self.tls_model     in ["ANISO", "ISOT", "NLANISO", "NLISOT"]

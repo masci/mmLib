@@ -62,7 +62,7 @@ def run_tlsmd(webtlsmdd, jdict):
                             stdout = subprocess.PIPE,
                             stderr = subprocess.STDOUT,
                             close_fds = True,
-                            bufsize = 8192)
+                            bufsize = 0)
 
     logfil = open("log.txt", "w")
 
@@ -169,20 +169,6 @@ def get_job(webtlsmdd):
 
     jdict["tlsmd"] = tlsmd
     return jdict
-    
-def main():
-    log_write("starting webtlsmdrund.py  version %s" % (const.VERSION))
-    log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
-
-    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
-
-    while True:
-        jdict = get_job(webtlsmdd)
-        if jdict == None:
-            time.sleep(5.0)
-            continue
-
-        run_job(webtlsmdd, jdict)
 
 
 MAIL_MESSAGE = """\
@@ -230,6 +216,27 @@ def send_mail(job_id):
         MAIL_MESSAGE.replace("<ANALYSIS_URL>", analysis_url))
     
     log_write("sent mail to: %s" % (address))
+
+def fetch_and_run_jobs_forever():
+    log_write("starting webtlsmdrund.py  version %s" % (const.VERSION))
+    log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
+
+    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
+
+    while True:
+        jdict = get_job(webtlsmdd)
+        if jdict == None:
+            time.sleep(5.0)
+            continue
+
+        run_job(webtlsmdd, jdict)
+
+def main():
+    try:
+        fetch_and_run_jobs_forever()
+    except:
+        email.SendTracebackEmail("webtlsmdrund.py exception")
+        raise
 
 if __name__=="__main__":
     if len(sys.argv) == 2:

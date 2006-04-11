@@ -10,6 +10,7 @@ from mmLib import Constants, Structure, FileIO
 
 import const
 import conf
+import console
 import tree
 import opt_containers
 
@@ -136,7 +137,7 @@ def RefineChainPartitionPositions(cpartition):
     given ChainPartition instance.
     """
     partitions = ChainPartitionList(cpartition)
-    print partitions
+    console.stdoutln(partitions)
 
 
 ## testing

@@ -569,7 +569,7 @@ class WebTLSMD_XMLRPCServer(
 def handle_SIGCHLD(signum, frame):
     os.waitpid(-1, os.WNOHANG)
 
-def main():
+def daemon_main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
     host_port = ("localhost", int(port))
 
@@ -594,6 +594,12 @@ def main():
     xmlrpc_server.register_instance(webtlsmdd)
     xmlrpc_server.serve_forever()
 
+def main():
+    try:
+        daemon_main()
+    except:
+        email.SendTracebackEmail("webtlsmdd.py exception")
+        raise
 
 def inspect():
     database_path = sys.argv[2]
@@ -613,7 +619,6 @@ def inspect():
 def usage():
     print "webtlsmdd.py [list | remove] args..."
     
-
 if __name__=="__main__":
     if len(sys.argv) == 1:
         try:

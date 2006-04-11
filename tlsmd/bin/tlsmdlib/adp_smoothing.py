@@ -8,6 +8,7 @@ import numpy
 
 from mmLib import Constants, TLS
 
+import console
 import atom_selection
 import tls_calcs
 import tlsmdmodule
@@ -50,16 +51,16 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
         rejected += outliers
 
         if outliers == 0 or (num_atoms - outliers) < 10:
-            print "SEGMENT %s-%s %d->%d" % (frag_id1, frag_id2, orig_num_atoms, orig_num_atoms - rejected)
+            console.stdoutln("SEGMENT %s-%s %d->%d" % (frag_id1, frag_id2, orig_num_atoms, orig_num_atoms - rejected))
             return IT, IL, IS, IOrigin
 
 
 def IsotropicADPDataSmoother(chain, num_smooth = 1):
     """Experimental data smoothing of temperature factors
     """
-    print
-    print "SMOOTHING CHAIN %s ADPs" % (chain.chain_id)
-    print "SMOOTH WINDOW......................: %d" % (2 * num_smooth + 1)
+    console.endln()
+    console.stdoutln("SMOOTHING CHAIN %s ADPs" % (chain.chain_id))
+    conesole.kvformat("SMOOTH WINDOW", 2 * num_smooth + 1)
     
     num_frags = len(chain)
 

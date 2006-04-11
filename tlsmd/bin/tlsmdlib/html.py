@@ -23,6 +23,7 @@ from mmLib import Constants, Colors, Viewer, R3DDriver, Structure, Gaussian, Fil
 import misc
 import const
 import conf
+import console
 import gnuplots
 import sequence_plot
 import table
@@ -676,12 +677,9 @@ class HTMLReport(Report):
         """
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         png_path = "%s.png"   % (basename)
-
-        misc.start_timing()
-        print "Raster3D: rendering %s..." % (basename)
+        console.stdoutln( "Raster3D: rendering %s..." % (basename))
 
         struct_id = self.struct_id
-
         driver = R3DDriver.Raster3DDriver()
 
         ## XXX: Size hack: some structures have too many chains,
@@ -842,7 +840,6 @@ class HTMLReport(Report):
             
         driver.glr_set_render_png_path(png_path)
         viewer.glv_render_one(driver)
-        print misc.end_timing()
 
         ## got target chain?
         if self.tlsmd_analysis.target_chain != None:
@@ -969,11 +966,9 @@ class HTMLReport(Report):
         ## generate animation PDB file
 
         try:
-            print "TLSAnimate: creating animation PDB file..."
-            misc.start_timing()
+            console.stdoutln("TLSAnimate: creating animation PDB file...")
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_path)
-            print misc.end_timing()
         except TLSAnimateFailure:
             pass
         

@@ -4,20 +4,19 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-import sys
 import math
 import numpy
 
 try:
     from Bio import pairwise2
 except ImportError:
-    print "You need to install BioPython to use this feature"
-    sys.exit(-1)
+    print "Bio.pairwise2 from BioPython is not installed"
+    raise SystemExit
 
 from mmLib import Constants, AtomMath, Structure, Superposition, TLS
+import console
 
 SUPER_ATOMS  = ["N","CA","C"]
-
 
 def calc_angle(a, b):
     cos_ab = numpy.dot(a, b)/ (AtomMath.length(a) * AtomMath.length(b))
@@ -35,13 +34,13 @@ def align_chains(chain1, chain2):
     """Adds a .equiv attribute to each fragment of the chain
     referencing the equivalent fragment in the other chain.
     """
-    print "Chain Alignment"
+    console.stdoutln("Chain Alignment")
     seq1 = chain1.calc_sequence_one_letter_code()
-    print "Length of Chain 1: %d" % (len(seq1))
+    console.stdoutln("Length of Chain 1: %d" % (len(seq1)))
     seq2 = chain2.calc_sequence_one_letter_code()
-    print "Length of Chain 2: %d" % (len(seq2))
+    console.stdoutln("Length of Chain 2: %d" % (len(seq2)))
     align = pairwise2.align.globalxs(seq1, seq2, -0.5, -0.125)
-    print align[0]
+    console.stdoutln(align[0])
 
     seq1_align = align[0][0]
     seq2_align = align[0][1]
@@ -115,7 +114,7 @@ class TLSConformationPredctionHypothosis(object):
         sresult = SuperimposeChains(self.target_chain, self.chain, chain2_equiv, ["CA"])
         self.chain.target_chain_sresult = sresult
 
-        print "Structure Superposition RMSD: %6.2f" % (sresult.rmsd)
+        console.stdoutln("Structure Superposition RMSD: %6.2f" % (sresult.rmsd))
 
         for atm in self.target_chain.iter_all_atoms():
             atm.align_position = sresult.transform(atm.position)
@@ -127,9 +126,9 @@ class TLSConformationPredctionHypothosis(object):
             except KeyError:
                 continue
             if frag1.res_name != frag2.res_name:
-                print "EEK! %s::%s != %s::%s" % (
+                console.stdoutln("EEK! %s::%s != %s::%s" % (
                     frag1.fragment_id, frag1.res_name,
-                    frag2.fragment_id, frag2.res_name)
+                    frag2.fragment_id, frag2.res_name))
 
         return alignment_score
 
@@ -147,7 +146,7 @@ class TLSConformationPredctionHypothosis(object):
                 atm1 = frag1.get_atom(name)
                 atm2 = frag2.get_atom(name)
                 if atm1 == None or atm2 == None:
-                    print "EEK! No Equivalent Atom ", atm1
+                    console.stdoutln("EEK! No Equivalent Atom %s" % (atm1))
                     continue
                 plist.append((atm1.position, atm2.align_position))
                 d = atm1.position - atm2.align_position
@@ -164,12 +163,13 @@ class TLSConformationPredctionHypothosis(object):
             rotation = 360.0 - rotation
 
         fragstr = "%s:%s-%s" % (self.chain.chain_id, tls.frag_id1, tls.frag_id2)
-        print "TLS Group::%20s  Num Atoms::%4d  RMSD PRE ALIGN::%6.2f  RMSD::%6.2f  TRANSORM ROTATION::%6.2f" % (
-            fragstr, len(plist), rmsd_pre_alignment, sresult.rmsd, rotation)
+        console.stdoutln(
+            "TLS Group::%20s  Num Atoms::%4d  RMSD PRE ALIGN::%6.2f  RMSD::%6.2f  TRANSORM ROTATION::%6.2f" % (
+            fragstr, len(plist), rmsd_pre_alignment, sresult.rmsd, rotation))
 
         ## screw displacement vector
         vscrew = AtomMath.normalize(numpy.array([sresult.Q[1],sresult.Q[2],sresult.Q[3]], float))
-        print "superposition rotation vector: ",vscrew
+        console.stdoutln("superposition rotation vector: %s" % (vscrew))
         tls.superposition_vscrew = vscrew * rotation
 
         ## fit the isotropic TLS model to the group
@@ -186,7 +186,7 @@ class TLSConformationPredctionHypothosis(object):
 
             ang = min(calc_angle(evec, vscrew), calc_angle(-evec, vscrew))
 
-            print "%s  magnitude::%6.2f  vector angle::%6.2f" % (
-                lname, eval*Constants.RAD2DEG2, ang)
+            console.stdoutln("%s  magnitude::%6.2f  vector angle::%6.2f" % (
+                lname, eval*Constants.RAD2DEG2, ang))
             
 
