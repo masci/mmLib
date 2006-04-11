@@ -272,7 +272,7 @@ def html_job_edit_form(fdict):
     for cdict in fdict.get("chains", []):
         x += '<tr><td>'
         x += '<label>'
-        if cdict["selected"]==True:
+        if cdict["selected"]:
             x += '<input type="checkbox" name="%s" value="TRUE" checked>' % (cdict["name"])
         else:
             x += '<input type="checkbox" name="%s" value="TRUE">' % (cdict["name"])
@@ -398,7 +398,7 @@ def html_program_settings_table(fdict):
          '<tr style="line-height:2em"><th>Select Chains for Analysis</th></tr>']
          
     for cdict in fdict.get("chains", []):
-        if cdict["selected"]==True:
+        if cdict["selected"]:
             x = '<label><input type="checkbox" id="%s" name="%s" value="TRUE" checked>' % (cdict["name"], cdict["name"])
         else:
             x = '<label><input type="checkbox" id="%s" name="%s" value="TRUE">' % (cdict["name"], cdict["name"])
@@ -576,7 +576,7 @@ def html_job_info_table(fdict):
     x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th></tr>'
     for cdict in fdict.get("chains", []):
         x += '<tr><td>'
-        if cdict["selected"]==True:
+        if cdict["selected"]:
             x += '<tr>'
 	    
             x += '<td>%s</td>' % (cdict["desc"])
@@ -600,7 +600,7 @@ def html_job_info_table(fdict):
 
     ## TLS Model
     x += '<td>'
-    if fdict.get("tls_model")==None or fdict.get("tls_model")=="ISOT":
+    if fdict.get("tls_model") is None or fdict.get("tls_model")=="ISOT":
         x += 'Isotropic'
     elif fdict.get("tls_model")=="ANISO":
         x += 'Anisotropic'
@@ -608,7 +608,7 @@ def html_job_info_table(fdict):
 
     ## Least Squares Weighting
     x += '<td>'
-    if fdict.get("weight")==None or fdict.get("weight")=="IUISO":
+    if fdict.get("weight") is None or fdict.get("weight")=="IUISO":
         x += 'Inverse Atomic B<sub>iso</sub>'
     elif fdict.get("weight")=="NONE":
         x += 'No Weighting'
@@ -616,7 +616,7 @@ def html_job_info_table(fdict):
 
     ## Include Atoms
     x += '<td>'
-    if fdict.get("include_atoms")==None or fdict.get("include_atoms")=="ALL":
+    if fdict.get("include_atoms") is None or fdict.get("include_atoms")=="ALL":
         x += 'Include All Atoms'
     elif fdict.get("include_atoms")=="MAINCHAIN":
         x += 'Main Chain Atoms'
@@ -663,7 +663,9 @@ def check_job_id(form, webtlsmdd):
 
 
 def vet_data(data, max_len):
-    if len(data)>max_len:
+    if isinstance(data, unicode):
+        return False
+    if len(data) > max_len:
         return False
     if not data.isalnum():
         return False
@@ -671,11 +673,6 @@ def vet_data(data, max_len):
 
 def vet_email(email_address):
     if len(email_address) > 45:
-        return False
-    return True
-
-def vet_comment(comment):
-    if len(comment)>50:
         return False
     return True
 
@@ -688,7 +685,7 @@ def extract_job_edit_form(form, webtlsmdd):
         return False
 
     job_id = check_job_id(form, webtlsmdd)
-    if job_id == None:
+    if job_id is None:
         return False
 
     if form.has_key("user"):
@@ -792,7 +789,7 @@ class ErrorPage(Page):
              '<br>',
              '<center><p class="perror">Error<br>' ]
         
-        if self.text != None:
+        if self.text is not None:
             l.append(self.text)
 
         l.append('</p></center>')
@@ -817,7 +814,7 @@ class QueuePage(Page):
         return code == passcode
 
     def rcsb_href(self, struct_id):
-        if struct_id.lower()=="xxxx":
+        if struct_id.lower() == "xxxx":
             return struct_id
         return '<a href="http://pdbbeta.rcsb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
 
@@ -889,23 +886,33 @@ class QueuePage(Page):
         return "".join(l)
 
     def explore_href(self, jdict):
-        if self.admin==True:
+        if self.admin:
             page = "admin"
         else:
             page = "explore"
  
-        if self.admin==True:
-            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])]
+        if self.admin:
+            job_id = jdict.get("job_id", "")
 
-            if jdict.get("user_name", "")!="":
-                l.append('<br>%s' % (jdict["user_name"]))
+            user_name = jdict.get("user_name", "")
+            if isinstance(user_name, unicode):
+                user_name = ""
 
-            if jdict.get("email", "")!="":
-                l.append('<br>%s' % (jdict["email"]))
+            email_address = jdict.get("email")
+            if isinstance(email_address, unicode):
+                email_address = ""
+            
+            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, job_id, job_id)]
+
+            if user_name != "":
+                l.append('<br>%s' % (user_name))
+
+            if email_address != "":
+                l.append('<br>%s' % (email_address))
 
             return "".join(l)
 
-        if jdict.get("private_job", False)==True:
+        if jdict.get("private_job", False):
             return 'private'
     
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
@@ -956,7 +963,7 @@ class QueuePage(Page):
         x += '<th>Runing Time (HH:MM.SS)</th>'
         x += '</tr>'
 
-        if jdict!=None:
+        if jdict is not None:
             x += '<tr>'
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
@@ -1105,7 +1112,7 @@ class QueuePage(Page):
 class ExploreJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
-	if job_id==None:
+	if job_id is None:
 	    title = 'TLSMD: Explore Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
@@ -1128,7 +1135,7 @@ class ExploreJobPage(Page):
 class AdminJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
-	if job_id == None:
+	if job_id is None:
 	    title = 'TLSMD: View Job'
 	    x  = self.html_head(title)
 	    x += html_title(title)
@@ -1254,7 +1261,7 @@ class Submit2Page(Page):
         return html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
 
     def prepare_submission(self):
-        if self.form.has_key("pdbfile") == False or self.form["pdbfile"].file == None:
+        if self.form.has_key("pdbfile") == False or self.form["pdbfile"].file is None:
             raise SubmissionException("No PDB file uploaded")
 
         ## allocate a new JobID
@@ -1341,7 +1348,7 @@ class Submit3Page(Page):
 
         ## get job_id; verify job exists
         job_id = check_job_id(self.form, webtlsmdd)
-        if job_id == None:
+        if job_id is None:
             raise SubmissionException('Submission Error')
 
         ## make sure the job is in the right state to be submitted
@@ -1392,7 +1399,7 @@ def main():
         elif form["page"].value == "submit3":
             page = Submit3Page(form)
 
-    if page == None:
+    if page is None:
         page = QueuePage(form)
 
     try:
