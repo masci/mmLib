@@ -227,7 +227,7 @@ def send_mail(job_id):
     email.SendEmail(
         address, 
         "Your TLSMD Job %s is Complete" % (job_id),
-        EMAIL_MESSAGE.replace("<ANALYSIS_URL>", analysis_url))
+        MAIL_MESSAGE.replace("<ANALYSIS_URL>", analysis_url))
     
     log_write("sent mail to: %s" % (address))
 

@@ -54,7 +54,11 @@ class JobDatabase(object):
             data = self.db[dbkey]
         except KeyError:
             return None
-        return cPickle.loads(data)
+        rdict = cPickle.loads(data)
+        for key, value in rdict.iteritems():
+            if isinstance(rdict, unicode):
+                rdict[key] = ""
+        return rdict
 
     def init_globals(self):
         gdict = dict(next_job_num = 1)
@@ -147,7 +151,10 @@ class JobDatabase(object):
         jdict = self.retrieve_jdict(job_id)
         if jdict == None:
             return None
-        return jdict.get(key)
+        value = jdict.get(key)
+	if isinstance(value, unicode):
+            return ""
+        return value
 
 
 def SetStructureFile(webtlsmdd, job_id, struct_bin):

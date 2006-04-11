@@ -17,14 +17,14 @@ import time
 import const
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
-TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/jpaint/tlsmd")
-TLSMD_WWW_ROOT         = "/home/jpaint/public_html"
-TLSMD_BASE_URL         = "/~jpaint"
-WEBTLSMDD              = "http://localhost:10200"
-WEBTLSMDD_DATABASE     = "/home/jpaint/public_html/jobs/webtlsmd.db"
+TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
+TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
+TLSMD_BASE_URL         = "/~tlsmd"
+WEBTLSMDD              = "http://localhost:10100"
+WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MSMTP                  = "/usr/bin/msmtp"
-TRACEBACK_EMAIL        = "jpaint@u.washington.edu"
+TRACEBACK_EMAIL        = "jay.painter@gmail.com"
 ## END: CONFIGURATION PATHS AND URLS
 
 
@@ -40,7 +40,7 @@ JMOL_DIR               = "../../../jmol"
 ADP_PROB = 50
 
 ## number of TLS partitons for each chain
-NPARTS = 10
+NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH = 640

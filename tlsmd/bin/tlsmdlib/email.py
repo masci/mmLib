@@ -34,6 +34,7 @@ def SendEmail(address, subject, body):
         return
         
     pobj.stdin.write("\n".join(mlist))
+    pobj.stdin.close()
     pobj.wait()
     
 
