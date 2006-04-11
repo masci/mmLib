@@ -813,7 +813,10 @@ class QueuePage(Page):
             return False
         return code == passcode
 
-    def rcsb_href(self, struct_id):
+    def rcsb_href(self, jdict):
+        if jdict.get("private_job", False):
+            return "----"
+        struct_id = jdict.get("structure_id", "xxxx")
         if struct_id.lower() == "xxxx":
             return struct_id
         return '<a href="http://pdbbeta.rcsb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
@@ -967,7 +970,7 @@ class QueuePage(Page):
             x += '<tr>'
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
+            x += '<td>%s</td>' % (self.rcsb_href(jdict))
 	    x += '<td>%s</td>' % (self.chain_size_string(jdict))
             x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
 
@@ -1014,7 +1017,7 @@ class QueuePage(Page):
             row1 = not row1
 
             l += ['<td>%s</td>' % (self.explore_href(jdict)),
-                  '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX"))),
+                  '<td>%s</td>' % (self.rcsb_href(jdict)),
                   '<td>%s</td>' % (self.chain_size_string(jdict)),
                   '<td>%s</td>' % (timestring(jdict["submit_time"])),
                   '</tr>' ]
@@ -1058,7 +1061,7 @@ class QueuePage(Page):
             row1 = not row1
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
-            l.append('<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX"))))
+            l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
             l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
 
@@ -1098,7 +1101,7 @@ class QueuePage(Page):
             x += '<tr>'
 
             x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (self.rcsb_href(jdict.get("structure_id", "XXXX")))
+            x += '<td>%s</td>' % (self.rcsb_href(jdict))
             x += '<td>%s</td>' % (jdict.get("state"))
             x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
                                   
