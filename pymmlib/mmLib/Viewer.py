@@ -2112,7 +2112,6 @@ class GLAtomList(GLDrawList):
                     if prev_atom_path is not None:
                         prev_atm = atm.get_bonded_atom(prev_atom_path)
                         if prev_atm != last_atm:
-                            print "prev_atm != last_atm", prev_atm, last_atm
                             last_atm = atm
                             continue
 
