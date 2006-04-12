@@ -156,7 +156,8 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
             self.chain.chain_id)
         self.set_basename(basename)
 
-        tbl = table.StringTable(0, 3, "?")
+        tbl = table.StringTable(0, 3, "?",
+                                column_titles = ["Number of TLS Groups", "RMSD B", "Residual"])
         for ntls, cpartition in self.chain.partition_collection.iter_ntls_chain_partitions():
             tbl.append_row(ntls, cpartition.rmsd_b(), cpartition.residual())
 
@@ -268,7 +269,9 @@ class TranslationAnalysis(GNUPlot):
         """
         nrows = len(self.cpartition.chain)
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
-        tbl = table.StringTable(nrows, ncols, "?")
+        tbl = table.StringTable(nrows, ncols, "?",
+                                title = "TLS Model Translation Tensor RMSD Values of  Principal Components",
+                                column_titles = ["Residue"])
 
         frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
         tbl.set_column(0, 0, frag_id_iter)

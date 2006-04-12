@@ -7,7 +7,6 @@
 import sys
 import math
 import numpy
-import gc
 
 from mmLib import Constants, FileIO, TLS, Structure
 
@@ -51,14 +50,15 @@ class TLSMDAnalysis(object):
     """Central object for a whole-structure TLS analysis.
     """
     def __init__(self,
-                 struct_file_path  = None,
-                 struct2_file_path = None,
-                 struct2_chain_id  = None,
-                 sel_chain_ids     = None):
+                 struct             = None,
+                 struct_file_path   = None,
+                 struct_file_object = None,
+                 struct2_file_path  = None,
+                 struct2_chain_id   = None,
+                 sel_chain_ids      = None):
 
         conf.globalconf.prnt()
 
-        self.struct_file_path = struct_file_path
         self.struct2_file_path = struct2_file_path
         self.struct2_chain_id = struct2_chain_id
         self.target_chain = None
@@ -70,7 +70,13 @@ class TLSMDAnalysis(object):
         else:
             self.sel_chain_ids = None
 
-        self.struct = LoadStructure(self.struct_file_path)
+        if struct_file_path is not None:
+            self.struct = LoadStructure(struct_file_path)
+        elif struct_file_object is not None:
+            self.struct = LoadStructure(struct_file_object)
+        elif struct is not None:
+            self.struct = struct
+        
         self.struct_id = self.struct.structure_id
         self.chains = None
 
@@ -83,7 +89,6 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
-        console.kvformat("STRUCTURE FILE", self.struct_file_path)
         console.kvformat("STRUCTURE ID", self.struct_id)
         console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids)
         console.endln()
@@ -127,17 +132,25 @@ class TLSMDAnalysis(object):
         return None
 
 
-def LoadStructure(struct_file_path):
+def LoadStructure(struct_source):
     """Loads Structure, chooses a unique struct_id string.
     Also, search the REMARK records for TLS group records.  If they
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
-    console.kvformat("LOADING STRUCTURE", struct_file_path)
+    ## determine the argument type
+    if isinstance(struct_source, str):
+        file_path = struct_source
+        console.kvformat("LOADING STRUCTURE", file_path)
+        fobj = open(file_path, "r")
+    elif hasattr(struct_source, "__iter__") and hasattr(struct_source, "seek"):
+        console.kvformat("LOADING STRUCTURE", str(struct_source))
+        fobj = struct_source
+    else:
+        raise ValueError
 
     ## load struct
-    struct = FileIO.LoadStructure(
-        fil = struct_file_path, distance_bonds = True)
+    struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
 
     console.kvformat("HEADER", struct.header)
     console.kvformat("TITLE", struct.title)
@@ -158,8 +171,9 @@ def LoadStructure(struct_file_path):
     tls_file = TLS.TLSFile()
     tls_file.set_file_format(TLS.TLSFileFormatPDB())
 
-    fil = open(struct_file_path, "r")
-    tls_file.load(fil)
+    ## return to the beginning of the file and read the REMARK/TLS records
+    fobj.seek(0)
+    tls_file.load(fobj)
 
     if len(tls_file.tls_desc_list) > 0:
         console.stdoutln("ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS")
@@ -246,7 +260,6 @@ def IndependentTLSSegmentOptimization(analysis):
 
         chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
         chain.partition_collection.struct = analysis.struct
-        chain.partition_collection.struct_file_path = analysis.struct_file_path
 
 
 def RecombineIndependentTLSSegments(analysis):

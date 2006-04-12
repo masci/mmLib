@@ -316,11 +316,10 @@ class HTMLReport(Report):
     def __init__(self, tlsmd_analysis):
         Report.__init__(self)
 
-        self.tlsmd_analysis  = tlsmd_analysis
-        
-        self.struct          = tlsmd_analysis.struct
-        self.struct_path     = tlsmd_analysis.struct_file_path
-        self.struct_id       = tlsmd_analysis.struct_id
+        self.tlsmd_analysis = tlsmd_analysis
+        self.struct = tlsmd_analysis.struct
+        self.struct_id = tlsmd_analysis.struct_id
+        self.struct_path = "%s.pdb" % (self.struct_id)
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
@@ -382,7 +381,6 @@ class HTMLReport(Report):
         """Write out all the files in the report.
         """
         ## write a local copy of the Structure
-        self.struct_path = "%s.pdb" % (self.struct_id)
         FileIO.SaveStructure(fil = self.struct_path, struct = self.struct)
 
         ## generate small .png images so  they can be placed in the

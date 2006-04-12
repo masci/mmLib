@@ -6,12 +6,27 @@
 import itertools
 
 class StringTable(object):
-    def __init__(self, m, n, default = "", spacing = 2, min_column_width = 2):
+    def __init__(self, m, n,
+                 default = "",
+                 spacing = 5,
+                 min_column_width = 2,
+                 title = None,
+                 column_titles = None):
+
+        
         assert m >= 0 and n >= 0
+        assert column_titles is None or len(column_titles) <= n
+        
         self.__data = [[default for j in xrange(n)] for i in xrange(m)]
         self.__spacing = spacing
         self.__min_column_width = min_column_width
+        self.__title = title
+        self.__column_titles = column_titles
         self.__column_width = [min_column_width for i in xrange(n)]
+        if column_titles is not None:
+            for i in xrange(len(column_titles)):
+                title_width = len(column_titles[i]) + 1
+                self.__column_width[i] = max(title_width, self.__column_width[i])
 
     def __setitem__(self, location, value):
         i, j = location
@@ -24,10 +39,36 @@ class StringTable(object):
         return self.__data[i][j]
         
     def __str__(self):
-        field_width = [w + self.__spacing for w in self.__column_width]
         l = []
+        if self.__title is not None:
+            for ln in self.__title.split("\n"):
+                l.append("#")
+                l.append(ln)
+                l.append("\n")
+                
+        field_width = [w for w in self.__column_width]
+        space = " " * self.__spacing
+                
+        if self.__column_titles is not None:
+            first = True
+            for value, width in itertools.izip(self.__column_titles, field_width):
+                if first:
+                    l.append("#")
+                    l.append(value.center(width-1, "."))
+                    first = False
+                else:
+                    l.append(space)
+                    l.append(value.center(width, "."))
+            l.append("\n")
+            
+        field_width = [w  for w in self.__column_width]
         for row in self.__data:
+            first = True
             for value, width in itertools.izip(row, field_width):
+                if first:
+                    first = False
+                else:
+                    l.append(space)
                 l.append(value.rjust(width))
             l.append("\n")
         return "".join(l)
@@ -75,7 +116,7 @@ def StringTableFromMatrix(matrix):
 
 ## testing
 def testmain():
-    t = StringTable(0, 0)
+    t = StringTable(0, 2, title = "My Test Table", column_titles = ["Column 1", "Column 2"])
 
     for i in xrange(10):
         t.append_row(i, "stuff")
