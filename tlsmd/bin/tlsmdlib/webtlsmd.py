@@ -22,15 +22,6 @@ import conf
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 STYLE_SHEET = """
-BODY {
-  background-color:white;
-  margin-left:5%;
-  margin-right:5%;
-  border-left:5%;
-  border-right:5%;
-  margin-top:2%;
-  border-top:2%; }
-
 .step_title {
   line-height:2.0em;
   font-size:large }
@@ -128,38 +119,17 @@ def html_title(title):
 def html_nav_bar(page_name=None):
     """Site navigation bar.
     """
-    l = ['<center>']
-
-    if page_name=="home":
-        l.append('Home')
-    else:
-        l.append('<a href="%s/index.html">Home</a>' % (conf.TLSMD_BASE_URL))
-
-    l.append(const.LINK_SPACE)
-
-    if page_name=="":
-        l.append('Start a New Job')
-    else:
-        l.append('<a href="webtlsmd.cgi?page=submit1">Start a New Job</a>')
-
-    l.append(const.LINK_SPACE) 
-
-    if page_name=="queue":
-        l.append('Job Status')
-    else:
-        l.append('<a href="webtlsmd.cgi">Job Status</a>')
-
-    l.append(const.LINK_SPACE)
-
-    l.append('<a href="%s/examples/index.html">Examples</a>' % (conf.TLSMD_BASE_URL))
-
-    l.append(const.LINK_SPACE)
-    
-    l.append('<a href="%s/documentation.html">Documentation</a>' % (conf.TLSMD_BASE_URL))
-    l.append('</center>')
-    l.append('<br>')
-
-    return "".join(l)
+    l = ['<div id="navcontainer">',
+         '  <ul>',
+	 '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
+         '    <li><a href="webtlsmd.cgi?page=submit1">Start a New Job</a></li>', 
+	 '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
+	 '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
+	 '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
+	 '  </ul>',
+	 '</div>'
+         ]
+    return "\n".join(l)
 
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
@@ -753,13 +723,14 @@ class Page(object):
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
+	x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
         x += '  <style type="text/css" media=screen>'
         x += '  <!-- '
         x += STYLE_SHEET
         x += '  -->'
         x += '  </style>'
         x += '</head>'
-        x += '<body>'
+        x += '<body><div id="page">'
         return x
 
     def html_head(self, title):
@@ -770,7 +741,7 @@ class Page(object):
              '<p><small><b>Version %s</b> Last Modified %s' % (const.VERSION, const.RELEASE_DATE),
              '</small></p>',
              '</center>',
-             '</body></html>']
+             '</div></body></html>']
         
         return "".join(l)
 
@@ -827,13 +798,14 @@ class QueuePage(Page):
              '<head>',
              '  <meta http-equiv="refresh" content="120">',
              '  <title>%s</title>' % (title),
+	     '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
              '  <style type="text/css" media=screen>',
              '  <!-- ',
              STYLE_SHEET,
              '  -->',
              '  </style>',
              '</head>',
-             '<body>']
+             '<body><div id="page">']
         
         return "".join(l)
     
@@ -841,7 +813,7 @@ class QueuePage(Page):
         l = ['<center>',
              '<p><small><b>Version %s</b> Last Updated %s</p>' % (const.VERSION, timestring(time.time())),
              '</center>',
-             '</body></html>']
+             '</div></body></html>']
         
         return "".join(l)
 
