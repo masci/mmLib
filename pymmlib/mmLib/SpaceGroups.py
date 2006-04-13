@@ -4,9 +4,8 @@
 ## included as part of this package.
 """Symmetry operations as functions on vectors or arrays.
 """
-from   __future__ import generators
 import numpy
-import mmTypes
+import ConsoleOutput
 
 ## 64 unique rotation matricies
 Rot_Z_mY_X    = numpy.array([[ 0.0, 0.0, 1.0], [ 0.0,-1.0, 0.0], [ 1.0, 0.0, 0.0]], float)
@@ -7759,7 +7758,7 @@ def GetSpaceGroup(name):
         if sg.check_group_name(name):
             return sg
 
-    mmTypes.warning("GetSpaceGroup('%s') not found" % (name))
+    ConsoleOutput.warning("GetSpaceGroup('%s') not found" % (name))
 
     ## return P1
     return sg1

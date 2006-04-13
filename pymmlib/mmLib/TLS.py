@@ -4,15 +4,13 @@
 ## included as part of this package.
 """Utility classes for loading, manipulating, and analyzing TLS parameters.
 """
-from __future__ import generators
-
 import re
 import fpformat
 import math
 import numpy
 
 import Constants
-import mmTypes
+import ConsoleOutput
 import AtomMath
 import PDB
 import Structure
@@ -172,13 +170,14 @@ class TLSGroupDesc(object):
 
             chain1 = struct.get_chain(chain_id1)
             if chain1 is None:
-                mmTypes.warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
+                ConsoleOutput.warning("iter_tls_atoms(): no chain id=%s" % (chain_id1))
                 continue
 
             try:
                 seg = chain1[frag_id1:frag_id2]
             except KeyError:
-                mmTypes.warning("iter_tls_atoms():unable to find segment={%s..%s}" % (frag_id1, frag_id2))
+                ConsoleOutput.warning(
+                    "iter_tls_atoms():unable to find segment={%s..%s}" % (frag_id1, frag_id2))
 
             for atm in seg.iter_all_atoms():
                 yield atm
@@ -659,7 +658,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         """        
         listx = []
 
-        if tls_desc.name!="":
+        if tls_desc.name != "":
             listx.append("TLS %s" % (tls_desc.name))
         else:
             listx.append("TLS")

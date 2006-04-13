@@ -5,15 +5,13 @@
 """Viewer.py graphics driver for producing a output file
 for the Raster3D ray tracer.
 """
-from __future__  import generators
-
 import subprocess
 import copy
 import random
 import math
 import numpy
 
-import mmTypes
+import ConsoleOutput
 import Constants
 import Gaussian
 import AtomMath
@@ -202,7 +200,7 @@ class Raster3DDriver(object):
                                         close_fds = True,
                                         bufsize = 32768)
             except OSError:
-                mmTypes.warning("the render program failed to execute from path: %s" % (
+                ConsoleOutput.warning("the render program failed to execute from path: %s" % (
                     self.render_program_path))
                 return
                 
@@ -220,8 +218,8 @@ class Raster3DDriver(object):
             stdin.write("\n")
             self.glr_write_objects(stdin)
         except IOError, err:
-            mmTypes.warning("IOError while executing %s" % (self.render_program_path))
-	    mmTypes.warning(str(err))
+            ConsoleOutput.warning("IOError while executing %s" % (self.render_program_path))
+	    ConsoleOutput.warning(str(err))
             return
 
         if self.render_stdin is not None:

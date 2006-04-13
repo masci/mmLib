@@ -4,9 +4,7 @@
 ## included as part of this package.
 """Convert a Structure object to its PDBFile description.
 """
-from __future__ import generators
-
-import mmTypes
+import ConsoleOutput
 import Library
 import PDB
 import mmCIF
@@ -129,7 +127,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
     """Builds a new Structure object by loading a PDB file.
     """
     def pdb_error(self, rec_name, text):
-        mmTypes.warning("PDB::%s %s" % (rec_name, text))
+        ConsoleOutput.warning("PDB::%s %s" % (rec_name, text))
 
     def get_fragment_id(self, rec, res_seq = "resSeq", icode = "iCode"):
         fragment_id = None

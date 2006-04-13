@@ -9,7 +9,7 @@ import os
 import sys
 import types
 
-import mmTypes
+import ConsoleOutput
 import mmCIF
 
 
@@ -250,7 +250,7 @@ def library_construct_element_desc(symbol):
     """
     cif_data = ELEMENT_CIF_FILE.get_data(symbol)
     if cif_data is None:
-        mmTypes.warning("element description not found for %s" % (symbol))
+        ConsoleOutput.warning("element description not found for %s" % (symbol))
         return None
 
     ## create element description
@@ -288,7 +288,7 @@ def library_get_element_desc(symbol):
 
     element_desc = library_construct_element_desc(symbol)
     if element_desc is None:
-        mmTypes.warning("element description not found for %s" % (symbol))
+        ConsoleOutput.warning("element description not found for %s" % (symbol))
         return None
     
     ELEMENT_CACHE[symbol] = element_desc
@@ -313,7 +313,7 @@ def library_construct_monomer_desc(res_name):
     path = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
 
     if not os.path.isfile(path):
-        mmTypes.warning("monomer description not found for '%s'->'%s'" % (
+        ConsoleOutput.warning("monomer description not found for '%s'->'%s'" % (
             res_name, path))
         return None
 
@@ -454,7 +454,7 @@ def library_guess_element_from_name(name0, res_name):
             return "O"
 
         if mdesc.is_amino_acid():
-            mmTypes.warning("invalid amino acid atom name %s" % (name))
+            ConsoleOutput.warning("invalid amino acid atom name %s" % (name))
 
     ## ok, that didn't work...
 

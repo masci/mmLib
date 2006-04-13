@@ -4,8 +4,6 @@
 ## included as part of this package.
 """OpenGL rendering classes.
 """
-from __future__  import generators
-
 import sys
 import copy
 import math
@@ -15,14 +13,14 @@ from OpenGL.GL      import *
 from OpenGL.GLU     import *
 from OpenGL.GLUT    import *
 
-import mmTypes
+import ConsoleOutput
 import Gaussian
 import AtomMath
 
 try:
     import glaccel
 except ImportError:
-    mmTypes.warning("cannot load OpenGL acceloration module glaccel")
+    ConsoleOutput.warning("cannot load OpenGL acceloration module glaccel")
     GLACCEL_EXISTS = False
 else:
     GLACCEL_EXISTS = True
@@ -37,7 +35,7 @@ class OpenGLDriver(object):
         ## some objects have a accelorated C version built in
         ## src/glaccel.c; if they exist, then use them
         ## this should really be done by a factory function...
-        if GLACCEL_EXISTS==True:
+        if GLACCEL_EXISTS:
             self.glr_axis     = self.glaccel_glr_axis
             self.glr_tube     = self.glaccel_glr_tube
             self.glr_sphere   = self.glaccel_glr_sphere

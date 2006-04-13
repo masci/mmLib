@@ -4,10 +4,9 @@
 ## included as part of this package.
 """Convert a Structure object into its mmCIFFile description.
 """
-from __future__ import generators
 import copy
 
-import mmTypes
+import ConsoleOutput
 import mmCIF
 import StructureBuilder
 import Structure
@@ -144,7 +143,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             atom_site_table = self.cif_data["atom_site"]
         except KeyError:
-            mmTypes.warning("read_atoms: atom_site table not found")
+            ConsoleOutput.warning("read_atoms: atom_site table not found")
             return
 
         try:
@@ -158,7 +157,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             try:
                 atom_site_id = atom_site["id"]
             except KeyError:
-                mmTypes.warning("unable to find id for atom_site row")
+                ConsoleOutput.warning("unable to find id for atom_site row")
                 continue
 
             atm_map = {}
@@ -190,7 +189,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 try:
                     aniso = aniso_dict[atom_site_id]
                 except KeyError:
-                    mmTypes.warning("unable to find aniso row for atom")
+                    ConsoleOutput.warning("unable to find aniso row for atom")
                 else:
                     setmapf_cif(aniso, "u[1][1]", atm_map, "u11")
                     setmapf_cif(aniso, "u[2][2]", atm_map, "u22")
@@ -281,13 +280,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         try:
             atom_site = self.cif_data["atom_site"]
         except KeyError:
-            mmTypes.warning("read_struct_conn: atom_site table not found")
+            ConsoleOutput.warning("read_struct_conn: atom_site table not found")
             return
 
         try:
             struct_conn_table = self.cif_data["struct_conn"]
         except KeyError:
-            mmTypes.warning("read_struct_conn: struct_conn table not found")
+            ConsoleOutput.warning("read_struct_conn: struct_conn table not found")
             return
 
         bond_map = {}
@@ -326,13 +325,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 (self.atom_id, atom_id2))
 
             if not as1 or not as2:
-                mmTypes.warning("read_struct_conn: atom not found id: " + \
+                ConsoleOutput.warning("read_struct_conn: atom not found id: " + \
                         row.get("id","[No ID]"))
                 
-                mmTypes.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                ConsoleOutput.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id1, seq_id1, comp_id1, atom_id1, symm1))
                 
-                mmTypes.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                ConsoleOutput.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id2, seq_id2, comp_id2, atom_id2, symm2))
 
                 continue
@@ -341,13 +340,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 atm1 = self.atom_site_id_map[as1["id"]]
                 atm2 = self.atom_site_id_map[as2["id"]]
             except KeyError:
-                mmTypes.warning("read_struct_conn: atom_site_id_map incorrect id: " + \
+                ConsoleOutput.warning("read_struct_conn: atom_site_id_map incorrect id: " + \
                         row.get("id", "[No ID]"))
 
-                mmTypes.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                ConsoleOutput.warning("atm1: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id1, seq_id1, comp_id1, atom_id1, symm1))
                 
-                mmTypes.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
+                ConsoleOutput.warning("atm2: asym=%s seq=%s comp=%s atom=%s symm=%s" % (
                     asym_id2, seq_id2, comp_id2, atom_id2, symm2))
 
                 continue

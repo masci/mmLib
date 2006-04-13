@@ -7,7 +7,6 @@
 import math
 import numpy
 
-import mmTypes
 import AtomMath
 import SpaceGroups
 

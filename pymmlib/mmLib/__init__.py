@@ -5,6 +5,7 @@
 __all__ = [
     "AtomMath",
     "Colors",
+    "ConsoleOutput",
     "FileIO",
     "Gaussian",
     "GeometryDict",
@@ -12,7 +13,6 @@ __all__ = [
     "mmCIFBuilder",
     "mmCIFDB",
     "mmCIF",
-    "mmTypes",
     "OpenGLDriver",
     "PDBBuilder",
     "PDB",

@@ -5,7 +5,7 @@
 """Classes for building a mmLib.Structure representation of biological
 macromolecules.
 """
-import mmTypes
+import ConsoleOutput
 import Library
 import Structure
 import UnitCell
@@ -71,7 +71,7 @@ class StructureBuilder(object):
         ## self.struct is now built and ready for use
 
         if self.halt == True:
-            mmTypes.fatal("self.halt == True")
+            ConsoleOutput.fatal("self.halt == True")
 
     def read_start(self, fil):
         """This methods needs to be reimplemented in a functional subclass.
@@ -115,11 +115,11 @@ class StructureBuilder(object):
             self.struct.add_atom(atm, True)
 
         except Structure.FragmentOverwrite:
-            mmTypes.warning("FragmentOverwrite: %s" % (atm))
+            ConsoleOutput.warning("FragmentOverwrite: %s" % (atm))
             self.name_service_list.append(atm)
 
         except Structure.AtomOverwrite, err:
-            mmTypes.warning("AtomOverwrite: %s" % (err))
+            ConsoleOutput.warning("AtomOverwrite: %s" % (err))
             self.name_service_list.append(atm)
 
         return atm
@@ -191,7 +191,7 @@ class StructureBuilder(object):
                 current_frag_list         = None
                 continue
 
-            fragment_id = mmTypes.FragmentID(atm.fragment_id)
+            fragment_id = Structure.FragmentID(atm.fragment_id)
 
             ## now we deal with conditions which can terminate the current
             ## polymer chain
@@ -203,7 +203,7 @@ class StructureBuilder(object):
                 current_polymer_type      = polymer_type
                 current_polymer_model_id  = atm.model_id
                 current_polymer_chain_id  = atm.chain_id
-                current_polymer_frag_id   = mmTypes.FragmentID(atm.fragment_id)
+                current_polymer_frag_id   = Structure.FragmentID(atm.fragment_id)
                 current_polymer_res_name  = atm.res_name
                 current_polymer_name_dict = {atm.name: True}
 
@@ -314,9 +314,9 @@ class StructureBuilder(object):
                 
                 ### debug
                 if frag:
-                    mmTypes.debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
+                    ConsoleOutput.debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
                     for a in frag:
-                        mmTypes.debug("  " + str(a))
+                        ConsoleOutput.debug("  " + str(a))
                 ### /debug
                 
                 try:
@@ -343,8 +343,8 @@ class StructureBuilder(object):
 
         for cr_key in cr_key_list:
             ### debug
-            mmTypes.debug("name_service: chain_id / res_name keys")
-            mmTypes.debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
+            ConsoleOutput.debug("name_service: chain_id / res_name keys")
+            ConsoleOutput.debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
             ### /debug
 
             ## get the next chain ID, use the cfr group's
@@ -358,7 +358,7 @@ class StructureBuilder(object):
                 fragment_id_num = 0
 
             elif new_chain_id == None or fragment_id_num == None:
-                mmTypes.fatal("name_service: unable to assign any chain ids")
+                ConsoleOutput.fatal("name_service: unable to assign any chain ids")
 
             ## get model dictionary
             model_dict = cr_dict[cr_key]
@@ -377,8 +377,8 @@ class StructureBuilder(object):
 
                 if max_frags != frag_list_len:
                     strx = "name_service: model fragments not identical"
-                    mmTypes.debug(strx)
-                    mmTypes.warning(strx)
+                    ConsoleOutput.debug(strx)
+                    ConsoleOutput.warning(strx)
                     max_frags = max(max_frags, frag_list_len)
 
             ## now iterate through the fragment lists in parallel and assign
@@ -400,7 +400,7 @@ class StructureBuilder(object):
                         self.struct.add_atom(atm, True)
 
             ## logging
-            mmTypes.warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (
+            ConsoleOutput.warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (
                 new_chain_id, cr_key[1], fragment_id_num))
 
     def read_atoms_finalize(self):
@@ -433,7 +433,7 @@ class StructureBuilder(object):
         """
         for key in ("a", "b", "c", "alpha", "beta", "gamma"):
             if not ucell_map.has_key(key):
-                mmTypes.debug("ucell_map missing: %s" % (key))
+                ConsoleOutput.debug("ucell_map missing: %s" % (key))
                 return
 
         if ucell_map.has_key("space_group"):
@@ -483,7 +483,7 @@ class StructureBuilder(object):
             ## check for files which, for some reason, define have a bond
             ## entry bonding the atom to itself
             if atm1 == atm2:
-                mmTypes.warning("silly file defines self bonded atom")
+                ConsoleOutput.warning("silly file defines self bonded atom")
                 continue
             
             atm1.create_bonds(
@@ -629,7 +629,7 @@ class StructureBuilder(object):
         done.  Currently, this method does nothing but may be used in
         future versions.
         """
-        mmTypes.debug("read_end_finalize()")
+        ConsoleOutput.debug("read_end_finalize()")
         
         ## calculate sequences for all chains
         if self.calc_sequence is True:

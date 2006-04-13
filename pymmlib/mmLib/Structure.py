@@ -4,15 +4,13 @@
 ## included as part of this package.
 """Classes for representing biological macromolecules.
 """
-from __future__ import generators
-
 import copy
 import math
 import string
 import itertools
 import numpy
 
-import mmTypes
+import ConsoleOutput
 import Constants
 import GeometryDict
 import AtomMath
@@ -56,71 +54,6 @@ class AtomOverwrite(StructureError):
         self.text = text
     def __str__(self):
         return self.text
-
-def fragment_id_split(frag_id):
-    """Split a string fragment_id into a 2-tuple of:
-    (sequence_num, insertion_code)
-    """
-    try:
-        return (int(frag_id), None)
-    except ValueError:
-        return (int(frag_id[:-1]), frag_id[-1:])
-
-def fragment_id_eq(frag_id1, frag_id2):
-    """Performs a proper equivelancy of frament_id strings according
-    to their sequence number, then insertion code.
-    """
-    return frag_id1 == frag_id2
-    
-def fragment_id_lt(frag_id1, frag_id2):
-    """Performs a proper less than comparison of frament_id strings
-    according to their sequence number, then insertion code.
-    """
-    return fragment_id_split(frag_id1) < fragment_id_split(frag_id2)
-    
-def fragment_id_le(frag_id1, frag_id2):
-    """Performs a proper less than or equal to comparison of frament_id
-    strings according to their sequence number, then insertion code.
-    """
-    return fragment_id_split(frag_id1) <= fragment_id_split(frag_id2)
-
-def fragment_id_gt(frag_id1, frag_id2):
-    """Performs a proper greator than comparison of frament_id strings
-    according to their sequence number, then insertion code.
-    """
-    return fragment_id_split(frag_id1) > fragment_id_split(frag_id2)
-    
-def fragment_id_ge(frag_id1, frag_id2):
-    """Performs a proper greator then or equal to comparison of
-    frament_id strings according to their sequence number, then
-    insertion code.
-    """
-    return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
-
-def fragment_id_cmp(frag_id1, frag_id2):
-    """Compare two fragment ids.
-    """
-    if fragment_id_lt(frag_id1, frag_id2):
-        return -1
-    if fragment_id_lt(frag_id1, frag_id2):
-        return 0
-    return 1
-
-def iter_fragments(fragiter, start_frag_id = None, stop_frag_id = None):
-    """Given a fragment iterator and a start and end fragment id,
-    return a iterator which yields only fragments within the range.
-    """
-    if start_frag_id and stop_frag_id:
-        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
-        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
-        return itertools.takewhile(tpred, itertools.dropwhile(dpred, fragiter))
-    elif start_frag_id and not stop_frag_id:
-        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
-        return itertools.dropwhile(dpred, fragiter)
-    elif not start_frag_id and stop_frag_id:
-        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
-        return itertools.takewhile(tpred, fragiter)
-    return fragiter
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
@@ -1891,7 +1824,7 @@ class Fragment(object):
                     atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    mmTypes.warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
+                    ConsoleOutput.warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
 
                     iA = self.atom_order_list.index(atomA)
 
@@ -3286,7 +3219,7 @@ class AlphaHelix(object):
         fragment_id1:fragment_id2 cannot be found in the parent Chain object.
         """
         if self.chain_id1 != self.chain_id2:
-            mmTypes.fatal("alpha helix spans multiple chains -- not supported") 
+            ConsoleOutput.fatal("alpha helix spans multiple chains -- not supported") 
 
         ## get the Chain object from the parent Model
         try:
@@ -3673,8 +3606,109 @@ class Site(object):
         for frag in self.iter_fragments():
             for atm in frag.iter_all_atoms():
                 yield atm
-                
 
+def fragment_id_split(frag_id):
+    """Split a string fragment_id into a 2-tuple of:
+    (sequence_num, insertion_code)
+    """
+    try:
+        return (int(frag_id), None)
+    except ValueError:
+        return (int(frag_id[:-1]), frag_id[-1:])
+
+def fragment_id_eq(frag_id1, frag_id2):
+    """Performs a proper equivelancy of frament_id strings according
+    to their sequence number, then insertion code.
+    """
+    return frag_id1 == frag_id2
+    
+def fragment_id_lt(frag_id1, frag_id2):
+    """Performs a proper less than comparison of frament_id strings
+    according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1) < fragment_id_split(frag_id2)
+    
+def fragment_id_le(frag_id1, frag_id2):
+    """Performs a proper less than or equal to comparison of frament_id
+    strings according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1) <= fragment_id_split(frag_id2)
+
+def fragment_id_gt(frag_id1, frag_id2):
+    """Performs a proper greator than comparison of frament_id strings
+    according to their sequence number, then insertion code.
+    """
+    return fragment_id_split(frag_id1) > fragment_id_split(frag_id2)
+    
+def fragment_id_ge(frag_id1, frag_id2):
+    """Performs a proper greator then or equal to comparison of
+    frament_id strings according to their sequence number, then
+    insertion code.
+    """
+    return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
+
+def fragment_id_cmp(frag_id1, frag_id2):
+    """Compare two fragment ids.
+    """
+    if fragment_id_lt(frag_id1, frag_id2):
+        return -1
+    if fragment_id_lt(frag_id1, frag_id2):
+        return 0
+    return 1
+
+def iter_fragments(fragiter, start_frag_id = None, stop_frag_id = None):
+    """Given a fragment iterator and a start and end fragment id,
+    return a iterator which yields only fragments within the range.
+    """
+    if start_frag_id and stop_frag_id:
+        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+        return itertools.takewhile(tpred, itertools.dropwhile(dpred, fragiter))
+    elif start_frag_id and not stop_frag_id:
+        dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
+        return itertools.dropwhile(dpred, fragiter)
+    elif not start_frag_id and stop_frag_id:
+        tpred = lambda f: fragment_id_le(f.fragment_id, stop_frag_id)
+        return itertools.takewhile(tpred, fragiter)
+    return fragiter
+
+class FragmentID(object):
+    """Stores a fragment_id as integer residue sequence number and a
+    single-charactor insertion code.
+    """
+    def __init__(self, frag_id):
+        self.res_seq = 1
+        self.icode = ""
+        try:
+            self.res_seq = int(frag_id)
+        except ValueError:
+            try:
+                self.res_seq = int(frag_id[:-1])
+            except ValueError:
+                pass
+            else:
+                self.icode = frag_id[-1]
+    def __str__(self):
+        return "%d%s" % (self.res_seq, self.icode)
+    def __lt__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) < (other.res_seq, other.icode)
+    def __le__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) <= (other.res_seq, other.icode)
+    def __eq__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) == (other.res_seq, other.icode)
+    def __ne__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) != (other.res_seq, other.icode)
+    def __gt__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) > (other.res_seq, other.icode)
+    def __ge__(self, other):
+        assert isinstance(other, FragmentID)
+        return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
+                
 class AtomList(list):
     """Provides the functionallity of a Python list class for containing
     Atom instances.  It also provides class methods for performing some
