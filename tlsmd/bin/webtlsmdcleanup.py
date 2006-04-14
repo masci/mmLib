@@ -21,27 +21,6 @@ DELETE_DAYS = 12
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
-
-def remove_job(job_id):
-    """Removes job from database and deletes working directory and
-    contents.
-    """
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
-
-    if job_dir and \
-       job_dir.startswith(conf.TLSMD_WORK_DIR) and \
-       os.path.isdir(job_dir):
-
-        for root, dirs, files in os.walk(job_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-
-        os.rmdir(job_dir)
-
-    webtlsmdd.job_delete(job_id)
-
 def check_remove(jdict):
     state = jdict.get("state")
     if state==None:
@@ -78,7 +57,7 @@ def main():
 
     for jdict in jdict_remove_list:
         print "%10s  %40s  %d Days Old" % (jdict["job_id"], jdict.get("email", "No Email"), jdict["days"])
-        remove_job(jdict["job_id"])
+        webtlsmdd.remove_job(jdict["job_id"])
 
 
 if __name__=="__main__":

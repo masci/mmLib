@@ -3,41 +3,33 @@
 
 <html>
 <head>
-<title>TLS Motion Determination Home</title>
-<style type="text/css" media=screen>
-<!--   BODY { background-color: white; margin-left: 5%;   margin-right: 5%; 
-              border-left: 5%;         border-right: 5%;  margin-top: 2%; 
-              border-top: 2%;}
--->
-</style>
+  <title>TLS Motion Determination Home</title>
+  <link rel="stylesheet" href="tlsmd.css" type="text/css" media="screen">
 </head>
+
 <body>
+<div id="page">
 
 <center><h1>TLS Motion Determination Home</h1></center>
 
-<center>
-Home
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/~tlsmd/examples/index.html">Examples</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/~tlsmd/documentation.html">Documentation</a>
-</center>
-
-<br>
+<div id="navcontainer">
+  <ul>
+    <li><a href="/~tlsmd/index.html">Home</a></li>
+    <li><a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a></li>
+    <li><a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a></li>
+    <li><a href="/~tlsmd/examples/index.html">Examples</a></li>
+    <li><a href="/~tlsmd/documentation.html">Documentation</a></li>
+  </ul>
+</div>
 
 <table>
-<tr><td>
+<tr>
+<td>
 <font size="+1"><b>TLS Motion Determination (TLSMD)</b></font>
 analyzes a protein crystal structure for evidence of flexibility, in the form
 of local or inter-domain motions.  It does this by partitioning the protein structure into multiple segments which are modeled as rigid bodies undergoing TLS (Translation/Libration/Screw) vibrational motion. It generates all possible segmentations up to a specified maximum number of TLS groups. Each trial segmentation is evaluated by comparison to the observed atomic displacement parameters (ADPs, "thermal parameters") that came out of crystallographic refinement.
-
 </td>
 <td valign="top" rowspan=2 style="border: 1px solid black;" >
-
 <table border=0>
 <tr><td align="center"><img src="1T3R_STATIC.png" alt="13TR Animation" width="250"></td></tr>
 <tr><td align="center"><small>
@@ -51,18 +43,15 @@ The complete analysis can be found
 <a href="/~tlsmd/examples/1T3R/ANALYSIS/index.html">here</a>.
 </small></td></tr>
 </table>
-
-</td></tr>
-
-<tr>
-<td>
-
-<font size="+1"><b>TLSMD</b></font>
-generates the optimal 1-group TLS model (trivial), the optimal 2-group TLS model, and so on up to a default of 20 TLS groups total. For each such model you get statistics describing how well this model accounts for the thermal motion observed in the crystal structure.
-
 </td>
 </tr>
 
+<tr>
+<td>
+<font size="+1"><b>TLSMD</b></font>
+generates the optimal 1-group TLS model (trivial), the optimal 2-group TLS model, and so on up to a default of 20 TLS groups total. For each such model you get statistics describing how well this model accounts for the thermal motion observed in the crystal structure.
+</td>
+</tr>
 </table>
 
 <font size="+1"><b>The server returns:</b></font>
@@ -99,8 +88,7 @@ TLSMD is a work in progress. We expect it to change rapidly.
 Please report any problems, suggestions, or blinding revelations inspired by the analysis.
 If you publish an analysis based on TLSMD results, please cite
 <center>
-<font size=-1>
-<table border=0>
+<table style="font-size:x-small">
 <tr align=left><td><b>TLSMD</b>:</td><td>
 <cite>J Painter &amp; E A Merritt (2006) 
 <a href="http://www.iucr.org/cgi-bin/paper?sx5049">
@@ -116,11 +104,9 @@ reprint: (<a href="Acta_D62_439.pdf">PDF</a>)
 reprint: (<a href="JApplCryst_39_109.pdf">PDF</a>)
 </td></tr>
 </table>
-</font>
 </center>
-</p>
 
-<table width=100%>
+<table width="100%">
 <tr align="left">
 <td><font size="+1"><b>Contact us:</b></font></td>
 </tr>
@@ -135,5 +121,6 @@ reprint: (<a href="JApplCryst_39_109.pdf">PDF</a>)
 <!-- ENDBLOCK -->
 
 <center><p><small>Last Modified 12 January 2006</small></p></center>
+</div>
 </body></html>
 

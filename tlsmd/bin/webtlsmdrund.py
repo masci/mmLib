@@ -50,7 +50,7 @@ def log_job_end(jdict):
     else:
         private_text = "public"
     
-    l = [time.asctime(time.localtime(time.time())),
+    l = ["[%s]" % (time.asctime(time.localtime(time.time()))),
          jdict.get("ip_addr", "000.000.000.000"),
 	 jdict.get("email", "nobody@nowhere.com"),
 	 private_text,
@@ -215,8 +215,8 @@ Ethan Merritt <merritt@u.washington.edu>
 """
 
 def send_mail(job_id):
-    if not os.path.isfile(conf.MSMTP):
-        log_write("mail client not found: %s" % (conf.MSMTP))
+    if not os.path.isfile(conf.MAIL):
+        log_write("mail client not found: %s" % (conf.MAIL))
         return
     
     webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
