@@ -24,7 +24,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 $(TARGET): $(OBJ)
-	$(CPP) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(MINPACK) $(LAPACK) -lg2c -lm
+	$(CPP) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(MINPACK) $(LAPACK) -lgfortran -lm
 
 clean:
 	rm -f *.o $(TARGET)
