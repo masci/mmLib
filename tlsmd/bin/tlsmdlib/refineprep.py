@@ -38,14 +38,7 @@ class Page(object):
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
-        x += '  <style type="text/css" media=screen>'
-        x += '  <!-- '
-        x += '  BODY { background-color: white;'
-        x += '         margin-left: 5%; margin-right: 5%;'
-        x += '         border-left: 5%; border-right: 5%;'
-        x += '         margin-top: 2%; border-top: 2%;}'
-        x += '  -->'
-        x += '  </style>'
+        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
         x += '</head>'
         x += '<body>'
         return x

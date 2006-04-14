@@ -21,76 +21,6 @@ import conf
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
-STYLE_SHEET = """
-.step_title {
-  line-height:2.0em;
-  font-size:large }
-  
-.submit_table {
-  padding:10px;
-  border-width:thin;
-  border-color:blue;
-  border-style:solid;
-  background-color:#eeeeee; }
-  
-.inner_table {
-  font-size:small;
-  width:90%;
-  padding:10px;
-  border-width:thin;
-  border-color:black;
-  border-style:solid;
-  background-color:#dddddd; }
-
-.inner_title {
-  background-color:#ccccff;
-  line-height:2.0em;
-}
-
-.ninner_table {
-  font-size:small;
-  width:95%;
-  padding:2%;
-  border-width:thin;
-  border-color:#aaaaaa;
-  border-style:solid;
-  background-color:#eeeeee; }
-
-.perror {
-  text-align: left;
-  font-size:x-small;
-  width:70%;
-  padding:10px;
-  border-width:thin;
-  border-color:#ff0000;
-  border-style:solid;
-  background-color:#ffaaaa;
- }
-
-.status_table {
-  background-color:#eeeeee;
-  font-size:x-small;
-  border-width:thin;
-  border-color:#aaaaaa;
-  border-style:solid;
-}
-
-.status_table_head {
-  background-color:#aaaadd;
-}
-
-.status_table_row1 {
-  background-color:#dddddd;
-}
-
-.status_table_row2 {
-  background-color:#eeeeee;
-}
-
-  
-"""
-
-
 def timestring(secs):
     tm_struct = time.localtime(secs)
     return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
@@ -724,11 +654,6 @@ class Page(object):
         x += '<head>'
         x += '  <title>%s</title>' % (title)
 	x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
-        x += '  <style type="text/css" media=screen>'
-        x += '  <!-- '
-        x += STYLE_SHEET
-        x += '  -->'
-        x += '  </style>'
         x += '</head>'
         x += '<body><div id="page">'
         return x
@@ -799,11 +724,6 @@ class QueuePage(Page):
              '  <meta http-equiv="refresh" content="120">',
              '  <title>%s</title>' % (title),
 	     '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
-             '  <style type="text/css" media=screen>',
-             '  <!-- ',
-             STYLE_SHEET,
-             '  -->',
-             '  </style>',
              '</head>',
              '<body><div id="page">']
         
