@@ -97,6 +97,22 @@ class StringTable(object):
                 for x in xrange(nadd):
                     width = max(self.__min_column_width, vlen)
                     self.__column_width.append(width)
+
+    def iter_rows(self):
+        for row in self.__data:
+            yield row
+
+    def iter_column_titles(self):
+        if self.__column_titles is not None:
+            return iter(self.__column_titles)
+        else:
+            return iter(list())
+
+    def title(self):
+        if self.__title is not None:
+            return self.__title
+        else:
+            return ""
         
     def size(self):
         return len(self.__data), max(itertools.imap(len, self.__data))

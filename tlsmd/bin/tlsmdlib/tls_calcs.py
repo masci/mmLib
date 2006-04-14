@@ -51,6 +51,8 @@ def isotlsdict2tensors(itlsdict):
     return IT, IL, IS, origin 
 
 class ITLSParameters(object):
+    """Not used yet.
+    """
     def __init__(self, arg):
         if isinstance(arg, ITLSParameters):
             self.IT = arg.IT.copy()
@@ -63,6 +65,8 @@ class ITLSParameters(object):
             raise ValueError
 
 class TLSParameters(object):
+    """Not used yet.
+    """
     def __init__(self, arg):
         if isinstance(arg, TLSParameters):
             self.T = arg.T.copy()

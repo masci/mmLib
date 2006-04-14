@@ -5,6 +5,27 @@
 ## included as part of this package.
 import sys
 
+console_output_enabled = True
+
+def stdout(text):
+    if console_output_enabled:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+
+def stderr(text):
+    if console_output_enabled:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+
+def enable():
+    global console_output_enabled
+    console_output_enabled = True
+
+def disable():
+    global console_output_enabled
+    console_output_enabled = False
+
+
 def kvformat(key, value):
     stdoutln(key.ljust(40, ".") + ": " + str(value))
 
@@ -14,13 +35,6 @@ def endln():
 def stdoutln(line):
     stdout(line + "\n")
 
-def stdout(text):
-    sys.stdout.write(text)
-    sys.stdout.flush()
-
 def stderrln(line):
     stderr(line + "\n")
 
-def stderr(text):
-    sys.stdout.write(text)
-    sys.stdout.flush()
