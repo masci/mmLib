@@ -29,12 +29,39 @@ def log_job_start(jdict):
     ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += " ".join(tlsmd)
     log_write(ln)
+
+def chain_size_string(jdict):
+    if jdict.has_key("chains") == False:
+        return "---"
+    listx = []
+    for cdict in jdict["chains"]:
+        listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
+    return ";".join(listx)
     
 def log_job_end(jdict):
     ln  = ""
     ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
+ 
+    ## write to a special log file
+    if jdict.get("private_job", True):
+        private_text = "private"
+    else:
+        private_text = "public"
+    
+    l = [time.asctime(time.localtime(time.time())),
+         jdict.get("ip_addr", "000.000.000.000"),
+	 jdict.get("email", "nobody@nowhere.com"),
+	 private_text,
+	 jdict.get("job_id", "EEK!!"),
+	 jdict.get("structure_id", "----"),
+         chain_size_string(jdict) ]
+
+    try:
+        open(conf.LOG_PATH, "a").write(" ".join(l) + "\n")
+    except IOError:
+        log_write("ERROR: cannot open logfile %s" % (conf.LOG_PATH))
 
 def log_error(jdict, err):
     ln  = ""

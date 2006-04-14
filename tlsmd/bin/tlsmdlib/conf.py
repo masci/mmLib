@@ -24,8 +24,9 @@ TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
-MSMTP                  = "/usr/bin/msmtp"
+MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "jay.painter@gmail.com"
+LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
 ## END: CONFIGURATION PATHS AND URLS
 
 ## override default configuration

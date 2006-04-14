@@ -26,7 +26,7 @@ def remove_job(job_id):
     """Removes job from database and deletes working directory and
     contents.
     """
-    job_dir = webtlsmdd.job_data_get(job_id, "job_dir")
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
 
     if job_dir and \
        job_dir.startswith(conf.TLSMD_WORK_DIR) and \

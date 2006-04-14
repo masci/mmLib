@@ -12,28 +12,23 @@ import traceback
 import conf
 
 def SendEmail(address, subject, body):
-    if not os.path.isfile(conf.MSMTP):
-        sys.stderr.write("mail client not found: %s" % (conf.MSMTP))
+    if not os.path.isfile(conf.MAIL):
+        sys.stderr.write("mail client not found: %s" % (conf.MAIL))
         return
     
-    mlist = ["To: %s" % (address),
-             "Subject: %s" % (subject),
-             "",
-             body]
-
-    ## send mail using msmtp
+    ## send mail using /usr/bin/mail
     try:
-        pobj = subprocess.Popen([conf.MSMTP, address],
+        pobj = subprocess.Popen([conf.MAIL, "-s", subject, address],
                                 stdin = subprocess.PIPE,
                                 stdout = subprocess.PIPE,
                                 stderr = subprocess.STDOUT,
                                 close_fds = True,
                                 bufsize = 8192)
     except OSError:
-        sys.stderr.write("[ERROR] mail client failed to execute: %s" % (conf.MSMTP))
+        sys.stderr.write("[ERROR] mail client failed to execute: %s" % (conf.MAIL))
         return
         
-    pobj.stdin.write("\n".join(mlist))
+    pobj.stdin.write(body)
     pobj.stdin.close()
     pobj.wait()
     
