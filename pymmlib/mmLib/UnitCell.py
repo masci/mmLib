@@ -5,7 +5,10 @@
 """Classes for handling unit cell transformation.
 """
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import AtomMath
 import SpaceGroups

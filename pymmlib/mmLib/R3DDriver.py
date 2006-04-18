@@ -9,7 +9,10 @@ import subprocess
 import copy
 import random
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import ConsoleOutput
 import Constants
@@ -48,7 +51,7 @@ class Raster3DDriver(object):
     """
     def __init__(self):
         self.render_program_path = "render"
-	self.render_png_path     = "ray.png"
+        self.render_png_path     = "ray.png"
         self.render_stdin        = None
         
         self.glr_init_state()
@@ -219,7 +222,7 @@ class Raster3DDriver(object):
             self.glr_write_objects(stdin)
         except IOError, err:
             ConsoleOutput.warning("IOError while executing %s" % (self.render_program_path))
-	    ConsoleOutput.warning(str(err))
+            ConsoleOutput.warning(str(err))
             return
 
         if self.render_stdin is not None:

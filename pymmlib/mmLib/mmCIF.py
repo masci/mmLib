@@ -236,7 +236,7 @@ class mmCIFTable(list):
                 clower_used[clower] = True          
                 if clower not in self.columns_lower:
                     self.append_column(clower)
-        for clower in self.columns_lower[:]:
+        for clower in self.columns_lower.keys():
             if not clower_used.has_key(clower):
                 self.remove_column(clower)
 

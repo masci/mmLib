@@ -72,11 +72,21 @@ def find_lib_paths(library, include):
     """Find the location of the library.
     """
     import glob
+    import sys
+    if sys.platform == "darwin":
+	shared_ext = "dylib"
+	static_ext = "a"
+    elif sys.platform == "win32":
+	shared_ext = "dll"
+	static_ext = "lib"
+    else:
+	shared_ext = "so"
+	static_ext = "a"
 
     PATHS = assemble_paths_list()
 
-    shared_lib = "lib%s.so" % (library)
-    static_lib = "lib%s.a" % (library)
+    shared_lib = "lib%s.%s" % (library, shared_ext)
+    static_lib = "lib%s.%s" % (library, static_ext)
 
     found_lib_path = None
     found_inc_path = None
@@ -97,7 +107,7 @@ def find_lib_paths(library, include):
         
         inc_check = os.path.join(inc_path, include)
 
-	print "Checking Library/Include: %s %s" % (found_library, inc_check)
+        print "Checking Library/Include: %s %s" % (found_library, inc_check)
 
         if not os.path.isfile(inc_check):
             continue
@@ -108,7 +118,7 @@ def find_lib_paths(library, include):
     return found_lib_path, found_inc_path, found_library
 
 
-def library_data():
+def library_data(opts):
     """Install mmLib/Data/Monomer library.
     """
     ## start with the mmLib data files
@@ -118,19 +128,23 @@ def library_data():
         os.path.join(os.curdir, "mmLib", "Data", "monomers.cif") ])
     ]
   
-    ## add all the monomer mmCIF files 
-    mon_dir = os.path.join(os.curdir, "mmLib", "Data", "Monomers")
-    
-    for dir1 in os.listdir(mon_dir):
-        dir2 = os.path.join(mon_dir, dir1)
-
-        inst_dir = os.path.join("mmLib", "Data", "Monomers", dir1)
-
-        file_list = []
-        inst_list.append((inst_dir, file_list)) 
+    if opts["zip"]:
+        inst_list.append((os.path.join("mmLib", "Data"),
+            [ os.path.join(os.curdir, "mmLib", "Data", "Monomers.zip") ]))
+    else:
+        ## add all the monomer mmCIF files 
+        mon_dir = os.path.join(os.curdir, "mmLib", "Data", "Monomers")
         
-        for fil in os.listdir(dir2):
-            file_list.append(os.path.join(dir2, fil))
+        for dir1 in os.listdir(mon_dir):
+            dir2 = os.path.join(mon_dir, dir1)
+
+            inst_dir = os.path.join("mmLib", "Data", "Monomers", dir1)
+
+            file_list = []
+            inst_list.append((inst_dir, file_list)) 
+            
+            for fil in os.listdir(dir2):
+                file_list.append(os.path.join(dir2, fil))
             
     return inst_list
 
@@ -229,7 +243,7 @@ def glaccel_extension():
     return ext
 
 
-def extension_list():
+def extension_list(opts):
     """Assemble the list of C extensions which need to be compiled.
     """
     print "="*79
@@ -238,28 +252,34 @@ def extension_list():
 
     ext_list = []
 
-    pdbmodule = pdbmodule_extension()
-    if pdbmodule!=None:
-        print "  SUCCESS:  Module will be built."
-        ext_list.append(pdbmodule)
+    if not opts["pdb"]:
+        print "  USER_OPTION: PDB module will NOT be built."
     else:
-        print "  FAILURE: Module will NOT be built."
+        pdbmodule = pdbmodule_extension()
+        if pdbmodule!=None:
+            print "  SUCCESS: PDB Module will be built."
+            ext_list.append(pdbmodule)
+        else:
+            print "  FAILURE: PDB Module will NOT be built."
 
     print "-"*79
 
-    glaccel = glaccel_extension()
-    if glaccel!=None:
-        print "  SUCCESS: Module will be built."
-        ext_list.append(glaccel)
+    if not opts["opengl"]:
+        print "  USER OPTION: OpenGL module will NOT be built."
     else:
-        print "  FAILURE: Module will NOT be built."
+        glaccel = glaccel_extension()
+        if glaccel!=None:
+            print "  SUCCESS: OpenGL Module will be built."
+            ext_list.append(glaccel)
+        else:
+            print "  FAILURE: OpenGL Module will NOT be built."
 
     print "="*79
     
     return ext_list
 
 
-def run_setup():
+def run_setup(opts):
     """Invoke the Python Distutils setup function.
     """
     s0 = setup(
@@ -271,12 +291,12 @@ def run_setup():
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
         packages     = ["mmLib"],
-        ext_modules  = extension_list(),
-        data_files   = library_data()
+        ext_modules  = extension_list(opts),
+        data_files   = library_data(opts)
         )
 
 
-def make_doc():
+def make_doc(opts):
     """This is a special function to generate the documentation with
     Epidoc.  It once used happydoc.
     """
@@ -286,7 +306,7 @@ def make_doc():
     os.system('epydoc --html --output doc/api_reference --name "Python Macromolecular Library" mmLib/*.py') 
 
 
-def check_deps():
+def check_deps(opts):
     """
     Checks for all required dependancies.
     XXX: This is only checking for the Python modules.
@@ -334,54 +354,56 @@ def check_deps():
     else:
         print "OK:    NumPy found."
 
-    ## check PyOpenGL
-    print "Checking for Python OpenGL Bindings..."
-    try:
-        import OpenGL.GL
-    except ImportError:
-        print "ERROR: OpenGL.GL not found."
-    else:
-        print "OK:    OpenGL.GL found."
+    if opts["opengl"]:
+        ## check PyOpenGL
+        print "Checking for Python OpenGL Bindings..."
+        try:
+            import OpenGL.GL
+        except ImportError:
+            print "ERROR: OpenGL.GL not found."
+        else:
+            print "OK:    OpenGL.GL found."
 
-    try:
-        import OpenGL.GLU
-    except ImportError:
-        print "ERROR: OpenGL.GLU not found."
-    else:
-        print "OK:    OpenGL.GLU found."
+        try:
+            import OpenGL.GLU
+        except ImportError:
+            print "ERROR: OpenGL.GLU not found."
+        else:
+            print "OK:    OpenGL.GLU found."
 
-    try:
-        import OpenGL.GLUT
-    except ImportError:
-        print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
-        print "       rebuilt after installing GLUT or FreeGLUT."
-    else:
-        print "OK:    OpenGL.GLUT found."
+        try:
+            import OpenGL.GLUT
+        except ImportError:
+            print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
+            print "       rebuilt after installing GLUT or FreeGLUT."
+        else:
+            print "OK:    OpenGL.GLUT found."
 
-    ## check PyGTK >= 2.0
-    print "Checking for Python GTK+ Bindings..."
-    try:
-        import pygtk
-        pygtk.require("2.0")
-    except (ImportError, AssertionError):
-        print "ERROR: PyGTK not found.  PyGTK 2.0 required."
-    else:
-        print "OK:    PyGTK found."
+        ## check PyGTK >= 2.0
+        print "Checking for Python GTK+ Bindings..."
+        try:
+            import pygtk
+            pygtk.require("2.0")
+        except (ImportError, AssertionError):
+            print "ERROR: PyGTK not found.  PyGTK 2.0 required."
+        else:
+            print "OK:    PyGTK found."
 
-    ## check of PyGTKGLExt
-    print "Checking for Python GTK+ OpenGL Widget Bindings..."
-    try:
-        import gtk.gtkgl
-    except ImportError:
-        print "ERROR: PyGtkGLExt not found."
-    else:
-        print "OK:    PyGtkGLExt found."
+        ## check of PyGTKGLExt
+        print "Checking for Python GTK+ OpenGL Widget Bindings..."
+        try:
+            import gtk.gtkgl
+        except ImportError:
+            print "ERROR: PyGtkGLExt not found."
+        else:
+            print "OK:    PyGtkGLExt found."
 
     print "="*79
 
-def buildlib():
+def buildlib(opts):
     import urllib
 
+    LIB_FILE = os.path.join("mmLib", "Data", "Monomers.zip")
     LIB_PATH = os.path.join("mmLib", "Data", "Monomers")
     TMP_PATH = "public-component-erf.cif"
     URL      = "http://pdb.rutgers.edu/public-component-erf.cif"
@@ -400,6 +422,10 @@ def buildlib():
     print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
 
     import mmLib.mmCIF
+    if opts["zip"]:
+        import zipfile
+        import cStringIO
+        zf = zipfile.ZipFile(LIB_FILE, "w")
 
     cif_file = mmLib.mmCIF.mmCIFFile()
     cif_file.load_file(TMP_PATH)
@@ -410,18 +436,46 @@ def buildlib():
     while len(cif_file)>0:
         cif_data = cif_file[0]
         cif_file.remove(cif_data)
-
-        mkdir_path = os.path.join(LIB_PATH, cif_data.name[0])
-        if not os.path.isdir(mkdir_path):
-            os.mkdir(mkdir_path)
-
-        save_path = os.path.join(mkdir_path, "%s.cif" % (cif_data.name))
-
-        print "[BUILDLIB] writing %s" % (save_path)
-        
         cf = mmLib.mmCIF.mmCIFFile()
         cf.append(cif_data)
-        cf.save_file(save_path)
+
+        if opts["zip"]:
+            print "[BUILDLIB] writing %s" % (cif_data.name)
+            sf = cStringIO.StringIO()
+            cf.save_file(sf)
+            zf.writestr(cif_data.name, sf.getvalue())
+            sf.close()
+        else:
+            mkdir_path = os.path.join(LIB_PATH, cif_data.name[0])
+            if not os.path.isdir(mkdir_path):
+                os.mkdir(mkdir_path)
+            save_path = os.path.join(mkdir_path, "%s.cif" % (cif_data.name))
+            print "[BUILDLIB] writing %s" % (save_path)
+            cf.save_file(save_path)
+
+    if opts["zip"]:
+        zf.close()
+
+
+def check_pymmlib_options():
+    import sys
+    opt_defaults = {
+    	"pdb": True,
+	"opengl": True,
+	"zip": False,
+    }
+    opts = {}
+    for opt, default in opt_defaults.iteritems():
+	opts[opt] = default
+	flag = "--with-" + opt
+        if flag in sys.argv:
+            sys.argv.remove(flag)
+	    opts[opt] = True
+	flag = "--without-" + opt
+        if flag in sys.argv:
+            sys.argv.remove(flag)
+	    opts[opt] = False
+    return opts
 
 
 def usage():
@@ -464,21 +518,23 @@ if __name__ == "__main__":
     print "PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM"
     print
 
+    opts = check_pymmlib_options()
+
     if len(sys.argv)==1:
         usage()
 
     elif sys.argv[1] == "doc":
-        make_doc()
+        make_doc(opts)
 
     elif sys.argv[1] == "checkdeps":
-        check_deps()
+        check_deps(opts)
 
     elif sys.argv[1] == "buildlib":
-        buildlib()
+        buildlib(opts)
 
     else:
         if DISTUTILS_FOUND==True:
-            run_setup()
+            run_setup(opts)
         else:
             print """\
             ERROR: Python Distuils Not Found.  You may have to install

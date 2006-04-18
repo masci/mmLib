@@ -6,7 +6,10 @@
 method which avoids improper rotations.
 """
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 import AtomMath
 
 def QuaternionToRotationMatrix(q):

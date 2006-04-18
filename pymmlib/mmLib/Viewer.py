@@ -7,8 +7,11 @@
 from __future__  import generators
 
 import copy
-import numpy
 import math
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import Library
 import GeometryDict

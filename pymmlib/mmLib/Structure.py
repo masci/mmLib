@@ -8,7 +8,10 @@ import copy
 import math
 import string
 import itertools
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import ConsoleOutput
 import Constants
@@ -2463,6 +2466,11 @@ class Atom(object):
     Atom.temp_factor - float represting B-style temp factor
     Atom.U           - a 6-tuple of the anisotropic values
     Atom.charge      - charge on the atom
+    Atom.label_entity_id -
+                       entity id corresponding to entity_poly_seq.entity_id
+    Atom.label_seq_id -
+                       sequence id corresponding to entity_poly_seq_num
+                       and struct_conn.ptnr?_label_seq_id
     """
     def __init__(
         self,
@@ -2486,6 +2494,8 @@ class Atom(object):
         occupancy       = None,
         sig_occupancy   = None,
         charge          = None,
+        label_entity_id = None,
+        label_seq_id    = None,
 
         U   = None,
         u11 = None, u22 = None, u33 = None,
@@ -2519,6 +2529,8 @@ class Atom(object):
         self.occupancy       = occupancy
         self.sig_occupancy   = sig_occupancy
         self.charge          = charge
+        self.label_entity_id = label_entity_id
+        self.label_seq_id    = label_seq_id
 
         ## position
         if position is not None:

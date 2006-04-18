@@ -20,6 +20,7 @@ import mmCIF
 
 ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
 MMLIB_MONOMER_DATA_PATH = os.path.join(MMLIB_PATH, "Data", "monomers.cif")
+RCSB_MONOMER_DATA_FILE  = os.path.join(MMLIB_PATH, "Data", "Monomers.zip") 
 RCSB_MONOMER_DATA_PATH  = os.path.join(MMLIB_PATH, "Data", "Monomers") 
     
 ###############################################################################
@@ -33,6 +34,9 @@ ELEMENT_CIF_FILE.load_file(open(ELEMENT_DATA_PATH, "r"))
         
 MMLIB_MONOMERS_CIF = mmCIF.mmCIFFile()
 MMLIB_MONOMERS_CIF.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
+
+RCSB_USE_ZIP = None
+RCSB_ZIP = None
 
 ###############################################################################
 ## Constants
@@ -303,27 +307,54 @@ def library_construct_monomer_desc(res_name):
     else:
         lookup_name = res_name.upper()
 
-    ## form path to locate the monomer library file
-    try:
-        r0 = lookup_name[0]
-    except IndexError:
-        return None
+    ## check if monomers are available in a zip file
+    global RCSB_USE_ZIP
+    global RCSB_ZIP
+    if RCSB_USE_ZIP is None:
+        import zipfile
+        try:
+            RCSB_ZIP = zipfile.ZipFile(RCSB_MONOMER_DATA_FILE)
+        except IOError:
+            RCSB_USE_ZIP = False
+        else:
+            RCSB_USE_ZIP = True
 
-    fil_name = "%s.cif" % (lookup_name.upper())
-    path = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
+    if RCSB_USE_ZIP:
+        ## read data from zip file
+        try:
+            bytes = RCSB_ZIP.read(lookup_name.upper())
+        except KeyError:
+            ConsoleOutput.warning("monomer description not found "
+                "for '%s' in '%s'" % (res_name, RCSB_MONOMER_DATA_FILE))
+            return None
+        else:
+            from cStringIO import StringIO
+            f = StringIO(bytes)
+    else:
+        ## form path to locate the monomer library file
+        try:
+            r0 = lookup_name[0]
+        except IndexError:
+            return None
 
-    if not os.path.isfile(path):
-        ConsoleOutput.warning("monomer description not found for '%s'->'%s'" % (
-            res_name, path))
-        return None
+        fil_name = "%s.cif" % (lookup_name.upper())
+        path = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
+
+        try:
+            f = open(path, "r")
+        except IOError:
+            ConsoleOutput.warning("monomer description not found "
+                "for '%s'->'%s'" % (res_name, path))
+            return None
 
     ## generate monomer description    
     mon_desc = MonomerDesc()
 
     ## data from RCSB library
     rcsb_cif_file = mmCIF.mmCIFFile()
-    rcsb_cif_file.load_file(open(path, "r"))
+    rcsb_cif_file.load_file(f)
     rcsb_cif_data = rcsb_cif_file[0]
+    f.close()
 
     chem_comp = rcsb_cif_data.get_table("chem_comp")[0]
     mon_desc.res_name     = chem_comp.get_lower("res_name")

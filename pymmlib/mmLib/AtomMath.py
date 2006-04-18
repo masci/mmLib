@@ -5,7 +5,10 @@
 """Mathmatical operations performed on mmLib.Strcuture.Atom objects.
 """
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import Constants
 

@@ -7,7 +7,10 @@
 import sys
 import copy
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 from OpenGL.GL      import *
 from OpenGL.GLU     import *
@@ -133,8 +136,8 @@ class OpenGLDriver(object):
         glViewport(0, 0, width, height)
 
         ## setup perspective matrix
-	glMatrixMode(GL_PROJECTION)
- 	glLoadIdentity()
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
 
         zoom  = zoom / 2.0
         ratio = float(height) / float(width)

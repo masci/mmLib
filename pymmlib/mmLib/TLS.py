@@ -7,7 +7,10 @@
 import re
 import fpformat
 import math
-import numpy
+try:
+    import numpy
+except ImportError:
+    import NumericCompat as numpy
 
 import Constants
 import ConsoleOutput
@@ -429,16 +432,16 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
         elif re_key == "origin":
             strx = mx.group(1)
             ## this is nasty -- I wish I could trust the numbers
-	    ## to stay in fixed columns, but I can't
-	    ox = [0.0, 0.0, 0.0]
-	    for i in (0,1,2):
-		j = strx.find(".")
-		if j==-1:
+            ## to stay in fixed columns, but I can't
+            ox = [0.0, 0.0, 0.0]
+            for i in (0,1,2):
+                j = strx.find(".")
+                if j==-1:
                     break
-		x = strx[ max(0, j-4) : j+5]
-		strx = strx[j+5:]
-		ox[i] = float(x)
-	    
+                x = strx[ max(0, j-4) : j+5]
+                strx = strx[j+5:]
+                ox[i] = float(x)
+            
             try:
                 self.tls_desc.set_origin(ox[0], ox[1], ox[2])
             except AttributeError:

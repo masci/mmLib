@@ -168,6 +168,8 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             setmaps_cif(atom_site, self.seq_id,  atm_map, "fragment_id")
             setmaps_cif(atom_site, self.asym_id, atm_map, "chain_id")
 
+            setmaps_cif(atom_site, "label_entity_id", atm_map, "label_entity_id")
+            setmaps_cif(atom_site, "label_seq_id", atm_map, "label_seq_id")
             setmaps_cif(atom_site, "type_symbol", atm_map, "element")
             setmapf_cif(atom_site, "cartn_x", atm_map, "x")
             setmapf_cif(atom_site, "cartn_y", atm_map, "y")
@@ -296,16 +298,17 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             if conn_type not in bond_type_list:
                 continue
             
-            asym_id1 = row.get(self.ptnr1_asym_id)
-            seq_id1  = row.get(self.ptnr1_seq_id)
-            comp_id1 = row.get(self.ptnr1_comp_id)
-            atom_id1 = row.get(self.ptnr1_atom_id)
+            # Always use label_ values since they are mandatory
+            asym_id1 = row.get("ptnr1_label_asym_id")
+            seq_id1  = row.get("ptnr1_label_seq_id")
+            comp_id1 = row.get("ptnr1_label_comp_id")
+            atom_id1 = row.get("ptnr1_label_atom_id")
             symm1    = row.get("ptnr1_symmetry")
 
-            asym_id2 = row.get(self.ptnr2_asym_id)
-            seq_id2  = row.get(self.ptnr2_seq_id)
-            comp_id2 = row.get(self.ptnr2_comp_id)
-            atom_id2 = row.get(self.ptnr2_atom_id)
+            asym_id2 = row.get("ptnr2_label_asym_id")
+            seq_id2  = row.get("ptnr2_label_seq_id")
+            comp_id2 = row.get("ptnr2_label_comp_id")
+            atom_id2 = row.get("ptnr2_label_atom_id")
             symm2    = row.get("ptnr2_symmetry")
 
             ## check for these special mmCIF tokens
@@ -313,16 +316,16 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 atom_id1 = atom_id2 = "SG"
 
             as1 = atom_site.get_row(
-                (self.asym_id, asym_id1),
-                (self.seq_id,  seq_id1),
-                (self.comp_id, comp_id1),
-                (self.atom_id, atom_id1))
+                ("label_asym_id", asym_id1),
+                ("label_seq_id",  seq_id1),
+                ("label_comp_id", comp_id1),
+                ("label_atom_id", atom_id1))
 
             as2 = atom_site.get_row(
-                (self.asym_id, asym_id2),
-                (self.seq_id,  seq_id2),
-                (self.comp_id, comp_id2),
-                (self.atom_id, atom_id2))
+                ("label_asym_id", asym_id2),
+                ("label_seq_id",  seq_id2),
+                ("label_comp_id", comp_id2),
+                ("label_atom_id", atom_id2))
 
             if not as1 or not as2:
                 ConsoleOutput.warning("read_struct_conn: atom not found id: " + \
