@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-## -*- Mode: Python -*-
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -22,8 +20,8 @@ from tlsmdlib import conf, atom_selection, tlsmdmodule, \
      tlsmd_analysis, table, tls_calcs, console, gnuplots
 
 
-BASE_URL = "http://localhost/~jpaint/molmovdb/"
-BASE_DIR = "/home/jpaint/public_html/molmovdb/"
+BASE_URL = "http://dev.molmovdb.org/uploads/"
+BASE_DIR = "/usr/local/server/uploads"
 
 NOID_HTML = """\
 Content-type: text/html\n\n
@@ -85,7 +83,7 @@ class MorphLocations(object):
         return os.path.join(self.base_url, "tlsmd.html")
     
     def stylesheet_url(self):
-        return "http://localhost/~jpaint/style.css"
+        return "http://www.drizzle.com/~jpaint/molmovdb.css"
 
 
 def HingePredictionTable(chain):

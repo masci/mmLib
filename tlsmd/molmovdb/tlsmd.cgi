@@ -1,8 +1,8 @@
-#!/home/jpaint/local/bin/python
+#!/home/tlsmd/local/bin/python
 # -*- Mode: Python -*-
 import sys, os
-PYMMLIB_ROOT = "/home/jpaint/pymmlib/trunk/pymmlib"
-TLSMD_ROOT = "/home/jpaint/pymmlib/trunk/tlsmd"
+PYMMLIB_ROOT = "/home/tlsmd/pymmlib"
+TLSMD_ROOT = "/home/tlsmd/tlsmd"
 MMOV_DIR = os.path.join(TLSMD_ROOT, "molmovdb")
 
 sys.path.insert(0, PYMMLIB_ROOT)
