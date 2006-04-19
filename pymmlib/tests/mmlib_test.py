@@ -6,7 +6,11 @@ import time
 import copy
 import weakref
 import gc
-import numpy
+
+try:
+    import numpy
+except ImportError:
+    import mmLib.NumericCompat as numpy
 
 import test_util
 from mmLib.FileIO import get_file_extension

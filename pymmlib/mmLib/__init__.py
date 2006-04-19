@@ -13,6 +13,7 @@ __all__ = [
     "mmCIFBuilder",
     "mmCIFDB",
     "mmCIF",
+    "NumericCompat.py",
     "OpenGLDriver",
     "PDBBuilder",
     "PDB",
