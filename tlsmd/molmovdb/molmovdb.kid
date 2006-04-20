@@ -4,7 +4,7 @@
 
   <head>
     <title>TLSMD Hinge Predictions for Structure ID ${tlsmd.struct_id}</title>
-    <link rel="stylesheet" href="http://www.drizzle.com/~jpaint/molmovdb.css" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen"/>
   </head>
 
   <body>

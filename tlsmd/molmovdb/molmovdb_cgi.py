@@ -3,54 +3,124 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+import sys
+import os
+import time
+import traceback
 import cgitb
 import cgi
 
-import sys
-import os
-import math
-import urllib
-import cStringIO
 import numpy
-
 import kid
 
-from mmLib import Constants, FileIO, Structure, TLS, AtomMath, ConsoleOutput
-from tlsmdlib import conf, atom_selection, tlsmdmodule, \
-     tlsmd_analysis, table, tls_calcs, console, gnuplots
+from mmLib import ConsoleOutput
+from tlsmdlib import conf, tlsmd_analysis, table, console
+
+## <CONFIGUREURE>
+BASE_URL = "http://localhost/~jpaint/molmovdb/"
+BASE_DIR = "/home/jpaint/public_html/molmovdb/"
+STYLESHEET_URL = "http://www.drizzle.com/~jpaint/molmovdb.css"
+## </CONFIGURE>
 
 
-BASE_URL = "http://dev.molmovdb.org/uploads/"
-BASE_DIR = "/usr/local/server/uploads"
-
-NOID_HTML = """\
-Content-type: text/html\n\n
+NOID_HTML_TEMPLATE = """\
 <HTML>
-  <HEAD><TITLE>TLSMD CGI Script Error</TITLE></HEAD>
-  <BODY>
+  <HEAD>
+    <TITLE>ERROR: No Morph ID</TITLE>
+    <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
+  </HEAD>
+  <BODY><DIV id="page">
+    <H1>ERROR: No Morph ID</H1>
+    <P>The TLSMD CGI script must be invoked with a valid morph ID<br>
+      http://<scripturl>?ID=<idstring> Argument required
+    </P>
+  </DIV></BODY>
+</BODY>
+</HTML>
+"""
+
+INVALIDID_HTML_TEMPLATE = """\
+<HTML>
+  <HEAD>
+    <TITLE>ERROR: Invalid Morph ID %{morph_id}</TITLE>
+    <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
+  </HEAD>
+  <BODY><DIV id="page">
     <CENTER>
-      <H1>TLSMD CGI Script Error</H1>
-      <P>[ERROR] http://<scripturl>?ID=<idstring> Argument required</P>
+      <H1>ERROR: Invalid Morph ID ${morph_id}</H1>
+      <P>The source structure file <i>${struct_path}</i> cannot be found.</P>
     </CENTER>
-  </BODY>
+  </DIV></BODY>
 </BODY>
 </HTML>
 """
 
 REDIRECT_HTML_TEMPLATE = """\
-Content-type: text/html\n\n
 <HTML>
-  <HEAD><TITLE>Redirect</TITLE></HEAD>
-  <META http-equiv="refresh" content="0; Url=<TLSMD>">
-  <BODY>
+  <HEAD>
+    <TITLE>Redirect</TITLE>
+    <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
+  </HEAD>
+  <META http-equiv="refresh" content="0; Url=${tlsmd}">
+  <BODY><DIV id="page">
     <CENTER>
-      <P>You should have been redirected to <A HREF="<TLSMD>"><TLSMD></A></P>
+      <P>You should have been redirected to <A HREF="${tlsmd}">${tlsmd}</A></P>
     </CENTER>
+  </DIV></BODY>
+</BODY>
+</HTML>
+"""
+
+RELOAD_UNTIL_COMPLETE_HTML_TEMPLATE = """\
+<HTML>
+  <HEAD>
+    <TITLE>TLSMD Processing</TITLE>
+    <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
+  </HEAD>
+  <META http-equiv="refresh" content="20; Url=${tlsmd}">
+  <BODY><DIV id="page">
+    <CENTER>
+      <P>This page will reload itself every 20 seconds until the TLSMD job is complete.<BR>
+      <A HREF="${tlsmd}"><${tlsmd}></A>
+      </P>
+    </DIV></CENTER>
   </BODY>
 </BODY>
 </HTML>
 """
 
+SUBPROCESS_TRACEBACK_HTML_TEMPLATE = """\
+<HTML>
+  <HEAD>
+    <TITLE>TLSMD Processing</TITLE>
+    <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
+  </HEAD>
+  <BODY><DIV id="page">
+    <H1>TLSMD Error on Morph ID ${morph_id}</H1>
+    <PRE id="traceback">${tracebk}</PRE>
+  </DIV></BODY>
+</BODY>
+</HTML>
+"""
+
+
+def SimpleTemplateReplace(template, **args):
+    """Simple key/value replacement of template string with
+    the dictionary values of args.
+    """
+    for key, value in args.iteritems():
+        keytag = "${%s}" % (key)
+        template = template.replace(keytag, value)
+    return template
+
+
+def CGIResponse(html):
+    """Write a CGI repsonse with the argument html
+    to standard output.
+    """
+    sys.stdout.write("Content-type: text/html\n\n")
+    sys.stdout.write(html)
+    
 
 class MorphLocations(object):
     def __init__(self, morph_id):
@@ -58,11 +128,14 @@ class MorphLocations(object):
         self.base_url = os.path.join(BASE_URL, morph_id)
         self.base_dir = os.path.join(BASE_DIR, morph_id)
 
-    def source_url(self):
-        return os.path.join(self.base_url, "ff0.pdb")
-
     def directory(self):
         return self.base_dir
+
+    def source_path(self):
+        return "ff0.pdb", os.path.join(self.directory(), "ff0.pdb")
+
+    def source_url(self):
+        return os.path.join(self.base_url, "ff0.pdb")
 
     def chain_datafile_index_path(self):
         filename = "tlsmd_chain_index.txt"
@@ -82,9 +155,6 @@ class MorphLocations(object):
     def html_url(self):
         return os.path.join(self.base_url, "tlsmd.html")
     
-    def stylesheet_url(self):
-        return "http://www.drizzle.com/~jpaint/molmovdb.css"
-
 
 def HingePredictionTable(chain):
     """Adds a table.StringTable instance to chain.tbl contining one row per
@@ -140,6 +210,70 @@ def TLSMDHingePredictor(struct_fobj):
 
     return tlsmd
 
+def SubProcess(morph):
+    """The CGI Script forks off this child function as a child process to
+    perform the TLSMD calculations and write out results files.
+    """
+    ## close all file descriptors
+    for fd in xrange(0, 25):
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+    ## run TLSMD
+    struct_basename, struct_path = morph.source_path()
+    tlsmd = TLSMDHingePredictor(open(struct_path, "r"))
+
+    ## output tabulated data files
+    idx_filename, idx_path = morph.chain_datafile_index_path()
+    idx_fobj = open(idx_path, "w")
+    for chain in tlsmd.iter_chains():
+        filename, path = morph.chain_datafile_path(chain.chain_id)
+        idx_fobj.write(filename + "\n")
+        open(path, "w").write(str(chain.tbl))
+    idx_fobj.close()
+
+    ## write out HTML file
+    html_filename, html_path = morph.html_path()
+    template = kid.Template(file = "molmovdb.kid")
+    template.tlsmd = tlsmd
+    template.stylesheet_url = STYLESHEET_URL
+    
+    open(html_path, "w").writelines(template.generate(output = "html"))
+
+
+def LaunchSubProcess(morph):
+    """Catch any tracebacks in the TLSMD computational code and write
+    out the traceback in HTML.
+    """
+    try:
+        SubProcess(morph)
+    except:
+        html_filename, html_path = morph.html_path()
+        open(html_path, "w").write(
+            SimpleTemplateReplace(SUBPROCESS_TRACEBACK_HTML_TEMPLATE,
+                                  tracebk = traceback.format_exc(),
+                                  morph_id = morph.morph_id,
+                                  stylesheet_url = STYLESHEET_URL))
+
+    ## child processes of a fork() should always exit like this
+    sys.exit(n). _exit()
+
+def CGIProcess(morph):
+    ## write temporary reload template
+    html_filename, html_path = morph.html_path()
+    open(html_path, "w").write(
+        SimpleTemplateReplace(RELOAD_UNTIL_COMPLETE_HTML_TEMPLATE,
+                              tlsmd = morph.html_url(),
+                              stylesheet_url = STYLESHEET_URL))
+    
+    ## redirect browser
+    CGIResponse(
+        SimpleTemplateReplace(REDIRECT_HTML_TEMPLATE,
+                              tlsmd = morph.html_url(),
+                              stylesheet_url = STYLESHEET_URL))
+
 
 def CGI_Main(form):
     """main() when run as a CGI script.
@@ -157,32 +291,19 @@ def CGI_Main(form):
     assert morph_id.find("/") == -1 and morph_id.find("..") == -1 and len(morph_id) < 20
     morph = MorphLocations(morph_id)
 
-    ## get the PDB file
-    pdb_buff = urllib.urlopen(morph.source_url()).read()
-
-    ## run TLSMD
-    fobj = cStringIO.StringIO(pdb_buff)
-    tlsmd = TLSMDHingePredictor(fobj)
-
-    ## output tabulated data files
-    idx_filename, idx_path = morph.chain_datafile_index_path()
-    idx_fobj = open(idx_path, "w")
-    for chain in tlsmd.iter_chains():
-        filename, path = morph.chain_datafile_path(chain.chain_id)
-        idx_fobj.write(filename + "\n")
-        open(path, "w").write(str(chain.tbl))
-    idx_fobj.close()
-
-    ## write out HTML file
-    html_filename, html_path = morph.html_path()
-    template = kid.Template(file = "molmovdb.kid")
-    template.tlsmd = tlsmd
-    template.stylesheet_url = morph.stylesheet_url()
-    
-    open(html_path, "w").writelines(template.generate(output = "html"))
-    
-    ## redirect browser
-    sys.stdout.write(REDIRECT_HTML_TEMPLATE.replace("<TLSMD>", morph.html_url()))
+    struct_filename, struct_path = morph.source_path()
+    if os.path.exists(struct_path):
+        pid = os.fork()
+        if pid == 0:
+            LaunchSubProcess(morph)
+        else:
+            CGIProcess(morph)
+    else:
+        CGIResponse(
+            SimpleTemplateReplace(INVALIDID_HTML_TEMPLATE,
+                                  morph_id = morph_id,
+                                  struct_path = struct_path,
+                                  stylesheet_url = STYLESHEET_URL))
 
 
 def main():
@@ -192,7 +313,12 @@ def main():
     if form.has_key("ID"):
         CGI_Main(form)
     else:
-        sys.stdout.write(NOID_HTML)
+        CGIResponse(
+            SimpleTemplateReplace(NOID_HTML_TEMPLATE,
+                                  stylesheet_url = STYLESHEET_URL))
+            
+
+    sys.exit(0)
 
     
 if __name__ == "__main__":
