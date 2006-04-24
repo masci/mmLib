@@ -8,6 +8,7 @@
 import os
 import sys
 import time
+import signal
 import re
 import fcntl
 import subprocess
@@ -17,6 +18,13 @@ import xmlrpclib
 
 from tlsmdlib import const, conf, email
 
+## if there are no lines of output from the tlsmd process
+## in TIMEOUT_SECS, then kill the process
+TIMEOUT_SECS = 1 * (60 * 60)
+
+
+def sigalrm_handler(signum, frame):
+    raise IOError
 
 def log_write(x):
     sys.stdout.write(x + "\n")
@@ -96,11 +104,18 @@ def run_tlsmd(webtlsmdd, jdict):
     chain_time_dict = {}
     time_chain_id   = None
     time_begin      = None
-    
+
+    signal.signal(signal.SIGALRM, sigalrm_handler)
     while True:
-        ln = pobj.stdout.readline()
+        signal.alarm(TIMEOUT_SECS)
+        try:
+            ln = pobj.stdout.readline()
+        except IOError:
+            os.kill(pobj.pid, signal.SIGTERM)
+            break
 	if len(ln) == 0:
             break
+        signal.alarm(0) 
 
         logfil.write(ln)
 	logfil.flush()
