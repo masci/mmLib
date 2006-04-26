@@ -22,10 +22,6 @@ from tlsmdlib import const, conf, email
 ## in TIMEOUT_SECS, then kill the process
 TIMEOUT_SECS = 1 * (60 * 60)
 
-
-def sigalrm_handler(signum, frame):
-    raise IOError
-
 def log_write(x):
     sys.stdout.write(x + "\n")
     sys.stdout.flush()
@@ -105,12 +101,15 @@ def run_tlsmd(webtlsmdd, jdict):
     time_chain_id   = None
     time_begin      = None
 
+    alarm_triggered = False
+    def sigalrm_handler(signum, frame):
+        alarm_triggered = True 
+
     signal.signal(signal.SIGALRM, sigalrm_handler)
     while True:
         signal.alarm(TIMEOUT_SECS)
-        try:
-            ln = pobj.stdout.readline()
-        except IOError:
+        ln = pobj.stdout.readline()
+	if alarm_triggered:
             os.kill(pobj.pid, signal.SIGTERM)
             break
 	if len(ln) == 0:
