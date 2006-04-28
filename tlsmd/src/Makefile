@@ -24,7 +24,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c -o $@ $<
 
 $(TARGET): $(OBJ)
-	$(CPP) -shared $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(MINPACK) $(LAPACK) -lgfortran -lm
+	$(CPP) -shared -fPIC $(CLFAGS) -o $(TARGET) $(OBJ) $(LFLAGS) $(MINPACK) $(LAPACK) libg2c.a -lm
 
 clean:
 	rm -f *.o $(TARGET)

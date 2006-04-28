@@ -108,7 +108,10 @@ def run_tlsmd(webtlsmdd, jdict):
     signal.signal(signal.SIGALRM, sigalrm_handler)
     while True:
         signal.alarm(TIMEOUT_SECS)
-        ln = pobj.stdout.readline()
+	try:
+            ln = pobj.stdout.readline()
+        except IOError:
+            pass
 	if alarm_triggered:
             os.kill(pobj.pid, signal.SIGTERM)
             break

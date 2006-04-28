@@ -25,7 +25,7 @@ WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MAIL                   = "/bin/mail"
-TRACEBACK_EMAIL        = "jay.painter@gmail.com"
+TRACEBACK_EMAIL        = "tlsmdtraceback"
 LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
 ## END: CONFIGURATION PATHS AND URLS
 
