@@ -34,7 +34,7 @@ def calc_include_atom(atm, reject_messages = False):
         return False
 
     elif conf.globalconf.include_atoms == "MAINCHAIN":
-        if const.MAINCHAIN_ATOM_DICT.has_key(atom.name) is False:
+        if const.MAINCHAIN_ATOM_DICT.has_key(atm.name) is False:
             if reject_messages == True:
                 console.stdoutln("calc_include_atom(%s): rejected non-mainchain atom" % (atm))
             return False
