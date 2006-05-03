@@ -197,8 +197,7 @@ class mmCIFTable(list):
         self.columns = list()
         self.columns_lower = dict()
         for column in columns:
-            self.columns.append(column)
-            self.columns_lower[column.lower()] = column
+            self.append_column(column)
 
     def append_column(self, column):
         """Appends a column(subsection) name to the table.
@@ -210,7 +209,7 @@ class mmCIFTable(list):
             self.columns_lower[clower] = column
         else:
             self.columns.append(column)
-            self.columns_lower[column] = column.lower()
+            self.columns_lower[clower] = column
 
     def has_column(self, column):
         """Tests if the table contains the column name.
@@ -275,7 +274,7 @@ class mmCIFTable(list):
         return None
 
     def new_row(self):
-        """
+        """Creates a new mmCIF rows, addes it to the table, and returns it.
         """
         cif_row = mmCIFRow()
         self.append(cif_row)
@@ -722,7 +721,7 @@ class mmCIFFileParser(object):
                     self.syntax_error("redefined subsection (column)")
                     return
                 else:
-                    cif_table.columns.append(colx)
+                    cif_table.append_column(colx)
 
                 ## get the next token from the file, it should be the data
                 ## keyed by the previous token
@@ -779,7 +778,7 @@ class mmCIFFileParser(object):
                     self.syntax_error("_loop section not contained in data_ block")
                     return
 
-                cif_table.columns.append(colx)
+                cif_table.append_column(colx)
 
                 ## read the remaining subsection definitions for the loop
                 while True:
@@ -792,7 +791,7 @@ class mmCIFFileParser(object):
                         self.syntax_error("changed section names in _loop")
                         return
 
-                    cif_table.columns.append(colx)
+                    cif_table.append_column(colx)
 
 
                 ## before starting to read data, check tokx for any control

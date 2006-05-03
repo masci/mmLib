@@ -17,7 +17,7 @@ import mmCIF
 ## Library Data Locations
 ##
 (MMLIB_PATH, JUNK) = os.path.split(__file__)
-
+DATA_PATH               = os.path.join(MMLIB_PATH, "Data")
 ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
 MMLIB_MONOMER_DATA_PATH = os.path.join(MMLIB_PATH, "Data", "monomers.cif")
 RCSB_MONOMER_DATA_FILE  = os.path.join(MMLIB_PATH, "Data", "Monomers.zip") 
