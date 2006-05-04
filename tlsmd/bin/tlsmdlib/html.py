@@ -573,7 +573,7 @@ class HTMLReport(Report):
              '<tr>',
         
              '<td align="right" valign="top">',
-             '<p style="font-size:xx-small; margin-top:%dpx; line-height:18px">' % (plot.border_width)]
+             '<p style="font-size:xx-small; margin-top:%dpx; line-height:12.5px">' % (plot.border_width)]
 
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
             l.append('<a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
