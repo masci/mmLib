@@ -14,7 +14,7 @@ import fcntl
 import subprocess
 import socket
 import xmlrpclib
-
+import shutil
 
 from tlsmdlib import const, conf, email
 
@@ -54,19 +54,44 @@ def log_job_end(jdict):
     else:
         private_text = "public"
     
-    l = ["[%s]" % (time.asctime(time.localtime(time.time()))),
-         jdict.get("ip_addr", "000.000.000.000"),
-	 jdict.get("email", "nobody@nowhere.com"),
-	 private_text,
-	 jdict.get("job_id", "EEK!!"),
-	 jdict.get("structure_id", "----"),
-         chain_size_string(jdict) ]
+    submit_time = jdict.get('submit_time', 0.0)
+    run_time_begin = jdict.get('run_time_begin', 0.0)
+    run_time_end = jdict.get('run_time_end', 0.0)
+    processing_time = timediff(run_time_begin, run_time_end)
+    l = ["[Submit time: %s]"  % (timestring(submit_time)),
+         "[Start time: %s] " % (timestring(run_time_begin)),
+         "[End time: %s] " % (timestring(run_time_end)),
+         "[Processing time: %s] " % (processing_time),
+         "[IP : %s] " % (jdict.get("ip_addr", "000.000.000.000")),
+         "[Email: %s] " % (jdict.get("email", "nobody@nowhere.com")),
+         "[Privacy: %s] " % (private_text),
+         "[Job ID: %s] " % (jdict.get("job_id", "EEK!!")),
+         "[Structure ID: %s] " % (jdict.get("structure_id", "----")),
+         "[Chain sizes: %s] " % (chain_size_string(jdict)),
+         "[TLS Model: %s] " % (jdict.get('tls_model', 'None')),
+         "[Weight: %s] " % (jdict.get('weight', 'None')),
+         "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
+         "[Status: %s] " % (jdict.get('status', 'None'))]
 
     try:
         open(conf.LOG_PATH, "a").write(" ".join(l) + "\n")
     except IOError:
         log_write("ERROR: cannot open logfile %s" % (conf.LOG_PATH))
 
+def timestring(raw_time):
+    t = time.asctime(time.localtime(raw_time))
+    return t
+
+def timediff(begin, end):
+    secs = int(end - begin)
+    hours = secs / 3600
+    secs = secs - (hours * 3600)
+    min = secs / 60
+    secs = secs - (min * 60)
+    x = "%1d:%2d.%2d" % (hours, min, secs)
+    return x.replace(" ", "0")
+    
+    
 def log_error(jdict, err):
     ln  = ""
     ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
@@ -142,12 +167,25 @@ def run_job(webtlsmdd, jdict):
         log_error(jdict, str(err))
     else:
         run_tlsmd(webtlsmdd, jdict)
+    
+    
+    if jdict.get("via_pdb", False) \
+        and "pdb_dir" in jdict and len(jdict["pdb_dir"]) != 0:
+        
+        print "%s: Archiving job..." % (time.ctime())
+        pdb_dir = webtlsmdd.job_get_pdb_dir(job_id)
+
+        if os.path.exists(pdb_dir):
+            shutil.rmtree(pdb_dir)
+        try:
+            shutil.copytree(job_dir, pdb_dir)
+        except OSError:
+            pass
 
     os.chdir(old_dir)
-    log_job_end(jdict)
-
     webtlsmdd.job_set_state(job_id, "completed")
     webtlsmdd.job_set_run_time_end(job_id, time.time())
+    log_job_end(webtlsmdd.job_get_dict(job_id))
 
     ## send email now that the job is complete
     send_mail(job_id)
@@ -278,6 +316,8 @@ def fetch_and_run_jobs_forever():
 def main():
     try:
         fetch_and_run_jobs_forever()
+    except KeyboardInterrupt:
+        sys.exit(1)
     except:
         email.SendTracebackEmail("webtlsmdrund.py exception")
         raise
