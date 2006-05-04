@@ -71,7 +71,7 @@ def log_job_end(jdict):
          "[TLS Model: %s] " % (jdict.get('tls_model', 'None')),
          "[Weight: %s] " % (jdict.get('weight', 'None')),
          "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
-         "[Status: %s] " % (jdict.get('status', 'None'))]
+         "[State: %s] " % (jdict.get('state', 'None'))]
 
     try:
         open(conf.LOG_PATH, "a").write(" ".join(l) + "\n")
