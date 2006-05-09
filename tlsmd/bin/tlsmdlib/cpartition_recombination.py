@@ -179,11 +179,14 @@ def ChainPartitionRecombinationOptimization(chain):
 
                 if not visited.has_key(ptree):
                     visited[ptree] = True
-                    console.stdoutln(
-                        "%s %5.2f(%5.2f) %d" % (ptree.cp,
-                                                ptree.cp.rmsd_b(),
-                                                ntls_best[tmp_ntls].rmsd_b(),
-                                                tmp_ntls))
+                    
+                    if ntls_best.has_key(tmp_ntls):
+                        best_rmsd = "%5.2f" % (ntls_best[tmp_ntls].rmsd_b())
+                    else:
+                        best_rmsd = "-----"
+
+                    console.stdoutln("%s %5.2f(%s) %d" % (
+                        ptree.cp, ptree.cp.rmsd_b(), best_rmsd, tmp_ntls))
 
                 if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
                     ntls_best[tmp_ntls] = ptree.cp

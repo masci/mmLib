@@ -27,6 +27,10 @@ def calc_include_atom(atm, reject_messages = False):
         if reject_messages == True:
             console.stdoutln("calc_include_atom(%s): rejected because of low occupancy" % (atm))
 	return False
+
+    if atm.occupancy > 1.0:
+        atm.occupancy = 1.0
+        console.stdoutln("calc_include_atom(%s): atom occupancy greator than 1.0; truncating" % (atm))
     
     if numpy.trace(atm.get_U()) <= const.TSMALL:
         if reject_messages == True:
@@ -44,7 +48,6 @@ def calc_include_atom(atm, reject_messages = False):
 def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
-    assert atm.occupancy >= 0.0 and atm.occupancy <= 1.0
     return atm.occupancy
 
 def chain_to_xmlrpc_list(atom_iter):
