@@ -149,7 +149,6 @@ class CIFStructureBuilder(StructureBuilder.StructureBuilder):
                 break
         else:
             warning("read_atoms: no geom_bond section found")
-            self.halt = True
             return
 
         for row in range(len(table.rows)):
