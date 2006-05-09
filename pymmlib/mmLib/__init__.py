@@ -4,6 +4,8 @@
 ## included as part of this package.
 __all__ = [
     "AtomMath",
+    "CIFBuilder",
+    "CIF",
     "Colors",
     "ConsoleOutput",
     "FileIO",
@@ -13,7 +15,7 @@ __all__ = [
     "mmCIFBuilder",
     "mmCIFDB",
     "mmCIF",
-    "NumericCompat.py",
+    "NumericCompat",
     "OpenGLDriver",
     "PDBBuilder",
     "PDB",

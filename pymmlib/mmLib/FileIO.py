@@ -13,6 +13,7 @@ from mmCIF        import mmCIFFile
 from mmCIFBuilder import mmCIFStructureBuilder, mmCIFFileBuilder
 from PDB          import PDBFile
 from PDBBuilder   import PDBStructureBuilder, PDBFileBuilder
+from CIFBuilder   import CIFStructureBuilder
 
 
 class FileIOUnsupportedFormat(Exception):
@@ -115,7 +116,12 @@ def LoadStructure(**args):
     if args["format"] == "PDB":
         return PDBStructureBuilder(**args).struct
     elif args["format"] == "CIF":
-        return mmCIFStructureBuilder(**args).struct
+        from mmCIF import mmCIFSyntaxError
+        try:
+            return mmCIFStructureBuilder(**args).struct
+        except mmCIFSyntaxError:
+            args["fil"].seek(0)
+            return CIFStructureBuilder(**args).struct
 
     raise FileIOUnsupportedFormat("Unsupported file format %s" % (str(fil)))
 
