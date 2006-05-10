@@ -31,6 +31,7 @@ class StructureBuilder(object):
                  sequence_from_structure = False,
                  library_bonds = False,
                  distance_bonds = False,
+                 auto_sort = True,
                  **args):
 
         ## allocate a new Structure object for building if one was not
@@ -50,6 +51,7 @@ class StructureBuilder(object):
         self.calc_sequence = sequence_from_structure
         self.library_bonds = library_bonds
         self.distance_bonds = distance_bonds
+        self.auto_sort = auto_sort
 
         ## caches used while building
         self.cache_chain = None
@@ -412,7 +414,8 @@ class StructureBuilder(object):
         self.name_service()
 
         ## sort structural objects into their correct order
-        self.struct.sort()
+        if self.auto_sort:
+            self.struct.sort()
 
     def read_metadata(self):
         """This method needs to be reimplemented in a fuctional subclass.
