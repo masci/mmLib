@@ -680,8 +680,13 @@ def main(walk_path, start_path):
         file_verify(path, struct, stats)
 
         ## test file saving
-        print "[save verify]"
-        save_verify(struct, stats)
+        from mmLib.CIF import DataBlock
+        if (hasattr(struct, "cif_data")
+                and isinstance(struct.cif_data, DataBlock)):
+            print "[save verify skipped]"
+        else:
+            print "[save verify]"
+            save_verify(struct, stats)
 
         time2 = time.time()
         print "Tests Time (sec)-----:",int(time2-time1)

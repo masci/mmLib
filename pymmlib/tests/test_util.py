@@ -127,6 +127,35 @@ def cif_stats(path):
                 sys.exit(1)
             else:
                 atom_site_ids[aid] = ln
+
+    if stats["atoms"] > 0:
+	return stats
+
+    # Assume that we are looking at plain CIF file
+
+    start_counting_atoms = False
+    for ln in FileIO.OpenFile(path, "r").readlines():
+
+        if ln.startswith("_atom_site_label"):
+            start_counting_atoms = True
+
+        if not start_counting_atoms or ln[0] == "_":
+            continue
+	fields = ln.split()
+	if not fields:
+	    break
+
+        ## count atoms
+	stats["atoms"] += 1
+	aid = fields[0]
+
+	if atom_site_ids.has_key(aid):
+	    print "CIF DUPLICATE ID"
+	    print "[1]",atom_site_ids[aid]
+	    print "[2]",ln
+	    sys.exit(1)
+	else:
+	    atom_site_ids[aid] = ln
         
     return stats
 
