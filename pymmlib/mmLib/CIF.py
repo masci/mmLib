@@ -1,5 +1,9 @@
 # CIF Parser for CIF 1.1 format
 
+from mmCIF import mmCIFSyntaxError
+class CIFSyntaxError(mmCIFSyntaxError):
+    pass
+
 #
 # Lexical type constants
 #
@@ -11,23 +15,6 @@ L_SAVE = "<save>"
 L_GLOBAL = "<global>"
 L_TAG = "<tag>"
 L_VALUE = "<value>"
-
-class CIFError(Exception):
-    """Base class of errors raised by Structure objects.
-    """
-    pass
-
-
-class CIFSyntaxError(Exception):
-    """Base class of errors raised by Structure objects.
-    """
-    def __init__(self, line_num, text):
-        Exception.__init__(self)
-        self.line_num = line_num
-        self.text = text
-
-    def __str__(self):
-        return "[line: %d] %s" % (self.line_num, self.text)
 
 #
 # Parser classes
