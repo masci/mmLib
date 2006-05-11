@@ -573,10 +573,14 @@ class HTMLReport(Report):
              '<tr>',
         
              '<td align="right" valign="top">',
-             '<p style="font-size:xx-small; margin-top:%dpx; line-height:12.5px">' % (plot.border_width)]
+             '<p style="font-size:xx-small; margin-top:%dpx">' % (plot.border_width)]
+
+        l.append('<ul style="list-style-type:none;margin:0px;padding:0px">')
 
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-            l.append('<a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
+            l.append('<li style="line-height:20px"><a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
+
+        l.append('</ul>')
 
         l +=['</td>',
              '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_path),
@@ -1144,6 +1148,7 @@ class HTMLReport(Report):
              '<p>%s</p>' % (captions.REFINEMENT_PREP_INFO),
              '<center><table><tr><td>',
              plot.html_link(),
+             '<br>',
              '</td></tr><tr><td>',
              '<table width="100%" border="1">',
              '<tr><th>',
