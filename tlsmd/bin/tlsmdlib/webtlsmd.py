@@ -1383,7 +1383,7 @@ class SubmitPDBPage(Page):
 
 
         title = "This protein has already been analyzed"
-        analysis_url = "http://veritas.yiqiang.net/~yi/pdb/%s/ANALYSIS" % (pdbid)
+        analysis_url = "http://skuld.bmsc.washington.edu/~tlsmd/pdb/%s/ANALYSIS" % (pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
