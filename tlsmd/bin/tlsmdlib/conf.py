@@ -41,6 +41,8 @@ REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 JMOL_DIR               = "../../../jmol"
+WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT,"pdb")
+WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR,"pdbids.txt")
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 50
