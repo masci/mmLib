@@ -1,4 +1,4 @@
-#!/home/tlsmd/local/bin/python
+#!/usr/bin/env python
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -18,6 +18,9 @@ import socket
 import xmlrpclib
 import SocketServer
 import SimpleXMLRPCServer
+import urllib
+import gzip
+import StringIO
 
 from mmLib import FileIO
 from tlsmdlib import conf, const, tls_calcs, email
@@ -126,8 +129,8 @@ class JobDatabase(object):
     def job_new(self):
         gdict = self.retrieve_globals()
         job_num = gdict["next_job_num"]
-	gdict["next_job_num"] =  job_num + 1
-	self.store_globals(gdict)
+        gdict["next_job_num"] =  job_num + 1
+        self.store_globals(gdict)
 
         ## assign job_id
         security_code = generate_security_code()
@@ -137,7 +140,7 @@ class JobDatabase(object):
         jdict = {}
         jdict["job_id"] = job_id
         jdict["job_num"] = job_num
-	self.store_jdict(jdict)
+        self.store_jdict(jdict)
         return job_id
 
     def job_data_set(self, job_id, key, value):
@@ -186,6 +189,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     filobj.write(struct_bin.data)
     filobj.close()
 
+    ## set basic properties of the job
     job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
     webtlsmdd.jobdb.job_data_set(job_id, "job_url", job_url)
 
@@ -200,6 +204,8 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     analysis_url = "%s/ANALYSIS/index.html" % (job_url)
     webtlsmdd.jobdb.job_data_set(job_id, "analysis_url", analysis_url)
+
+    webtlsmdd.jobdb.job_data_set(job_id, "version", const.VERSION)
 
     ## submission time and initial state
     webtlsmdd.jobdb.job_data_set(job_id, "state", "submit1")
@@ -302,6 +308,18 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     return ""
 
+def RequeueJob(webtlsmdd, job_id):
+    """Pushes job to the end of the list"""
+
+    if (webtlsmdd.jobdb.job_data_get(job_id,'state') == 'running'):
+        return False
+    else:
+        gdict = webtlsmdd.jobdb.retrieve_globals()
+        job_num = gdict['next_job_num'] 
+        gdict['next_job_num'] = job_num + 1
+        webtlsmdd.jobdb.store_globals(gdict)
+        webtlsmdd.jobdb.job_data_set(job_id, 'job_num', job_num)
+        return True
 
 def RemoveJob(webtlsmdd, job_id):
     """Removes the job from both the database and working directory.
@@ -398,7 +416,7 @@ class WebTLSMDDaemon(object):
         """Returns a ordered list of all jdicts in the database
         """
         return self.jobdb.jdict_list()
-
+        
     def job_new(self):
         return self.jobdb.job_new()
         
@@ -452,6 +470,14 @@ class WebTLSMDDaemon(object):
 
     def job_get_job_dir(self, job_id):
         return self.jobdb.job_data_get(job_id, "job_dir")
+    
+    def job_get_pdb_dir(self, job_id):
+        return self.jobdb.job_data_get(job_id, "pdb_dir")
+    
+    def job_set_pdb_dir(self, job_id, pdb_id):
+        directory = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
+        self.jobdb.job_data_set(job_id, "pdb_dir", directory)
+        return directory
 
     def job_get_log_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "log_url")
@@ -534,6 +560,14 @@ class WebTLSMDDaemon(object):
     def job_get_run_time_end(self, job_id):
         return self.jobdb.job_data_get(job_id, "run_time_end")
 
+    def job_set_via_pdb(self, job_id, bool):
+        self.jobdb.job_data_set(job_id, "via_pdb", bool)
+        return bool
+
+    def requeue_job(self, job_id):
+        """Pushes the job to the back of the queue"""
+        return RequeueJob(self, job_id)
+    
     def refmac5_refinement_prep(self, job_id, chain_ntls):
         """Called with a list of tuples (chain_id, ntls).
         Generates PDB and TLSIN files for refinement with REFMAC5.
@@ -542,6 +576,40 @@ class WebTLSMDDaemon(object):
         """
         return Refmac5RefinementPrep(self, job_id, chain_ntls)
 
+    def pdb_exists(self, pdbid):
+        try:
+            f = open(conf.WEBTLSMDD_PDBID_FILE, 'r')
+        except IOError:
+            # if it doesn't exit create it
+            f = open(conf.WEBTLSMDD_PDBID_FILE, 'w+')
+        
+        for line in f:
+            if line == pdbid + '\n':
+                f.close()
+                return True
+        
+        f.close()
+        
+        return False
+
+    def fetch_pdb(self, pdbid):
+        """Retrives the PDB file from RCSB"""
+        try:
+            cdata = urllib.urlopen("http://www.rcsb.org/pdb/files/%s.pdb.gz" % (pdbid)).read()
+            data = gzip.GzipFile(fileobj=StringIO.StringIO(cdata)).read()
+        except IOError:
+            return False
+
+        return data
+
+    def set_pdb_db(self, pdbid):
+        try:
+            f = open(conf.WEBTLSMDD_PDBID_FILE, 'a')
+        except IOError:
+            return False
+        f.write(pdbid + '\n')
+        f.close()
+        return True
 
 class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
     """Override the standard XMLRPC request handler to open the database before
@@ -587,7 +655,7 @@ def daemon_main():
     try:
         xmlrpc_server = WebTLSMD_XMLRPCServer(host_port)
     except socket.error:
-        sys.stderr.write("[ERROR] unable to bint to host,port: %s\n" % (str(host_port)))
+        sys.stderr.write("[ERROR] unable to bind to host,port: %s\n" % (str(host_port)))
         raise SystemExit
 
     xmlrpc_server.webtlsmdd = webtlsmdd

@@ -80,7 +80,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += '<h3>'
 
     if os.path.isfile(analysis_index):
-	x += '<a href="%s">Click Here: View Completed TLSMD Analysis</a>' % (analysis_url)
+        x += '<a href="%s">Click Here: View Completed TLSMD Analysis</a>' % (analysis_url)
 
     x += const.LINK_SPACE
 
@@ -93,7 +93,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     return x
 
 
-def html_job_edit_form(fdict):
+def html_job_edit_form(fdict, pdb=False):
     x  = ''
     x += '<center>'
 
@@ -114,14 +114,15 @@ def html_job_edit_form(fdict):
     x += '<table>'
 
     ## keep job private
-    x += '<tr><td></td>'
-    x += '<td>'
-    x += '<label>'
-    x += '<input type="checkbox" name="private_job" value="TRUE">'
-    x += 'Keep Job Private'
-    x += '</label>'
-    x += '</td>'
-    x += '</tr>'
+    if not pdb:
+        x += '<tr><td></td>'
+        x += '<td>'
+        x += '<label>'
+        x += '<input type="checkbox" name="private_job" value="TRUE">'
+        x += 'Keep Job Private'
+        x += '</label>'
+        x += '</td>'
+        x += '</tr>'
 
     ## email address
     x += '<tr>'
@@ -131,14 +132,16 @@ def html_job_edit_form(fdict):
     x += '</tr>'
 
     ## structure code
-    x += '<tr>'
-    x += '<td align="right"><label>Structure Code:</td><td>'
-    x += '<input type="text" name="structure_id" value="%s" size="4" maxlength="4">' % (fdict.get("structure_id", ""))
-    x += '</label></td>'
-    x += '</tr>'
+    if not pdb:
+        x += '<tr>'
+        x += '<td align="right"><label>Structure Code:</td><td>'
+        x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4">' % (fdict.get("structure_id", ""))
+        x += '</label></td>'
+        x += '</tr>'
 
+        x += '</td>'
+    
     x += '</table>'
-    x += '</td>'
 
     ## session info
     x += '<td valign="top"><table>'
@@ -165,24 +168,30 @@ def html_job_edit_form(fdict):
     x += '</tr>'
 
     ## Select Chains for Analysis
-    x += '<tr><th colspan="3">Select Chains for Analysis</th></tr>'
+    if not pdb:
+        x += '<tr><th colspan="3">Select Chains for Analysis</th></tr>'
 
-    x += '<tr><td colspan="3">'
-    x += '<table>'
-    for cdict in fdict.get("chains", []):
-        x += '<tr><td>'
-        x += '<label>'
-        if cdict["selected"]:
-            x += '<input type="checkbox" name="%s" value="TRUE" checked>' % (cdict["name"])
-        else:
-            x += '<input type="checkbox" name="%s" value="TRUE">' % (cdict["name"])
-        x += '%s' % (cdict["desc"])
-        x += '</label>'
+        x += '<tr><td colspan="3">'
+        x += '<table>'
+        for cdict in fdict.get("chains", []):
+            x += '<tr><td>'
+            x += '<label>'
+            if cdict["selected"]:
+                x += '<input type="checkbox" name="%s" value="TRUE" checked>' % (cdict["name"])
+            else:
+                x += '<input type="checkbox" name="%s" value="TRUE">' % (cdict["name"])
+            x += '%s' % (cdict["desc"])
+            x += '</label>'
 
-        x += '</td></tr>'
+            x += '</td></tr>'
 
-    x += '</table></td></tr>'
+        x += '</table></td></tr>'
+    else:
+        # select all the chains by default
+        for cdict in fdict.get("chains", []):
+            x += '<input type="hidden" name="%s" value="TRUE">' % (cdict['name'])
 
+    x += '</table>'
     ## end form
 
     x += '<tr><td colspan="3">'
@@ -193,6 +202,8 @@ def html_job_edit_form(fdict):
     x += '<td align="left">'
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job">'
+    if fdict.has_key("requeuebutton"):
+        x += '<input type="submit" name="submit" value="Requeue Job">'
     x += '</td>'
     
     x += '<td align="right">'
@@ -647,19 +658,24 @@ class Page(object):
     def __init__(self, form):
         self.form = form
 
-    def html_head_nocgi(self, title):
+    def html_head_nocgi(self, title, redirect=None):
         x  = ''
         x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
-	x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
+        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
+        if redirect != None:
+            x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
         x += '</head>'
         x += '<body><div id="page">'
         return x
 
-    def html_head(self, title):
-        return 'Content-Type: text/html\n\n' + self.html_head_nocgi(title)
+    def html_head(self, title, redirect=None):
+        if redirect == None:
+            return 'Content-Type: text/html\n\n' + self.html_head_nocgi(title)
+        else:
+            return 'Content-Type: text/html\n\n' + self.html_head_nocgi(title, redirect)
 
     def html_foot(self):
         l = ['<center>',
@@ -679,7 +695,7 @@ class ErrorPage(Page):
     def html_page(self):
         title = 'TLSMD: Error'
 
-        l = [self.html_head(title),
+        l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar(),
              '<br>',
@@ -721,7 +737,6 @@ class QueuePage(Page):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
              '<html>',
              '<head>',
-             '  <meta http-equiv="refresh" content="120">',
              '  <title>%s</title>' % (title),
 	     '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
              '</head>',
@@ -741,7 +756,7 @@ class QueuePage(Page):
         title = 'TLSMD: Job Status'
         job_list = self.get_job_list()
 	
-        l = [self.html_head(title),
+        l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar("queue"),
              self.html_private_form(),
@@ -1009,7 +1024,7 @@ class ExploreJobPage(Page):
         job_id = check_job_id(self.form, webtlsmdd)
 	if job_id is None:
 	    title = 'TLSMD: Explore Job'
-	    x  = self.html_head(title)
+	    x  = self.html_head(title, None)
 	    x += html_title(title)
 	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
 	    x += self.html_foot()
@@ -1017,7 +1032,7 @@ class ExploreJobPage(Page):
 	    
 	title = 'TLSMD: Explore Job ID %s' % (job_id)
         x  = ''
-	x += self.html_head(title)
+	x += self.html_head(title, None)
 	x += html_title(title)
 	x += html_nav_bar()
 	x += html_job_nav_bar(webtlsmdd, job_id)
@@ -1030,9 +1045,12 @@ class ExploreJobPage(Page):
 class AdminJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
+        jdict = webtlsmdd.job_get_dict(job_id)
+        pdb = jdict.get('via_pdb', False)
+
 	if job_id is None:
 	    title = 'TLSMD: View Job'
-	    x  = self.html_head(title)
+	    x  = self.html_head(title, None)
 	    x += html_title(title)
 	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
 	    x += self.html_foot()
@@ -1041,20 +1059,23 @@ class AdminJobPage(Page):
         title = 'TLSMD: Administrate Job %s' % (job_id)
 
         x  = ''
-        x += self.html_head(title)
+        x += self.html_head(title, None)
         x += html_title(title)
 
         x += html_nav_bar()
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
+
+        elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
+            x += self.requeue(job_id)
         else:
-            x += self.edit(job_id)
+            x += self.edit(job_id, pdb)
         
         x += self.html_foot()
         return x
 
-    def edit(self, job_id):
+    def edit(self, job_id, pdb):
         x = ''
 
         ## if the job is not in the "queued" state, then it is not
@@ -1067,29 +1088,43 @@ class AdminJobPage(Page):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "admin"
         fdict["removebutton"] = True
+        fdict["requeuebutton"] = True
             
         if state == "running" or state == "completed":
             x += html_job_nav_bar(webtlsmdd, job_id)
             x += html_job_info_table(fdict)
         else:
-            x += html_job_edit_form(fdict)
+            x += html_job_edit_form(fdict, pdb)
         
         return x
 
     def remove(self, job_id):
         webtlsmdd.remove_job(job_id)
-
         x  = ''
         x += '<center>'
         x += '<h3>Job %s has been removed.</h3>' % (job_id)
         x += '</center>'
         return x
 
+    def requeue(self, job_id):
+        result = webtlsmdd.requeue_job(job_id)
+        x  = ''
+        x += '<center>'
+        if result:
+            x += "<h3>Job %s has been pushed to the back.</h3>" % (job_id)
+        else:
+            x += "<h3>Job %s could not be requeued because it is running.</h3>" % (job_id)
+        x += '</center>'
+        return x
+
 
 class SubmissionException(Exception):
-    def __init__(self, html):
+    def __init__(self, err):
         Exception.__init__(self)
-        self.html = html
+        self.err = err
+
+    def __str__(self):
+        return self.err
 
 
 SUBMIT1_NOTE = """\
@@ -1103,7 +1138,7 @@ class Submit1Page(Page):
     def html_page(self):
         title = 'TLSMD: Start a New Job'
 
-        l = [self.html_head(title),
+        l = [self.html_head(title, None),
              html_title(title),
              '<center>',
 
@@ -1117,15 +1152,30 @@ class Submit1Page(Page):
              '<td align="left">Upload PDB File:</td>',
              '<td><input name="pdbfile" size="50" type="file"></td>',
              '</tr>',
+             
 
              '<tr><td colspan="2" align="center">',
              '<input value="Upload File and Proceed to Step 2" type="submit">',
              '</td></tr>',
-
              '</table>',
              '</form>',
              
              '</center>',
+             
+             '<br>',
+             '<center><h4>OR</h4></center>',
+
+             '<center>',
+
+             '<form action="webtlsmd.cgi" method="post">',
+             '<input type="hidden" name="page" value="submit_pdb">',
+             '<table class="submit_table">',
+             '<tr><th colspan="2" class="step_title">Enter a PDB ID:</th>',
+             '<td><input name="pdbid" size="4" maxlength="4" type="text"></td>',
+             '<td><input value="Submit" type="submit"</td>',
+             '</tr>',
+             '</center>',
+             '</table>',
 
              self.html_foot()]
 
@@ -1133,17 +1183,18 @@ class Submit1Page(Page):
 
 
 class Submit2Page(Page):
+
     def html_page(self):        
         title = 'TLSMD: Start a New Job'
         
-        l = [self.html_head(title),
+        l = [self.html_head(title, None),
              html_title(title) ]
 
         try:
             job_id = self.prepare_submission()
         except SubmissionException, err:
              l.append(html_nav_bar())
-             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err.html))
+             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
         else:            
             l.append(self.job_edit_form(job_id))
 
@@ -1201,7 +1252,7 @@ class Submit3Page(Page):
             job_id = self.complete_submission()
 	except SubmissionException, err:
 	    title = 'TLSMD: Job Submission Failed'
-            html  = '<center><p class="perror">ERROR:<br>%s</p></center>' % (err.html)
+            html  = '<center><p class="perror">ERROR:<br>%s</p></center>' % (err)
 	else:
             title = 'TLSMD: Job Submission Succeeded'
 
@@ -1210,7 +1261,7 @@ class Submit3Page(Page):
                  '<table class="submit_table">',
                  '<tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>',
 
-                 '<tr><td align="center">Your job ID is %s</td></tr>' % (job_id),
+                 '<tr><td align="center">Your job ID is <B>%s</B></td></tr>' % (job_id),
 
                  '<tr><td>',
                  '<p>Visit and bookmark your ',
@@ -1229,7 +1280,7 @@ class Submit3Page(Page):
             
             html = "".join(l)
 	    
-        x  = self.html_head(title)
+        x  = self.html_head(title, None)
         x += html_title(title)
         x += html_nav_bar()
         x += html
@@ -1272,6 +1323,80 @@ class Submit3Page(Page):
 
         return job_id
 
+class SubmitPDBPage(Page):
+    """Handles requests submitted via a PDB ID"""
+
+    def html_page(self):
+        if "pdbid" not in self.form:
+            raise SubmissionException("Please enter a PDB ID")
+        elif len(self.form["pdbid"].value) < 4 or not self.form["pdbid"].value.isalnum():
+            raise SubmissionException("Invalid PDB ID.  Please try again.")
+
+        pdbid = self.form["pdbid"].value.upper()
+         
+        if webtlsmdd.pdb_exists(pdbid):
+            return self.redirect_page(pdbid)
+        
+        pdbfile = webtlsmdd.fetch_pdb(pdbid)
+
+        if pdbfile == False:
+            raise SubmissionException("Could not download PDB File from RCSB.")
+            
+        job_id = self.prepare_submission(pdbfile)
+
+        if not webtlsmdd.set_pdb_db(pdbid):
+            raise SubmissionException("Could not write to internal PDB DB")
+
+        webtlsmdd.job_set_pdb_dir(job_id, pdbid)
+        
+        fdict = webtlsmdd.job_get_dict(job_id)
+        fdict["page"] = "submit3"
+        
+        title = "Enter contact info:"
+        l = [self.html_head(title, None), html_title(title)]
+        l.append(html_job_edit_form(fdict, pdb=True))
+        l.append(self.html_foot())
+
+        return "".join(l)
+
+
+    def prepare_submission(self, pdbfile):
+        job_id = webtlsmdd.job_new()
+        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+        webtlsmdd.job_set_remote_addr(job_id, ip_addr)
+        webtlsmdd.job_set_via_pdb(job_id, True)
+        result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary(pdbfile))
+        if result != "":
+            return SubmissionException("Failed to submit structure.")
+        return job_id
+
+    def redirect_page(self, pdbid):
+        # check to see if this job is still running
+        try:
+            os.chdir(conf.WEBTLSMDD_PDB_DIR + '/' + pdbid)
+        except OSError:
+            title = "This structure is currently being analyzed, please check back later."
+            page = [self.html_head(title),
+                    html_title(title),
+                    self.html_foot()]
+            return "".join(page)
+
+
+        title = "This protein has already been analyzed"
+        analysis_url = "http://veritas.yiqiang.net/~yi/pdb/%s/ANALYSIS" % (pdbid)
+        analysis_title = "Analysis of %s" % (pdbid)
+        redirect = [self.html_head(title, redirect=analysis_url), 
+                    html_title(title),
+                    '<center>',
+                    '<br><h2>Click below to see the results:</h2>',
+                    '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
+                    '<br><br>',
+                    '<font size=-2>You will be redirected automatically in 3 seconds</font>'
+                    '</center>'
+                    ]
+        redirect.append(self.html_foot())
+        return "".join(redirect)
+
 
 def main():
     page = None
@@ -1294,6 +1419,9 @@ def main():
         elif form["page"].value == "submit3":
             page = Submit3Page(form)
 
+        elif form["page"].value == "submit_pdb":
+            page = SubmitPDBPage(form)
+
     if page is None:
         page = QueuePage(form)
 
@@ -1308,6 +1436,10 @@ def main():
 
     except socket.error, err:
         page = ErrorPage(form, "socket.error: " + str(err))
+        print page.html_page()
+
+    except SubmissionException, err:
+        page = ErrorPage(form, str(err))
         print page.html_page()
 
 
