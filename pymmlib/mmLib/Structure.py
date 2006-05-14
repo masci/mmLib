@@ -688,7 +688,7 @@ class Structure(object):
         tables for monomers retrieved from the Library implementation
         of the Structure.
         """
-        for frag in self.iter_fragments():
+        for frag in self.iter_all_fragments():
             frag.create_bonds()
 
 
