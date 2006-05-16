@@ -1340,7 +1340,7 @@ class SubmitPDBPage(Page):
         pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
         pdbfile = pdbfile_bin.data
         
-        if len(pdbfile):
+        if len(pdbfile) == 0:
             raise SubmissionException("Could not download PDB File from RCSB.")
             
         job_id = self.prepare_submission(pdbfile)
