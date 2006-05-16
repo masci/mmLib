@@ -154,9 +154,11 @@ class JobDatabase(object):
     def job_data_get(self, job_id, key):
         jdict = self.retrieve_jdict(job_id)
         if jdict is None:
-            return None
+            return ""
         value = jdict.get(key)
 	if isinstance(value, unicode):
+            return ""
+        if value is None:
             return ""
         return value
 
@@ -596,11 +598,10 @@ class WebTLSMDDaemon(object):
         """Retrives the PDB file from RCSB"""
         try:
             cdata = urllib.urlopen("http://www.rcsb.org/pdb/files/%s.pdb.gz" % (pdbid)).read()
-            data = gzip.GzipFile(fileobj=StringIO.StringIO(cdata)).read()
+            data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
-            return False
-
-        return data
+            return xmlrpclib.Binary("")
+        return xmlrpclib.Binary(data)
 
     def set_pdb_db(self, pdbid):
         try:

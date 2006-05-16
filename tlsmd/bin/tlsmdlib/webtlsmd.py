@@ -1336,10 +1336,11 @@ class SubmitPDBPage(Page):
          
         if webtlsmdd.pdb_exists(pdbid):
             return self.redirect_page(pdbid)
-        
-        pdbfile = webtlsmdd.fetch_pdb(pdbid)
 
-        if pdbfile == False:
+        pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
+        pdbfile = pdbfile_bin.data
+        
+        if len(pdbfile):
             raise SubmissionException("Could not download PDB File from RCSB.")
             
         job_id = self.prepare_submission(pdbfile)
@@ -1358,7 +1359,6 @@ class SubmitPDBPage(Page):
         l.append(self.html_foot())
 
         return "".join(l)
-
 
     def prepare_submission(self, pdbfile):
         job_id = webtlsmdd.job_new()
