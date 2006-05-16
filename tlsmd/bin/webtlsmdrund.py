@@ -173,14 +173,14 @@ def run_job(webtlsmdd, jdict):
         and "pdb_dir" in jdict and len(jdict["pdb_dir"]) != 0:
         
         print "%s: Archiving job..." % (time.ctime())
-        pdb_dir = webtlsmdd.job_get_pdb_dir(job_id)
+        pdb_dir = jdict['pdb_dir']
 
         if os.path.exists(pdb_dir):
             shutil.rmtree(pdb_dir)
         try:
             shutil.copytree(job_dir, pdb_dir)
         except OSError:
-            pass
+            raise
 
     os.chdir(old_dir)
     webtlsmdd.job_set_state(job_id, "completed")
