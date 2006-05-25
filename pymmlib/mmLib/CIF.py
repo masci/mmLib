@@ -143,6 +143,7 @@ class Lexer:
         self.filename = filename
         self.prev_char = None
         self.cur_char = None
+        self.peeked_char = None
         self.pushed_token = None
         self.line = 1
 
@@ -242,8 +243,11 @@ class Lexer:
             #
             # Check for simple values
             #
-            if c == '.' or c == '?':
+            if c == '?':
                 return self.token(L_VALUE, c)
+            if c == '.':
+                if self.peek_char() in whitespace:
+                    return self.token(L_VALUE, c)
             #
             # Get a value with no embedded whitespace
             #
@@ -272,8 +276,17 @@ class Lexer:
         if self.prev_char == '\n':
             self.line += 1
         self.prev_char = self.cur_char
-        self.cur_char = self.f.read(1)
+        if self.peeked_char is None:
+            self.cur_char = self.f.read(1)
+        else:
+            self.cur_char = self.peeked_char
+            self.peeked_char = None
         return self.cur_char
+
+    def peek_char(self):
+        if self.peeked_char is None:
+            self.peeked_char = self.f.read(1)
+        return self.peeked_char
 
     def token(self, type, value):
         return Token(type, value, self.line)

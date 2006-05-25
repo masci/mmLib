@@ -153,9 +153,19 @@ class CIFStructureBuilder(StructureBuilder.StructureBuilder):
 
         for row in range(len(table.rows)):
             name1 = table.get_value("geom_bond_atom_site_label_1", row)
-            atom1 = self.atom_site_name_map[name1]
+            try:
+                atom1 = self.atom_site_name_map[name1]
+            except KeyError:
+                warning("read_atoms: bond references non-existent atom '%s'"
+                        % name1)
+                continue
             name2 = table.get_value("geom_bond_atom_site_label_2", row)
-            atom2 = self.atom_site_name_map[name2]
+            try:
+                atom2 = self.atom_site_name_map[name2]
+            except KeyError:
+                warning("read_atoms: bond references non-existent atom '%s'"
+                        % name2)
+                continue
 
             if id(atom1) < id(atom2):
                 bnd = (atom1, atom2)
