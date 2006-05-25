@@ -142,7 +142,7 @@ class StructureBuilder(object):
                 if not chain:
                     return suggest_chain_id
             
-            for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+	    for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789":
                 chain = self.struct.get_chain(chain_id)
                 if not chain:
                     return chain_id
