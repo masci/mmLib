@@ -2522,6 +2522,7 @@ class Atom(object):
         self.res_name        = res_name
         self.fragment_id     = fragment_id
         self.chain_id        = chain_id
+        self.asym_id         = chain_id
         self.model_id        = model_id
         self.element         = element
         self.temp_factor     = temp_factor
