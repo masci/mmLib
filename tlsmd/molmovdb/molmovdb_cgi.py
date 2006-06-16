@@ -42,7 +42,7 @@ NOID_HTML_TEMPLATE = """\
 INVALIDID_HTML_TEMPLATE = """\
 <HTML>
   <HEAD>
-    <TITLE>ERROR: Invalid Morph ID %{morph_id}</TITLE>
+    <TITLE>ERROR: Invalid Morph ID ${morph_id}</TITLE>
     <LINK rel="stylesheet" href="${stylesheet_url}" type="text/css" media="screen">
   </HEAD>
   <BODY><DIV id="page">
@@ -275,7 +275,7 @@ def CGIProcess(morph):
                               stylesheet_url = STYLESHEET_URL))
 
 
-def CGI_Main(form):
+def CGI_Main(morph_id):
     """main() when run as a CGI script.
     """
     ## shut off mmLib and tlsmd console output
@@ -285,8 +285,6 @@ def CGI_Main(form):
     ## enable CGI exception catching
     cgitb.enable()
 
-    ## get the morph ID
-    morph_id = form["ID"].value
     ## don't let an attacker be tricky
     assert morph_id.find("/") == -1 and morph_id.find("..") == -1 and len(morph_id) < 20
     morph = MorphLocations(morph_id)
@@ -310,8 +308,19 @@ def main():
     """Choose between command-line main and CGI main.
     """
     form = cgi.FieldStorage()
+    morph_id = None
+
     if form.has_key("ID"):
-        CGI_Main(form)
+        morph_id = form["ID"].value
+    elif not os.environ.has_key("SERVER_SOFTWARE"):
+        try:
+            morph_id = sys.argv[1]
+        except IndexError:
+            sys.stderr.write("usage: tlsmd.cgi ID\n\n")
+            raise SystemExit
+
+    if morph_id is not None:
+        CGI_Main(morph_id)
     else:
         CGIResponse(
             SimpleTemplateReplace(NOID_HTML_TEMPLATE,
