@@ -9,7 +9,7 @@ and the files which describe them.
 
 REQUIREMENTS::
   * Python >= 2.4 (the iterators use yield, True/False)
-  * numpy >= 0.9.5
+  * numpy >= 0.9.8
 
 Additional requirements for the mmCIF Editor and tlsview.py Viewer:
   * PyOpenGL         >= 2.0.0.44 (http://pyopengl.sourceforge.net/)
@@ -32,3 +32,4 @@ You can contact us through our SourceForge site, or email us directly at:
     * Ethan Merritt <merritt@u.washington.edu>
     * Jay Painter <jpaint@u.washington.edu>
 
+19 Jul 2006

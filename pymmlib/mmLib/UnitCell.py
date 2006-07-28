@@ -5,10 +5,13 @@
 """Classes for handling unit cell transformation.
 """
 import math
+
 try:
     import numpy
+    from numpy.linalg import old as linalg
 except ImportError:
     import NumericCompat as numpy
+    from NumericCompat import linalg
 
 import AtomMath
 import SpaceGroups
@@ -50,7 +53,7 @@ class UnitCell(object):
         self.frac_to_orth = self.calc_orthogonalization_matrix()
 
         ## check our math!
-        assert numpy.allclose(self.orth_to_frac, numpy.linalg.inverse(self.frac_to_orth))
+        assert numpy.allclose(self.orth_to_frac, linalg.inverse(self.frac_to_orth))
 
     def __str__(self):
         alpha = math.degrees(self.alpha)

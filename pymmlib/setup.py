@@ -216,10 +216,10 @@ def glaccel_extension():
 
         print "  Searching For: %s" % (desc)
 
-        if lib_path==None and inc_path==None:
+        if lib_path is None and inc_path is None:
             print "    ERROR: Library Not Found: %s" % (lib)
             return None
-        elif lib_path!=None and inc_path==None:
+        elif lib_path is not None and inc_path is None:
             print "    ERROR: Header Files Not Found for Library: %s" % (lib)
             return None
 
@@ -256,7 +256,7 @@ def extension_list(opts):
         print "  USER_OPTION: PDB module will NOT be built."
     else:
         pdbmodule = pdbmodule_extension()
-        if pdbmodule!=None:
+        if pdbmodule is not None:
             print "  SUCCESS: PDB Module will be built."
             ext_list.append(pdbmodule)
         else:
@@ -268,7 +268,7 @@ def extension_list(opts):
         print "  USER OPTION: OpenGL module will NOT be built."
     else:
         glaccel = glaccel_extension()
-        if glaccel!=None:
+        if glaccel is not None:
             print "  SUCCESS: OpenGL Module will be built."
             ext_list.append(glaccel)
         else:
@@ -283,8 +283,7 @@ def run_setup(opts):
     """Invoke the Python Distutils setup function.
     """
     s0 = setup(
-        cmdclass = {'install_data': package_install_data},
-        
+        cmdclass     = {'install_data': package_install_data},
         name         = "pymmlib",
         version      = "0.9.9",
         author       = "Jay Painter",
@@ -305,6 +304,63 @@ def make_doc(opts):
 
     os.system('epydoc --html --output doc/api_reference --name "Python Macromolecular Library" mmLib/*.py') 
 
+
+def check_deps_numeric(opts):
+    ## check NumPy
+    print "Checking for NumPy..."
+    try:
+        import numpy
+    except ImportError:
+        print "ERROR: NumPy not found."
+    else:
+        print "OK:    NumPy found."
+
+def check_deps_opengl(opts):
+    if not opts["opengl"]:
+        return
+
+    ## check PyOpenGL
+    print "Checking for Python OpenGL Bindings..."
+    try:
+        import OpenGL.GL
+    except ImportError:
+        print "ERROR: OpenGL.GL not found."
+    else:
+        print "OK:    OpenGL.GL found."
+
+    try:
+        import OpenGL.GLU
+    except ImportError:
+        print "ERROR: OpenGL.GLU not found."
+    else:
+        print "OK:    OpenGL.GLU found."
+
+    try:
+        import OpenGL.GLUT
+    except ImportError:
+        print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
+        print "       rebuilt after installing GLUT or FreeGLUT."
+    else:
+        print "OK:    OpenGL.GLUT found."
+
+    ## check PyGTK >= 2.0
+    print "Checking for Python GTK+ Bindings..."
+    try:
+        import pygtk
+        pygtk.require("2.0")
+    except (ImportError, AssertionError):
+        print "ERROR: PyGTK not found.  PyGTK 2.0 required."
+    else:
+        print "OK:    PyGTK found."
+
+    ## check of PyGTKGLExt
+    print "Checking for Python GTK+ OpenGL Widget Bindings..."
+    try:
+        import gtk.gtkgl
+    except ImportError:
+        print "ERROR: PyGtkGLExt not found."
+    else:
+        print "OK:    PyGtkGLExt found."
 
 def check_deps(opts):
     """
@@ -332,75 +388,28 @@ def check_deps(opts):
             if mminor < 1:
                 too_old = True
             
-    if too_old==True:
+    if too_old is True:
         print "ERROR: Python %s too old version >= 2.4.0 required." % (
             ver_string)
     else:
         print "OK:    Python %s Found." % (ver_string)
 
     ## check Python distutils
-    if DISTUTILS_FOUND == False:
+    if DISTUTILS_FOUND is False:
         print "ERROR: Python Distutils not found.  You may need to install"
         print "       the python-devel package for your Linux distribution."
     else:
         print "OK:    Python Distutils found."
 
-    ## check NumPy
-    print "Checking for NumPy..."
-    try:
-        import numpy
-    except ImportError:
-        print "ERROR: NumPy not found."
-    else:
-        print "OK:    NumPy found."
+    check_deps_numeric(opts)
+    check_deps_opengl(opts)
 
-    if opts["opengl"]:
-        ## check PyOpenGL
-        print "Checking for Python OpenGL Bindings..."
-        try:
-            import OpenGL.GL
-        except ImportError:
-            print "ERROR: OpenGL.GL not found."
-        else:
-            print "OK:    OpenGL.GL found."
+    print "=" * 79
 
-        try:
-            import OpenGL.GLU
-        except ImportError:
-            print "ERROR: OpenGL.GLU not found."
-        else:
-            print "OK:    OpenGL.GLU found."
-
-        try:
-            import OpenGL.GLUT
-        except ImportError:
-            print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
-            print "       rebuilt after installing GLUT or FreeGLUT."
-        else:
-            print "OK:    OpenGL.GLUT found."
-
-        ## check PyGTK >= 2.0
-        print "Checking for Python GTK+ Bindings..."
-        try:
-            import pygtk
-            pygtk.require("2.0")
-        except (ImportError, AssertionError):
-            print "ERROR: PyGTK not found.  PyGTK 2.0 required."
-        else:
-            print "OK:    PyGTK found."
-
-        ## check of PyGTKGLExt
-        print "Checking for Python GTK+ OpenGL Widget Bindings..."
-        try:
-            import gtk.gtkgl
-        except ImportError:
-            print "ERROR: PyGtkGLExt not found."
-        else:
-            print "OK:    PyGtkGLExt found."
-
-    print "="*79
 
 def buildlib(opts):
+    """Download and construct the mmLib monomer library.
+    """
     import urllib
 
     LIB_FILE = os.path.join("mmLib", "Data", "Monomers.zip")
@@ -422,6 +431,7 @@ def buildlib(opts):
     print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
 
     import mmLib.mmCIF
+
     if opts["zip"]:
         import zipfile
         import cStringIO
@@ -433,7 +443,7 @@ def buildlib(opts):
     if not os.path.isdir(LIB_PATH):
         os.mkdir(LIB_PATH)
 
-    while len(cif_file)>0:
+    while len(cif_file) > 0:
         cif_data = cif_file[0]
         cif_file.remove(cif_data)
         cf = mmLib.mmCIF.mmCIFFile()
@@ -459,11 +469,13 @@ def buildlib(opts):
 
 def check_pymmlib_options():
     import sys
+
     opt_defaults = {
     	"pdb": True,
 	"opengl": True,
-	"zip": False,
-    }
+	"zip": True,
+        }
+    
     opts = {}
     for opt, default in opt_defaults.iteritems():
 	opts[opt] = default
@@ -475,6 +487,7 @@ def check_pymmlib_options():
         if flag in sys.argv:
             sys.argv.remove(flag)
 	    opts[opt] = False
+
     return opts
 
 
@@ -512,15 +525,15 @@ def usage():
     print "        mmLib/Data/Monomers"
     
 
-if __name__ == "__main__":
 
+def main():
     print
     print "PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM"
     print
 
     opts = check_pymmlib_options()
 
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         usage()
 
     elif sys.argv[1] == "doc":
@@ -533,7 +546,7 @@ if __name__ == "__main__":
         buildlib(opts)
 
     else:
-        if DISTUTILS_FOUND==True:
+        if DISTUTILS_FOUND is True:
             run_setup(opts)
         else:
             print """\
@@ -541,3 +554,6 @@ if __name__ == "__main__":
             the python-devel package on some Linux distructions.  See
             INSTALL.txt for details.
             """
+
+if __name__ == "__main__":
+    main()

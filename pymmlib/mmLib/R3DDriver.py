@@ -9,10 +9,13 @@ import subprocess
 import copy
 import random
 import math
+
 try:
     import numpy
+    from numpy.linalg import old as linalg
 except ImportError:
     import NumericCompat as numpy
+    from NumericCompat import linalg
 
 import ConsoleOutput
 import Constants
@@ -705,7 +708,7 @@ class Raster3DDriver(object):
         R  = self.matrix[:3,:3]
         Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
 
-        evals, evecs = numpy.linalg.eigenvectors(Ur)
+        evals, evecs = linalg.eigenvectors(Ur)
         
     def glr_Uellipse(self, position, U, prob):
         """Renders the ellipsoid enclosing the given fractional probability
@@ -716,15 +719,15 @@ class Raster3DDriver(object):
         R  = self.matrix[:3,:3]
         Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
 
-        Umax = max(numpy.linalg.eigenvalues(Ur))
+        Umax = max(linalg.eigenvalues(Ur))
         try:
             limit_radius = Gaussian.GAUSS3C[prob] * MARGIN * math.sqrt(Umax)
         except ValueError:
             limit_radius = 2.0
 
         try:
-            Q = numpy.linalg.inverse(Ur)
-        except numpy.linalg.LinAlgError:
+            Q = linalg.inverse(Ur)
+        except linalg.LinAlgError:
             return
         
         self.object_list.append(

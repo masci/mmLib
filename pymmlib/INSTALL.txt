@@ -38,8 +38,8 @@ dependencies it requires are installed.  The easiest way to do this is to
 use the dependency checking mode of the mmLib setup.py program.  Once mmLib
 has been downloaded, issue the following commands:
 
-# tar xzf pymmlib-0.9.8.tar.gz
-# cd pymmlib-0.9.8
+# tar xzf pymmlib-0.9.9.tar.gz
+# cd pymmlib-0.9.9
 # python setup.py checkdeps
 
 PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM
@@ -217,4 +217,4 @@ example programs and applications:
 
 
 Jay Painter <jpaint@u.washington.edu>
-17 Feb 2006
+19 Jul 2006

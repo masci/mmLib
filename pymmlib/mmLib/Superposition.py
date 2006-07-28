@@ -6,10 +6,14 @@
 method which avoids improper rotations.
 """
 import math
+
 try:
     import numpy
+    from numpy.linalg import old as linalg
 except ImportError:
     import NumericCompat as numpy
+    from NumericCompat import linalg
+    
 import AtomMath
 
 def QuaternionToRotationMatrix(q):
@@ -120,7 +124,7 @@ def SuperimposePoints(src_points, dst_points):
     F[3,2] = F[2,3]
     F[3,3] =-R[0,0] - R[1,1] + R[2,2]
 
-    evals, evecs = numpy.linalg.eigenvectors(F)
+    evals, evecs = linalg.eigenvectors(F)
 
     i = numpy.argmax(evals)
     eval = evals[i]

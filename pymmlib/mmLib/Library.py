@@ -299,17 +299,14 @@ def library_get_element_desc(symbol):
     return element_desc
 
 
-def library_construct_monomer_desc(res_name):
-    """Constructs the MonomerDesc object for the given residue name.
+def library_use_monomer_zipfile():
+    """Returns True if the zipfile version of the monomer library should be used,
+    or False if the uncompressed directory hierarchy should be used.  If the
     """
-    if ALT_RES_NAME_DICT.has_key(res_name):
-        lookup_name = ALT_RES_NAME_DICT[res_name]
-    else:
-        lookup_name = res_name.upper()
-
     ## check if monomers are available in a zip file
     global RCSB_USE_ZIP
     global RCSB_ZIP
+    ## this should only run once
     if RCSB_USE_ZIP is None:
         import zipfile
         try:
@@ -318,43 +315,76 @@ def library_construct_monomer_desc(res_name):
             RCSB_USE_ZIP = False
         else:
             RCSB_USE_ZIP = True
+    return RCSB_USE_ZIP
 
-    if RCSB_USE_ZIP:
+
+def library_open_monomer_lib_zipfile(monomer_name):
+    """Returns the open file object for the mmCIF monomer library file if it
+    is found in the monomer library zipfile.
+    """
+    if library_use_monomer_zipfile():
         ## read data from zip file
         try:
-            bytes = RCSB_ZIP.read(lookup_name.upper())
+            blob = RCSB_ZIP.read(monomer_name.upper())
         except KeyError:
-            ConsoleOutput.warning("monomer description not found "
-                "for '%s' in '%s'" % (res_name, RCSB_MONOMER_DATA_FILE))
-            return None
+            ConsoleOutput.warning("monomer description not found in zipfile for '%s'" % (monomer_name))
         else:
             from cStringIO import StringIO
-            f = StringIO(bytes)
+            return StringIO(blob)
+    return None
+
+
+def library_open_monomer_lib_directory(monomer_name):
+    """Returns the open file object for the mmCIF monomer library file if it
+    is found as a uncompressed mmCIF file at the path:
+        mmLib/Data/Monomers/NAME[0]/NAME.cif
+    """
+    assert len(monomer_name) > 0
+    fil_name = "%s.cif" % (monomer_name.upper())
+    path = os.path.join(RCSB_MONOMER_DATA_PATH, fil_name[0], fil_name)
+    if os.path.isfile(path):
+        return open(path, "r")
+    return None
+
+
+def library_open_monomer_lib_file(monomer_name):
+    """Returns the open file object for the mmCIF monomer library file if it
+    is found from library_open_monomer_lib_directory() or
+    library_open_monomer_lib_zipfile().  library_open_monomer_lib_directory()
+    is checked first because loading the file from the directory sturcture
+    is much faster than loading it from a zipfile.
+    """
+    libfil = library_open_monomer_lib_directory(monomer_name)
+    if libfil is not None:
+        return libfil
+    libfil = library_open_monomer_lib_zipfile(monomer_name)
+    return libfil
+    
+
+def library_construct_monomer_desc(res_name):
+    """Constructs the MonomerDesc object for the given residue name.
+    """
+    ## return None when the res_name is the empty string
+    if len(res_name) < 1:
+        return None
+
+    if ALT_RES_NAME_DICT.has_key(res_name):
+        lookup_name = ALT_RES_NAME_DICT[res_name]
     else:
-        ## form path to locate the monomer library file
-        try:
-            r0 = lookup_name[0]
-        except IndexError:
-            return None
+        lookup_name = res_name.upper()
 
-        fil_name = "%s.cif" % (lookup_name.upper())
-        path = os.path.join(RCSB_MONOMER_DATA_PATH, r0, fil_name)
-
-        try:
-            f = open(path, "r")
-        except IOError:
-            ConsoleOutput.warning("monomer description not found "
-                "for '%s'->'%s'" % (res_name, path))
-            return None
+    libfil = library_open_monomer_lib_file(lookup_name)
+    if libfil is None:
+        ConsoleOutput.warning("monomer description not found for '%s'" % (res_name))
+        return None
 
     ## generate monomer description    
     mon_desc = MonomerDesc()
-
     ## data from RCSB library
     rcsb_cif_file = mmCIF.mmCIFFile()
-    rcsb_cif_file.load_file(f)
+    rcsb_cif_file.load_file(libfil)
     rcsb_cif_data = rcsb_cif_file[0]
-    f.close()
+    libfil.close()
 
     chem_comp = rcsb_cif_data.get_table("chem_comp")[0]
     mon_desc.res_name     = chem_comp.get_lower("res_name")

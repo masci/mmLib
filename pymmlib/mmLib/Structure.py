@@ -8,10 +8,13 @@ import copy
 import math
 import string
 import itertools
+
 try:
     import numpy
+    from numpy.linalg import old as linalg
 except ImportError:
     import NumericCompat as numpy
+    from NumericCompat import linalg
 
 import ConsoleOutput
 import Constants
@@ -2973,7 +2976,7 @@ class Atom(object):
         if self.U is None:
             return 1.0
 
-        evals = numpy.linalg.eigenvalues(self.U)
+        evals = linalg.eigenvalues(self.U)
         ansotropy = min(evals) / max(evals)
         return ansotropy
 
@@ -2985,7 +2988,7 @@ class Atom(object):
         if self.U is None:
             return (1.0, 1.0, 1.0)
 
-        e1, e2, e3 = numpy.linalg.eigenvalues(self.U)
+        e1, e2, e3 = linalg.eigenvalues(self.U)
         elist = [e1, e2, e3]
         elist.sort()
         e1, e2, e3 = elist
