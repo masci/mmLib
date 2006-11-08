@@ -2471,6 +2471,8 @@ class Atom(object):
     Atom.charge      - charge on the atom
     Atom.label_entity_id -
                        entity id corresponding to entity_poly_seq.entity_id
+    Atom.label_asym_id -
+                       asym id corresponding to struct_conf.beg_label_asym_id
     Atom.label_seq_id -
                        sequence id corresponding to entity_poly_seq_num
                        and struct_conn.ptnr?_label_seq_id
@@ -2498,6 +2500,7 @@ class Atom(object):
         sig_occupancy   = None,
         charge          = None,
         label_entity_id = None,
+        label_asym_id   = None,
         label_seq_id    = None,
 
         U   = None,
@@ -2534,6 +2537,7 @@ class Atom(object):
         self.sig_occupancy   = sig_occupancy
         self.charge          = charge
         self.label_entity_id = label_entity_id
+        self.label_asym_id   = label_asym_id
         self.label_seq_id    = label_seq_id
 
         ## position
@@ -2600,7 +2604,10 @@ class Atom(object):
             sig_occupancy   = copy.copy(self.sig_occupancy),
             charge          = copy.copy(self.charge),
             U               = copy.deepcopy(self.U),
-            sig_U           = copy.deepcopy(self.sig_U))
+            sig_U           = copy.deepcopy(self.sig_U),
+            label_entity_id = self.label_entity_id,
+            label_asym_id   = self.label_asym_id,
+            label_seq_id    = self.label_seq_id)
         
         for bond in self.bond_list:
             partner = bond.get_partner(self)

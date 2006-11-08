@@ -169,6 +169,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             setmaps_cif(atom_site, self.asym_id, atm_map, "chain_id")
 
             setmaps_cif(atom_site, "label_entity_id", atm_map, "label_entity_id")
+            setmaps_cif(atom_site, "label_asym_id", atm_map, "label_asym_id")
             setmaps_cif(atom_site, "label_seq_id", atm_map, "label_seq_id")
             setmaps_cif(atom_site, "type_symbol", atm_map, "element")
             setmapf_cif(atom_site, "cartn_x", atm_map, "x")
