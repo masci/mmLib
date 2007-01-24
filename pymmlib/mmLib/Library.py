@@ -209,6 +209,7 @@ class MonomerDesc(object):
         self.chem_type          = None
         self.atom_list          = []
         self.atom_dict          = {}
+        self.alt_atom_dict      = {}
         self.bond_list          = []
         self.torsion_angle_dict = {}
 
@@ -402,6 +403,12 @@ def library_construct_monomer_desc(res_name):
             
             mon_desc.atom_list.append({"name": name, "symbol": symbol})
             mon_desc.atom_dict[name] = symbol
+            try:
+                alt_name = cif_row.getitem_lower("alt_atom_id")
+            except KeyError:
+                pass
+            else:
+                mon_desc.alt_atom_dict[name] = alt_name
 
     chem_comp_bond = rcsb_cif_data.get_table("chem_comp_bond")
     if chem_comp_bond is not None:

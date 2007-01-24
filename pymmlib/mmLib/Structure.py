@@ -2036,10 +2036,15 @@ class Fragment(object):
         if mdesc is None:
             return
 
+        def find_atom(name):
+	    try:
+		return self[name]
+	    except KeyError:
+		return self[mdesc.alt_atom_dict[name]]
         for bond in mdesc.bond_list:
             try:
-                atm1 = self[bond["atom1"]]
-                atm2 = self[bond["atom2"]]
+                atm1 = find_atom(bond["atom1"])
+                atm2 = find_atom(bond["atom2"])
             except KeyError:
                 continue
             else:
