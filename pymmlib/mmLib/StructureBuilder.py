@@ -142,7 +142,7 @@ class StructureBuilder(object):
                 if not chain:
                     return suggest_chain_id
             
-	    for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789":
+            for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789":
                 chain = self.struct.get_chain(chain_id)
                 if not chain:
                     return chain_id
@@ -402,7 +402,7 @@ class StructureBuilder(object):
                         self.struct.add_atom(atm, True)
 
             ## logging
-            ConsoleOutput.warning("name_serverice(): added chain_id=%s, res_name=%s, num_residues=%d" % (
+            ConsoleOutput.warning("name_service(): added chain_id=%s, res_name=%s, num_residues=%d" % (
                 new_chain_id, cr_key[1], fragment_id_num))
 
     def read_atoms_finalize(self):

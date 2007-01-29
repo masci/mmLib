@@ -2037,10 +2037,10 @@ class Fragment(object):
             return
 
         def find_atom(name):
-	    try:
-		return self[name]
-	    except KeyError:
-		return self[mdesc.alt_atom_dict[name]]
+            try:
+                return self[name]
+            except KeyError:
+                return self[mdesc.alt_atom_dict[name]]
         for bond in mdesc.bond_list:
             try:
                 atm1 = find_atom(bond["atom1"])

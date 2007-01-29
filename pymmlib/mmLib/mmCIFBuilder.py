@@ -277,7 +277,13 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         """
         ## only read these types of bonds for now
         bond_type_list = [
-            "disulf", "covale",
+            "covale",           # covalent bond
+            "metalc",           # metal coordination
+            "disulf",           # disulfide bridge
+            "saltbr",           # ionic interaction
+            "covale_base",      # covalent modification of a nucleotide base
+            "covale_sugar",     # covalent modification of a nucleotide sugar
+            "covale_phosphate", # covalent modification of a nucleotide phosphate
             ]
 
         try:
@@ -304,12 +310,18 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
             seq_id1  = row.get("ptnr1_label_seq_id")
             comp_id1 = row.get("ptnr1_label_comp_id")
             atom_id1 = row.get("ptnr1_label_atom_id")
+            auth_asym_id1 = row.get("ptnr1_auth_asym_id")
+            auth_seq_id1  = row.get("ptnr1_auth_seq_id")
+            auth_comp_id1 = row.get("ptnr1_auth_comp_id")
             symm1    = row.get("ptnr1_symmetry")
 
             asym_id2 = row.get("ptnr2_label_asym_id")
             seq_id2  = row.get("ptnr2_label_seq_id")
             comp_id2 = row.get("ptnr2_label_comp_id")
             atom_id2 = row.get("ptnr2_label_atom_id")
+            auth_asym_id2 = row.get("ptnr2_auth_asym_id")
+            auth_seq_id2  = row.get("ptnr2_auth_seq_id")
+            auth_comp_id2 = row.get("ptnr2_auth_comp_id")
             symm2    = row.get("ptnr2_symmetry")
 
             ## check for these special mmCIF tokens
@@ -320,12 +332,18 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                 ("label_asym_id", asym_id1),
                 ("label_seq_id",  seq_id1),
                 ("label_comp_id", comp_id1),
+                ("auth_asym_id", auth_asym_id1),
+                ("auth_seq_id",  auth_seq_id1),
+                ("auth_comp_id", auth_comp_id1),
                 ("label_atom_id", atom_id1))
 
             as2 = atom_site.get_row(
                 ("label_asym_id", asym_id2),
                 ("label_seq_id",  seq_id2),
                 ("label_comp_id", comp_id2),
+                ("auth_asym_id", auth_asym_id2),
+                ("auth_seq_id",  auth_seq_id2),
+                ("auth_comp_id", auth_comp_id2),
                 ("label_atom_id", atom_id2))
 
             if not as1 or not as2:
