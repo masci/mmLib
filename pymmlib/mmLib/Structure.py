@@ -11,7 +11,10 @@ import itertools
 
 try:
     import numpy
-    from numpy.linalg import old as linalg
+    try:
+        from numpy.oldnumeric import linear_algebra as linalg
+    except ImportError:
+        from numpy.linalg import old as linalg
 except ImportError:
     import NumericCompat as numpy
     from NumericCompat import linalg
