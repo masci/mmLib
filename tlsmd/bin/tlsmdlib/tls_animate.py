@@ -197,5 +197,5 @@ class TLSAnimate(object):
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 for frag in Structure.iter_fragments(chain.iter_fragments(), frag_id1, frag_id2):
                     for atm in frag.iter_atoms():
-                        d = numpy.matrixmultiply(D, atm.position - Lorigin) + d_screw
+                        d = numpy.dot(D, atm.position - Lorigin) + d_screw
                         atm.position += d

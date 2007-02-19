@@ -55,7 +55,7 @@ def calc_inertia_tensor(atom_iter):
         I[1,2] += - x[1]*x[2]
         I[2,1] += - x[1]*x[2]
 
-    evals, evecs = numpy.linalg.eigenvectors(I)
+    evals, evecs = numpy.linalg.eig(I)
 
     elist = [(evals[0], evecs[0]),
              (evals[1], evecs[1]),
@@ -66,11 +66,11 @@ def calc_inertia_tensor(atom_iter):
     R = numpy.array((elist[0][1], elist[1][1], elist[2][1]), float)
 
     ## make sure the tensor uses a right-handed coordinate system
-    if numpy.allclose(numpy.linalg.determinant(R), -1.0):
+    if numpy.allclose(numpy.linalg.det(R), -1.0):
         I = numpy.identity(3, float)
         I[0,0] = -1.0
-        R = numpy.matrixmultiply(I, R)
-    assert numpy.allclose(numpy.linalg.determinant(R), 1.0)
+        R = numpy.dot(I, R)
+    assert numpy.allclose(numpy.linalg.det(R), 1.0)
 
     return centroid, R
 
@@ -103,7 +103,7 @@ def calc_orientation(struct, chain):
     max_z = 0.0
 
     for atm in iter_atoms(chain):
-        x  = numpy.matrixmultiply(R, atm.position - centroid)
+        x  = numpy.dot(R, atm.position - centroid)
 
         if first_atm==True:
             first_atm = False
@@ -142,7 +142,7 @@ def calc_orientation(struct, chain):
     pheight = pwidth * (height / width)
 
     ori["R"]        = R
-    ori["centroid"] = centroid + numpy.matrixmultiply(numpy.transpose(R), xydelta)
+    ori["centroid"] = centroid + numpy.dot(numpy.transpose(R), xydelta)
     ori["pwidth"]   = pwidth
     ori["pheight"]  = pheight 
     ori["hzoom"]    = zoom

@@ -130,7 +130,7 @@ class SymOp(object):
     def __call__(self, vec):
         """Return the symmetry operation on argument vector and.
         """
-        return numpy.matrixmultiply(self.R, vec) + self.t
+        return numpy.dot(self.R, vec) + self.t
 
     def __eq__(self, symop):
         return numpy.allclose(self.R, symop[0]) and numpy.allclose(self.t, symop[1])

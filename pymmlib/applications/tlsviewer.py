@@ -96,10 +96,10 @@ class DictListTreeView(gtk.TreeView):
         try:
             (path, col, x, y) = self.get_path_at_pos(x, y)
         except TypeError:
-            return gtk.FALSE
+            return False
 
         self.row_activated_cb(tree_view, path, col)
-        return gtk.FALSE
+        return False
 
     def set_dict_list(self, dict_list):
         """
@@ -119,12 +119,12 @@ class GNUPlotDialog(gtk.Dialog):
     """
     def __init__(self, ):
         gtk.Dialog.__init__(self, "Raster3D Raytrace", None, 0)
-        self.set_resizable(gtk.FALSE)
+        self.set_resizable(False)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         
         self.image = gtk.Image()
         self.image.set_from_file(png_path)
-        self.vbox.pack_start(self.image, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.image, True, True, 0)
 
         self.show_all()
 
@@ -143,12 +143,12 @@ class R3DDialog(gtk.Dialog):
     def __init__(self, png_path):
         gtk.Dialog.__init__(self, "Raster3D Raytrace", None, 0)
 
-        self.set_resizable(gtk.TRUE)
+        self.set_resizable(True)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         
         self.image = gtk.Image()
         self.image.set_from_file(png_path)
-        self.vbox.pack_start(self.image, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.image, True, True, 0)
 
         self.show_all()
 
@@ -225,7 +225,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
                         gtk.gdk.BUTTON_RELEASE_MASK |
                         gtk.gdk.BUTTON_MOTION_MASK  |
                         gtk.gdk.POINTER_MOTION_MASK)
-        return gtk.TRUE
+        return True
 
     def gtk_glv_realize(self, glarea):
         """
@@ -244,9 +244,9 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
         if self.gl_begin()==True:
             self.glv_render()
             self.gl_end()
-            return gtk.TRUE
+            return True
         else:
-            return gtk.FALSE
+            return False
 
     def gtk_glv_button_press_event(self, glarea, event):
         self.in_drag = True
@@ -286,7 +286,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
 
     def gtk_glv_destroy(self, glarea):
         ## XXX: delete all opengl draw lists
-        return gtk.TRUE
+        return True
 
     def glv_redraw(self):
         self.queue_draw()
@@ -359,7 +359,7 @@ class GLPropertyEditor(gtk.Notebook):
     """
     def __init__(self, gl_object):
         gtk.Notebook.__init__(self)
-        self.set_scrollable(gtk.TRUE)
+        self.set_scrollable(True)
         self.connect("destroy", self.destroy)
 
         self.gl_object = gl_object
@@ -413,7 +413,7 @@ class GLPropertyEditor(gtk.Notebook):
         num_properties = len(prop_desc_list)
 
         ## create table widget
-        table = gtk.Table(2, num_properties, gtk.FALSE)
+        table = gtk.Table(2, num_properties, False)
         table.set_border_width(5)
         table.set_row_spacings(5)
         table.set_col_spacings(10)
@@ -636,9 +636,9 @@ class GLPropertyEditor(gtk.Notebook):
 
             if prop_desc["type"]=="boolean":
                 if self.gl_object.properties[name]==True:
-                    widget.set_active(gtk.TRUE)
+                    widget.set_active(True)
                 else:
-                    widget.set_active(gtk.FALSE)
+                    widget.set_active(False)
 
             elif prop_desc["type"]=="integer":
                 if prop_desc.get("read_only", False)==True:
@@ -700,7 +700,7 @@ class GLPropertyEditor(gtk.Notebook):
 
             ## retrieve data based on widget type
             if prop["type"]=="boolean":
-                if widget.get_active()==gtk.TRUE:
+                if widget.get_active()==True:
                     update_dict[name] = True
                 else:
                     update_dict[name] = False
@@ -776,10 +776,10 @@ class GLPropertyTreeControl(gtk.TreeView):
         try:
             (path, col, x, y) = self.get_path_at_pos(x, y)
         except TypeError:
-            return gtk.FALSE
+            return False
 
         self.row_activated_cb(tree_view, path, col)
-        return gtk.FALSE
+        return False
 
     def get_gl_object(self, path):
         """Return the GLObject from the treeview path.
@@ -830,9 +830,9 @@ class GLPropertyTreeControl(gtk.TreeView):
                 expanded = expansion_dict[glo]
             except KeyError:
                 continue
-            if expanded==gtk.TRUE:
+            if expanded==True:
                 for i in xrange(1, len(path)):
-                    self.expand_row(path[:i], gtk.FALSE)
+                    self.expand_row(path[:i], False)
 
         if selected_glo is not None:
             self.select_gl_object(selected_glo)
@@ -846,7 +846,7 @@ class GLPropertyTreeControl(gtk.TreeView):
             if id(glo)==id(target_glo):
 
                 for i in xrange(1, len(path)):
-                    self.expand_row(path[:i], gtk.FALSE)
+                    self.expand_row(path[:i], False)
 
                 self.get_selection().select_path(path)
                 self.glo_select_cb(glo)
@@ -865,18 +865,18 @@ class GLPropertyEditDialog(gtk.Window):
         title = "Edit GLProperties: %s" % (gl_object.glo_name())
         gtk.Window.__init__(self, title, None)
 
-        self.set_resizable(gtk.FALSE)
+        self.set_resizable(False)
         self.connect("response", self.response_cb)
 
         self.toolbar = gtk.Toolbar()
-        self.vbox.pack_start(self.toolbar, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.toolbar, True, True, 0)
 
         self.view_combo = gtk.Combo()
         self.toolbar.append_widget(self.view_combo, None, None)
         self.view_combo.connect("activate", self.view_combo_activate, None)
 
         self.gl_prop_editor = GLPropertyEditor(gl_object)
-        self.vbox.pack_start(self.gl_prop_editor, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.gl_prop_editor, True, True, 0)
 
         self.add_button(gtk.STOCK_APPLY, 100)
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
@@ -919,7 +919,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 
         ## toolbar
         self.toolbar = gtk.Toolbar()
-        self.vbox.pack_start(self.toolbar, gtk.FALSE, gtk.FALSE, 3)
+        self.vbox.pack_start(self.toolbar, False, False, 3)
 
         self.toolbar.append_space()
     
@@ -960,7 +960,7 @@ class GLPropertyBrowserDialog(gtk.Dialog):
 
         ## widgets
         self.hpaned = gtk.HPaned()
-        self.vbox.pack_start(self.hpaned, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.hpaned, True, True, 0)
         self.hpaned.set_border_width(3)
 
         ## property tree control
@@ -1260,7 +1260,7 @@ class TLSDialog(gtk.Dialog):
         sw.add(treeview)
         treeview.connect("row-activated", self.row_activated_cb)
         treeview.connect("button-release-event", self.button_release_event_cb)
-        treeview.set_rules_hint(gtk.TRUE)
+        treeview.set_rules_hint(True)
 
         cell_rend = gtk.CellRendererToggle()
         column = gtk.TreeViewColumn("Show", cell_rend)
@@ -1389,10 +1389,10 @@ class TLSDialog(gtk.Dialog):
         try:
             (path, col, x, y) = tree_view.get_path_at_pos(x, y)
         except TypeError:
-            return gtk.FALSE
+            return False
 
         self.row_activated_cb(tree_view, path, col)
-        return gtk.FALSE
+        return False
 
     def view_toggled(self, cell, path):
         """Visible/Hidden TLS representation.
@@ -1407,7 +1407,7 @@ class TLSDialog(gtk.Dialog):
         tls = self.tls_list[path]
     
         # do something with the value
-        if show_vis==gtk.TRUE:
+        if show_vis==True:
             tls["GLTLSGroup"].glo_update_properties(visible=False)
         else:
             tls["GLTLSGroup"].glo_update_properties(visible=True)
@@ -1421,11 +1421,11 @@ class TLSDialog(gtk.Dialog):
         miter   = self.model.get_iter((index,))
         animate = self.model.get_value(miter, 1)
 
-        if animate==gtk.FALSE:
-            self.model.set(miter, 1, gtk.TRUE)
+        if animate==False:
+            self.model.set(miter, 1, True)
             self.animation_list.append(tls)
-        elif animate==gtk.TRUE:
-            self.model.set(miter, 1, gtk.FALSE)
+        elif animate==True:
+            self.model.set(miter, 1, False)
             self.animation_list.remove(tls)
 
     def add_tls_group(self, tls):
@@ -1527,9 +1527,9 @@ class TLSDialog(gtk.Dialog):
                 continue
 
             if tls["GLTLSGroup"].properties["visible"]==True:
-                self.model.set(miter, 0, gtk.TRUE)
+                self.model.set(miter, 0, True)
             else:
-                self.model.set(miter, 0, gtk.FALSE)
+                self.model.set(miter, 0, False)
 
     def load_PDB(self, path):
         """Load TLS descriptions from PDB REMARK records.
@@ -1688,14 +1688,14 @@ class TLSDialog(gtk.Dialog):
             tr_L  = "%8.4f" % (numpy.trace(tls_info["L'"]*Constants.RAD2DEG2))
 
             if tls["GLTLSGroup"].properties["visible"]==True:
-                self.model.set(miter, 0, gtk.TRUE)
+                self.model.set(miter, 0, True)
             else:
-                self.model.set(miter, 0, gtk.FALSE)
+                self.model.set(miter, 0, False)
 
             if tls in self.animation_list:
-                self.model.set(miter, 1, gtk.TRUE)
+                self.model.set(miter, 1, True)
             else:
-                self.model.set(miter, 1, gtk.FALSE)
+                self.model.set(miter, 1, False)
 
             self.model.set(miter, 2, "<small>%s</small>" % (tls["name"]))
             self.model.set(miter, 3, tr_rT)
@@ -1731,7 +1731,7 @@ class TLSDialog(gtk.Dialog):
         
         for tls in self.animation_list:
             tls["GLTLSGroup"].properties.update(time=self.animation_time)
-        return gtk.TRUE
+        return True
 
 
 class TLSSearchDialog(gtk.Dialog):
@@ -1775,28 +1775,28 @@ class TLSSearchDialog(gtk.Dialog):
         self.show_all()
 
     def switch_page1(self):
-        self.back.set_sensitive(gtk.FALSE)
-        self.forward.set_sensitive(gtk.TRUE)
-        self.ok.set_sensitive(gtk.FALSE)
+        self.back.set_sensitive(False)
+        self.forward.set_sensitive(True)
+        self.ok.set_sensitive(False)
         self.notebook.set_current_page(0)
 
     def switch_page2(self):
-        self.back.set_sensitive(gtk.FALSE)
-        self.forward.set_sensitive(gtk.FALSE)
-        self.ok.set_sensitive(gtk.FALSE)
+        self.back.set_sensitive(False)
+        self.forward.set_sensitive(False)
+        self.ok.set_sensitive(False)
         self.notebook.set_current_page(1)
 
     def switch_page3(self):
-        self.back.set_sensitive(gtk.TRUE)
-        self.forward.set_sensitive(gtk.FALSE)
-        self.ok.set_sensitive(gtk.TRUE)
+        self.back.set_sensitive(True)
+        self.forward.set_sensitive(False)
+        self.ok.set_sensitive(True)
         self.notebook.set_current_page(2)
 
     def build_gui(self):
         self.notebook = gtk.Notebook()
-        self.vbox.pack_start(self.notebook, gtk.TRUE, gtk.TRUE, 0)
-        self.notebook.set_show_tabs(gtk.FALSE)
-        self.notebook.set_show_border(gtk.FALSE)
+        self.vbox.pack_start(self.notebook, True, True, 0)
+        self.notebook.set_show_tabs(False)
+        self.notebook.set_show_border(False)
 
         self.notebook.append_page(self.build_page1(), gtk.Label(""))
         self.notebook.append_page(self.build_page2(), gtk.Label(""))
@@ -1810,7 +1810,7 @@ class TLSSearchDialog(gtk.Dialog):
         ## compute grid size of the table
         table_rows = self.sc.struct.count_chains() + 6
         
-        table = gtk.Table(2, table_rows, gtk.FALSE)
+        table = gtk.Table(2, table_rows, False)
         frame.add(table)
         table.set_border_width(5)
         table.set_row_spacings(5)
@@ -1829,9 +1829,9 @@ class TLSSearchDialog(gtk.Dialog):
             self.chain_checks[chain.chain_id] = chain_check
 
             if chain.count_amino_acids()>10:
-                chain_check.set_active(gtk.TRUE)
+                chain_check.set_active(True)
             else:
-                chain_check.set_active(gtk.FALSE)
+                chain_check.set_active(False)
 
             align = gtk.Alignment(0.0, 0.5, 1.0, 0.0)
             align.add(chain_check)
@@ -1844,7 +1844,7 @@ class TLSSearchDialog(gtk.Dialog):
         align.add(self.include_side_chains)
         attach1(align, current_row)
         current_row += 1
-        self.include_side_chains.set_active(gtk.TRUE)
+        self.include_side_chains.set_active(True)
 
         ##
         self.include_disordered = gtk.CheckButton("Include Disordered Atoms")
@@ -1852,7 +1852,7 @@ class TLSSearchDialog(gtk.Dialog):
         align.add(self.include_disordered)
         attach1(align, current_row)
         current_row += 1
-        self.include_disordered.set_active(gtk.FALSE)
+        self.include_disordered.set_active(False)
 
         ##
         self.include_single_bond = gtk.CheckButton("Include Atoms with One Bond")
@@ -1860,7 +1860,7 @@ class TLSSearchDialog(gtk.Dialog):
         align.add(self.include_single_bond)
         attach1(align, current_row)
         current_row += 1
-        self.include_single_bond.set_active(gtk.TRUE)
+        self.include_single_bond.set_active(True)
 
         ##
         label = gtk.Label("TLS Segment Residue Width")
@@ -1936,20 +1936,20 @@ class TLSSearchDialog(gtk.Dialog):
         ## get the list of chain_ids to fit
         chain_ids = []
         for chain_id, chain_check in self.chain_checks.items():
-            if chain_check.get_active()==gtk.TRUE:
+            if chain_check.get_active()==True:
                 chain_ids.append(chain_id)
         
-        if self.include_side_chains.get_active()==gtk.TRUE:
+        if self.include_side_chains.get_active()==True:
             use_side_chains = True
         else:
             use_side_chains = False
 
-        if self.include_disordered.get_active()==gtk.TRUE:
+        if self.include_disordered.get_active()==True:
             include_frac_occupancy = True
         else:
             include_frac_occupancy = False
 
-        if self.include_single_bond.get_active()==gtk.TRUE:
+        if self.include_single_bond.get_active()==True:
             include_single_bond = True
         else:
             include_single_bond = False
@@ -1972,7 +1972,7 @@ class TLSSearchDialog(gtk.Dialog):
 
             ## give GTK some time to update the GUI
             while gtk.events_pending():
-                gtk.main_iteration(gtk.TRUE)
+                gtk.main_iteration(True)
 
             ## calculations are canceled
             if self.cancel_flag==True:
@@ -1986,7 +1986,7 @@ class TLSSearchDialog(gtk.Dialog):
                 self.page2_label.set_text(text)
 
                 while gtk.events_pending():
-                    gtk.main_iteration(gtk.TRUE)
+                    gtk.main_iteration(True)
 
                 continue
 
@@ -2026,7 +2026,7 @@ class TLSSearchDialog(gtk.Dialog):
             self.page2_label.set_text("Fit %d Segments" % (len(self.tls_info_list)))
 
             while gtk.events_pending():
-                gtk.main_iteration(gtk.TRUE)
+                gtk.main_iteration(True)
 
 
 
@@ -2139,7 +2139,7 @@ class StructDetailsDialog(gtk.Dialog):
      
         treeview = gtk.TreeView(self.store)
         sw.add(treeview)
-        treeview.set_rules_hint(gtk.TRUE)
+        treeview.set_rules_hint(True)
         treeview.set_search_column(0)
 
         column = gtk.TreeViewColumn("mmLib.Structure Method", gtk.CellRendererText(), text=0)
@@ -2217,10 +2217,10 @@ class AboutDialog(gtk.Dialog):
         
         self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.connect("response", self.response)
-        self.set_resizable(gtk.FALSE)
+        self.set_resizable(False)
 
         frame = gtk.Frame()
-        self.vbox.pack_start(frame, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(frame, True, True, 0)
         frame.set_border_width(10)
 
         label = gtk.Label()
@@ -2293,7 +2293,7 @@ class MainWindow(object):
         self.window.set_default_size(500, 400)
         self.window.connect('destroy', self.file_quit, self)
 
-        table = gtk.Table(1, 4, gtk.FALSE)
+        table = gtk.Table(1, 4, False)
         self.window.add(table)
 
         ## file menu bar
@@ -2354,11 +2354,11 @@ class MainWindow(object):
         self.hbox1.set_border_width(2)
 
         self.tb_label = gtk.Label("Current Selection:  ")
-        self.hbox1.pack_start(self.tb_label, gtk.FALSE, gtk.FALSE, 0)
+        self.hbox1.pack_start(self.tb_label, False, False, 0)
 
         self.select_label = gtk.Entry()
-        self.select_label.set_editable(gtk.FALSE)
-        self.hbox1.pack_start(self.select_label, gtk.TRUE, gtk.TRUE, 0)
+        self.select_label.set_editable(False)
+        self.hbox1.pack_start(self.select_label, True, True, 0)
 
         ## Notebook
         self.notebook = gtk.Notebook()
@@ -2377,11 +2377,11 @@ class MainWindow(object):
                      0,                      0)
 
         self.statusbar = gtk.Statusbar()
-        self.hbox.pack_start(self.statusbar, gtk.TRUE, gtk.TRUE, 0)
-        self.statusbar.set_has_resize_grip(gtk.FALSE)
+        self.hbox.pack_start(self.statusbar, True, True, 0)
+        self.statusbar.set_has_resize_grip(False)
 
         self.frame = gtk.Frame()
-        self.hbox.pack_start(self.frame, gtk.FALSE, gtk.FALSE, 0)
+        self.hbox.pack_start(self.frame, False, False, 0)
         self.frame.set_border_width(3)
 
         self.progress = gtk.ProgressBar()
@@ -2520,7 +2520,7 @@ class MainWindow(object):
         """
         self.progress.set_fraction(percent/100.0)
         while gtk.events_pending():
-            gtk.main_iteration(gtk.TRUE)
+            gtk.main_iteration(True)
             
     def error_dialog(self, text):
         """Display modeal error dialog box containing the error text.
@@ -2706,7 +2706,7 @@ class MainWindow(object):
         self.set_statusbar("")
         self.progress.set_fraction(0.0)
 
-        return gtk.FALSE
+        return False
 
     def struct_item_activate(self, menu_item):
         """Structure->MI
@@ -2728,7 +2728,7 @@ class MainWindow(object):
             structs_menu = structs.get_submenu()
             for mi in structs_menu.get_children():
                 mi.disconnect(mi.cid)
-                mi.set_active(gtk.FALSE)
+                mi.set_active(False)
                 mi.cid = mi.connect("activate", self.struct_item_activate)
 
             ## blank the label
@@ -2748,9 +2748,9 @@ class MainWindow(object):
             mi.disconnect(mi.cid)
 
             if text==sc.struct_id:
-                mi.set_active(gtk.TRUE)
+                mi.set_active(True)
             else:
-                mi.set_active(gtk.FALSE)
+                mi.set_active(False)
 
             ## XXX: reinstall signal handler
             mi.cid = mi.connect("activate", self.struct_item_activate)

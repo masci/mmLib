@@ -11,7 +11,7 @@ try:
     try:
         from numpy.oldnumeric import linear_algebra as linalg
     except ImportError:
-        from numpy.linalg import old as linalg
+        from numpy.linalg import old as linalg        
 except ImportError:
     import NumericCompat as numpy
     from NumericCompat import linalg
@@ -122,7 +122,7 @@ def rmatrixz(vec):
                           [ 0.0, 1.0,   0.0],
                           [   d, 0.0,     w] ], float)
 
-    R = numpy.matrixmultiply(Rxz2z, Rxz)
+    R = numpy.dot(Rxz2z, Rxz)
 
     try:
         assert numpy.allclose(linalg.determinant(R), 1.0)
@@ -445,7 +445,7 @@ def calc_inertia_tensor(atom_iter, origin):
     if numpy.allclose(linalg.determinant(R), -1.0):
         I = numpy.identity(3, float)
         I[0,0] = -1.0
-        R = numpy.matrixmultiply(I, R)
+        R = numpy.dot(I, R)
 
     assert numpy.allclose(linalg.determinant(R), 1.0)
     return R

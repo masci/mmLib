@@ -181,31 +181,31 @@ class UnitCell(object):
         """Calculates and returns the fractional coordinate vector of
         orthogonal vector v.
         """
-        return numpy.matrixmultiply(self.orth_to_frac, v)
+        return numpy.dot(self.orth_to_frac, v)
 
     def calc_frac_to_orth(self, v):
         """Calculates and returns the orthogonal coordinate vector of
         fractional vector v.
         """
-        return numpy.matrixmultiply(self.frac_to_orth, v)
+        return numpy.dot(self.frac_to_orth, v)
 
     def calc_orth_symop(self, symop):
         """Calculates the orthogonal space symmetry operation (return SymOp)
         given a fractional space symmetry operation (argument SymOp).
         """
-        RF  = numpy.matrixmultiply(symop.R, self.orth_to_frac)
-        ORF = numpy.matrixmultiply(self.frac_to_orth, RF)
-        Ot  = numpy.matrixmultiply(self.frac_to_orth, symop.t)
+        RF  = numpy.dot(symop.R, self.orth_to_frac)
+        ORF = numpy.dot(self.frac_to_orth, RF)
+        Ot  = numpy.dot(self.frac_to_orth, symop.t)
         return SpaceGroups.SymOp(ORF, Ot)
 
     def calc_orth_symop2(self, symop):
         """Calculates the orthogonal space symmetry operation (return SymOp)
         given a fractional space symmetry operation (argument SymOp).
         """
-        RF  = numpy.matrixmultiply(symop.R, self.orth_to_frac)
-        ORF = numpy.matrixmultiply(self.frac_to_orth, RF)
-        Rt  = numpy.matrixmultiply(symop.R, symop.t)
-        ORt = numpy.matrixmultiply(self.frac_to_orth, Rt)
+        RF  = numpy.dot(symop.R, self.orth_to_frac)
+        ORF = numpy.dot(self.frac_to_orth, RF)
+        Rt  = numpy.dot(symop.R, symop.t)
+        ORt = numpy.dot(self.frac_to_orth, Rt)
         
         return SpaceGroups.SymOp(ORF, ORt)
 
@@ -311,7 +311,7 @@ def test_module():
     print "fractionalization matrix =\n",uc.calc_fractionalization_matrix()
     print "orthogonalization matrix =\n",uc.calc_orthogonalization_matrix()
 
-    print "orth * e =\n", numpy.matrixmultiply(
+    print "orth * e =\n", numpy.dot(
         uc.calc_orthogonalization_matrix(), e)
 
 

@@ -33,7 +33,7 @@ BASE_LINE_WIDTH = 0.05
 class FinishMe(Exception): pass
 
 
-def matrixmultiply43(M, x):
+def dot43(M, x):
     """M is a 4x4 rotation-translation matrix, x is a 3x1 vector.  Returns
     the 3x1 vector of x transformed by M.
     """
@@ -345,7 +345,7 @@ class Raster3DDriver(object):
                           [   0.0,    0.0,    1.0, t[2]],
                           [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = numpy.matrixmultiply(self.matrix, M)
+        self.matrix = numpy.dot(self.matrix, M)
 
     def glr_translate3(self, x, y, z):
         """
@@ -355,7 +355,7 @@ class Raster3DDriver(object):
                           [   0.0,    0.0,    1.0,    z],
                           [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = numpy.matrixmultiply(self.matrix, M)
+        self.matrix = numpy.dot(self.matrix, M)
 
     def glr_mult_matrix_Rt(self, R, t):
         """Return the current matrix as a 3x3 rotation matrix R and 3x1
@@ -366,7 +366,7 @@ class Raster3DDriver(object):
                           [R[2,0], R[2,1], R[2,2], t[2]],
                           [   0.0,    0.0,    0.0,  1.0]], float)
 
-        self.matrix = numpy.matrixmultiply(self.matrix, M)
+        self.matrix = numpy.dot(self.matrix, M)
         
     def glr_mult_matrix_R(self, R):
         """Multiplies the current matrix by rotation matrix R and translates
@@ -377,7 +377,7 @@ class Raster3DDriver(object):
                           [R[2,0], R[2,1], R[2,2], 0.0],
                           [   0.0,    0.0,    0.0, 1.0]], float)
 
-        self.matrix = numpy.matrixmultiply(self.matrix, M)
+        self.matrix = numpy.dot(self.matrix, M)
         
     def glr_rotate_axis(self, deg, axis):
         """
@@ -483,23 +483,23 @@ class Raster3DDriver(object):
     def glr_vertex_quads_1(self, vertex):
         self.glr_vertex_func = self.glr_vertex_quads_2
         self.normal_1        = self.normal
-        self.vertex_1        = matrixmultiply43(self.matrix, vertex)
+        self.vertex_1        = dot43(self.matrix, vertex)
 
     def glr_vertex_quads_2(self, vertex):
         self.glr_vertex_func = self.glr_vertex_quads_3
         self.normal_2        = self.normal
-        self.vertex_2        = matrixmultiply43(self.matrix, vertex)
+        self.vertex_2        = dot43(self.matrix, vertex)
         
     def glr_vertex_quads_3(self, vertex):
         self.glr_vertex_func = self.glr_vertex_quads_4
         self.normal_3        = self.normal
-        self.vertex_3        = matrixmultiply43(self.matrix, vertex)
+        self.vertex_3        = dot43(self.matrix, vertex)
 
     def glr_vertex_quads_4(self, vertex):
         self.glr_vertex_func = self.glr_vertex_quads_1
 
         normal_4 = self.normal
-        vertex_4 = matrixmultiply43(self.matrix, vertex)
+        vertex_4 = dot43(self.matrix, vertex)
 
         self.object_list.append(
             (1,
@@ -556,7 +556,7 @@ class Raster3DDriver(object):
         """
         self.glr_vertex_func = self.glr_vertex_triangle_fan_2
         
-        self.vertex_1 = matrixmultiply43(self.matrix, vertex)
+        self.vertex_1 = dot43(self.matrix, vertex)
         self.normal_1 = self.normal
 
     def glr_vertex_triangle_fan_2(self, vertex):
@@ -564,13 +564,13 @@ class Raster3DDriver(object):
         """
         self.glr_vertex_func = self.glr_vertex_triangle_fan_3
 
-        self.vertex_2 = matrixmultiply43(self.matrix, vertex)
+        self.vertex_2 = dot43(self.matrix, vertex)
         self.normal_2 = self.normal
 
     def glr_vertex_triangle_fan_3(self, vertex):
         """Get third vertex and beyond: construct triangles.
         """
-        vertex_3 = matrixmultiply43(self.matrix, vertex)
+        vertex_3 = dot43(self.matrix, vertex)
         normal_3 = self.normal
 
         self.object_list.append(
@@ -606,7 +606,7 @@ class Raster3DDriver(object):
         """
         ## just rotate the normal
         R  = self.matrix[:3,:3]
-        nr = numpy.matrixmultiply(R, n)
+        nr = numpy.dot(R, n)
 
         if self.normalize==True:
             self.normal = AtomMath.normalize(nr)
@@ -619,7 +619,7 @@ class Raster3DDriver(object):
         ## just rotate the normal
         R  = self.matrix[:3,:3]
         n = numpy.array([x, y, z], float)
-        nr = numpy.matrixmultiply(R, n)
+        nr = numpy.dot(R, n)
 
         if self.normalize==True:
             self.normal = AtomMath.normalize(nr)
@@ -647,8 +647,8 @@ class Raster3DDriver(object):
         """
         self.object_list.append(
             (3,
-             matrixmultiply43(self.matrix, position1),
-             matrixmultiply43(self.matrix, position2),
+             dot43(self.matrix, position1),
+             dot43(self.matrix, position2),
              self.line_width,
              self.material_color_r,
              self.material_color_g,
@@ -669,8 +669,8 @@ class Raster3DDriver(object):
         
         self.object_list.append(
             (5,
-             matrixmultiply43(self.matrix, position),
-             matrixmultiply43(self.matrix, position + axis),
+             dot43(self.matrix, position),
+             dot43(self.matrix, position + axis),
              radius,
              self.material_color_r,
              self.material_color_g,
@@ -681,8 +681,8 @@ class Raster3DDriver(object):
         """
         self.object_list.append(
             (5,
-             matrixmultiply43(self.matrix, position1),
-             matrixmultiply43(self.matrix, position2),
+             dot43(self.matrix, position1),
+             dot43(self.matrix, position2),
              radius,
              self.material_color_r,
              self.material_color_g,
@@ -693,7 +693,7 @@ class Raster3DDriver(object):
         """
         self.object_list.append(
             (2,
-             matrixmultiply43(self.matrix, position),
+             dot43(self.matrix, position),
              radius,
              self.material_color_r,
              self.material_color_g,
@@ -709,7 +709,7 @@ class Raster3DDriver(object):
         """
         ## rotate U
         R  = self.matrix[:3,:3]
-        Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
+        Ur = numpy.dot(numpy.dot(R, U), numpy.transpose(R))
 
         evals, evecs = linalg.eigenvectors(Ur)
         
@@ -720,7 +720,7 @@ class Raster3DDriver(object):
         """
         ## rotate U
         R  = self.matrix[:3,:3]
-        Ur = numpy.matrixmultiply(numpy.matrixmultiply(R, U), numpy.transpose(R))
+        Ur = numpy.dot(numpy.dot(R, U), numpy.transpose(R))
 
         Umax = max(linalg.eigenvalues(Ur))
         try:
@@ -735,7 +735,7 @@ class Raster3DDriver(object):
         
         self.object_list.append(
             (14,
-             matrixmultiply43(self.matrix, position),
+             dot43(self.matrix, position),
              limit_radius,
              self.material_color_r,
              self.material_color_g,

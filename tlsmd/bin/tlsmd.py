@@ -1,4 +1,4 @@
-#!/home/tlsmd/local/bin/python
+#!/usr/bin/env python
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by

@@ -418,7 +418,7 @@ class GLObject(object):
             elif prop_desc["update_on_changed"] is True:
 
                 ## special handling for Numeric/Numarray types
-                if isinstance(self.properties[name], numpy.ArrayType):
+                if isinstance(self.properties[name], numpy.ndarray):
                     if not numpy.allclose(self.properties[name], args[name]):
                         do_update = True
 
@@ -1905,7 +1905,7 @@ class GLAtomList(GLDrawList):
                          atm.fragment_id,
                          atm.chain_id)
 
-            relative_pos = numpy.matrixmultiply(R, pos + cv)
+            relative_pos = numpy.dot(R, pos + cv)
             glr_push_matrix()
             glr_translate(relative_pos + numpy.array([0.0, 0.0, 2.0]))
             glr_text(text, scale)
@@ -2559,7 +2559,7 @@ class GLViewer(GLObject):
         max_z = 0.0
 
         for atm in aa_atom_iter(struct):
-            x  = numpy.matrixmultiply(R, atm.position - centroid)
+            x  = numpy.dot(R, atm.position - centroid)
 
             if first_atm is True:
                 first_atm = False
@@ -2697,7 +2697,7 @@ class GLViewer(GLObject):
 
         ## shift in the XY plane by chainging the position of the
         ## center of rotation
-        cor = self.properties["cor"] - numpy.matrixmultiply(numpy.transpose(R), dt)
+        cor = self.properties["cor"] - numpy.dot(numpy.transpose(R), dt)
 
         self.properties.update(cor=cor)
 
@@ -2773,7 +2773,7 @@ class GLViewer(GLObject):
         Rcur = self.properties["R"]
 
         ## calculate a in the original coordinate frame
-        a = numpy.matrixmultiply(numpy.transpose(Rcur), a)
+        a = numpy.dot(numpy.transpose(Rcur), a)
         qup = AtomMath.rquaternionu(a, theta)
 
         ## convert the current rotation matrix to a quaternion so the

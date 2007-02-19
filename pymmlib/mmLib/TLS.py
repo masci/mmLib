@@ -755,9 +755,9 @@ def solve_TLS_Ab(A, b):
             Wi[i,i] = 0.0
 
     ## solve for x
-    Utb  = numpy.matrixmultiply(Ut, b)
-    WUtb = numpy.matrixmultiply(Wi, Utb)
-    x    = numpy.matrixmultiply(V, WUtb)
+    Utb  = numpy.dot(Ut, b)
+    WUtb = numpy.dot(Wi, Utb)
+    x    = numpy.dot(V, WUtb)
 
     return x
 
@@ -937,8 +937,8 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         evec = RL[i]
 
         RZt = numpy.transpose(AtomMath.rmatrixz(evec))
-        xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
-        yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
+        xevec = numpy.dot(RZt, numpy.array([1.0, 0.0, 0.0], float))
+        yevec = numpy.dot(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
         if i==0:
             RL[1] = xevec
@@ -980,7 +980,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     if numpy.allclose(linalg.determinant(RL), -1.0):
         I = numpy.identity(3, float)
         I[0,0] = -1.0
-        RL = numpy.matrixmultiply(I, RL)
+        RL = numpy.dot(I, RL)
 
     if not numpy.allclose(linalg.determinant(RL), 1.0):
         return rdict
@@ -988,13 +988,13 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = numpy.matrixmultiply(numpy.matrixmultiply(RL, L0), RLt) 
+    cL = numpy.dot(numpy.dot(RL, L0), RLt) 
     
     ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = numpy.matrixmultiply(numpy.matrixmultiply(RL, T0), RLt)
+    cT = numpy.dot(numpy.dot(RL, T0), RLt)
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = numpy.matrixmultiply(numpy.matrixmultiply(RL, S0), RLt)
+    cS = numpy.dot(numpy.dot(RL, S0), RLt)
 
     ## ^rho: the origin-shift vector in the coordinate system of L
     L23 = L2 + L3
@@ -1020,7 +1020,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     crho = numpy.array([crho1, crho2, crho3], float)
 
     ## rho: the origin-shift vector in orthogonal coordinates
-    rho = numpy.matrixmultiply(RLt, crho)
+    rho = numpy.dot(RLt, crho)
     rdict["RHO"] = rho
     rdict["COR"] = origin + rho
 
@@ -1039,23 +1039,23 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     cPRHOt = numpy.transpose(cPRHO)
 
     ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + numpy.matrixmultiply(cL, cPRHOt)
+    cSp = cS + numpy.dot(cL, cPRHOt)
 
     ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + numpy.matrixmultiply(cPRHO, cS) + numpy.matrixmultiply(cSt, cPRHOt) + \
-          numpy.matrixmultiply(numpy.matrixmultiply(cPRHO, cL), cPRHOt)
+    cTp = cT + numpy.dot(cPRHO, cS) + numpy.dot(cSt, cPRHOt) + \
+          numpy.dot(numpy.dot(cPRHO, cL), cPRHOt)
 
     ## transpose of PRHO and S
     PRHOt = numpy.transpose(PRHO)
     St = numpy.transpose(S0)
 
     ## calculate S' = S + L*PRHOt
-    Sp = S0 + numpy.matrixmultiply(L0, PRHOt)
+    Sp = S0 + numpy.dot(L0, PRHOt)
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + numpy.matrixmultiply(PRHO, S0) + numpy.matrixmultiply(St, PRHOt) + \
-         numpy.matrixmultiply(numpy.matrixmultiply(PRHO, L0), PRHOt)
+    Tp = T0 + numpy.dot(PRHO, S0) + numpy.dot(St, PRHOt) + \
+         numpy.dot(numpy.dot(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
 
     ## now calculate the TLS motion description using 3 non
@@ -1069,9 +1069,9 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     ## libration axes shifts in the origional orthogonal
     ## coordinate system
-    rdict["L1_rho"] = numpy.matrixmultiply(RLt, cL1rho)
-    rdict["L2_rho"] = numpy.matrixmultiply(RLt, cL2rho)
-    rdict["L3_rho"] = numpy.matrixmultiply(RLt, cL3rho)
+    rdict["L1_rho"] = numpy.dot(RLt, cL1rho)
+    rdict["L2_rho"] = numpy.dot(RLt, cL2rho)
+    rdict["L3_rho"] = numpy.dot(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
     ## no screw pitches either
@@ -1141,7 +1141,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     Lorigin  = cor + Lrho
     D        = AtomMath.dmatrixu(Lvec, Lrot)
 
-    drot = numpy.matrixmultiply(D, position - Lorigin)
+    drot = numpy.dot(D, position - Lorigin)
     dscw = (Lrot * Lpitch) * Lvec
     
     return drot + dscw
@@ -1285,7 +1285,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
                       [ X[S31], X[S32],    s33 ] ], float)
 
     ## calculate the lsq residual
-    UTLS = numpy.matrixmultiply(A, X)
+    UTLS = numpy.dot(A, X)
     D = UTLS - B
     lsq_residual = numpy.dot(D, D)
 
@@ -1377,8 +1377,8 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         evec = RL[i]
 
         RZt = numpy.transpose(AtomMath.rmatrixz(evec))
-        xevec = numpy.matrixmultiply(RZt, numpy.array([1.0, 0.0, 0.0], float))
-        yevec = numpy.matrixmultiply(RZt, numpy.array([0.0, 1.0, 0.0], float))
+        xevec = numpy.dot(RZt, numpy.array([1.0, 0.0, 0.0], float))
+        yevec = numpy.dot(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
         if i==0:
             RL[1] = xevec
@@ -1420,7 +1420,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     if numpy.allclose(linalg.determinant(RL), -1.0):
         I = numpy.identity(3, float)
         I[0,0] = -1.0
-        RL = numpy.matrixmultiply(I, RL)
+        RL = numpy.dot(I, RL)
 
     if not numpy.allclose(linalg.determinant(RL), 1.0):
         return rdict
@@ -1428,15 +1428,15 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
-    cL = numpy.matrixmultiply(numpy.matrixmultiply(RL, L0), RLt) 
+    cL = numpy.dot(numpy.dot(RL, L0), RLt) 
     rdict["L^"] = cL.copy()
     
     ## carrot-T tensor (T tensor WRT principal axes of L)
-    cT = numpy.matrixmultiply(numpy.matrixmultiply(RL, T0), RLt)
+    cT = numpy.dot(numpy.dot(RL, T0), RLt)
     rdict["T^"] = cT.copy()
 
     ## carrot-S tensor (S tensor WRT principal axes of L)
-    cS = numpy.matrixmultiply(numpy.matrixmultiply(RL, S0), RLt)
+    cS = numpy.dot(numpy.dot(RL, S0), RLt)
     rdict["S^"] = cS.copy()
 
     ## ^rho: the origin-shift vector in the coordinate system of L
@@ -1464,7 +1464,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["RHO^"] = crho.copy()
     
     ## rho: the origin-shift vector in orthogonal coordinates
-    rho = numpy.matrixmultiply(RLt, crho)
+    rho = numpy.dot(RLt, crho)
     rdict["RHO"] = rho
     rdict["COR"] = origin + rho
 
@@ -1485,12 +1485,12 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L'^"] = cL.copy()
 
     ## calculate S'^ = S^ + L^*pRHOt
-    cSp = cS + numpy.matrixmultiply(cL, cPRHOt)
+    cSp = cS + numpy.dot(cL, cPRHOt)
     rdict["S'^"] = cSp.copy()
 
     ## calculate T'^ = cT + cPRHO*S^ + cSt*cPRHOt + cPRHO*cL*cPRHOt *
-    cTp = cT + numpy.matrixmultiply(cPRHO, cS) + numpy.matrixmultiply(cSt, cPRHOt) +\
-          numpy.matrixmultiply(numpy.matrixmultiply(cPRHO, cL), cPRHOt)
+    cTp = cT + numpy.dot(cPRHO, cS) + numpy.dot(cSt, cPRHOt) +\
+          numpy.dot(numpy.dot(cPRHO, cL), cPRHOt)
     rdict["T'^"] = cTp.copy()
 
     ## transpose of PRHO and S
@@ -1498,12 +1498,12 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     St = numpy.transpose(S0)
 
     ## calculate S' = S + L*PRHOt
-    Sp = S0 + numpy.matrixmultiply(L0, PRHOt)
+    Sp = S0 + numpy.dot(L0, PRHOt)
     rdict["S'"] = Sp
 
     ## calculate T' = T + PRHO*S + St*PRHOT + PRHO*L*PRHOt
-    Tp = T0 + numpy.matrixmultiply(PRHO, S0) + numpy.matrixmultiply(St, PRHOt) +\
-         numpy.matrixmultiply(numpy.matrixmultiply(PRHO, L0), PRHOt)
+    Tp = T0 + numpy.dot(PRHO, S0) + numpy.dot(St, PRHOt) +\
+         numpy.dot(numpy.dot(PRHO, L0), PRHOt)
     rdict["T'"] = Tp
 
     ## now calculate the TLS motion description using 3 non
@@ -1529,9 +1529,9 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     ## libration axes shifts in the origional orthogonal
     ## coordinate system
-    rdict["L1_rho"] = numpy.matrixmultiply(RLt, cL1rho)
-    rdict["L2_rho"] = numpy.matrixmultiply(RLt, cL2rho)
-    rdict["L3_rho"] = numpy.matrixmultiply(RLt, cL3rho)
+    rdict["L1_rho"] = numpy.dot(RLt, cL1rho)
+    rdict["L2_rho"] = numpy.dot(RLt, cL2rho)
+    rdict["L3_rho"] = numpy.dot(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
     if abs(L1)>LSMALL:
@@ -1570,7 +1570,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## rotate the newly calculated reduced-T tensor from the carrot
     ## coordinate system (coordinate system of L) back to the structure
     ## coordinate system
-    Tr = numpy.matrixmultiply(numpy.matrixmultiply(RLt, cTred), RL)
+    Tr = numpy.dot(numpy.dot(RLt, cTred), RL)
     rdict["rT'"] = Tr
 
     Tr1, Tr2, Tr3 = linalg.eigenvalues(Tr)
@@ -1655,7 +1655,7 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
                 [ X[S31], X[S32],    s33 ] ], float)
 
     ## calculate the lsq residual
-    UTLS = numpy.matrixmultiply(A, X)
+    UTLS = numpy.dot(A, X)
     D = UTLS - B
     lsq_residual = numpy.dot(D, D)
 
@@ -1813,7 +1813,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     X = solve_TLS_Ab(A, B)
 
     ## calculate the lsq residual
-    UTLS = numpy.matrixmultiply(A, X)
+    UTLS = numpy.dot(A, X)
     D = UTLS - B
     lsq_residual = numpy.dot(D, D)
 
@@ -3530,10 +3530,10 @@ class GLTLSGroup(Viewer.GLDrawList):
                     pos1 = bond.atom1.position - Lx_origin
                     pos2 = bond.atom2.position - Lx_origin
 
-                    v1 = numpy.matrixmultiply(Rstep1, pos1) + screw1
-                    v2 = numpy.matrixmultiply(Rstep2, pos1) + screw2
-                    v3 = numpy.matrixmultiply(Rstep2, pos2) + screw2
-                    v4 = numpy.matrixmultiply(Rstep1, pos2) + screw1
+                    v1 = numpy.dot(Rstep1, pos1) + screw1
+                    v2 = numpy.dot(Rstep2, pos1) + screw2
+                    v3 = numpy.dot(Rstep2, pos2) + screw2
+                    v4 = numpy.dot(Rstep1, pos2) + screw1
                     
                     ## one normal perpendicular to the quad
                     glr_normal(numpy.cross(v2-v1, v4-v1))

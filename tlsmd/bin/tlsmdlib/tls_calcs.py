@@ -236,8 +236,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
         ## we must rotate the T tensor to its primary axes before
         ## subtracting min_Uiso magnitude from it
-        (T_eval, TR) = numpy.linalg.eigenvectors(tls_group.T)
-        T = numpy.matrixmultiply(TR, numpy.matrixmultiply(tls_group.T, numpy.transpose(TR)))
+        (T_eval, TR) = numpy.linalg.eig(tls_group.T)
+        T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
         assert numpy.allclose(T[0,1], 0.0)
         assert numpy.allclose(T[0,2], 0.0)
@@ -258,9 +258,9 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         T[2,2] = T[2,2] - sub_T
         
         ## rotate T back to original orientation
-        tls_group.T = numpy.matrixmultiply(
+        tls_group.T = numpy.dot(
             numpy.transpose(TR),
-            numpy.matrixmultiply(T, TR))
+            numpy.dot(T, TR))
 
         ## reset the TLS tensor values in the TLSDesc object so they can be saved
         tls_group.tls_desc.set_tls_group(tls_group)

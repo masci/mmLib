@@ -66,7 +66,7 @@ class SuperpositionResults(object):
         """Transforms a source position to its aligned position.
         """
         position = position - self.src_origin
-        position = numpy.matrixmultiply(self.R, position)
+        position = numpy.dot(self.R, position)
         position = position + self.dst_origin
         return position
 
@@ -222,7 +222,7 @@ def test_module():
 
     rc = lambda: 0.1 * (random.random() - 1.0)
     for atm in chn2.iter_atoms():
-        atm.position = numpy.matrixmultiply(R, atm.position) + numpy.array((rc(),rc(),rc()),float)
+        atm.position = numpy.dot(R, atm.position) + numpy.array((rc(),rc(),rc()),float)
         
     alist = []
  
@@ -247,7 +247,7 @@ def test_module():
     
     sup1 = Structure.Structure(structure_id = "JMP1")
     for atm in chn1.iter_atoms():
-        atm.position = numpy.matrixmultiply(R, atm.position - so)
+        atm.position = numpy.dot(R, atm.position - so)
         sup1.add_atom(atm)
     FileIO.SaveStructure(fil="super1.pdb", struct=sup1)
 

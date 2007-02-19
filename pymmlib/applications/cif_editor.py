@@ -83,7 +83,7 @@ class EditDialog(gtk.Dialog):
         if code == gtk.RESPONSE_OK:
             buffer = self.text_view.get_buffer()
             new_text = buffer.get_text(
-                buffer.get_start_iter(), buffer.get_end_iter(), gtk.FALSE)
+                buffer.get_start_iter(), buffer.get_end_iter(), False)
             self.context.cif_row_set_value(
                 self.cif_row, self.col_name, new_text)
 
@@ -123,14 +123,14 @@ class FileControlEditDialog(gtk.Dialog):
         self.connect("response", self.response_cb)
 
         self.hbox = gtk.HBox()
-        self.vbox.pack_start(self.hbox, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(self.hbox, True, True, 0)
         self.hbox.set_border_width(5)
         
         label = gtk.Label("Name:")
-        self.hbox.pack_start(label, gtk.FALSE, gtk.FALSE, 0)
+        self.hbox.pack_start(label, False, False, 0)
 
         self.entry = gtk.Entry()
-        self.hbox.pack_start(self.entry, gtk.TRUE, gtk.TRUE, 0)
+        self.hbox.pack_start(self.entry, True, True, 0)
         self.entry.set_text(entry_text)
 
         self.show_all()
@@ -169,7 +169,7 @@ class TableTreeControl(gtk.TreeView):
         self.disable_edited_cb = False
 
         gtk.TreeView.__init__(self)
-        self.set_rules_hint(gtk.TRUE)
+        self.set_rules_hint(True)
         self.connect("row-activated", self.row_activated_cb)
         self.connect("button-release-event", self.button_release_event_cb)
         
@@ -191,14 +191,14 @@ class TableTreeControl(gtk.TreeView):
 
         retval = self.get_path_at_pos(x, y)
         if retval == None:
-            return gtk.FALSE
+            return False
 
         (path, column, x, y) = retval
 
         cif_row = self.get_cif_row_from_path(path)
         col_name = column.get_data("col_name")
         APP.set_help_window("_%s.%s" % (cif_row.table.name, col_name))
-        return gtk.FALSE
+        return False
 
     def cell_edited_cb(self, cell, row, new_text):
         """Called when a cell has been edited, and a new value entered.
@@ -257,7 +257,7 @@ class TableTreeControl(gtk.TreeView):
 
     def scroll_to_cif_row(self, cif_row):
         path = self.cif_row_get_path(cif_row)
-        self.scroll_to_cell(path, None, gtk.FALSE, 0.0, 0.0)
+        self.scroll_to_cell(path, None, False, 0.0, 0.0)
 
     def set_cif_row(self, cif_row):
         """Sets the cif_table for this control, if needed, and then scrolls to
@@ -332,13 +332,13 @@ class TableTreeControl(gtk.TreeView):
         """
         (cif_row, iter, color) = data_tuple
 
-        call_again = gtk.FALSE
+        call_again = False
         for i in xrange(len(color)):
             if color[i] > 0:
                 color[i] = max(0, color[i] - 5)
-                call_again = gtk.TRUE
+                call_again = True
 
-        if call_again == gtk.FALSE:
+        if call_again == False:
             self.set_cif_row_values(cif_row, iter)
         else:
             self.set_cif_row_values(cif_row, iter, color)
@@ -367,14 +367,14 @@ class TableTreeControl(gtk.TreeView):
                     text = "."
 
             model_index = i * 2
-            editible = gtk.TRUE
+            editible = True
 
             if len(text) > 40:
                 text = text[:40] + '<span foreground="red">[more]</span>'
-                editible = gtk.FALSE
+                editible = False
             if "\n" in text:
                 text = text.replace("\n", '<span foreground="blue">|</span>')
-                editible = gtk.FALSE
+                editible = False
             if color != None:
                 text = '<span foreground="#%02x%02x%02x">%s</span>' % (
                     color[0],color[1],color[2], text)
@@ -498,7 +498,7 @@ class FileTreeControl(gtk.TreeView):
     def add_model_cif_data(self, iter1, cif_data):
         """Adds cif_data and children to the model starting at iter1.
         """
-        self.model.set(iter1, 0, cif_data.name, 1, gtk.FALSE)
+        self.model.set(iter1, 0, cif_data.name, 1, False)
         for cif_table in cif_data:
             iter2 = self.model.append(iter1)
             self.add_model_cif_table(iter2, cif_table)
@@ -506,10 +506,10 @@ class FileTreeControl(gtk.TreeView):
     def add_model_cif_table(self, iter2, cif_table):
         """Adds cif_table and children to the model starting at iter2.
         """
-        self.model.set(iter2, 0, cif_table.name, 1, gtk.FALSE)
+        self.model.set(iter2, 0, cif_table.name, 1, False)
         for col_name in cif_table.columns:
             iter3 = self.model.append(iter2)
-            self.model.set(iter3, 0, col_name, 1, gtk.FALSE)
+            self.model.set(iter3, 0, col_name, 1, False)
 
     def get_cif(self, path):
         """Returns the cif object selected from the given gtk.Model style path.
@@ -595,7 +595,7 @@ class FileTreeControl(gtk.TreeView):
 
         retval = self.get_path_at_pos(x, y)
         if retval == None:
-            return gtk.FALSE
+            return False
 
         (path, column, x, y) = retval
 
@@ -608,14 +608,14 @@ class FileTreeControl(gtk.TreeView):
             (cif_table, col_name) = cif
             APP.set_help_window("_%s.%s" % (cif_table.name, col_name))
 
-        return gtk.FALSE
+        return False
 
     def select_cif(self, cif):
         """Selects one of the cif items in the tree view.  Will scroll if
         necessary.
         """
         path = self.get_cif_path(cif_data)
-        self.scroll_to_cell(path, None, gtk.FALSE, 0.0, 0.0)
+        self.scroll_to_cell(path, None, False, 0.0, 0.0)
 
     def update_table_ctrl(self, cif, col_name = None):
         """This is a little hokey and inefficent, oh well.
@@ -935,7 +935,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         self.set_default_size(600, 400)
         self.connect("delete-event", self.quit_cb, self)
 
-        table = gtk.Table(1, 3, gtk.FALSE)
+        table = gtk.Table(1, 3, False)
         self.add(table)
 
         ## Create the menubar
@@ -1019,11 +1019,11 @@ class mmCIFEditorMainWindow(gtk.Window):
                      0,                      0)
 
         self.statusbar = gtk.Statusbar()
-        self.hbox.pack_start(self.statusbar, gtk.TRUE, gtk.TRUE, 0)
-        self.statusbar.set_has_resize_grip(gtk.FALSE)
+        self.hbox.pack_start(self.statusbar, True, True, 0)
+        self.statusbar.set_has_resize_grip(False)
 
         self.pg_frame = gtk.Frame()
-        self.hbox.pack_start(self.pg_frame, gtk.FALSE, gtk.FALSE, 0)
+        self.hbox.pack_start(self.pg_frame, False, False, 0)
         self.pg_frame.set_border_width(3)
 
         self.progress = gtk.ProgressBar()
@@ -1076,7 +1076,7 @@ class mmCIFEditorMainWindow(gtk.Window):
 
     def open_destroy_cb(self, *args):
         self.open_file_selector.hide()
-        return gtk.TRUE
+        return True
 
     def open_ok_cb(self, ok_button):
         """Called by the [OK] button on the FileSelector.
@@ -1113,7 +1113,7 @@ class mmCIFEditorMainWindow(gtk.Window):
 
     def save_as_delete_cb(self, *args):
         self.save_as_file_selector.hide()
-        return gtk.TRUE
+        return True
 
     def save_as_ok_cb(self, ok_button):
         """Called by the [OK] button on the FileSelector.
@@ -1132,7 +1132,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         """
         self.destroy()
         self.context.quit()
-        return gtk.TRUE
+        return True
 
     def undo_cb(self, *args):
         """/Edit/Undo callback.
@@ -1184,19 +1184,19 @@ class mmCIFEditorMainWindow(gtk.Window):
         mi_save = self.item_factory.get_item('/File/Save')
         mi_save_as = self.item_factory.get_item('/File/Save As...')
         if self.context.saved:
-            mi_save.set_sensitive(gtk.FALSE)
-            mi_save_as.set_sensitive(gtk.FALSE)
+            mi_save.set_sensitive(False)
+            mi_save_as.set_sensitive(False)
         else:
-            mi_save_as.set_sensitive(gtk.TRUE)
+            mi_save_as.set_sensitive(True)
             if self.context.path != None:
-                mi_save.set_sensitive(gtk.TRUE)
+                mi_save.set_sensitive(True)
 
         ## turn on undo if there is a undo stack
         mi = self.item_factory.get_item('/Edit/Undo')
         if self.context.undo_list:
-            mi.set_sensitive(gtk.TRUE)
+            mi.set_sensitive(True)
         else:
-            mi.set_sensitive(gtk.FALSE)
+            mi.set_sensitive(False)
 
     def set_status_bar(self, text):
         """Sets the text on the windows statusbar.
@@ -1204,7 +1204,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         self.statusbar.pop(0)
         self.statusbar.push(0, text)
         while gtk.events_pending():
-            gtk.main_iteration(gtk.TRUE)
+            gtk.main_iteration(True)
     
     def update_cb(self, percent):
         """Callback for file loading code to inform the GUI of how
@@ -1212,7 +1212,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         """
         self.progress.set_fraction(percent/100.0)
         while gtk.events_pending():
-            gtk.main_iteration(gtk.TRUE)
+            gtk.main_iteration(True)
 
 
 class mmCIFEditor:
@@ -1646,7 +1646,7 @@ class mmCIFEditorWindowContext(mmCIFEditor):
                 return
 
             try:
-                self.cif_file.load_file(fil, self.mw.update_cb)
+                self.cif_file.load_file(fil)
             except mmCIF.mmCIFError, e:
                 self.error("mmCIF parse error:\n%s" % (e))
                 return
@@ -1812,7 +1812,7 @@ class AboutWindow(gtk.Dialog):
 
     def delete_event_cb(self, *args):
         self.hide()
-        return gtk.TRUE
+        return True
 
     def present(self):
         self.show_all()
@@ -1833,7 +1833,7 @@ class HelpWindow(gtk.Window):
 
         self.text_view = gtk.TextView()
         self.sw.add(self.text_view)        
-        self.text_view.set_editable(gtk.FALSE)
+        self.text_view.set_editable(False)
         self.text_view.set_justification(gtk.JUSTIFY_LEFT)
             
         self.set_text_message(
@@ -1844,7 +1844,7 @@ class HelpWindow(gtk.Window):
 
     def delete_notify_cb(self, *args):
         self.hide()
-        return gtk.TRUE
+        return True
     
     def present(self):
         self.show_all()
@@ -2106,7 +2106,7 @@ class DictionaryManagerWindow(gtk.Window):
         self.vbox.set_border_width(5)
 
         self.toolbar = gtk.Toolbar()
-        self.vbox.pack_start(self.toolbar, gtk.FALSE, gtk.FALSE, 0)
+        self.vbox.pack_start(self.toolbar, False, False, 0)
         self.toolbar.insert_stock(
             gtk.STOCK_ADD,
             "Add mmCIF Dictionary",
@@ -2124,7 +2124,7 @@ class DictionaryManagerWindow(gtk.Window):
             -1)
 
         sw = gtk.ScrolledWindow()
-        self.vbox.pack_start(sw, gtk.TRUE, gtk.TRUE, 0)
+        self.vbox.pack_start(sw, True, True, 0)
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
         self.tree_view = gtk.TreeView()
@@ -2142,7 +2142,7 @@ class DictionaryManagerWindow(gtk.Window):
 
     def delete_notify_cb(self, *args):
         self.hide()
-        return gtk.TRUE
+        return True
 
     def get_selected_dictionary_index(self):
         sel = self.tree_view.get_selection()
@@ -2169,7 +2169,7 @@ class DictionaryManagerWindow(gtk.Window):
 
     def fsel_destroy_cb(self, *args):
         self.file_selector.hide()
-        return gtk.TRUE
+        return True
 
     def fsel_ok_cb(self, *args):
         """Called by the [OK] button on the FileSelector.
