@@ -1959,7 +1959,7 @@ class TLSSearchDialog(gtk.Dialog):
         except ValueError:
             residue_width = 6
         
-        tls_analysis = TLSStructureAnalysis(self.sc.struct)
+        tls_analysis = TLS.TLSStructureAnalysis(self.sc.struct)
 
         self.tls_info_list = []
 
