@@ -1995,7 +1995,6 @@ class TLSSearchDialog(gtk.Dialog):
             ## set some dict values just for the treeview user interface
             ##"Residue Range", "Atoms", "R", "<DP2>", "sig<DP2>"
             tls_info["Residue Range"] = tls_info["name"]
-            tls_info["R"]             = "%.3f" % (tls_info["R"])
             tls_info["Atoms"]         = str(tls_info["num_atoms"])
             tls_info["LSQ-Residual"]  = "%.4f" % (tls_info["lsq_residual"])
 
