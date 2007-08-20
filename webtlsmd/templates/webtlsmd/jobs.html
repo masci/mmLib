@@ -1,0 +1,62 @@
+{% extends "webtlsmd/base.html" %}
+
+
+{% block page_css %}
+table.jobs-table { border:0; cellpadding:0; width:100%; border:5px solid #008; font-size:75% }
+.jobs-table th, .jobs-table td { margin:0; padding:3px; border:1px solid #aaa }
+.jobs-table th { font-weight:normal; background-color:#eee }
+.jobs-table-section-title td { font-size:125%; background-color:#008; color:#fff; padding:0; padding-left:5px; border:0 }
+{% endblock %}
+
+
+{% block title %}TLSMD: Job Queue{% endblock %}
+
+
+{% block page_title %}TLSMD: Job Queue{% endblock %}
+
+
+{% block content %}
+<form method="post">
+
+<table class="jobs-table">
+
+{% if administrator %}
+<tr class="jobs-table-section-title"><td colspan="5"><input type="submit" name="remove" value="Remove"/></td></tr>
+{% endif %}
+
+{% for jtable in job_lists %}
+
+  <tr class="jobs-table-section-title"><td colspan="{% if administrator %}5{% else %}4{% endif %}">{{ jtable.title }}</td></tr>
+
+  <tr>
+    <th {% if administrator %}colspan="2"{% endif %}>Job ID</th>
+    <th>Structure ID</th>
+    <th>Submission Date</th>
+    <th>Runing Time</th>
+  </tr>
+
+  {% if jtable.job_list %}
+    {% for job in jtable.job_list %}
+    <tr>
+      {% if administrator %}<td style="width:25px"><input type="checkbox" id="select_{{ job.id }}" name="select_{{ job.id }}"/></td>{% endif %}
+      <td><a href="{{ job.job_url }}">{{ job.id }}</a></td>
+      <td>{{ job.structure_id }}</td>
+      <td>&nbsp;</td>
+      <td>&nbsp;</td>
+    </tr>
+    {% endfor %}
+
+  {% else %}
+    <tr><td colspan="4">No Jobs Running</td></tr>
+  {% endif %}
+
+{% endfor %}
+
+{% if administrator %}
+<tr class="jobs-table-section-title"><td colspan="5"><input type="submit" name="remove" value="Remove"/></td></tr>
+{% endif %}
+
+</table>
+</form>
+
+{% endblock %}

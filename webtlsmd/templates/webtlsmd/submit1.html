@@ -1,0 +1,40 @@
+{% extends "webtlsmd/base.html" %}
+
+
+{% block title %}TLSMD: Start a New Job{% endblock %}
+{% block page_title %}TLSMD: Start a New Job{% endblock %}
+
+
+{% block content %}
+<center>
+<form name="upload_file" enctype="multipart/form-data" method="post">
+<input type="hidden" name="page" value="submit2">
+<table class="submit_table">
+  <tr><th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th></tr>
+  <tr><td align="left">Upload PDB File:</td><td><input name="pdbfile" size="50" type="file"></td></tr>
+  <tr><td colspan="2" align="center"><input value="Upload File and Proceed to Step 2" type="submit"></td></tr>
+</table>
+</form>
+</center>
+
+<center><h4>OR</h4></center>
+
+<center>
+<form name="pdb_id" method="post">
+<input type="hidden" name="page" value="submit_pdb">
+<table class="submit_table">
+  <tr>
+    <th colspan="2" class="step_title">Enter a PDB ID:</th>
+    <td><input name="pdbid" size="4" maxlength="4" type="text"></td>
+    <td><input value="Submit" type="submit"</td>
+  </tr>
+</table>
+
+<br/>
+
+<div style="color:red">
+TLSMD requires crystallographically refined B factors.<br/>
+Please do not submit NMR structures, theoretical models,<br/>
+or any PDB file with unrefined Bs.
+</div>
+{% endblock %}

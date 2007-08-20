@@ -1,0 +1,153 @@
+{% extends "webtlsmd/base.html" %}
+
+
+{% block title %}TLSMD: Start a New Job{% endblock %}
+{% block page_title %}TLSMD: Start a New Job{% endblock %}
+
+
+{% block content %}
+<center>
+
+<form enctype="multipart/form-data" method="post">
+
+
+<table width="100%" class="submit_table">
+  <tr><th class="step_title">Step 2: Fill out Submission Form, then Submit Job</th></tr>
+  <tr>
+    <td align="center">
+      <table class="inner_table">
+        <tr class="inner_title"><th colspan="2">User Information</th></tr>
+        <tr>
+          <td align="center">
+            <table class="ninner_table">
+              <tr>
+                <td align="right"><label for="user_name">Your Name</label></td>
+                <td><input type="text" id="user_name" name="user_name" value="{{ job.get_full_name_display }}" size="25" maxlength="40"></td>
+              </tr>
+              <tr>
+                <td align="right"><label for="email">EMail Address</label></td>
+                <td><input type="text" id="email" name="email" value="{{ job.get_email_display }}" size="25" maxlength="40"></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <table class="inner_table">
+        <tr class="inner_title">
+          <th>TLSMD Program Options</th>
+        </tr>
+        <tr>
+          <td align="center">
+            <table width="100%">
+              <tr>
+                <td align="center" valign="top">
+                  <table class="ninner_table">
+                    <tr>
+                      <td><label><input type="checkbox" id="private_job" name="private_job" value="TRUE" {% if job.private_job %}checked{% endif %}>Keep Job Private</label></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <label for="structure_id">4-Letter Structure ID </label>
+                        <input type="text" id="structure_id" name="structure_id" value="{{ job.structure_id }}" size="4" maxlength="4">
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <td align="center" valign="top">
+                  <table class="ninner_table">
+                    <tr style="line-height:2em"><th>Select Chains for Analysis</th></tr>
+                    {% for c in job.possible_chains %}
+                    <tr>
+                      <td>
+                        <label><input type="checkbox" id="{{ c.name }}" name="{{ c.name }}" value="TRUE" {% if c.selected %}checked{% endif %}>{{ c.description }}</label>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </table>
+                </td>
+              </tr>
+            </table>
+          <tr class="inner_title">
+            <th>
+              <a id="cid1" href="javascript:ToggleDivVisibility('cid1','id1','Show Advanced Program Options','Hide Advanced Program Options')">Show Advanced Program Options</a>
+            </th>
+          </tr>
+          <tr>
+            <td align="center">
+              <div id="id1" style="display:none">
+                <table class="ninner_table">
+                  <tr>
+                    <td valign="top">
+                      <fieldset>
+                        <legend>Plot Output Format</legend>
+                        <div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5.</div>
+                        <br/>
+                        <label><input name="plot_format" type="radio" value="PNG" tabindex="35" {% ifequal job.plot_format "PNG" %}checked{% endifequal %}>PNG Images</label>
+                        <br/>
+                        <label><input name="plot_format" type="radio" value="SVG" tabindex="35" {% ifequal job.plot_format "SVG" %}checked{% endifequal %}>SVG</label>
+                      </fieldset>
+                    </td>
+                    <td valign="top">
+                      <fieldset>
+                        <legend>Atom Class Selection</legend>
+                        <div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div>
+                        <br/>
+                        <label><input name="include_atoms" type="radio" value="ALL" tabindex="35" {% ifequal job.include_atoms "ALL" %}checked{% endifequal %}>All Atoms</label>
+                        <br/>
+                        <label><input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35" {% ifequal job.include_atoms "MAINCHAIN" %}checked{% endifequal %}>Mainchain Atoms (N,CA,C,O,CB)</label>
+                      </fieldset>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <table class="inner_table">
+          <tr class="inner_title">
+            <th>
+              <a id="cid2" href="javascript:ToggleDivVisibility('cid2','id2','Show Session Information','Hide Session Information')">Show Session Information</a>
+            </th>
+          </tr>
+          <tr>
+            <td align="center">
+              <div id="id2" style="display:none">
+                <table class="ninner_table">
+                  <tr>
+                    <td align="right">TLSMD Job ID:</td>
+                    <td><b>{{ job.id }}</b></td>
+                  </tr>
+                  <tr>
+                    <td align="right">Job State:</td>
+                    <td><b>{{ job.state }}</b></td>
+                  </tr>
+                  <tr>
+                    <td align="right">Submission IP Address: </td>
+                    <td><b>{{ job.ip_address }}</b></td>
+                  </tr>
+                  <tr>
+                    <td align="right">Submission Date: </td>
+                    <td><b>{{ job.created }}</b></td>
+                  </tr>
+                </table>
+              </div>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center">
+            <input type="submit" name="submit" value="Submit Job"/>
+	    <input type="submit" name="cancel" value="Cancel"/>
+          </td>
+        </tr>
+      </table>
+
+{% endblock %}

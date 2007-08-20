@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+
+{% block css %}
+<link rel="stylesheet" href="/tlsmd/static/css/tlsmd.css" type="text/css" media="screen">
+{% endblock %}
+
+
+<style type="text/css">
+{% block page_css %}
+{% endblock %}
+</style>
+
+
+{% block javascript_files %}
+<script type="text/javascript" src="/tlsmd/static/javascript/global.js"></script>
+{% endblock %}
+
+
+<script type="text/javascript">
+{% block javascript %}
+{% endblock %}
+</script>
+
+</head>
+
+
+<body>
+{% block body %}
+<div id="page">
+
+  <div id="topbar">
+    <div id="title">{% block page_title %}NO PAGE TITLE{% endblock %}</div>
+    {% block navbar %}
+    <div id="navcontainer">
+      <ul>
+        <li><a href="/tlsmd/">Home</a></li>
+        <li><a href="/tlsmd/submit/">Start a New Job</a></li>
+        <li><a href="/tlsmd/jobs/">Job Status</a></li>
+        <li><a href="/tlsmd/examples/">Examples</a></li>
+        <li><a href="/tlsmd/documentation/">Documentation</a></li>
+      </ul>
+    </div>
+    {% endblock %}
+  </div>
+
+  <div style="height:10px"></div>
+
+  <div id="content">
+  {% block content %}{% endblock %}
+  </div>
+
+</div>
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,90 @@
+{% extends "webtlsmd/base.html" %}
+
+
+{% block page_css %}
+#debug-vars-table td { border:1px solid #ccc; font-size:80% }
+td.debug-var { padding-right: 10px }
+td.debug-val { color:#008 }
+
+#job-queued-div { border:1px solid #080; padding:10px; margin-bottom:20px; background-color:#eee }
+#job-running-div { border:1px solid #008; padding:10px; background-color:#eee; margin-bottom:20px }
+
+{% endblock %}
+
+
+
+{% block title %}TLSMD Job: {{ job.id }}{% endblock %}
+{% block page_title %}TLSMD Job: {{ job.id }}{% endblock %}
+
+
+{% block content %}
+<div>
+
+  <div style="width:640px">
+
+    {% ifequal job.state "queued" %}
+    <div id="job-queued-div">
+        NOTICE: Your job is queued.  It will be processed in the order it was recieved.      
+    </div>
+    {% endifequal %}
+
+    {% ifequal job.state "running" %}
+    <div id="job-running-div">
+        NOTICE: This job is currently processing.
+    </div>
+    {% endifequal %}
+
+
+    <div style="font-size:125%; border-bottom:1px solid black">Job Links</div>
+    <div style="margin-left:5px">
+      <div>{% if job.analysis_url %}<a href="{{ job.analysis_url }}">Click here to view the completed TLSMD analysis.</a>{% else %}TLSMD analysis is not finished yet.{% endif %}</div>
+      <div>{% if job.log_url %}<a href="{{ job.log_url }}">Click here to view TLSMD log file.</a>{% else %}TLSMD logfile does not exist yet.{% endif %}</div>
+    </div>
+
+    <div style="height:20px"></div>
+
+    <div style="font-size:125%; border-bottom:1px solid black">Owner Information</div>
+    <div style="margin-left:5px">
+      <div>User Name: {{ job.user_name }}</div>
+      <div>E-Mail Address: {{ job.email }}</div>
+    </div>
+
+    <div style="height:20px"></div>
+
+    <div style="font-size:125%; border-bottom:1px solid black">Structure</div>
+    <div style="margin-left:5px">
+      <div>Structure Code: {{ job.structure_id }}</div>
+    </div>
+
+    <div style="height:20px"></div>
+
+    <div style="font-size:125%; border-bottom:1px solid black">TLSMD Program Settings</div>
+    <div style="margin-left:5px">
+      <div>Plot Output Format: {{ job.plot_format }}</div>
+      <div>Atoms Used in Analysis: {{ job.include_atoms }}</div>
+    </div>
+
+    <div style="height:20px"></div>
+
+    <div style="font-size:125%; border-bottom:1px solid black">Session Information</div>
+    <div style="margin-left:5px">
+      <div>Job State: {{ job.state }}</div>
+      <div>Submission IP Address: {{ job.ip_address }}</div>
+      <div>Submission Date: {{ job.created }}</div>
+    </div>
+
+    {% if debug_vars %}
+    <div style="height:20px"></div>
+
+    <div style="font-size:125%; border-bottom:1px solid black">Debug Variables</div>
+    <div style="margin-left:5px">
+      <table id="debug-vars-table">
+        {% for var in debug_vars %}<tr><td class="debug-var">{{ var.0 }}</td><td class="debug-val">{{ var.1 }}</td></tr>{% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "webtlsmd/base.html" %}
+
+{% block title %}TLSMD: Documentation{% endblock %}
+{% block page_title %}TLSMD: Documentation{% endblock %}
+
+{% block content %}
+<center><h3><a name="contact">TLSMD is Open Source</a></h3></center>
+<p>
+TLSMD is a Open Source project released under the <a href="http://www.opensource.org/licenses/artistic-license.php">Artistic License</a>.  It is hosted at <a href="http://www.sourceforge.net/">SourceForge</a> as a sub-project of the <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library</a>.  We have not made any official release of the TLSMD source code yet, but you may check out the source using anonymous Subversion, or browse the source code using on the web by visiting <a href="http://svn.sourceforge.net/viewcvs.cgi/pymmlib/trunk/tlsmd/">this link</a>.  This program is a ongoing research project of Jay Painter and Ethan Merritt.  We can be contacted at:
+
+</p>
+<center>
+<a href="http://www.bmsc.washington.edu/people/merritt/">Ethan Merritt</a> &lt;<i>merritt _at_ u.washington.edu</i>&gt;<br>
+<a href="http://www.drizzle.com/~jpaint/index.html">Jay Painter</a> &lt;<i>jpaint _at_ u.washington.edu&gt;</i>
+</center>
+
+<br>
+<center><h3><a name="motivation">Motivation</a></h3></center>
+<p>
+TLS (Translation/Libration/Screw) is a mathematical model that predicts the local positional displacement of atoms in a crystal structure based on an underlying assumption that each atom acts as a member of a rigid body that is displaced normally about a mean position.  
+This displacement is seen crystallographically as non-spherical electron density at the atomic positions.
+The net displacement results both from actual vibration of the molecule in the crystal and from the static disorder within the crystal lattice that results from trapping different microconformers of the molecule in different unit cells making up the crystal lattice.  
+The TLS formalism was originally developed to confirm rigid body displacement for small molecule crystallography, which yields high resolution data and precise anisotropic thermal parameters.  
+Its success in predicting the thermal parameters for small molecules makes it tempting for use in macromolecular crystallography where it could potentially be used to find domain and loop flexibility in proteins; however, the challenges in applying the TLS model to macromolecular structures are different than those encountered with small molecules.  Most macromolecular structures do not diffract to a high enough resolution to solve for individual atomic anisotropic thermal parameters (six per atom), so isotropic thermal parameters(one per atom) are used instead.  The reduced information content of the isotropic thermal parameters is partially mitigated by the large number of atoms available in a macromolecular structure.  The thermal parameters of protein atoms will always contain significant magnitude which deviates from the rigid body ideal due to the fact that vibrations and conformational changes in proteins are at best approximate rigid body displacements, and the degree to which the thermal parameters of a protein structure will agree with the TLS rigid body model is highly dependent on the quality of the crystal lattice, and conformational flexibility unique to the protein.  Therefore, it is reasonable to develop a algorithm to search for such regions as a optimization problem without any preconceived requirements on the quality of the fit to the TLS rigid body model.  With this in mind, we have developed a optimization algorithm which, for a given protein chain, finds the optimal partition of the chain into 2, 3, ... N TLS groups along its amino acid sequence.
+
+</p>
+
+<br>
+<center><h3><a name="how">How Does TLSMD Work?</a></h3></center>
+<p>
+TLSMD uses a two-stage optimization algorithm to select the optimal 2-group, 3-group, ..., N-group partition of a protein chain into multiple
+TLS groups.  This optimization is performed for each chain in a structure independently, so the TLS groups selected for multiple homologous chains in a input structure may be compared without any bias (unless the structure was refined with NCS restraints or constraints).  The first stage of the optimization feeds every possible residue sequence subsegment of the input protein chain to a subroutine which fits TLS model parameters to the refined ADPs of the atoms it contains<small>(Figure 1)</small>.  A minimum subsegment length is imposed to ensure that there are enough ADP parameters in the subsegment's atoms to unambiguously solve for the TLS model parameters.  The subroutine returns the TLS model parameters and least-squares residual of the input structure's refined ADPs vs. TLS calculated ADPs.  This information is temporarily stored in a database.  Once the database for the chain is complete, it contains every possible sequence continuous TLS group for the chain; all that is needed is to select the TLS groups from the database which best fit the input structure's refined ADPs as measured by the TLS group's least-squares residual.  This selection is performed by the second stage of the TLSMD optimization algorithm.  This is accomplished by posing the optimization problem as a shortest path minimization over a graph.  This problem is similar to finding the shortest driving distance between two cities.  The TLSMD graph is constructed by placing a vertex between every residue in the sequence, as well as a source vertex before the first residue, and a destination vertex after the last residue in the chain<small>(see Figure 2)</small>.  Graph edges are then constructed for each TLS group in the database spanning the vertexes which correspond to the TLS group's residue segment.  The edge cost, or weight, is the least-squares residual of the TLS group it represents.  Once this graph is constructed, a shortest path algorithm (Constrained Bellman-Ford) is used to find the least cost path from the source vertex at the beginning of the chain sequence to the destination vertex at the end of the sequence.  The TLS groups corresponding to the edges used in the minimization path are those presented by TLSMD.
+</p>
+
+<p>
+A detailed description of TLS parameters, the equations relating atomic ADPs to TLS parameters, least-squares fitting, and interpretation of TLS rigid body motion may be found in the
+<a href="http://pymmlib.sourceforge.net/doc/tlsview/tlsview.html">
+TLSView Manual</a>.
+
+</p>
+
+<center>
+<table>
+
+<tr>
+<td align="center"><img src="/static/images/subseg.png" alt="subsegments"></td>
+<td align="center"><img src="/static/images/tlsmd_graph_construct.png" alt="graph construction"></td>
+</tr>
+
+<tr>
+<td valign="top"><b>Figure 1:</b> Construction of all possible subsegments of 7 residue protein sequence MNIFEML with length greator than or equal to 3 residues.</td>
+<td valign="top"><b>Figure 2:</b> TLSMD Graph Construction of a 5 Residue Protein</td>
+
+</tr>
+
+</table>
+</center>
+
+<br>
+<center><h3><a name="refmac5">
+How-To Use TLSMD Selected TLS Groups in Refmac5 TLS Refinement
+</a></h3></center>
+<p>
+The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD can generate a special structure model file (PDBIN also called XYZIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  To generate these input files, click on the <b>Use Optimal TLS Groups with Refmac5 TLS Refinement</b> web page which is on the root <b>TLSMD Rigid Body Analysis</b> page generated for your structure.  After you have generated and downloaded these files, you may use them through either the CCP4i GUI interface<small>(Figure 3)</small>, or by writing your own custom shell script which invokes Refmac5<small>(Figure 4)</small>.
+
+</p>
+
+<p>
+With most structures, there should be a gradual reduction in R/RFree as more TLS groups are used to partition a protein chain.  To illustrate this effect a series of refinements was performed on structure 1X60, a 143 residue protein with a single chain in the asymmetric unit.  This structure diffracted to 1.6 Angstroms, and refined to a R/RFree value of 0.175/0.209 using a isotropic thermal model with no TLS groups.  <small>Table 1</small> shows the reduction in R/RFree as the protein chain is partitioned into the 1 to 19 TLS groups calculated by TLSMD.
+</p>
+
+<center>
+<table>
+<tr><td align="center"><img src="/static/images/ccp4i_tls.png" alt="CCP4i Screenshot"></td></tr>
+<tr><td align="center" valign="top">
+<b>Figure 3:</b> CCP4i configured for TLS refinement using TLSMD generated input files.  The PDBIN file generated by TLSMD is <i>1X60_CHAINA_NTLS6.pdb</i>, and the TLSIN file is <i>1X60_CHAINA_NTLS6.tlsin</i>.  This is a single-chain protein partitioned into six TLS groups for refinement.  Notice that the <i>Set initial Bfactors to</i> option is <b>not</b> checked.  This is important: if this option is set, it will override the Bfactors calculated by TLSMD and which are in the input PDB file.  This will result in a poor and possibly unstable refinement.
+
+</td></tr>
+</table>
+</center>
+
+
+<p>
+If you prefer using a shell script to run Refmac5, below is a example using the same structure files shown in the example above.
+</p>
+
+<center>
+<table>
+<tr>
+<td align="left">
+<pre>
+#!/bin/bash
+
+refmac5 HKLIN  1X60.mtz \
+        HKLOUT 1X60.OUT.mtz \
+        XYZIN  1X6O_CHAINA_NTLS6.pdb \
+        XYZOUT 1X60.pdb \
+        TLSIN  1X6O_CHAINA_NTLS6.tlsin \
+        TLSOUT 1X60.tlsout &#60;&#60;EOF
+MAKE HYDR ALL
+MAKE CHECK NONE
+
+LABI FP=F SIGFP=SIGF FREE=FreeR_flag
+REFI TYPE REST RESO 20.0 1.6
+
+REFI RESI MLKF
+REFI BREF ISOT
+
+WEIG MATR 1.0
+
+SCAL TYPE BULK
+SCAL LSSC ANIS
+SCAL MLSC
+
+REFI TLSC 10
+NCYC 10
+
+MONI MANY
+BINS 10
+
+EOF
+</pre>
+
+</td>
+</tr>
+
+<tr>
+<td>
+<b>Figure 4:</b> BASH shell script for running a Refmac5 TLS refinement using the <i>1X60_CHAINA_NTLS6.pdb</i>, and <i>1X60_CHAINA_NTLS6.tlsin</i> files generated by TLSMD.
+</td>
+</tr>
+
+</table>
+
+</center>
+
+
+<p>
+The table below shows the results of TLS refinement of 1X60 using 1 to 19 TLS groups selected by TLSMD.
+</p>
+
+<center>
+<table>
+
+<tr><td align="center">
+<table border="1">
+<tr><th>Num. TLS Groups</th>
+    <th>RFac</th>
+
+    <th>RFree</th>
+    <th>FOM</th>
+    <th>RMS Bonds</th>
+    <th>RMS Angle</th>
+    <th>RMS Chiral</th>
+</tr>
+<tr>
+
+<td>1</td><td>0.166</td><td>0.198</td><td>0.882</td><td>0.019</td><td>  1.740</td><td>0.126</td></tr>
+<tr>
+<td>2</td><td>0.163</td><td>0.195</td><td>0.886</td><td>0.018</td><td>  1.716</td><td>0.123</td></tr>
+
+<tr>
+<td>3</td><td>0.162</td><td>0.194</td><td>0.888</td><td>0.018</td><td>  1.710</td><td>0.125</td></tr>
+<tr>
+<td>4</td><td>0.162</td><td>0.194</td><td>0.889</td><td>0.018</td><td>  1.689</td><td>0.124</td></tr>
+
+<tr>
+<td>5</td><td>0.160</td><td>0.191</td><td>0.891</td><td>0.018</td><td>  1.668</td><td>0.123</td></tr>
+<tr>
+<td>6</td><td>0.160</td><td>0.189</td><td>0.893</td><td>0.018</td><td>  1.663</td><td>0.121</td></tr>
+
+<tr>
+<td>7</td><td>0.160</td><td>0.188</td><td>0.893</td><td>0.018</td><td>  1.656</td><td>0.123</td></tr>
+<tr>
+<td>8</td><td>0.159</td><td>0.188</td><td>0.893</td><td>0.017</td><td>  1.645</td><td>0.123</td></tr>
+
+<tr>
+<td>9</td><td>0.159</td><td>0.189</td><td>0.893</td><td>0.018</td><td>  1.644</td><td>0.122</td></tr>
+<tr>
+<td>10</td><td>0.159</td><td>0.189</td><td>0.893</td><td>0.017</td><td>  1.636</td><td>0.121</td></tr>
+
+<tr>
+<td>11</td><td>0.158</td><td>0.189</td><td>0.893</td><td>0.017</td><td>  1.627</td><td>0.121</td></tr>
+<tr>
+<td>12</td><td>0.158</td><td>0.189</td><td>0.893</td><td>0.017</td><td>  1.623</td><td>0.121</td></tr>
+
+<tr>
+<td>13</td><td>0.158</td><td>0.189</td><td>0.894</td><td>0.017</td><td>  1.621</td><td>0.122</td></tr>
+<tr>
+<td>14</td><td>0.157</td><td>0.189</td><td>0.895</td><td>0.017</td><td>  1.621</td><td>0.123</td></tr>
+
+<tr>
+<td>15</td><td>0.158</td><td>0.188</td><td>0.895</td><td>0.017</td><td>  1.620</td><td>0.122</td></tr>
+<tr>
+<td>16</td><td>0.157</td><td>0.188</td><td>0.895</td><td>0.017</td><td>  1.621</td><td>0.122</td></tr>
+
+<tr>
+<td>17</td><td>0.157</td><td>0.188</td><td>0.895</td><td>0.017</td><td>  1.619</td><td>0.122</td></tr>
+<tr>
+<td>18</td><td>0.157</td><td>0.187</td><td>0.895</td><td>0.017</td><td>  1.621</td><td>0.124</td></tr>
+
+<tr>
+<td>19</td><td>0.157</td><td>0.187</td><td>0.896</td><td>0.017</td><td>  1.622</td><td>0.124</td></tr>
+</table>
+</td></tr>
+
+<tr><td>
+<b>Table 1:</b> TLS Refinement of structure 1X60 refined with Refmac5's TLS + B<sub>iso</sub> ADP model.  Each row of this table represents the final result of each refinement performed using the TLS 1 to 19 TLS groups partitioned along the single protein chain of this structure by TLSMD.
+
+</td></tr>
+</table>
+</center>
+{% endblock %}

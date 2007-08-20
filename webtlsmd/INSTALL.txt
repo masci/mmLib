@@ -1,0 +1,40 @@
+Installing and Running TLSMD
+--------------------------------------------------------------------------
+
+INTRODUCTION::
+
+The TLSMD program is a web-based application which analyzes the thermal parameters (temperature factors, also called atomic displacement parameters) of crystallographically determined protein structures.  A fully functional installation will require:
+
+1) A appropriately configured web server capable of running Python CGI programs.  I use Apache.
+2) A installation of Python 2.4.x with the following extensions: NumPy, the Berkeley Database Module bsddb, and the Python Imaging Library (PIL).  Future versions of TLSMD will require TurboGears.
+3) The Python Macromolecular Library, pymmlib.
+4) The daemon bin/webtlsmdd.py.  This is the web application daemon.
+5) The daemon bin/webtlsmdrund.py.  This is the daemon which runs jobs submitted through the web interface.
+
+TLSMD is written in a mixture of Python and C++.  The Python source is located in the bin/ and bin/tlsmdlib directories.  The C++ source is located in the src/ directory, and is compiled into a dynamically loaded Python extension called tlsmdmodule.  It is the computational core of TLSMD.
+
+
+STEP-BY-STEP INSTRUCTIONS::
+
+[Install Python]
+TLSMD requires Python 2.4 or greater.  It also requires several additional modules(Python extensions).  Each module should come with detailed installation instructions.  These modules are:
+* NumPy (http://www.numpy.org)
+* Python Imaging Library (http://www.pythonware.com/products/pil/)
+* Berkeley Database Module bsddb
+	- this is a standard Python module, but may be packaged
+	separately by some Linux distributions, or it may not be built
+	if you are build Python from source and the configure script 
+	cannot locate the appropriate libdb development headers
+* Python Macromolecular Library (http://pymmlib.sourceforge.net)
+	- you will not need to build the optional OpenGL accelerator 
+	module
+
+[Build the LAPACK Library]
+The LAPACK library is available from http://www.netlib.org/lapack/.  LAPACK is a collection of linear algebra subroutines written in FORTRAN.  The makefiles shipped with LAPACK build the static libraries blas_LINUX.a and lapack_LINUX.a, both of which are linked with tlsmdmodule.
+
+[Install MINPACK Library]
+The MINPACK library is available from http://www.netlib.org/minpack/.  MINPACK contains a number for subroutines for solving systems on non-linear equations.  Like LAPACK, it is written in FORTRAN.  The com
+
+[
+
+

@@ -1,0 +1,30 @@
+{% extends "webtlsmd/base.html" %}
+
+{% block title %}TLSMD: Examples{% endblock %}
+{% block page_title %}TLSMD: Examples{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<center>
+<table class="submit_table">
+  <tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>
+  <tr><td align="center">Your job ID is <B>{{ job_id }}</B></td></tr>
+  <tr>
+    <td>
+      <p>Visit and bookmark your 
+      <a href="/tlsmd/explore.html?job_id={{ job_id }}">Explore Job {{ job_id }}</a> page, 
+      this page is the status page of your job, and it is updated as your job progresses through the queue.
+      Once your job is complete, a link to the completed TLSMD analysis will appear on it.
+      </p>
+      <p>You may monitor the progress of your TLSMD submission by its Job ID
+      on the Job Status page, available by clicking the link on the top
+      of this page.  All queued, running and completed jobs are listed on
+      the Job Status page.  Through this page you may explore the output
+      of your job, and lookup your job by its Job ID if you have chosen to
+      keep your job private.
+      </p>
+    </td>
+  </tr>
+</table>
+</center>
+{% endblock %}

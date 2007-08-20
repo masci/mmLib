@@ -1,0 +1,159 @@
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,input,textarea,p,blockquote,th,td{margin:0;padding:0;}
+table{border-collapse:collapse;border-spacing:0;}
+fieldset,img{border:0;}
+address,caption,cite,code,dfn,em,strong,th,var{font-style:normal;font-weight:normal;}
+ol,ul {list-style:none;}
+caption,th {text-align:left;}
+h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal;}
+q:before,q:after{content:'';}
+abbr,acronym {border:0;}
+
+body 
+{
+margin:0;
+padding:0;
+}
+
+div, ul, li
+{
+margin:0;
+padding:0;
+}
+
+#page 
+{
+font-family: arial, helvetica, sans-serif;
+}
+
+#topbar 
+{
+margin:0;
+padding:5px;
+background-color:#008;
+color:#fff;
+}
+
+#title
+{
+font-size:125%;
+}
+
+#navcontainer
+{
+font-size:80%;
+}
+
+#navcontainer ul
+{
+padding-left: 0;
+margin-left: 0;
+color: #fff;
+width: 100%;
+}
+
+#navcontainer ul li
+{
+display: inline;
+}
+
+#navcontainer ul li a
+{
+margin-right: 10px;
+color: #fff;
+text-decoration: none;
+padding:3px;
+}
+
+#navcontainer ul li a:hover
+{
+background-color: #ddf;
+color: black;
+}
+
+#content
+{
+margin-left:20px;
+margin-right:20px;
+width:950px;
+}
+
+/* style classes used by webtlsmd.cgi */
+
+.step_title
+{
+line-height:2.0em;
+font-size:large;
+}
+  
+.submit_table
+{
+padding:10px;
+border-width:thin;
+border-color:blue;
+border-style:solid;
+background-color:#eeeeee;
+}
+  
+.inner_table
+{
+font-size:small;
+width:90%;
+padding:10px;
+border-width:thin;
+border-color:black;
+border-style:solid;
+background-color:#dddddd;
+}
+
+.inner_title
+{
+background-color:#ccccff;
+line-height:2.0em;
+}
+
+.ninner_table
+{
+font-size:small;
+width:95%;
+padding:2%;
+border-width:thin;
+border-color:#aaaaaa;
+border-style:solid;
+background-color:#eeeeee;
+}
+
+.perror
+{
+text-align: left;
+font-size:x-small;
+width:70%;
+padding:10px;
+border-width:thin;
+border-color:#ff0000;
+border-style:solid;
+background-color:#ffaaaa;
+}
+
+.status_table
+{
+background-color:#eeeeee;
+font-size:x-small;
+border-width:thin;
+border-color:#aaaaaa;
+border-style:solid;
+}
+
+.status_table_head
+{
+background-color:#aaaadd;
+}
+
+.status_table_row1
+{
+background-color:#dddddd;
+}
+
+.status_table_row2
+{
+background-color:#eeeeee;
+}

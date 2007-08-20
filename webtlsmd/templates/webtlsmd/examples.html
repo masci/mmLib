@@ -1,0 +1,96 @@
+{% extends "webtlsmd/base.html" %}
+
+{% block title %}TLSMD: Examples{% endblock %}
+{% block page_title %}TLSMD: Examples{% endblock %}
+
+{% block content %}
+<p>
+Below are a number of proteins with well known conformational changes.  
+Most of these structures have been solved in multiple conformations which were used
+to generate conformational change morphs by the good people at
+the <a href="http://www.molmovdb.org/">Database of Macromolecular Movements</a>,
+referred to below as MoveDB.  We have run some of these structures through TLSMD
+to compare the TLSMD predicted flexibility with the conformational
+change morphs from this database.  Links to the TLSMD analysis and MoveDB morphs of 
+these structures are listed below.
+</p>
+
+<h3>HIV Protease</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=hivprot">MoveDB</a></li>
+  <li><a href="4HVP/ANALYSIS/index.html">TLSMD: 4HVP</a> (Isotropic @ 2.4A)</li>
+
+  <li><a href="1T3R/ANALYSIS/index.html">TLSMD: 1T3R</a> (Anisotropic @ 1.2A)</li>
+  <li><a href="3HVP/ANALYSIS/index.html">TLSMD: 3HVP</a> (Isotropic @ 2.7A) - No Inhibitor</li>
+</ul>
+
+<h3>Orotidine Monophosphate Decarboxylase</h3>
+<ul>
+  <li><a href="1DVJ/ANALYSIS/index.html">TLSMD: 1DVJ</a> (Complex: Isotropic @ 1.5A)</li>
+
+  <li><a href="1DV7/ANALYSIS/index.html">TLSMD: 1DV7</a> (Apo: Isotropic @ 1.8A)</li>
+</ul>
+
+<h3>Biotin Carboxylase: Domain Motion, Hinge</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=683927-21049">MoveDB</a></li>
+  <li><a href="1BNC/ANALYSIS/index.html">TLSMD: 1BNC</a> (Isotropic @ 2.4A)</li>
+
+  <li><a href="1DV2/ANALYSIS/index.html">TLSMD: 1DV2</a> (Isotropic @ 2.5A)</li>
+</ul>
+
+<h3>DNA Beta-Glucosyltransferase: Domain Motion, Hinge</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=va1jejA-1jg6A">MoveDB</a></li>
+  <li><a href="1JG6/ANALYSIS/index.html">TLSMD: 1JG6</a> (Isotropic @ 1.9A)</li>
+
+</ul>
+
+<h3>Cell Adhesion Molecule CD2: Domain Motion, Hinge (Easy Case!)</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=d1hnf_2-d1hnga2">MoveDB</a></li>
+  <li><a href="1HNF/ANALYSIS/index.html">TLSMD: 1HNF</a> (Isotropic @ 2.5A)</li>
+</ul>
+
+<h3>Cyanovirin-N: Domain Motion, Hinge</h3>
+
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=071421-431">MoveDB</a></li>
+  <li><a href="1L5B/ANALYSIS/index.html">TLSMD: 1L5B</a> (Isotropic @ 2.0A)</li>
+</ul>
+
+<h3>GroEL: Complex Motion</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=805511-5128">MoveDB</a></li>
+
+  <li><a href="1KP8/ANALYSIS/index.html">TLSMD: 1KP8</a> (Isotropic @ 2.0A)</li>
+</ul>
+
+<h3>Citrate Synthase: Domain Motion, Shear (Shear is harder than Hinge)</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/morph.cgi?ID=cs">MoveDB</a></li>
+  <li><a href="1IOM/ANALYSIS/index.html">TLSMD: 1IOM</a> (Isotropic @ 1.5A)</li>
+
+  <li><a href="1CTS/ANALYSIS/index.html">TLSMD: 1CTS</a> (2 Isotropic Params/Residue @ 2.7A)</li>
+</ul>
+
+<h3>Arabinose, Leucine, and Galactose Binding Proteins: Suspected Domain Motion, Hinge</h3>
+<ul>
+  <li><a href="http://www.molmovdb.org/cgi-bin/motion.cgi?ID=abp">MoveDB</a></li>
+  <li><a href="1ABE/ANALYSIS/index.html">TLSMD: 1ABE</a> (Isotropic @ 1.7A)</li>
+
+  <li><a href="2GBP/ANALYSIS/index.html">TLSMD: 2GBP</a> (Isotropic @ 1.9A)</li>
+  <li><a href="2LBP/ANALYSIS/index.html">TLSMD: 2LBP</a> (Isotropic @ 2.4A)</li>
+</ul>
+
+<h3>Carbonic Anhydrase</h3>
+<ul>
+  <li><a href="1LUG/ANALYSIS/index.html">TLSMD: 1LUG</a> (Isotropic @ 0.96A)</li>
+
+</ul>
+
+<h3>Yeast and Leishmania Major Oxygen-Dependent Coproporphyrinogen Oxidase</h3>
+<ul>
+  <li><a href="1VJU/ANALYSIS/index.html">TLSMD: 1VJU</a> (Isotropic @ 1.4A)</li>
+</ul>
+{% endblock %}
