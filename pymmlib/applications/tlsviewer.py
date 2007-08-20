@@ -13,9 +13,13 @@ import re
 import pygtk
 pygtk.require("2.0")
 
+
 import gobject
 import gtk
 import gtk.gtkgl
+
+
+import OpenGL
 
 from OpenGL.GL            import *
 from OpenGL.GLU           import *

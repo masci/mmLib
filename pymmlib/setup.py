@@ -285,7 +285,7 @@ def run_setup(opts):
     s0 = setup(
         cmdclass     = {'install_data': package_install_data},
         name         = "pymmlib",
-        version      = "0.9.9",
+        version      = "1.0.0",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
@@ -473,7 +473,7 @@ def check_pymmlib_options():
     opt_defaults = {
     	"pdb": True,
 	"opengl": True,
-	"zip": True,
+	"zip": False,
         }
     
     opts = {}

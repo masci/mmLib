@@ -582,13 +582,13 @@ def cmp_struct(struct1, struct2):
         for bond in atm1.iter_bonds():
             atm1p = bond.get_partner(atm1)
 
-            
-    
 
 def file_verify(path, struct, stats):
     """Use some independent parsers to verify some simple stats between the
     structure and the file description.
     """
+    print "[file verify %s]" % path
+    
     if get_file_extension(path) == "PDB":
         fil_stats = test_util.pdb_stats(path)
 
@@ -676,7 +676,6 @@ def main(walk_path, start_path):
 
         ## verify the number of atoms in the mmLib.Structure object
         ## matches the number of atoms in the source file 
-        print "[file verify]"
         file_verify(path, struct, stats)
 
         ## test file saving
