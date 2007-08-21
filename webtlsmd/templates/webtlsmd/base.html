@@ -36,10 +36,16 @@
     <div id="navcontainer">
       <ul>
         <li><a href="/tlsmd/">Home</a></li>
+        {% if not user.is_anonymous %}<li><a href="/accounts/profile/">My Account</a></li>{% endif %}
         <li><a href="/tlsmd/submit/">Start a New Job</a></li>
-        <li><a href="/tlsmd/jobs/">Job Status</a></li>
+        <li><a href="/tlsmd/jobs/">Job List</a></li>
         <li><a href="/tlsmd/examples/">Examples</a></li>
         <li><a href="/tlsmd/documentation/">Documentation</a></li>
+        {% if user.is_anonymous %}
+        <li><a href="/tlsmd/login/">Login</a></li>
+        {% else %}
+        <li><a href="/tlsmd/logout/">Logout</a></li>
+	{% endif %}
       </ul>
     </div>
     {% endblock %}

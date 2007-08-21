@@ -9,10 +9,10 @@ table.jobs-table { border:0; cellpadding:0; width:100%; border:5px solid #008; f
 {% endblock %}
 
 
-{% block title %}TLSMD: Job Queue{% endblock %}
+{% block title %}Job List{% endblock %}
 
 
-{% block page_title %}TLSMD: Job Queue{% endblock %}
+{% block page_title %}Job List{% endblock %}
 
 
 {% block content %}
@@ -20,16 +20,15 @@ table.jobs-table { border:0; cellpadding:0; width:100%; border:5px solid #008; f
 
 <table class="jobs-table">
 
-{% if administrator %}
+{% if user.is_superuser %}
 <tr class="jobs-table-section-title"><td colspan="5"><input type="submit" name="remove" value="Remove"/></td></tr>
 {% endif %}
 
 {% for jtable in job_lists %}
-
-  <tr class="jobs-table-section-title"><td colspan="{% if administrator %}5{% else %}4{% endif %}">{{ jtable.title }}</td></tr>
+  <tr class="jobs-table-section-title"><td colspan="{% if user.is_superuser %}5{% else %}4{% endif %}">{{ jtable.title }}</td></tr>
 
   <tr>
-    <th {% if administrator %}colspan="2"{% endif %}>Job ID</th>
+    <th {% if user.is_superuser %}colspan="2"{% endif %}>Job ID</th>
     <th>Structure ID</th>
     <th>Submission Date</th>
     <th>Runing Time</th>
@@ -38,21 +37,21 @@ table.jobs-table { border:0; cellpadding:0; width:100%; border:5px solid #008; f
   {% if jtable.job_list %}
     {% for job in jtable.job_list %}
     <tr>
-      {% if administrator %}<td style="width:25px"><input type="checkbox" id="select_{{ job.id }}" name="select_{{ job.id }}"/></td>{% endif %}
+      {% if user.is_superuser %}<td style="width:25px"><input type="checkbox" id="select_{{ job.id }}" name="select_{{ job.id }}"/></td>{% endif %}
       <td><a href="{{ job.job_url }}">{{ job.id }}</a></td>
-      <td>{{ job.structure_id }}</td>
+      <td>{{ job.structure_id }} ({{ job.state }})</td>
       <td>&nbsp;</td>
       <td>&nbsp;</td>
     </tr>
     {% endfor %}
 
   {% else %}
-    <tr><td colspan="4">No Jobs Running</td></tr>
+    <tr><td colspan="{% if user.is_superuser %}5{% else %}4{% endif %}">No Jobs Running</td></tr>
   {% endif %}
 
 {% endfor %}
 
-{% if administrator %}
+{% if user.is_superuser %}
 <tr class="jobs-table-section-title"><td colspan="5"><input type="submit" name="remove" value="Remove"/></td></tr>
 {% endif %}
 

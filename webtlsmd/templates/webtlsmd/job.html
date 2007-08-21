@@ -8,7 +8,7 @@ td.debug-val { color:#008 }
 
 #job-queued-div { border:1px solid #080; padding:10px; margin-bottom:20px; background-color:#eee }
 #job-running-div { border:1px solid #008; padding:10px; background-color:#eee; margin-bottom:20px }
-
+#job-removed-div { border:1px solid #800; padding:10px; margin-bottom:20px; background-color:#fee }
 {% endblock %}
 
 
@@ -34,14 +34,21 @@ td.debug-val { color:#008 }
     </div>
     {% endifequal %}
 
+    {% ifequal job.state "removed" %}
+    <div id="job-removed-div">
+        NOTICE: This job has been removed.
+    </div>
+    {% endifequal %}
 
+
+   {% ifnotequal job.state "removed" %}
     <div style="font-size:125%; border-bottom:1px solid black">Job Links</div>
     <div style="margin-left:5px">
       <div>{% if job.analysis_url %}<a href="{{ job.analysis_url }}">Click here to view the completed TLSMD analysis.</a>{% else %}TLSMD analysis is not finished yet.{% endif %}</div>
       <div>{% if job.log_url %}<a href="{{ job.log_url }}">Click here to view TLSMD log file.</a>{% else %}TLSMD logfile does not exist yet.{% endif %}</div>
     </div>
-
     <div style="height:20px"></div>
+    {% endifnotequal %}
 
     <div style="font-size:125%; border-bottom:1px solid black">Owner Information</div>
     <div style="margin-left:5px">
