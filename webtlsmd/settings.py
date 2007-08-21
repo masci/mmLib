@@ -5,6 +5,7 @@ import sys
 ## TLSMD application settings
 ##
 
+
 ## program info
 VERSION       = "0.9.0 Personal Edition"
 RELEASE_DATE  = "1 Jul 2007"
@@ -22,7 +23,6 @@ GNUPLOT_PATH = '/usr/bin/gnuplot'
 ## BEGIN: CONFIGURATION PATHS AND URLS
 TLSMD_BASE_URL         = "/tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
-WEBTLSMDD_DATABASE     = os.path.join(TLSMD_ROOT, "run", "webtlsmd.db")
 ADMIN_PASSWORD_FILE    = os.path.join(TLSMD_ROOT, "run", "admin-password")
 TRACEBACK_EMAIL        = "tlsmdtraceback"
 LOG_PATH               = os.path.join(TLSMD_ROOT, "run", "tlsmd_runlog.txt")
@@ -31,8 +31,8 @@ LOG_PATH               = os.path.join(TLSMD_ROOT, "run", "tlsmd_runlog.txt")
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL         = "/tlsmd/refineprep.html"
-TLSMD_WORK_DIR         = os.path.join(TLSMD_ROOT, "static", "jobs")
+REFINEPREP_URL         = "/tlsmd/refineprep/"
+TLSMD_WORK_DIR         = os.path.join(TLSMD_ROOT, "run", "jobs")
 TLSMD_WORK_URL         = "/tlsmd/static/jobs"
 JMOL_DIR               = "/static/java"
 
@@ -141,3 +141,6 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'tlsmdlib',
 )
+
+LOGIN_URL = '/tlsmd/login/'
+LOGIN_REDIRECT_URL = '/tlsmd/my_account/'
