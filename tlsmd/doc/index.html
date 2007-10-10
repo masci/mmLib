@@ -26,19 +26,24 @@
 <tr>
 <td>
 <font size="+1"><b>TLS Motion Determination (TLSMD)</b></font>
-analyzes a protein crystal structure for evidence of flexibility, in the form
-of local or inter-domain motions.  It does this by partitioning the protein structure into multiple segments which are modeled as rigid bodies undergoing TLS (Translation/Libration/Screw) vibrational motion. It generates all possible segmentations up to a specified maximum number of TLS groups. Each trial segmentation is evaluated by comparison to the observed atomic displacement parameters (ADPs, "thermal parameters") that came out of crystallographic refinement.
+analyzes a protein crystal structure for evidence of flexibility, 
+e.g. local or inter-domain motions.  It does this by partitioning the 
+protein chains into multiple segments that are modeled as rigid bodies
+undergoing TLS (Translation/Libration/Screw) vibrational motion. 
+It generates all possible partitions up to a specified maximum number 
+of TLS groups. Each trial partition is evaluated by how well it predicts
+the observed atomic displacement parameters (ADPs, "thermal parameters") that came out of crystallographic refinement.
 </td>
 <td valign="top" rowspan=2 style="border: 1px solid black;" >
 <table border=0>
 <tr><td align="center"><img src="1T3R_STATIC.png" alt="13TR Animation" width="250"></td></tr>
 <tr><td align="center"><small>
-Backbone displacement of inhibited HIV Protease (1T3R).  Both A and B chains of the
-homo dimer are partitioned into 5 TLS groups by TLSMD. 
-<a href="." onClick="window.open(&quot;1T3R_ANIM.gif&quot;,&quot;&quot;,&quot;width=510,height=310&quot;);return false;">Click here</a>
-to view a animated GIF of this backbone displacement, or 
+Backbone displacement of HIV Protease + inhibitor (1T3R).  Both A and B chains of the
+homodimer are partitioned into 5 TLS groups by TLSMD. Click
+<a href="." onClick="window.open(&quot;1T3R_ANIM.gif&quot;,&quot;&quot;,&quot;width=510,height=310&quot;);return false;">here</a>
+to view an animated GIF, or 
 <a href="." onClick="window.open(&quot;/~tlsmd/examples/1T3R/ANALYSIS/1T3R_CHAINA_NTLS5_ANIMATE.html&quot;,&quot;&quot;,&quot;width=600,height=600,screenX=10,screenY=10,left=10,top=10&quot;);return false;">here</a>
-to view a interactive animation of chain A with JMol.
+to view an interactive animation of chain&nbsp;A with JMol.
 The complete analysis can be found
 <a href="/~tlsmd/examples/1T3R/ANALYSIS/index.html">here</a>.
 </small></td></tr>
@@ -49,10 +54,20 @@ The complete analysis can be found
 <tr>
 <td>
 <font size="+1"><b>TLSMD</b></font>
-generates the optimal 1-group TLS model (trivial), the optimal 2-group TLS model, and so on up to a default of 20 TLS groups total. For each such model you get statistics describing how well this model accounts for the thermal motion observed in the crystal structure.
+finds the optimal 1-group TLS model (trivial), the optimal 2-group TLS model, and so on up to a default of 20 TLS groups total. 
+Statistics for each model describe how well it accounts for the thermal motion observed in the crystal structure.
 </td>
 </tr>
 </table>
+
+<p><font size="+1"><b>Submit your structure</b></font>
+using the <a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a>
+page.
+TLSMD is computationally expensive, so submitted jobs are queued and run
+one at a time.  You can monitor the progress of your submission
+on the <a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a> page.
+The server will notify you by Email when the job has finished.
+</p>
 
 <font size="+1"><b>The server returns:</b></font>
 <ul style="margin:0px">
@@ -60,67 +75,56 @@ generates the optimal 1-group TLS model (trivial), the optimal 2-group TLS model
 <li> An animation of the implied motion via the
      <a href="http://jmol.sourceforge.net/">Jmol</a> Java applet
 <li> Modified PDB files and TLS input files that can be used for further
-     crystallographic refinement using the 
+     crystallographic refinement by the 
      <a href="http://www.ccp4.ac.uk/">CCP4</a> program <b>Refmac5</b>
-<li> These same files can be used for more detailed inspection in the
-     <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library's</a> 
-     <b>TLSView</b> interactive viewer, which offers a wide range of static
-     and animated representations of the implied motions.
+<li> These same files can be used for more detailed inspection and figure generation in the
+     <a href="http://pymmlib.sourceforge.net/"><b>TLSView</b></a>
+     interactive viewer.
 </ul>
 
-<p><font size="+1"><b>Submit your structure</b></font>
-using the <a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a>
-page and completing the 3-step submission process.
-TLSMD is computationally expensive, so submitted structures are queued and run
-one at a time.  You may monitor the progress of your submitted
-jobs on the <a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a> page.
-</p>
-
 <p><font size="+1"><b>More information </b></font>
-about TLS groups can be found in the
+about TLS groups, interpretation of the TLS parameters, and interactive
+visualization of the results from TLSMD analysis can be found in the
+reprints below, and in the
 <a href="http://pymmlib.sourceforge.net/doc/tlsview/tlsview.html">TLSView Manual</a>.
-It covers interpretation of the TLS parameters, and  the structure visualizations
-generated by the TLSMD analysis.  TLSView is part of the <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library (mmLib)</a>, and is specifically designed to be a interactive molecular viewer of the TLS groups generated by TLSMD.
+TLSView is part of the <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library (mmLib)</a>.
 </p>
 
 <p><b><i>Note:</i></b>
 TLSMD is a work in progress. We expect it to change rapidly.
-Please report any problems, suggestions, or blinding revelations inspired by the analysis.
-If you publish an analysis based on TLSMD results, please cite
+Please let us know of any problems, suggestions, or blinding revelations inspired by the analysis.
+If you use TLSMD results to refine or analyze your structure, please cite the papers below.
+
 <center>
-<table style="font-size:x-small">
+<table style="font-size:x-small" border=0>
+<tr align=left>
+    <td colspan=2><font size="+1"><b>Please cite:</b></font></td><td></td>
+    <td colspan=1><font size="+1"><b>Contact us:</b></font></td></tr>
 <tr align=left><td><b>TLSMD</b>:</td><td>
 <cite>J Painter &amp; E A Merritt (2006) 
 <a href="http://www.iucr.org/cgi-bin/paper?sx5049">
 <i>Acta Cryst.</i> <b>D62</b>, 439-450</a>
 </cite></td><td>
-reprint: (<a href="Acta_D62_439.pdf">PDF</a>)
-</td></tr>
+reprint: (<a href="Acta_D62_439.pdf">PDF</a>)</td>
+<td> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+     <a href="http://www.bmsc.washington.edu/people/merritt/">Ethan Merritt</a> &lt;<i>merritt _at_ u.washington.edu</i>&gt; </td>
+</tr>
 <tr align=left><td><b>server</b>:</td><td>
 <cite>J Painter &amp; E A Merritt (2006) 
 <a href="http://www.iucr.org/cgi-bin/paper?dd5024">
 <i>J. Appl. Cryst.</i> <b>39</b>, 109-111</a>
 </cite></td><td>
-reprint: (<a href="JApplCryst_39_109.pdf">PDF</a>)
-</td></tr>
+reprint: (<a href="JApplCryst_39_109.pdf">PDF</a>)</td>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+     <a href="http://www.drizzle.com/~jpaint/index.html">Jay Painter</a> &lt;<i>jpaint _at_ u.washington.edu</i>&gt; </td>
+</tr>
 </table>
 </center>
-
-<table width="100%">
-<tr align="left">
-<td><font size="+1"><b>Contact us:</b></font></td>
-</tr>
-<tr align="center">
-<td> <a href="http://www.bmsc.washington.edu/people/merritt/">Ethan Merritt</a> &lt;<i>merritt _at_ u.washington.edu</i>&gt;
-</td><td>
-<a href="http://www.drizzle.com/~jpaint/index.html">Jay Painter</a> &lt;<i>jpaint _at_ u.washington.edu</i>&gt;
-</td>
-</tr>
-</table>
+</p>
 
 <!-- ENDBLOCK -->
 
-<center><p><small>Last Modified 11 May 2006</small></p></center>
+<center><p><small>Last Modified 20 August 2007</small></p></center>
 </div>
 </body></html>
 
