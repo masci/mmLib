@@ -773,7 +773,8 @@ class QueuePage(Page):
         struct_id = jdict.get("structure_id", "xxxx")
         if struct_id.lower() == "xxxx":
             return struct_id
-        return '<a href="http://www.pdb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
+        #return '<a href="http://www.pdb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
+	return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id) ## Christoph Champ, 2008-02-20
 
     def html_head_nocgi(self, title):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
@@ -787,7 +788,6 @@ class QueuePage(Page):
         
         return "".join(l)
     
-    #'<p><small><b>Version %s</b> Last Updated %s</p>' % (const.VERSION, timestring(time.time())),
     def html_foot(self):
         l = ['<center>',
              '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (const.VERSION, (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-10])),
@@ -877,9 +877,9 @@ class QueuePage(Page):
 
         if jdict.get("private_job", False):
 	    ## Return job number only (non-clickable)
-            job_number = re.match(r'[^_]*', jdict["job_id"])
-            if job_number: return job_number.group(0)
-	    return 'private'
+	    job_number = re.match(r'[^_]*', jdict["job_id"])
+	    if job_number: return job_number.group(0)
+            return 'private'
     
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
     
@@ -901,6 +901,28 @@ class QueuePage(Page):
                 strx += '<br>'
 	
 	return '%s' % (strx)
+
+    def number_of_chains(self, jdict):
+        ## New routine to return the number of chains in a given structure. Christoph Champ, 2008-02-20
+        n=0
+        if jdict.has_key("chains")==False:
+            return n
+
+        for cdict in jdict["chains"]:
+	    n+=1
+
+        return n
+
+    def total_number_of_residues(self, jdict):
+        ## New routine to calculate the total number of residues (with/without chains). Christoph Champ, 2008-02-20
+        total=0
+        if jdict.has_key("chains")==False:
+            return total
+
+        for cdict in jdict["chains"]:
+            total=total+cdict["length"]
+
+        return total
 	
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
@@ -918,10 +940,21 @@ class QueuePage(Page):
 	#    ## Immediately fails; ANALYSIS dir is not written right away
 	#    webtlsmdd.job_set_state(job_id,"lost_directory") ## cannot have spaces in state
 	     return prog
+
+	#n=number_of_chains()
+	#increment=int(80/n)
+	# Look for '1BVR_CHAINA_RESID.png' files or '1BVR_RESID.png' files
+	#residfile=re.compile('...._RESID.png').match
+	#for chain_id in jdict["chains"]:
+	#    pngfile=re.compile('\S+CHAIN%s_RESID.png'%chain_id).match
+	#    for fname in os.listdir(os.getcwd()):
+	#	if pngfile(fname): prog+=increment
+	#	elif residfile(fname): prog="100"
+
 	pngfile=re.compile('\S+NTLS1_BMEAN.png').match		## match first *NTLS1_BMEAN.png file found in the job_dir
 	reffile=re.compile('\S+REFINEMENT_PREP.html').match	## match first *REFINEMENT_PREP.html file found in the job_dir
 	for fname in os.listdir(os.getcwd()):
-            if pngfile(fname): prog="25" ## arbitrary 60% done
+            if pngfile(fname): prog="25" ## arbitrary
 	    elif reffile(fname): prog="95"
 	    #else: prog="0"
         return prog
@@ -949,7 +982,6 @@ class QueuePage(Page):
 	## creates mutiple rows, _if_ there are multiple "running" jobs. Christoph Champ, 2008-01-30
 	## TODO Update the progress bar to reflect where we are in the "running" state
         row1 = True
-        #progress = 0 ## Isn't this overwritten immediately?
         for jdict in run_jdict:
             if row1:
                 x.append('<tr class="status_table_row1">')
@@ -967,12 +999,9 @@ class QueuePage(Page):
             else:
                  hours = "---"
             ## progress bar should be something like (number of files created) / (20*number of chains)
-            #progress = 25
-	    progress = self.get_progress_status(jdict["job_id"]) ## Returns a integer value
+	    progress = self.get_progress_status(jdict) ## Returns an integer value
 	    ## Testing with "%"-done indicator
-	    ## TODO "% done" Doesn't look to good in style/format. Christoph Champ, 2008-02-12
             x += '<td align=left><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div></td>' %progress
-            #x += '<td><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div> %s%%</td>' %(progress,progress)
 	    x += '<td align="right">%s</td></tr>' % (hours)
 
 	## for zero running jobs
@@ -1036,6 +1065,7 @@ class QueuePage(Page):
 
         completed_list.reverse()
 
+	## Added "Total Residues". Christoph Champ, 2008-02-20
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
              '<table border="0" cellpadding="3" width="100%" class="status_table">',
@@ -1044,6 +1074,7 @@ class QueuePage(Page):
              '<th>Struct ID</th>',
              '<th>Status</th>',
              '<th>Submission Date</th>',
+	     '<th>Total Residues</th>',
              '<th>Processing Time (HH:MM.SS)</th>',
              '</tr>']
 
@@ -1057,8 +1088,17 @@ class QueuePage(Page):
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
             l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
-            l.append('<td>%s</td>' % (jdict.get("state")))
+	    ##========= Direct link to logfile. Christoph Champ, 2008-02-20
+	    if jdict.has_key("log_url"):
+		logfile=os.path.join(jdict["job_dir"],"log.txt")
+		log_url=webtlsmdd.job_get_log_url(jdict["job_id"])
+		if os.path.isfile(logfile) and jdict["private_job"]==False:
+		   l.append('<td><a href="%s">%s</a></td>' % (log_url,jdict.get("state")))
+		else:
+		   l.append('<td>%s</td>' % (jdict.get("state")))
+	    ##==========================================================================
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
+            l.append('<td align="right">%s</td>' % (self.total_number_of_residues(jdict))) # "Total Residues". Christoph Champ, 2008-02-20
 
             if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
                 hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])

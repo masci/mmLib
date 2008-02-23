@@ -18,10 +18,10 @@ import const
 import console
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
-BASE_PUBLIC_URL        = "http://verdandi.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
+BASE_PUBLIC_URL        = "http://skuld.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
 TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
-TLSMD_PUBLIC_URL       = "http://verdandi.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
+TLSMD_PUBLIC_URL       = "http://skuld.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
 TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
@@ -29,6 +29,7 @@ ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "tlsmdtraceback"
 LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
+PDB_URL                = "http://www.pdb.org/pdb/explore/explore.do?structureId=" ## Added by Christoph Champ, 2008-02-20
 ## END: CONFIGURATION PATHS AND URLS
 
 ## override default configuration

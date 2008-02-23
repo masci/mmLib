@@ -118,7 +118,7 @@ def run_tlsmd(webtlsmdd, jdict):
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
     ### FORK SECTION: fork/execvp; 2008-01-22
-    ## e.g., args="python /home/tlsmd/tlsmd/bin/tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN -xhttp://localhost:10100 -is1 -mISOT -cA -aALL struct.pdb"
+    ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN -xhttp://localhost:10100 -is1 -mISOT -cA -aALL struct.pdb"
     args=["python"] + tlsmd
     pid=os.fork()
     if not pid:
@@ -274,7 +274,7 @@ Determination (TLSMD) Server to inform you the analysis of the structure
 you submitted is complete.  The link below will take you directly
 to the completed analysis:
 
-http://verdandi.bmsc.washington.edu<ANALYSIS_URL>
+http://skuld.bmsc.washington.edu<ANALYSIS_URL>
 
 having the following user comments:
 <USER_COMMENT>
