@@ -32,6 +32,7 @@ def assemble_paths_list():
     """
     PATHS = [
         ("/usr/lib",       "/usr/include"),
+        ("/usr/lib64",       "/usr/include"),
         ("/usr/X11/lib",   "/usr/X11/include"),
         ("/usr/X11R6/lib", "/usr/X11R6/include"),
         ("/usr/local/lib", "/usr/local/include"),
@@ -285,7 +286,7 @@ def run_setup(opts):
     s0 = setup(
         cmdclass     = {'install_data': package_install_data},
         name         = "pymmlib",
-        version      = "1.0.0",
+        version      = "1.1.0",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",
@@ -470,6 +471,7 @@ def buildlib(opts):
 def check_pymmlib_options():
     import sys
 
+    ## Changed zip=True to zip=False, from Jay's suggestion. Christoph Champ, 2008-02-14
     opt_defaults = {
     	"pdb": True,
 	"opengl": True,

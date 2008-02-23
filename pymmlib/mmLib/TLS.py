@@ -727,6 +727,342 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
 
+###########################################################################################################################
+## START: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
+class TLSFileFormatPHENIXOUT(TLSFileFormat):
+    """Write PHENIX-TLSOUT files.
+    """
+    #TLS
+    #RANGE  'A   8.' 'A  39.' ALL
+    #ORIGIN    45.1700  23.3521 121.5435
+    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    #Original: "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+    tlsout_regex_dict = {
+        "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([0-9]+)\.[']\s+[']([A-Z])\s*([0-9]+)\.[']\s*(\w*).*$"),
+        "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
+        }
+
+    def convert_frag_id_load(self, frag_id):
+        """Converts the residue sequence code to a mmLib fragment_id.
+        """
+        if len(frag_id) == 0:
+            return ""
+        if frag_id[-1] == ".":
+            frag_id = frag_id[:-1]
+        return frag_id
+
+    def convert_frag_id_save(self, frag_id):
+        """Converts a mmLib fragment_id to a TLSOUT fragment id.
+        """
+        if len(frag_id) == 0:
+            return "."
+        if frag_id[-1].isdigit():
+            frag_id += "."
+        return frag_id
+        
+    def load_supported(self):
+        return True
+    def save_supported(self):
+        return True
+
+    def load(self, fil):
+        tls_desc_list = []
+        tls_desc = None
+        
+        for ln in fil.xreadlines():
+            ln = ln.rstrip()
+
+            ## search all regular expressions for a match
+            for (re_key, re_tls) in self.tlsout_regex_dict.items():
+                mx = re_tls.match(ln)
+                if mx is not None:
+                    break
+
+            ## no match was found for the line
+            if mx is None:
+                continue
+            
+            ## do not allow a match if tls_info is None, because then
+            ## somehow we've missed the TLS group begin line
+            if tls_desc is None and re_key!="group":
+                raise TLSFileFormatError()
+
+            if re_key == "group":
+                tls_desc = TLSGroupDesc()
+                tls_desc_list.append(tls_desc)
+
+                if mx.group(1) is not None:
+                    tls_desc.set_name(mx.group(1))
+
+            elif re_key == "origin":
+                (x, y, z) = mx.groups()
+                try:
+                    tls_desc.set_origin(float(x), float(y), float(z))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "range":
+                (chain_id1, frag_id1, chain_id2, frag_id2, sel) = mx.groups()
+
+                frag_id1 = self.convert_frag_id_load(frag_id1)
+                frag_id2 = self.convert_frag_id_load(frag_id2)
+
+                tls_desc.add_range(chain_id1, frag_id1, chain_id2, frag_id2, sel)
+
+            elif re_key == "T":
+                ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
+                (t11, t22, t33, t12, t13, t23) = mx.groups()
+
+                try:
+                    tls_desc.set_T(float(t11), float(t22), float(t33),
+                                   float(t12), float(t13), float(t23))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "L":
+                ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
+                (l11, l22, l33, l12, l13, l23) = mx.groups()
+
+                try:
+                    tls_desc.set_L_deg2(float(l11), float(l22), float(l33),
+                                        float(l12), float(l13), float(l23))
+                except ValueError:
+                    raise TLSFileFormatError()
+                    
+            elif re_key == "S":
+                ## REFMAC ORDER:
+                ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
+                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
+
+                try:
+                    tls_desc.set_S_deg(float(s2211), float(s1133), float(s12),
+                                       float(s13),   float(s23),   float(s21),
+                                       float(s31),   float(s32))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+        return tls_desc_list
+
+    def tlsout_tls_desc(self, tls_desc):
+        """Converts TLSGroupDesc instance to a multi-line string format
+        ready to write to a TLSOUT file.
+        """        
+        listx = []
+
+        #if tls_desc.name != "":
+        #    listx.append("TLS %s" % (tls_desc.name))
+        #else:
+        #    listx.append("TLS")
+
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
+            #frag_id1 = self.convert_frag_id_save(frag_id1)
+            #frag_id2 = self.convert_frag_id_save(frag_id2)
+            #listx.append("RANGE  '%s%s' '%s%s' %s" % (chain_id1, frag_id1.rjust(5),chain_id2, frag_id2.rjust(5), sel))
+	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1,frag_id2))
+        # ORIGIN (was here)
+	# T (was here)
+	# L (was here)
+	# S (was here)
+        return "\n".join(listx)
+
+    def save(self, fil, tls_desc_list):
+        ## with this line, the tensor components will be read by some
+        ## programs in a different order, mangling the tensor values
+        fil.write("refinement.refine {\n adp {\n")
+        
+        for tls_desc in tls_desc_list:
+            tls_desc_str = self.tlsout_tls_desc(tls_desc)
+            fil.write(tls_desc_str + "\n")
+        fil.write(" }\n}\n")
+## END: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
+###########################################################################################################################
+
+###########################################################################################################################
+## START: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
+class TLSFileFormatPHENIX(TLSFileFormat):
+    """Read/Write PHENIX TLSIN/TLSOUT files.
+    """
+    #TLS
+    #RANGE  'A   8.' 'A  39.' ALL
+    #ORIGIN    45.1700  23.3521 121.5435
+    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    #Original: "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+    tlsout_regex_dict = {
+        "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([0-9]+)\.[']\s+[']([A-Z])\s*([0-9]+)\.[']\s*(\w*).*$"),
+        "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
+        }
+
+    ## Needs to look something like the following (from Pavel):
+    #refinement.refine {
+    # adp {
+    #  tls="(chain A and resid 1:155)"
+    #  tls="(chain B and resid 0:155)"
+    #  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
+    # }
+
+    def convert_frag_id_load(self, frag_id):
+        """Converts the residue sequence code to a mmLib fragment_id.
+        """
+        if len(frag_id) == 0:
+            return ""
+        if frag_id[-1] == ".":
+            frag_id = frag_id[:-1]
+        return frag_id
+
+    def convert_frag_id_save(self, frag_id):
+        """Converts a mmLib fragment_id to a TLSOUT fragment id.
+        """
+        if len(frag_id) == 0:
+            return "."
+        if frag_id[-1].isdigit():
+            frag_id += "."
+        return frag_id
+        
+    def load_supported(self):
+        return True
+    def save_supported(self):
+        return True
+
+    def load(self, fil):
+        tls_desc_list = []
+        tls_desc = None
+        
+        for ln in fil.xreadlines():
+            ln = ln.rstrip()
+
+            ## search all regular expressions for a match
+            for (re_key, re_tls) in self.tlsout_regex_dict.items():
+                mx = re_tls.match(ln)
+                if mx is not None:
+                    break
+
+            ## no match was found for the line
+            if mx is None:
+                continue
+            
+            ## do not allow a match if tls_info is None, because then
+            ## somehow we've missed the TLS group begin line
+            if tls_desc is None and re_key!="group":
+                raise TLSFileFormatError()
+
+            if re_key == "group":
+                tls_desc = TLSGroupDesc()
+                tls_desc_list.append(tls_desc)
+
+                if mx.group(1) is not None:
+                    tls_desc.set_name(mx.group(1))
+
+            elif re_key == "origin":
+                (x, y, z) = mx.groups()
+                try:
+                    tls_desc.set_origin(float(x), float(y), float(z))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "range":
+                (chain_id1, frag_id1, chain_id2, frag_id2, sel) = mx.groups()
+
+                frag_id1 = self.convert_frag_id_load(frag_id1)
+                frag_id2 = self.convert_frag_id_load(frag_id2)
+
+                tls_desc.add_range(chain_id1, frag_id1, chain_id2, frag_id2, sel)
+
+            elif re_key == "T":
+                ## REFMAC ORDER: t11 t22 t33 t12 t13 t23
+                (t11, t22, t33, t12, t13, t23) = mx.groups()
+
+                try:
+                    tls_desc.set_T(float(t11), float(t22), float(t33),
+                                   float(t12), float(t13), float(t23))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+            elif re_key == "L":
+                ## REFMAC ORDER: l11 l22 l33 l12 l13 l23
+                (l11, l22, l33, l12, l13, l23) = mx.groups()
+
+                try:
+                    tls_desc.set_L_deg2(float(l11), float(l22), float(l33),
+                                        float(l12), float(l13), float(l23))
+                except ValueError:
+                    raise TLSFileFormatError()
+                    
+            elif re_key == "S":
+                ## REFMAC ORDER:
+                ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
+                (s2211, s1133, s12, s13, s23, s21, s31, s32) = mx.groups()
+
+                try:
+                    tls_desc.set_S_deg(float(s2211), float(s1133), float(s12),
+                                       float(s13),   float(s23),   float(s21),
+                                       float(s31),   float(s32))
+                except ValueError:
+                    raise TLSFileFormatError()
+
+        return tls_desc_list
+
+    def ptlsout_tls_desc(self, tls_desc):
+        """Converts TLSGroupDesc instance to a multi-line string format
+        ready to write to a PHENIX-TLSOUT file.
+        """        
+        listx = []
+
+        #if tls_desc.name != "":
+        #    listx.append("TLS %s" % (tls_desc.name))
+        #else:
+        #    listx.append("TLS")
+        #listx.append("refinement.refine { adp {")
+
+        for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
+	    # Commented out next two lines, by Christoph Champ, 2007-11-23
+            #frag_id1 = self.convert_frag_id_save(frag_id1)
+            #frag_id2 = self.convert_frag_id_save(frag_id2)
+            # RANGE  'A  16.' 'A  25.' ALL
+            #listx.append("RANGE  '%s%s' '%s%s' %s" % (
+            #    chain_id1, frag_id1.rjust(5),
+            #    chain_id2, frag_id2.rjust(5), sel))
+	    # tls = chain A and resid 80:187
+   	    ## NEW:
+	    #refinement.refine {
+	    # adp {
+	    #  tls="(chain A and resid 1:155)"
+	    #  tls="(chain B and resid 0:155)"
+	    #  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
+	    # }
+	    #listx.append("\ttls = chain %s and resid %s:%s" % (chain_id1,frag_id1.rjust(5),frag_id2.rjust(5)))
+	    #listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1.rjust(5),frag_id2.rjust(5)))
+	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1,frag_id2))
+        # ORIGIN (was here)
+	# T (was here)
+	# L (was here)
+	# S (was here)
+        return "\n".join(listx)
+
+    def save(self, fil, tls_desc_list):
+        ## with this line, the tensor components will be read by some
+        ## programs in a different order, mangling the tensor values
+        #fil.write("PHENIX\n\n")
+        fil.write("refinement.refine {\n adp {\n")
+        
+        for tls_desc in tls_desc_list:
+            tls_desc_str = self.ptlsout_tls_desc(tls_desc)
+            fil.write(tls_desc_str + "\n")
+        fil.write(" }\n}\n")
+## END: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
+############################################################################################################################
+
 ###############################################################################
 ## SOLVE TLS LSQ-FIT BY SVD (Singular Value Decomposition)
 ##
