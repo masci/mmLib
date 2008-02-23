@@ -18,8 +18,10 @@ import const
 import console
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
+BASE_PUBLIC_URL        = "http://verdandi.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
 TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
+TLSMD_PUBLIC_URL       = "http://verdandi.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
 TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
@@ -36,11 +38,14 @@ if os.path.exists(ALTCONF):
 
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
+WEBTMP_PATH	       = "/home/www/webtmp"		# Added by Christoph Champ, 2007-12-03
+GNUPLOT                = "/usr/local/bin/gnuplot"	# Added by Christoph Champ, 2007-12-03
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 JMOL_DIR               = "../../../jmol"
+#JMOL_DIR               = "%s/jmol" % (TLSMD_PUBLIC_URL) # Added by Christoph Champ, 2007-12-13
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT,"pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR,"pdbids.txt")
 

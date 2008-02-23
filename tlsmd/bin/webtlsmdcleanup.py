@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-
+#!/usr/bin/python
 ## TLS Motion Determination (TLSMD)
-## Copyright 200-20052 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -9,6 +8,7 @@
 import os
 import sys
 import time
+import datetime # Christoph Champ, 2008-01-29
 import socket
 
 import xmlrpclib
@@ -24,8 +24,7 @@ webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 def check_remove(jdict):
     state = jdict.get("state")
     if state==None:
-        print "[ERROR] job_id=%s has no state" % (jdict["job_id"])
-	return False
+	return True
 
     submit_time = jdict.get("submit_time")
     if submit_time==None:
@@ -36,12 +35,15 @@ def check_remove(jdict):
 
     days = round((time.time() - submit_time) / SECS_IN_DAY)
     jdict["days"] = days
-   
+
     if days>DELETE_DAYS:
         return True
 
     if state=="submit1" and days>1:
         return True
+
+    if state=="lost_directory" and days>1:
+	return True
 
     return False
 
@@ -55,8 +57,14 @@ def main():
         if check_remove(jdict):
             jdict_remove_list.append(jdict)
 
+    ## timstamp format: "YYYY-MM-DD HH:MM:SS:"
+    t=datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+
     for jdict in jdict_remove_list:
-        print "%10s  %40s  %d Days Old" % (jdict["job_id"], jdict.get("email", "No Email"), jdict["days"])
+	try:
+            print "%s: %10s  %40s  %d Days Old" % (t, jdict["job_id"], jdict.get("email", "No Email"), jdict["days"])
+	except:
+            print "%s: %10s  Bad submission status" % (t, jdict["job_id"])
         webtlsmdd.remove_job(jdict["job_id"])
 
 

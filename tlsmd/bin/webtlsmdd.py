@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+# coding=UTF-8 
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -198,6 +199,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     log_url = "%s/log.txt" % (job_url)
     webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
 
+    ## create tarball path and url. Christoph Champ, 2007-12-03
+    tarball_url = "%s/%s.tar.gz" % (job_url,job_id)
+    webtlsmdd.jobdb.job_data_set(job_id, "tarball_url", tarball_url)
+
     analysis_dir = "%s/ANALYSIS" % (job_dir)
     webtlsmdd.jobdb.job_data_set(job_id, "analysis_dir", analysis_dir)
 
@@ -292,7 +297,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "passwd", "")
     webtlsmdd.jobdb.job_data_set(job_id, "email", "")
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False)
+    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in html.py. Christoph Champ, 2008-02-09
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
 
     try:
@@ -394,19 +399,24 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     ## for refinement, so it's important for the filename to have
     ## the tlsin extension so the user is not confused
     tlsout = "%s.tlsin" % (outbase)
+    phenixout = "%s.phenix" % (outbase) ## PHENIX, Christoph Champ, 2007-11-06
 
     ## make urls for linking
     pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
     tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
+    phenixout_url = "%s/%s" % (analysis_base_url, phenixout) ## PHENIX, Christoph Champ, 2007-11-06
 
     ## create the files
     tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
+    tls_calcs.phenix_prep(pdbin, tlsins, phenixout) ## PHENIX, Christoph Champ, 2007-11-06
 
     os.chdir(old_dir)
     return dict(pdbout = pdbout,
                 pdbout_url = pdbout_url,
                 tlsout = tlsout,
-                tlsout_url = tlsout_url)
+                tlsout_url = tlsout_url,
+		phenixout = phenixout,
+		phenixout_url = phenixout_url)
 
     
 class WebTLSMDDaemon(object):
@@ -434,7 +444,8 @@ class WebTLSMDDaemon(object):
     def get_next_queued_job_id(self):
         job_list = self.job_list()
         for jdict in job_list:
-            if jdict.get("state") == "running" or jdict.get("state") == "queued":
+	    ## Changed. Christoph Champ, 2008-01-29
+            if jdict.get("state") == "queued":
                 return jdict["job_id"]
         return ""
 
@@ -484,6 +495,10 @@ class WebTLSMDDaemon(object):
     def job_get_log_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "log_url")
 
+    ## tarball url. Christoph Champ, 2007-12-03
+    def job_get_tarball_url(self, job_id):
+        return self.jobdb.job_data_get(job_id, "tarball_url")
+
     def job_set_chains(self, job_id, chains):
         self.jobdb.job_data_set(job_id, "chains", chains)
         return chains
@@ -501,6 +516,13 @@ class WebTLSMDDaemon(object):
         return user_name
     def job_get_user_name(self, job_id):
         return self.jobdb.job_data_get(job_id, "user_name")
+
+    ## New user_comment field added. Christoph Champ, 2007-12-18
+    def job_set_user_comment(self, job_id, user_comment):
+        self.jobdb.job_data_set(job_id, "user_comment", user_comment)
+        return user_comment
+    def job_get_user_comment(self, job_id):
+        return self.jobdb.job_data_get(job_id, "user_comment")
     
     def job_set_email(self, job_id, email_address):
         self.jobdb.job_data_set(job_id, "email", email_address)
@@ -582,7 +604,7 @@ class WebTLSMDDaemon(object):
         try:
             f = open(conf.WEBTLSMDD_PDBID_FILE, 'r')
         except IOError:
-            # if it doesn't exit create it
+            # if it doesn't exist create it
             f = open(conf.WEBTLSMDD_PDBID_FILE, 'w+')
         
         for line in f:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
@@ -11,6 +11,7 @@ import getopt
 import traceback
 
 from tlsmdlib import conf, tlsmd_analysis, email
+from tempfile import NamedTemporaryFile # Added. Christoph Champ, 2008-01-31
 
 
 def usage():
@@ -141,8 +142,12 @@ if __name__ == "__main__":
         usage()
 
     try:
+	## Added tempfile. Christoph Champ, 2008-01-31
+        fid = NamedTemporaryFile(mode='w+b',suffix='.tmp',dir='.')
         analysis_main(path, opt_dict)
     except KeyboardInterrupt:
         print "Killed"
 
+    ## Clears fid = NamedTemporaryFile(); i.e., removes file. Christoph Champ, 2008-01-31
+    fid.close()
     sys.exit(0)

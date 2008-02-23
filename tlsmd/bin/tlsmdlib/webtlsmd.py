@@ -1,8 +1,11 @@
+# -*- coding: utf-8 -*-
 ## TLS Minimized Domains (TLSMD)
-## Copyright 200-20052 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+##
+## NOTE: This file contains changes and additions by Christoph Champ, 2007-10-24
 
 import os
 import sys
@@ -10,6 +13,7 @@ import time
 import socket
 import string
 import random
+import math
 
 import xmlrpclib
 import cgitb; cgitb.enable()
@@ -17,13 +21,19 @@ import cgi
 
 import const
 import conf
+import numpy		# Added by Christoph Champ, 2007-10-23
+import subprocess	# Added by Christoph Champ, 2007-11-20
+import datetime		# Added by Christoph Champ, 2008-02-01
+import re		# Added by Christoph Champ, 2008-02-07
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 def timestring(secs):
     tm_struct = time.localtime(secs)
-    return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
+    ## Switched to international time format. Christoph Champ, 2008-02-07
+    #return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
+    return time.strftime("%Y-%m-%d %H:%M %Z" ,tm_struct)
 
 def secdiffstring(secs):
     secs = int(secs)
@@ -72,22 +82,26 @@ def html_job_nav_bar(webtlsmdd, job_id):
     logfile = os.path.join(job_dir, "log.txt")
     log_url = webtlsmdd.job_get_log_url(job_id)
 
+    ## tarball. Christoph Champ, 2007-12-03
+    #tarball_url = os.path.join(job_dir,"%s.tar.bz2"%job_id)
+    tarball_url = webtlsmdd.job_get_tarball_url(job_id)
+
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
 
     x  = ''
     x += '<center>'
-    x += '<h3>'
 
     if os.path.isfile(analysis_index):
-        x += '<a href="%s">Click Here: View Completed TLSMD Analysis</a>' % (analysis_url)
-
-    x += const.LINK_SPACE
+        x += '<h3>View <a href="%s">Completed TLSMD Analysis</a></h3>' % (analysis_url)
 
     if os.path.isfile(logfile):
-        x += '<a href="%s">View TLSMD Logfile</a>' % (log_url)
+        x += '<h3>View <a href="%s">TLSMD Logfile</a></h3>' % (log_url)
 
-    x += '</h3>'
+    ## tarball link. Christoph Champ, 2007-12-03
+    if os.path.isfile(analysis_index):
+        x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (tarball_url)
+
     x += '</center>'
     x += '<br>'
     return x
@@ -150,7 +164,10 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<td><b>%s</b></td></tr>' % (fdict["job_id"])
 
     x += '<tr><td align="right">Job State:</td>'
-    x += '<td><b>%s</b></td></tr>' % (fdict["state"])
+    try:
+	x += '<td><b>%s</b></td></tr>' % (fdict["state"])
+    except:
+	x += '<td><b>None</b></td></tr>'
     
     x += '<tr><td align="right">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
@@ -268,6 +285,12 @@ def html_user_info_table(fdict):
          '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40"></td>' % (fdict.get("email", "")),
          '</tr>',
 
+	 ## New user_comment added. Christoph Champ, 2007-12-18
+         '<tr>',
+         '<td align="right"><label for="user_comment">Associated Notes</label></td>',
+         '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128"></td>' % (fdict.get("user_comment","")),
+         '</tr>',
+
          '</table>',
          '</td></tr></table>']
 
@@ -291,8 +314,9 @@ def html_program_settings_table(fdict):
          ## left table
          '<table class="ninner_table">',
 
+         ## Changed default to 'private'. Christoph Champ, 2007-12-18
          '<tr><td>',
-         '<label><input type="checkbox" id="private_job" name="private_job" value="TRUE">Keep Job Private</label>',
+         '<label><input type="checkbox" id="private_job" name="private_job" value="TRUE" checked>Keep Job Private</label>',
          '</td></tr>',
 
          '<tr><td>',
@@ -432,6 +456,13 @@ def html_job_info_table(fdict):
     x += '</label></td>'
     x += '</tr>'
 
+    ## user comments. Christoph Champ, 2007-12-18
+    x += '<tr>'
+    x += '<td align="right"><label>Associated Notes:</td><td>'
+    x += '<b>%s</b>' % (fdict.get("user_comment", ""))
+    x += '</label></td>'
+    x += '</tr>'
+
     x += '</table>'
     x += '</td>'
 
@@ -442,7 +473,11 @@ def html_job_info_table(fdict):
     x += '<td><b>%s</b></td></tr>' % (fdict["job_id"])
 
     x += '<tr><td align="right">Job State:</td>'
-    x += '<td><b>%s</b></td></tr>' % (fdict["state"])
+    if fdict.has_key("state"):
+        jobstate = (fdict["state"])
+    else:
+        jobstate = "unknown"
+    x += '<td><b>%s</b></td></tr>' % (jobstate)
     
     x += '<tr><td align="right">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
@@ -622,6 +657,12 @@ def extract_job_edit_form(form, webtlsmdd):
         if vet_data(structure_id, 4):
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
+    ## New user_comment field added. Christoph Champ, 2007-12-18
+    if form.has_key("user_comment"):
+        user_comment = form["user_comment"].value.strip()
+        user_comment = user_comment[:128]
+        webtlsmdd.job_set_user_comment(job_id, user_comment)
+
     chains = webtlsmdd.job_get_chains(job_id)
     for cdict in chains:
         if form.has_key(cdict["name"]):
@@ -665,6 +706,7 @@ class Page(object):
         x += '<head>'
         x += '  <title>%s</title>' % (title)
         x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
+        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">'
         if redirect != None:
             x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
         x += '</head>'
@@ -731,7 +773,7 @@ class QueuePage(Page):
         struct_id = jdict.get("structure_id", "xxxx")
         if struct_id.lower() == "xxxx":
             return struct_id
-        return '<a href="http://pdbbeta.rcsb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
+        return '<a href="http://www.pdb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
 
     def html_head_nocgi(self, title):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
@@ -739,14 +781,16 @@ class QueuePage(Page):
              '<head>',
              '  <title>%s</title>' % (title),
 	     '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
+	     '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
              '</head>',
              '<body><div id="page">']
         
         return "".join(l)
     
+    #'<p><small><b>Version %s</b> Last Updated %s</p>' % (const.VERSION, timestring(time.time())),
     def html_foot(self):
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last Updated %s</p>' % (const.VERSION, timestring(time.time())),
+             '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (const.VERSION, (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-10])),
              '</center>',
              '</div></body></html>']
         
@@ -808,7 +852,12 @@ class QueuePage(Page):
             if isinstance(user_name, unicode):
                 user_name = ""
 
-            email_address = jdict.get("email")
+            ## New user_comment added. Christoph Champ, 2007-12-18
+            user_comment = jdict.get("user_comment", "")
+            if isinstance(user_comment, unicode):
+                user_comment = ""
+
+	    email_address = jdict.get("email")
             if isinstance(email_address, unicode):
                 email_address = ""
             
@@ -817,13 +866,20 @@ class QueuePage(Page):
             if user_name != "":
                 l.append('<br>%s' % (user_name))
 
+            ## New user_comment added. Christoph Champ, 2007-12-18
+            if user_comment != "":
+                l.append('<br>%s' % (user_comment))
+
             if email_address != "":
                 l.append('<br>%s' % (email_address))
 
             return "".join(l)
 
         if jdict.get("private_job", False):
-            return 'private'
+	    ## Return job number only (non-clickable)
+            job_number = re.match(r'[^_]*', jdict["job_id"])
+            if job_number: return job_number.group(0)
+	    return 'private'
     
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
     
@@ -851,53 +907,85 @@ class QueuePage(Page):
         """
         return webtlsmdd.job_list()
 
+#============================================================================================
+    def get_progress_status(self, job_id):
+	### FIXME Too basic right now. Christoph Champ, 2008-02-07 ###
+        ### Open directory, loop over filenames, and check for certain files ###
+	prog="0" ## Start out at 0%
+	try:
+	     os.chdir(conf.TLSMD_WORK_DIR + '/' + job_id + '/ANALYSIS')
+	except:
+	#    ## Immediately fails; ANALYSIS dir is not written right away
+	#    webtlsmdd.job_set_state(job_id,"lost_directory") ## cannot have spaces in state
+	     return prog
+	pngfile=re.compile('\S+NTLS1_BMEAN.png').match		## match first *NTLS1_BMEAN.png file found in the job_dir
+	reffile=re.compile('\S+REFINEMENT_PREP.html').match	## match first *REFINEMENT_PREP.html file found in the job_dir
+	for fname in os.listdir(os.getcwd()):
+            if pngfile(fname): prog="25" ## arbitrary 60% done
+	    elif reffile(fname): prog="95"
+	    #else: prog="0"
+        return prog
+#============================================================================================
+
     def html_running_job_table(self, job_list):
-        ## get the job dictionary of the running job
-        run_jdict = None
+
+	## get an array of "running" jobs from the job dictionary. Christoph Champ, 2008-01-30
+        run_jdict = []
         for jdict in job_list:
             if jdict.get("state") == "running":
-                run_jdict = jdict
-                break
+		run_jdict.append(jdict)
 
-        ## if there is no running job
-        jdict = run_jdict
+	x  = ['<center>',
+	      '<b>%d Running Jobs</b>' % (len(run_jdict)),
+	      '<table border="0" cellpadding="3" width="100%" class="status_table">',
+	      '<tr class="status_table_head">',
+	      '<th>Job ID</th>',
+	      '<th>Structure ID</th>',
+	      '<th>Chain:Num Res</th>',
+	      '<th>Submission Date</th>',
+	      '<th colspan="2">Running Time (HH:MM.SS)</th>',
+	      '</tr>']
 
-        x  = '<center>'
-	x += '<b>Running Jobs</b>'
-        x += '<table border="0" cellpadding="3" width="100%" class="status_table">'
-        x += '<tr class="status_table_head">'
-        x += '<th>Job ID</th>'
-        x += '<th>Structure ID</th>'
-	x += '<th>Chain:Num Res</th>'
-        x += '<th>Submission Date</th>'
-        x += '<th>Runing Time (HH:MM.SS)</th>'
-        x += '</tr>'
+	## creates mutiple rows, _if_ there are multiple "running" jobs. Christoph Champ, 2008-01-30
+	## TODO Update the progress bar to reflect where we are in the "running" state
+        row1 = True
+        #progress = 0 ## Isn't this overwritten immediately?
+        for jdict in run_jdict:
+            if row1:
+                x.append('<tr class="status_table_row1">')
+            else:
+                x.append('<tr class="status_table_row2">')
+            row1 = not row1
 
-        if jdict is not None:
-            x += '<tr>'
-
-            x += '<td>%s</td>' % (self.explore_href(jdict))
-            x += '<td>%s</td>' % (self.rcsb_href(jdict))
-	    x += '<td>%s</td>' % (self.chain_size_string(jdict))
-            x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
+            x += ['<td>%s</td>' % (self.explore_href(jdict)),
+                  '<td>%s</td>' % (self.rcsb_href(jdict)),
+                  '<td>%s</td>' % (self.chain_size_string(jdict)),
+                  '<td>%s</td>' % (timestring(jdict["submit_time"]))]
 
             if jdict.has_key("run_time_begin"):
                  hours = timediffstring(jdict["run_time_begin"], time.time())
             else:
                  hours = "---"
-            x += '<td align="right">%s</td>' % (hours)
+            ## progress bar should be something like (number of files created) / (20*number of chains)
+            #progress = 25
+	    progress = self.get_progress_status(jdict["job_id"]) ## Returns a integer value
+	    ## Testing with "%"-done indicator
+	    ## TODO "% done" Doesn't look to good in style/format. Christoph Champ, 2008-02-12
+            x += '<td align=left><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div></td>' %progress
+            #x += '<td><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div> %s%%</td>' %(progress,progress)
+	    x += '<td align="right">%s</td></tr>' % (hours)
 
-            x += '</tr>'
-        else:
-	    x += '<tr>'
-	    x += '<td colspan="5" align="center">'
-	    x += 'No Jobs Running'
-	    x += '</td>'
-	    x += '</tr>'
+	## for zero running jobs
+        if len(run_jdict) == 0:
+            x += ['<tr>',
+                  '<td colspan="6" align="center">',
+                  'No Jobs Running',
+                  '</td>',
+                  '</tr>']
 
-        x += '</table>'
-        x += '</center>'
-        return x
+	#x += '</table></center>' ## Old
+	x.append('</table></center>')
+	return "".join(x)
 
     def html_queued_job_table(self, job_list):
         queued_list = []
@@ -1078,8 +1166,7 @@ class AdminJobPage(Page):
     def edit(self, job_id, pdb):
         x = ''
 
-        ## if the job is not in the "queued" state, then it is not
-        ## safe to edit
+        ## if the job is not in the "queued" state, then it is not safe to edit
         state = webtlsmdd.job_get_state(job_id)
         if state == "queued":
             extract_job_edit_form(self.form, webtlsmdd)
@@ -1138,8 +1225,10 @@ class Submit1Page(Page):
     def html_page(self):
         title = 'TLSMD: Start a New Job'
 
+        ## Added html_nav_bar(). Christoph Champ, 2007-12-03
         l = [self.html_head(title, None),
              html_title(title),
+             html_nav_bar(),
              '<center>',
 
              '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
@@ -1162,7 +1251,6 @@ class Submit1Page(Page):
              
              '</center>',
              
-             '<br>',
              '<center><h4>OR</h4></center>',
 
              '<center>',
@@ -1176,6 +1264,10 @@ class Submit1Page(Page):
              '</tr>',
              '</center>',
              '</table>',
+             '<br><i><font color=red>TLSMD requires crystallographically refined B factors.',
+             '<br>Please do not submit NMR structures, theoretical models, ',
+             '<br>or any PDB file with unrefined Bs',
+             '</font></i>',
 
              self.html_foot()]
 
@@ -1187,13 +1279,13 @@ class Submit2Page(Page):
     def html_page(self):        
         title = 'TLSMD: Start a New Job'
         
+        ## Added html_nav_bar(). Christoph Champ, 2007-12-03
         l = [self.html_head(title, None),
-             html_title(title) ]
+             html_title(title),html_nav_bar() ]
 
         try:
             job_id = self.prepare_submission()
         except SubmissionException, err:
-             l.append(html_nav_bar())
              l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
         else:            
             l.append(self.job_edit_form(job_id))
@@ -1228,6 +1320,11 @@ class Submit2Page(Page):
         if len(line_list) < 10:
             webtlsmdd.remove_job(job_id)
             raise SubmissionException('Only Recieved %d lines of upload' % (len(line_list)))
+
+        ## basic sanity checks
+        r = check_upload(line_list)
+        if r != '':
+            raise SubmissionException(str(r))
 
         ## pass the PDB file to the application server
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary("".join(line_list)))
@@ -1342,7 +1439,13 @@ class SubmitPDBPage(Page):
         
         if len(pdbfile) == 0:
             raise SubmissionException("Could not download PDB File from RCSB.")
-            
+
+        ## basic sanity checks. Christoph Champ, 2007-10-24
+        ln=pdbfile.split("\n")
+        r = check_upload(ln)
+        if r != '':
+            raise SubmissionException(str(r))
+ 
         job_id = self.prepare_submission(pdbfile)
 
         if not webtlsmdd.set_pdb_db(pdbid):
@@ -1396,6 +1499,131 @@ class SubmitPDBPage(Page):
                     ]
         redirect.append(self.html_foot())
         return "".join(redirect)
+
+def generate_random_filename(code_length = 8):
+    """Generates a random 8 character string. Christoph Champ, 2007-12-03
+    """
+    random.seed()
+    codelist = list(5 * string.ascii_letters)
+    random.shuffle(codelist)
+    code = "".join(random.sample(codelist, code_length))
+    return code
+
+def running_stddev(atomnum,restype,resnum,chain,tfactor):
+    """Calculates a running standard deviation"""
+    ######### EAM 3-Dec-2007 ##########
+    tmpfile=generate_random_filename()
+    n=nres=atm=nbad=res_tfac=0
+    avg_tfac=[]
+    std=[]
+    res_id=[]
+    prevrestype=restype[0]
+    prevresnum=resnum[0]
+    while n<len(tfactor):
+        if( (prevresnum == resnum[n]) and (prevrestype == restype[n]) ):
+	   res_tfac=res_tfac+tfactor[n]
+	   atm=atm+1
+        else:
+	   avg_tfac.append(res_tfac/atm) # store previous guy
+           res_id.append(resnum[n-1])    # store previous guy
+	   res_tfac=tfactor[n]
+	   atm=1
+           prevrestype=restype[n]
+           prevresnum=resnum[n]
+        n=n+1
+    avg_tfac.append(res_tfac/atm)        # store last guy
+    res_id.append(resnum[n-1])           # store last guy
+
+    ## Save B_{mean} per residue for each chain
+    fdat=open('%s/%s.dat'%(conf.WEBTMP_PATH,tmpfile),'w')
+    r=0
+    for b in avg_tfac:
+	fdat.write("%s\t%s\n"%(res_id[r],b))
+	r=r+1
+        if (r < len(res_id)) and (res_id[r] < res_id[r-1]):
+           fdat.write("\n")
+    fdat.close()
+
+    ## Save RMSD(B) +/-5 residues
+    ### FIXME EAM
+    ### Not correct, because it crosses chain boundaries
+    ### and because the wrong value is calculated (std of mean, 
+    ### rather than the std of the atoms)
+    fstd=open('%s/%s.std'%(conf.WEBTMP_PATH,tmpfile),'w')
+    for s in range(5,len(avg_tfac)-5):
+        stddev11 = numpy.std(avg_tfac[s-5:s+5])
+	fstd.write("%s\t%s\n"%(res_id[s],stddev11))
+	if stddev11 < 0.05:
+	   nbad=nbad+1
+        if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
+           fstd.write("\n")
+    fstd.close()
+
+    return nbad, tmpfile
+
+def check_upload(file):
+    """Runs sanity checks on uploaded file"""
+    # Standard deviation of temperature factors check
+    atom_num=[]
+    res_type=[]
+    res_num=[]
+    chain=[]
+    temp_factors=[]
+    bad_std= -1
+    for line in file:
+        if line.startswith('EXPDTA    NMR'):
+            return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
+        elif line.startswith('ATOM'):
+	    atomnum=line[7:11]
+            restype=line[17:20]
+            ch_id=line[22:22]
+            resnum=line[23:26]
+            tfactor=line[61:66]
+            atomnum.strip()
+            restype.strip()
+            resnum.strip()
+            tfactor.strip()
+            atomnum=int(atomnum)
+            resnum=int(resnum)
+            tfactor=float(tfactor)
+            atom_num.append(atomnum)
+            res_type.append(restype)
+            res_num.append(resnum)
+            chain.append(ch_id)
+            temp_factors.append(tfactor)
+        else:
+            continue
+    if(len(atom_num)<30):
+        return "Not a PDB structure"
+
+    bad_std,tmpfile=running_stddev(atom_num,res_type,res_num,chain,temp_factors)
+    if bad_std > 0:
+	f=open('%s/%s.gnu'%(conf.WEBTMP_PATH,tmpfile),'w')
+	f.write("set style fill solid 0.15 noborder\n")
+	f.write("set style data linespoints\n")
+	f.write("set output '%s/%s.png'\n" %(conf.WEBTMP_PATH,tmpfile))
+	f.write("set yrange [0:*]\n")
+	## f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
+	f.write("set ytics nomirror tc rgb 'blue'\n")
+	f.write("set y2range [0:1]\n")
+	## f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
+	f.write("set y2tics nomirror tc rgb 'red'\n")
+	f.write("set format y2 '%.1f'\n")
+	f.write("set xlabel 'residue number'\n")
+	f.write("set grid\n")
+	f.write("set title 'Distribution of B factors in submitted structure (Å^2)'\n")
+	#f.write("set label 1 'bad_std = %d' at graph 0.1, 0.9 noenh\n" % bad_std)   # EAM DEBUG
+	#f.write("set term png font '%s' enhanced size 800,400\n" % gnuplot_font)
+	f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
+	f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n"%(conf.WEBTMP_PATH,tmpfile))
+	f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n"%(conf.WEBTMP_PATH,tmpfile))
+	f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n"%(conf.WEBTMP_PATH,tmpfile))
+	f.write("     0.05 axes x1y2 with lines lc rgb 'red' notitle\\\n")
+	f.close()
+	subprocess.Popen([r"%s"%conf.GNUPLOT,"%s/%s.gnu"%(conf.WEBTMP_PATH,tmpfile)]).wait()
+	return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL,"webtmp",tmpfile)
+
+    return ''
 
 
 def main():

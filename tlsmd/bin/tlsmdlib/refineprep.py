@@ -19,9 +19,12 @@ import conf
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 CAPTION = """\
-Download both this modified PDB file of your structure, and the corresponding
-TLSIN file. Feed these to REFMAC5 as a start point for  multi-TLS group refinement.
+<b>Refmac5:</b> Download both the modified PDBIN file for your structure and the corresponding
+TLSIN file. Feed these to REFMAC5 as a starting point for multi-TLS group refinement.
 See the TLSMD documentation for detailed instructions.
+<p>
+<b>PHENIX:</b> The PHENIX file contains a description of the TLS groups you selected.
+This file is intended to be read by the PHENIX.refine input scripts. 
 """
 
 class Page(object):
@@ -41,6 +44,7 @@ class Page(object):
         x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
         x += '</head>'
         x += '<body>'
+        x += '<div id="page">'
         return x
 
     def html_head(self, title):
@@ -56,6 +60,7 @@ class Page(object):
         x += ' by %s ' % (const.AUTHOR)
         x += '<i>%s</i></small></p>' % (const.EMAIL)
         x += '</center>'
+        x += '</div>'
         x += '</body></html>'
         return x
 
@@ -72,7 +77,7 @@ class ErrorPage(Page):
         x += self.html_head(title)
         x += self.html_title(title)
         x += '<br>'
-        x += '<center><h3>A Error Occured</h3></center>'
+        x += '<center><h3>An Error Occured</h3></center>'
 
         if self.text!=None:
             x += self.text
@@ -89,9 +94,10 @@ class RefinePrepError(Exception):
 
 class RefinePrepPage(Page):
     def html_page(self):
-        job_id = check_job_id(self.form)
         
-        title = 'Input Files for Refmac5 TLS Refinement'
+        job_id = check_job_id(self.form)
+    
+        title = 'Input Files for TLS Refinement'
         
         x  = ''
         x += self.html_head(title)
@@ -99,7 +105,7 @@ class RefinePrepPage(Page):
 
         x += '<center>'
         x += '<h3>'
-        x += 'Step 2: Download the generated XYZIN(PDBIN) and TLSIN files below'
+        x += 'Step 2: Download the generated XYZIN(PDBIN), TLSIN, and PHENIX files below'
         x += '</h3>'
         x += '</center>'
         
@@ -120,12 +126,24 @@ class RefinePrepPage(Page):
         if len(chain_ntls) == 0:
             raise RefinePrepError("Form Processing Error: No Chains Selected")
 
+        # EAM DEBUG 1
+        #fault_html = "DEBUG in RefinePrepPage at #1: job_id = %s chain_ntls = %s" % (job_id, chain_ntls)
+        #dpage = ErrorPage(self.form, fault_html)
+        #print dpage.html_page()
+        # EAM DEBUG
+
         ## call webtlsmdd to generate files
         result = webtlsmdd.refmac5_refinement_prep(job_id, chain_ntls)
         if isinstance(result, str):
             raise RefinePrepError(result)
 
         x += '<p>%s</p>' % (CAPTION)
+
+        # EAM DEBUG 2
+        #fault_html = "DEBUG in RefinePrepPage at #2: job_id = %s" % (job_id)
+        #dpage = ErrorPage(self.form, fault_html)
+        #print dpage.html_page()
+        # EAM DEBUG
 
         ## success -- make download links
         x += '<center>'
@@ -136,6 +154,9 @@ class RefinePrepPage(Page):
         x += '</tr><tr>'
         x += '<td align="right"><b>TLSIN File</b></td>'
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (result["tlsout_url"], result["tlsout"])
+        x += '</tr><tr>'
+        x += '<td align="right"><b>PHENIX File</b></td>'
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (result["phenixout_url"], result["phenixout"])
         x += '</table>'
 
         x += '<br>'
@@ -174,7 +195,6 @@ def main():
     else:
         page = RefinePrepPage(form)
 
-
     try:
         print page.html_page()
 
@@ -184,8 +204,7 @@ def main():
         print page.html_page()
 
     except xmlrpclib.Fault, fault:
-        fault_html = "xmlrpclib.Fault:<br>fault code: %s<br>fault string: %s" % (
-            fault.faultCode, fault.faultString)
+        fault_html = "xmlrpclib.Fault from refineprep.py:<br>fault code: %s<br>fault string: %s" % (fault.faultCode, fault.faultString)
         page = ErrorPage(form, fault_html)
         print page.html_page()
 

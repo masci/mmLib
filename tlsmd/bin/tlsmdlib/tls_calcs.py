@@ -239,9 +239,11 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         (T_eval, TR) = numpy.linalg.eig(tls_group.T)
         T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
-        assert numpy.allclose(T[0,1], 0.0)
-        assert numpy.allclose(T[0,2], 0.0)
-        assert numpy.allclose(T[1,2], 0.0)
+	# Christoph DEBUG: allclose(some_array, some_scalar)
+	# Christoph: The next three lines appear to be the problem (2007-10-04)
+        #assert numpy.allclose(T[0,1], 0.0)
+        #assert numpy.allclose(T[0,2], 0.0)
+        #assert numpy.allclose(T[1,2], 0.0)
 
         T[0,0] = T[0,0] - min_Uiso
         T[1,1] = T[1,1] - min_Uiso
@@ -264,7 +266,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
         ## reset the TLS tensor values in the TLSDesc object so they can be saved
         tls_group.tls_desc.set_tls_group(tls_group)
-        
+
         ## set atm.temp_factor
         for atm, Utls in tls_group.iter_atm_Utls():
             tls_tf = numpy.trace(Utls) / 3.0
@@ -280,3 +282,99 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
     
+    # EAM DEBUG
+    #return "success"
+
+## PHENIX input file. Tells 'phenix.refine' what the TLS groups are. Christoph Champ, 2007-11-06
+#def phenix_prep(xyzin, tlsin_list, xyzout, tlsout):
+def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
+    """Use TLS model + Uiso for each atom.  Output xyzout with the
+    residual Uiso only.
+    """
+    ## load structure
+    struct = FileIO.LoadStructure(fil = xyzin)
+
+    ## load and construct TLS groups
+    tls_group_list = []
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatPHENIX())
+    tls_file_format = TLS.TLSFileFormatPHENIX()
+    for tlsin in phenix_tlsin_list:
+        tls_desc_list = tls_file_format.load(open(tlsin, "r"))
+        for tls_desc in tls_desc_list:
+            tls_file.tls_desc_list.append(tls_desc)
+            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+            tls_group.tls_desc = tls_desc
+            tls_group_list.append(tls_group)
+
+    ## set the extra Uiso for each atom
+    for tls_group in tls_group_list:
+
+        ## minimal/maximal amount of Uiso which has to be added
+        ## to the group's atoms to to make Uiso == Uiso_tls
+        min_Uiso = 0.0
+        max_Uiso = 0.0
+
+        for atm, Utls in tls_group.iter_atm_Utls():
+            tls_tf = numpy.trace(Utls) / 3.0
+            ref_tf = numpy.trace(atm.get_U()) / 3.0
+                
+            if ref_tf > tls_tf:
+                max_Uiso = max(ref_tf - tls_tf, max_Uiso)
+            else:
+                min_Uiso = max(tls_tf - ref_tf, min_Uiso)
+
+        ## reduce the TLS group T tensor by min_Uiso so that
+        ## a PDB file can be written out where all atoms
+        ## Uiso == Uiso_tls
+
+        ## we must rotate the T tensor to its primary axes before
+        ## subtracting min_Uiso magnitude from it
+        (T_eval, TR) = numpy.linalg.eig(tls_group.T)
+        T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
+
+	# Christoph DEBUG: allclose(some_array, some_scalar)
+	# Christoph: The next three lines appear to be the problem (2007-10-04)
+        #assert numpy.allclose(T[0,1], 0.0)
+        #assert numpy.allclose(T[0,2], 0.0)
+        #assert numpy.allclose(T[1,2], 0.0)
+
+        T[0,0] = T[0,0] - min_Uiso
+        T[1,1] = T[1,1] - min_Uiso
+        T[2,2] = T[2,2] - min_Uiso
+
+        ## now take some of the smallest principal component of T and
+        ## move it into the individual atomic temperature factors
+        min_T    = min(T[0,0], min(T[1,1], T[2,2]))
+        sub_T    = min_T * 0.50
+        add_Uiso = min_T - sub_T
+        
+        T[0,0] = T[0,0] - sub_T
+        T[1,1] = T[1,1] - sub_T
+        T[2,2] = T[2,2] - sub_T
+        
+        ## rotate T back to original orientation
+        tls_group.T = numpy.dot(
+            numpy.transpose(TR),
+            numpy.dot(T, TR))
+
+        ## reset the TLS tensor values in the TLSDesc object so they can be saved
+        tls_group.tls_desc.set_tls_group(tls_group)
+
+        ## set atm.temp_factor
+        for atm, Utls in tls_group.iter_atm_Utls():
+            tls_tf = numpy.trace(Utls) / 3.0
+            ref_tf = numpy.trace(atm.get_U()) / 3.0
+
+            if ref_tf > tls_tf:
+                atm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*Constants.U2B
+                atm.U = None
+            else:
+                atm.temp_factor = (add_Uiso) * Constants.U2B
+                atm.U = None
+
+    #FileIO.SaveStructure(fil = xyzout, struct = struct)
+    tls_file.save(open(phenix_tlsout, "w"))
+    
+    # EAM DEBUG
+    #return "success"

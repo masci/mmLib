@@ -1,136 +1,113 @@
-BODY
-{
-background-color:#dddddd;
-margin-left:5%;
-margin-right:5%;
-margin-top:2%;
-margin-bottom:2%;
-}
+body {
+	background-color:#cdc8b0;  /*was:#ddd;*/
+	margin:2% 5% 2% 5%;
+	}
 
-#page
-{
-background-color: white;
-outline: #aaaaaa solid thin;
-padding:1%;
-font-family: arial, helvetica, sans-serif;
-}
+#page {
+	background-color:#fff;
+	outline:#aaa solid thin;
+	padding:1%;
+	font-family:arial, helvetica, sans-serif;
+	}
+#page h1 {
+	font-size:x-large;
+	color:#ff9933;
+	}
 
-#page h1
-{
-font-size: x-large;
-color: #FF9933;
-}
+#navcontainer ul {
+	font-size:small;
+	padding-left:0;
+	margin-left:0;
+	background-color:#ccc;
+	color:#fff;
+	width:100%;
+	}
+#navcontainer ul li { display:inline; }
+#navcontainer ul li a {
+	padding:0.1em 1.0em;
+	margin-left:0.5em;
+	background-color:#bbb;
+	color:#fff;
+	text-decoration:none;
+	border:1px solid #999;
+	}
+#navcontainer ul li a:hover {
+	background-color:#eee;
+	color:black;
+	}
 
-#navcontainer ul
-{
-font-size: small;
-padding-left: 0;
-margin-left: 0;
-background-color: #ccc;
-color: White;
-width: 100%;
-}
-
-#navcontainer ul li
-{
-display: inline;
-}
-
-#navcontainer ul li a
-{
-padding: 0.1em 1.0em;
-margin-left: 0.5em;
-background-color: #bbb;
-color: White;
-text-decoration: none;
-border: 1px solid #999;
-}
-
-#navcontainer ul li a:hover
-{
-background-color: #eee;
-color: black;
-}
+/* style classes used by documentation */
+#caption {
+	margin-left:8%;
+	margin-right:8%;
+	font-size:-1
+	}
 
 
 /* style classes used by webtlsmd.cgi */
 
-.step_title
-{
-line-height:2.0em;
-font-size:large
-}
+.step_title {
+	line-height:2.0em;
+	font-size:large
+	}
   
-.submit_table
-{
-padding:10px;
-border-width:thin;
-border-color:blue;
-border-style:solid;
-background-color:#eeeeee;
-}
+.submit_table {
+	padding:10px;
+	border:thin solid #00f;
+	background-color:#eeeeee;
+	}
   
-.inner_table
-{
-font-size:small;
-width:90%;
-padding:10px;
-border-width:thin;
-border-color:black;
-border-style:solid;
-background-color:#dddddd;
-}
+.inner_table {
+	font-size:small;
+	width:90%;
+	padding:10px;
+	border:thin solid #000;
+	background-color:#ddd;
+	}
 
-.inner_title
-{
-background-color:#ccccff;
-line-height:2.0em;
-}
+.inner_title {
+	background-color:#ccccff;
+	line-height:2.0em;
+	}
 
-.ninner_table
-{
-font-size:small;
-width:95%;
-padding:2%;
-border-width:thin;
-border-color:#aaaaaa;
-border-style:solid;
-background-color:#eeeeee;
-}
+.ninner_table {
+	font-size:small;
+	width:95%;
+	padding:2%;
+	border:thin solid #aaa;
+	background-color:#eee;
+	}
 
-.perror
-{
-text-align: left;
-font-size:x-small;
-width:70%;
-padding:10px;
-border-width:thin;
-border-color:#ff0000;
-border-style:solid;
-background-color:#ffaaaa;
-}
+.perror {
+	text-align:left;
+	font-size:x-small;
+	width:70%;
+	padding:10px;
+	border:thin solid #f00;
+	background-color:#faa;
+	}
 
-.status_table
-{
-background-color:#eeeeee;
-font-size:x-small;
-border-width:thin;
-border-color:#aaaaaa;
-border-style:solid;
-}
+.status_table {
+	background-color:#eee;
+	font-size:x-small;
+	border:thin solid #aaa;
+	}
+.status_table_head { background-color:#8FBC8F; /*#aad;*/ }
+.status_table_row1 { background-color:#ddd; }
+.status_table_row2 { background-color:#eee; }
 
-.status_table_head
-{
-background-color:#aaaadd;
-}
-
-.status_table_row1
-{
-background-color:#dddddd;
-}
-
-.status_table_row2
-{
-background-color:#eeeeee;
-}
+.prog-border {
+	height: 100%;
+	width:  150px;
+	background: #fff;
+	border: 1px solid black;
+	margin: 0;
+	padding: 0;
+	}
+.prog-bar {
+	height: 10px;
+	margin: 0px;
+	padding: 0;
+	background: #8FBC8F;
+	}
 

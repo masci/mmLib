@@ -1,5 +1,5 @@
 ## TLS Minimized Domains (TLSMD)
-## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2007 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -26,19 +26,21 @@ asymmetric unit.
 """
 
 REFINEMENT_PREP_TEXT = """\
-The CCP4 macromolecular refinement program Refmac5 implements a
-refinement mode in which refinement of individual isotropic temperature factors
-is supplemented by refinement of one or more TLS groups.
-It is usually plausible to try assigning a single TLS group to each protein
-molecule, but how one would subdivide the molecules into multiple groups
-has been problematic.  This is one important function served by TLSMD analysis.
+The CCP4 refinement program Refmac5
+and the PHENIX program PHENIX.refine
+both implement a refinement mode in which individual isotropic temperature factors
+are supplemented by refinement of one or more TLS groups.
 TLSMD will help you choose how many TLS groups to subdivide your protein chains
-into, and it will generate a PDB and TLSIN files for input to further refinement
-using Refmac5.
+into, and it will generate a input files for you to use in further refinement
+using Refmac5 or PHENIX.
 """
 
 REFINEMENT_PREP_INFO = """\
-The optimized TLS groups calculated by TLSMD from a isotropically refined structure may be used to further refine the structure with the TLS + restrained refinement mode of Refmac5.  Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special structure model file (PDBIN) and TLS tensor file(TLSIN) you can use as input files to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the TLS model for refinement is different than the one used for motion analysis.  Select the number of TLS groups to use for each chain and click <b>OK</b> to generate these input files.  You may find the graph below useful in selecting the number of groups to use for each chain.  Often there comes a point in the optimization of a where using more TLS groups does not significantly reduce the least squares residual.  The number of TLS groups at that point is a reasonable number to select.
+You may find the graph below useful in selecting the number of groups.  Often there is a 'dogleg' or 'elbow' point in the curve to the right of which adding more TLS groups does not significantly reduce the least squares residual.  The number of TLS groups at that point is a reasonable number to select.
+<p><b>Refmac5</b>:
+Given the number of TLS groups you would like to use for each chain, TLSMD will generate a special coordinate file (PDBIN) and TLS tensor file (TLSIN) that you can use for input to Refmac5.  These files are generated specifically for Refmac5 refinement by splitting the temperature factor magnitude of each atom between the TLS model and individual atomic temperature factors.  Because of this, the starting B factors for further refinement are different from the ones used for motion analysis.  
+<p><b>PHENIX</b>:
+Given the number of TLS groups you would like to use for each chain, TLSMD will generate a single file for input to PHENIX that describes the residues making up each group.  PHENIX does not currently allow you to input a starting model for the TLS parameters themselves.
 """
 
 LSQR_CAPTION = """\

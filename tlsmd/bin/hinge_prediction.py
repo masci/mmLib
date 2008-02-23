@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002 by TLSMD Development Group (see AUTHORS file)

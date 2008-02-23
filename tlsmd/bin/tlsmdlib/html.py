@@ -287,8 +287,10 @@ class Report(object):
     def html_title(self, title):
         timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
         
+        ## Added jobid in "title" bar (center position). Christoph Champ, 2007-12-17
         l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
+	      '<td align="center"><font size="-5">JobID: %s</font></td>' % (conf.globalconf.job_id),
               '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
               '</tr></table>',
               '<center><font size="+2">%s</font></center><br>' % (title)]
@@ -442,7 +444,7 @@ class HTMLReport(Report):
 
         l +=['<br>',
              ## REFINEMENT PREP
-             '<center><h3>Use Optimal TLS Groups with Refmac5 TLS Refinement</h3></center>',
+             '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
              '<p style="font-size:small">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
              '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"]),
              self.html_foot()]
@@ -474,7 +476,7 @@ class HTMLReport(Report):
             l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>' % (self.struct.title))
                 
         if self.struct.header:
-            l.append('<tr style="background-color:#dddddd"><td>Hedding Summary</td><td><b>%s</b></td></tr>' % (self.struct.header))
+            l.append('<tr style="background-color:#dddddd"><td>Heading Summary</td><td><b>%s</b></td></tr>' % (self.struct.header))
 
         if self.struct.experimental_method:
             l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>' % (self.struct.experimental_method))
@@ -612,6 +614,9 @@ class HTMLReport(Report):
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chain, cpartition)
 
+        ## TLS-PHENIX-OUT: phenixout file. Christoph Champ, 2007-12-14
+        phenixout_path = self.write_phenixout_file(chain, cpartition)
+
         ## detailed analysis of all TLS groups
         ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
 
@@ -652,7 +657,10 @@ class HTMLReport(Report):
              '<br>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_path),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
-             '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id)),
+             ## TLS-PHENIX-OUT. Christoph Champ, 2007-12-18
+             '<a href="%s">Group description for PHENIX</a>' % (phenixout_path),
+             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id)),
              
              '</center>',
 
@@ -903,6 +911,34 @@ class HTMLReport(Report):
 
         return tlsout_path
 
+    def write_phenixout_file(self, chain, cpartition):
+        """Writes the TLS-PHENIX-OUT file for the segmentation.
+        """
+        ## Added by Christoph Champ, 2007-12-14
+        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        phenixout_path = "%s.phenixout" % (basename)
+
+        struct_id = self.struct_id
+        chain_id  = chain.chain_id
+
+        phenix_file = TLS.TLSFile()
+        phenix_file.set_file_format(TLS.TLSFileFormatPHENIXOUT())
+
+        for tls in cpartition.iter_tls_segments():
+            ## don't write out bypass edges
+            if tls.method != "TLS":
+                continue
+            
+            tls_desc = TLS.TLSGroupDesc()
+            phenix_file.tls_desc_list.append(tls_desc)
+            tls_desc.set_tls_group(tls.tls_group)
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
+
+        phenix_file.save(open(phenixout_path, "w"))
+
+        return phenixout_path
+
     def chain_ntls_analysis(self, chain, cpartition):
         """Generate ntls optimization constraint report and free memory.
         """
@@ -1120,7 +1156,7 @@ class HTMLReport(Report):
         to use per chain.
         """
         path  = "%s_REFINEMENT_PREP.html" % (self.struct_id)
-        title = "Use Optimal TLS Groups with Refmac5 TLS Refinement"
+        title = "Generate input files for multigroup TLS Refinement"
  
         self.page_refinement_prep = {
             "title": title,

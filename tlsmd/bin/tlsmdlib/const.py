@@ -15,10 +15,10 @@ LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "0.8.1SVN"
-RELEASE_DATE  = "8 May 2006"
-AUTHOR        = "Jay Painter"
-EMAIL         = "jpaint@u.washington.edu"
+VERSION       = "1.0.0"
+RELEASE_DATE  = "15 Feb 2008"
+AUTHOR        = "Ethan Merritt"
+EMAIL         = "merritt@u.washington.edu"
 
 ## mainchain atom definitions
 AMINO_ACID_MAINCHAIN_ATOMS = ["N", "CA", "C", "O", "CB"]

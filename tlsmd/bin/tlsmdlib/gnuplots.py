@@ -41,7 +41,7 @@ class GNUPlot(object):
     """Provides useful methods for subclasses which need to run gnuplot.
     """
     def __init__(self, **args):
-        self.gnuplot_path = args.get("gnuplot_path", "gnuplot")
+        self.gnuplot_path = args.get("gnuplot_path", conf.GNUPLOT)
         self.font_path    = args.get("font_path", conf.GNUPLOT_FONT)
         self.font_size    = args.get("fontsize", 10)
         self.width        = args.get("width", 640)

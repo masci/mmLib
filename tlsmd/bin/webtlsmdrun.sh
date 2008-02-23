@@ -1,7 +1,8 @@
 #!/bin/bash
 
 export TLSMD_ROOT=/home/tlsmd/tlsmd
-export LOG_ROOT=$TLSMD_ROOT/log
+#export LOG_ROOT=$TLSMD_ROOT/log # Bad path
+export LOG_ROOT=/home/tlsmd/log
 
 ## start web-app database server daemon
 $TLSMD_ROOT/bin/webtlsmdd.py     > $LOG_ROOT/webtlsmdd.log    2>&1 &

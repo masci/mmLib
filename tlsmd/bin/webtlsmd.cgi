@@ -1,4 +1,4 @@
-#!/home/jpaint/local/bin/python
+#!/usr/bin/python
 # -*- Mode: Python -*-
 import sys
 sys.path.insert(0, "/home/tlsmd/pymmlib")
