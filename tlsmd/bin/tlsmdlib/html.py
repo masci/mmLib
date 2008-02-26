@@ -427,15 +427,18 @@ class HTMLReport(Report):
              '<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>',
-             '<p style="font-size:small">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
+	     '<table><tr><td valign=top>',
+             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
         for xdict in self.pages_chain_motion_analysis:
             l.append('<p><a href="%s">%s</a></p>' % (xdict["href"], xdict["title"]))
+	
+	l +=['</td><td valign=top><img src="summary.png"></td></tr></table>']
 
         l +=['<br>',
              ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
-             '<p style="font-size:small">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
+             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
 
         if self.page_multi_chain_alignment!=None:
             l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
@@ -445,7 +448,7 @@ class HTMLReport(Report):
         l +=['<br>',
              ## REFINEMENT PREP
              '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
-             '<p style="font-size:small">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
+             '<p style="font-size:small; text-align:left">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
              '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"]),
              self.html_foot()]
         

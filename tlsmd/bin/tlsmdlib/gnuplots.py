@@ -213,7 +213,8 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 
 	## EAM Feb 2008
 	## Make a thumbnail (half-size) version for the summary page
-	script += "set term png font '%s' 8 size 400,320; set output 'summary.png'\n" % conf.GNUPLOT_FONT
+	script += "set term png font '%s' 8 size 400,320 linewidth 0.5\n" % conf.GNUPLOT_FONT
+	script += "set output 'summary.png'\n"
 	script += "unset title; set ylabel 'Residual' offset 1; replot\n"
 
         return script
