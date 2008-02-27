@@ -145,6 +145,7 @@ if __name__ == "__main__":
 	## Added tempfile. Christoph Champ, 2008-01-31
         fid = NamedTemporaryFile(mode='w+b',suffix='.tmp',dir='.')
         analysis_main(path, opt_dict)
+	print "completed"
     except KeyboardInterrupt:
         print "Killed"
 
