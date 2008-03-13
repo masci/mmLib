@@ -220,6 +220,10 @@ def html_tls_group_table(chain, cpartition, report_root = None):
         
         tls_group = tls.tls_group
         mtls_info = tls.model_tls_info
+	## EAM DEBUG - I think this results from a previous exception in html_tls_graph_path()
+	if mtls_info == None:
+            l.append('<tr style="background-color:#ffeeee"><td colspan="11" align-text="center">Error</td></tr>')
+	    continue
 
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
         L2 = mtls_info["L2_eigen_val"] * Constants.RAD2DEG2
@@ -248,17 +252,17 @@ def html_tls_group_table(chain, cpartition, report_root = None):
             cpath = tls.color.thumbnail_path
 
         l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls.color.name),
-              '<td>%s</td>' % (tls.display_label()),
-              '<td>%d</td>'    % (tls.num_residues()),
-              '<td>%d</td>'    % (tls.num_atoms()),
-              '<td>%5.1f</td>' % (tls.mean_b()),
-              '<td>%4.2f</td>' % (tls.mean_anisotropy()),
-              '<td>%5.2f</td>' % (tls.rmsd_b),
-              '<td>%s</td>'    % (t_data),
-              '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
-              '<td>%5.1f</td>' % (tls.tls_mean_b()),
-              '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()),
-              '</tr>']
+             '<td>%s</td>' % (tls.display_label()),
+             '<td>%d</td>'    % (tls.num_residues()),
+             '<td>%d</td>'    % (tls.num_atoms()),
+             '<td>%5.1f</td>' % (tls.mean_b()),
+             '<td>%4.2f</td>' % (tls.mean_anisotropy()),
+             '<td>%5.2f</td>' % (tls.rmsd_b),
+             '<td>%s</td>'    % (t_data),
+             '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
+             '<td>%5.1f</td>' % (tls.tls_mean_b()),
+             '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()),
+             '</tr>']
 
     l.append('</table>')
     return "".join(l)
@@ -280,7 +284,7 @@ class Report(object):
              '-->',
              '</style>',
              '</head>',
-             '<body>']
+             '<body>\n']
 
         return "".join(l)
 
@@ -288,12 +292,12 @@ class Report(object):
         timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
         
         ## Added jobid in "title" bar (center position). Christoph Champ, 2007-12-17
-        l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
+	l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
 	      '<td align="center"><font size="-5">JobID: %s</font></td>' % (conf.globalconf.job_id),
               '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
-              '</tr></table>',
-              '<center><font size="+2">%s</font></center><br>' % (title)]
+              '</tr></table>\n',
+              '<center><font size="+2">%s</font></center><br/>' % (title)]
         
         return "".join(l)
 
@@ -304,8 +308,8 @@ class Report(object):
         
         l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left"><font size="-5">%s</font></td>' % (timestr),
-              '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (const.RELEASE_DATE, const.EMAIL),
-              '<td align="right"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
+              ## '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (const.RELEASE_DATE, const.EMAIL),
+              '<td align="right"><font size="-5">TLSMD Version %s Released %s</font></td>' % (const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
               '</body></html>']
         
@@ -313,7 +317,7 @@ class Report(object):
 
 
 class HTMLReport(Report):
-    """Create a through HTML report it its own subdirectory.
+    """Create a thorough HTML report it its own subdirectory.
     """
     def __init__(self, tlsmd_analysis):
         Report.__init__(self)
@@ -392,11 +396,26 @@ class HTMLReport(Report):
 
         ## a report page comparing the tls group segments of all
         ## chains against each other
-        self.write_multi_chain_alignment()
+	try:
+	    console.stdoutln( "Writing multi-chain alignment")
+            self.write_multi_chain_alignment()
+	except:
+	    console.stdoutln( "        Error: Couldn't deal with multi-chain alignment")
+	    pass
+
+	## Progress tracking
+	##    - assume this portion of the run occupies 0.5 -> 1.0 of the total time
+	progress = 0.5
 
         ## write out all TLSGraph reports
         for chain in self.tlsmd_analysis.iter_chains():
             self.write_tls_chain_optimization(chain)
+
+	    ## Track progress
+	    progress += 0.5/self.tlsmd_analysis.num_chains()
+	    progress_report = open("../progress","w+")
+	    print >> progress_report, progress
+	    progress_report.close()
 
         self.write_refinement_prep()
  
@@ -608,11 +627,25 @@ class HTMLReport(Report):
         ##self.write_tls_pdb_file(chain, cpartition)
 
         ## Raster3D Image
-        pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
+	try:
+            pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
+	except:
+	    ## EAM FIXME:  But really something must have gone wrong before this point.
+	    console.stdoutln( "     Warning: failure in raster3d_render_tls_graph_path")
+	    pml_path = ""
+	    png_path = ""
+	    pass
 
         ## JMol Viewer Page
-        jmol_path = self.jmol_html(chain, cpartition)
-        jmol_animate_path = self.jmol_animate_html(chain, cpartition)
+	try:
+            jmol_path = self.jmol_html(chain, cpartition)
+            jmol_animate_path = self.jmol_animate_html(chain, cpartition)
+	except:
+	    ## EAM FIXME:  But really something must have gone wrong before this point.
+	    console.stdoutln( "     Warning: JMol setup failed in jmol_animate_html")
+	    jmol_path = ""
+	    jmol_animate_path = ""
+	    pass
 
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chain, cpartition)
@@ -621,7 +654,12 @@ class HTMLReport(Report):
         phenixout_path = self.write_phenixout_file(chain, cpartition)
 
         ## detailed analysis of all TLS groups
-        ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
+	try:
+            ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
+	except:
+	    ## EAM FIXME:  But really something must have gone wrong before this point.
+	    console.stdoutln( "     Warning: Analysis of this partition failed")
+	    return "<hr>Analysis of this partition failed<br>"
 
         ## BMean Plot
         ntls_analysis.bmean_plot.width = 640
@@ -721,16 +759,20 @@ class HTMLReport(Report):
 
         ## orient the structure with the super-spiffy orientation algorithm
         ## which hilights the chain we are examining
-        ori = calc_orientation(self.struct, chain)
-        viewer.glo_update_properties(
-            R         = ori["R"],
-            cor       = ori["centroid"],
-            zoom      = ori["hzoom"],
-            near      = ori["near"],
-            far       = ori["far"],
-            width     = ori["pwidth"],
-            height    = ori["pheight"],
-            bg_color  = "White")
+	try:
+            ori = calc_orientation(self.struct, chain)
+            viewer.glo_update_properties(
+	        R         = ori["R"],
+	        cor       = ori["centroid"],
+	        zoom      = ori["hzoom"],
+	        near      = ori["near"],
+	        far       = ori["far"],
+	        width     = ori["pwidth"],
+	        height    = ori["pheight"],
+	        bg_color  = "White")
+	except:
+	    console.stdoutln( "     Warning: failed to find orientation for graphics output")
+	    pass
 
         ## turn off axes and unit cell visualization
         gl_struct.glo_update_properties_path("gl_axes/visible", False)
@@ -1011,6 +1053,7 @@ class HTMLReport(Report):
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_path)
         except TLSAnimateFailure:
+            console.stdoutln("            failed")
             pass
         
         ## create the JMol script using cartoons and consistant
@@ -1244,9 +1287,14 @@ class ChainNTLSAnalysisReport(Report):
             os.mkdir(self.dir)
         os.chdir(self.dir)
 
-        self.write_all_files()
-
-        os.chdir(self.root)
+	try:
+            self.write_all_files()
+	except:
+	    ## FIXME: How to print error message?
+	    ## FIXME: write missing row of table on html page
+	    pass
+	finally:
+	    os.chdir(self.root)
 
     def write_all_files(self):
         """Writes analysis details of each TLS group.
