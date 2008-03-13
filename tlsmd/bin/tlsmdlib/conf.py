@@ -30,6 +30,7 @@ MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "tlsmdtraceback"
 LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
 PDB_URL                = "http://www.pdb.org/pdb/explore/explore.do?structureId=" ## Added by Christoph Champ, 2008-02-20
+GET_PDB_URL            = "http://www.rcsb.org/pdb/files" ## Added by Christoph Champ, 2008-03-10
 ## END: CONFIGURATION PATHS AND URLS
 
 ## override default configuration
@@ -39,7 +40,7 @@ if os.path.exists(ALTCONF):
 
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
-WEBTMP_PATH	       = "/home/www/webtmp"		# Added by Christoph Champ, 2007-12-03
+WEBTMP_PATH	       = "/var/www/webtmp"		# Added by Christoph Champ, 2007-12-03
 GNUPLOT                = "/usr/local/bin/gnuplot"	# Added by Christoph Champ, 2007-12-03
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
