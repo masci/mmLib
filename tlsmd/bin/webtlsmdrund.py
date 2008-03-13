@@ -34,7 +34,6 @@ def log_job_start(jdict):
     
     ln  = ""
     ## Changed date format to: YYYY-MM-DD HH:MM:SS; Christoph Champ, 2008-01-29
-    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += " ".join(tlsmd)
     log_write(ln)
@@ -118,7 +117,7 @@ def run_tlsmd(webtlsmdd, jdict):
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
     ### FORK SECTION: fork/execvp; 2008-01-22
-    ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN -xhttp://localhost:10100 -is1 -mISOT -cA -aALL struct.pdb"
+    ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN -xhttp://localhost:10100 -i1FIN -mISOT -cA -aALL struct.pdb"
     args=["python"] + tlsmd
     pid=os.fork()
     if not pid:
@@ -128,6 +127,13 @@ def run_tlsmd(webtlsmdd, jdict):
 	os.dup2(redirect, 1)                        # standard output (1)
 	os.dup2(redirect, 2)                        # standard error (2)
 	os.close(redirect)
+
+	## Capture child pid. Christoph Champ, 2008-02-03
+	## TODO Use the pid (stored in the 'pid' file) to kill a job via the admin panel
+        save_pid = os.getpid()
+	f = open("pid", 'w')
+	f.write(str(save_pid))
+	f.close()
 
 	## Set up the environment
 	## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
@@ -162,21 +168,35 @@ def run_job(webtlsmdd, jdict):
  
     return
 
-def cleanup_job(webtlsmdd, jdict):
-    ### This stuff needs to be called at the point of job completion   
+def check_logfile_for_errors(file):
+    """Searches through the log.txt file for warnings and errors"""
+    ## Started by Christoph Champ, 2008-03-02
 
-    ## Added to force it to use the correct path. Christoph Champ, 2008-02-01
+    infil=open(file,'r').readlines()
+    for line in infil:
+	## Switched to re.match() for regex capability. Christoph Champ, 2008-03-11
+	if re.match(r'^\s*Warning:',line):
+	    return True
+        else:
+            continue
+
+    return False
+
+def cleanup_job(webtlsmdd, jdict):
+    """Cleanup job directory upon completion and email user
+    """
+
+    ## Force it to use correct path. Christoph Champ, 2008-02-01
     old_dir=os.getcwd()
     job_dir=conf.TLSMD_WORK_DIR+"/"+jdict["job_id"]
     try:
         os.chdir(job_dir)
     except os.error, err:
         log_error(jdict, str(err))
-	webtlsmdd.job_set_state(job_id, "lost_directory")
-	#return True # Can we set this here? Christoph Champ, 2008-02-12
+	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
+	return
 
-    ### TODO Pass full jdict instead of just job_id. (old: def cleanup_job(webtlsmdd, job_id)). Christoph Champ, 2008-02-12
-    ### NOTE This seems to work now. Christoph Champ, 2008-02-12
+    ### Check if user submitted job via PDB code (i.e., from pdb.org). Christoph Champ, 2008-02-12
     if jdict.get("via_pdb", False) and "pdb_dir" in jdict and len(jdict["pdb_dir"]) != 0:
         #print "%s: Archiving job..." % (time.ctime())
         pdb_dir = jdict['pdb_dir']
@@ -194,13 +214,11 @@ def cleanup_job(webtlsmdd, jdict):
     tar.close()
 
     os.chdir(old_dir)
-    webtlsmdd.job_set_state(jdict["job_id"], "completed")
+    ## check 'log.txt' for warnings or errors. Christoph Champ, 2008-03-02
+    if check_logfile_for_errors(job_dir+"/log.txt"):
+       webtlsmdd.job_set_state(jdict["job_id"], "completed_with_errors")
     webtlsmdd.job_set_run_time_end(jdict["job_id"], time.time())
     log_job_end(webtlsmdd.job_get_dict(jdict["job_id"]))
-
-    ## Create "completed" file
-    fc=open(job_dir+"/completed","w")
-    fc.close()
 
     ## send email now that the job is complete
     send_mail(jdict["job_id"])
@@ -274,7 +292,7 @@ Determination (TLSMD) Server to inform you the analysis of the structure
 you submitted is complete.  The link below will take you directly
 to the completed analysis:
 
-http://skuld.bmsc.washington.edu<ANALYSIS_URL>
+http://verdandi.bmsc.washington.edu<ANALYSIS_URL>
 
 having the following user comments:
 <USER_COMMENT>
@@ -327,13 +345,13 @@ def send_mail(job_id):
 
     log_write("NOTE: sent mail to: %s" % (address))
 
-def job_completed(job_id):
+def job_completed(webtlsmdd,jdict):
     ### Open directory, loop over names, check against lockfile template string ###
     ### If there is a match, return False. Otherwise return True; 2008-02-01 ###
     try:
-	os.chdir(conf.TLSMD_WORK_DIR+"/"+job_id)
+	os.chdir(conf.TLSMD_WORK_DIR+"/"+jdict["job_id"])
     except:
-	webtlsmdd.job_set_state(job_id, "lost_directory") ## There must be zero spaces in "state". Christoph Champ, 2008-02-07
+	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory") ## There must be zero spaces in "state". Christoph Champ, 2008-02-07
 	return True
     tmpmatch='\S+.tmp' ## match any *.tmp file in the job_dir
     lockfile=re.compile(tmpmatch).match
@@ -341,6 +359,7 @@ def job_completed(job_id):
         if lockfile(fname):
            #c = os.path.splitext(fname) # c[1] holds basename of file. Not really needed, but might prove useful sometime
 	   return False
+    webtlsmdd.job_set_state(jdict["job_id"], "completed")
     return True
 
 def fetch_and_run_jobs_forever():
@@ -361,10 +380,10 @@ def fetch_and_run_jobs_forever():
 	    if (myjdict.get("state") != "running"):
 		## Check for any other states besides None and "running"
 	 	continue
-	    if job_completed(myjdict["job_id"]):
+	    if job_completed(webtlsmdd,myjdict):
 		for n in range(len(running_list)):
 		    if myjdict["job_id"]==running_list[n]:
-			cleanup_job(webtlsmdd,myjdict) # Note: passing full jdict (not just job_id). Christoph Champ, 2008-02-12
+			cleanup_job(webtlsmdd,myjdict)
 			running_list.pop(n)  # remove completed job_id from array
 			break
 
