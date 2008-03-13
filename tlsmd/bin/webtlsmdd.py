@@ -12,6 +12,7 @@ import time
 import string
 import random
 import traceback
+from signal import SIG_IGN # Needed for daemon_main(). Christoph Champ, 2008-03-10
 import signal
 import cPickle
 import bsddb
@@ -348,7 +349,6 @@ def RemoveJob(webtlsmdd, job_id):
     webtlsmdd.jobdb.delete_jdict(job_id)
     return True
 
-
 def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     """Called with a list of tuples (chain_id, ntls).
     Generates PDB and TLSIN files for refinement with REFMAC5.
@@ -619,7 +619,8 @@ class WebTLSMDDaemon(object):
     def fetch_pdb(self, pdbid):
         """Retrives the PDB file from RCSB"""
         try:
-            cdata = urllib.urlopen("http://www.rcsb.org/pdb/files/%s.pdb.gz" % (pdbid)).read()
+	    ## Changed to global variable. Christoph Champ, 2008-03-10
+            cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
             return xmlrpclib.Binary("")
@@ -671,7 +672,9 @@ def daemon_main():
 
     os.chdir(conf.TLSMD_WORK_DIR)
 
-    signal.signal(signal.SIGCHLD, handle_SIGCHLD)
+    ## Switching to a different signal handler. Christoph Champ, 2008-03-10
+    #signal.signal(signal.SIGCHLD, handle_SIGCHLD)
+    signal.signal(signal.SIGCHLD, SIG_IGN)
     
     webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
 
