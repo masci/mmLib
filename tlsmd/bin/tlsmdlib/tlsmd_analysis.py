@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -7,6 +7,8 @@
 import sys
 import math
 import numpy
+
+import os
 
 from mmLib import Constants, FileIO, TLS, Structure
 
@@ -22,6 +24,11 @@ import independent_segment_opt
 import cpartition_recombination
 import html
 
+import signal
+def SIGUSR1_handler(signum, frame):
+    ## EAM FIXME - This probably should be defined at a higher level and be made
+    ## available throughout the package
+    raise RuntimeError, 'Caught external SIGUSR1'
 
 def TLSMD_Main(struct_file_path  = None,
                sel_chain_ids     = None,
@@ -274,12 +281,33 @@ def FitConstrainedTLSModel(analysis):
     """
     console.endln()
     console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION")
+
+    ## EAM Feb 2008 User job was getting stuck in fit_to_chain()
+    ## Obviously it would be nice to fix the actual error, but at least we would
+    ## like to be able to give it a swift non-fatal kick by sending SIGUSR1
+    signal.signal(signal.SIGUSR1, SIGUSR1_handler)
+
+    ## Progress tracking 
+    ##    - assume this portion of the run occupies 0.1 -> 0.5 of the total time
+    progress = 0.1
+
     for chain in analysis.iter_chains():
         console.stdoutln("CHAIN %s" % (chain.chain_id))
         for cpartition in chain.partition_collection.iter_chain_partitions():
             console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments()))
             for tls in cpartition.iter_tls_segments():
-                tls.fit_to_chain(cpartition.chain)
+		try:
+		    tls.fit_to_chain(cpartition.chain)
+		except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
+		    console.stdoutln("            Runtime error: %s, trying to continue..." % e)
+		    pass
+
+	## Track progress
+	progress += 0.4/analysis.num_chains()
+	progress_report = open("progress","w+")
+	print >> progress_report, progress
+	progress_report.close()
+
     console.endln()
 
 
