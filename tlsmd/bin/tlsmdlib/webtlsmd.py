@@ -32,7 +32,6 @@ webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 def timestring(secs):
     tm_struct = time.localtime(secs)
     ## Switched to international time format. Christoph Champ, 2008-02-07
-    #return time.strftime("%m-%d-%y %H:%M %Z" ,tm_struct)
     return time.strftime("%Y-%m-%d %H:%M %Z" ,tm_struct)
 
 def secdiffstring(secs):
@@ -83,7 +82,6 @@ def html_job_nav_bar(webtlsmdd, job_id):
     log_url = webtlsmdd.job_get_log_url(job_id)
 
     ## tarball. Christoph Champ, 2007-12-03
-    #tarball_url = os.path.join(job_dir,"%s.tar.bz2"%job_id)
     tarball_url = webtlsmdd.job_get_tarball_url(job_id)
 
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
@@ -773,8 +771,9 @@ class QueuePage(Page):
         struct_id = jdict.get("structure_id", "xxxx")
         if struct_id.lower() == "xxxx":
             return struct_id
-        #return '<a href="http://www.pdb.org/pdb/explore.do?structureId=%s">%s</a>' % (struct_id, struct_id)
-	return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id) ## Christoph Champ, 2008-02-20
+	## FIXME The following link should only point to pdb.org if it is a real PDBid.
+	#return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id) ## Christoph Champ, 2008-02-20
+	return struct_id ## Christoph Champ, 2008-03-10
 
     def html_head_nocgi(self, title):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
@@ -902,16 +901,10 @@ class QueuePage(Page):
 	
 	return '%s' % (strx)
 
-    def number_of_chains(self, jdict):
-        ## New routine to return the number of chains in a given structure. Christoph Champ, 2008-02-20
-        n=0
-        if jdict.has_key("chains")==False:
-            return n
-
-        for cdict in jdict["chains"]:
-	    n+=1
-
-        return n
+    def get_job_list(self):
+        """Get a list of all the jobs in the job queue file.
+        """
+        return webtlsmdd.job_list()
 
     def total_number_of_residues(self, jdict):
         ## New routine to calculate the total number of residues (with/without chains). Christoph Champ, 2008-02-20
@@ -923,42 +916,6 @@ class QueuePage(Page):
             total=total+cdict["length"]
 
         return total
-	
-    def get_job_list(self):
-        """Get a list of all the jobs in the job queue file.
-        """
-        return webtlsmdd.job_list()
-
-#============================================================================================
-    def get_progress_status(self, job_id):
-	### FIXME Too basic right now. Christoph Champ, 2008-02-07 ###
-        ### Open directory, loop over filenames, and check for certain files ###
-	prog="0" ## Start out at 0%
-	try:
-	     os.chdir(conf.TLSMD_WORK_DIR + '/' + job_id + '/ANALYSIS')
-	except:
-	#    ## Immediately fails; ANALYSIS dir is not written right away
-	#    webtlsmdd.job_set_state(job_id,"lost_directory") ## cannot have spaces in state
-	     return prog
-
-	#n=number_of_chains()
-	#increment=int(80/n)
-	# Look for '1BVR_CHAINA_RESID.png' files or '1BVR_RESID.png' files
-	#residfile=re.compile('...._RESID.png').match
-	#for chain_id in jdict["chains"]:
-	#    pngfile=re.compile('\S+CHAIN%s_RESID.png'%chain_id).match
-	#    for fname in os.listdir(os.getcwd()):
-	#	if pngfile(fname): prog+=increment
-	#	elif residfile(fname): prog="100"
-
-	pngfile=re.compile('\S+NTLS1_BMEAN.png').match		## match first *NTLS1_BMEAN.png file found in the job_dir
-	reffile=re.compile('\S+REFINEMENT_PREP.html').match	## match first *REFINEMENT_PREP.html file found in the job_dir
-	for fname in os.listdir(os.getcwd()):
-            if pngfile(fname): prog="25" ## arbitrary
-	    elif reffile(fname): prog="95"
-	    #else: prog="0"
-        return prog
-#============================================================================================
 
     def html_running_job_table(self, job_list):
 
@@ -980,7 +937,6 @@ class QueuePage(Page):
 	      '</tr>']
 
 	## creates mutiple rows, _if_ there are multiple "running" jobs. Christoph Champ, 2008-01-30
-	## TODO Update the progress bar to reflect where we are in the "running" state
         row1 = True
         for jdict in run_jdict:
             if row1:
@@ -998,10 +954,15 @@ class QueuePage(Page):
                  hours = timediffstring(jdict["run_time_begin"], time.time())
             else:
                  hours = "---"
-            ## progress bar should be something like (number of files created) / (20*number of chains)
-	    progress = self.get_progress_status(jdict) ## Returns an integer value
-	    ## Testing with "%"-done indicator
-            x += '<td align=left><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div></td>' %progress
+
+	    ## progress bar
+	    try:
+	         prog_file=open(jdict["job_dir"]+"/progress",'r')
+	         progress=int(float(prog_file.read().strip())*100)
+		 prog_file.close()
+	    except:
+		 progress=0
+            x += '<td align=left><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div></td>' %(progress)
 	    x += '<td align="right">%s</td></tr>' % (hours)
 
 	## for zero running jobs
@@ -1060,7 +1021,8 @@ class QueuePage(Page):
     def html_completed_job_table(self, job_list):
         completed_list = []
         for jdict in job_list:
-            if jdict.get("state") in ["completed", "defunct"]:
+	    ## Added more "completed" states to job_table. Christoph Champ, 2008-02-03
+            if jdict.get("state") in ["completed", "completed_with_errors", "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1088,7 +1050,7 @@ class QueuePage(Page):
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
             l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
-	    ##========= Direct link to logfile. Christoph Champ, 2008-02-20
+	    ## Direct link to logfile. Christoph Champ, 2008-02-20
 	    if jdict.has_key("log_url"):
 		logfile=os.path.join(jdict["job_dir"],"log.txt")
 		log_url=webtlsmdd.job_get_log_url(jdict["job_id"])
@@ -1096,7 +1058,6 @@ class QueuePage(Page):
 		   l.append('<td><a href="%s">%s</a></td>' % (log_url,jdict.get("state")))
 		else:
 		   l.append('<td>%s</td>' % (jdict.get("state")))
-	    ##==========================================================================
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
             l.append('<td align="right">%s</td>' % (self.total_number_of_residues(jdict))) # "Total Residues". Christoph Champ, 2008-02-20
 
@@ -1115,7 +1076,8 @@ class QueuePage(Page):
     def html_limbo_job_table(self, job_list):
         limbo_list = []
         for jdict in job_list:
-            if jdict.get("state") not in ["queued", "running", "completed"]:
+	    ## Added "completed_with_errors" to the ignore list. Christoph Champ, 2008-03-11
+            if jdict.get("state") not in ["queued", "running", "completed", "completed_with_errors"]:
                 limbo_list.append(jdict)
 
         if len(limbo_list) == 0:
@@ -1194,7 +1156,6 @@ class AdminJobPage(Page):
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
-
         elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
             x += self.requeue(job_id)
         else:
@@ -1613,6 +1574,9 @@ def check_upload(file):
     for line in file:
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
+	elif re.match('^ATOM.*[0-9][a-z]',line):
+	    ## Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
+	    return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM'):
 	    atomnum=line[7:11]
             restype=line[17:20]
