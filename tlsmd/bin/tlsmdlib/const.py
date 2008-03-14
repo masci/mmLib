@@ -15,7 +15,7 @@ LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "1.0.0"
+VERSION       = "1.0.1"
 RELEASE_DATE  = "15 Feb 2008"
 AUTHOR        = "Ethan Merritt"
 EMAIL         = "merritt@u.washington.edu"
