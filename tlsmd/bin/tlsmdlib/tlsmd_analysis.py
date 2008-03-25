@@ -270,6 +270,7 @@ def IndependentTLSSegmentOptimization(analysis):
 
 
 def RecombineIndependentTLSSegments(analysis):
+    ## TODO Create another def for multiple chain recombination. Christoph Champ, 2008-03-20
     console.endln()
     console.stdoutln("TLS SEGMENT RECOMBINATION")
     for chain in analysis.chains:

@@ -138,8 +138,10 @@ def calc_orientation(struct, chain):
 
     xydelta  = numpy.array((xcenter, ycenter, 0.0), float)
 
-    pwidth = conf.VIS_WIDTH
-    pheight = pwidth * (height / width)
+    ## pwidth = conf.VIS_WIDTH
+    ## pheight = pwidth * (height / width)
+    pheight = conf.VIS_WIDTH
+    pwidth  = pheight * (width/height)
 
     ori["R"]        = R
     ori["centroid"] = centroid + numpy.dot(numpy.transpose(R), xydelta)

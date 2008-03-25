@@ -13,6 +13,7 @@ import string
 import random
 import traceback
 from signal import SIG_IGN # Needed for daemon_main(). Christoph Champ, 2008-03-10
+from signal import SIGHUP # Needed for KillJob(). Christoph Champ, 2008-03-18
 import signal
 import cPickle
 import bsddb
@@ -337,16 +338,45 @@ def RemoveJob(webtlsmdd, job_id):
 
     job_dir = webtlsmdd.job_get_job_dir(job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
-
         for root, dirs, files in os.walk(job_dir, topdown = False):
             for name in files:
                 os.remove(os.path.join(root, name))
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
-
         os.rmdir(job_dir)
 
     webtlsmdd.jobdb.delete_jdict(job_id)
+    return True
+
+def KillJob(webtlsmdd, job_id):
+    """Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section
+       as "killed" state
+    """
+    ## Christoph Champ, 2008-03-13
+    ## DEBUG
+    #debug=open("/tmp/debug.log","a+")
+    #debug.write("KillJob: DEBUG1\n")
+    #debug.close()
+
+    if not webtlsmdd.jobdb.job_exists(job_id):
+        return False
+
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+        try:
+	    ## Switched to storing pid in database. Christoph Champ, 2008-03-14
+	    tmp_pid=webtlsmdd.job_get_pid(job_id)
+	    pid=int(tmp_pid)
+        except:
+	    return False
+        try:
+	    ## Switched to SIGHUP because SIGUSR1 was not working. Christoph Champ, 2008-03-18
+	    os.kill(pid,SIGHUP)
+        except:
+	    return False
+
+    ## We want to keep the job_id around in order to inform the user that their job has been "killed". Christoph Champ, 2008-03-13
+    webtlsmdd.job_set_state(job_id,"killed")
     return True
 
 def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
@@ -460,6 +490,13 @@ class WebTLSMDDaemon(object):
         """
         return RemoveJob(self, job_id)
 
+    def kill_job(self, job_id):
+	"""Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section
+	   as "killed" state
+	"""
+	## Christoph Champ, 2008-03-07
+	return KillJob(self, job_id)
+
     def job_set_remote_addr(self, job_id, remote_addr):
         self.jobdb.job_data_set(job_id, "ip_addr", remote_addr)
         return remote_addr
@@ -491,6 +528,13 @@ class WebTLSMDDaemon(object):
         directory = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
         self.jobdb.job_data_set(job_id, "pdb_dir", directory)
         return directory
+
+    ## New pid field added. Christoph Champ, 2008-03-14
+    def job_set_pid(self, job_id, os_pid):
+        self.jobdb.job_data_set(job_id, "pid", os_pid)
+        return os_pid
+    def job_get_pid(self, job_id):
+        return self.jobdb.job_data_get(job_id, "pid")
 
     def job_get_log_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "log_url")
@@ -620,6 +664,7 @@ class WebTLSMDDaemon(object):
         """Retrives the PDB file from RCSB"""
         try:
 	    ## Changed to global variable. Christoph Champ, 2008-03-10
+            #cdata = urllib.urlopen("http://www.rcsb.org/pdb/files/%s.pdb.gz" % (pdbid)).read()
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
@@ -657,9 +702,12 @@ class WebTLSMD_XMLRPCServer(
             WebTLSMD_XMLRPCRequestHandler,
             False)
                 
-
-def handle_SIGCHLD(signum, frame):
-    os.waitpid(-1, os.WNOHANG)
+## Making sure this is never used/needed. Christoph Champ, 2008-03-17
+#def handle_SIGCHLD(signum, frame):
+#    try:
+#        os.waitpid(-1, os.WNOHANG)
+#    except:
+#	pass
 
 def daemon_main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")

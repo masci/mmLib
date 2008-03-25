@@ -67,6 +67,9 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
                                     num_residues = tlsdict["num_residues"])
     return tls
 
+## TODO Allow multiple chains. Christoph Champ, 2008-03-20
+#def ChainPartitionRecombination(cpartition, num_return = 1):
+
 
 def ChainPartitionRecombination(cpartition, num_return = 1):
     """Returns a new TLSSegment object which is the best

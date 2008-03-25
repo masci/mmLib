@@ -18,10 +18,10 @@ import const
 import console
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
-BASE_PUBLIC_URL        = "http://skuld.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
+BASE_PUBLIC_URL        = "http://verdandi.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
 TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
-TLSMD_PUBLIC_URL       = "http://skuld.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
+TLSMD_PUBLIC_URL       = "http://verdandi.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
 TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
@@ -43,10 +43,11 @@ TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 WEBTMP_PATH	       = "/var/www/webtmp"		# Added by Christoph Champ, 2007-12-03
 GNUPLOT                = "/usr/local/bin/gnuplot"	# Added by Christoph Champ, 2007-12-03
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
+#REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_BASE_URL)
+REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_PUBLIC_URL) # Changed. Christoph Champ, 2008-03-17
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
-JMOL_DIR               = "../../../jmol"
+JMOL_DIR               = "../../../jmol"		# Directory path must be relative, not an absolute URL. Christoph Champ, 2008-03-17
 #JMOL_DIR               = "%s/jmol" % (TLSMD_PUBLIC_URL) # Added by Christoph Champ, 2007-12-13
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT,"pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR,"pdbids.txt")
@@ -58,7 +59,8 @@ ADP_PROB = 50
 NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH = 640
+VIS_WIDTH  = 640
+VIS_HEIGHT = 400
 
 ## the JMol viewer is a square window, generated with this pixel size
 JMOL_SIZE = 600

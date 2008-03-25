@@ -1,4 +1,4 @@
-#!/usr/bin/python -d
+#!/usr/bin/python
 # coding=UTF-8
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
@@ -12,6 +12,7 @@ import time
 import signal
 import re
 import fcntl
+from subprocess import Popen, call, PIPE  # Christoph Champ, 2008-03-17
 import subprocess
 import socket
 import xmlrpclib
@@ -33,7 +34,7 @@ def log_job_start(jdict):
     tlsmd = jdict["tlsmd"]
     
     ln  = ""
-    ## Changed date format to: YYYY-MM-DD HH:MM:SS; Christoph Champ, 2008-01-29
+    ## Changed date format to international: YYYY-MM-DD HH:MM:SS; Christoph Champ, 2008-01-29
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += " ".join(tlsmd)
     log_write(ln)
@@ -46,9 +47,17 @@ def chain_size_string(jdict):
         listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
     return ";".join(listx)
     
+def log_job_killed(job_id):
+    ln  = ""
+    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
+    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
+    ln += "Killed Job %s from CLI" % (job_id)
+    log_write(ln)
+
 def log_job_end(jdict):
     ln  = ""
-    ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
+    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
+    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
  
@@ -98,7 +107,8 @@ def timediff(begin, end):
     
 def log_error(jdict, err):
     ln  = ""
-    ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
+    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
+    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "ERROR: %s" % (err)
     log_write(ln)
 
@@ -110,7 +120,7 @@ def get_cdict(chains, chain_id):
     return None
 
 def run_tlsmd(webtlsmdd, jdict):
-    job_id = jdict["job_id"]
+    """main tlsmd fork/exec routine"""
     tlsmd  = jdict["tlsmd"]
 
     ## write the tlsmd execution command out to a file
@@ -129,11 +139,9 @@ def run_tlsmd(webtlsmdd, jdict):
 	os.close(redirect)
 
 	## Capture child pid. Christoph Champ, 2008-02-03
-	## TODO Use the pid (stored in the 'pid' file) to kill a job via the admin panel
         save_pid = os.getpid()
-	f = open("pid", 'w')
-	f.write(str(save_pid))
-	f.close()
+	## Switched to using database field instead of file. Christoph Champ, 2008-03-14
+	webtlsmdd.job_set_pid(jdict["job_id"],save_pid)
 
 	## Set up the environment
 	## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
@@ -171,16 +179,20 @@ def run_job(webtlsmdd, jdict):
 def check_logfile_for_errors(file):
     """Searches through the log.txt file for warnings and errors"""
     ## Started by Christoph Champ, 2008-03-02
+    ## NOTE Only checks for warnings for now.
 
     infil=open(file,'r').readlines()
     for line in infil:
 	## Switched to re.match() for regex capability. Christoph Champ, 2008-03-11
 	if re.match(r'^\s*Warning:',line):
-	    return True
+	    return "warnings"
+	elif line.startswith('completed'):
+	    ## No longer using lockfile, so check log.txt. Christoph Champ, 2008-03-21
+	    return "success"
         else:
             continue
 
-    return False
+    return ''
 
 def cleanup_job(webtlsmdd, jdict):
     """Cleanup job directory upon completion and email user
@@ -209,14 +221,23 @@ def cleanup_job(webtlsmdd, jdict):
             raise
 
     ## create tarball. Christoph Champ, 2007-12-03
+    ## FIXME try/except does not work. Christoph Champ, 2008-03-18
+    #try:
+    #    tar=tarfile.open("%s.tar.gz"%jdict["job_id"], "w:gz")
+    #    tar.add("ANALYSIS")
+    #    tar.close()
+    #except os.error, err:
+    #    log_error(jdict, str(err))
+    #    webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
+    #    return
     tar=tarfile.open("%s.tar.gz"%jdict["job_id"], "w:gz")
     tar.add("ANALYSIS")
     tar.close()
 
     os.chdir(old_dir)
-    ## check 'log.txt' for warnings or errors. Christoph Champ, 2008-03-02
-    if check_logfile_for_errors(job_dir+"/log.txt"):
-       webtlsmdd.job_set_state(jdict["job_id"], "completed_with_errors")
+    ## check 'log.txt' for warnings. Christoph Champ, 2008-03-02
+    if check_logfile_for_errors(job_dir+"/log.txt")=="warnings":
+       webtlsmdd.job_set_state(jdict["job_id"], "warnings")
     webtlsmdd.job_set_run_time_end(jdict["job_id"], time.time())
     log_job_end(webtlsmdd.job_get_dict(jdict["job_id"]))
 
@@ -345,21 +366,60 @@ def send_mail(job_id):
 
     log_write("NOTE: sent mail to: %s" % (address))
 
+def is_pid_running(full_cmd):
+    ## Check if a given PID is still running. Christoph Champ, 2008-03-17
+    try:
+        p = Popen(full_cmd, shell=True, stdout=PIPE)
+        output = p.communicate()[0]
+        if re.match('.*defunct.*',output):
+            return False ## Sometimes python goes <defunct> on a PID. Job no longer running.
+        elif output:
+            return True ## If anything besides "defunct" is returned from ps, job is still running
+    except Exception, e:
+        print >>sys.stderr, "Execution failed:", e
+        return False
+
+    return False
+
+def check_for_pid(webtlsmdd,jdict):
+    """Function for checking if process is running.
+    """
+    try:
+        tmp_pid=webtlsmdd.job_get_pid(jdict["job_id"])
+        pid=int(tmp_pid)
+        cmd = "ps -p %s --no-heading" % pid
+        res = is_pid_running(cmd)
+
+        if res:
+           return True ## PID still running
+        else:
+           return False ## PID _not_ running
+
+    except Exception, e:
+        # Something wrong happened with the ps command
+        print "ERROR: Can't run is_pid_running(): %s"%e
+
+    return False
+
 def job_completed(webtlsmdd,jdict):
-    ### Open directory, loop over names, check against lockfile template string ###
-    ### If there is a match, return False. Otherwise return True; 2008-02-01 ###
+    ## Checks if "running" job is finished and sets state according to log.txt messages. Christoph Champ, 2008-03-21
+    ## If there is a match, return False (job not completed). Otherwise return True (job completed); 2008-02-01
     try:
 	os.chdir(conf.TLSMD_WORK_DIR+"/"+jdict["job_id"])
     except:
 	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory") ## There must be zero spaces in "state". Christoph Champ, 2008-02-07
 	return True
-    tmpmatch='\S+.tmp' ## match any *.tmp file in the job_dir
-    lockfile=re.compile(tmpmatch).match
-    for fname in os.listdir(os.getcwd()):
-        if lockfile(fname):
-           #c = os.path.splitext(fname) # c[1] holds basename of file. Not really needed, but might prove useful sometime
-	   return False
-    webtlsmdd.job_set_state(jdict["job_id"], "completed")
+
+    if check_for_pid(webtlsmdd,jdict):
+	return False
+    elif not check_for_pid(webtlsmdd,jdict):
+	if check_logfile_for_errors(jdict["job_dir"]+"/log.txt")=="success":
+	   webtlsmdd.job_set_state(jdict["job_id"], "success")
+	   return True
+	else:
+	   webtlsmdd.job_set_state(jdict["job_id"], "killed")
+	   log_job_killed(jdict["job_id"])
+	   return True
     return True
 
 def fetch_and_run_jobs_forever():
@@ -383,7 +443,8 @@ def fetch_and_run_jobs_forever():
 	    if job_completed(webtlsmdd,myjdict):
 		for n in range(len(running_list)):
 		    if myjdict["job_id"]==running_list[n]:
-			cleanup_job(webtlsmdd,myjdict)
+			if webtlsmdd.job_get_state(myjdict["job_id"]) != "killed":
+			   cleanup_job(webtlsmdd,myjdict) # Note: passing full jdict (not just job_id). Christoph Champ, 2008-02-12
 			running_list.pop(n)  # remove completed job_id from array
 			break
 

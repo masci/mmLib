@@ -11,7 +11,6 @@ import getopt
 import traceback
 
 from tlsmdlib import conf, tlsmd_analysis, email
-from tempfile import NamedTemporaryFile # Added. Christoph Champ, 2008-01-31
 
 
 def usage():
@@ -142,13 +141,11 @@ if __name__ == "__main__":
         usage()
 
     try:
-	## Added tempfile. Christoph Champ, 2008-01-31
-        fid = NamedTemporaryFile(mode='w+b',suffix='.tmp',dir='.')
         analysis_main(path, opt_dict)
 	print "completed"
     except KeyboardInterrupt:
         print "Killed"
+    except:
+	print "Died"
 
-    ## Clears fid = NamedTemporaryFile(); i.e., removes file. Christoph Champ, 2008-01-31
-    fid.close()
     sys.exit(0)

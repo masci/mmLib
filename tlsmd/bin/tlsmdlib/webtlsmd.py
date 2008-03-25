@@ -217,6 +217,9 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<td align="left">'
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job">'
+    ## Added 'Kill Job'. Christoph Champ, 2008-02-03
+    if fdict.has_key("killbutton"):
+        x += '<input type="submit" name="submit" value="Kill Job">'
     if fdict.has_key("requeuebutton"):
         x += '<input type="submit" name="submit" value="Requeue Job">'
     x += '</td>'
@@ -283,7 +286,7 @@ def html_user_info_table(fdict):
          '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40"></td>' % (fdict.get("email", "")),
          '</tr>',
 
-	 ## New user_comment added. Christoph Champ, 2007-12-18
+	 ## user_comment added. Christoph Champ, 2007-12-18
          '<tr>',
          '<td align="right"><label for="user_comment">Associated Notes</label></td>',
          '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128"></td>' % (fdict.get("user_comment","")),
@@ -572,10 +575,12 @@ def html_job_info_table(fdict):
     x += '</tr>'
 
     ## end form
+    #if fdict.has_key("removebutton") and fdict.has_key("killbutton"):
     if fdict.has_key("removebutton"):
         x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
 
         ## Job ID, user, passwd
+	## Added "Kill Job". Kills running PID for job_id. Christoph Champ, 2008-03-07
         x += '<input type="hidden" name="page" value="%s">' % (fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE">'
         x += '<input type="hidden" name="job_id" value="%s">' % (fdict["job_id"])
@@ -585,6 +590,7 @@ def html_job_info_table(fdict):
         x += '<tr>'
         x += '<td colspan="3" align="left">'
         x += '<input type="submit" name="submit" value="Remove Job">'
+	x += '<input type="submit" name="submit" value="Kill Job">'
         x += '</td>'
         x += '</form>'
 
@@ -655,7 +661,7 @@ def extract_job_edit_form(form, webtlsmdd):
         if vet_data(structure_id, 4):
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
-    ## New user_comment field added. Christoph Champ, 2007-12-18
+    ## user_comment field added. Christoph Champ, 2007-12-18
     if form.has_key("user_comment"):
         user_comment = form["user_comment"].value.strip()
         user_comment = user_comment[:128]
@@ -1021,8 +1027,8 @@ class QueuePage(Page):
     def html_completed_job_table(self, job_list):
         completed_list = []
         for jdict in job_list:
-	    ## Added more "completed" states to job_table. Christoph Champ, 2008-02-03
-            if jdict.get("state") in ["completed", "completed_with_errors", "defunct"]:
+	    ## Added more states to job_table. Christoph Champ, 2008-02-03
+            if jdict.get("state") in ["success", "errors", "warnings", "killed", "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1076,8 +1082,8 @@ class QueuePage(Page):
     def html_limbo_job_table(self, job_list):
         limbo_list = []
         for jdict in job_list:
-	    ## Added "completed_with_errors" to the ignore list. Christoph Champ, 2008-03-11
-            if jdict.get("state") not in ["queued", "running", "completed", "completed_with_errors"]:
+	    ## Added more states to the ignore list. Christoph Champ, 2008-03-11
+            if jdict.get("state") not in ["queued", "running", "success", "errors", "warnings", "killed"]:
                 limbo_list.append(jdict)
 
         if len(limbo_list) == 0:
@@ -1156,6 +1162,9 @@ class AdminJobPage(Page):
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
+        ## Kill PID of running job_id. Christoph Champ, 2008-03-07
+	elif self.form.has_key("submit") and self.form["submit"].value == "Kill Job":
+	    x += self.kill(job_id)
         elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
             x += self.requeue(job_id)
         else:
@@ -1176,9 +1185,10 @@ class AdminJobPage(Page):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "admin"
         fdict["removebutton"] = True
+        fdict["killbutton"] = True  # Christoph Champ, 2008-03-07
         fdict["requeuebutton"] = True
             
-        if state == "running" or state == "completed":
+        if state == "running" or state == "success":
             x += html_job_nav_bar(webtlsmdd, job_id)
             x += html_job_info_table(fdict)
         else:
@@ -1193,6 +1203,20 @@ class AdminJobPage(Page):
         x += '<h3>Job %s has been removed.</h3>' % (job_id)
         x += '</center>'
         return x
+
+    def kill(self, job_id):
+	## Kill PID of running job_id. Christoph Champ, 2008-03-07
+	if webtlsmdd.kill_job(job_id):
+	    x  = ''
+	    x += '<center>'
+	    x += '<h3>Job %s has been removed and its associated pid has been killed.</h3>' % (job_id)
+	    x += '</center>'
+	else:
+	    x  = ''
+	    x += '<center>'
+	    x += '<h3>Error: Can not remove job %s.</h3>' % (job_id)
+	    x += '</center>'
+	return x
 
     def requeue(self, job_id):
         result = webtlsmdd.requeue_job(job_id)
@@ -1487,7 +1511,7 @@ class SubmitPDBPage(Page):
 
 
         title = "This protein has already been analyzed"
-        analysis_url = "http://skuld.bmsc.washington.edu/~tlsmd/pdb/%s/ANALYSIS" % (pdbid)
+        analysis_url = "http://verdandi.bmsc.washington.edu/~tlsmd/pdb/%s/ANALYSIS" % (pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
@@ -1610,6 +1634,7 @@ def check_upload(file):
 	## f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
 	f.write("set ytics nomirror tc rgb 'blue'\n")
 	f.write("set y2range [0:1]\n")
+	## f.write(u"set y2label 'Å^2' norotate tc rgb 'red'\n") ## Testing unicode. Christoph Champ, 2008-03-17
 	## f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
 	f.write("set y2tics nomirror tc rgb 'red'\n")
 	f.write("set format y2 '%.1f'\n")
