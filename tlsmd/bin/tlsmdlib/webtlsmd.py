@@ -1103,7 +1103,10 @@ class QueuePage(Page):
         for jdict in limbo_list:
             x += '<tr>'
 
-            x += '<td>%s</td>' % (self.explore_href(jdict))
+	    ## Return job number only (non-clickable)
+	    job_number = re.match(r'[^_]*', jdict["job_id"]) ## Added. Christoph Champ, 2008-04-01
+            #x += '<td>%s</td>' % (self.explore_href(jdict))
+            x += '<td>%s</td>' % (job_number.group(0))
             x += '<td>%s</td>' % (self.rcsb_href(jdict))
             x += '<td>%s</td>' % (jdict.get("state"))
             x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
@@ -1599,7 +1602,7 @@ def check_upload(file):
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
 	elif re.match('^ATOM.*[0-9][a-z]',line):
-	    ## Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
+	    ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
 	    return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM'):
 	    atomnum=line[7:11]
