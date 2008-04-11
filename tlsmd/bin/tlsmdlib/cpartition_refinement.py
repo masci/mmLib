@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -17,7 +17,7 @@ import opt_containers
 
 class Partition(object):
     """A Partition instance represents the interface of two adjacent
-    TLS segments, 
+    TLS segments.
     """
     
     def __init__(self, cpartition, lhs_tls, lhs_range, rhs_tls, rhs_range, auto_fit_residual = True):
@@ -144,6 +144,7 @@ def RefineChainPartitionPositions(cpartition):
 def testmain():
     import tlsmd_analysis
     
+    ## FIXME This path/file does not exist. Christoph Champ, 2008-03-24
     struct = FileIO.LoadStructure(
         file = "/home/jpaint/mymmlib/struct/movedb/domain-hinge/groel/1KP8.pdb")
     chain = tlsmd_analysis.ConstructSegmentForAnalysis(struct.get_chain("A"))

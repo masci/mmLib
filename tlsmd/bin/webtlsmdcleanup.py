@@ -45,10 +45,6 @@ def check_remove(jdict):
     if state=="lost_directory" and days>1:
 	return True
 
-    ## Actually, we _do_ want these to be cleared after DELETE_DAYS. Christoph Champ, 2008-03-10
-    #if state=="completed_with_errors":
-    #    return False
-
     return False
 
 def main():

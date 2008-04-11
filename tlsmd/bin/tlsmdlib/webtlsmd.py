@@ -1028,7 +1028,7 @@ class QueuePage(Page):
         completed_list = []
         for jdict in job_list:
 	    ## Added more states to job_table. Christoph Champ, 2008-02-03
-            if jdict.get("state") in ["success", "errors", "warnings", "killed", "defunct"]:
+            if jdict.get("state") in ["completed", "success", "errors", "warnings", "killed", "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1083,7 +1083,7 @@ class QueuePage(Page):
         limbo_list = []
         for jdict in job_list:
 	    ## Added more states to the ignore list. Christoph Champ, 2008-03-11
-            if jdict.get("state") not in ["queued", "running", "success", "errors", "warnings", "killed"]:
+            if jdict.get("state") not in ["completed", "queued", "running", "success", "errors", "warnings", "killed"]:
                 limbo_list.append(jdict)
 
         if len(limbo_list) == 0:
@@ -1191,7 +1191,7 @@ class AdminJobPage(Page):
         fdict["killbutton"] = True  # Christoph Champ, 2008-03-07
         fdict["requeuebutton"] = True
             
-        if state == "running" or state == "success":
+        if state == "running" or state == "success" or state == "completed":
             x += html_job_nav_bar(webtlsmdd, job_id)
             x += html_job_info_table(fdict)
         else:

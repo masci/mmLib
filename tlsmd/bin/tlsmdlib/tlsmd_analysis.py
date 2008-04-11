@@ -96,9 +96,9 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
-        console.kvformat("STRUCTURE ID", self.struct_id)
-        console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids)
-        console.endln()
+        console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
+        console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
+        console.endln() ## LOGLINE
         
     def select_chains(self):
         """Selects chains for analysis.
@@ -148,10 +148,10 @@ def LoadStructure(struct_source):
     ## determine the argument type
     if isinstance(struct_source, str):
         file_path = struct_source
-        console.kvformat("LOADING STRUCTURE", file_path)
+        console.kvformat("LOADING STRUCTURE", file_path) ## LOGLINE
         fobj = open(file_path, "r")
     elif hasattr(struct_source, "__iter__") and hasattr(struct_source, "seek"):
-        console.kvformat("LOADING STRUCTURE", str(struct_source))
+        console.kvformat("LOADING STRUCTURE", str(struct_source)) ## LOGLINE
         fobj = struct_source
     else:
         raise ValueError
@@ -159,9 +159,9 @@ def LoadStructure(struct_source):
     ## load struct
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
 
-    console.kvformat("HEADER", struct.header)
-    console.kvformat("TITLE", struct.title)
-    console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method)
+    console.kvformat("HEADER", struct.header) ## LOGLINE 9
+    console.kvformat("TITLE", struct.title) ## LOGLINE 10
+    console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
     
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
@@ -171,7 +171,7 @@ def LoadStructure(struct_source):
         conf.globalconf.struct_id = struct_id
     struct.structure_id = struct_id
 
-    console.endln()
+    console.endln() ## LOGLINE
 
     ## if there are REFMAC5 TLS groups in the REMARK records of
     ## the PDB file, then add those in
@@ -195,7 +195,7 @@ def LoadStructure(struct_source):
                 atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
                 atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
 
-        console.endln()
+        console.endln() ## LOGLINE
 
     return struct
 
@@ -217,8 +217,10 @@ def ConstructSegmentForAnalysis(raw_chain):
     nna = raw_chain.count_nucleic_acids()
 
     if naa > nna:
+	## Probably a protein with (possibly) some nucleic acids. Christoph Champ, 2008-03-24
         iter_residues = raw_chain.iter_amino_acids()
     elif nna > naa:
+	## Probably a nucleic acid with (possibly) some amino acids. Christoph Champ, 2008-03-24
         iter_residues = raw_chain.iter_nucleic_acids()
         
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
@@ -260,9 +262,9 @@ def IndependentTLSSegmentOptimization(analysis):
         if not isopt.minimized:
             continue
 
-        console.endln()
-        console.stdoutln("="*79)
-        console.stdoutln("MINIMIZING CHAIN %s" % (chain))
+        console.endln() ## LOGLINE
+        console.stdoutln("="*79) ## LOGLINE
+        console.stdoutln("MINIMIZING CHAIN %s" % (chain)) ## LOGLINE
         isopt.prnt_detailed_paths()
 
         chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
@@ -270,9 +272,16 @@ def IndependentTLSSegmentOptimization(analysis):
 
 
 def RecombineIndependentTLSSegments(analysis):
-    ## TODO Create another def for multiple chain recombination. Christoph Champ, 2008-03-20
-    console.endln()
-    console.stdoutln("TLS SEGMENT RECOMBINATION")
+    console.endln() ## LOGLINE
+    console.stdoutln("TLS SEGMENT RECOMBINATION") ## LOGLINE
+    for chain in analysis.chains:
+	## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
+        cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
+
+def MultiRecombineIndependentTLSSegments(analysis):
+    ## TODO MULTI-CHAIN: for a multiple chain recombination matrix. Christoph Champ, 2008-03-20
+    console.endln() ## LOGLINE
+    console.stdoutln("MULTI-CHAIN: TLS SEGMENT RECOMBINATION") ## LOGLINE
     for chain in analysis.chains:
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
 
@@ -280,8 +289,8 @@ def RecombineIndependentTLSSegments(analysis):
 def FitConstrainedTLSModel(analysis):
     """
     """
-    console.endln()
-    console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION")
+    console.endln() ## LOGLINE
+    console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION") ## LOGLINE
 
     ## EAM Feb 2008 User job was getting stuck in fit_to_chain()
     ## Obviously it would be nice to fix the actual error, but at least we would
@@ -293,9 +302,9 @@ def FitConstrainedTLSModel(analysis):
     progress = 0.1
 
     for chain in analysis.iter_chains():
-        console.stdoutln("CHAIN %s" % (chain.chain_id))
+        console.stdoutln("CHAIN %s" % (chain.chain_id)) ## LOGLINE
         for cpartition in chain.partition_collection.iter_chain_partitions():
-            console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments()))
+            console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments())) ## LOGLINE
             for tls in cpartition.iter_tls_segments():
 		try:
 		    tls.fit_to_chain(cpartition.chain)
@@ -309,7 +318,7 @@ def FitConstrainedTLSModel(analysis):
 	print >> progress_report, progress
 	progress_report.close()
 
-    console.endln()
+    console.endln() ## LOGLINE
 
 
 def SumperimposeHomologousStructure(analysis):

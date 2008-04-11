@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding=UTF-8 
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -13,7 +13,7 @@ import string
 import random
 import traceback
 from signal import SIG_IGN # Needed for daemon_main(). Christoph Champ, 2008-03-10
-from signal import SIGHUP # Needed for KillJob(). Christoph Champ, 2008-03-18
+from signal import SIGHUP  # Needed for KillJob(). Christoph Champ, 2008-03-18
 import signal
 import cPickle
 import bsddb
@@ -299,7 +299,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "passwd", "")
     webtlsmdd.jobdb.job_data_set(job_id, "email", "")
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in html.py. Christoph Champ, 2008-02-09
+    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in tlsmdlib/html.py. Christoph Champ, 2008-02-09
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
 
     try:
@@ -353,10 +353,6 @@ def KillJob(webtlsmdd, job_id):
        as "killed" state
     """
     ## Christoph Champ, 2008-03-13
-    ## DEBUG
-    #debug=open("/tmp/debug.log","a+")
-    #debug.write("KillJob: DEBUG1\n")
-    #debug.close()
 
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
@@ -396,7 +392,7 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     os.chdir(analysis_dir)
 
     ## input structure
-    pdbin  = "%s.pdb" % (struct_id)
+    pdbin = "%s.pdb" % (struct_id)
     if not os.path.isfile(pdbin):
         pdbin = None
         for pdbx in glob.glob("*.pdb"):
@@ -664,7 +660,6 @@ class WebTLSMDDaemon(object):
         """Retrives the PDB file from RCSB"""
         try:
 	    ## Changed to global variable. Christoph Champ, 2008-03-10
-            #cdata = urllib.urlopen("http://www.rcsb.org/pdb/files/%s.pdb.gz" % (pdbid)).read()
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
@@ -702,13 +697,6 @@ class WebTLSMD_XMLRPCServer(
             WebTLSMD_XMLRPCRequestHandler,
             False)
                 
-## Making sure this is never used/needed. Christoph Champ, 2008-03-17
-#def handle_SIGCHLD(signum, frame):
-#    try:
-#        os.waitpid(-1, os.WNOHANG)
-#    except:
-#	pass
-
 def daemon_main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
     host_port = ("localhost", int(port))
@@ -720,8 +708,7 @@ def daemon_main():
 
     os.chdir(conf.TLSMD_WORK_DIR)
 
-    ## Switching to a different signal handler. Christoph Champ, 2008-03-10
-    #signal.signal(signal.SIGCHLD, handle_SIGCHLD)
+    ## Switched from handle_SIGCHLD to SIG_IGN. Christoph Champ, 2008-03-10
     signal.signal(signal.SIGCHLD, SIG_IGN)
     
     webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    

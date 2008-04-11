@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2005 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -138,8 +138,6 @@ def calc_orientation(struct, chain):
 
     xydelta  = numpy.array((xcenter, ycenter, 0.0), float)
 
-    ## pwidth = conf.VIS_WIDTH
-    ## pheight = pwidth * (height / width)
     pheight = conf.VIS_WIDTH
     pwidth  = pheight * (width/height)
 
@@ -171,7 +169,7 @@ class ColorInfo(object):
         img.save(self.thumbnail_path, "png")
         
 
-def html_tls_group_table(chain, cpartition, report_root = None):
+def html_tls_group_table(ntls, chain, cpartition, report_root = None):
     """Generate HTML for a table containing the details of the ntls-group partitioning
     of the given chain.
     """
@@ -194,7 +192,7 @@ def html_tls_group_table(chain, cpartition, report_root = None):
 
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
-         '<th align="center" colspan="12">Analysis of TLS Group Chain Segments</th>',
+         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments (overall rmsd_b=%.2f and residual=%.2f)</th>' %(ntls,cpartition.rmsd_b(),cpartition.residual()), ## Added "overall rmsd_b + residual". Christoph Champ, 2008-04-05
          '</tr>',
 
          '<tr>',
@@ -399,7 +397,7 @@ class HTMLReport(Report):
         ## a report page comparing the tls group segments of all
         ## chains against each other
 	try:
-	    console.stdoutln( "Writing multi-chain alignment")
+	    console.stdoutln( "Writing multi-chain alignment") ## LOGLINE
             self.write_multi_chain_alignment()
 	except:
 	    console.stdoutln( "        Error: Couldn't deal with multi-chain alignment")
@@ -568,6 +566,8 @@ class HTMLReport(Report):
         """Generates the Gnuplot/PNG image plot, and returns the HTML
         fragment for its display in a web page.
         """
+	## NOTE (by Christoph):
+	## Least SQuare Residual (LSQR) vs. Number of TLS Segments
         gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
 
         title = 'Chain %s Optimization Residual' % (chain.chain_id)
@@ -719,7 +719,7 @@ class HTMLReport(Report):
              '</table>',
 
              ## now the table
-             html_tls_group_table(chain, cpartition),
+             html_tls_group_table(ntls, chain, cpartition), ## Pass "ntls" as well. Christoph Champ, 2008-04-05
              
              '<br clear="all">']
         
@@ -730,7 +730,7 @@ class HTMLReport(Report):
         """
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         png_path = "%s.png"   % (basename)
-        console.stdoutln( "Raster3D: rendering %s..." % (basename))
+        console.stdoutln( "Raster3D: rendering %s..." % (basename)) ## LOGLINE
 
         struct_id = self.struct_id
         driver = R3DDriver.Raster3DDriver()
@@ -1051,7 +1051,7 @@ class HTMLReport(Report):
         ## generate animation PDB file
 
         try:
-            console.stdoutln("TLSAnimate: creating animation PDB file...")
+            console.stdoutln("TLSAnimate: creating animation PDB file...") ## LOGLINE
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_path)
         except TLSAnimateFailure:
@@ -1192,7 +1192,7 @@ class HTMLReport(Report):
 
             l += ['</table>'
                   '</td>',
-                  '<td><img src="%s" alt="Segmentation Plot"></td>' % (plot_path),
+                  '<td><img src="%s" alt="Segmentation Plot" /></td>' % (plot_path),
                   '</tr>',
                   '</table>' ]
 
@@ -1336,7 +1336,7 @@ class ChainNTLSAnalysisReport(Report):
         open(self.index, "w").write("".join(l))
 
     def html_tls_group_table(self):
-        return html_tls_group_table(self.chain, self.cpartition, "..")
+        return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..") ## Pass "ntls" as well. Christoph Champ, 2008-04-05
 
     def html_translation_analysis(self):
         """Perform a translation analysis of the protein chain as
@@ -1396,14 +1396,28 @@ class ChainNTLSAnalysisReport(Report):
         return "".join(l)
 
     def tls_segment_recombination(self):
+	## The TLSMD optimization algorithm models TLS groups as sequential 
+	## segments of a protein or DNA/RNA chain. This matrix shows the 
+	## RMSD B values of the individual groups on the diagonal, and the 
+	## RMSD B values of combined groups as off-diagonal elements. This 
+	## helps identify non-contiguous protein segments which may be 
+	## combined into a single TLS group.
         if not hasattr(self.cpartition, "rmsd_b_mtx"):
             return ""
 
         rmatrix = self.cpartition.rmsd_b_mtx
 
         tbl = table.StringTableFromMatrix(rmatrix)
+	## E.g., for three segments, the file would look something like the following:
+	## 7.11514881827     9.86985699559     10.1031000732
+	## 9.86985699559     9.94840587829     8.74779028204
+	## 10.1031000732     8.74779028204     9.61743006191
         filename = "%s_CHAIN%s_NTLS%s_RECOMBINATION.txt" % (
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
+
+	## Tell 'log.txt' about RECOMBINATION file. Christoph Champ, 2008-03-24
+	console.stdoutln("RECOMBINATION: Saving %s_CHAIN%s_NTLS%s_RECOMBINATION.txt"%( ## LOGLINE
+	    self.struct_id, self.chain_id, self.cpartition.num_tls_segments()))
         
         open(filename, "w").write(str(tbl))
 
