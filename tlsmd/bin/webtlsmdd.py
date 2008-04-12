@@ -12,7 +12,9 @@ import time
 import string
 import random
 import traceback
+## NOTE: The order of these signals is important!
 from signal import SIG_IGN # Needed for daemon_main(). Christoph Champ, 2008-03-10
+from signal import SIGUSR1 # Needed for SignalJob(). Christoph Champ, 2008-04-10
 from signal import SIGHUP  # Needed for KillJob(). Christoph Champ, 2008-03-18
 import signal
 import cPickle
@@ -348,11 +350,35 @@ def RemoveJob(webtlsmdd, job_id):
     webtlsmdd.jobdb.delete_jdict(job_id)
     return True
 
+def SignalJob(webtlsmdd, job_id):
+    """Causes a job stuck on a certain task to skip that step and move on to
+       the next step. It will eventually have a state "warnings"
+    """
+    ## Christoph Champ, 2008-04-10
+
+    if not webtlsmdd.jobdb.job_exists(job_id):
+        return False
+
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+        try:
+	    tmp_pid=webtlsmdd.job_get_pid(job_id)
+	    pid=int(tmp_pid)
+        except:
+	    return False
+        try:
+	    os.kill(pid,SIGUSR1) ## Send signal SIGUSR1 and try to continue to job process.
+        except:
+	    return False
+
+    return True
+
 def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section
        as "killed" state
     """
     ## Christoph Champ, 2008-03-13
+    ## NOTE: We want to keep the job_id around in order to inform the user that their job has been "killed".
 
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
@@ -366,13 +392,10 @@ def KillJob(webtlsmdd, job_id):
         except:
 	    return False
         try:
-	    ## Switched to SIGHUP because SIGUSR1 was not working. Christoph Champ, 2008-03-18
 	    os.kill(pid,SIGHUP)
         except:
 	    return False
 
-    ## We want to keep the job_id around in order to inform the user that their job has been "killed". Christoph Champ, 2008-03-13
-    webtlsmdd.job_set_state(job_id,"killed")
     return True
 
 def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
@@ -485,6 +508,13 @@ class WebTLSMDDaemon(object):
         """Removes the job from both the database and working directory.
         """
         return RemoveJob(self, job_id)
+
+    def signal_job(self, job_id):
+	"""Signals a job stuck on a certain task to skip that step and move on to
+	   the next step. It will eventually have a state "warnings"
+	"""
+	## Christoph Champ, 2008-04-10
+	return SignalJob(self, job_id)
 
     def kill_job(self, job_id):
 	"""Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section

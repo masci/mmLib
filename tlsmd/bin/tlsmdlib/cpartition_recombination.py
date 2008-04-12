@@ -67,67 +67,6 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
                                     num_residues = tlsdict["num_residues"])
     return tls
 
-## TODO RECOMBINATION_MATRIX_GOES_HERE: Allow multiple chains. Christoph Champ, 2008-03-20
-def MultiChainPartitionRecombination(cpartition, num_return = 1):
-    """Returns a new TLSSegment object which is the best
-    combination of any two (user) given chains for any two
-    TLSSegment instances between these chains in the cpartition.
-    """
-    chain = cpartition.chain
-    tls_list = cpartition.tls_list
-    tls_analyzer = chain.tls_analyzer
-    nparts = len(tls_list)
-
-    ## set the diagonal to the rmsd_b of the individual groups
-    rmsd_b_mtx = numpy.zeros((nparts, nparts), float)
-    for i, tls in enumerate(tls_list):
-        rmsd_b_mtx[i,i] = tls.residual_rmsd_b()
-
-    recombination_list = []
-
-    for i, j in recombination2_iter(nparts):
-        tls1 = tls_list[i]
-        tls2 = tls_list[j]
-
-        segment_ranges = tls1.segment_ranges + tls2.segment_ranges
-        segment_ranges.sort(segment_range_cmp)
-        tlsdict = tls_analyzer.isotropic_fit(segment_ranges)
-
-        residual = tlsdict["residual"]
-        num_residues = tlsdict["num_residues"]
-        msd = residual / num_residues
-        rmsd_b = Constants.U2B * math.sqrt(msd)
-
-        rmsd_b_mtx[i, j] = rmsd_b
-        rmsd_b_mtx[j, i] = rmsd_b
-        
-        residual_delta = (residual - (tls1.residual() + tls2.residual())) / num_residues
-        recombination_list.append((residual_delta, tls1, tls2, tlsdict))
-
-    cpartition.rmsd_b_mtx = rmsd_b_mtx
-
-    recombination_list.sort()
-    return_list = []
-    for i, reco in enumerate(recombination_list):
-        if i >= num_return:
-            break
-        residual_delta, tls1, tls2, tlsdict = reco
-        tls12 = JoinTLSSegments(tls1, tls2, cpartition.chain, tlsdict)
-
-        combined_cp = opt_containers.ChainPartition(cpartition.chain, cpartition.num_tls_segments() - 1)
-        return_list.append(combined_cp)
-        combined_cp.residual_delta = residual_delta
-
-        for tls in tls_list:
-            if tls == tls1:
-                combined_cp.add_tls_segment(tls12)
-                continue
-            if tls == tls2:
-                continue
-            combined_cp.add_tls_segment(tls.copy())
-
-    return return_list
-
 
 def ChainPartitionRecombination(cpartition, num_return = 1):
     """Returns a new TLSSegment object which is the best

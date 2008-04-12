@@ -47,16 +47,14 @@ def chain_size_string(jdict):
         listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
     return ";".join(listx)
     
-def log_job_killed(job_id):
+def log_job_died(job_id):
     ln  = ""
-    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "Killed Job %s from CLI" % (job_id)
     log_write(ln)
 
 def log_job_end(jdict):
     ln  = ""
-    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
@@ -107,7 +105,6 @@ def timediff(begin, end):
     
 def log_error(jdict, err):
     ln  = ""
-    #ln += "[%s]: " % (time.asctime(time.localtime(time.time())))
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "ERROR: %s" % (err)
     log_write(ln)
@@ -179,20 +176,29 @@ def run_job(webtlsmdd, jdict):
 def check_logfile_for_errors(file):
     """Searches through the log.txt file for warnings and errors"""
     ## Started by Christoph Champ, 2008-03-02
-    ## NOTE Only checks for warnings for now.
-
+    
+    warnings = False
+    errors = False
+    completed = False
     infil=open(file,'r').readlines()
     for line in infil:
 	## Switched to re.match() for regex capability. Christoph Champ, 2008-03-11
 	if re.match(r'^\s*Warning:',line):
-	    return "warnings"
+	    warnings = True
+	elif re.match(r'^\s*[Ee][Rr][Rr][Oo][Rr]',line):
+	    errors = True
 	elif line.startswith('completed'):
-	    ## No longer using lockfile, so check log.txt. Christoph Champ, 2008-03-21
-	    return "success"
+	    completed = True
         else:
             continue
 
-    return ''
+    if not completed:
+	return "died"
+    if errors:
+	return "errors"
+    if warnings:
+	return "warnings"
+    return "success"
 
 def cleanup_job(webtlsmdd, jdict):
     """Cleanup job directory upon completion and email user
@@ -221,15 +227,6 @@ def cleanup_job(webtlsmdd, jdict):
             raise
 
     ## create tarball. Christoph Champ, 2007-12-03
-    ## FIXME try/except does not work. Christoph Champ, 2008-03-18
-    #try:
-    #    tar=tarfile.open("%s.tar.gz"%jdict["job_id"], "w:gz")
-    #    tar.add("ANALYSIS")
-    #    tar.close()
-    #except os.error, err:
-    #    log_error(jdict, str(err))
-    #    webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
-    #    return
     tar=tarfile.open("%s.tar.gz"%jdict["job_id"], "w:gz")
     tar.add("ANALYSIS")
     tar.close()
@@ -412,14 +409,8 @@ def job_completed(webtlsmdd,jdict):
 
     if check_for_pid(webtlsmdd,jdict):
 	return False
-    elif not check_for_pid(webtlsmdd,jdict):
-	if check_logfile_for_errors(jdict["job_dir"]+"/log.txt")=="success":
-	   webtlsmdd.job_set_state(jdict["job_id"], "success")
-	   return True
-	else:
-	   webtlsmdd.job_set_state(jdict["job_id"], "killed")
-	   log_job_killed(jdict["job_id"])
-	   return True
+    
+    webtlsmdd.job_set_state(jdict["job_id"], check_logfile_for_errors(jdict["job_dir"]+"/log.txt"))
     return True
 
 def fetch_and_run_jobs_forever():
@@ -437,13 +428,14 @@ def fetch_and_run_jobs_forever():
 	    if myjdict.get("state") == None:
 		## This is a "Partially Submitted" job, so go to next in list
 		continue
+	    ## Comment out the following three lines to refresh the states in the database
 	    if (myjdict.get("state") != "running"):
 		## Check for any other states besides None and "running"
-	 	continue
+		continue
 	    if job_completed(webtlsmdd,myjdict):
 		for n in range(len(running_list)):
 		    if myjdict["job_id"]==running_list[n]:
-			if webtlsmdd.job_get_state(myjdict["job_id"]) != "killed":
+			if webtlsmdd.job_get_state(myjdict["job_id"]) != "died":
 			   cleanup_job(webtlsmdd,myjdict) # Note: passing full jdict (not just job_id). Christoph Champ, 2008-02-12
 			running_list.pop(n)  # remove completed job_id from array
 			break

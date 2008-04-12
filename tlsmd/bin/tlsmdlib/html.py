@@ -525,6 +525,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_tls_chain_optimization(chain))
         fil.close()
+	console.stdoutln("HTML: Saving %s"%path)
         
     def html_tls_chain_optimization(self, chain):
         """Generates and returns the HTML string report analysis of a
@@ -1334,6 +1335,7 @@ class ChainNTLSAnalysisReport(Report):
         l.append(self.html_foot())
         
         open(self.index, "w").write("".join(l))
+	console.stdoutln("HTML: Saving %s"%path)
 
     def html_tls_group_table(self):
         return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..") ## Pass "ntls" as well. Christoph Champ, 2008-04-05

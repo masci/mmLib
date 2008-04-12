@@ -217,9 +217,10 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<td align="left">'
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job">'
-    ## Added 'Kill Job'. Christoph Champ, 2008-02-03
+    if fdict.has_key("signalbutton"):
+        x += '<input type="submit" name="submit" value="Signal Job">' ## Added. Christoph Champ, 2008-04-10
     if fdict.has_key("killbutton"):
-        x += '<input type="submit" name="submit" value="Kill Job">'
+        x += '<input type="submit" name="submit" value="Kill Job">' ## Added. Christoph Champ, 2008-02-03
     if fdict.has_key("requeuebutton"):
         x += '<input type="submit" name="submit" value="Requeue Job">'
     x += '</td>'
@@ -575,12 +576,10 @@ def html_job_info_table(fdict):
     x += '</tr>'
 
     ## end form
-    #if fdict.has_key("removebutton") and fdict.has_key("killbutton"):
     if fdict.has_key("removebutton"):
         x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
 
         ## Job ID, user, passwd
-	## Added "Kill Job". Kills running PID for job_id. Christoph Champ, 2008-03-07
         x += '<input type="hidden" name="page" value="%s">' % (fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE">'
         x += '<input type="hidden" name="job_id" value="%s">' % (fdict["job_id"])
@@ -590,7 +589,11 @@ def html_job_info_table(fdict):
         x += '<tr>'
         x += '<td colspan="3" align="left">'
         x += '<input type="submit" name="submit" value="Remove Job">'
-	x += '<input type="submit" name="submit" value="Kill Job">'
+    if fdict.has_key("signalbutton"):
+        x += '<input type="submit" name="submit" value="Signal Job">' ## Added. Christoph Champ, 2008-04-10
+    if fdict.has_key("killbutton"):
+	x += '<input type="submit" name="submit" value="Kill Job">' ## Added. Christoph Champ, 2008-03-07
+    if fdict.has_key("removebutton"):
         x += '</td>'
         x += '</form>'
 
@@ -1028,7 +1031,7 @@ class QueuePage(Page):
         completed_list = []
         for jdict in job_list:
 	    ## Added more states to job_table. Christoph Champ, 2008-02-03
-            if jdict.get("state") in ["completed", "success", "errors", "warnings", "killed", "defunct"]:
+            if jdict.get("state") in ["completed", "success", "errors", "warnings", "killed", "died", "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1083,7 +1086,7 @@ class QueuePage(Page):
         limbo_list = []
         for jdict in job_list:
 	    ## Added more states to the ignore list. Christoph Champ, 2008-03-11
-            if jdict.get("state") not in ["completed", "queued", "running", "success", "errors", "warnings", "killed"]:
+            if jdict.get("state") not in ["completed", "queued", "running", "success", "errors", "warnings", "killed", "died"]:
                 limbo_list.append(jdict)
 
         if len(limbo_list) == 0:
@@ -1165,9 +1168,10 @@ class AdminJobPage(Page):
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
-        ## Kill PID of running job_id. Christoph Champ, 2008-03-07
+	elif self.form.has_key("submit") and self.form["submit"].value == "Signal Job":
+	    x += self.kick(job_id) ## Kick PID past stuck stage. Christoph Champ, 2008-04-10
 	elif self.form.has_key("submit") and self.form["submit"].value == "Kill Job":
-	    x += self.kill(job_id)
+	    x += self.kill(job_id) ## Kill PID of running job_id. Christoph Champ, 2008-03-07
         elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
             x += self.requeue(job_id)
         else:
@@ -1188,8 +1192,10 @@ class AdminJobPage(Page):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "admin"
         fdict["removebutton"] = True
-        fdict["killbutton"] = True  # Christoph Champ, 2008-03-07
-        fdict["requeuebutton"] = True
+	if state == "queued" or state == "running":
+            fdict["signalbutton"] = True	# Christoph Champ, 2008-04-10
+            fdict["killbutton"] = True	# Christoph Champ, 2008-03-07
+            fdict["requeuebutton"] = True
             
         if state == "running" or state == "success" or state == "completed":
             x += html_job_nav_bar(webtlsmdd, job_id)
@@ -1207,12 +1213,26 @@ class AdminJobPage(Page):
         x += '</center>'
         return x
 
+    def kick(self, job_id):
+	## Kick PID of stuck job past current process and continue with next step. Christoph Champ, 2008-04-10
+	if webtlsmdd.signal_job(job_id):
+	    x  = ''
+	    x += '<center>'
+	    x += '<h3>Job %s has been signaled to kick it past the process it was stuck on.</h3>' % (job_id)
+	    x += '</center>'
+	else:
+	    x  = ''
+	    x += '<center>'
+	    x += '<h3>Error: Can not signal job %s. Might need to kill it.</h3>' % (job_id)
+	    x += '</center>'
+	return x
+
     def kill(self, job_id):
 	## Kill PID of running job_id. Christoph Champ, 2008-03-07
 	if webtlsmdd.kill_job(job_id):
 	    x  = ''
 	    x += '<center>'
-	    x += '<h3>Job %s has been removed and its associated pid has been killed.</h3>' % (job_id)
+	    x += '<h3>Job %s has died or its associated pid has been manually killed.</h3>' % (job_id)
 	    x += '</center>'
 	else:
 	    x  = ''
