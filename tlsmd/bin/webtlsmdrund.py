@@ -185,7 +185,8 @@ def check_logfile_for_errors(file):
 	## Switched to re.match() for regex capability. Christoph Champ, 2008-03-11
 	if re.match(r'^\s*Warning:',line):
 	    warnings = True
-	elif re.match(r'^\s*[Ee][Rr][Rr][Oo][Rr]',line):
+	#elif re.match(r'^\s*[Ee][Rr][Rr][Oo][Rr]',line):
+	elif re.match(r'^.*[Ee][Rr][Rr][Oo][Rr]',line):
 	    errors = True
 	elif line.startswith('completed'):
 	    completed = True
