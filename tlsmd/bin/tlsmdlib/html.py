@@ -196,7 +196,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
          '</tr>',
 
          '<tr>',
-         '<th colspan="6" style="background-color:#aaaaaa">Input Structure</th>',
+         '<th colspan="7" style="background-color:#aaaaaa">Input Structure</th>',
          '<th colspan="5" style="background-color:#bbbbbb">TLS Predictions</th>',
          '</tr>',
          
@@ -206,6 +206,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
          '<th>Residues</th>',
          '<th>Atoms</th>',
          '<th>&#60;B&#62;</th>',
+         '<th>B<sub>rmsd</sub></th>', ## Added. Christoph Champ, 2008-04-15
          '<th>&#60;Aniso&#62;</th>',
          '<th>RMSD B</th>',
          '<th>%s</th>' % (t_head),
@@ -217,12 +218,18 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
     bgcolor_flag = True
 
     for tls in cpartition.iter_tls_segments():
-        
+
+        ## Calculate the stddev for all temperature factors in a given segment. Christoph Champ, 2008-04-15
+        tmp_temp_factor = []
+        for atm, Utls in tls.tls_group.iter_atm_Utls():
+            tmp_temp_factor.append(atm.temp_factor)
+	stddev=numpy.std(tmp_temp_factor)
+
         tls_group = tls.tls_group
         mtls_info = tls.model_tls_info
 	## EAM DEBUG - I think this results from a previous exception in html_tls_graph_path()
 	if mtls_info == None:
-            l.append('<tr style="background-color:#ffeeee"><td colspan="11" align-text="center">Error</td></tr>')
+            l.append('<tr style="background-color:#ffeeee"><td colspan="12" align-text="center">Error</td></tr>')
 	    continue
 
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
@@ -256,6 +263,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
              '<td>%d</td>'    % (tls.num_residues()),
              '<td>%d</td>'    % (tls.num_atoms()),
              '<td>%5.1f</td>' % (tls.mean_b()),
+             '<td>%5.2f</td>' % (stddev), ## Added. Christoph Champ, 2008-04-15
              '<td>%4.2f</td>' % (tls.mean_anisotropy()),
              '<td>%5.2f</td>' % (tls.rmsd_b),
              '<td>%s</td>'    % (t_data),
