@@ -1165,6 +1165,7 @@ class AdminJobPage(Page):
         x += html_title(title)
 
         x += html_nav_bar()
+	x += html_job_nav_bar(webtlsmdd, job_id) ## Added. Christoph Champ, 2008-04-15
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
