@@ -4,8 +4,10 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 import sys
+import time, datetime
 
 console_output_enabled = True
+debug_output_enabled = False
 
 def stdout(text):
     """Simple STDOUT printing redirected to log.txt
@@ -40,7 +42,13 @@ def endln():
     stdout("\n")
 
 def stdoutln(line):
-    stdout(line + "\n")
+    timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+    stdout("[%s] %s\n" % (timestamp, line))
+
+def debug_stdoutln(line):
+    if debug_output_enabled == True:
+        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+        stdout("[%s] %s\n" % (timestamp, line))
 
 def stderrln(line):
     stderr(line + "\n")
