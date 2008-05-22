@@ -3,15 +3,27 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+##
+## Called by:
+##	tlsmdlib/html.py
+##		class HTMLReport()
+##			init_colors()
+##			write_cwd()
+##			raster3d_render_tls_graph_path()
+##			write_multi_chain_alignment()
+##			html_multi_chain_alignment()
+##			html_refinement_prep()
 
+## Python
 import sys
 import math
 import numpy
-
 import os
 
+## pymmlib
 from mmLib import Constants, FileIO, TLS, Structure
 
+## TLSMD
 import misc
 import const
 import conf
@@ -49,6 +61,10 @@ def TLSMD_Main(struct_file_path  = None,
 
     if html_report_dir is not None and analysis.num_chains() > 0:
         FitConstrainedTLSModel(analysis)
+        ## New summary page. Allows the user to see some information before the
+        ## analysis is fully complete
+        summary = html.HTMLSummaryReport(analysis)
+        summary.write_summary(html_report_dir)
         report = html.HTMLReport(analysis)
         report.write(html_report_dir)
 
@@ -96,6 +112,7 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
+        console.debug_stdoutln(">Entering: tlsmd_analysis.py->TLSMDAnalysis()...") ## DEBUG
         console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
         console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
         console.endln() ## LOGLINE
@@ -145,6 +162,8 @@ def LoadStructure(struct_source):
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
+    console.debug_stdoutln(">Entering: tlsmd_analysis.py->LoadStructure()...") ## DEBUG
+
     ## determine the argument type
     if isinstance(struct_source, str):
         file_path = struct_source
@@ -162,7 +181,7 @@ def LoadStructure(struct_source):
     console.kvformat("HEADER", struct.header) ## LOGLINE 9
     console.kvformat("TITLE", struct.title) ## LOGLINE 10
     console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
-    
+
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
         struct_id = conf.globalconf.struct_id
@@ -205,6 +224,9 @@ def ConstructSegmentForAnalysis(raw_chain):
     Chain instance which is properly modified for use in
     the this application.
     """
+    console.debug_stdoutln(">Entering: tlsmd_analysis.py->ConstructSegmentForAnalysis(chain %s)..." % raw_chain.chain_id) ## DEBUG
+
+    ## NOTE: raw_chain = "Chain(1:A, Res(MET,1,A)...Res(VAL,50,A))"
     ## Sets that atm.include attribute for each atom in the chains
     ## being analyzed by tlsmd
     for atm in raw_chain.iter_all_atoms():
@@ -217,10 +239,10 @@ def ConstructSegmentForAnalysis(raw_chain):
     nna = raw_chain.count_nucleic_acids()
 
     if naa > nna:
-	## Probably a protein with (possibly) some nucleic acids. Christoph Champ, 2008-03-24
+	## Probably a protein with (possibly) some nucleic acids.
         iter_residues = raw_chain.iter_amino_acids()
     elif nna > naa:
-	## Probably a nucleic acid with (possibly) some amino acids. Christoph Champ, 2008-03-24
+	## Probably a nucleic acid with (possibly) some amino acids.
         iter_residues = raw_chain.iter_nucleic_acids()
         
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
@@ -230,22 +252,28 @@ def ConstructSegmentForAnalysis(raw_chain):
                 segment.add_fragment(frag)
                 break
 
-    ## apply data smooth if desired
+    ## apply data smooth if desired (default is "0")
     if conf.globalconf.adp_smoothing > 0:
         adp_smoothing.IsotropicADPDataSmoother(segment, conf.globalconf.adp_smoothing)
 
     ## this is useful: for each fragment in the minimization
-    ## set a attribute for its index position
+    ## set an attribute for its index position
     for i, frag in enumerate(segment.iter_fragments()):
+        ## NOTE (by Christoph):
+        ## Example output:
+        ## 0 : Res(MET,1,A)
+        ## 1 : Res(ILE,2,A)
+        ## ...
         frag.ifrag = i
-
-    ## create a TLSModelAnalyzer instance for the chain, and
-    ## attach the instance to the chain for use by the rest of the
-    ## program
+    
+    ## create a TLSModelAnalyzer instance for the chain, and attach the
+    ## instance to the chain for use by the rest of the program
     segment.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
     xlist = atom_selection.chain_to_xmlrpc_list(segment.iter_all_atoms())
     segment.tls_analyzer.set_xmlrpc_chain(xlist)
 
+    ## INPUT : raw_chain = "Chain(1:A, Res(MET,1,A)...Res(VAL,50,A))"
+    ## OUTPUT: segment   = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
     return segment
 
 
@@ -264,32 +292,26 @@ def IndependentTLSSegmentOptimization(analysis):
 
         console.endln() ## LOGLINE
         console.stdoutln("="*79) ## LOGLINE
+        console.debug_stdoutln(">Entering: tlsmd_analysis.py->IndependentTLSSegmentOptimization()...") ## DEBUG
         console.stdoutln("MINIMIZING CHAIN %s" % (chain)) ## LOGLINE
         isopt.prnt_detailed_paths()
 
         chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
         chain.partition_collection.struct = analysis.struct
 
-
 def RecombineIndependentTLSSegments(analysis):
     console.endln() ## LOGLINE
+    console.debug_stdoutln(">Entering: tlsmd_analysis.py->RecombineIndependentTLSSegments()...") ## DEBUG
     console.stdoutln("TLS SEGMENT RECOMBINATION") ## LOGLINE
     for chain in analysis.chains:
 	## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
 
-def MultiRecombineIndependentTLSSegments(analysis):
-    ## TODO MULTI-CHAIN: for a multiple chain recombination matrix. Christoph Champ, 2008-03-20
-    console.endln() ## LOGLINE
-    console.stdoutln("MULTI-CHAIN: TLS SEGMENT RECOMBINATION") ## LOGLINE
-    for chain in analysis.chains:
-        cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
-
-
 def FitConstrainedTLSModel(analysis):
     """
     """
     console.endln() ## LOGLINE
+    console.debug_stdoutln(">Entering: tlsmd_analysis.py->FitConstrainedTLSModel()...") ## DEBUG
     console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION") ## LOGLINE
 
     ## EAM Feb 2008 User job was getting stuck in fit_to_chain()
@@ -307,6 +329,7 @@ def FitConstrainedTLSModel(analysis):
             console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments())) ## LOGLINE
             for tls in cpartition.iter_tls_segments():
 		try:
+                    ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
 		    tls.fit_to_chain(cpartition.chain)
 		except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
 		    console.stdoutln("            Runtime error: %s, trying to continue..." % e)

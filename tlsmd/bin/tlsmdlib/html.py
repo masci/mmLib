@@ -282,15 +282,15 @@ class Report(object):
     def html_head(self, title):
         """Header for all HTML pages.
         """
-        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n',
              '<html>',
              '<head>',
-             '<title>%s</title>' % (title),
+             '<title>%s</title>\n' % (title),
              '<style type="text/css" media="screen">',
              '<!-- ',
              'BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}',
              '-->',
-             '</style>',
+             '</style>\n',
              '</head>',
              '<body>\n']
 
@@ -300,12 +300,12 @@ class Report(object):
         timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
         
         ## Added jobid in "title" bar (center position). Christoph Champ, 2007-12-17
-	l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
+	l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>\n',
               '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
 	      '<td align="center"><font size="-5">JobID: %s</font></td>' % (conf.globalconf.job_id),
-              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>' % (const.VERSION),
+              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>\n' % (const.VERSION),
               '</tr></table>\n',
-              '<center><font size="+2">%s</font></center><br/>' % (title)]
+              '<center><font size="+2">%s</font></center><br/>\n' % (title)]
         
         return "".join(l)
 
@@ -319,8 +319,151 @@ class Report(object):
               ## '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (const.RELEASE_DATE, const.EMAIL),
               '<td align="right"><font size="-5">TLSMD Version %s Released %s</font></td>' % (const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
-              '</body></html>']
+              '</body></html>\n']
         
+        return "".join(l)
+
+
+class HTMLSummaryReport(Report):
+    """Create a summary HTML report.
+    """
+    def __init__(self, tlsmd_analysis):
+        Report.__init__(self)
+
+        self.tlsmd_analysis = tlsmd_analysis
+        self.struct = tlsmd_analysis.struct
+        self.struct_id = tlsmd_analysis.struct_id
+        self.struct_path = "%s.pdb" % (self.struct_id)
+
+        self.page_multi_chain_alignment  = None
+        self.pages_chain_motion_analysis = []
+        self.page_refinement_prep        = None
+        
+    def write_summary(self, report_dir):
+        """Write out the TLSMD report to the given directory.
+        """
+        ## create new directory and move into it
+        old_dir = os.getcwd()
+        if not os.path.isdir(report_dir):
+            os.mkdir(report_dir)
+        os.chdir(report_dir)
+
+        ## Create preliminary summary.png plot
+        for chain in self.tlsmd_analysis.iter_chains():
+            #self.pre_tls_chain_optimization(chain)
+
+            ## add tables for all TLS group selections using 1 TLS group
+            ## up to max_ntls
+            for ntls in chain.partition_collection.iter_ntls():
+                gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
+                ## maybe this will help with the memory problems...
+                import gc
+                gc.collect()
+        plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
+
+        self.write_summary_index()
+        
+        ## change back to original directory
+        os.chdir(old_dir)
+
+    def write_summary_index(self):
+        """Writes the summary.html file of the report.
+        """
+        fil = open("summary.html", "w")
+        fil.write(self.html_summary_index())
+        fil.close()
+	console.stdoutln("HTML: Saving summary.html") ## LOGLINE
+
+    def html_summary_index(self):
+        """Generate and returns the HTML string for the summary.html
+        file of the report.
+        """
+        title = "TLSMD Thermal Parameter Analysis of Structure %s" % (
+            self.struct_id)
+
+        l = [self.html_head(title),
+             self.html_title(title),
+
+             ## OPTIMIZATION PARAMETERS
+             self.html_globals(),
+             '<br/>\n',
+        
+             ## MOTION ANALYSIS
+             '<center>',
+             '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
+             '</center>\n',
+	     '<table><tr><td valign=top>',
+             '<p style="font-size:small; text-align:left">%s</p>\n' % (
+                 captions.MOTION_ANALYSIS_TEXT)]
+
+        l += ['<center>',
+	     '<p style="text-align:center; font-size:large bold;',
+                 'width:70%; padding:10px; border:thin solid #f00;',
+                 'background-color:#faa;">',
+	     'Your job is still running and the analysis is incomplete.',
+             'This is a summary page.</p>\n']
+
+        ## progress bar
+        try:
+            prog_file = open("../progress", 'r')
+            progress = int(float(prog_file.read().strip())*100)
+            prog_file.close()
+        except:
+            progress = 20
+        l += ['<p><div style="margin:0;padding:0;height:100%;width:150px;',
+               'background:#fff;border:1px solid black;text-align:left;">',
+             '<div style="margin:0px;padding:0;height:10px;',
+               'background:#8FBC8F;width: %s%%;"></div></div>' % progress,
+             '%s%% Complete</p>\n' % progress,
+             '</center>']
+	
+	l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
+
+	l += [self.html_foot()]
+        
+        return "".join(l)
+
+    def html_globals(self):
+        """Output a HTML table displaying global TLSMD settings.
+        """
+        if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
+            tls_model = "Isotropic"
+        elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
+            tls_model = "Anisotropic"
+
+        if conf.globalconf.weight_model == "UNIT":
+            weight = 'Unit Weights (All Weights 1.0)'
+        elif conf.globalconf.weight_model == "IUISO":
+            weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
+
+        if conf.globalconf.include_atoms == "MAINCHAIN":
+            include_atoms = "Main Chain Protein Atoms (N, CA, C, O, CB)"
+        else:
+            include_atoms = "All Protein Atoms"
+
+        l = ['<center>',
+             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">\n']
+
+        if self.struct.title:
+            l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>\n' % (
+                self.struct.title))
+                
+        if self.struct.header:
+            l.append('<tr style="background-color:#dddddd"><td>Heading Summary</td><td><b>%s</b></td></tr>\n' % (
+                self.struct.header))
+
+        if self.struct.experimental_method:
+            l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>\n' % (
+                self.struct.experimental_method))
+             
+        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>\n' % (tls_model),
+             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>\n' % (
+                conf.globalconf.min_subsegment_size),
+             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>\n' % (
+                conf.globalconf.include_atoms),
+             '</table>',
+             '</center>\n']
+
         return "".join(l)
 
 
@@ -405,10 +548,10 @@ class HTMLReport(Report):
         ## a report page comparing the tls group segments of all
         ## chains against each other
 	try:
-	    console.stdoutln( "Writing multi-chain alignment") ## LOGLINE
+	    console.stdoutln("Writing multi-chain alignment") ## LOGLINE
             self.write_multi_chain_alignment()
 	except:
-	    console.stdoutln( "        Error: Couldn't deal with multi-chain alignment")
+	    console.stdoutln("        Error: Couldn't deal with multi-chain alignment")
 	    pass
 
 	## Progress tracking
@@ -436,6 +579,7 @@ class HTMLReport(Report):
         fil = open("index.html","w")
         fil.write(self.html_index())
         fil.close()
+	console.stdoutln("HTML: Saving main index.html") ## LOGLINE
 
     def html_index(self):
         """Generate and returns the HTML string for the main index.html
@@ -448,7 +592,7 @@ class HTMLReport(Report):
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
-             '<br>',
+             '<br/>',
         
              ## MOTION ANALYSIS
              '<center>',
@@ -462,7 +606,7 @@ class HTMLReport(Report):
 	
 	l +=['</td><td valign=top><img src="summary.png"></td></tr></table>']
 
-        l +=['<br>',
+        l +=['<br/>',
              ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
              '<p style="font-size:small; text-align:left">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
@@ -472,7 +616,7 @@ class HTMLReport(Report):
         else:
             l.append('<p><u>Only one chain was analyized in this structure, so the multi-chain alignment analysis was not performed.</u></p>')
 
-        l +=['<br>',
+        l +=['<br/>',
              ## REFINEMENT PREP
              '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
              '<p style="font-size:small; text-align:left">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
@@ -533,7 +677,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_tls_chain_optimization(chain))
         fil.close()
-	console.stdoutln("HTML: Saving %s"%path)
+	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
         
     def html_tls_chain_optimization(self, chain):
         """Generates and returns the HTML string report analysis of a
@@ -544,7 +688,7 @@ class HTMLReport(Report):
         l  = [self.html_head(title),
               self.html_title(title),
               '<center><a href="index.html">Back to Index</a></center>',
-              '<br>' ]
+              '<br/>' ]
 
         ## if there were no valid chain configurations found
         ## then write out a useful error message
@@ -603,7 +747,7 @@ class HTMLReport(Report):
         l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chain.chain_id),
              '<center>',
              '<table border="0" style="background-color:#dddddd">',
-             '<tr><th># of TLS<br>Groups</th>',
+             '<tr><th># of TLS<br/>Groups</th>',
              '<th>Segment/Sequence Alignment</th></tr>',
              '<tr>',
         
@@ -613,7 +757,7 @@ class HTMLReport(Report):
         l.append('<ul style="list-style-type:none;margin:0px;padding:0px">')
 
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-            l.append('<li style="line-height:20px"><a href="#NTLS%d">%d</a><br>' % (ntls, ntls))
+            l.append('<li style="line-height:20px"><a href="#NTLS%d">%d</a><br/>' % (ntls, ntls))
 
         l.append('</ul>')
 
@@ -642,21 +786,25 @@ class HTMLReport(Report):
             pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
 	except:
 	    ## EAM FIXME:  But really something must have gone wrong before this point.
-	    console.stdoutln( "     Warning: failure in raster3d_render_tls_graph_path")
+	    console.stdoutln("     Warning: failure in raster3d_render_tls_graph_path")
 	    pml_path = ""
 	    png_path = ""
 	    pass
 
-        ## JMol Viewer Page
-	try:
-            jmol_path = self.jmol_html(chain, cpartition)
-            jmol_animate_path = self.jmol_animate_html(chain, cpartition)
-	except:
-	    ## EAM FIXME:  But really something must have gone wrong before this point.
-	    console.stdoutln( "     Warning: JMol setup failed in jmol_animate_html")
+        ## JMol Viewer Scripts
+	if conf.JMOL_SKIP:
 	    jmol_path = ""
 	    jmol_animate_path = ""
-	    pass
+	else:
+	    try:
+		jmol_path = self.jmol_html(chain, cpartition)
+		jmol_animate_path = self.jmol_animate_html(chain, cpartition)
+	    except:
+		## EAM FIXME:  But really something must have gone wrong before this point.
+		console.stdoutln("     Warning: JMol setup failed in jmol_animate_html")
+		jmol_path = ""
+		jmol_animate_path = ""
+		pass
 
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chain, cpartition)
@@ -669,8 +817,8 @@ class HTMLReport(Report):
             ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
 	except:
 	    ## EAM FIXME:  But really something must have gone wrong before this point.
-	    console.stdoutln( "     Warning: Analysis of this partition failed")
-	    return "<hr>Analysis of this partition failed<br>"
+	    console.stdoutln("     Warning: Analysis of this partition failed")
+	    return "<hr/>Analysis of this partition failed<br/>"
 
         ## BMean Plot
         ntls_analysis.bmean_plot.width = 640
@@ -679,13 +827,13 @@ class HTMLReport(Report):
         ntls_analysis.bmean_plot.output_png()
 
         
-        l = ['<hr>',
+        l = ['<hr/>',
              
              '<center style="page-break-before:always; font-size:small">',
              '<a name="NTLS%d" style="font-size:large">' % (ntls),
              'Summary of Optimal TLS Group Partition using %d Groups' % (ntls),
              '</a>',
-             '<br>',
+             '<br/>',
 
              ## navigation links
              '<a href="%s">Full TLS Partition Analysis</a>' % (ntls_analysis.url),
@@ -706,7 +854,7 @@ class HTMLReport(Report):
              'screenY=10,left=10,top=10&quot;);'\
              'return false;">Animate Screw Displacement with JMol</a>' % (jmol_animate_path, conf.JMOL_SIZE, conf.JMOL_SIZE),
 
-             '<br>',
+             '<br/>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_path),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
              ## TLS-PHENIX-OUT. Christoph Champ, 2007-12-18
@@ -719,7 +867,7 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><img src="%s" alt="structimage"></center><br>' % (png_path),
+             '<center><img src="%s" alt="structimage"></center><br/>' % (png_path),
              '</th></tr>',
 
              '<tr><th><center>',
@@ -739,7 +887,8 @@ class HTMLReport(Report):
         """
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         png_path = "%s.png"   % (basename)
-        console.stdoutln( "Raster3D: rendering %s..." % (basename)) ## LOGLINE
+	console.stdoutln("%s" % "="*80) ## LOGLINE: Entering new segment
+        console.stdoutln("Raster3D: rendering %s..." % png_path) ## LOGLINE
 
         struct_id = self.struct_id
         driver = R3DDriver.Raster3DDriver()
@@ -782,7 +931,7 @@ class HTMLReport(Report):
 	        height    = ori["pheight"],
 	        bg_color  = "White")
 	except:
-	    console.stdoutln( "     Warning: failed to find orientation for graphics output")
+	    console.stdoutln("     Warning: failed to find orientation for graphics output")
 	    pass
 
         ## turn off axes and unit cell visualization
@@ -934,6 +1083,7 @@ class HTMLReport(Report):
                 atm.U = Utls
 
         FileIO.SaveStructure(fil = pdb_path, struct = self.struct)
+	console.stdoutln("PDB: Saving %s" % pdb_path) ## LOGLINE
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():
@@ -964,6 +1114,7 @@ class HTMLReport(Report):
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
 
         tls_file.save(open(tlsout_path, "w"))
+	console.stdoutln("REFMAC: Saving %s" % tlsout_path) ## LOGLINE
 
         return tlsout_path
 
@@ -992,6 +1143,7 @@ class HTMLReport(Report):
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
 
         phenix_file.save(open(phenixout_path, "w"))
+	console.stdoutln("PHENIX: Saving %s" % phenixout_path) ## LOGLINE
 
         return phenixout_path
 
@@ -1046,6 +1198,7 @@ class HTMLReport(Report):
              '</html>']
 
         open(jmol_path, "w").write("".join(l))
+	console.stdoutln("JMOL: Saving %s" % jmol_path) ## LOGLINE
         return jmol_path
 
     def jmol_animate_html(self, chain, cpartition):
@@ -1064,7 +1217,7 @@ class HTMLReport(Report):
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_path)
         except TLSAnimateFailure:
-            console.stdoutln("            failed")
+            console.stdoutln("     Warning: failed to create animation PDB file.")
             pass
         
         ## create the JMol script using cartoons and consistant
@@ -1120,6 +1273,7 @@ class HTMLReport(Report):
         gc.collect()
 
         open(html_path, "w").write("".join(l))
+	console.stdoutln("HTML: Saving %s" % html_path) ## LOGLINE
         return html_path
 
     def write_multi_chain_alignment(self):
@@ -1140,6 +1294,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_multi_chain_alignment())
         fil.close()
+	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
     
     def html_multi_chain_alignment(self):
         """Write out all HTML/PDB/TLSIN files which compare
@@ -1153,7 +1308,7 @@ class HTMLReport(Report):
               '<center>',
               '<a href="index.html">Back to Index</a>',
               '</center>',
-              '<br>' ]
+              '<br/>' ]
 
         ## figure out the maximum number of ntls in all chains
         max_ntls = 0
@@ -1222,6 +1377,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_refinement_prep())
         fil.close()
+	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_refinement_prep(self):
         title = self.page_refinement_prep["title"]
@@ -1235,13 +1391,13 @@ class HTMLReport(Report):
              '<center>',
              '<a href="index.html">Back to Index</a>',
              '</center>',
-             '<br>',
+             '<br/>',
              '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL),
              '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id),
              '<p>%s</p>' % (captions.REFINEMENT_PREP_INFO),
              '<center><table><tr><td>',
              plot.html_link(),
-             '<br>',
+             '<br/>',
              '</td></tr><tr><td>',
              '<table width="100%" border="1">',
              '<tr><th>',
@@ -1323,17 +1479,18 @@ class ChainNTLSAnalysisReport(Report):
              '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id),
              '</center>',
              
-             '<br>',
+             '<br/>',
 
-             self.html_tls_group_table(),'<br>',
-             self.html_bmean(),'<br>',
-             self.tls_segment_recombination(),'<br>',
-             self.html_translation_analysis(),'<br>',
-             self.html_libration_analysis(),'<br>',
-             self.html_ca_differance(),'<br>',
+             self.html_tls_group_table(),'<br/>',
+             self.html_bmean(),'<br/>',
+             self.tls_segment_recombination(),'<br/>',
+             self.html_translation_analysis(),'<br/>',
+             self.html_libration_analysis(),'<br/>',
+             self.html_ca_differance(),'<br/>',
              self.html_rmsd_plot()]
 
-        self.tls_segment_recombination()
+	## EAM April 2008 - This sure looks redundant to me.  Let's try doing without it
+        ## self.tls_segment_recombination()
         
         for tls in self.cpartition.iter_tls_segments():
             ## don't write out bypass edges
@@ -1343,7 +1500,7 @@ class ChainNTLSAnalysisReport(Report):
         l.append(self.html_foot())
         
         open(self.index, "w").write("".join(l))
-	console.stdoutln("HTML: Saving %s"%path)
+	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_tls_group_table(self):
         return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..") ## Pass "ntls" as well. Christoph Champ, 2008-04-05
@@ -1425,11 +1582,8 @@ class ChainNTLSAnalysisReport(Report):
         filename = "%s_CHAIN%s_NTLS%s_RECOMBINATION.txt" % (
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
 
-	## Tell 'log.txt' about RECOMBINATION file. Christoph Champ, 2008-03-24
-	console.stdoutln("RECOMBINATION: Saving %s_CHAIN%s_NTLS%s_RECOMBINATION.txt"%( ## LOGLINE
-	    self.struct_id, self.chain_id, self.cpartition.num_tls_segments()))
-        
         open(filename, "w").write(str(tbl))
+	console.stdoutln("RECOMBINATION: Saving %s" % filename) ## LOGLINE
 
         m, n = rmatrix.shape
         tbl = table.StringTable(m + 1, n + 1, '<td></td>')
@@ -1440,6 +1594,7 @@ class ChainNTLSAnalysisReport(Report):
             tbl[0, i + 1] = tbl[i + 1, 0]
 
         ## recombination values
+	console.debug_stdoutln(">MATRIX: Creating RMSD B values table...") ## DEBUG
 
         ## determine min/max values for coloring
         min_rmsd_b = rmatrix[0, 0]
