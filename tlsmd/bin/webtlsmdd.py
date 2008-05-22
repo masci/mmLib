@@ -26,6 +26,7 @@ import SimpleXMLRPCServer
 import urllib
 import gzip
 import StringIO
+import subprocess ## for render of 'struct.png'
 
 from mmLib import FileIO
 from tlsmdlib import conf, const, tls_calcs, email
@@ -167,6 +168,24 @@ class JobDatabase(object):
             return ""
         return value
 
+#def render_struct(webtlsmdd, job_id):
+def render_struct(job_dir):
+    """Generate struct.png via molauto/molscript/render
+    """
+    ## cmd: molauto smallAB.pdb|parse_molauto.pl|molscript -r |render -bg white -size 200x200 -png mymol.png
+    #job_dir = webtlsmdd.job_get_job_dir(job_id)
+    #job_url = webtlsmdd.job_get_job_url(job_id)
+
+    cmdlist = ["%s %s/struct.pdb | %s | %s -r | %s -bg white -size %s -png %s/struct.png 1>&2" % (
+              conf.MOLAUTO_PATH,job_dir,conf.PARSE_MOLAUTO_PATH,conf.MOLSCRIPT_PATH,conf.RENDER_PATH,
+              conf.RENDER_SIZE,job_dir)]
+    proc = subprocess.Popen(cmdlist,
+                            shell = True,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE,
+                            close_fds = True,
+                            bufsize = 32768)
 
 def SetStructureFile(webtlsmdd, job_id, struct_bin):
     """Creates job directory, saves structure file to the job directory,
@@ -196,6 +215,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     filobj.write(struct_bin.data)
     filobj.close()
 
+    ## Generate summary/thumb 'struct.png' image
+    if conf.THUMBNAIL:
+        render_struct(job_dir)
+
     ## set basic properties of the job
     job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
     webtlsmdd.jobdb.job_data_set(job_id, "job_url", job_url)
@@ -204,7 +227,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
 
     ## create tarball path and url. Christoph Champ, 2007-12-03
-    tarball_url = "%s/%s.tar.gz" % (job_url,job_id)
+    tarball_url = "%s/%s.tar.gz" % (job_url, job_id)
     webtlsmdd.jobdb.job_data_set(job_id, "tarball_url", tarball_url)
 
     analysis_dir = "%s/ANALYSIS" % (job_dir)
@@ -543,6 +566,10 @@ class WebTLSMDDaemon(object):
 
     def job_get_analysis_base_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "analysis_base_url")
+
+    ## Christoph Champ, 2008-04-29
+    def job_get_job_url(self, job_id):
+        return self.jobdb.job_data_get(job_id, "job_url")
 
     def job_get_job_dir(self, job_id):
         return self.jobdb.job_data_get(job_id, "job_dir")
