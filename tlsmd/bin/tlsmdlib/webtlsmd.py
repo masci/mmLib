@@ -25,6 +25,7 @@ import numpy		# Added by Christoph Champ, 2007-10-23
 import subprocess	# Added by Christoph Champ, 2007-11-20
 import datetime		# Added by Christoph Champ, 2008-02-01
 import re		# Added by Christoph Champ, 2008-02-07
+from mmLib import Library # tmp
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
@@ -73,11 +74,16 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
     """
+    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    job_url = webtlsmdd.job_get_job_url(job_id)
+
     analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
     analysis_index = os.path.join(analysis_dir, "index.html")
     analysis_url = webtlsmdd.job_get_analysis_url(job_id)
 
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    summary_index = os.path.join(job_dir, "ANALYSIS/summary.html")
+    summary_url = os.path.join(job_url, "ANALYSIS/summary.html")
+
     logfile = os.path.join(job_dir, "log.txt")
     log_url = webtlsmdd.job_get_log_url(job_id)
 
@@ -89,6 +95,10 @@ def html_job_nav_bar(webtlsmdd, job_id):
 
     x  = ''
     x += '<center>'
+
+    ## Summary page. Christoph Champ, 2008-04-29
+    if (webtlsmdd.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
+        x += '<h3>View <a href="%s">Summary Analysis</a></h3>' % (summary_url)
 
     if os.path.isfile(analysis_index):
         x += '<h3>View <a href="%s">Completed TLSMD Analysis</a></h3>' % (analysis_url)
@@ -521,7 +531,10 @@ def html_job_info_table(fdict):
 
     x += '<tr><td colspan="3">'
     x += '<table cellpadding="5">'
-    x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th></tr>'
+    x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th>'
+    if conf.THUMBNAIL:
+        x += '<img src="%s"/>' % (fdict["job_url"] + "/struct.png")
+    x += '</tr>'
     for cdict in fdict.get("chains", []):
         x += '<tr><td>'
         if cdict["selected"]:
@@ -622,11 +635,17 @@ def vet_data(data, max_len):
         return False
     if not data.isalnum():
         return False
+    ## only allow 1-4 alphanumeric characters
+    #if not re.match(r'[A-Za-z0-9]{1,4}',data):
+    #    return False
     return True
 
 def vet_email(email_address):
     if len(email_address) > 45:
         return False
+    ## verify email (NOTE: Doesn't warn user!)
+    if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$',email_address):
+	return False
     return True
 
 
@@ -662,6 +681,8 @@ def extract_job_edit_form(form, webtlsmdd):
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()
         if vet_data(structure_id, 4):
+	    ## remove non-alphanumeric characters. Christoph Champ, 2008-04-22
+	    structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
     ## user_comment field added. Christoph Champ, 2007-12-18
@@ -699,7 +720,6 @@ def extract_job_edit_form(form, webtlsmdd):
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
     return True
-
 
 
 class Page(object):
@@ -1141,6 +1161,7 @@ class ExploreJobPage(Page):
         jdict = webtlsmdd.job_get_dict(job_id)
 	x += html_job_info_table(jdict)
         x += self.html_foot()
+
 	return x
 
        
@@ -1559,7 +1580,7 @@ def generate_random_filename(code_length = 8):
     code = "".join(random.sample(codelist, code_length))
     return code
 
-def running_stddev(atomnum,restype,resnum,chain,tfactor):
+def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation"""
     ######### EAM 3-Dec-2007 ##########
     tmpfile=generate_random_filename()
@@ -1613,32 +1634,37 @@ def running_stddev(atomnum,restype,resnum,chain,tfactor):
 
 def check_upload(file):
     """Runs sanity checks on uploaded file"""
-    # Standard deviation of temperature factors check
+    ## Checks if PDB contains valids aa/na residues
+    ## PDB must have at least 30 ATOMs
+    ## PDB can not have lowercase alt. res. numbers
+    ## Check Standard deviation of temp. factors
     atom_num=[]
     res_type=[]
     res_num=[]
     chain=[]
     temp_factors=[]
-    bad_std= -1
+    bad_std = -1
     for line in file:
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
 	elif re.match('^ATOM.*[0-9][a-z]',line):
 	    ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
 	    return "Please change lowercase to uppercase for alternate residue numbers."
-        elif line.startswith('ATOM'):
-	    atomnum=line[7:11]
-            restype=line[17:20]
-            ch_id=line[22:22]
-            resnum=line[23:26]
-            tfactor=line[61:66]
+        elif line.startswith('ATOM') and (
+            Library.library_is_amino_acid(line[17:20]) or 
+            Library.library_is_nucleic_acid(line[17:20])):
+	    atomnum = line[7:11]
+            restype = line[17:20]
+            ch_id = line[22:22]
+            resnum = line[23:26]
+            tfactor = line[61:66]
             atomnum.strip()
             restype.strip()
             resnum.strip()
             tfactor.strip()
-            atomnum=int(atomnum)
-            resnum=int(resnum)
-            tfactor=float(tfactor)
+            atomnum = int(atomnum)
+            resnum = int(resnum)
+            tfactor = float(tfactor)
             atom_num.append(atomnum)
             res_type.append(restype)
             res_num.append(resnum)
@@ -1646,20 +1672,20 @@ def check_upload(file):
             temp_factors.append(tfactor)
         else:
             continue
-    if(len(atom_num)<30):
-        return "Not a PDB structure"
+
+    if(len(atom_num) < 30):
+        return "Not a PDB structure or has unrecognized residue names."
 
     bad_std,tmpfile=running_stddev(atom_num,res_type,res_num,chain,temp_factors)
     if bad_std > 0:
-	f=open('%s/%s.gnu'%(conf.WEBTMP_PATH,tmpfile),'w')
+	f = open('%s/%s.gnu' % (conf.WEBTMP_PATH, tmpfile), 'w')
 	f.write("set style fill solid 0.15 noborder\n")
 	f.write("set style data linespoints\n")
-	f.write("set output '%s/%s.png'\n" %(conf.WEBTMP_PATH,tmpfile))
+	f.write("set output '%s/%s.png'\n" % (conf.WEBTMP_PATH, tmpfile))
 	f.write("set yrange [0:*]\n")
 	## f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
 	f.write("set ytics nomirror tc rgb 'blue'\n")
 	f.write("set y2range [0:1]\n")
-	## f.write(u"set y2label 'Å^2' norotate tc rgb 'red'\n") ## Testing unicode. Christoph Champ, 2008-03-17
 	## f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
 	f.write("set y2tics nomirror tc rgb 'red'\n")
 	f.write("set format y2 '%.1f'\n")
@@ -1678,7 +1704,6 @@ def check_upload(file):
 	return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL,"webtmp",tmpfile)
 
     return ''
-
 
 def main():
     page = None
