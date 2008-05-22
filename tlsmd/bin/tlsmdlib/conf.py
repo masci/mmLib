@@ -18,10 +18,10 @@ import const
 import console
 
 ## BEGIN: CONFIGURATION PATHS AND URLS
-BASE_PUBLIC_URL        = "http://verdandi.bmsc.washington.edu"  ## Added by Christoph Champ, 2008-02-07
+BASE_PUBLIC_URL        = "http://skuld.bmsc.washington.edu"
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
 TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
-TLSMD_PUBLIC_URL       = "http://verdandi.bmsc.washington.edu/~tlsmd" # Added by Christoph Champ, 2007-12-13
+TLSMD_PUBLIC_URL       = "http://skuld.bmsc.washington.edu/~tlsmd"
 TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
 WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
@@ -29,8 +29,8 @@ ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "tlsmdtraceback"
 LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
-PDB_URL                = "http://www.pdb.org/pdb/explore/explore.do?structureId=" ## Added by Christoph Champ, 2008-02-20
-GET_PDB_URL            = "http://www.rcsb.org/pdb/files" ## Added by Christoph Champ, 2008-03-10
+PDB_URL                = "http://www.pdb.org/pdb/explore/explore.do?structureId="
+GET_PDB_URL            = "http://www.rcsb.org/pdb/files"
 ## END: CONFIGURATION PATHS AND URLS
 
 ## override default configuration
@@ -40,13 +40,13 @@ if os.path.exists(ALTCONF):
 
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
-WEBTMP_PATH	       = "/var/www/webtmp"		# Added by Christoph Champ, 2007-12-03
-GNUPLOT                = "/usr/local/bin/gnuplot"	# Added by Christoph Champ, 2007-12-03
+WEBTMP_PATH	       = "/var/www/webtmp"
+GNUPLOT                = "/usr/local/bin/gnuplot"
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
-REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_PUBLIC_URL) # Changed. Christoph Champ, 2008-03-17
+REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_PUBLIC_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
-JMOL_DIR               = "../../../jmol"		# Directory path must be relative, not an absolute URL.
+JMOL_DIR               = "../../../jmol" # Directory path must be relative, not an absolute URL.
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT,"pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR,"pdbids.txt")
 
@@ -70,10 +70,10 @@ JMOL_SKIP = False ## Toggle switch
 JMOL_SIZE = 600
 
 ## the following are used for the summary/thumb 'struct.png' image.
-## These are optional.
-THUMBNAIL      = True  ## Default is "False".
+## These are optional. Uses internal 'parse_molauto.pl' script!
+THUMBNAIL      = False  ## Default is "False".
 MOLAUTO_PATH   = "/usr/local/bin/molauto"
-PARSE_MOLAUTO_PATH = "/home/tlsmd/tlsmd/bin/parse_molauto.pl" ## This is an internal script!
+PARSE_MOLAUTO_PATH = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
 MOLSCRIPT_PATH = "/usr/local/bin/molscript"
 RENDER_PATH    = "/usr/local/bin/render"
 RENDER_SIZE    = "200x200"
@@ -89,7 +89,7 @@ class GlobalConfiguration(object):
         self.min_subsegment_size = 4
         self.adp_prob = ADP_PROB
         self.nparts = NPARTS
-        self.verbose = True
+        self.verbose = False
         self.use_svg = False
         self.webtlsmdd = None
         self.job_id = None

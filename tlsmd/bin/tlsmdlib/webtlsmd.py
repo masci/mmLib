@@ -1557,7 +1557,7 @@ class SubmitPDBPage(Page):
 
 
         title = "This protein has already been analyzed"
-        analysis_url = "http://verdandi.bmsc.washington.edu/~tlsmd/pdb/%s/ANALYSIS" % (pdbid)
+        analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL,pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
