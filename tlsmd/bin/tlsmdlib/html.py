@@ -11,6 +11,7 @@
 import os
 import time
 import numpy
+import shutil ## for copying files around (e.g., jmol)
 
 ## Python Imaging Library imports
 import Image
@@ -348,6 +349,11 @@ class HTMLSummaryReport(Report):
             os.mkdir(report_dir)
         os.chdir(report_dir)
 
+        this_dir = os.getcwd()
+        shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", this_dir)
+        shutil.copy(conf.JMOL_PATH + "/Jmol.jar", this_dir)
+        shutil.copy(conf.JMOL_PATH + "/Jmol.js", this_dir)
+
         ## Create preliminary summary.png plot
         for chain in self.tlsmd_analysis.iter_chains():
             #self.pre_tls_chain_optimization(chain)
@@ -397,10 +403,10 @@ class HTMLSummaryReport(Report):
                  captions.MOTION_ANALYSIS_TEXT)]
 
         l += ['<center>',
-	     '<p style="text-align:center; font-size:large bold;',
+             '<p style="text-align:center; font-size:large bold;',
                  'width:70%; padding:10px; border:thin solid #f00;',
                  'background-color:#faa;">',
-	     'Your job is still running and the analysis is incomplete.',
+             'Your job is still running and the analysis is incomplete.',
              'This is a summary page.</p>\n']
 
         ## progress bar
@@ -417,7 +423,7 @@ class HTMLSummaryReport(Report):
              '%s%% Complete</p>\n' % progress,
              '</center>']
 	
-	l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
+        l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
 
 	l += [self.html_foot()]
         
@@ -1185,12 +1191,14 @@ class HTMLReport(Report):
              '<html>',
              '<head>',
              '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.num_tls_segments()),
-             '<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
+             #'<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
+             '<script type="text/javascript" src="Jmol.js">',
              '</script>',
              '</head>',
              '<body>',
              '<script type="text/javascript">',
-             'jmolInitialize("%s");' % (conf.JMOL_DIR),
+             #'jmolInitialize("%s");' % (conf.JMOL_DIR),
+             'jmolInitialize("./");',
              'jmolSetAppletColor("white");',
              'jmolApplet(%d, "%s");' % (conf.JMOL_SIZE, "".join(js)),
              '</script>',

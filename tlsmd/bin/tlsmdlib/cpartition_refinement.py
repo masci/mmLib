@@ -144,9 +144,8 @@ def RefineChainPartitionPositions(cpartition):
 def testmain():
     import tlsmd_analysis
     
-    ## FIXME This path/file does not exist. Christoph Champ, 2008-03-24
     struct = FileIO.LoadStructure(
-        file = "/home/jpaint/mymmlib/struct/movedb/domain-hinge/groel/1KP8.pdb")
+        file = "/home/tlsmd/public_html/examples/1KP8/ANALYSIS/1KP8.pdb")
     chain = tlsmd_analysis.ConstructSegmentForAnalysis(struct.get_chain("A"))
     
     cpartition = opt_containers.ChainPartition(chain, 3)

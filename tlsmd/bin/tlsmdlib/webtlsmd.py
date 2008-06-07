@@ -535,6 +535,7 @@ def html_job_info_table(fdict):
     if conf.THUMBNAIL:
         x += '<img src="%s"/>' % (fdict["job_url"] + "/struct.png")
     x += '</tr>'
+
     for cdict in fdict.get("chains", []):
         x += '<tr><td>'
         if cdict["selected"]:
@@ -645,7 +646,7 @@ def vet_email(email_address):
         return False
     ## verify email (NOTE: Doesn't warn user!)
     if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$',email_address):
-	return False
+        return False
     return True
 
 
@@ -681,8 +682,8 @@ def extract_job_edit_form(form, webtlsmdd):
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()
         if vet_data(structure_id, 4):
-	    ## remove non-alphanumeric characters. Christoph Champ, 2008-04-22
-	    structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
+            ## remove non-alphanumeric characters. Christoph Champ, 2008-04-22
+            structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
     ## user_comment field added. Christoph Champ, 2007-12-18
@@ -1144,27 +1145,27 @@ class QueuePage(Page):
 class ExploreJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
-	if job_id is None:
-	    title = 'TLSMD: Explore Job'
-	    x  = self.html_head(title, None)
-	    x += html_title(title)
-	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
-	    x += self.html_foot()
-	    return x
+        if job_id is None:
+            title = 'TLSMD: Explore Job'
+            x  = self.html_head(title, None)
+            x += html_title(title)
+            x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
+            x += self.html_foot()
+            return x
 	    
-	title = 'TLSMD: Explore Job ID %s' % (job_id)
+        title = 'TLSMD: Explore Job ID %s' % (job_id)
         x  = ''
-	x += self.html_head(title, None)
-	x += html_title(title)
-	x += html_nav_bar()
-	x += html_job_nav_bar(webtlsmdd, job_id)
+        x += self.html_head(title, None)
+        x += html_title(title)
+        x += html_nav_bar()
+        x += html_job_nav_bar(webtlsmdd, job_id)
         jdict = webtlsmdd.job_get_dict(job_id)
-	x += html_job_info_table(jdict)
+        x += html_job_info_table(jdict)
         x += self.html_foot()
 
-	return x
+        return x
 
-       
+
 class AdminJobPage(Page):
     def html_page(self):
         job_id = check_job_id(self.form, webtlsmdd)
@@ -1187,7 +1188,7 @@ class AdminJobPage(Page):
 
         x += html_nav_bar()
         if jdict.get("state") in ["errors", "warnings", "killed", "died", "defunct"]:
-	   x += html_job_nav_bar(webtlsmdd, job_id) ## Added. Christoph Champ, 2008-04-15
+            x += html_job_nav_bar(webtlsmdd, job_id) ## Added. Christoph Champ, 2008-04-15
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
@@ -1557,7 +1558,7 @@ class SubmitPDBPage(Page):
 
 
         title = "This protein has already been analyzed"
-        analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL,pdbid)
+        analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
@@ -1638,22 +1639,22 @@ def check_upload(file):
     ## PDB must have at least 30 ATOMs
     ## PDB can not have lowercase alt. res. numbers
     ## Check Standard deviation of temp. factors
-    atom_num=[]
-    res_type=[]
-    res_num=[]
-    chain=[]
-    temp_factors=[]
+    atom_num = []
+    res_type = []
+    res_num = []
+    chain = []
+    temp_factors = []
     bad_std = -1
     for line in file:
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
-	elif re.match('^ATOM.*[0-9][a-z]',line):
-	    ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
-	    return "Please change lowercase to uppercase for alternate residue numbers."
+        elif re.match('^ATOM.*[0-9][a-z]',line):
+            ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
+            return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
             Library.library_is_amino_acid(line[17:20]) or 
             Library.library_is_nucleic_acid(line[17:20])):
-	    atomnum = line[7:11]
+            atomnum = line[7:11]
             restype = line[17:20]
             ch_id = line[22:22]
             resnum = line[23:26]
@@ -1676,34 +1677,36 @@ def check_upload(file):
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
 
-    bad_std,tmpfile=running_stddev(atom_num,res_type,res_num,chain,temp_factors)
+    bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
     if bad_std > 0:
-	f = open('%s/%s.gnu' % (conf.WEBTMP_PATH, tmpfile), 'w')
-	f.write("set style fill solid 0.15 noborder\n")
-	f.write("set style data linespoints\n")
-	f.write("set output '%s/%s.png'\n" % (conf.WEBTMP_PATH, tmpfile))
-	f.write("set yrange [0:*]\n")
-	## f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
-	f.write("set ytics nomirror tc rgb 'blue'\n")
-	f.write("set y2range [0:1]\n")
-	## f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
-	f.write("set y2tics nomirror tc rgb 'red'\n")
-	f.write("set format y2 '%.1f'\n")
-	f.write("set xlabel 'residue number'\n")
-	f.write("set grid\n")
-	f.write("set title 'Distribution of B factors in submitted structure (Å^2)'\n")
-	#f.write("set label 1 'bad_std = %d' at graph 0.1, 0.9 noenh\n" % bad_std)   # EAM DEBUG
-	#f.write("set term png font '%s' enhanced size 800,400\n" % gnuplot_font)
-	f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
-	f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n"%(conf.WEBTMP_PATH,tmpfile))
-	f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n"%(conf.WEBTMP_PATH,tmpfile))
-	f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n"%(conf.WEBTMP_PATH,tmpfile))
-	f.write("     0.05 axes x1y2 with lines lc rgb 'red' notitle\\\n")
-	f.close()
-	subprocess.Popen([r"%s"%conf.GNUPLOT,"%s/%s.gnu"%(conf.WEBTMP_PATH,tmpfile)]).wait()
-	return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL,"webtmp",tmpfile)
+        f = open('%s/%s.gnu' % (conf.WEBTMP_PATH, tmpfile), 'w')
+        f.write("set style fill solid 0.15 noborder\n")
+        f.write("set style data linespoints\n")
+        f.write("set output '%s/%s.png'\n" % (conf.WEBTMP_PATH, tmpfile))
+        f.write("set yrange [0:*]\n")
+        #f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
+        f.write("set ytics nomirror tc rgb 'blue'\n")
+        f.write("set y2range [0:1]\n")
+        #f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
+        f.write("set y2tics nomirror tc rgb 'red'\n")
+        f.write("set format y2 '%.1f'\n")
+        f.write("set xlabel 'residue number'\n")
+        f.write("set grid\n")
+        f.write("set title 'Distribution of B factors in submitted structure (Å^2)'\n")
+        #f.write("set label 1 'bad_std = %d' at graph 0.1, 0.9 noenh\n" % bad_std)   # EAM DEBUG
+        #f.write("set term png font '%s' enhanced size 800,400\n" % gnuplot_font)
+        f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
+        f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n"%(conf.WEBTMP_PATH,tmpfile))
+        f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n"%(conf.WEBTMP_PATH,tmpfile))
+        f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n"%(conf.WEBTMP_PATH,tmpfile))
+        f.write("     0.05 axes x1y2 with lines lc rgb 'red' notitle\\\n")
+        f.close()
+        subprocess.Popen([r"%s"%conf.GNUPLOT,"%s/%s.gnu"%(conf.WEBTMP_PATH,tmpfile)]).wait()
+
+        return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
 
     return ''
+
 
 def main():
     page = None

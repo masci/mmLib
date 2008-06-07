@@ -47,8 +47,9 @@ REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_PUBLIC_URL)
 TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 JMOL_DIR               = "../../../jmol" # Directory path must be relative, not an absolute URL.
-WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT,"pdb")
-WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR,"pdbids.txt")
+JMOL_PATH              = "/home/tlsmd/tlsmd/bin/jmol"
+WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT, "pdb")
+WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR, "pdbids.txt")
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 50
@@ -57,8 +58,8 @@ ADP_PROB = 50
 NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH  = 640
-VIS_HEIGHT = 400
+VIS_WIDTH  = 320
+VIS_HEIGHT = 200
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
@@ -71,7 +72,7 @@ JMOL_SIZE = 600
 
 ## the following are used for the summary/thumb 'struct.png' image.
 ## These are optional. Uses internal 'parse_molauto.pl' script!
-THUMBNAIL      = False  ## Default is "False".
+THUMBNAIL      = False  ## (default: False)
 MOLAUTO_PATH   = "/usr/local/bin/molauto"
 PARSE_MOLAUTO_PATH = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
 MOLSCRIPT_PATH = "/usr/local/bin/molscript"

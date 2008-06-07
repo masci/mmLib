@@ -102,13 +102,11 @@ def timediff(begin, end):
     x = "%1d:%2d.%2d" % (hours, min, secs)
     return x.replace(" ", "0")
     
-    
 def log_error(jdict, err):
     ln  = ""
     ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "ERROR: %s" % (err)
     log_write(ln)
-
 
 def get_cdict(chains, chain_id):
     for cdict in chains:
@@ -400,12 +398,13 @@ def check_for_pid(webtlsmdd,jdict):
     return False
 
 def job_completed(webtlsmdd,jdict):
-    ## Checks if "running" job is finished and sets state according to log.txt messages. Christoph Champ, 2008-03-21
-    ## If there is a match, return False (job not completed). Otherwise return True (job completed); 2008-02-01
+    ## Checks if "running" job is finished and sets state according to log.txt
+    ## messages. If there is a match, return False (job not completed).
+    ## Otherwise return True (job completed)
     try:
 	os.chdir(conf.TLSMD_WORK_DIR+"/"+jdict["job_id"])
     except:
-	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory") ## There must be zero spaces in "state". Christoph Champ, 2008-02-07
+	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
 	return True
 
     if check_for_pid(webtlsmdd,jdict):
@@ -437,8 +436,8 @@ def fetch_and_run_jobs_forever():
 		for n in range(len(running_list)):
 		    if myjdict["job_id"]==running_list[n]:
 			if webtlsmdd.job_get_state(myjdict["job_id"]) != "died":
-			   cleanup_job(webtlsmdd,myjdict) # Note: passing full jdict (not just job_id). Christoph Champ, 2008-02-12
-			running_list.pop(n)  # remove completed job_id from array
+			   cleanup_job(webtlsmdd,myjdict)
+			running_list.pop(n) ## remove completed job_id from array
 			break
 
 	### EAM 7-Feb-2008 revamp the logic limiting us to 4 run slots

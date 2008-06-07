@@ -18,6 +18,7 @@ import tls_calcs
 
 
 def FormatFigureHTML(title, caption, figure_html):
+
     if caption:
         l = ['<tr><td align="center">',
              '<p style="padding:2%%;background-color:#eeeeee;border-style:dashed;border-width:thin;border-color:black">%s</p>' % (caption),
@@ -43,9 +44,9 @@ class GNUPlot(object):
     def __init__(self, **args):
         self.gnuplot_path = args.get("gnuplot_path", conf.GNUPLOT)
         self.font_path    = args.get("font_path", conf.GNUPLOT_FONT)
-        self.font_size    = args.get("fontsize", 10)
-        self.width        = args.get("width", 640)
-        self.height       = args.get("height", 480)
+        self.font_size    = args.get("fontsize", conf.GNUPLOT_FONT_SIZE)
+        self.width        = args.get("width", conf.GNUPLOT_WIDTH)
+        self.height       = args.get("height", conf.GNUPLOT_HEIGHT)
 
         self.basename     = None
         self.txt_path     = None
@@ -144,6 +145,15 @@ plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" ls 1 with li
 """
         
 class LSQR_vs_TLS_Segments_Plot(GNUPlot):
+    ## TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
+    ## by minimizing an overall residual function. This plot shows the value
+    ## of the residual as a function of the number of TLS groups allowed in
+    ## the partition. Adding additional TLS groups will always make this
+    ## residual lower, but there is an issue of diminishing returns as you go
+    ## to larger numbers of groups.
+    ##
+    ## NOTE (by Christoph):
+    ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
     def __init__(self, chain,  **args):
         GNUPlot.__init__(self, **args)
         self.chain = chain
@@ -172,7 +182,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
             self.chain.chain_id))
 
         return script
-        
+
 
 _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE = """\
 set xlabel "Number of TLS Segments"
@@ -216,6 +226,8 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
 	script += "set term png font '%s' 8 size 400,320 linewidth 0.5\n" % conf.GNUPLOT_FONT
 	script += "set output 'summary.png'\n"
 	script += "unset title; set ylabel 'Residual' offset 1; replot\n"
+
+        console.stdoutln("GNUPLot: Saving summary.png") ## LOGLINE
 
         return script
 

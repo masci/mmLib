@@ -57,6 +57,7 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     the results from a tls_analyzer fit of the combined tls1 and tls2
     atoms, which should already have been performed.
     """
+
     assert tls1.chain_id == tls2.chain_id
     segment_ranges = join_segment_ranges(chain, tls1.segment_ranges, tls2.segment_ranges)
     tls = opt_containers.TLSSegment(chain_id = tls1.chain_id,
@@ -72,6 +73,7 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     """Returns a new TLSSegment object which is the best
     combination of any two TLSSegment instances in cpartition.
     """
+
     chain = cpartition.chain 		## E.g., "Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
     tls_list = cpartition.tls_list	## 2D object
     tls_analyzer = chain.tls_analyzer	## 1D object
@@ -183,6 +185,7 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
 
 
 def ExtendRecombinationTree(ptree, depth, width):
+
     if depth == 0:
         return
     if ptree.empty():
@@ -198,6 +201,8 @@ def ExtendRecombinationTree(ptree, depth, width):
 
 
 def ChainPartitionRecombinationOptimization(chain):
+    console.debug_stdoutln(">Entering: cpartition_recombination.py->ChainPartitionRecombinationOptimization()...") ## DEBUG
+
     visited = {}
     
     ntls_best = {}
