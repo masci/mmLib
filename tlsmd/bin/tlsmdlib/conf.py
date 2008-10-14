@@ -70,6 +70,11 @@ GNUPLOT_HEIGHT    = 480
 JMOL_SKIP = False ## Toggle switch
 JMOL_SIZE = 600
 
+## turn on/off various sections
+RENDER_SKIP    = False
+REFMAC_SKIP    = False
+HISTOGRAM_SKIP = True
+
 ## the following are used for the summary/thumb 'struct.png' image.
 ## These are optional. Uses internal 'parse_molauto.pl' script!
 THUMBNAIL      = False  ## (default: False)
@@ -92,6 +97,11 @@ class GlobalConfiguration(object):
         self.nparts = NPARTS
         self.verbose = False
         self.use_svg = False
+        self.skip_html = False
+        self.skip_jmol = False
+        self.skip_jmol_view = False
+        self.skip_jmol_animate = False
+        self.skip_histogram = True
         self.webtlsmdd = None
         self.job_id = None
         self.struct_id = None

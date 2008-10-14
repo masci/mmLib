@@ -326,6 +326,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
     webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in tlsmdlib/html.py. Christoph Champ, 2008-02-09
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
+    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_view", "ON")
+    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_animate", "ON")
+    webtlsmdd.jobdb.job_data_set(job_id, "skip_histogram", "ON")
 
     try:
         aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
@@ -668,7 +671,28 @@ class WebTLSMDDaemon(object):
         return plot_format
     def job_get_plot_format(self, job_id):
         return self.jobdb.job_data_get(job_id, "plot_format")
-        
+
+    ## JMol view toggle feature (default=ON/True). Christoph Champ, 2008-06-13
+    def job_set_jmol_view(self, job_id, skip_jmol_view):
+        self.jobdb.job_data_set(job_id, "skip_jmol_view", skip_jmol_view)
+        return skip_jmol_view
+    def job_get_jmol_view(self, job_id):
+        return self.jobdb.job_data_get(job_id, "skip_jmol_view")
+
+    ## JMol animate toggle feature (default=ON/True). Christoph Champ, 2008-06-13
+    def job_set_jmol_animate(self, job_id, skip_jmol_animate):
+        self.jobdb.job_data_set(job_id, "skip_jmol_animate", skip_jmol_animate)
+        return skip_jmol_animate
+    def job_get_jmol_animate(self, job_id):
+        return self.jobdb.job_data_get(job_id, "skip_jmol_animate")
+
+    ## Histogram toggle feature (default=ON/True). Christoph Champ, 2008-10-08
+    def job_set_histogram(self, job_id, skip_histogram):
+        self.jobdb.job_data_set(job_id, "skip_histogram", skip_histogram)
+        return skip_histogram
+    def job_get_histogram(self, job_id):
+        return self.jobdb.job_data_get(job_id, "skip_histogram")
+     
     def job_set_run_time_begin(self, job_id, run_time_begin):
         self.jobdb.job_data_set(job_id, "run_time_begin", run_time_begin)
         return run_time_begin

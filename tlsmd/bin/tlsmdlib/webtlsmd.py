@@ -111,7 +111,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
         x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (tarball_url)
 
     x += '</center>'
-    x += '<br>'
+    x += '<br/>'
     return x
 
 
@@ -371,17 +371,44 @@ def html_program_settings_table(fdict):
 
          '<td valign="top">',
          '<fieldset><legend>Plot Output Format</legend>',
-         '<div style="font-size:xx-small">Select the output format for plots.<br>SVG works with the Adobe plugin and Firefox 1.5.</div><br>',
-         '<label><input name="plot_format" type="radio" value="PNG" tabindex="35" checked>PNG Images</label><br>',
+         '<div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5.</div><br/>',
+         '<label><input name="plot_format" type="radio" value="PNG" tabindex="35" checked>PNG Images</label><br/>',
          '<label><input name="plot_format" type="radio" value="SVG" tabindex="35">SVG</label>',
          '</fieldset>',
          '</td>',
 
          '<td valign="top">',
          '<fieldset><legend>Atom Class Selection</legend>',
-         '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div><br>',
-         '<label><input name="include_atoms" type="radio" value="ALL" tabindex="35" checked>All Atoms</label><br>',
+         '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div><br/>',
+         '<label><input name="include_atoms" type="radio" value="ALL" tabindex="35" checked>All Atoms</label><br/>',
          '<label><input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35">Mainchain Atoms (N,CA,C,O,CB)</label>',
+         '</fieldset>',
+         '</td>',
+
+         '</tr><tr>'
+         ## New JMol view/animate toggle boxes (default=OFF/False). Christoph Champ, 2008-06-13
+         '<td valign="top">',
+         '<fieldset><legend>JMol toggle switches</legend>',
+         '<div style="font-size:xx-small">Turn JMol analysis on/off.</div><br/>',
+         '<label>Skip JMol-viewer: ',
+         '<label><input name="skip_jmol_view" type="radio" value="ON">on',
+         '<label><input name="skip_jmol_view" type="radio" value="OFF" checked>off',
+         '</label><br/>',
+         '<label>Skip JMol-animation: ',
+         '<label><input name="skip_jmol_animate" type="radio" value="ON">on',
+         '<label><input name="skip_jmol_animate" type="radio" value="OFF" checked>off',
+         '</label><br/>',
+         '</fieldset>',
+         '</td>',
+
+         ## New histogram toggle boxes (default=ON/True). Christoph Champ, 2008-10-07
+         '<td valign="top">',
+         '<fieldset><legend>Histogram toggle switches</legend>',
+         '<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
+         '<label>Skip histogram: ',
+         '<label><input name="skip_histogram" type="radio" value="ON" checked>on',
+         '<label><input name="skip_histogram" type="radio" value="OFF">off',
+         '</label><br/>',
          '</fieldset>',
          '</td>',
 
@@ -720,6 +747,24 @@ def extract_job_edit_form(form, webtlsmdd):
         if plot_format in ["PNG", "SVG"]:
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
+    ## JMol-viewer toggle feature (default=OFF/False). Christoph Champ, 2008-06-13
+    if form.has_key("skip_jmol_view"):
+        jmol_view_toggle = form["skip_jmol_view"].value.strip()
+        if jmol_view_toggle in ["ON", "OFF"]:
+            webtlsmdd.job_set_jmol_view(job_id, jmol_view_toggle)
+
+    ## JMol-animation toggle feature (default=OFF/False). Christoph Champ, 2008-06-13
+    if form.has_key("skip_jmol_animate"):
+        jmol_animate_toggle = form["skip_jmol_animate"].value.strip()
+        if jmol_animate_toggle in ["ON", "OFF"]:
+            webtlsmdd.job_set_jmol_animate(job_id, jmol_animate_toggle)
+
+    ## Histogram toggle feature (default=ON/True). Christoph Champ, 2008-10-08
+    if form.has_key("skip_histogram"):
+        histogram_toggle = form["skip_histogram"].value.strip()
+        if histogram_toggle in ["ON", "OFF"]:
+            webtlsmdd.job_set_histogram(job_id, histogram_toggle)
+
     return True
 
 
@@ -768,8 +813,8 @@ class ErrorPage(Page):
         l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar(),
-             '<br>',
-             '<center><p class="perror">Error<br>' ]
+             '<br/>',
+             '<center><p class="perror">Error<br/>' ]
         
         if self.text is not None:
             l.append(self.text)
@@ -836,16 +881,16 @@ class QueuePage(Page):
              '<center><b>',
              'Or click on the Job ID you wish to view',
              '</b></center>',
-             '<br>',
+             '<br/>',
              self.html_running_job_table(job_list),
-             '<br>',
+             '<br/>',
              self.html_queued_job_table(job_list),
-             '<br>',
+             '<br/>',
              self.html_completed_job_table(job_list)]
 
         limbo = self.html_limbo_job_table(job_list)
         if limbo!=None:
-            l.append('<br>')
+            l.append('<br/>')
             l.append(limbo)
 
         l.append(self.html_foot())
@@ -893,14 +938,14 @@ class QueuePage(Page):
             l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, job_id, job_id)]
 
             if user_name != "":
-                l.append('<br>%s' % (user_name))
+                l.append('<br/>%s' % (user_name))
 
             ## New user_comment added. Christoph Champ, 2007-12-18
             if user_comment != "":
-                l.append('<br>%s' % (user_comment))
+                l.append('<br/>%s' % (user_comment))
 
             if email_address != "":
-                l.append('<br>%s' % (email_address))
+                l.append('<br/>%s' % (email_address))
 
             return "".join(l)
 
@@ -927,7 +972,7 @@ class QueuePage(Page):
 
 	    strx += " ".join(l3)
 	    if len(listx)>0:
-                strx += '<br>'
+                strx += '<br/>'
 	
 	return '%s' % (strx)
 
@@ -1290,7 +1335,7 @@ SUBMIT1_NOTE = """\
 Analysis of large structures is
 computationally expensive, so you may have to wait hours to days for
 the server to generate a complete analysis depending on how
-heavily it is loaded.<br><br>
+heavily it is loaded.<br/><br/>
 """
 
 class Submit1Page(Page):
@@ -1336,9 +1381,9 @@ class Submit1Page(Page):
              '</tr>',
              '</center>',
              '</table>',
-             '<br><i><font color=red>TLSMD requires crystallographically refined B factors.',
-             '<br>Please do not submit NMR structures, theoretical models, ',
-             '<br>or any PDB file with unrefined Bs',
+             '<br/><i><font color=red>TLSMD requires crystallographically refined B factors.',
+             '<br/>Please do not submit NMR structures, theoretical models, ',
+             '<br/>or any PDB file with unrefined Bs',
              '</font></i>',
 
              self.html_foot()]
@@ -1358,7 +1403,7 @@ class Submit2Page(Page):
         try:
             job_id = self.prepare_submission()
         except SubmissionException, err:
-             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
+             l.append('<center><p class="perror">ERROR:<br/>%s</p></center>' % (err))
         else:            
             l.append(self.job_edit_form(job_id))
 
@@ -1421,7 +1466,7 @@ class Submit3Page(Page):
             job_id = self.complete_submission()
 	except SubmissionException, err:
 	    title = 'TLSMD: Job Submission Failed'
-            html  = '<center><p class="perror">ERROR:<br>%s</p></center>' % (err)
+            html  = '<center><p class="perror">ERROR:<br/>%s</p></center>' % (err)
 	else:
             title = 'TLSMD: Job Submission Succeeded'
 
@@ -1563,9 +1608,9 @@ class SubmitPDBPage(Page):
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
                     '<center>',
-                    '<br><h2>Click below to see the results:</h2>',
+                    '<br/><h2>Click below to see the results:</h2>',
                     '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
-                    '<br><br>',
+                    '<br/><br/>',
                     '<font size=-2>You will be redirected automatically in 3 seconds</font>'
                     '</center>'
                     ]
@@ -1584,34 +1629,34 @@ def generate_random_filename(code_length = 8):
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation"""
     ######### EAM 3-Dec-2007 ##########
-    tmpfile=generate_random_filename()
-    n=nres=atm=nbad=res_tfac=0
-    avg_tfac=[]
-    std=[]
-    res_id=[]
-    prevrestype=restype[0]
-    prevresnum=resnum[0]
+    tmpfile = generate_random_filename()
+    n = nres = atm = nbad = res_tfac = 0
+    avg_tfac = []
+    std = []
+    res_id = []
+    prevrestype = restype[0]
+    prevresnum = resnum[0]
     while n<len(tfactor):
         if( (prevresnum == resnum[n]) and (prevrestype == restype[n]) ):
-	   res_tfac=res_tfac+tfactor[n]
-	   atm=atm+1
+	   res_tfac = res_tfac + tfactor[n]
+	   atm = atm + 1
         else:
 	   avg_tfac.append(res_tfac/atm) # store previous guy
            res_id.append(resnum[n-1])    # store previous guy
-	   res_tfac=tfactor[n]
-	   atm=1
-           prevrestype=restype[n]
-           prevresnum=resnum[n]
-        n=n+1
+	   res_tfac = tfactor[n]
+	   atm = 1
+           prevrestype = restype[n]
+           prevresnum = resnum[n]
+        n = n + 1
     avg_tfac.append(res_tfac/atm)        # store last guy
     res_id.append(resnum[n-1])           # store last guy
 
     ## Save B_{mean} per residue for each chain
-    fdat=open('%s/%s.dat'%(conf.WEBTMP_PATH,tmpfile),'w')
-    r=0
+    fdat = open('%s/%s.dat'%(conf.WEBTMP_PATH, tmpfile),'w')
+    r = 0
     for b in avg_tfac:
 	fdat.write("%s\t%s\n"%(res_id[r],b))
-	r=r+1
+	r = r+1
         if (r < len(res_id)) and (res_id[r] < res_id[r-1]):
            fdat.write("\n")
     fdat.close()
@@ -1621,12 +1666,12 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
-    fstd=open('%s/%s.std'%(conf.WEBTMP_PATH,tmpfile),'w')
+    fstd = open('%s/%s.std'%(conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5,len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
 	fstd.write("%s\t%s\n"%(res_id[s],stddev11))
 	if stddev11 < 0.05:
-	   nbad=nbad+1
+	   nbad = nbad+1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
            fstd.write("\n")
     fstd.close()
@@ -1652,30 +1697,28 @@ def check_upload(file):
             ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
             return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
-            Library.library_is_amino_acid(line[17:20]) or 
+            Library.library_is_amino_acid(line[17:20]) or
             Library.library_is_nucleic_acid(line[17:20])):
-            atomnum = line[7:11]
-            restype = line[17:20]
+            n += 1
+            atomnum = int(line[7:11].strip())
+            restype = line[17:20].strip()
+            resnum = int(line[23:26].strip())
             ch_id = line[22:22]
-            resnum = line[23:26]
-            tfactor = line[61:66]
-            atomnum.strip()
-            restype.strip()
-            resnum.strip()
-            tfactor.strip()
-            atomnum = int(atomnum)
-            resnum = int(resnum)
-            tfactor = float(tfactor)
             atom_num.append(atomnum)
             res_type.append(restype)
             res_num.append(resnum)
             chain.append(ch_id)
+            occupancy += float(line[56:60].strip())
+            tfactor = float(line[61:66].strip())
             temp_factors.append(tfactor)
         else:
             continue
 
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
+
+    if(occupancy / n == 0.0):
+        return "All occupancies are 0.0. TLSMD won't run on this structure."
 
     bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
     if bad_std > 0:
@@ -1738,8 +1781,8 @@ def main():
     try:
         print page.html_page()
     except xmlrpclib.Fault, fault:
-        fault_html = "xmlrpclib.Fault:<br>fault code: %s<br>fault string: %s" % (
-            fault.faultCode, fault.faultString.replace("\n","<br>"))
+        fault_html = "xmlrpclib.Fault:<br/>fault code: %s<br/>fault string: %s" % (
+            fault.faultCode, fault.faultString.replace("\n","<br/>"))
 
         page = ErrorPage(form, fault_html)
         print page.html_page()

@@ -11,7 +11,8 @@
 import os
 import time
 import numpy
-import shutil ## for copying files around (e.g., jmol)
+import shutil    ## for copying files around (e.g., jmol)
+import xmlrpclib ## for toggle switches
 
 ## Python Imaging Library imports
 import Image
@@ -30,6 +31,9 @@ import sequence_plot
 import table
 import captions
 from tls_animate import TLSAnimate, TLSAnimateFailure
+
+## GLOBALS
+webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 
 def calc_inertia_tensor(atom_iter):
@@ -788,29 +792,46 @@ class HTMLReport(Report):
         ##self.write_tls_pdb_file(chain, cpartition)
 
         ## Raster3D Image
-	try:
-            pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
-	except:
-	    ## EAM FIXME:  But really something must have gone wrong before this point.
-	    console.stdoutln("     Warning: failure in raster3d_render_tls_graph_path")
-	    pml_path = ""
-	    png_path = ""
-	    pass
+        if conf.RENDER_SKIP:
+            png_path = ""
+            pml_path = ""
+            console.stdoutln("NOTE: Skipping Raster3D section") ## LOGLINE
+        else:
+            try:
+                pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
+            except:
+                ## EAM FIXME:  But really something must have gone wrong before this point.
+                console.stdoutln("     Warning: failure in raster3d_render_tls_graph_path")
+                pml_path = ""
+                png_path = ""
+                pass
 
-        ## JMol Viewer Scripts
-	if conf.JMOL_SKIP:
-	    jmol_path = ""
-	    jmol_animate_path = ""
-	else:
-	    try:
-		jmol_path = self.jmol_html(chain, cpartition)
-		jmol_animate_path = self.jmol_animate_html(chain, cpartition)
-	    except:
-		## EAM FIXME:  But really something must have gone wrong before this point.
-		console.stdoutln("     Warning: JMol setup failed in jmol_animate_html")
-		jmol_path = ""
-		jmol_animate_path = ""
-		pass
+        ## Jmol Viewer Script
+        job_id = conf.globalconf.job_id
+        if conf.JMOL_SKIP or (webtlsmdd.job_get_jmol_view(job_id) == 'ON'):
+            jmol_path = ""
+            console.stdoutln("NOTE: Skipping JMol-viewer section") ## LOGLINE
+        else:
+            try:
+                jmol_path = self.jmol_html(chain, cpartition)
+            except:
+                ## EAM FIXME:  But really something must have gone wrong before this point.
+                console.stdoutln("     Warning: Jmol setup failed in jmol_html")
+                jmol_path = ""
+                pass
+
+        ## Jmol Animation Script
+        if conf.JMOL_SKIP or (webtlsmdd.job_get_jmol_animate(job_id) == 'ON'):
+            jmol_animate_path = ""
+            console.stdoutln("NOTE: Skipping JMol-animation section") ## LOGLINE
+        else:
+            try:
+                jmol_animate_path = self.jmol_animate_html(chain, cpartition)
+            except:
+                ## EAM FIXME:  But really something must have gone wrong before this point.
+                console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
+                jmol_animate_path = ""
+                pass
 
         ## tlsout file
         tlsout_path = self.write_tlsout_file(chain, cpartition)
@@ -1500,11 +1521,21 @@ class ChainNTLSAnalysisReport(Report):
 	## EAM April 2008 - This sure looks redundant to me.  Let's try doing without it
         ## self.tls_segment_recombination()
         
-        for tls in self.cpartition.iter_tls_segments():
-            ## don't write out bypass edges
-            if tls.method != "TLS":
-                continue
-            l.append(self.html_tls_fit_histogram(tls))
+        ## Create histogram plots
+        job_id = conf.globalconf.job_id
+        if conf.HISTOGRAM_SKIP or (webtlsmdd.job_get_histogram(job_id) == 'ON'):
+            console.stdoutln("NOTE: Skipping Histogram section") ## LOGLINE
+        else:
+            try:
+                for tls in self.cpartition.iter_tls_segments():
+                    ## don't write out bypass edges
+                    if tls.method != "TLS":
+                        continue
+                    l.append(self.html_tls_fit_histogram(tls))
+            except:
+                console.stdoutln("     Warning: failure in html_tls_fit_histogram()")
+                pass
+
         l.append(self.html_foot())
         
         open(self.index, "w").write("".join(l))

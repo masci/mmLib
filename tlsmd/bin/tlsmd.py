@@ -28,10 +28,14 @@ def usage():
     print "            [-w <Weighting Model>] Models: NONE(default)/IUISO"
     print "            [-a <Atoms>] ALL(default)/MAINCHAIN"
     print "            [-i <struct_id>] Override struct_id in PDB file"
-    print "            [-s] output Gnuplot plots using SVG"
+    print "            [-s] output Gnuplot plots using SVG (default=False)"
+    print "            [-k] skip generating JMOL files (default=False)"
+    print "            [-h] skip generating HTML files (default=False)"
     print "            [-t struct.pdb:chain_id ] compare TLS displacments with another structure"
     print "            [-e] recombine linear TLSMD segments to find disjoint TLS groups"
-    print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues"
+    print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues (default=0)"
+    print "            [-u <min_subsegment_size>] (default=4)"
+    print "            [-n <num_segments>] (default=20)"
     print "            [-b] email traceback to this address if a Python exception occurs"
     print "            struct.pdb"
     print
@@ -68,6 +72,26 @@ def analysis_main(struct_path, opt_dict):
             usage()
         conf.globalconf.adp_smoothing = nsmooth
 
+    ## Added. Christoph Champ, 2008-05-13
+    if opt_dict.has_key("-u"):
+        print opt_dict["-u"]
+        try:
+            min_subseg = int(opt_dict["-u"])
+        except ValueError:
+            print "[ERROR] -u argument must be an integer"
+            usage()
+        conf.globalconf.min_subsegment_size = min_subseg
+
+    ## Added. Christoph Champ, 2008-06-09
+    if opt_dict.has_key("-n"):
+        print opt_dict["-n"]
+        try:
+            num_segs = int(opt_dict["-n"])
+        except ValueError:
+            print "[ERROR] -n argument must be an integer"
+            usage()
+        conf.globalconf.nparts = num_segs
+
     if opt_dict.has_key("-t"):
         tpath, tchain_id = opt_dict["-t"].split(":")
         conf.globalconf.target_struct_path = tpath
@@ -78,6 +102,14 @@ def analysis_main(struct_path, opt_dict):
 
     if opt_dict.has_key("-s"):
         conf.globalconf.use_svg = True
+
+    ## Added. Christoph Champ, 2008-05-13
+    if opt_dict.has_key("-k"):
+        conf.globalconf.skip_jmol = True
+
+    ## Added. Christoph Champ, 2008-08-05
+    if opt_dict.has_key("-h"):
+        conf.globalconf.skip_html = True
         
     if opt_dict.has_key("-x"):
         conf.globalconf.webtlsmdd = opt_dict["-x"]
@@ -127,7 +159,12 @@ def analysis_main(struct_path, opt_dict):
 
 if __name__ == "__main__":
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "a:t:c:d:i:w:m:r:j:x:nvseo:b")
+        ## added option "-u" = min_subsegment_size. Christoph Champ, 2008-05-13
+        ## added option "-k" = skip_jmol. Christoph Champ, 2008-05-13
+        ## added option "-n" = nparts. Christoph Champ, 2008-06-09
+        ## used letters: abcdeijmnorstuvwx
+        ## available   : fghlpqyz
+        (opts, args) = getopt.getopt(sys.argv[1:], "n:u:a:t:c:d:i:w:m:r:j:x:khvseo:b")
     except getopt.GetoptError:
         usage()
 
