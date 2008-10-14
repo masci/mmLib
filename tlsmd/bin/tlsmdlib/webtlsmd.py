@@ -1690,6 +1690,8 @@ def check_upload(file):
     chain = []
     temp_factors = []
     bad_std = -1
+    n = 0
+    occupancy = 0.0
     for line in file:
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
