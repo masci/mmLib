@@ -806,9 +806,18 @@ class HTMLReport(Report):
                 png_path = ""
                 pass
 
+        ## Lookup Jmol viewer/animate skip in database
+        try:
+            job_id = conf.globalconf.job_id
+            jmol_view_toggle = webtlsmdd.job_get_jmol_view(job_id)
+            jmol_animate_toggle = webtlsmdd.job_get_jmol_animate(job_id)
+        except:
+            jmol_view_toggle = ""
+            jmol_animate_toggle = ""
+            console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+
         ## Jmol Viewer Script
-        job_id = conf.globalconf.job_id
-        if conf.JMOL_SKIP or (webtlsmdd.job_get_jmol_view(job_id) == 'ON'):
+        if conf.JMOL_SKIP or (jmol_view_toggle == 'ON'):
             jmol_path = ""
             console.stdoutln("NOTE: Skipping JMol-viewer section") ## LOGLINE
         else:
@@ -821,7 +830,7 @@ class HTMLReport(Report):
                 pass
 
         ## Jmol Animation Script
-        if conf.JMOL_SKIP or (webtlsmdd.job_get_jmol_animate(job_id) == 'ON'):
+        if conf.JMOL_SKIP or (jmol_animate_toggle == 'ON'):
             jmol_animate_path = ""
             console.stdoutln("NOTE: Skipping JMol-animation section") ## LOGLINE
         else:
