@@ -1699,8 +1699,8 @@ def check_upload(file):
             ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
             return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
-            Library.library_is_amino_acid(line[17:20]) or
-            Library.library_is_nucleic_acid(line[17:20])):
+            Library.library_is_amino_acid(line[17:20].strip()) or
+            Library.library_is_nucleic_acid(line[17:20].strip())):
             n += 1
             atomnum = int(line[7:11].strip())
             restype = line[17:20].strip()
