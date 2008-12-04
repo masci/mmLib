@@ -7,6 +7,7 @@
 import subprocess
 import itertools
 import numpy
+import re ## to force residue numbers to be integers
 
 from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
 
@@ -16,6 +17,26 @@ import misc
 import conf
 import tls_calcs
 
+def create_fractional_residue_number(res_num):
+    """Converts insertion residues to fractional residue numbers.
+       E.g., "5A" -> "5.0"
+       This is so gnuplot can handle x-axis number values.
+    """
+    ## TODO: Figure out a better way to handle insertion residues, 2008-12-03
+
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ## used for index position
+
+    if re.sub(r'.?([A-Za-z]?)', '\\1', res_num) != '':
+        ## seg_start has insertion residues (e.g., "5A")
+        fraction = alphabet.index(re.sub(r'.?([A-Za-z]?)', '\\1', res_num.upper()))
+
+        ## remove any non-integer chars
+        res_num = re.sub(r'[^0-9]', '', res_num)
+
+        ## create fractional residue number (e.g., "5.0")
+        res_num = res_num + "." + str(fraction)
+
+    return res_num
 
 def FormatFigureHTML(title, caption, figure_html):
 
@@ -97,7 +118,8 @@ class GNUPlot(object):
         console.stdoutln("GNUPLot: Saving %s" % (self.png_path))
 
         ## set output size
-        l = ['set term png font "%s" %d size %d,%d enhanced' % (self.font_path, self.font_size, self.width, self.height),
+        l = ['set term png font "%s" %d size %d,%d enhanced' % (
+             self.font_path, self.font_size, self.width, self.height),
              'set output "%s"' % (self.png_path),
              '']
         
@@ -111,7 +133,8 @@ class GNUPlot(object):
 
         ## XXX: hack svg output
         if conf.globalconf.use_svg == True:
-            l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (self.width, self.height),
+            l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (
+                 self.width, self.height),
                  'set output "%s"' % (self.svg_path),
                  '']
             script_svg = "\n".join(l) + script0
@@ -121,7 +144,8 @@ class GNUPlot(object):
         if not alt_text: alt_text = self.basename
 
         if conf.globalconf.use_svg == True:
-            l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (self.svg_path, self.width, self.height),
+            l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (
+                 self.svg_path, self.width, self.height),
                  '<img src="%s" alt="%s">' % (self.png_path, alt_text),
                  '</object>']
 
@@ -160,6 +184,7 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->LSQR_vs_TLS_Segments_Plot()::make_script()...") ## DEBUG
         ## generate data and png paths
         basename = "%s_CHAIN%s_RESID" % (
             self.chain.partition_collection.struct.structure_id,
@@ -177,7 +202,49 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
         script = _LSQR_VS_TLS_SEGMENTS_TEMPLATE
         script = script.replace("<nparts>", str(conf.globalconf.nparts))
         script = script.replace("<txtfile>", self.txt_path)
-        script = script.replace("<title>", "Least Squares Residual vs. Number of TLS Segments for %s Chain %s " % (
+        script = script.replace("<title>", 
+            "Least Squares Residual vs. Number of TLS Segments for %s Chain %s " % (
+            self.chain.partition_collection.struct.structure_id,
+            self.chain.chain_id))
+
+        return script
+
+
+class LSQR_vs_TLS_Segments_Pre_Plot(GNUPlot):
+    ## TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
+    ## by minimizing an overall residual function. This plot shows the value
+    ## of the residual as a function of the number of TLS groups allowed in
+    ## the partition. Adding additional TLS groups will always make this
+    ## residual lower, but there is an issue of diminishing returns as you go
+    ## to larger numbers of groups.
+    ##
+    ## NOTE (by Christoph):
+    ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
+    def __init__(self, chain,  **args):
+        GNUPlot.__init__(self, **args)
+        self.chain = chain
+        self.output_png()
+
+    def make_script(self):
+        ## generate data and png paths
+        basename = "PRE_%s_CHAIN%s_RESID" % (
+            self.chain.partition_collection.struct.structure_id,
+            self.chain.chain_id)
+        self.set_basename(basename)
+
+        tbl = table.StringTable(0, 3, "?",
+                                column_titles = ["Number of TLS Groups", "RMSD B", "Residual"])
+        for ntls, cpartition in self.chain.partition_collection.iter_ntls_chain_partitions():
+            tbl.append_row(ntls, cpartition.rmsd_b(), cpartition.residual())
+
+        open(self.txt_path, "w").write(str(tbl))
+
+        ## modify script template
+        script = _LSQR_VS_TLS_SEGMENTS_TEMPLATE
+        script = script.replace("<nparts>", str(conf.globalconf.nparts))
+        script = script.replace("<txtfile>", self.txt_path)
+        script = script.replace("<title>", 
+            "Least Squares Residual vs. Number of TLS Segments for %s Chain %s " % (
             self.chain.partition_collection.struct.structure_id,
             self.chain.chain_id))
 
@@ -200,6 +267,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->LSQR_vs_TLS_Segments_All_Chains_Plot()::make_script()...") ## DEBUG
         struct_id = self.tlsmd_analysis.struct.structure_id
         
         ## generate data and png paths
@@ -209,14 +277,17 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         ## prepare gnuplot script
         script = _LSQR_VS_TLS_SEGMENTS_ALL_CHAINS_TEMPLATE
         script = script.replace("<nparts>", str(conf.globalconf.nparts))
-        script = script.replace("<title>", "Least Squares Residual vs. Number of TLS Segments of %s" % (struct_id))
+        script = script.replace("<title>", 
+            "Least Squares Residual vs. Number of TLS Segments of %s" % (
+            struct_id))
 
         ## re-use the data files of LSQRvsNTLS from the individual
         ## graphs; to do this the filenames have to be re-constructed
         plist = []
         for chain in self.tlsmd_analysis.iter_chains():
             filename = "%s_CHAIN%s_RESID.txt" % (struct_id, chain.chain_id)
-            x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (filename, chain.chain_id)
+            x = '"%s" using 1:2 title "Chain %s" lw 3 with linespoints' % (
+                filename, chain.chain_id)
             plist.append(x)
             
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -248,6 +319,7 @@ class TranslationAnalysis(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->TranslationAnalysis()::make_script()...") ## DEBUG
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -258,9 +330,15 @@ class TranslationAnalysis(GNUPlot):
         self.write_data_file()
 
         script = _TRANSLATION_ANALYSIS_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.first_frag_id())
-        script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Translation Displacement Analysis of Atoms for %d TLS Groups" % (self.cpartition.num_tls_segments()))
+
+        seg_start = create_fractional_residue_number(self.cpartition.first_frag_id())
+        seg_end   = create_fractional_residue_number(self.cpartition.last_frag_id())
+
+        script = script.replace("<xrng1>", seg_start)
+        script = script.replace("<xrng2>", seg_end)
+        script = script.replace("<title>", 
+            "Translation Displacement Analysis of Atoms for %d TLS Groups" % (
+            self.cpartition.num_tls_segments()))
 
         ## line style
         ls = 0
@@ -276,7 +354,8 @@ class TranslationAnalysis(GNUPlot):
             
             for n in (0,1,2):
                 col = 2 + 3*itls + n
-                x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (self.txt_path, col , ls)
+                x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (
+                    self.txt_path, col, ls)
                 plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -331,6 +410,7 @@ class LibrationAnalysis(GNUPlot):
         self.output_png()
 
     def make_script(self):        
+        console.debug_stdoutln(">Entering: gnuplots.py->LibrationAnalysis()::make_script()...") ## DEBUG
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -341,9 +421,15 @@ class LibrationAnalysis(GNUPlot):
         self.write_data_file()
 
         script = _LIBRATION_ANALYSIS_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.first_frag_id())
-        script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Screw displacement analysis of backbone atoms using %d TLS Groups" % (self.cpartition.num_tls_segments()))
+
+        seg_start = create_fractional_residue_number(self.cpartition.first_frag_id())
+        seg_end   = create_fractional_residue_number(self.cpartition.last_frag_id())
+
+        script = script.replace("<xrng1>", seg_start)
+        script = script.replace("<xrng2>", seg_end)
+        script = script.replace("<title>", 
+            "Screw displacement analysis of backbone atoms using %d TLS Groups" % (
+            self.cpartition.num_tls_segments()))
 
         ## line style
         ls = 0
@@ -359,7 +445,8 @@ class LibrationAnalysis(GNUPlot):
             
             for n in (0,1,2):
                 col = 2 + 3*itls + n
-                x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (self.txt_path, col , ls)
+                x = '"%s" using 1:%d smooth bezier notitle ls %d with lines' % (
+                    self.txt_path, col, ls)
                 plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -383,7 +470,9 @@ class LibrationAnalysis(GNUPlot):
             O = tls_info["COR"]
 
             for frag in tls.iter_fragments():
-                atm = frag.get_atom("CA")
+                ## FIXME: This should be able to handle either one
+                atm = frag.get_atom("CA") ## for amino acids
+                #atm = frag.get_atom("P") ## for nucleic acids
                 if atm is None:
                     continue
 
@@ -425,6 +514,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->CA_TLS_Differance_Plot()::make_script()...") ## DEBUG
         basename = "%s_CHAIN%s_NTLS%s_CADIFF" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -435,9 +525,15 @@ class CA_TLS_Differance_Plot(GNUPlot):
         self.write_data_file()
 
         script = _CA_TLS_DIFFERANCE_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.first_frag_id())
-        script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Deviation of Observed CA B Factors from TLS Model for %d Group Partition" % (self.cpartition.num_tls_segments()))
+
+        seg_start = create_fractional_residue_number(self.cpartition.first_frag_id())
+        seg_end   = create_fractional_residue_number(self.cpartition.last_frag_id())
+
+        script = script.replace("<xrng1>", seg_start)
+        script = script.replace("<xrng2>", seg_end)
+        script = script.replace("<title>", 
+            "Deviation of Observed CA B Factors from TLS Model for %d Group Partition" % (
+            self.cpartition.num_tls_segments()))
 
         ## line style
         script += 'set style line 1 lc rgb "#000000" lw 1\n'
@@ -454,7 +550,8 @@ class CA_TLS_Differance_Plot(GNUPlot):
         ls = 1
         for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
-            x = '"%s" using 1:%d notitle ls %d with lines' % (self.txt_path, itls+2, ls)
+            x = '"%s" using 1:%d notitle ls %d with lines' % (
+                self.txt_path, itls+2, ls)
             plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -478,7 +575,9 @@ class CA_TLS_Differance_Plot(GNUPlot):
             O = tls_group.origin
 
             for frag in tls.iter_fragments():
-                atm = frag.get_atom("CA")
+                ## FIXME: This should be able to handle either one
+                atm = frag.get_atom("CA") ## for amino acids
+                #atm = frag.get_atom("P") ## for nucleic acids
                 if atm is None:
                     continue
                 i = frag.ifrag
@@ -505,6 +604,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->UIso_vs_UtlsIso_Histogram()::make_script()...") ## DEBUG
         tls = self.tls
 
         ## generate data and png paths
@@ -598,6 +698,7 @@ class BMeanPlot(GNUPlot):
         self.output_png()
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->BMeanPlot()::make_script()...") ## DEBUG
         basename = "%s_CHAIN%s_NTLS%s_BMEAN" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -627,9 +728,14 @@ class BMeanPlot(GNUPlot):
 
         ## Gnuplot Script
         script = _BMEAN_PLOT_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.first_frag_id())
-        script = script.replace("<xrng2>", self.cpartition.last_frag_id())
-        script = script.replace("<title>", "Observed and TLS Calculated Mean B Factor Per Residue")
+
+        seg_start = create_fractional_residue_number(self.cpartition.first_frag_id())
+        seg_end   = create_fractional_residue_number(self.cpartition.last_frag_id())
+
+        script = script.replace("<xrng1>", seg_start)
+        script = script.replace("<xrng2>", seg_end)
+        script = script.replace("<title>", 
+            "Observed and TLS Calculated Mean B Factor Per Residue")
 
         ## line style
         line_titles = []
@@ -661,7 +767,8 @@ class BMeanPlot(GNUPlot):
         ## second the TLS calculated bfactors
         for i in xrange(self.cpartition.num_tls_segments()):
             ls += 1
-            x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, 2+ls, line_titles[i], ls)
+            x = '"%s" using 1:%d %s ls %d with lines' % (
+                self.txt_path, 2+ls, line_titles[i], ls)
             plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
@@ -707,6 +814,7 @@ class RMSDPlot(GNUPlot):
         open(self.txt_path, "w").write(str(tbl))
 
     def make_script(self):
+        console.debug_stdoutln(">Entering: gnuplots.py->RMSDPlot()::make_script()...") ## DEBUG
         basename = "%s_CHAIN%s_NTLS%s_RMSD" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -718,8 +826,12 @@ class RMSDPlot(GNUPlot):
 
         ## Gnuplot Script
         script = _RMSD_PLOT_TEMPLATE
-        script = script.replace("<xrng1>", self.cpartition.first_frag_id())
-        script = script.replace("<xrng2>", self.cpartition.last_frag_id())
+
+        seg_start = create_fractional_residue_number(self.cpartition.first_frag_id())
+        seg_end   = create_fractional_residue_number(self.cpartition.last_frag_id())
+
+        script = script.replace("<xrng1>", seg_start)
+        script = script.replace("<xrng2>", seg_end)
         script = script.replace("<title>", "TLS Model RMSD per Residue ")
 
         ## line style
@@ -750,7 +862,8 @@ class RMSDPlot(GNUPlot):
         for itls in xrange(self.cpartition.num_tls_segments()):
             ls += 1
             col = itls + 3
-            x = '"%s" using 1:%d %s ls %d with lines' % (self.txt_path, col, line_titles[itls], ls)
+            x = '"%s" using 1:%d %s ls %d with lines' % (
+                self.txt_path, col, line_titles[itls], ls)
             plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
