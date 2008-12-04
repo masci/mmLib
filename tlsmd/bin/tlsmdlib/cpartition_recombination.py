@@ -3,11 +3,23 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+##
+## Description: Provides all of the defs for joining segments into
+## recombination matrices for single chains or between two chains.
+##
+## Called by:
+##     tlsmd_analysis.py
+##         RecombineIndependentTLSSegments()
+##         CrossChainRecombineIndependentTLSSegments()
+
+## Python
 import math
 import numpy
 
+## pymmlib
 from mmLib import Constants, Structure
 
+## TLSMD
 import const
 import conf
 import console
@@ -16,6 +28,11 @@ import opt_containers
 
 
 def segment_range_cmp(segrange1, segrange2):
+    ## Compare two fragment ids.
+    ## Performs a proper less than comparison of frament_id strings
+    ## according to their sequence number, then insertion code.
+    ## Split a string fragment_id into a 2-tuple of:
+    ##     (sequence_num, insertion_code)
     return Structure.fragment_id_cmp(segrange1[0], segrange2[0])
 
 
@@ -31,7 +48,7 @@ def join_segment_ranges(chain, segrange1, segrange2):
     frag2 = None
     
     for fid1, fid2 in tmp_segrange:
-        xfrag1 = chain[fid1]
+        xfrag1 = chain[fid1] ## e.g., "Res(ILE,16,A)"
         xfrag2 = chain[fid2]
         if frag2 is not None:
             if frag2.ifrag == (xfrag1.ifrag - 1):
@@ -74,35 +91,36 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
     combination of any two TLSSegment instances in cpartition.
     """
 
-    chain = cpartition.chain 		## E.g., "Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
-    tls_list = cpartition.tls_list	## 2D object
-    tls_analyzer = chain.tls_analyzer	## 1D object
-    nparts = len(tls_list)		## integer
+    chain = cpartition.chain          ## E.g., "Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
+    tls_list = cpartition.tls_list    ## 2D object
+    tls_analyzer = chain.tls_analyzer ## 1D object
+    nparts = len(tls_list)            ## integer
 
     ## set the diagonal to the rmsd_b of the individual groups
     rmsd_b_mtx = numpy.zeros((nparts, nparts), float)
     for i, tls in enumerate(tls_list):
-	## E.g., "i=0, tls=A:16-75; 82-94; 101-116"
+        ## E.g., "i=0, tls=A:16-75; 82-94; 101-116"
         rmsd_b_mtx[i,i] = tls.residual_rmsd_b()
 
     recombination_list = []
 
     for i, j in recombination2_iter(nparts):
-	## NOTE (by Christoph):
-	## i and j are integer values and each combination is considered.
-	## i starts at 0 and j starts at 1 even though it is a MxN matrix (not sure why?)
-	## E.g., if i=[0,1,2] and j=[1,2,3], then:
-	##	i=0, j=1
-	##	i=0, j=2
-	##	i=0, j=3
-	##	i=1, j=2
-	##	i=1, j=3
-	##	i=2, j=3
-	## which is the non-redundant values in a square matrix, e.g.,
-	##	    1 2 3=j
-	##	i=0 x x x
-	##	  1   x x
-	##	  2     x
+        ## NOTE (by Christoph):
+        ## i and j are integer values and each combination is considered.
+        ## i starts at 0 and j starts at 1 even though it is a MxN matrix
+        ## E.g., if i=[0,1,2] and j=[1,2,3], then:
+        ##    i=0, j=1
+        ##    i=0, j=2
+        ##    i=0, j=3
+        ##    i=1, j=2
+        ##    i=1, j=3
+        ##    i=2, j=3
+        ## which is the non-redundant values in a square matrix, e.g.,
+        ##        0 1 2 3=j
+        ##    i=0   x x x
+        ##      1     x x
+        ##      2       x
+        ##      3
 
         tls1 = tls_list[i]
         tls2 = tls_list[j]
@@ -116,9 +134,18 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         msd = residual / num_residues
         rmsd_b = Constants.U2B * math.sqrt(msd)
 
-	## NOTE (by Christoph):
-	## rmsd_b is the off-diagonal values found in the 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt'
-	## files, where xxxx = pdbID, a = chainID, n = TLS segment
+        ## NOTE (by Christoph):
+        ## rmsd_b is the off-diagonal values found in the 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt'
+        ## files, where xxxx = pdbID, a = chainID, n = TLS segment
+        ## E.g., for 3 segments:
+        ## The matrix would look like the following:
+        ##    5.87306772217     7.41067186124     6.20476161918
+        ##    7.41067186124     6.90937072527     7.28134425393
+        ##    6.20476161918     7.28134425393     5.61390010317
+        ## and the non-redundant, off-diagonal values would be:
+        ##    {i=0:j=1} = 7.41067186124
+        ##    {i=0:j=2} = 6.20476161918
+        ##    {i=1:j=2} = 7.28134425393
         rmsd_b_mtx[i, j] = rmsd_b
         rmsd_b_mtx[j, i] = rmsd_b
         
@@ -126,40 +153,30 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         recombination_list.append((residual_delta, tls1, tls2, tlsdict))
 
     cpartition.rmsd_b_mtx = rmsd_b_mtx
+    ## Looks like the following if, for an example, there are 3 segments:
+    ## 5.87306772217     6.56865234505     6.79400223695
+    ## 6.56865234505     5.88371871766     7.28134425393
+    ## 6.79400223695     7.28134425393     5.44614445871
 
     recombination_list.sort()
-    lenreco=len(recombination_list) ## DEBUG
     return_list = []
     for i, reco in enumerate(recombination_list):
-	## NOTE (by Christoph):
-	## For some reason, i always equals zero?
-	## It shouldn't get past the break
         if i >= num_return:
             break
 
         residual_delta, tls1, tls2, tlsdict = reco
-	## NOTE (by Christoph):
-	## float(residual_delta),
-	## tls1=A:16-75,  # <-example
-	## tls2=A:76-116, # <-example
-	## tls1+tls2 => (A:16-75; A:76-116) # <- they produce these types of "TLS SEGMENT RECOMBINATION" in 'log.txt'
-	## tlsdict={	'residual':foat, 
-	##		'is3':float, 
-	##		'il11':float, 
-	##		'il12':float, 
-	##		'il13':float, 
-	##		'it':float, 
-	##		'num_residues':int, 
-	##		'il23':float, 
-	##		'il22':float, 
-	##		'il33':float, 
-	##		'is2':float, 
-	##		'y':float, 
-	##		'x':float,
-	##		'z':float, 
-	##		'is1':float, 
-	##		'num_atoms':int}
-	#console.stdoutln(">>>i=%s, len(reco)=%s, residual_delta=%s, tls1=%s, tls2=%s"%(i,lenreco,residual_delta, tls1, tls2)) ## DEBUG
+        ## NOTE (by Christoph):
+        ## float(residual_delta),
+        ## tls1=A:16-75,  # <-example
+        ## tls2=A:76-116, # <-example
+        ## tls1+tls2 => (A:16-75; A:76-116) # produce these types of "TLS SEGMENT RECOMBINATION" in 'log.txt'
+        ## tlsdict={'residual',
+        ##          'num_residues', 'num_atoms',
+        ##          'it':float,
+        ##          'il11', 'il22', 'il33',
+        ##          'il12', 'il13', 'il23',
+        ##          'is1', 'is2', 'is3',
+        ##          'x', 'y', 'z'}
         tls12 = JoinTLSSegments(tls1, tls2, cpartition.chain, tlsdict)
 
         combined_cp = opt_containers.ChainPartition(cpartition.chain, cpartition.num_tls_segments() - 1)
@@ -167,30 +184,31 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         combined_cp.residual_delta = residual_delta
 
         for tls in tls_list:
-	    ## NOTE (by Christoph):
-	    ## In 'log.txt', an example line might look like:
-	    ## "(A:16-26)(A:27-61; 70-75)(A:62-69)(A:76-94)(A:95-105)(A:106-116)  5.10( 5.09) 6"
-	    ## For fields having double segment, e.g., "(A:27-61; 70-75)":
+            ## NOTE (by Christoph):
+            ## In 'log.txt', an example line might look like:
+            ## "(A:16-26)(A:27-61; 70-75)(A:62-69)(A:76-94)(A:95-105)(A:106-116)  5.10( 5.09) 6"
+            ## For fields having double segment, e.g., "(A:27-61; 70-75)":
             if tls == tls1:
-		## Creates the _first_ part of, e.g., "(A:27-61; 70-75)". I.e., "A:27-61"
+                ## Creates the _first_ part of, e.g., "(A:27-61; 70-75)". I.e., "A:27-61"
                 combined_cp.add_tls_segment(tls12)
                 continue
             if tls == tls2:
-		## Creates the _last_ part of, e.g., "(A:27-61; 70-75)". I.e., "70-75"
+                ## Creates the _last_ part of, e.g., "(A:27-61; 70-75)". I.e., "70-75"
                 continue
-	    ## For fields _not_ having double segment, e.g., "(A:16-26)":
+            ## For fields _not_ having double segment, e.g., "(A:16-26)":
             combined_cp.add_tls_segment(tls.copy())
 
-    return return_list
+    return return_list ## E.g., "(A:1-9; 31-37)(A:21-30)(A:38-50)"
 
 
 def ExtendRecombinationTree(ptree, depth, width):
-
+    ## int(depth), int(width)
     if depth == 0:
         return
     if ptree.empty():
         combined_list = ChainPartitionRecombination(ptree.cp, width)
         for combined_cp in combined_list:
+            ## E.g., combined_cp="(A:1-9; 31-37)(A:21-30)(A:38-50)"
             child = tree.Tree()
             child.cp = combined_cp
             ptree.append(child)
@@ -211,10 +229,29 @@ def ChainPartitionRecombinationOptimization(chain):
         ntls_best[ntls] = cpartition
         orig_best[ntls] = cpartition
 
+    ## NOTE: Example output:
+    #for k,v in cpartition.iteritems(): console.stdoutln("cpartition=%s : %s"%(k,v)) ## DEBUG
+    ## ntls_best=[1, 2, 3, 4]
+    ## orig_best=[1, 2, 3, 4]
+    ## ntls_best{KEYS : VALUES}=
+    ## 1 : (A:1-50)
+    ## 2 : (A:1-37)(A:38-50)
+    ## 3 : (A:1-9)(A:21-30)(A:31-50)
+    ## 4 : (A:1-9)(A:21-30)(A:31-37)(A:38-50)
+    ## orig_best{KEYS : VALUES}=
+    ## 1 : (A:1-50)
+    ## 2 : (A:1-37)(A:38-50)
+    ## 3 : (A:1-9)(A:21-30)(A:31-50)
+    ## 4 : (A:1-9)(A:21-30)(A:31-37)(A:38-50)
+
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
         if ntls < 2:
-            continue
+            console.stdoutln("RMSD-%sc: %s" % (ntls, cpartition.rmsd_b()))
+            console.stdoutln("RESIDUAL-%sc: %s" % (ntls, cpartition.residual()))
+
+            continue ## No recombination needed for a single ntls group
         
+        console.stdoutln("=" * 80) ## LOGLINE
         console.stdoutln("%d INTO %d TO 2" % (ntls, ntls - 1)) ## LOGLINE
 
         search_width = 1
@@ -226,30 +263,52 @@ def ChainPartitionRecombinationOptimization(chain):
         while True:
             ExtendRecombinationTree(proot, search_depth, search_width)
 
+            ## NOTE (by Christoph):
+            ## It seems max_depth is always either "1" or "0" (integers)
+            ## E.g., for "4 INTO 3 TO 2", we would have {1,1,1,0}
             max_depth = proot.depth()
             best_at_depth = None
 
             for depth, ptree in proot.iter_depth_first():
+                ## NOTE (by Christoph): E.g.,
+                ## ptree.cp = "(A:16-26)(A:27-61)(A:62-74; 95-116)(A:75-94)"
+                ## ptree.cp.residual_delta = "0.00150017006854"
                 if depth == max_depth:
                     if best_at_depth is None or ptree.cp.residual_delta < best_at_depth.cp.residual_delta:
                         best_at_depth = ptree
 
-                tmp_ntls = ptree.cp.num_tls_segments()
+                tmp_ntls = ptree.cp.num_tls_segments() ## E.g., "3" (integer value)
 
                 if not visited.has_key(ptree):
                     visited[ptree] = True
 
                     if ntls_best.has_key(tmp_ntls):
+                        ## E.g., ntls_best[tmp_ntls] = "(A:16-74; 95-116)(A:75-94)"
                         best_rmsd = "%5.2f" % (ntls_best[tmp_ntls].rmsd_b())
                     else:
                         best_rmsd = "-----"
 
-		    ## E.g., "(A:2-11; 18-23; 39-52; 58-95)(A:12-17; 24-38; 53-57)  5.42( 4.98) 2"
+                    ## E.g., "(A:2-11; 18-23; 39-52; 58-95)(A:12-17; 24-38; 53-57)  5.42( 4.98) 2"
                     console.stdoutln("%s %5.2f(%s) %d" % (ptree.cp, ptree.cp.rmsd_b(), best_rmsd, tmp_ntls)) ## LOGLINE
+
+                    ## NOTE: Example output:
+                    ## cpartition="(A:1-9)(A:21-30)(A:31-50)"
+                    ## cpartition.chain.chain_id="A"
+                    ## cpartition.num_tls_segments()="7"
+                    ## table.StringTableFromMatrix(cpartition.rmsd_b_mtx)="
+                    ##    1.19667217259     2.44700956714     2.44363045774
+                    ##    2.44700956714     1.90000136951     2.93313261105
+                    ##    2.44363045774     2.93313261105     1.76763623176"
+                    ## NOTE: The above are the same values found in 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt' files
+                    ## segment_ranges = segment_ranges,
+                    ## residual = tlsdict["residual"],
+                    ## method = tls1.method,
+                    ## num_atoms = tlsdict["num_atoms"],
+                    ## num_residues = tlsdict["num_residues"])
 
                 if ntls_best.has_key(tmp_ntls):
                     if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
-                        ntls_best[tmp_ntls] = ptree.cp
+                        ntls_best[tmp_ntls] = ptree.cp ## E.g., "(A:16-61)(A:62-74; 95-116)(A:75-94)"
                 else:
                     ntls_best[tmp_ntls] = ptree.cp
 
