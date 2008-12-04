@@ -3,12 +3,16 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python
 import math
 import copy
 import numpy
 
+## pymmlib
 from mmLib import Constants, Structure, TLS
 
+## TLSMD
 import conf
 import console
 import tls_calcs
@@ -323,3 +327,6 @@ class ChainPartitionCollection(object):
     def min_ntls(self):
         return min(self.iter_ntls())
     
+    def get_chain_id(self):
+        ## Added. Christoph Champ, 2008-04-04
+        return self.chain_id
