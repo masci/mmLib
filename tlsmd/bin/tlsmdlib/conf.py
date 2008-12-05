@@ -50,6 +50,7 @@ JMOL_DIR               = "../../../jmol" # Directory path must be relative, not 
 JMOL_PATH              = "/home/tlsmd/tlsmd/bin/jmol"
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT, "pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR, "pdbids.txt")
+TLSANIM2R3D            = "/home/tlsmd/tlsmd/bin/tlsanim2r3d"
 
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 50
@@ -66,7 +67,12 @@ GNUPLOT_FONT_SIZE = 10
 GNUPLOT_WIDTH     = 640
 GNUPLOT_HEIGHT    = 480
 
-## the JMol viewer is a square window, generated with this pixel size
+## BMean Plot
+BMEAN_PLOT_WIDTH  = 640
+BMEAN_PLOT_HEIGHT = 250
+BMEAN_PLOT_GROUP_TITLES = False
+
+## the Jmol viewer is a square window, generated with this pixel size
 JMOL_SKIP = False ## Toggle switch
 JMOL_SIZE = 600
 
@@ -74,18 +80,22 @@ JMOL_SIZE = 600
 RENDER_SKIP    = False
 REFMAC_SKIP    = False
 HISTOGRAM_SKIP = True
+GEN_RAW_GREY   = True
 
 ## the following are used for the summary/thumb 'struct.png' image.
 ## These are optional. Uses internal 'parse_molauto.pl' script!
-THUMBNAIL      = False  ## (default: False)
-MOLAUTO_PATH   = "/usr/local/bin/molauto"
-PARSE_MOLAUTO_PATH = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
-MOLSCRIPT_PATH = "/usr/local/bin/molscript"
-RENDER_PATH    = "/usr/local/bin/render"
+THUMBNAIL      = True  ## (default: False)
+MOLAUTO        = "/usr/local/bin/molauto"
+PARSE_MOLAUTO_SCRIPT = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
+MOLSCRIPT      = "/usr/local/bin/molscript"
+RENDER         = "/usr/local/bin/render"
 RENDER_SIZE    = "200x200"
+RINGS3D        = "/usr/local/bin/rings3d"
+R3D_LIB        = "/usr/local/share/Raster3D/materials"
+GREY_R3D_FILE  = os.path.join(R3D_LIB, "grey.r3d")
 
 ## turn on/off multi-chain (matrix) analysis
-MULTI_CHAIN_ANALYSIS = False ## Under development
+CROSS_CHAIN_ANALYSIS = False ## Under development
 
 class GlobalConfiguration(object):
     def __init__(self):
@@ -102,6 +112,7 @@ class GlobalConfiguration(object):
         self.skip_jmol_view = False
         self.skip_jmol_animate = False
         self.skip_histogram = True
+        self.cross_chain_analysis = False
         self.webtlsmdd = None
         self.job_id = None
         self.struct_id = None
