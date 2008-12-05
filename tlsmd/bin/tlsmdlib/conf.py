@@ -84,7 +84,7 @@ GEN_RAW_GREY   = True
 
 ## the following are used for the summary/thumb 'struct.png' image.
 ## These are optional. Uses internal 'parse_molauto.pl' script!
-THUMBNAIL      = True  ## (default: False)
+THUMBNAIL      = False  ## (default: False)
 MOLAUTO        = "/usr/local/bin/molauto"
 PARSE_MOLAUTO_SCRIPT = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
 MOLSCRIPT      = "/usr/local/bin/molscript"
