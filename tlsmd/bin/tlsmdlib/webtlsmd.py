@@ -7,6 +7,7 @@
 ##
 ## NOTE: This file contains changes and additions by Christoph Champ, 2007-10-24
 
+## Python
 import os
 import sys
 import time
@@ -19,12 +20,16 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 
-import const
-import conf
 import numpy		# Added by Christoph Champ, 2007-10-23
 import subprocess	# Added by Christoph Champ, 2007-11-20
 import datetime		# Added by Christoph Champ, 2008-02-01
 import re		# Added by Christoph Champ, 2008-02-07
+
+## TLSMD
+import const
+import conf
+
+## pymmlib
 from mmLib import Library # tmp
 
 ## GLOBALS
@@ -64,6 +69,7 @@ def html_nav_bar(page_name=None):
 	 '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
          '    <li><a href="webtlsmd.cgi?page=submit1">Start a New Job</a></li>', 
 	 '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
+         '    <li><a href="webtlsmd.cgi?page=pdbs">Finished PDBs</a></li>',
 	 '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
 	 '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
 	 '  </ul>',
@@ -310,9 +316,9 @@ def html_user_info_table(fdict):
 
 def html_program_settings_table(fdict):
 
+    ## NOTE: The following four options/variables never seem to be used.
     opt_plot_svg = ""
     opt_plot_png = ""
-
     opt_atoms_all = ""
     opt_atoms_mnchn = ""
 
@@ -371,7 +377,7 @@ def html_program_settings_table(fdict):
 
          '<td valign="top">',
          '<fieldset><legend>Plot Output Format</legend>',
-         '<div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5.</div><br/>',
+         '<div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5+.</div><br/>',
          '<label><input name="plot_format" type="radio" value="PNG" tabindex="35" checked>PNG Images</label><br/>',
          '<label><input name="plot_format" type="radio" value="SVG" tabindex="35">SVG</label>',
          '</fieldset>',
@@ -386,28 +392,42 @@ def html_program_settings_table(fdict):
          '</td>',
 
          '</tr><tr>'
-         ## New JMol view/animate toggle boxes (default=OFF/False). Christoph Champ, 2008-06-13
+         ## JMol view/animate toggle boxes (default=OFF/False). Christoph Champ, 2008-06-13
+         ## FIXME: The radio buttons are backwards
          '<td valign="top">',
          '<fieldset><legend>JMol toggle switches</legend>',
          '<div style="font-size:xx-small">Turn JMol analysis on/off.</div><br/>',
-         '<label>Skip JMol-viewer: ',
-         '<label><input name="skip_jmol_view" type="radio" value="ON">on',
-         '<label><input name="skip_jmol_view" type="radio" value="OFF" checked>off',
+         '<label>Generate JMol-viewer pages: ',
+         '<input name="skip_jmol_view" type="radio" value="OFF" checked>yes',
+         '<input name="skip_jmol_view" type="radio" value="ON">no',
          '</label><br/>',
-         '<label>Skip JMol-animation: ',
-         '<label><input name="skip_jmol_animate" type="radio" value="ON">on',
-         '<label><input name="skip_jmol_animate" type="radio" value="OFF" checked>off',
+         '<label>Generate JMol-animation pages: ',
+         '<label><input name="skip_jmol_animate" type="radio" value="OFF" checked>yes',
+         '<label><input name="skip_jmol_animate" type="radio" value="ON">no',
          '</label><br/>',
          '</fieldset>',
          '</td>',
 
-         ## New histogram toggle boxes (default=ON/True). Christoph Champ, 2008-10-07
+         ## histogram toggle boxes (default=ON/True). Christoph Champ, 2008-10-07
+         ## FIXME: The radio buttons are backwards
          '<td valign="top">',
          '<fieldset><legend>Histogram toggle switches</legend>',
          '<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
-         '<label>Skip histogram: ',
-         '<label><input name="skip_histogram" type="radio" value="ON" checked>on',
-         '<label><input name="skip_histogram" type="radio" value="OFF">off',
+         '<label>Generate histogram plots: ',
+         '<input name="skip_histogram" type="radio" value="OFF">yes',
+         '<input name="skip_histogram" type="radio" value="ON" checked>no',
+         '</label><br/>',
+         '</fieldset>',
+         '</td>',
+
+         '</tr><tr>'
+
+         ## select number of partitions per chain. Christoph Champ, 2008-11-04
+         '<td valign="top">',
+         '<fieldset><legend>Set number of partitions/chain</legend>',
+         '<div style="font-size:xx-small">default = 20</div><br/>',
+         '<label>Maximum number of segments: ',
+         '<input name="nparts" type="text" size="3" maxlength="3" value="20" />',
          '</label><br/>',
          '</fieldset>',
          '</td>',
@@ -505,6 +525,7 @@ def html_job_info_table(fdict):
     x += '</table>'
     x += '</td>'
 
+    ##==========================================================================
     ## session info
     x += '<td valign="top"><table>'
 
@@ -553,12 +574,14 @@ def html_job_info_table(fdict):
 
     x += '</tr>'
 
+    ##==========================================================================
     ## Select Chains for Analysis
     x += '<tr><th colspan="3">Selected Chains</th></tr>'
 
     x += '<tr><td colspan="3">'
     x += '<table cellpadding="5">'
-    x += '<tr><th><font size="-5">Chain</font></th><th><font size="-5">Processing Time (HH:MM.SS)</font></th>'
+    x += '<tr><th><font size="-5">Chain</font></th>'
+    x += '<th><font size="-5">Processing Time (HH:MM.SS)</font></th>'
     if conf.THUMBNAIL:
         x += '<img src="%s"/>' % (fdict["job_url"] + "/struct.png")
     x += '</tr>'
@@ -580,9 +603,12 @@ def html_job_info_table(fdict):
 
     x += '</table></td></tr>'
 
-    ## column titles
+    ##==========================================================================
+    ## 1st column titles
     x += '<tr>'
-    x += '<th>TLS Model</th><th>Least Squares Weighting</th><th>Include Atoms</th>'
+    x += '<th>TLS Model</th>'
+    x += '<th>Least Squares Weighting</th>'
+    x += '<th>Include Atoms</th>'
     x += '</tr>'
 
     x += '<tr>'
@@ -611,11 +637,73 @@ def html_job_info_table(fdict):
         x += 'Main Chain Atoms'
     elif fdict.get("include_atoms")=="CA":
         x += 'C-Alpha Atoms'
-        
     x += '</td>'
 
     x += '</tr>'
 
+    ##==========================================================================
+    ## 2nd column titles
+    x += '<tr>'
+    x += '<th>Generate Jmol-viewer files</th>'
+    x += '<th>Generate Jmol-animation files</th>'
+    x += '<th>Generate histogram plots</th>'
+    x += '</tr>'
+
+    x += '<tr>'
+
+    ## Jmol-viewer settings. 2008-11-13
+    x += '<td>'
+    if fdict.get("skip_jmol_view") == "" or fdict.get("skip_jmol_view") == "OFF":
+        x += 'ON'
+    elif fdict.get("skip_jmol_view") == "ON":
+        x += 'OFF'
+    else:
+        x += 'n/a'
+    x += '</td>'
+
+    ## Jmol-animation settings. 2008-11-13
+    x += '<td>'
+    if fdict.get("skip_jmol_animate") == "" or fdict.get("skip_jmol_animate") == "OFF":
+        x += 'ON'
+    elif fdict.get("skip_jmol_animate") == "ON":
+        x += 'OFF'
+    else:
+        x += 'n/a'
+    x += '</td>'
+
+    ## Histogram settings. 2008-11-13
+    x += '<td>'
+    if fdict.get("skip_histogram") == "" or fdict.get("skip_histogram") == "OFF":
+        x += 'ON'
+    elif fdict.get("skip_histogram") == "ON":
+        x += 'OFF'
+    else:
+        x += 'n/a'
+    x += '</td>'
+
+    x += '</tr>'
+
+    ##==========================================================================
+    ## 3rd column titles
+    x += '<tr>'
+    x += '<th>Maximum number of segments</th>'
+    x += '<th></th>'
+    x += '<th></th>'
+    x += '</tr>'
+
+    x += '<tr>'
+
+    ## Number of segments settings. 2008-11-13
+    x += '<td>'
+    if fdict.get("nparts") == "":
+        x += 'n/a'
+    else:
+        x += '%s' % fdict.get("nparts")
+    x += '</td>'
+
+    x += '</tr>'
+
+    ##==========================================================================
     ## end form
     if fdict.has_key("removebutton"):
         x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
@@ -630,10 +718,15 @@ def html_job_info_table(fdict):
         x += '<tr>'
         x += '<td colspan="3" align="left">'
         x += '<input type="submit" name="submit" value="Remove Job">'
+
+    ## Added. Christoph Champ, 2008-04-10
     if fdict.has_key("signalbutton"):
-        x += '<input type="submit" name="submit" value="Signal Job">' ## Added. Christoph Champ, 2008-04-10
+        x += '<input type="submit" name="submit" value="Signal Job">'
+
+    ## Added. Christoph Champ, 2008-03-07
     if fdict.has_key("killbutton"):
-	x += '<input type="submit" name="submit" value="Kill Job">' ## Added. Christoph Champ, 2008-03-07
+	x += '<input type="submit" name="submit" value="Kill Job">'
+
     if fdict.has_key("removebutton"):
         x += '</td>'
         x += '</form>'
@@ -663,6 +756,8 @@ def vet_data(data, max_len):
         return False
     if not data.isalnum():
         return False
+
+    ## FIXME: This doesn't work yet.
     ## only allow 1-4 alphanumeric characters
     #if not re.match(r'[A-Za-z0-9]{1,4}',data):
     #    return False
@@ -764,6 +859,15 @@ def extract_job_edit_form(form, webtlsmdd):
         histogram_toggle = form["skip_histogram"].value.strip()
         if histogram_toggle in ["ON", "OFF"]:
             webtlsmdd.job_set_histogram(job_id, histogram_toggle)
+
+    ## Select number of partition/chain (default=20). Christoph Champ, 2008-11-04
+    if form.has_key("nparts"):
+        nparts_value = form["nparts"].value.strip()
+        try:
+            value = int(nparts_value)
+            webtlsmdd.job_set_nparts(job_id, value)
+        except:
+            return False ## not a valid input; must be integer < 20
 
     return True
 
@@ -1048,7 +1152,6 @@ class QueuePage(Page):
                   '</td>',
                   '</tr>']
 
-	#x += '</table></center>' ## Old
 	x.append('</table></center>')
 	return "".join(x)
 
@@ -1127,10 +1230,10 @@ class QueuePage(Page):
             l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
 	    ## Direct link to logfile. Christoph Champ, 2008-02-20
 	    if jdict.has_key("log_url"):
-		logfile=os.path.join(jdict["job_dir"],"log.txt")
-		log_url=webtlsmdd.job_get_log_url(jdict["job_id"])
-		if os.path.isfile(logfile) and jdict["private_job"]==False:
-		   l.append('<td><a href="%s">%s</a></td>' % (log_url,jdict.get("state")))
+		logfile = os.path.join(jdict["job_dir"], "log.txt")
+		log_url = webtlsmdd.job_get_log_url(jdict["job_id"])
+		if os.path.isfile(logfile) and jdict["private_job"] == False:
+		   l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict.get("state")))
 		else:
 		   l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
@@ -1558,7 +1661,7 @@ class SubmitPDBPage(Page):
             raise SubmissionException("Could not download PDB File from RCSB.")
 
         ## basic sanity checks. Christoph Champ, 2007-10-24
-        ln=pdbfile.split("\n")
+        ln = pdbfile.split("\n")
         r = check_upload(ln)
         if r != '':
             raise SubmissionException(str(r))
@@ -1636,7 +1739,7 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     res_id = []
     prevrestype = restype[0]
     prevresnum = resnum[0]
-    while n<len(tfactor):
+    while n < len(tfactor):
         if( (prevresnum == resnum[n]) and (prevrestype == restype[n]) ):
 	   res_tfac = res_tfac + tfactor[n]
 	   atm = atm + 1
@@ -1652,11 +1755,11 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     res_id.append(resnum[n-1])           # store last guy
 
     ## Save B_{mean} per residue for each chain
-    fdat = open('%s/%s.dat'%(conf.WEBTMP_PATH, tmpfile),'w')
+    fdat = open('%s/%s.dat' % (conf.WEBTMP_PATH, tmpfile),'w')
     r = 0
     for b in avg_tfac:
-	fdat.write("%s\t%s\n"%(res_id[r],b))
-	r = r+1
+	fdat.write("%s\t%s\n" % (res_id[r], b))
+	r = r + 1
         if (r < len(res_id)) and (res_id[r] < res_id[r-1]):
            fdat.write("\n")
     fdat.close()
@@ -1666,12 +1769,12 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
-    fstd = open('%s/%s.std'%(conf.WEBTMP_PATH, tmpfile),'w')
-    for s in range(5,len(avg_tfac)-5):
+    fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
+    for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
-	fstd.write("%s\t%s\n"%(res_id[s],stddev11))
+	fstd.write("%s\t%s\n" % (res_id[s], stddev11))
 	if stddev11 < 0.05:
-	   nbad = nbad+1
+	   nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
            fstd.write("\n")
     fstd.close()
@@ -1695,7 +1798,7 @@ def check_upload(file):
     for line in file:
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
-        elif re.match('^ATOM.*[0-9][a-z]',line):
+        elif re.match('^ATOM.*[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
             return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
@@ -1741,12 +1844,15 @@ def check_upload(file):
         #f.write("set label 1 'bad_std = %d' at graph 0.1, 0.9 noenh\n" % bad_std)   # EAM DEBUG
         #f.write("set term png font '%s' enhanced size 800,400\n" % gnuplot_font)
         f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
-        f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n"%(conf.WEBTMP_PATH,tmpfile))
-        f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n"%(conf.WEBTMP_PATH,tmpfile))
-        f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n"%(conf.WEBTMP_PATH,tmpfile))
+        f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n" % (
+            conf.WEBTMP_PATH, tmpfile))
+        f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n" % (
+            conf.WEBTMP_PATH, tmpfile))
+        f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n" % (
+            conf.WEBTMP_PATH, tmpfile))
         f.write("     0.05 axes x1y2 with lines lc rgb 'red' notitle\\\n")
         f.close()
-        subprocess.Popen([r"%s"%conf.GNUPLOT,"%s/%s.gnu"%(conf.WEBTMP_PATH,tmpfile)]).wait()
+        subprocess.Popen([r"%s" % conf.GNUPLOT, "%s/%s.gnu" % (conf.WEBTMP_PATH,tmpfile)]).wait()
 
         return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
 
