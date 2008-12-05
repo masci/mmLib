@@ -6,6 +6,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python
 import os
 import sys
 import time
@@ -20,6 +21,7 @@ import shutil
 import tarfile	# Christoph Champ, 2007-12-03
 import datetime # Christoph Champ, 2008-01-29
 
+## TLSMD
 from tlsmdlib import const, conf, email
 
 ## if there are no lines of output from the tlsmd process
@@ -281,6 +283,9 @@ def get_job(webtlsmdd):
         tlsmd.append("-mISOT")
     else:
         tlsmd.append("-mANISO")
+
+    ## set maximum number of segments
+    tlsmd.append("-n%s" % (jdict["nparts"]))
 
     ## select LSQ weighting
     #tlsmd.append("-w%s" % (jdict["weight"]))
