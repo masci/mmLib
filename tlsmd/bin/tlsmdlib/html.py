@@ -10,9 +10,11 @@
 
 import os
 import time
+import datetime
 import numpy
 import shutil    ## for copying files around (e.g., jmol)
 import xmlrpclib ## for toggle switches
+import sys       ## for try/except
 
 ## Python Imaging Library imports
 import Image
@@ -35,6 +37,11 @@ from tls_animate import TLSAnimate, TLSAnimateFailure
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
+class MyError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
 
 def calc_inertia_tensor(atom_iter):
     """Calculate moment of inertia tensor at the centroid
@@ -195,9 +202,14 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
     else:
         return ""
 
+    ## XXX
+    console.stdoutln("RMSD_B-%s: %.2f" % (ntls, cpartition.rmsd_b()))
+    console.stdoutln("RESIDUAL-%s: %.2f" % (ntls, cpartition.residual()))
+
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
-         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments (overall rmsd_b=%.2f and residual=%.2f)</th>' %(ntls,cpartition.rmsd_b(),cpartition.residual()), ## Added "overall rmsd_b + residual". Christoph Champ, 2008-04-05
+         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments (overall rmsd_b=%.2f and residual=%.2f)</th>' % (
+             ntls, cpartition.rmsd_b(), cpartition.residual()), ## "overall rmsd_b + residual", 2008-04-05
          '</tr>',
 
          '<tr>',
@@ -270,7 +282,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
              '<td>%5.1f</td>' % (tls.mean_b()),
              '<td>%5.2f</td>' % (stddev), ## Added. Christoph Champ, 2008-04-15
              '<td>%4.2f</td>' % (tls.mean_anisotropy()),
-             '<td>%5.2f</td>' % (tls.rmsd_b),
+             '<td>%5.2f</td>' % (tls.rmsd_b), ## FIXME: Why are these values different from the off-diagonal matrix values?
              '<td>%s</td>'    % (t_data),
              '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
              '<td>%5.1f</td>' % (tls.tls_mean_b()),
@@ -429,6 +441,25 @@ class HTMLSummaryReport(Report):
 	
         l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
 
+	"""
+        l +=['<br/>',
+             ## MULTI CHAIN ALIGNMENT
+             '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
+             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
+
+        if self.page_multi_chain_alignment!=None:
+            l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
+        else:
+            l.append('<p><u>Only one chain was analyized in this structure, so the multi-chain alignment analysis was not performed.</u></p>')
+
+	if self.page_refinement_prep is not None:
+            l +=['<br/>',
+                ## REFINEMENT PREP
+                '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
+                '<p style="font-size:small; text-align:left">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
+                '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"])]
+	"""
+
 	l += [self.html_foot()]
         
         return "".join(l)
@@ -465,6 +496,7 @@ class HTMLSummaryReport(Report):
         if self.struct.experimental_method:
             l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>\n' % (
                 self.struct.experimental_method))
+
              
         l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>\n' % (tls_model),
              '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>\n' % (
@@ -491,6 +523,10 @@ class HTMLReport(Report):
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
         self.page_refinement_prep        = None
+
+        ## moved global orientation here. 2008-09-30
+        self.orient = {}
+        self.r3d_header_file = None
         
     def write(self, report_dir):
         """Write out the TLSMD report to the given directory.
@@ -501,7 +537,7 @@ class HTMLReport(Report):
             os.mkdir(report_dir)
         os.chdir(report_dir)
 
-        self.write_cwd()
+        self.write_cwd() ## NOTE: This is the very last step of TLSMD
         
         ## change back to original directory
         os.chdir(old_dir)
@@ -542,7 +578,7 @@ class HTMLReport(Report):
         """
         ## skip the first two colors; they are black and white
         i = tls_index + 2
-        return self.colors[i]
+        return self.colors[i % 50] ## switched to mod(50) for wrap-around
 
     def write_cwd(self):
         """Write out all the files in the report.
@@ -562,6 +598,7 @@ class HTMLReport(Report):
             self.write_multi_chain_alignment()
 	except:
 	    console.stdoutln("        Error: Couldn't deal with multi-chain alignment")
+            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
 	    pass
 
 	## Progress tracking
@@ -711,12 +748,44 @@ class HTMLReport(Report):
         l += [self.html_chain_lsq_residual_plot(chain),
               self.html_chain_alignment_plot(chain)]
 
+        ## orient the structure with the super-spiffy orientation algorithm
+        ## which highlights the chain we are examining
+        try:
+            self.orient = calc_orientation(self.struct, chain)
+            console.debug_stdoutln("[%s] Raster3D: calculating orientation" % (chain.chain_id))
+            #    R         = ori["R"],
+            #    cor       = ori["centroid"],
+            #    zoom      = ori["hzoom"],
+            #    near      = ori["near"],
+            #    far       = ori["far"],
+            #    width     = ori["pwidth"],
+            #    height    = ori["pheight"],
+            #    bg_color  = "White")
+        except:
+            console.stdoutln("     Warning: failed to find orientation for graphics output")
+            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+            pass
+
+        ## Generate Raster3D header for a given chain
+        if conf.RENDER_SKIP:
+            self.r3d_header_file = None
+        else:
+            try:
+                self.r3d_header_file = self.generate_raster3d_header(chain)
+            except:
+                console.stdoutln("     Warning: failed to generate Raster3D header")
+                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
         for ntls in chain.partition_collection.iter_ntls():
-            tmp = self.html_tls_graph_path(chain, ntls)
-            if tmp != None:
-                l.append(tmp)
+	    console.stdoutln("=" * 80) ## LOGLINE: Entering new segment
+	    try:
+                tmp = self.html_tls_graph_path(chain, ntls)
+                if tmp != None:
+                    l.append(tmp)
+	    except:
+	        console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
 
             ## maybe this will help with the memory problems...
             import gc
@@ -750,9 +819,9 @@ class HTMLReport(Report):
             plot.add_tls_segmentation(cpartition)
 
         ## create filename for plot PNG image file
-        plot_path = "%s_CHAIN%s_ALIGN.png" % (self.struct_id, chain.chain_id)
+        plot_file = "%s_CHAIN%s_ALIGN.png" % (self.struct_id, chain.chain_id)
         
-        plot.plot(plot_path)
+        plot.plot(plot_file)
 
         l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chain.chain_id),
              '<center>',
@@ -772,7 +841,7 @@ class HTMLReport(Report):
         l.append('</ul>')
 
         l +=['</td>',
-             '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_path),
+             '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_file),
              '</tr>',
              '</table>',
              '</center>',
@@ -788,23 +857,7 @@ class HTMLReport(Report):
         if cpartition == None:
             return None
 
-        ## write out PDB file
-        ##self.write_tls_pdb_file(chain, cpartition)
-
-        ## Raster3D Image
-        if conf.RENDER_SKIP:
-            png_path = ""
-            pml_path = ""
-            console.stdoutln("NOTE: Skipping Raster3D section") ## LOGLINE
-        else:
-            try:
-                pml_path, png_path = self.raster3d_render_tls_graph_path(chain, cpartition)
-            except:
-                ## EAM FIXME:  But really something must have gone wrong before this point.
-                console.stdoutln("     Warning: failure in raster3d_render_tls_graph_path")
-                pml_path = ""
-                png_path = ""
-                pass
+        #self.write_tls_pdb_file(chain, cpartition) ## write out PDB file
 
         ## Lookup Jmol viewer/animate skip in database
         try:
@@ -814,52 +867,103 @@ class HTMLReport(Report):
         except:
             jmol_view_toggle = ""
             jmol_animate_toggle = ""
-            console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+            #console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+            pass
 
         ## Jmol Viewer Script
         if conf.JMOL_SKIP or (jmol_view_toggle == 'ON'):
-            jmol_path = ""
-            console.stdoutln("NOTE: Skipping JMol-viewer section") ## LOGLINE
+            jmol_file = ""
+            console.stdoutln("NOTE: Skipping Jmol-viewer section") ## LOGLINE
         else:
             try:
-                jmol_path = self.jmol_html(chain, cpartition)
+                jmol_file = self.jmol_html(chain, cpartition)
             except:
                 ## EAM FIXME:  But really something must have gone wrong before this point.
                 console.stdoutln("     Warning: Jmol setup failed in jmol_html")
-                jmol_path = ""
+                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+                jmol_file = ""
                 pass
 
         ## Jmol Animation Script
         if conf.JMOL_SKIP or (jmol_animate_toggle == 'ON'):
-            jmol_animate_path = ""
-            console.stdoutln("NOTE: Skipping JMol-animation section") ## LOGLINE
+            jmol_animate_file = ""
+            raw_r3d_file = ""
+            r3d_body_file = ""
+            console.stdoutln("NOTE: Skipping Jmol-animation section") ## LOGLINE
         else:
             try:
-                jmol_animate_path = self.jmol_animate_html(chain, cpartition)
+		jmol_animate_file, raw_r3d_file, r3d_body_file = self.jmol_animate_html(chain, cpartition)
             except:
                 ## EAM FIXME:  But really something must have gone wrong before this point.
                 console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
-                jmol_animate_path = ""
+                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+                jmol_animate_file = ""
                 pass
 
-        ## tlsout file
-        tlsout_path = self.write_tlsout_file(chain, cpartition)
+        ## FIXME: If JMOL_SKIP == True, the following won't work!
+        ## New Raster3D section (bypassing pymmlib)
+        if conf.RENDER_SKIP:
+            png_file = ""
+            pml_file = ""
+        else:
+            try:
+                basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+                png_file = "%s.png"   % (basename)
+                pml_file = "" ## never used
 
-        ## TLS-PHENIX-OUT: phenixout file. Christoph Champ, 2007-12-14
-        phenixout_path = self.write_phenixout_file(chain, cpartition)
+                gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
+                os.system(gen_r3d_body_cmd)
+
+                if os.path.isfile("../bases.r3d"):
+                    ## there are nucleic acids, so
+                    ## cat header.r3d static.r3d animate.r3d grey.r3d bases.r3d sugars.r3d
+                    render_cmd = "cat %s ../struct.r3d %s %s ../bases.r3d ../sugars.r3d | %s > %s 2> /dev/null" % (
+                        self.r3d_header_file, r3d_body_file, conf.GREY_R3D_FILE,
+                        conf.RENDER, png_file)
+                else:
+                    ## there are _not_ any nucleic acids, so
+                    render_cmd = "cat %s ../struct.r3d %s | %s > %s 2> /dev/null" % (
+                        self.r3d_header_file, r3d_body_file,
+                        conf.RENDER, png_file)
+
+                os.system(render_cmd)
+	    except:
+	        console.stdoutln("     Warning: failure to render PNG image")
+                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+                raw_r3d_file = ""
+                r3d_body_file = ""
+                png_file = ""
+	        pass
+        
+        ## Refmac/Phenix files
+        if conf.REFMAC_SKIP:
+            tlsout_file = ""
+            phenixout_file = ""
+            console.stdoutln("NOTE: Skipping Refmac/Phenix section") ## LOGLINE
+        else:
+            try:
+                ## tlsout (for refmac) and phenix files
+                tlsout_file = self.write_tlsout_file(chain, cpartition)
+                phenixout_file = self.write_phenixout_file(chain, cpartition)
+	    except:
+		console.stdoutln("     Warning: failed to create Refmac/Phenix files")
+                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+		tlsout_file = ""
+                phenixout_file = ""
+		pass
 
         ## detailed analysis of all TLS groups
 	try:
             ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
-	except:
-	    ## EAM FIXME:  But really something must have gone wrong before this point.
-	    console.stdoutln("     Warning: Analysis of this partition failed")
-	    return "<hr/>Analysis of this partition failed<br/>"
+        except Exception, e:
+            console.stderr("ERROR: Analysis of this partition failed: %s" % e)
+            pass
 
         ## BMean Plot
-        ntls_analysis.bmean_plot.width = 640
-        ntls_analysis.bmean_plot.height = 250
-        ntls_analysis.bmean_plot.tls_group_titles = False
+        ## switched to globals. Christoph Champ, 2008-10-14
+        ntls_analysis.bmean_plot.width = conf.BMEAN_PLOT_WIDTH
+        ntls_analysis.bmean_plot.height = conf.BMEAN_PLOT_HEIGHT
+        ntls_analysis.bmean_plot.tls_group_titles = conf.BMEAN_PLOT_GROUP_TITLES
         ntls_analysis.bmean_plot.output_png()
 
         
@@ -876,9 +980,9 @@ class HTMLReport(Report):
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
          
-             '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (jmol_path),
+             '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (jmol_file),
              'width=%d,height=%d,screenX=10,screenY=10,left=10,top=10&quot;);' % (conf.JMOL_SIZE, conf.JMOL_SIZE),
-             'return false;">View with JMol</a>',
+             'return false;">View with Jmol</a>',
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
 
@@ -888,13 +992,13 @@ class HTMLReport(Report):
              '&quot;&quot;,'\
              '&quot;width=%d,height=%d,screenX=10,'\
              'screenY=10,left=10,top=10&quot;);'\
-             'return false;">Animate Screw Displacement with JMol</a>' % (jmol_animate_path, conf.JMOL_SIZE, conf.JMOL_SIZE),
+             'return false;">Animate Screw Displacement with Jmol</a>' % (jmol_animate_file, conf.JMOL_SIZE, conf.JMOL_SIZE),
 
              '<br/>',
-             '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_path),
+             '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_file),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
              ## TLS-PHENIX-OUT. Christoph Champ, 2007-12-18
-             '<a href="%s">Group description for PHENIX</a>' % (phenixout_path),
+             '<a href="%s">Group description for PHENIX</a>' % (phenixout_file),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
              '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id)),
              
@@ -903,7 +1007,7 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><img src="%s" alt="structimage"></center><br/>' % (png_path),
+             '<center><img src="%s" alt="structimage"></center><br/>' % (png_file),
              '</th></tr>',
 
              '<tr><th><center>',
@@ -911,23 +1015,22 @@ class HTMLReport(Report):
              '</center></th></tr>',
              '</table>',
 
-             ## now the table
-             html_tls_group_table(ntls, chain, cpartition), ## Pass "ntls" as well. Christoph Champ, 2008-04-05
+             ## now the table. Pass "ntls" as well, 2008-04-05
+             html_tls_group_table(ntls, chain, cpartition),
              
              '<br clear="all">']
         
         return "".join(l)
 
-    def raster3d_render_tls_graph_path(self, chain, cpartition):
+    def generate_raster3d_header(self, chain):
         """Render TLS visualizations using Raster3D.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
-        png_path = "%s.png"   % (basename)
-	console.stdoutln("%s" % "="*80) ## LOGLINE: Entering new segment
-        console.stdoutln("Raster3D: rendering %s..." % png_path) ## LOGLINE
+        r3d_header_file = "%s_CHAIN%s_header.r3d" % (
+            self.struct_id, chain.chain_id)
+        console.stdoutln("Raster3D: generating header %s..." % r3d_header_file) ## LOGLINE
 
+        ori = self.orient
         struct_id = self.struct_id
-        driver = R3DDriver.Raster3DDriver()
 
         ## XXX: Size hack: some structures have too many chains,
         ## or are just too large
@@ -950,31 +1053,108 @@ class HTMLReport(Report):
                 atm.orig_position = atm.position
                 atm.position = chain.target_chain_sresult.transform(atm.position)
 
-        viewer = Viewer.GLViewer()
-        gl_struct = viewer.glv_add_struct(self.struct)
+        ##<Raster3D Header>=====================================================
+        object_list    = []
+        width          = 200
+        height         = 100
+        zoom           = 50
+        near           = 0
+        far            = 0
+        bg_color_rgbf  = (0.0, 0.0, 0.0)
+        ambient_light  = 0.2
+        diffuse_light  = 1.0
+        specular_light = 1.0
 
-        ## orient the structure with the super-spiffy orientation algorithm
-        ## which hilights the chain we are examining
-	try:
-            ori = calc_orientation(self.struct, chain)
-            viewer.glo_update_properties(
-	        R         = ori["R"],
-	        cor       = ori["centroid"],
-	        zoom      = ori["hzoom"],
-	        near      = ori["near"],
-	        far       = ori["far"],
-	        width     = ori["pwidth"],
-	        height    = ori["pheight"],
-	        bg_color  = "White")
-	except:
-	    console.stdoutln("     Warning: failed to find orientation for graphics output")
-	    pass
+        front_clip = near
+        back_clip  = far
+
+        ## Raster3D assumes r,g,b triplits are squared
+        r, g, b = bg_color_rgbf
+        r = r*r
+        g = g*g
+        b = b*b
+        bg_color_rgbf = (r,g,b)
+
+        ## the lighting model for Raster3D is not quite the same as
+        ## OpenGL; this conversion gets it close
+        total_light = ambient_light + diffuse_light + specular_light
+
+        ambient  = ambient_light  / total_light
+        specular = specular_light / total_light
+        phong    = 3
+
+        ## initial material state
+        object_list.append((8, 0.0, 0, front_clip, back_clip))
+
+        ## now create the header for the render program
+        tsz_width   = 16
+        tsz_height  = 16
+
+        xtiles = int(round(width  / float(tsz_width)))
+        ytiles = int(round(height / float(tsz_height)))
+
+        pixel_width  = xtiles * tsz_width
+        pixel_height = ytiles * tsz_height
+
+        ## zoom is the horizontal number of Angstroms shown in the
+        ## image, this must be converted to the Raster3D zoom parameter
+        ## which is the number of Angstroms of the shortest dimention
+        if pixel_width > pixel_height:
+            r = float(pixel_height) / float(pixel_width)
+            z = zoom * r
+        else:
+            z = zoom
+
+        R = ori["R"] ## Rotation matrix
+        cor = ori["centroid"]
+
+        header_list = [
+            "mmLib Generated Raster3D Output",
+            "%d %d     tiles in x,y" % (ori["pwidth"], ori["pheight"]),
+            "0 0       pixels (x,y) per tile",
+            "4         anti-aliasing level 4; 3x3->2x2",
+            "1 1 1     background",
+            "F         no shadows cast",
+            "%2d       Phong power" % (phong),
+            "0.20      secondary light contribution",
+            "%4.2f     ambient light contribution" % (ambient),
+            "%4.2f     specular reflection component" % (specular),
+            "0.0       eye position(no perspective)",
+            "1 1 1     main light source position",
+            "1 0 0 0",
+            "0 1 0 0",
+            "0 0 1 0",
+            "%s %s %s %f" % (-cor[0], -cor[1], -cor[2], ori["hzoom"]),
+            "3         mixed objects",
+            "*        (free format triangle and plane descriptors)",
+            "*        (free format sphere descriptors",
+            "*        (free format cylinder descriptors)",
+	    "# Auto-orientation matrix",
+	    "16",
+	    "ROTATION",
+            "%s %s %s " % (R[0,0], R[0,1], R[0,2]),
+            "%s %s %s " % (R[1,0], R[1,1], R[1,2]),
+            "%s %s %s " % (R[2,0], R[2,1], R[2,2]),
+	    "# End of orientation matrix",
+	    ""
+            ]
+
+        r3d_file = open(r3d_header_file, "w")
+        r3d_file.write("\n".join(header_list))
+        r3d_file.close()
+        console.stdoutln("Raster3D: Finish creating r3d_header %s..." % r3d_header_file) ## LOGLINE
+
+        return r3d_header_file
+        ##=====================================================================
+        ## NOTE: The following code is now obsolete
+        ##=====================================================================
 
         ## turn off axes and unit cell visualization
         gl_struct.glo_update_properties_path("gl_axes/visible", False)
         gl_struct.glo_update_properties_path("gl_unit_cell/visible", False)
 
         ## setup base structural visualization
+        console.debug_stdoutln(">html.py->Raster3D: setup base structural visualization") ## DEBUG
         for gl_chain in gl_struct.glo_iter_children():
             if not isinstance(gl_chain, Viewer.GLChain):
                 continue
@@ -1025,6 +1205,7 @@ class HTMLReport(Report):
         has_amino_acids = cpartition.chain.has_amino_acids()
         has_nucleic_acids = cpartition.chain.has_nucleic_acids()
         
+        console.debug_stdoutln(">html.py->Raster3D: add the TLS group visualizations") ## DEBUG
         for tls in cpartition.iter_tls_segments():
             if tls.method != "TLS":
                 continue
@@ -1076,6 +1257,7 @@ class HTMLReport(Report):
             gl_tls_group.glo_update_properties(time = 0.25)
 
         ## got target chain?
+        console.debug_stdoutln(">html.py->Raster3D: Viewer.GLChain()") ## DEBUG
         if self.tlsmd_analysis.target_chain is not None:
             gl_chain = Viewer.GLChain(chain = self.tlsmd_analysis.target_chain)
             gl_chain.properties.update(
@@ -1089,7 +1271,7 @@ class HTMLReport(Report):
                     trace_color        = "0.40,0.40,0.40")
             gl_struct.glo_add_child(gl_chain)
             
-        driver.glr_set_render_png_path(png_path)
+        driver.glr_set_render_png_path(png_file)
         viewer.glv_render_one(driver)
 
         ## got target chain?
@@ -1098,14 +1280,15 @@ class HTMLReport(Report):
                 atm.position = atm.orig_position
                 del atm.orig_position
 
-        return "", png_path
+        console.stdoutln("Raster3D: Finish rendering %s..." % png_file) ## LOGLINE
+        return "", png_file
 
     def write_tls_pdb_file(self, chain, cpartition):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
         basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
-        pdb_path = "%s.pdb" % (basename)
+        pdb_file = "%s.pdb" % (basename)
 
         ## temporarily set the atom temp_factor and U tensor to the Utls value
         old_temp_factor = {}
@@ -1118,8 +1301,10 @@ class HTMLReport(Report):
                 atm.temp_factor = Constants.U2B * (numpy.trace(Utls)/3.0)
                 atm.U = Utls
 
-        FileIO.SaveStructure(fil = pdb_path, struct = self.struct)
-	console.stdoutln("PDB: Saving %s" % pdb_path) ## LOGLINE
+        FileIO.SaveStructure(fil = pdb_file, struct = self.struct)
+
+	console.stdoutln("[%s,%s] PDB: Saving %s" % (
+            chain.chain_id, cpartition.num_tls_segments(), pdb_file)) ## LOGLINE
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():
@@ -1130,7 +1315,7 @@ class HTMLReport(Report):
         """Writes the TLSOUT file for the segmentation.
         """
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
-        tlsout_path = "%s.tlsout" % (basename)
+        tlsout_file = "%s.tlsout" % (basename)
 
         struct_id = self.struct_id
         chain_id  = chain.chain_id
@@ -1138,28 +1323,37 @@ class HTMLReport(Report):
         tls_file = TLS.TLSFile()
         tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
+        ##==FlatFile============================================================
+        chain_ntls = "%s,%s" % (chain_id, cpartition.num_tls_segments())
+        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+        flatfile = open("flatfile.txt", "a+")
+        flatfile.write("TI [%s] %s write_tlsout_file\n" % (timestamp,chain_ntls))
+
         for tls in cpartition.iter_tls_segments():
             ## don't write out bypass edges
             if tls.method != "TLS":
                 continue
-            
+
             tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
+                flatfile.write("XX %s TLSOUT %s:%s %f\n" % (chain_ntls,frag_id1,frag_id2,tls.tls_group.itls_T))
 
-        tls_file.save(open(tlsout_path, "w"))
-	console.stdoutln("REFMAC: Saving %s" % tlsout_path) ## LOGLINE
+        tls_file.save(open(tlsout_file, "w"))
 
-        return tlsout_path
+	console.stdoutln("[%s,%s] REFMAC: Saving %s" % (
+            chain_id, cpartition.num_tls_segments(), tlsout_file)) ## LOGLINE
+
+        return tlsout_file
 
     def write_phenixout_file(self, chain, cpartition):
         """Writes the TLS-PHENIX-OUT file for the segmentation.
         """
         ## Added by Christoph Champ, 2007-12-14
         basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
-        phenixout_path = "%s.phenixout" % (basename)
+        phenixout_file = "%s.phenixout" % (basename)
 
         struct_id = self.struct_id
         chain_id  = chain.chain_id
@@ -1178,10 +1372,12 @@ class HTMLReport(Report):
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
 
-        phenix_file.save(open(phenixout_path, "w"))
-	console.stdoutln("PHENIX: Saving %s" % phenixout_path) ## LOGLINE
+        phenix_file.save(open(phenixout_file, "w"))
 
-        return phenixout_path
+	console.stdoutln("[%s,%s] PHENIX: Saving %s" % (
+            chain_id, cpartition.num_tls_segments(), phenixout_file)) ## LOGLINE
+
+        return phenixout_file
 
     def chain_ntls_analysis(self, chain, cpartition):
         """Generate ntls optimization constraint report and free memory.
@@ -1191,11 +1387,11 @@ class HTMLReport(Report):
 
     def jmol_html(self, chain, cpartition):
         """Writes out the HTML page which will display the
-        structure using the JMol Applet.
+        structure using the Jmol Applet.
         """
-        jmol_path = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        jmol_file = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
-        ## create the JMol script using cartoons and consistant
+        ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js = ['load %s;' % (self.struct_path),
               'select *;',
@@ -1235,47 +1431,86 @@ class HTMLReport(Report):
              '</body>',
              '</html>']
 
-        open(jmol_path, "w").write("".join(l))
-	console.stdoutln("JMOL: Saving %s" % jmol_path) ## LOGLINE
-        return jmol_path
+        open(jmol_file, "w").write("".join(l))
+
+	console.stdoutln("[%s,%s] JMOL: Saving %s" % (
+            chain.chain_id, cpartition.num_tls_segments(), jmol_file)) ## LOGLINE
+
+        return jmol_file
 
     def jmol_animate_html(self, chain, cpartition):
         """Writes out the HTML page which will display the
-        structure using the JMol Applet.
+        structure using the Jmol Applet.
         """
-        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
+            self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
-        html_path = "%s.html" % (basename)
-        pdb_path  = "%s.pdb" % (basename)
+        html_file     = "%s.html" % (basename)
+        pdb_file      = "%s.pdb" % (basename)
+        raw_r3d_file  = "%s.raw" % (basename)
+        r3d_body_file = "%s.r3d" % (basename)
 
         ## generate animation PDB file
-
         try:
-            console.stdoutln("TLSAnimate: creating animation PDB file...") ## LOGLINE
+            console.stdoutln("[%s,%s] TLSAnimate: creating animation PDB file..." % (
+                chain.chain_id, cpartition.num_tls_segments())) ## LOGLINE
             tlsa = TLSAnimate(chain, cpartition)
-            tlsa.construct_animation(pdb_path)
+            tlsa.construct_animation(pdb_file, raw_r3d_file)
         except TLSAnimateFailure:
             console.stdoutln("     Warning: failed to create animation PDB file.")
+            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
             pass
         
-        ## create the JMol script using cartoons and consistant
+        ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
-        js = ['load %s;' % (pdb_path),
+        js = ['load %s;' % (pdb_file),
               'select *;',
               'cpk off;',
               'wireframe off;',
               'select protein;',
               'trace on;']
 
-        ## loop over TLS groups and color
+        ## figure out which libration eigen value is the largest and
+        ## use that value in the animation. Christoph Champ, 2008-08-15
+        n = 0 ## counter for which max_libration to use
+        max_libration = []
         for tls in cpartition.iter_tls_segments():
-            chain_ids = [tlsa.L1_chain.chain_id,
-                         tlsa.L2_chain.chain_id,
-                         tlsa.L3_chain.chain_id]
+            tls_info = tls.model_tls_info
+            L1_val = float(tls_info["L1_eigen_val"]) * Constants.RAD2DEG2
+            L2_val = float(tls_info["L2_eigen_val"]) * Constants.RAD2DEG2
+            L3_val = float(tls_info["L3_eigen_val"]) * Constants.RAD2DEG2
+            max = 0.00
+            for val in L1_val, L2_val, L3_val:
+                if val >= max:
+                    max = val
+            max_libration.append(float(max))
+            n += 1
 
-            for chain_id in chain_ids:
-                js.append('select %s;' % (tls.jmol_select()))
-                js.append('color [%d,%d,%d];' % (tls.color.rgbi))
+        use_chain = ""
+        n = 0
+        ## loop over TLS groups and color _only_ the max_libration
+        for tls in cpartition.iter_tls_segments():
+            tls_info = tls.model_tls_info
+            L1_val = float(tls_info["L1_eigen_val"]) * Constants.RAD2DEG2
+            L2_val = float(tls_info["L2_eigen_val"]) * Constants.RAD2DEG2
+            L3_val = float(tls_info["L3_eigen_val"]) * Constants.RAD2DEG2
+
+            if L1_val == max_libration[n]:
+                use_chain = tlsa.L1_chain.chain_id
+            elif L2_val == max_libration[n]:
+                use_chain = tlsa.L2_chain.chain_id
+            elif L3_val == max_libration[n]:
+                use_chain = tlsa.L3_chain.chain_id
+            n += 1
+
+            l = []
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                l.append("%s-%s:%s" % (frag_id1, frag_id2, use_chain))
+            select = ",".join(l)
+            use_chain = ""
+
+            js.append('select %s;' % select)
+            js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
         ## select non-protein non-solvent and display
         js +=['select not protein and not solvent;',
@@ -1306,13 +1541,15 @@ class HTMLReport(Report):
              '</html>']
 
         ## manually free memory
-        tlsa = None
         import gc
         gc.collect()
 
-        open(html_path, "w").write("".join(l))
-	console.stdoutln("HTML: Saving %s" % html_path) ## LOGLINE
-        return html_path
+        open(html_file, "w").write("".join(l))
+
+	console.stdoutln("[%s,%s] HTML: Saving %s" % (
+            chain.chain_id, cpartition.num_tls_segments(), html_file)) ## LOGLINE
+
+        return html_file, raw_r3d_file, r3d_body_file
 
     def write_multi_chain_alignment(self):
         """Write out the chain residue alignment page.
@@ -1332,8 +1569,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_multi_chain_alignment())
         fil.close()
-	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
-    
+
     def html_multi_chain_alignment(self):
         """Write out all HTML/PDB/TLSIN files which compare
         chains in the structure.
@@ -1376,8 +1612,8 @@ class HTMLReport(Report):
                     plot.add_tls_segmentation(cpartition)
 
             basename  = "%s_NTLS%d"  % (self.struct_id, ntls)
-            plot_path = "%s_ALIGN.png" % (basename)
-            plot.plot(plot_path)
+            plot_file = "%s_ALIGN.png" % (basename)
+            plot.plot(plot_file)
 
             ## write HTML
             l.append('<h3>Chains Alignment using %d TLS Groups</h3>' % (ntls))
@@ -1394,7 +1630,7 @@ class HTMLReport(Report):
 
             l += ['</table>'
                   '</td>',
-                  '<td><img src="%s" alt="Segmentation Plot" /></td>' % (plot_path),
+                  '<td><img src="%s" alt="Segmentation Plot" /></td>' % (plot_file),
                   '</tr>',
                   '</table>' ]
 
@@ -1415,6 +1651,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_refinement_prep())
         fil.close()
+
 	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_refinement_prep(self):
@@ -1493,11 +1730,10 @@ class ChainNTLSAnalysisReport(Report):
         os.chdir(self.dir)
 
 	try:
+            console.stdoutln("TESTING: Writing %s" % self.index)
             self.write_all_files()
-	except:
-	    ## FIXME: How to print error message?
-	    ## FIXME: write missing row of table on html page
-	    pass
+        except:
+            print("ERROR: Unexpected error:", sys.exc_info()[0])
 	finally:
 	    os.chdir(self.root)
 
@@ -1506,7 +1742,6 @@ class ChainNTLSAnalysisReport(Report):
         """
         title = "Chain %s Partitioned by %d TLS Groups" % (self.chain_id, self.ntls)
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
-
 
         l = [self.html_head(title),
              self.html_title(title),
@@ -1517,18 +1752,18 @@ class ChainNTLSAnalysisReport(Report):
              '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id),
              '</center>',
              
-             '<br/>',
+             '<br/>']
 
-             self.html_tls_group_table(),'<br/>',
-             self.html_bmean(),'<br/>',
-             self.tls_segment_recombination(),'<br/>',
-             self.html_translation_analysis(),'<br/>',
-             self.html_libration_analysis(),'<br/>',
-             self.html_ca_differance(),'<br/>',
-             self.html_rmsd_plot()]
+        l += [self.html_tls_group_table(),'<br/>']
+        l += [self.html_bmean(),'<br/>'] ## REQUIRED!
+        l += [self.tls_segment_recombination(),'<br/>']
+        l += [self.html_translation_analysis(),'<br/>']
+        l += [self.html_libration_analysis(),'<br/>']
+        l += [self.html_ca_differance(),'<br/>']
+        l += [self.html_rmsd_plot()] ## REQUIRED!
 
 	## EAM April 2008 - This sure looks redundant to me.  Let's try doing without it
-        ## self.tls_segment_recombination()
+        #self.tls_segment_recombination()
         
         ## Create histogram plots
         job_id = conf.globalconf.job_id
@@ -1542,7 +1777,8 @@ class ChainNTLSAnalysisReport(Report):
                         continue
                     l.append(self.html_tls_fit_histogram(tls))
             except:
-                console.stdoutln("     Warning: failure in html_tls_fit_histogram()")
+                #console.stdoutln("     Warning: failure in html_tls_fit_histogram()")
+                print("ERROR: Unexpected error:", sys.exc_info()[0])
                 pass
 
         l.append(self.html_foot())
@@ -1551,7 +1787,8 @@ class ChainNTLSAnalysisReport(Report):
 	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_tls_group_table(self):
-        return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..") ## Pass "ntls" as well. Christoph Champ, 2008-04-05
+        ## Pass "ntls" as well, 2008-04-05
+        return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..")
 
     def html_translation_analysis(self):
         """Perform a translation analysis of the protein chain as
@@ -1621,6 +1858,8 @@ class ChainNTLSAnalysisReport(Report):
             return ""
 
         rmatrix = self.cpartition.rmsd_b_mtx
+        m, n = rmatrix.shape
+        chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
 
         tbl = table.StringTableFromMatrix(rmatrix)
 	## E.g., for three segments, the file would look something like the following:
@@ -1631,15 +1870,40 @@ class ChainNTLSAnalysisReport(Report):
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
 
         open(filename, "w").write(str(tbl))
-	console.stdoutln("RECOMBINATION: Saving %s" % filename) ## LOGLINE
+	console.stdoutln("[%s] RECOMBINATION: Saving %s" % (chain_ntls, filename)) ## LOGLINE
 
-        m, n = rmatrix.shape
+        ##======================================================================
+        ##<FLATFILE>
+        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+        flatfile = open("../flatfile.txt", "a+")
+        flatfile.write("TI [%s] %s tls_segment_recombination" % (
+            timestamp, chain_ntls))
+        flatfile.write("\nXX %s RECOMBINATION" % chain_ntls)
+        ##</FLATFILE>
+        ##======================================================================
+
         tbl = table.StringTable(m + 1, n + 1, '<td></td>')
         
-        ## label top and left table margins
         for i, tls in enumerate(self.cpartition.iter_tls_segments()):
-            tbl[i + 1, 0] = '<td style="background-color:%s">%s</td>' % (tls.color.rgbs, tls.display_label())
+            ##self.cpartition = "(B:1-10)(B:11-15)(B:16-21)(B:22-27)(B:28-39)"
+
+            ## label top and left table margins
+            tbl[i + 1, 0] = '<td style="background-color:%s">%s</td>' % (
+                tls.color.rgbs, tls.display_label())
             tbl[0, i + 1] = tbl[i + 1, 0]
+
+            ##<FLATFILE>
+            flatfile.write("\nRS %s %s rmsd_b = %.2f; residual_rmsd_b = %.2f" % (
+                chain_ntls, i+1, tls.rmsd_b, rmatrix[i, i]))
+            flatfile.write("\nIT %s %s T = %s" % (
+                chain_ntls, i+1, tls.tls_group.itls_T))
+            flatfile.write("\nIL %s %s L = %s" % (
+                chain_ntls, i+1, tls.tls_group.itls_L))
+            flatfile.write("\nIS %s %s S = %s" % (
+                chain_ntls, i+1, tls.tls_group.itls_S))
+            flatfile.write("\nIO %s %s origin = %s" % (
+                chain_ntls, i+1, tls.tls_group.origin))
+            ##</FLATFILE>
 
         ## recombination values
 	console.debug_stdoutln(">MATRIX: Creating RMSD B values table...") ## DEBUG
@@ -1648,10 +1912,15 @@ class ChainNTLSAnalysisReport(Report):
         min_rmsd_b = rmatrix[0, 0]
         max_rmsd_b = rmatrix[0, 0]
         for i in xrange(m):
+            flatfile.write('\nRO %s ' % chain_ntls) ## FLATFILE
             for j in xrange(n):
+                flatfile.write('%s,' % rmatrix[i, j]) ## FLATFILE
                 min_rmsd_b = min(min_rmsd_b, rmatrix[i, j])
                 max_rmsd_b = max(max_rmsd_b, rmatrix[i, j])
         b_range = max_rmsd_b - min_rmsd_b
+
+        flatfile.write("\n")
+        flatfile.close()
 
         for i in xrange(m):
             for j in xrange(n):
