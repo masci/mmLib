@@ -52,7 +52,7 @@ def TLSMD_Main(struct_file_path  = None,
         sel_chain_ids       = sel_chain_ids,
         struct2_file_path   = conf.globalconf.target_struct_path,
         struct2_chain_id    = conf.globalconf.target_struct_chain_id)
-    
+
     IndependentTLSSegmentOptimization(analysis)
     RecombineIndependentTLSSegments(analysis)
 
@@ -61,12 +61,16 @@ def TLSMD_Main(struct_file_path  = None,
 
     if html_report_dir is not None and analysis.num_chains() > 0:
         FitConstrainedTLSModel(analysis)
-        ## New summary page. Allows the user to see some information before the
-        ## analysis is fully complete
+
+        ## generate summary page. Allows the user to see some information
+        ## before the analysis is fully complete
         summary = html.HTMLSummaryReport(analysis)
         summary.write_summary(html_report_dir)
-        report = html.HTMLReport(analysis)
-        report.write(html_report_dir)
+
+        if not conf.globalconf.skip_html:
+            ## generate in-depth HTML report pages
+            report = html.HTMLReport(analysis)
+            report.write(html_report_dir)
 
 
 class TLSMDAnalysis(object):
@@ -181,7 +185,7 @@ def LoadStructure(struct_source):
     console.kvformat("HEADER", struct.header) ## LOGLINE 9
     console.kvformat("TITLE", struct.title) ## LOGLINE 10
     console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
-
+    
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
         struct_id = conf.globalconf.struct_id
@@ -331,6 +335,7 @@ def FitConstrainedTLSModel(analysis):
 		try:
                     ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
 		    tls.fit_to_chain(cpartition.chain)
+
 		except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
 		    console.stdoutln("            Runtime error: %s, trying to continue..." % e)
 		    pass
