@@ -6,6 +6,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python
 import os
 import sys
 import time
@@ -27,8 +28,12 @@ import urllib
 import gzip
 import StringIO
 import subprocess ## for render of 'struct.png'
+import re         ## for "raw grey"-backbone rendering. 2008-12-03
 
+## pymmlib
 from mmLib import FileIO
+
+## TLSMD
 from tlsmdlib import conf, const, tls_calcs, email
 
 
@@ -132,6 +137,36 @@ class JobDatabase(object):
 
         return job_list
 
+    def jdict_pdb_list(self):
+        """Returns a sorted list of all jdicts with 'via_pdb' in the database
+        """
+        ## retrieve all jdicts from database with 'via_pdb'. Christoph Champ, 2008-09-05
+        listx = []
+        for dbkey in self.db.keys():
+            if dbkey.startswith("TLSMD"):
+                jdict = self.retrieve_jdict(dbkey)
+
+                job_id = jdict["job_id"]
+
+                if jdict.has_key("via_pdb"):
+                    pdb_id = jdict["via_pdb"]
+                else:
+                    continue
+                    #job_nums = job_id[5:]
+                    #j = job_nums.find("_")
+                    #job_nums = job_nums[:j]
+                    #job_num = int(job_nums)
+
+                listx.append((pdb_id, jdict))
+
+        listx.sort()
+
+        job_list = []
+        for pdb_id, jdict in listx:
+            job_list.append(jdict)
+
+        return job_list
+
     def job_new(self):
         gdict = self.retrieve_globals()
         job_num = gdict["next_job_num"]
@@ -168,17 +203,109 @@ class JobDatabase(object):
             return ""
         return value
 
-#def render_struct(webtlsmdd, job_id):
-def render_struct(job_dir):
-    """Generate struct.png via molauto/molscript/render
+
+def parse_molauto(infile, outfile):
+    """Parses the molauto output to force each chain to have its own unique
+       colour. 2008-12-03
     """
+    ## FIXME: This function does not work yet.
+    file = open(outfile, "w")
+    for line in open(infile).readlines():
+        file.write("%s" % line)
+        if(re.match(r'^  set segments', line)):
+            file.write("  set segments 10;\n")
+            file.write("  set planecolour hsb 0.6667 1 1;")
+        elif(re.match(r'^  set planecolour', line)):
+            colour = line
+        elif(re.match(r'^  .* from ', line)):
+            chain1 = chain2 = line
+            chain1 = re.sub(r'^  .* from ([A-Z])[0-9]{1,} to ([A-Z])[0-9].*$', '\\1', line).strip()
+            chain2 = re.sub(r'^  .* from ([A-Z])[0-9]{1,} to ([A-Z])[0-9].*$', '\\2', line).strip()
+            file.write("%s" % line)
+            if(chain1 != chain2):
+                file.write("%s" % colour)
+        else:
+            file.write("%s" % line)
+    file.close()
+    return
+
+def render_struct(job_dir):
+    """Generate struct.png via molauto/parse_molauto/molscript/render
+    """
+    ## NOTE: Uses internal Perl script!
     ## cmd: molauto smallAB.pdb|parse_molauto.pl|molscript -r |render -bg white -size 200x200 -png mymol.png
-    #job_dir = webtlsmdd.job_get_job_dir(job_id)
-    #job_url = webtlsmdd.job_get_job_url(job_id)
 
     cmdlist = ["%s %s/struct.pdb | %s | %s -r | %s -bg white -size %s -png %s/struct.png 1>&2" % (
-              conf.MOLAUTO_PATH,job_dir,conf.PARSE_MOLAUTO_PATH,conf.MOLSCRIPT_PATH,conf.RENDER_PATH,
-              conf.RENDER_SIZE,job_dir)]
+              conf.MOLAUTO, job_dir, conf.PARSE_MOLAUTO_SCRIPT,
+              conf.MOLSCRIPT, conf.RENDER,
+              conf.RENDER_SIZE, job_dir)]
+    proc = subprocess.Popen(cmdlist,
+                            shell = True,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE,
+                            close_fds = True,
+                            bufsize = 32768)
+
+def extract_raw_backbone(infile, outfile):
+    """Extracts all backbone atoms (amino acid or nucleic acid) 
+       for use in tlsanim2r3d
+    """
+    file = open(outfile, "w")
+    for line in open(infile).readlines():
+        if(re.match(r'^ATOM........ CA .*', line) or \
+           re.match(r'^ATOM........ P  .*', line) or \
+           re.match(r'^ATOM........ C[543]\'.*', line) or \
+           re.match(r'^ATOM........ O[53]\'.*', line)):
+            chain_id = line[21:22]
+            x = float(line[30:38].strip())
+            y = float(line[38:46].strip())
+            z = float(line[46:54].strip())
+
+            file.write("1 0 %s 0 0 %.3f %.3f %.3f\n" % (chain_id, x, y, z))
+    file.close()
+    return
+
+def generate_raw_grey_struct(job_dir):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+       sections, for _all_ chains
+    """
+    ## cmd: ./tlsanim2r3d < struct.raw >ANALYSIS/struct.r3d
+
+    extract_raw_backbone("%s/struct.pdb" % job_dir, "%s/struct.raw" % job_dir)
+
+    cmdlist = ["%s < %s/struct.raw > %s/struct.r3d 2>/dev/null" % (
+              conf.TLSANIM2R3D, job_dir, job_dir)]
+    proc = subprocess.Popen(cmdlist,
+                            shell = True,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE,
+                            close_fds = True,
+                            bufsize = 32768)
+
+def generate_bases_r3d(job_dir, chain_id):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+       sections, for _all_ chains
+    """
+    ## cmd: grep '^ATOM.................B.*' | rings3d -bases >>bases.r3d
+    cmdlist = ["grep '^ATOM.................%s.*' %s/struct.pdb | %s -bases >>%s/bases.r3d 2>/dev/null" % (
+              chain_id, job_dir, conf.RINGS3D, job_dir)]
+    proc = subprocess.Popen(cmdlist,
+                            shell = True,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE,
+                            close_fds = True,
+                            bufsize = 32768)
+
+def generate_sugars_r3d(job_dir, chain_id):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+       sections, for _all_ chains
+    """
+    ## cmd: grep '^ATOM.................B.*' | rings3d -bases >>bases.r3d
+    cmdlist = ["grep '^ATOM.................%s.*' %s/struct.pdb | %s -ribose >>%s/sugars.r3d 2>/dev/null" % (
+              chain_id, job_dir, conf.RINGS3D, job_dir)]
     proc = subprocess.Popen(cmdlist,
                             shell = True,
                             stdin = subprocess.PIPE,
@@ -218,6 +345,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     ## Generate summary/thumb 'struct.png' image
     if conf.THUMBNAIL:
         render_struct(job_dir)
+
+    ## Generate 'struct.r3d' for Raster3D
+    if conf.GEN_RAW_GREY:
+        generate_raw_grey_struct(job_dir)
 
     ## set basic properties of the job
     job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
@@ -269,6 +400,11 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             num_frags = naa
         elif nna > 0:
             num_frags = nna
+
+            ## this chain has nucleic acids in it, so generate r3d file for
+            ## just the sugars
+            generate_bases_r3d(job_dir, chain.chain_id)
+            generate_sugars_r3d(job_dir, chain.chain_id)
 
         if num_frags < 10:
             continue
@@ -326,9 +462,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
     webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in tlsmdlib/html.py. Christoph Champ, 2008-02-09
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
-    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_view", "ON")
-    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_animate", "ON")
+    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_view", "OFF")
+    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_animate", "OFF")
     webtlsmdd.jobdb.job_data_set(job_id, "skip_histogram", "ON")
+    webtlsmdd.jobdb.job_data_set(job_id, "nparts", conf.NPARTS) ## select number of partitions (default: 20)
 
     try:
         aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
@@ -388,12 +525,12 @@ def SignalJob(webtlsmdd, job_id):
     job_dir = webtlsmdd.job_get_job_dir(job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
-	    tmp_pid=webtlsmdd.job_get_pid(job_id)
-	    pid=int(tmp_pid)
+	    tmp_pid = webtlsmdd.job_get_pid(job_id)
+	    pid = int(tmp_pid)
         except:
 	    return False
         try:
-	    os.kill(pid,SIGUSR1) ## Send signal SIGUSR1 and try to continue to job process.
+	    os.kill(pid, SIGUSR1) ## Send signal SIGUSR1 and try to continue to job process.
         except:
 	    return False
 
@@ -413,12 +550,12 @@ def KillJob(webtlsmdd, job_id):
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
 	    ## Switched to storing pid in database. Christoph Champ, 2008-03-14
-	    tmp_pid=webtlsmdd.job_get_pid(job_id)
-	    pid=int(tmp_pid)
+	    tmp_pid = webtlsmdd.job_get_pid(job_id)
+	    pid = int(tmp_pid)
         except:
 	    return False
         try:
-	    os.kill(pid,SIGHUP)
+	    os.kill(pid, SIGHUP)
         except:
 	    return False
 
@@ -503,6 +640,12 @@ class WebTLSMDDaemon(object):
         """Returns a ordered list of all jdicts in the database
         """
         return self.jobdb.jdict_list()
+
+    def job_pdb_list(self):
+        """Returns a ordered list of all jdicts in the database
+           containing 'via_pdb'
+        """
+        return self.jobdb.jdict_pdb_list()
         
     def job_new(self):
         return self.jobdb.job_new()
@@ -692,7 +835,14 @@ class WebTLSMDDaemon(object):
         return skip_histogram
     def job_get_histogram(self, job_id):
         return self.jobdb.job_data_get(job_id, "skip_histogram")
-     
+
+    ## Set/get number of partitions/chain. Christoph Champ, 2008-11-04
+    def job_set_nparts(self, job_id, nparts):
+        self.jobdb.job_data_set(job_id, "nparts", nparts)
+        return nparts
+    def job_get_nparts(self, job_id):
+        return self.jobdb.job_data_get(job_id, "nparts")
+        
     def job_set_run_time_begin(self, job_id, run_time_begin):
         self.jobdb.job_data_set(job_id, "run_time_begin", run_time_begin)
         return run_time_begin
