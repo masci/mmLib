@@ -14,19 +14,18 @@ TSMALL = 0.1 * Constants.B2U
 LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## program info
+## 3rd decimal place is for internal development on (Verdandi) 
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "1.0.1"
-RELEASE_DATE  = "15 Feb 2008"
+VERSION       = "1.1.0"
+RELEASE_DATE  = "10 Dec 2008"
 AUTHOR        = "Ethan Merritt"
 EMAIL         = "merritt@u.washington.edu"
 
 ## mainchain atom definitions
 AMINO_ACID_MAINCHAIN_ATOMS = ["N", "CA", "C", "O", "CB"]
-NUCLEIC_ACID_MAINCHAIN_ATOMS = ["P", "O5*", "C5*", "C4*", "C3*", "O3*"]
+NUCLEIC_ACID_MAINCHAIN_ATOMS = ["P", "O5*", "C5*", "C4*", "C3*", "O3*",
+                                     "O5'", "C5'", "C4'", "C3'", "O3'"]
 MAINCHAIN_ATOMS = AMINO_ACID_MAINCHAIN_ATOMS + NUCLEIC_ACID_MAINCHAIN_ATOMS
 MAINCHAIN_ATOM_DICT = {}
 for res_name in MAINCHAIN_ATOMS:
     MAINCHAIN_ATOM_DICT[res_name] = True
-    
-
-
