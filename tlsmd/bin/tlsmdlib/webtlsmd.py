@@ -387,7 +387,7 @@ def html_program_settings_table(fdict):
          '<fieldset><legend>Atom Class Selection</legend>',
          '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div><br/>',
          '<label><input name="include_atoms" type="radio" value="ALL" tabindex="35" checked>All Atoms</label><br/>',
-         '<label><input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35">Mainchain Atoms (N,CA,C,O,CB)</label>',
+         '<label><input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35">Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})</label>',
          '</fieldset>',
          '</td>',
 
@@ -425,9 +425,9 @@ def html_program_settings_table(fdict):
          ## select number of partitions per chain. Christoph Champ, 2008-11-04
          '<td valign="top">',
          '<fieldset><legend>Set number of partitions/chain</legend>',
-         '<div style="font-size:xx-small">default = 20</div><br/>',
+         '<div style="font-size:xx-small">default/max = 20</div><br/>',
          '<label>Maximum number of segments: ',
-         '<input name="nparts" type="text" size="3" maxlength="3" value="20" />',
+         '<input name="nparts" type="text" size="2" maxlength="2" value="20" />',
          '</label><br/>',
          '</fieldset>',
          '</td>',
@@ -860,14 +860,19 @@ def extract_job_edit_form(form, webtlsmdd):
         if histogram_toggle in ["ON", "OFF"]:
             webtlsmdd.job_set_histogram(job_id, histogram_toggle)
 
-    ## Select number of partition/chain (default=20). Christoph Champ, 2008-11-04
+    ## Select number of partition/chain (default/max=20). Christoph Champ, 2008-11-04
     if form.has_key("nparts"):
         nparts_value = form["nparts"].value.strip()
+        if nparts_value.isdigit() == False:
+            return False
+        if int(nparts_value) > 20 or int(nparts_value) < 1:
+            ## not a valid input; force value to be int(20)
+            nparts_value = int(20)
         try:
             value = int(nparts_value)
             webtlsmdd.job_set_nparts(job_id, value)
         except:
-            return False ## not a valid input; must be integer < 20
+            return False ## not a valid input; must be positive integer < 20
 
     return True
 
