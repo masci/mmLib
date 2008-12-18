@@ -125,7 +125,6 @@ def calc_rmsd_tls_biso(tls_group):
         rmsd = 0.0
 
     return rmsd
-     
 
 def calc_mean_biso_obs(chain):
     """Calculates the mean B value per residue in the chain (as observed in the input structure).
@@ -214,9 +213,10 @@ def calc_residue_mean_rmsd(chain, cpartition):
         ##         + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
         ##
         O1, O2, O3 = O
-        chain_id  = re.sub(r'^([A-Za-z0-9]):([A-Za-z0-9]{1,})-([A-Za-z0-9]{1,})', '\\1', str(tls))
-        seg_start = re.sub(r'^([A-Za-z0-9]):([A-Za-z0-9]{1,})-([A-Za-z0-9]{1,})', '\\2', str(tls))
-        seg_end   = re.sub(r'^([A-Za-z0-9]):([A-Za-z0-9]{1,})-([A-Za-z0-9]{1,})', '\\3', str(tls))
+        ## tls = "A:1-10" || "G:5A-14" || "G:-1--10"
+        chain_id  = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\1', str(tls))
+        seg_start = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\2', str(tls))
+        seg_end   = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\3', str(tls))
 
         seg_start = create_fractional_residue_number(seg_start)
         seg_end   = create_fractional_residue_number(seg_end)
@@ -270,11 +270,11 @@ def calc_residue_mean_rmsd(chain, cpartition):
 
                 ##==============================================================
                 ##<B_OBS_DATA>
-                ## frag = "Res(VAL,39,A)" || "Res(G,5A,A)"
+                ## frag = "Res(VAL,39,A)" || "Res(G,5A,A)" || "Res(GLY,-1,A)"
                 x, y, z = atm.position
 
-                res_name = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9]{1,}),[A-Za-z0-9]\)', '\\1', str(frag)).upper()
-                res_num  = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9]{1,}),[A-Za-z0-9]\)', '\\2', str(frag)).upper()
+                res_name = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9-]{1,}),[A-Za-z0-9]\)', '\\1', str(frag)).upper()
+                res_num  = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9-]{1,}),[A-Za-z0-9]\)', '\\2', str(frag)).upper()
                 res_num  = create_fractional_residue_number(res_num)
 
                 if num_tls > 0 and (
@@ -385,7 +385,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
-    
+
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
        Use TLS model + Uiso for each atom.  Output xyzout with the
