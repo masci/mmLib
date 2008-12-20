@@ -85,6 +85,14 @@ described by the input structural model, this plot would consist of a
 line at 0.
 """
 
+RMSD_DEVIATION_GRAPH_CAPTION = """\
+This plot is similar to the plot above, except that instead of plotting
+(Bpred - Bobs) for the CA atom only, the colored line plots the
+RMSD of |Bpred-Bobs| for all atoms in the residue. If the TLSMD model
+were a perfect description of the input B values, then the colored line
+would be a horizontal line at 0.
+"""
+
 NO_VALID_CONFIGURATIONS = """\
 TLSMD was unable to optimize this chain.  This is due to known limitation
 in this beta version of TLSMD which will be fixed in a upcoming version.
