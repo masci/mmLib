@@ -37,6 +37,7 @@ from tls_animate import TLSAnimate, TLSAnimateFailure
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
+
 class MyError(Exception):
     def __init__(self, value):
         self.value = value
@@ -598,7 +599,7 @@ class HTMLReport(Report):
             self.write_multi_chain_alignment()
 	except:
 	    console.stdoutln("        Error: Couldn't deal with multi-chain alignment")
-            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+            print console.formatExceptionInfo()
 	    pass
 
 	## Progress tracking
@@ -763,7 +764,7 @@ class HTMLReport(Report):
             #    bg_color  = "White")
         except:
             console.stdoutln("     Warning: failed to find orientation for graphics output")
-            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+            print console.formatExceptionInfo()
             pass
 
         ## Generate Raster3D header for a given chain
@@ -774,7 +775,7 @@ class HTMLReport(Report):
                 self.r3d_header_file = self.generate_raster3d_header(chain)
             except:
                 console.stdoutln("     Warning: failed to generate Raster3D header")
-                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+                print console.formatExceptionInfo()
 
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
@@ -785,7 +786,7 @@ class HTMLReport(Report):
                 if tmp != None:
                     l.append(tmp)
 	    except:
-	        console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+	        print console.formatExceptionInfo()
 
             ## maybe this will help with the memory problems...
             import gc
@@ -867,7 +868,8 @@ class HTMLReport(Report):
         except:
             jmol_view_toggle = ""
             jmol_animate_toggle = ""
-            #console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+            console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+            print console.formatExceptionInfo()
             pass
 
         ## Jmol Viewer Script
@@ -880,7 +882,7 @@ class HTMLReport(Report):
             except:
                 ## EAM FIXME:  But really something must have gone wrong before this point.
                 console.stdoutln("     Warning: Jmol setup failed in jmol_html")
-                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+                print console.formatExceptionInfo()
                 jmol_file = ""
                 pass
 
@@ -895,9 +897,9 @@ class HTMLReport(Report):
 		jmol_animate_file, raw_r3d_file, r3d_body_file = self.jmol_animate_html(chain, cpartition)
             except:
                 ## EAM FIXME:  But really something must have gone wrong before this point.
-                console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
-                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
                 jmol_animate_file = ""
+                console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
+                print console.formatExceptionInfo()
                 pass
 
         ## FIXME: If JMOL_SKIP == True, the following won't work!
@@ -926,13 +928,16 @@ class HTMLReport(Report):
                         self.r3d_header_file, r3d_body_file,
                         conf.RENDER, png_file)
 
+                start = time.time()
                 os.system(render_cmd)
+                elapsed = (time.time() - start)
+                console.stdoutln("RENDERING TIME for %s: %s s" % (png_file, elapsed))
 	    except:
-	        console.stdoutln("     Warning: failure to render PNG image")
-                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
                 raw_r3d_file = ""
                 r3d_body_file = ""
                 png_file = ""
+	        console.stdoutln("     Warning: failure in rendering PNG file")
+                print console.formatExceptionInfo()
 	        pass
         
         ## Refmac/Phenix files
@@ -946,17 +951,18 @@ class HTMLReport(Report):
                 tlsout_file = self.write_tlsout_file(chain, cpartition)
                 phenixout_file = self.write_phenixout_file(chain, cpartition)
 	    except:
-		console.stdoutln("     Warning: failed to create Refmac/Phenix files")
-                console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
 		tlsout_file = ""
                 phenixout_file = ""
+		console.stdoutln("     Warning: failed to create Refmac/Phenix files")
+                print console.formatExceptionInfo()
 		pass
 
         ## detailed analysis of all TLS groups
 	try:
             ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
-        except Exception, e:
-            console.stderr("ERROR: Analysis of this partition failed: %s" % e)
+        except:
+            console.stderr("ERROR: Analysis of this partition failed")
+            print console.formatExceptionInfo()
             pass
 
         ## BMean Plot
@@ -966,7 +972,6 @@ class HTMLReport(Report):
         ntls_analysis.bmean_plot.tls_group_titles = conf.BMEAN_PLOT_GROUP_TITLES
         ntls_analysis.bmean_plot.output_png()
 
-        
         l = ['<hr/>',
              
              '<center style="page-break-before:always; font-size:small">',
@@ -1007,7 +1012,7 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><img src="%s" alt="structimage"></center><br/>' % (png_file),
+             '<center><a href="%s"><img src="%s" width="320" height="320" alt="structimage"></a></center><br/>' % (png_file, png_file),
              '</th></tr>',
 
              '<tr><th><center>',
@@ -1022,6 +1027,7 @@ class HTMLReport(Report):
         
         return "".join(l)
 
+    #def raster3d_render_tls_graph_path(self, chain, cpartition):
     def generate_raster3d_header(self, chain):
         """Render TLS visualizations using Raster3D.
         """
@@ -1110,7 +1116,7 @@ class HTMLReport(Report):
 
         header_list = [
             "mmLib Generated Raster3D Output",
-            "%d %d     tiles in x,y" % (ori["pwidth"], ori["pheight"]),
+            "%d %d     tiles in x,y" % (2*ori["pwidth"], 2*ori["pheight"]),
             "0 0       pixels (x,y) per tile",
             "4         anti-aliasing level 4; 3x3->2x2",
             "1 1 1     background",
@@ -1145,8 +1151,6 @@ class HTMLReport(Report):
         console.stdoutln("Raster3D: Finish creating r3d_header %s..." % r3d_header_file) ## LOGLINE
 
         return r3d_header_file
-        ##=====================================================================
-        ## NOTE: The following code is now obsolete
         ##=====================================================================
 
         ## turn off axes and unit cell visualization
@@ -1458,7 +1462,7 @@ class HTMLReport(Report):
             tlsa.construct_animation(pdb_file, raw_r3d_file)
         except TLSAnimateFailure:
             console.stdoutln("     Warning: failed to create animation PDB file.")
-            console.stdoutln("ERROR: Unexpected error:", sys.exc_info()[0])
+            print console.formatExceptionInfo()
             pass
         
         ## create the Jmol script using cartoons and consistant
@@ -1730,10 +1734,10 @@ class ChainNTLSAnalysisReport(Report):
         os.chdir(self.dir)
 
 	try:
-            console.stdoutln("TESTING: Writing %s" % self.index)
+            console.stdoutln("HTML: Writing %s" % self.index)
             self.write_all_files()
         except:
-            print("ERROR: Unexpected error:", sys.exc_info()[0])
+            print console.formatExceptionInfo()
 	finally:
 	    os.chdir(self.root)
 
@@ -1754,12 +1758,12 @@ class ChainNTLSAnalysisReport(Report):
              
              '<br/>']
 
-        l += [self.html_tls_group_table(),'<br/>']
-        l += [self.html_bmean(),'<br/>'] ## REQUIRED!
-        l += [self.tls_segment_recombination(),'<br/>']
-        l += [self.html_translation_analysis(),'<br/>']
-        l += [self.html_libration_analysis(),'<br/>']
-        l += [self.html_ca_differance(),'<br/>']
+        l += [self.html_tls_group_table(),'<br/><hr>']
+        l += [self.html_bmean(),'<br/><hr>'] ## REQUIRED!
+        l += [self.tls_segment_recombination(),'<br/><hr>']
+        l += [self.html_translation_analysis(),'<br/><hr>']
+        l += [self.html_libration_analysis(),'<br/><hr>']
+        l += [self.html_ca_differance(),'<br/><hr>']
         l += [self.html_rmsd_plot()] ## REQUIRED!
 
 	## EAM April 2008 - This sure looks redundant to me.  Let's try doing without it
@@ -1775,10 +1779,11 @@ class ChainNTLSAnalysisReport(Report):
                     ## don't write out bypass edges
                     if tls.method != "TLS":
                         continue
+                    l.append('<hr>')
                     l.append(self.html_tls_fit_histogram(tls))
             except:
-                #console.stdoutln("     Warning: failure in html_tls_fit_histogram()")
-                print("ERROR: Unexpected error:", sys.exc_info()[0])
+                console.stdoutln("     Warning: failure in html_tls_fit_histogram()")
+                print console.formatExceptionInfo()
                 pass
 
         l.append(self.html_foot())
@@ -1833,7 +1838,8 @@ class ChainNTLSAnalysisReport(Report):
     def html_rmsd_plot(self):
         rmsd_plot = gnuplots.RMSDPlot(self.chain, self.cpartition)
         l = ['<center>',
-             rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors", ""),
+             rmsd_plot.html_markup("RMSD Deviation of Observed vs. TLS Predicted B Factors",
+                                   captions.RMSD_DEVIATION_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
