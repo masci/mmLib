@@ -9,6 +9,33 @@ import time, datetime
 console_output_enabled = True
 debug_output_enabled = False
 
+import traceback
+def formatExceptionInfo(maxTBlevel=7):
+    """Takes the three-element tuple returned by sys.exc_info() and transforms
+       each element into a more convenient form, a string. cla.__name__ gives
+       the name of the exception class, while exc.__dict__["args"] gives other
+       details about the exception.
+       In the case of socket exceptions, these details will be in a two-element
+       tuple, like:
+         ("error", (32, 'Broken pipe').
+       Lastly, traceback.format_tb() formats the traceback information into a
+       string.
+       The optional argument (maxTBlevel> in the sample code) allows users to
+       control the depth of the traceback that will be formatted.
+       The traceback information is not essential to identify or categorize
+       exceptions, but if you want to log all the spurious unknown exceptions
+       your program encounters, it is useful to write that traceback string in
+       the log.
+    """
+    cla, exc, trbk = sys.exc_info()
+    excName = cla.__name__
+    try:
+        excArgs = exc.__dict__["args"]
+    except KeyError:
+        excArgs = "<no args>"
+    excTb = traceback.format_tb(trbk, maxTBlevel)
+    return (excName, excArgs, excTb)
+
 def stdout(text):
     """Simple STDOUT printing redirected to log.txt
     """
@@ -46,7 +73,7 @@ def stdoutln(line):
     stdout("[%s] %s\n" % (timestamp, line))
 
 def debug_stdoutln(line):
-    if debug_output_enabled == True:
+    if debug_output_enabled:
         timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
         stdout("[%s] %s\n" % (timestamp, line))
 
