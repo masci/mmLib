@@ -7,7 +7,6 @@
 ##
 ## NOTE: This file contains changes and additions by Christoph Champ, 2007-10-24
 
-## Python
 import os
 import sys
 import time
@@ -20,16 +19,12 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 
+import const
+import conf
 import numpy		# Added by Christoph Champ, 2007-10-23
 import subprocess	# Added by Christoph Champ, 2007-11-20
 import datetime		# Added by Christoph Champ, 2008-02-01
 import re		# Added by Christoph Champ, 2008-02-07
-
-## TLSMD
-import const
-import conf
-
-## pymmlib
 from mmLib import Library # tmp
 
 ## GLOBALS
@@ -316,7 +311,7 @@ def html_user_info_table(fdict):
 
 def html_program_settings_table(fdict):
 
-    ## NOTE: The following four options/variables never seem to be used.
+    ## NOTE: The following four options/variable never seem to be used.
     opt_plot_svg = ""
     opt_plot_png = ""
     opt_atoms_all = ""
@@ -604,103 +599,60 @@ def html_job_info_table(fdict):
     x += '</table></td></tr>'
 
     ##==========================================================================
-    ## 1st column titles
-    x += '<tr>'
-    x += '<th>TLS Model</th>'
-    x += '<th>Least Squares Weighting</th>'
-    x += '<th>Include Atoms</th>'
-    x += '</tr>'
-
-    x += '<tr>'
+    ## Detailed advanced settings list
+    x += '<tr><td><pre>'
 
     ## TLS Model
-    x += '<td>'
     if fdict.get("tls_model") is None or fdict.get("tls_model")=="ISOT":
-        x += 'Isotropic'
+        x += 'TLS Model'.ljust(40, ".") + ": " + str('Isotropic\n')
     elif fdict.get("tls_model")=="ANISO":
-        x += 'Anisotropic'
-    x += '</td>'
+        x += 'TLS Model'.ljust(40, ".") + ": " + str('Anisotropic\n')
 
     ## Least Squares Weighting
-    x += '<td>'
     if fdict.get("weight") is None or fdict.get("weight")=="IUISO":
-        x += 'Inverse Atomic B<sub>iso</sub>'
+        x += 'Least Squares Weighting'.ljust(40, ".") + ": " + str('Inverse Atomic B_iso\n')
     elif fdict.get("weight")=="NONE":
-        x += 'No Weighting'
-    x += '</td>'
+        x += 'Least Squares Weighting'.ljust(40, ".") + ": " + str('No Weighting\n')
 
     ## Include Atoms
-    x += '<td>'
     if fdict.get("include_atoms") is None or fdict.get("include_atoms")=="ALL":
-        x += 'Include All Atoms'
+        x += 'Include Atoms'.ljust(40, ".") + ": " + str('Include All Atoms\n')
     elif fdict.get("include_atoms")=="MAINCHAIN":
-        x += 'Main Chain Atoms'
+        x += 'Include Atoms'.ljust(40, ".") + ": " + str('Main Chain Atoms\n')
     elif fdict.get("include_atoms")=="CA":
-        x += 'C-Alpha Atoms'
-    x += '</td>'
-
-    x += '</tr>'
-
-    ##==========================================================================
-    ## 2nd column titles
-    x += '<tr>'
-    x += '<th>Generate Jmol-viewer files</th>'
-    x += '<th>Generate Jmol-animation files</th>'
-    x += '<th>Generate histogram plots</th>'
-    x += '</tr>'
-
-    x += '<tr>'
+        x += 'Include Atoms'.ljust(40, ".") + ": " + str('C-Alpha Atoms\n')
 
     ## Jmol-viewer settings. 2008-11-13
-    x += '<td>'
     if fdict.get("skip_jmol_view") == "" or fdict.get("skip_jmol_view") == "OFF":
-        x += 'ON'
+        x += 'Generate Jmol-viewer files'.ljust(40, ".") + ": " + str('ON\n')
     elif fdict.get("skip_jmol_view") == "ON":
-        x += 'OFF'
+        x += 'Generate Jmol-viewer files'.ljust(40, ".") + ": " + str('OFF\n')
     else:
-        x += 'n/a'
-    x += '</td>'
+        x += 'Generate Jmol-viewer files'.ljust(40, ".") + ": " + str('n/a\n')
 
     ## Jmol-animation settings. 2008-11-13
-    x += '<td>'
     if fdict.get("skip_jmol_animate") == "" or fdict.get("skip_jmol_animate") == "OFF":
-        x += 'ON'
+        x += 'Generate Jmol-animation files'.ljust(40, ".") + ": " + str('ON\n')
     elif fdict.get("skip_jmol_animate") == "ON":
-        x += 'OFF'
+        x += 'Generate Jmol-animation files'.ljust(40, ".") + ": " + str('OFF\n')
     else:
-        x += 'n/a'
-    x += '</td>'
+        x += 'Generate Jmol-animation files'.ljust(40, ".") + ": " + str('n/a\n')
 
     ## Histogram settings. 2008-11-13
-    x += '<td>'
     if fdict.get("skip_histogram") == "" or fdict.get("skip_histogram") == "OFF":
-        x += 'ON'
+        x += 'Generate histogram files'.ljust(40, ".") + ": " + str('ON\n')
     elif fdict.get("skip_histogram") == "ON":
-        x += 'OFF'
+        x += 'Generate histogram files'.ljust(40, ".") + ": " + str('OFF\n')
     else:
-        x += 'n/a'
-    x += '</td>'
-
-    x += '</tr>'
-
-    ##==========================================================================
-    ## 3rd column titles
-    x += '<tr>'
-    x += '<th>Maximum number of segments</th>'
-    x += '<th></th>'
-    x += '<th></th>'
-    x += '</tr>'
-
-    x += '<tr>'
+        x += 'Generate histogram files'.ljust(40, ".") + ": " + str('n/a\n')
 
     ## Number of segments settings. 2008-11-13
-    x += '<td>'
     if fdict.get("nparts") == "":
-        x += 'n/a'
+        x += 'Maximum number of segments'.ljust(40, ".") + ": " + str('n/a\n')
     else:
-        x += '%s' % fdict.get("nparts")
-    x += '</td>'
+        x += 'Maximum number of segments'.ljust(40, ".") + ": " + '%s\n' % fdict.get("nparts")
 
+    x += '</pre></td>'
     x += '</tr>'
 
     ##==========================================================================
@@ -814,12 +766,16 @@ def extract_job_edit_form(form, webtlsmdd):
         user_comment = user_comment[:128]
         webtlsmdd.job_set_user_comment(job_id, user_comment)
 
+    num_chains_selected = 0
     chains = webtlsmdd.job_get_chains(job_id)
     for cdict in chains:
         if form.has_key(cdict["name"]):
             cdict["selected"] = True
+            num_chains_selected += 1
         else:
             cdict["selected"] = False
+    if num_chains_selected == 0:
+        raise SubmissionException('You did not select any chains. Will not proceed any further.')
     webtlsmdd.job_set_chains(job_id, chains)
 
     if form.has_key("tls_model"):
@@ -1141,8 +1097,8 @@ class QueuePage(Page):
 
 	    ## progress bar
 	    try:
-	         prog_file=open(jdict["job_dir"]+"/progress",'r')
-	         progress=int(float(prog_file.read().strip())*100)
+	         prog_file = open(jdict["job_dir"] + "/progress", 'r')
+	         progress = int(float(prog_file.read().strip())*100)
 		 prog_file.close()
 	    except:
 		 progress=0
@@ -1157,6 +1113,7 @@ class QueuePage(Page):
                   '</td>',
                   '</tr>']
 
+	#x += '</table></center>' ## Old
 	x.append('</table></center>')
 	return "".join(x)
 
@@ -1370,8 +1327,8 @@ class AdminJobPage(Page):
         fdict["page"] = "admin"
         fdict["removebutton"] = True
 	if state == "queued" or state == "running":
-            fdict["signalbutton"] = True	# Christoph Champ, 2008-04-10
-            fdict["killbutton"] = True	# Christoph Champ, 2008-03-07
+            fdict["signalbutton"]  = True ## Christoph Champ, 2008-04-10
+            fdict["killbutton"]    = True ## Christoph Champ, 2008-03-07
             fdict["requeuebutton"] = True
             
         if state == "running" or state == "success" or state == "completed":
@@ -1736,37 +1693,35 @@ def generate_random_filename(code_length = 8):
 
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation"""
-    ######### EAM 3-Dec-2007 ##########
+    ######### EAM 3-Dec-2007 #########
     tmpfile = generate_random_filename()
-    n = nres = atm = nbad = res_tfac = 0
+    n = atm = res_tfac = 0
     avg_tfac = []
-    std = []
     res_id = []
     prevrestype = restype[0]
     prevresnum = resnum[0]
+    prevchain = chain[0]
+    ## Save B_{mean} per residue for each chain
+    fdat = open('%s/%s.dat' % (conf.WEBTMP_PATH, tmpfile),'w')
     while n < len(tfactor):
         if( (prevresnum == resnum[n]) and (prevrestype == restype[n]) ):
-	   res_tfac = res_tfac + tfactor[n]
-	   atm = atm + 1
+            res_tfac = res_tfac + tfactor[n]
+            atm = atm + 1
         else:
-	   avg_tfac.append(res_tfac/atm) # store previous guy
-           res_id.append(resnum[n-1])    # store previous guy
-	   res_tfac = tfactor[n]
-	   atm = 1
-           prevrestype = restype[n]
-           prevresnum = resnum[n]
+	    avg_tfac.append(res_tfac/atm) # store previous guy
+            res_id.append(resnum[n-1])    # store previous guy
+            fdat.write("%s\t%s\t%s\n" % (resnum[n-1], res_tfac/atm, chain[n-1]))
+	    res_tfac = tfactor[n]
+	    atm = 1
+            prevrestype = restype[n]
+            prevresnum = resnum[n]
+            if(prevchain != chain[n]):
+                fdat.write("\n\n")
+                prevchain = chain[n]
         n = n + 1
     avg_tfac.append(res_tfac/atm)        # store last guy
     res_id.append(resnum[n-1])           # store last guy
-
-    ## Save B_{mean} per residue for each chain
-    fdat = open('%s/%s.dat' % (conf.WEBTMP_PATH, tmpfile),'w')
-    r = 0
-    for b in avg_tfac:
-	fdat.write("%s\t%s\n" % (res_id[r], b))
-	r = r + 1
-        if (r < len(res_id)) and (res_id[r] < res_id[r-1]):
-           fdat.write("\n")
+    fdat.write("%s\t%s\t%s\n" % (resnum[n-1], res_tfac/atm, chain[n-1]))
     fdat.close()
 
     ## Save RMSD(B) +/-5 residues
@@ -1774,6 +1729,7 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
+    nbad = 0
     fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
@@ -1781,7 +1737,7 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
 	if stddev11 < 0.05:
 	   nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
-           fstd.write("\n")
+           fstd.write("\n\n")
     fstd.close()
 
     return nbad, tmpfile
@@ -1810,17 +1766,12 @@ def check_upload(file):
             Library.library_is_amino_acid(line[17:20].strip()) or
             Library.library_is_nucleic_acid(line[17:20].strip())):
             n += 1
-            atomnum = int(line[7:11].strip())
-            restype = line[17:20].strip()
-            resnum = int(line[23:26].strip())
-            ch_id = line[22:22]
-            atom_num.append(atomnum)
-            res_type.append(restype)
-            res_num.append(resnum)
-            chain.append(ch_id)
+            atom_num.append(int(line[7:11].strip()))
+            res_type.append(line[17:20].strip())
+            res_num.append(int(line[23:26].strip()))
+            chain.append(line[21:22])
             occupancy += float(line[56:60].strip())
-            tfactor = float(line[61:66].strip())
-            temp_factors.append(tfactor)
+            temp_factors.append(float(line[61:66].strip()))
         else:
             continue
 
@@ -1851,7 +1802,7 @@ def check_upload(file):
         f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
         f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n" % (
             conf.WEBTMP_PATH, tmpfile))
-        f.write("     '%s/%s.dat' using 1:2 axes x1y1 lt 3 pt 1 title 'B_{mean} per residue', \\\n" % (
+        f.write("     '%s/%s.dat' using 1:2:(1+column(-2)) axes x1y1 with lines lc var title 'B_{mean} per residue', \\\n" % (
             conf.WEBTMP_PATH, tmpfile))
         f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n" % (
             conf.WEBTMP_PATH, tmpfile))
@@ -1859,7 +1810,9 @@ def check_upload(file):
         f.close()
         subprocess.Popen([r"%s" % conf.GNUPLOT, "%s/%s.gnu" % (conf.WEBTMP_PATH,tmpfile)]).wait()
 
-        return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:<br/><img src='%s/%s/%s.png'/>" % (conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
+        return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:[%s]<br/>\
+                <img src='%s/%s/%s.png'/>" % (
+            chain[1], conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
 
     return ''
 
