@@ -64,7 +64,6 @@ def html_nav_bar(page_name=None):
 	 '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
          '    <li><a href="webtlsmd.cgi?page=submit1">Start a New Job</a></li>', 
 	 '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
-         '    <li><a href="webtlsmd.cgi?page=pdbs">Finished PDBs</a></li>',
 	 '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
 	 '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
 	 '  </ul>',
@@ -716,10 +715,19 @@ def vet_data(data, max_len):
     return True
 
 def vet_email(email_address):
-    if len(email_address) > 45:
-        return False
+    """Vet email addresses. The local part (the part before the '@') must not
+       exceed 64 characters and the domain part (after the '@') must not
+       exceed 255 characters. The entire email address length must not exceed
+       320 characters.
+    """
     ## verify email (NOTE: Doesn't warn user!)
-    if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$',email_address):
+    if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', email_address):
+        return False
+    local_part  = re.sub(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', '\\1', email_address)
+    domain_part = re.sub(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', '\\2', email_address)
+    if len(local_part) > 64:
+        return False
+    if len(domain_part) > 255:
         return False
     return True
 
@@ -763,6 +771,7 @@ def extract_job_edit_form(form, webtlsmdd):
     ## user_comment field added. Christoph Champ, 2007-12-18
     if form.has_key("user_comment"):
         user_comment = form["user_comment"].value.strip()
+        ## store only the first 128 characters. 2009-01-07
         user_comment = user_comment[:128]
         webtlsmdd.job_set_user_comment(job_id, user_comment)
 
@@ -929,7 +938,8 @@ class QueuePage(Page):
     
     def html_foot(self):
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (const.VERSION, (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-10])),
+             '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (
+             const.VERSION, (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-10])),
              '</center>',
              '</div></body></html>']
         
@@ -1047,19 +1057,20 @@ class QueuePage(Page):
         return webtlsmdd.job_list()
 
     def total_number_of_residues(self, jdict):
-        ## New routine to calculate the total number of residues (with/without chains). Christoph Champ, 2008-02-20
-        total=0
-        if jdict.has_key("chains")==False:
+        """Calculate the total number of residues (with/without chains).
+        """
+        total = 0
+        if not jdict.has_key("chains"):
             return total
 
         for cdict in jdict["chains"]:
-            total=total+cdict["length"]
+            total += cdict["length"]
 
         return total
 
     def html_running_job_table(self, job_list):
 
-	## get an array of "running" jobs from the job dictionary. Christoph Champ, 2008-01-30
+	## get an array of "running" jobs from the job dictionary.
         run_jdict = []
         for jdict in job_list:
             if jdict.get("state") == "running":
@@ -1076,7 +1087,7 @@ class QueuePage(Page):
 	      '<th colspan="2">Running Time (HH:MM.SS)</th>',
 	      '</tr>']
 
-	## creates mutiple rows, _if_ there are multiple "running" jobs. Christoph Champ, 2008-01-30
+	## creates mutiple rows, _if_ there are multiple "running" jobs.
         row1 = True
         for jdict in run_jdict:
             if row1:
@@ -1101,8 +1112,10 @@ class QueuePage(Page):
 	         progress = int(float(prog_file.read().strip())*100)
 		 prog_file.close()
 	    except:
-		 progress=0
-            x += '<td align=left><div class="prog-border"><div class="prog-bar" style="width: %s%%;"></div></div></td>' %(progress)
+		 progress = 0
+            x += '<td align=left><div class="prog-border">'
+            x += '<div class="prog-bar" style="width: %s%%;"></div>'
+            x += '</div></td>' % (progress)
 	    x += '<td align="right">%s</td></tr>' % (hours)
 
 	## for zero running jobs
@@ -1162,7 +1175,13 @@ class QueuePage(Page):
         completed_list = []
         for jdict in job_list:
 	    ## Added more states to job_table. Christoph Champ, 2008-02-03
-            if jdict.get("state") in ["completed", "success", "errors", "warnings", "killed", "died", "defunct"]:
+            if jdict.get("state") in ["completed",
+                                      "success",
+                                      "errors",   # completed w/errors
+                                      "warnings", # completed w/warnings
+                                      "killed",
+                                      "died",
+                                      "defunct"]:
                 completed_list.append(jdict)
 
         completed_list.reverse()
@@ -1199,7 +1218,8 @@ class QueuePage(Page):
 		else:
 		   l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
-            l.append('<td align="right">%s</td>' % (self.total_number_of_residues(jdict))) # "Total Residues". Christoph Champ, 2008-02-20
+            l.append('<td align="right">%s</td>' % (
+                self.total_number_of_residues(jdict)))
 
             if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
                 hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
@@ -1216,8 +1236,14 @@ class QueuePage(Page):
     def html_limbo_job_table(self, job_list):
         limbo_list = []
         for jdict in job_list:
-	    ## Added more states to the ignore list. Christoph Champ, 2008-03-11
-            if jdict.get("state") not in ["completed", "queued", "running", "success", "errors", "warnings", "killed", "died"]:
+            if jdict.get("state") not in ["completed",
+                                          "queued",
+                                          "running",
+                                          "success",
+                                          "errors",   # completed w/errors
+                                          "warnings", # completed w/warnings
+                                          "killed",
+                                          "died"]:
                 limbo_list.append(jdict)
 
         if len(limbo_list) == 0:
@@ -1348,7 +1374,8 @@ class AdminJobPage(Page):
         return x
 
     def kick(self, job_id):
-	## Kick PID of stuck job past current process and continue with next step. Christoph Champ, 2008-04-10
+	"""Kick PID of stuck job past current process and continue with next step.
+        """
 	if webtlsmdd.signal_job(job_id):
 	    x  = ''
 	    x += '<center>'
@@ -1362,7 +1389,8 @@ class AdminJobPage(Page):
 	return x
 
     def kill(self, job_id):
-	## Kill PID of running job_id. Christoph Champ, 2008-03-07
+	"""Kill PID of running job_id.
+        """
 	if webtlsmdd.kill_job(job_id):
 	    x  = ''
 	    x += '<center>'
@@ -1608,8 +1636,12 @@ class SubmitPDBPage(Page):
     def html_page(self):
         if "pdbid" not in self.form:
             raise SubmissionException("Please enter a PDB ID")
-        elif len(self.form["pdbid"].value) < 4 or not self.form["pdbid"].value.isalnum():
-            raise SubmissionException("Invalid PDB ID.  Please try again.")
+        elif len(self.form["pdbid"].value) < 4 or not \
+             self.form["pdbid"].value.isalnum() or not \
+             re.match(r'^[0-9][A-Za-z0-9]{3}$', self.form["pdbid"].value):
+            ## PDB ID must be exactly four characters long, alphanumeric, and
+            ## the first character must be an integer.
+            raise SubmissionException("Invalid PDB ID. Please try again.")
 
         pdbid = self.form["pdbid"].value.upper()
          
@@ -1618,11 +1650,12 @@ class SubmitPDBPage(Page):
 
         pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
         pdbfile = pdbfile_bin.data
-        
         if len(pdbfile) == 0:
             raise SubmissionException("Could not download PDB File from RCSB.")
 
         ## basic sanity checks. Christoph Champ, 2007-10-24
+        ## If check_upload returns anything but a empty string, the server will
+        ## inform the user of the problem and not proceed any further.
         ln = pdbfile.split("\n")
         r = check_upload(ln)
         if r != '':
@@ -1656,6 +1689,9 @@ class SubmitPDBPage(Page):
         return job_id
 
     def redirect_page(self, pdbid):
+        """If a given PDB (from pdb.org) has already been analyzed, inform
+           user and redirect them to correct analysis page.
+        """
         # check to see if this job is still running
         try:
             os.chdir(conf.WEBTLSMDD_PDB_DIR + '/' + pdbid)
@@ -1692,7 +1728,9 @@ def generate_random_filename(code_length = 8):
     return code
 
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
-    """Calculates a running standard deviation"""
+    """Calculates a running standard deviation for the average B-factors
+       of a given set of residues (controlled by the 'window' variable).
+    """
     ######### EAM 3-Dec-2007 #########
     tmpfile = generate_random_filename()
     n = atm = res_tfac = 0
@@ -1734,7 +1772,8 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
 	fstd.write("%s\t%s\n" % (res_id[s], stddev11))
-	if stddev11 < 0.05:
+	#if stddev11 < 0.05:
+	if stddev11 < 0.1:
 	   nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
            fstd.write("\n\n")
@@ -1742,12 +1781,33 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
 
     return nbad, tmpfile
 
+_STDDEV_FOR_BAD_TFACT_TEMPLATE = """\
+set style fill solid 0.15 noborder
+set style data linespoints
+set output '<webtmp_path>/<tmpfile>.png'
+set yrange [0:*]
+set ytics nomirror tc rgb 'blue'
+set y2range [0:1]
+set y2label 'Å^2' norotate tc rgb 'red'
+set y2tics nomirror tc rgb 'red'
+set format y2 '%.1f'
+set xlabel 'residue number'
+set grid
+set title 'Distribution of B factors in submitted structure (Å^2)'
+set term png font '<gnuplot_font>' enhanced truecolor
+plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\
+     '<webtmp_path>/<tmpfile>.dat' using 1:2:(1+column(-2)) axes x1y1 with lines lc var title 'B_{mean} per residue', \\
+     '<webtmp_path>/<tmpfile>.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\
+     0.05 axes x1y2 with lines lc rgb 'red' notitle
+"""
+
 def check_upload(file):
     """Runs sanity checks on uploaded file"""
     ## Checks if PDB contains valids aa/na residues
     ## PDB must have at least 30 ATOMs
     ## PDB can not have lowercase alt. res. numbers
     ## Check Standard deviation of temp. factors
+    ## Check that not all occupancies are 0.00
     atom_num = []
     res_type = []
     res_num = []
@@ -1765,13 +1825,17 @@ def check_upload(file):
         elif line.startswith('ATOM') and (
             Library.library_is_amino_acid(line[17:20].strip()) or
             Library.library_is_nucleic_acid(line[17:20].strip())):
-            n += 1
-            atom_num.append(int(line[7:11].strip()))
-            res_type.append(line[17:20].strip())
-            res_num.append(int(line[23:26].strip()))
-            chain.append(line[21:22])
-            occupancy += float(line[56:60].strip())
-            temp_factors.append(float(line[61:66].strip()))
+            if float(line[56:60].strip()) < 1.00:
+                ## ignore occupancies < 1.00
+                continue
+            else:
+                n += 1
+                atom_num.append(int(line[7:11].strip()))
+                res_type.append(line[17:20].strip())
+                res_num.append(int(line[23:26].strip()))
+                chain.append(line[21:22])
+                occupancy += float(line[56:60].strip())
+                temp_factors.append(float(line[61:66].strip()))
         else:
             continue
 
@@ -1783,36 +1847,27 @@ def check_upload(file):
 
     bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
     if bad_std > 0:
+        ## If there are a string of "bad" B-factors, return a plot showing the
+        ## "bad" regions and do not proceed any further in the analysis.
         f = open('%s/%s.gnu' % (conf.WEBTMP_PATH, tmpfile), 'w')
-        f.write("set style fill solid 0.15 noborder\n")
-        f.write("set style data linespoints\n")
-        f.write("set output '%s/%s.png'\n" % (conf.WEBTMP_PATH, tmpfile))
-        f.write("set yrange [0:*]\n")
-        #f.write("set ylabel 'Å^2' norotate tc rgb 'blue'\n")
-        f.write("set ytics nomirror tc rgb 'blue'\n")
-        f.write("set y2range [0:1]\n")
-        #f.write("set y2label 'Å^2' norotate tc rgb 'red'\n")
-        f.write("set y2tics nomirror tc rgb 'red'\n")
-        f.write("set format y2 '%.1f'\n")
-        f.write("set xlabel 'residue number'\n")
-        f.write("set grid\n")
-        f.write("set title 'Distribution of B factors in submitted structure (Å^2)'\n")
-        #f.write("set label 1 'bad_std = %d' at graph 0.1, 0.9 noenh\n" % bad_std)   # EAM DEBUG
-        #f.write("set term png font '%s' enhanced size 800,400\n" % gnuplot_font)
-        f.write("set term png font '%s' enhanced truecolor\n" % conf.GNUPLOT_FONT)
-        f.write("plot '%s/%s.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\\n" % (
-            conf.WEBTMP_PATH, tmpfile))
-        f.write("     '%s/%s.dat' using 1:2:(1+column(-2)) axes x1y1 with lines lc var title 'B_{mean} per residue', \\\n" % (
-            conf.WEBTMP_PATH, tmpfile))
-        f.write("     '%s/%s.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\\n" % (
-            conf.WEBTMP_PATH, tmpfile))
-        f.write("     0.05 axes x1y2 with lines lc rgb 'red' notitle\\\n")
-        f.close()
-        subprocess.Popen([r"%s" % conf.GNUPLOT, "%s/%s.gnu" % (conf.WEBTMP_PATH,tmpfile)]).wait()
 
-        return "Standard deviation of temperature factors is less than 0.05 for those residues in the shaded regions below:[%s]<br/>\
-                <img src='%s/%s/%s.png'/>" % (
-            chain[1], conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
+        ## modify script template
+        script = _STDDEV_FOR_BAD_TFACT_TEMPLATE
+        script = script.replace("<webtmp_path>", conf.WEBTMP_PATH)
+        script = script.replace("<tmpfile>", tmpfile)
+        script = script.replace("<gnuplot_font>", conf.GNUPLOT_FONT)
+
+        f.write(script)
+        f.close()
+        subprocess.Popen([r"%s" % conf.GNUPLOT, "%s/%s.gnu" % (
+            conf.WEBTMP_PATH, tmpfile)]).wait()
+
+        return_string  = "Standard deviation of temperature factors is less "
+        return_string += "than 0.05 for those residues in the shaded regions "
+        return_string += "below:[%s]<br/>" % chain[1]
+        return_string += "<center><img src='%s/%s/%s.png'/></center>" % (
+            conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
+        return return_string
 
     return ''
 
