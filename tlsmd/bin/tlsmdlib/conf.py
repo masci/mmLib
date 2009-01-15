@@ -59,8 +59,8 @@ ADP_PROB = 50
 NPARTS = 20
 
 ## the pixel width of the TLS visualization rendered ray traces
-VIS_WIDTH  = 320
-VIS_HEIGHT = 200
+VIS_WIDTH  = 320 ## default: 320
+VIS_HEIGHT = 200 ## default: 200
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
@@ -75,6 +75,12 @@ BMEAN_PLOT_GROUP_TITLES = False
 ## the Jmol viewer is a square window, generated with this pixel size
 JMOL_SKIP = False ## Toggle switch
 JMOL_SIZE = 600
+
+## These are for selecting only backbone atome; used in Raster3D
+DISPLACE_ATOM_NAME_DICT = {
+    "CA": True, "P": True, "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True,
+    "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
+    }
 
 ## turn on/off various sections
 RENDER_SKIP    = False
