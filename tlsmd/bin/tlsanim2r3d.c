@@ -72,6 +72,7 @@ main(int argc, char *argv[])
 
 /* Bookkeeping */
     CA previous, current;
+    double thickness = radius;
     int ierr;
 
 /* Informational only */
@@ -119,9 +120,10 @@ main(int argc, char *argv[])
 
 	/* OK, we have both ends of a chain-trace segment */
 	color = current.segment % maxcolor;
+	thickness = (current.model == 0) ? radius : radius * 1.1;
 	printf("3\n %.3f %.3f %.3f  %4.2f  %.3f %.3f %.3f  %4.2f",
-		previous.x, previous.y, previous.z, radius,
-		current.x, current.y, current.z, radius);
+		previous.x, previous.y, previous.z, thickness,
+		current.x, current.y, current.z, thickness);
 	printf("   %5.3f %5.3f %5.3f\n",
 		segcolor[color].R, segcolor[color].G, segcolor[color].B); 
 	previous = current;
