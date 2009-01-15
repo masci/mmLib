@@ -15,6 +15,7 @@ import numpy
 import shutil    ## for copying files around (e.g., jmol)
 import xmlrpclib ## for toggle switches
 import sys       ## for try/except
+import itertools ## used in selecting backbone atoms, 2009-01-13
 
 ## Python Imaging Library imports
 import Image
@@ -210,7 +211,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
          '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments (overall rmsd_b=%.2f and residual=%.2f)</th>' % (
-             ntls, cpartition.rmsd_b(), cpartition.residual()), ## "overall rmsd_b + residual", 2008-04-05
+             ntls, cpartition.rmsd_b(), cpartition.residual()), ## Added "overall rmsd_b + residual". Christoph Champ, 2008-04-05
          '</tr>',
 
          '<tr>',
@@ -888,10 +889,9 @@ class HTMLReport(Report):
 
         ## Jmol Animation Script
         if conf.JMOL_SKIP or (jmol_animate_toggle == 'ON'):
-            jmol_animate_file = ""
-            raw_r3d_file = ""
-            r3d_body_file = ""
             console.stdoutln("NOTE: Skipping Jmol-animation section") ## LOGLINE
+            jmol_animate_file = ""
+            raw_r3d_file, r3d_body_file = self.generate_raw_backbone_file(chain, cpartition)
         else:
             try:
 		jmol_animate_file, raw_r3d_file, r3d_body_file = self.jmol_animate_html(chain, cpartition)
@@ -902,7 +902,6 @@ class HTMLReport(Report):
                 print console.formatExceptionInfo()
                 pass
 
-        ## FIXME: If JMOL_SKIP == True, the following won't work!
         ## New Raster3D section (bypassing pymmlib)
         if conf.RENDER_SKIP:
             png_file = ""
@@ -910,7 +909,7 @@ class HTMLReport(Report):
         else:
             try:
                 basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
-                png_file = "%s.png"   % (basename)
+                png_file = "%s.png" % (basename)
                 pml_file = "" ## never used
 
                 gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
@@ -931,7 +930,9 @@ class HTMLReport(Report):
                 start = time.time()
                 os.system(render_cmd)
                 elapsed = (time.time() - start)
-                console.stdoutln("RENDERING TIME for %s: %s s" % (png_file, elapsed))
+                console.stdoutln("[%s,%s] RENDERING TIME for %s: %s s" % (
+                    chain.chain_id, cpartition.num_tls_segments(), 
+                    png_file, elapsed)) ## LOGLINE
 	    except:
                 raw_r3d_file = ""
                 r3d_body_file = ""
@@ -985,8 +986,10 @@ class HTMLReport(Report):
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
          
-             '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (jmol_file),
-             'width=%d,height=%d,screenX=10,screenY=10,left=10,top=10&quot;);' % (conf.JMOL_SIZE, conf.JMOL_SIZE),
+             '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (
+             jmol_file),
+             'width=%d,height=%d,screenX=10,screenY=10,left=10,top=10&quot;);' % (
+             conf.JMOL_SIZE, conf.JMOL_SIZE),
              'return false;">View with Jmol</a>',
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
@@ -997,7 +1000,8 @@ class HTMLReport(Report):
              '&quot;&quot;,'\
              '&quot;width=%d,height=%d,screenX=10,'\
              'screenY=10,left=10,top=10&quot;);'\
-             'return false;">Animate Screw Displacement with Jmol</a>' % (jmol_animate_file, conf.JMOL_SIZE, conf.JMOL_SIZE),
+             'return false;">Animate Screw Displacement with Jmol</a>' % (
+             jmol_animate_file, conf.JMOL_SIZE, conf.JMOL_SIZE),
 
              '<br/>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_file),
@@ -1005,14 +1009,16 @@ class HTMLReport(Report):
              ## TLS-PHENIX-OUT. Christoph Champ, 2007-12-18
              '<a href="%s">Group description for PHENIX</a>' % (phenixout_file),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
-             '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % ("%s_REFINEMENT_PREP.html" % (self.struct_id)),
+             '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % (
+             "%s_REFINEMENT_PREP.html" % (self.struct_id)),
              
              '</center>',
 
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><a href="%s"><img src="%s" width="320" height="320" alt="structimage"></a></center><br/>' % (png_file, png_file),
+             '<center><a href="%s"><img src="%s" width="320" height="320" alt="structimage"/></a></center><br/>' % (
+             png_file, png_file),
              '</th></tr>',
 
              '<tr><th><center>',
@@ -1291,7 +1297,9 @@ class HTMLReport(Report):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (
+                   self.struct_id, chain.chain_id,
+                   cpartition.num_tls_segments())
         pdb_file = "%s.pdb" % (basename)
 
         ## temporarily set the atom temp_factor and U tensor to the Utls value
@@ -1318,7 +1326,9 @@ class HTMLReport(Report):
     def write_tlsout_file(self, chain, cpartition):
         """Writes the TLSOUT file for the segmentation.
         """
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        basename = "%s_CHAIN%s_NTLS%d" % (
+                   self.struct_id, chain.chain_id,
+                   cpartition.num_tls_segments())
         tlsout_file = "%s.tlsout" % (basename)
 
         struct_id = self.struct_id
@@ -1331,7 +1341,8 @@ class HTMLReport(Report):
         chain_ntls = "%s,%s" % (chain_id, cpartition.num_tls_segments())
         timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
         flatfile = open("flatfile.txt", "a+")
-        flatfile.write("TI [%s] %s write_tlsout_file\n" % (timestamp,chain_ntls))
+        flatfile.write("TI [%s] %s write_tlsout_file\n" % (
+            timestamp, chain_ntls))
 
         for tls in cpartition.iter_tls_segments():
             ## don't write out bypass edges
@@ -1343,7 +1354,8 @@ class HTMLReport(Report):
             tls_desc.set_tls_group(tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
-                flatfile.write("XX %s TLSOUT %s:%s %f\n" % (chain_ntls,frag_id1,frag_id2,tls.tls_group.itls_T))
+                flatfile.write("XX %s TLSOUT %s:%s %f\n" % (
+                    chain_ntls, frag_id1, frag_id2, tls.tls_group.itls_T))
 
         tls_file.save(open(tlsout_file, "w"))
 
@@ -1356,7 +1368,9 @@ class HTMLReport(Report):
         """Writes the TLS-PHENIX-OUT file for the segmentation.
         """
         ## Added by Christoph Champ, 2007-12-14
-        basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        basename = "%s_CHAIN%s_NTLS%d" % (
+                   self.struct_id, chain.chain_id,
+                   cpartition.num_tls_segments())
         phenixout_file = "%s.phenixout" % (basename)
 
         struct_id = self.struct_id
@@ -1369,7 +1383,7 @@ class HTMLReport(Report):
             ## don't write out bypass edges
             if tls.method != "TLS":
                 continue
-            
+
             tls_desc = TLS.TLSGroupDesc()
             phenix_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
@@ -1393,7 +1407,9 @@ class HTMLReport(Report):
         """Writes out the HTML page which will display the
         structure using the Jmol Applet.
         """
-        jmol_file = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        jmol_file = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (
+                    self.struct_id, chain.chain_id,
+                    cpartition.num_tls_segments())
 
         ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
@@ -1420,7 +1436,8 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.num_tls_segments()),
+             '<title>Chain %s using %d TLS Groups</title>' % (
+             chain.chain_id, cpartition.num_tls_segments()),
              #'<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
              '<script type="text/javascript" src="Jmol.js">',
              '</script>',
@@ -1441,6 +1458,43 @@ class HTMLReport(Report):
             chain.chain_id, cpartition.num_tls_segments(), jmol_file)) ## LOGLINE
 
         return jmol_file
+
+    def iter_filter_atoms(self, atom_iter):
+        """Filters out any non-backbone atoms.
+        """
+        filter = lambda atm: conf.DISPLACE_ATOM_NAME_DICT.has_key(atm.name)
+        return itertools.ifilter(filter, atom_iter)
+
+    def generate_raw_backbone_file(self, chain, cpartition):
+        """Writes out the 'raw' backbone data for the tlsanim2r3d program.
+           NOTE: This should only be run if JMOL_SKIP == True.
+        """
+        basename = "%s_CHAIN%s_NTLS%d" % (
+            self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+        raw_r3d_file  = "%s.raw" % (basename)
+        r3d_body_file = "%s.r3d" % (basename)
+
+        this_seg = ""
+        which_ntls = 0
+        raw_r3d_filename = open(raw_r3d_file, "w")
+        for tls in cpartition.iter_tls_segments():
+            if str(this_seg) != str(tls):
+                which_ntls += 1
+            this_seg = str(tls)
+
+            for frag_id1, frag_id2 in tls.iter_segment_ranges():
+                for frag in Structure.iter_fragments(chain.iter_fragments(), frag_id1, frag_id2):
+                    for atm in self.iter_filter_atoms(frag.iter_atoms()):
+                        ## Raw input file for tlsanim2r3d->Raster3D.
+                        ## Only save backbones atoms.
+                        ## on/off model chain segment libration x y z
+                        ## E.g., "1 0 A 0 0 7.069 -24.991 -2.991"
+                        raw_r3d_filename.write("1 1 %s %s 1 %.3f %.3f %.3f\n" % (
+                            chain.chain_id, which_ntls,
+                            atm.position[0], atm.position[1], atm.position[2]))
+        raw_r3d_filename.close()
+
+        return raw_r3d_file, r3d_body_file
 
     def jmol_animate_html(self, chain, cpartition):
         """Writes out the HTML page which will display the
@@ -1516,6 +1570,28 @@ class HTMLReport(Report):
             js.append('select %s;' % select)
             js.append('color [%d,%d,%d];' % (tls.color.rgbi))
 
+        ##=====================================================================
+        ## NOTE: Old code to loop over TLS groups and color
+        #for tls in cpartition.iter_tls_segments():
+        #    chain_ids = [tlsa.L1_chain.chain_id,
+        #                 tlsa.L2_chain.chain_id,
+        #                 tlsa.L3_chain.chain_id]
+
+        #    for chain_id in chain_ids:
+        #        l = []
+        #        for frag_id1, frag_id2 in tls.iter_segment_ranges():
+        #            l.append("%s-%s:%s" % (frag_id1, frag_id2, chain_id))
+        #        select = ",".join(l)
+
+        #        ## switched to selecting all three libration states
+        #        #js.append('select %s;' % (tls.jmol_select()))
+        #        js.append('select %s;' % select)
+        #        #console.stdoutln("JMOL-select %s vs. %s vs. %s" % (
+        #            chain_id, tls.jmol_select(), select))
+
+        #        js.append('color [%d,%d,%d];' % (tls.color.rgbi))
+        ##=====================================================================
+
         ## select non-protein non-solvent and display
         js +=['select not protein and not solvent;',
               'color CPK;',
@@ -1531,7 +1607,8 @@ class HTMLReport(Report):
         l = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
              '<html>',
              '<head>',
-             '<title>Chain %s using %d TLS Groups</title>' % (chain.chain_id, cpartition.num_tls_segments()),
+             '<title>Chain %s using %d TLS Groups</title>' % (
+             chain.chain_id, cpartition.num_tls_segments()),
              '<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
              '</script>',
              '</head>',
@@ -1574,6 +1651,9 @@ class HTMLReport(Report):
         fil.write(self.html_multi_chain_alignment())
         fil.close()
 
+        #chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
+	#console.stdoutln("[%s] HTML: Saving %s" % (chain_ntls, path)) ## LOGLINE
+    
     def html_multi_chain_alignment(self):
         """Write out all HTML/PDB/TLSIN files which compare
         chains in the structure.
@@ -1656,6 +1736,7 @@ class HTMLReport(Report):
         fil.write(self.html_refinement_prep())
         fil.close()
 
+        #chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
 	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_refinement_prep(self):
@@ -1801,7 +1882,8 @@ class ChainNTLSAnalysisReport(Report):
         """
         tanalysis = gnuplots.TranslationAnalysis(self.chain, self.cpartition)
         l = ['<center>',
-             tanalysis.html_markup("Translation Analysis of T<sup>r</sup>", captions.TRANSLATION_GRAPH_CAPTION),
+             tanalysis.html_markup("Translation Analysis of T<sup>r</sup>",
+             captions.TRANSLATION_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
@@ -1811,7 +1893,8 @@ class ChainNTLSAnalysisReport(Report):
         """
         libration_analysis = gnuplots.LibrationAnalysis(self.chain, self.cpartition)
         l = ['<center>',
-             libration_analysis.html_markup("Screw Displacement Analysis", captions.LIBRATION_GRAPH_CAPTION),
+             libration_analysis.html_markup("Screw Displacement Analysis",
+             captions.LIBRATION_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
@@ -1821,7 +1904,8 @@ class ChainNTLSAnalysisReport(Report):
         """
         plot = gnuplots.CA_TLS_Differance_Plot(self.chain, self.cpartition)
         l = ['<center>',
-             plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model", captions.FIT_GRAPH_CAPTION),
+             plot.html_markup("Deviation of Observed CA Atom B-Factors From TLS Model",
+             captions.FIT_GRAPH_CAPTION),
              '</center>']
         return "".join(l)
 
