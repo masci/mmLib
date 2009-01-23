@@ -55,6 +55,9 @@ TLSANIM2R3D            = "/home/tlsmd/tlsmd/bin/tlsanim2r3d"
 ## the isoprobability contour level for all visualizations
 ADP_PROB = 50
 
+## maximum number of parallel jobs allowable at the same time
+MAX_PARALLEL_JOBS = 4
+
 ## number of TLS partitons for each chain
 NPARTS = 20
 
