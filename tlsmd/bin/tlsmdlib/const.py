@@ -16,8 +16,8 @@ LSMALL = (0.1)**2 * Constants.DEG2RAD2
 ## program info
 ## 3rd decimal place is for internal development on (Verdandi) 
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "1.1.0"
-RELEASE_DATE  = "10 Dec 2008"
+VERSION       = "1.2.0"
+RELEASE_DATE  = "23 Jan 2009"
 AUTHOR        = "Ethan Merritt"
 EMAIL         = "merritt@u.washington.edu"
 
