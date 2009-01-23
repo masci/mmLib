@@ -52,10 +52,14 @@ def usage():
     print "            struct.pdb"
     print
     print "Example Usage:"
+    print "  tlsmd.py -b -rANALYSIS -jtest -itest -mISOT -cA,B -aALL struct.pdb"
+    print " or,"
     print "  tlsmd.py -b -rANALYSIS -jtest -xhttp://localhost:10100 -itest -mISOT -cA,B -aALL struct.pdb"
     print
     print "Authors:"
     print "  Jay Painter <jpaint@u.washington.edu>"
+    print "  Christoph Champ <champc@u.washington.edu>"
+    print "  Ethan A. Merritt <merritt@u.washington.edu>"
     print
     raise SystemExit
 
@@ -185,6 +189,9 @@ def analysis_main(struct_path, opt_dict):
 
 if __name__ == "__main__":
     try:
+        ## added option "-u" = min_subsegment_size. Christoph Champ, 2008-05-13
+        ## added option "-k" = skip_jmol. Christoph Champ, 2008-05-13
+        ## added option "-n" = nparts. Christoph Champ, 2008-06-09
         ## used letters: abcdeijmnorstuvwx
         ## available   : fglpqyz
         (opts, args) = getopt.getopt(sys.argv[1:], "n:u:a:t:c:d:i:w:m:r:j:x:khvseo:b", [
