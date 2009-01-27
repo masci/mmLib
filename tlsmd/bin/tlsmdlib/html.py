@@ -308,6 +308,8 @@ class Report(object):
              '<style type="text/css" media="screen">',
              '<!-- ',
              'BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}',
+             'a.structimage{text-decoration:none;} img{border:0;padding:4px 0 0 0;}',
+             'span.small {font-size:0.8em;font-weight:normal;text-align:center;}',
              '-->',
              '</style>\n',
              '</head>',
@@ -1017,9 +1019,9 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><a href="%s"><img src="%s" width="320" height="320" alt="structimage"/></a></center><br/>' % (
+             '<center><a href="%s" class="imageview"><img src="%s" width="320" height="320" alt="structimage"/></a>' % (
              png_file, png_file),
-             '</th></tr>',
+             '<span class="small">Click on image for expanded view</span></center></th></tr>',
 
              '<tr><th><center>',
              ntls_analysis.bmean_plot.html_link(),
