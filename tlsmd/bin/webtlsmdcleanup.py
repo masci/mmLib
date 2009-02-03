@@ -16,7 +16,7 @@ import xmlrpclib
 from tlsmdlib import const, conf
 
 SECS_IN_DAY = float(60*60*24)
-DELETE_DAYS = 12
+DELETE_DAYS = 120
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
@@ -48,7 +48,10 @@ def check_remove(jdict):
     return False
 
 def main():
-    print "WebTLSMD Job Cleanup: Checking database for old jobs to remove."
+    ## timstamp format: "YYYY-MM-DD HH:MM:SS:"
+    t = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
+
+    print "[%s] WebTLSMD Job Cleanup: Checking database for old jobs to remove." % t
 
     job_list = webtlsmdd.job_list()
     jdict_remove_list = []
@@ -57,14 +60,11 @@ def main():
         if check_remove(jdict):
             jdict_remove_list.append(jdict)
 
-    ## timstamp format: "YYYY-MM-DD HH:MM:SS:"
-    t=datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
-
     for jdict in jdict_remove_list:
 	try:
-            print "%s: %10s  %40s  %d Days Old" % (t, jdict["job_id"], jdict.get("email", "No Email"), jdict["days"])
+            print "[%s] %10s  %40s  %d Days Old" % (t, jdict["job_id"], jdict.get("email", "No Email"), jdict["days"])
 	except:
-            print "%s: %10s  Bad submission status" % (t, jdict["job_id"])
+            print "[%s] %10s  Bad submission status" % (t, jdict["job_id"])
         webtlsmdd.remove_job(jdict["job_id"])
 
 
