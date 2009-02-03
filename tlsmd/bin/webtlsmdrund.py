@@ -44,7 +44,23 @@ def chain_size_string(jdict):
         return "---"
     listx = []
     for cdict in jdict["chains"]:
-        listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
+        if cdict["selected"]:
+            listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
+    return ";".join(listx)
+
+def chain_type_string(jdict):
+    if jdict.has_key("chains") == False:
+        return "---"
+    listx = []
+    for cdict in jdict["chains"]:
+        if cdict["selected"]:
+            type = re.sub(r'Chain [A-Za-z0-9] \([0-9]{1,} (.*) Acid Residues\)', '\\1', cdict["desc"])
+            if type == "Amino":
+                listx.append("%s:aa" % cdict["chain_id"])
+            elif type == "Nucleic":
+                listx.append("%s:na" % cdict["chain_id"])
+            else:
+                listx.append("%s:--")
     return ";".join(listx)
     
 def log_job_died(job_id):
@@ -79,9 +95,11 @@ def log_job_end(jdict):
          "[Job ID: %s] " % (jdict.get("job_id", "EEK!!")),
          "[Structure ID: %s] " % (jdict.get("structure_id", "----")),
          "[Chain sizes: %s] " % (chain_size_string(jdict)),
+         "[Chain types: %s] " % (chain_type_string(jdict)),
          "[TLS Model: %s] " % (jdict.get('tls_model', 'None')),
          "[Weight: %s] " % (jdict.get('weight', 'None')),
          "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
+         "[Nparts: %s] " % (jdict.get('nparts', 'None')),
          "[State: %s] " % (jdict.get('state', 'None'))]
 
     try:
