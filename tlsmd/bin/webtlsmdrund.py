@@ -85,6 +85,7 @@ def log_job_end(jdict):
     run_time_begin = jdict.get('run_time_begin', 0.0)
     run_time_end = jdict.get('run_time_end', 0.0)
     processing_time = timediff(run_time_begin, run_time_end)
+
     l = ["[Submit time: %s]"  % (timestring(submit_time)),
          "[Start time: %s] " % (timestring(run_time_begin)),
          "[End time: %s] " % (timestring(run_time_end)),
@@ -94,12 +95,16 @@ def log_job_end(jdict):
          "[Privacy: %s] " % (private_text),
          "[Job ID: %s] " % (jdict.get("job_id", "EEK!!")),
          "[Structure ID: %s] " % (jdict.get("structure_id", "----")),
+         "[Header ID: %s] " % (jdict.get("header_id", "----")),
          "[Chain sizes: %s] " % (chain_size_string(jdict)),
          "[Chain types: %s] " % (chain_type_string(jdict)),
          "[TLS Model: %s] " % (jdict.get('tls_model', 'None')),
          "[Weight: %s] " % (jdict.get('weight', 'None')),
          "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
          "[Nparts: %s] " % (jdict.get('nparts', 'None')),
+         "[Jmol skip animate: %s] " % (jdict.get('skip_jmol_animate', 'None')),
+         "[Jmol skip viewer: %s] " % (jdict.get('skip_jmol_view', 'None')),
+         "[Histogram skip: %s] " % (jdict.get('skip_jmol_view', 'None')),
          "[State: %s] " % (jdict.get('state', 'None'))]
 
     try:
