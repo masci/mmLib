@@ -410,6 +410,7 @@ def html_program_settings_table(fdict):
          ## FIXME: The radio buttons are backwards
          '<td valign="top" align="left">',
          '<fieldset><legend>JMol toggle switches</legend>',
+         #'<div style="font-size:xx-small">Turn JMol analysis on/off.</div>',
          '<p>',
          '<label>Generate JMol-viewer pages: </label>',
          '<input name="skip_jmol_view" type="radio" value="OFF" checked="checked" />yes',
@@ -427,6 +428,7 @@ def html_program_settings_table(fdict):
          ## FIXME: The radio buttons are backwards
          '<td valign="top" align="left">',
          '<fieldset><legend>Histogram toggle switches</legend>',
+         #'<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
          '<p>',
          '<label>Generate histogram plots: </label>',
          '<input name="skip_histogram" type="radio" value="OFF" />yes',
@@ -1555,7 +1557,7 @@ class Submit2Page(Page):
             raise SubmissionException('Only Recieved %d lines of upload' % (len(line_list)))
 
         ## basic sanity checks
-        r = check_upload(line_list)
+        r = check_upload(job_id, line_list)
         if r != '':
             raise SubmissionException(str(r))
 
@@ -1722,10 +1724,11 @@ class SubmitPDBPage(Page):
         ## basic sanity checks. Christoph Champ, 2007-10-24
         ## If check_upload returns anything but a empty string, the server will
         ## inform the user of the problem and not proceed any further.
-        ln = pdbfile.split("\n")
-        r = check_upload(ln)
-        if r != '':
-            raise SubmissionException(str(r))
+        ## XXX: Moved down to prepare_submission(). 2009-02-03
+        #ln = pdbfile.split("\n")
+        #r = check_upload(ln)
+        #if r != '':
+        #    raise SubmissionException(str(r))
  
         job_id = self.prepare_submission(pdbfile)
 
@@ -1746,6 +1749,15 @@ class SubmitPDBPage(Page):
 
     def prepare_submission(self, pdbfile):
         job_id = webtlsmdd.job_new()
+
+        ## basic sanity checks. Christoph Champ, 2007-10-24
+        ## If check_upload returns anything but a empty string, the server will
+        ## inform the user of the problem and not proceed any further.
+        ln = pdbfile.split("\n")
+        r = check_upload(job_id, ln)
+        if r != '':
+            raise SubmissionException(str(r))
+
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
         webtlsmdd.job_set_remote_addr(job_id, ip_addr)
         webtlsmdd.job_set_via_pdb(job_id, True)
@@ -1838,7 +1850,6 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
 	fstd.write("%s\t%s\n" % (res_id[s], stddev11))
-	#if stddev11 < 0.05:
 	if stddev11 < 0.1:
 	   nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
@@ -1867,7 +1878,7 @@ plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filled
      0.05 axes x1y2 with lines lc rgb 'red' notitle
 """
 
-def check_upload(file):
+def check_upload(job_id, file):
     """Runs sanity checks on uploaded file"""
     ## Checks if PDB contains valids aa/na residues
     ## PDB must have at least 30 ATOMs
@@ -1880,9 +1891,14 @@ def check_upload(file):
     chain = []
     temp_factors = []
     bad_std = -1
-    n = 0
+    num_total = 0
+    num_good = 0
     occupancy = 0.0
+    ignore = 0
     for line in file:
+        if line.startswith('HEADER'):
+            header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
+            webtlsmdd.job_set_header_id(job_id, header_id)
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
         elif re.match('^ATOM.*[0-9][a-z]', line):
@@ -1891,24 +1907,30 @@ def check_upload(file):
         elif line.startswith('ATOM') and (
             Library.library_is_amino_acid(line[17:20].strip()) or
             Library.library_is_nucleic_acid(line[17:20].strip())):
+            num_total += 1
             if float(line[56:60].strip()) < 1.00:
                 ## ignore occupancies < 1.00
+                ignore += 1
                 continue
             else:
-                n += 1
+                num_good += 1
                 atom_num.append(int(line[7:11].strip()))
                 res_type.append(line[17:20].strip())
                 res_num.append(int(line[23:26].strip()))
                 chain.append(line[21:22])
                 occupancy += float(line[56:60].strip())
-                temp_factors.append(float(line[61:66].strip()))
+                temp_factors.append(float(line[60:65].strip()))
         else:
             continue
+
+    ## FIXME: This does not work yet.
+    #if(ignore == num_total):
+    #    return "All occupancies are less than 1.0, so all atoms will be ignored. Nothing to do."
 
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
 
-    if(occupancy / n == 0.0):
+    if(occupancy / num_good == 0.0):
         return "All occupancies are 0.0. TLSMD won't run on this structure."
 
     bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
