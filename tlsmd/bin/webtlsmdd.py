@@ -25,7 +25,7 @@ import xmlrpclib
 import SocketServer
 import SimpleXMLRPCServer
 import urllib
-import gzip
+import gzip       ## for fetching PDBs from pdb.org
 import StringIO
 import subprocess ## for render of 'struct.png'
 import re         ## for "raw grey"-backbone rendering. 2008-12-03
@@ -208,8 +208,8 @@ def parse_molauto(infile, outfile):
     """Parses the molauto output to force each chain to have its own unique
        colour. 2008-12-03
     """
-    ## FIXME: This function does not work yet.
     file = open(outfile, "w")
+    #file.write("GOT HERE!")
     for line in open(infile).readlines():
         file.write("%s" % line)
         if(re.match(r'^  set segments', line)):
@@ -232,9 +232,7 @@ def parse_molauto(infile, outfile):
 def render_struct(job_dir):
     """Generate struct.png via molauto/parse_molauto/molscript/render
     """
-    ## NOTE: Uses internal Perl script!
     ## cmd: molauto smallAB.pdb|parse_molauto.pl|molscript -r |render -bg white -size 200x200 -png mymol.png
-
     cmdlist = ["%s %s/struct.pdb | %s | %s -r | %s -bg white -size %s -png %s/struct.png 1>&2" % (
               conf.MOLAUTO, job_dir, conf.PARSE_MOLAUTO_SCRIPT,
               conf.MOLSCRIPT, conf.RENDER,
@@ -270,10 +268,13 @@ def generate_raw_grey_struct(job_dir):
     """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
        sections, for _all_ chains
     """
+    ## cmd: ./extract_raw_chains.pl <smallAB.pdb |./tlsanim2r3d - >ANALYSIS/struct.r3d
     ## cmd: ./tlsanim2r3d < struct.raw >ANALYSIS/struct.r3d
 
     extract_raw_backbone("%s/struct.pdb" % job_dir, "%s/struct.raw" % job_dir)
 
+    #cmdlist = ["%s < %s/struct.pdb | %s - > %s/struct.r3d 2>/dev/null" % (
+    #          conf.RAW_GREY_SCRIPT, job_dir, conf.TLSANIM2R3D, job_dir)]
     cmdlist = ["%s < %s/struct.raw > %s/struct.r3d 2>/dev/null" % (
               conf.TLSANIM2R3D, job_dir, job_dir)]
     proc = subprocess.Popen(cmdlist,
@@ -334,6 +335,12 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     os.chdir(job_dir)
     webtlsmdd.jobdb.job_data_set(job_id, "job_dir", job_dir)
+
+    ## save original PDB file for later return to user
+    #original_pdb_filename = "original.pdb"
+    #filobj = open(original_pdb_filename, "w")
+    #filobj.write(struct_bin.data)
+    #filobj.close()
 
     ## save PDB file
     pdb_filename = "struct.pdb"
@@ -460,7 +467,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "passwd", "")
     webtlsmdd.jobdb.job_data_set(job_id, "email", "")
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False) ## This is overwritten in tlsmdlib/html.py. Christoph Champ, 2008-02-09
+    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False)
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
     webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_view", "OFF")
     webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_animate", "OFF")
@@ -530,18 +537,20 @@ def SignalJob(webtlsmdd, job_id):
         except:
 	    return False
         try:
-	    os.kill(pid, SIGUSR1) ## Send signal SIGUSR1 and try to continue to job process.
+            ## Send signal SIGUSR1 and try to continue to job process.
+	    os.kill(pid, SIGUSR1)
         except:
 	    return False
 
     return True
 
 def KillJob(webtlsmdd, job_id):
-    """Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section
-       as "killed" state
+    """Kills jobs in state "running" by pid and moves them to the 
+       "Completed Jobs" section as "killed" state
     """
     ## Christoph Champ, 2008-03-13
-    ## NOTE: We want to keep the job_id around in order to inform the user that their job has been "killed".
+    ## NOTE: We want to keep the job_id around in order to inform the user
+    ## that their job has been "killed".
 
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
@@ -679,15 +688,15 @@ class WebTLSMDDaemon(object):
         return RemoveJob(self, job_id)
 
     def signal_job(self, job_id):
-	"""Signals a job stuck on a certain task to skip that step and move on to
-	   the next step. It will eventually have a state "warnings"
+	"""Signals a job stuck on a certain task to skip that step and move on
+           to the next step. It will eventually have a state "warnings".
 	"""
 	## Christoph Champ, 2008-04-10
 	return SignalJob(self, job_id)
 
     def kill_job(self, job_id):
-	"""Kills jobs in state "running" by pid and moves them to the "Completed Jobs" section
-	   as "killed" state
+	"""Kills jobs in state "running" by pid and moves them to the
+           "Completed Jobs" section as "killed" state.
 	"""
 	## Christoph Champ, 2008-03-07
 	return KillJob(self, job_id)
@@ -784,6 +793,14 @@ class WebTLSMDDaemon(object):
         return structure_id
     def job_get_structure_id(self, job_id):
         return self.jobdb.job_data_get(job_id, "structure_id")
+
+    ## This data comes from the HEADER line. Christoph Champ, 2009-02-03
+    ## It will be a four character string and will be "xxxx" for RefMac.
+    def job_set_header_id(self, job_id, header_id):
+        self.jobdb.job_data_set(job_id, "header_id", header_id)
+        return header_id
+    def job_get_header_id(self, job_id):
+        return self.jobdb.job_data_get(job_id, "header_id")
 
     def job_set_tls_model(self, job_id, tls_model):
         self.jobdb.job_data_set(job_id, "tls_model", tls_model)
@@ -918,8 +935,8 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
 class WebTLSMD_XMLRPCServer(
             SocketServer.ForkingMixIn,
             SimpleXMLRPCServer.SimpleXMLRPCServer):
-    """Use customized XMLRPC server which forks for requests and uses the customized
-    request handler.
+    """Use customized XMLRPC server which forks for requests and uses the
+       customized request handler.
     """
     def __init__(self, host_port):
         SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(
