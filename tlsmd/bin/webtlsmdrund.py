@@ -102,6 +102,7 @@ def log_job_end(jdict):
          "[Weight: %s] " % (jdict.get('weight', 'None')),
          "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
          "[Nparts: %s] " % (jdict.get('nparts', 'None')),
+         "[Resolution: %s] " % (jdict.get('resolution', 'None')),
          "[Jmol skip animate: %s] " % (jdict.get('skip_jmol_animate', 'None')),
          "[Jmol skip viewer: %s] " % (jdict.get('skip_jmol_view', 'None')),
          "[Histogram skip: %s] " % (jdict.get('skip_jmol_view', 'None')),
