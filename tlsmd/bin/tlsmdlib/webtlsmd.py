@@ -1901,6 +1901,9 @@ def check_upload(job_id, file):
             webtlsmdd.job_set_header_id(job_id, header_id)
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
+        elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
+            resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
+            webtlsmdd.job_set_resolution(job_id, resolution)
         elif re.match('^ATOM.*[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
             return "Please change lowercase to uppercase for alternate residue numbers."
