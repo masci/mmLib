@@ -1019,7 +1019,7 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><a href="%s" class="imageview"><img src="%s" width="100%%" height="320" alt="structimage"/></a>' % (
+             '<center><a href="%s" class="imageview"><img src="%s" height="320" alt="structimage"/></a>' % (
              png_file, png_file),
              '<span class="small">Click on image for expanded view</span></center></th></tr>',
 
