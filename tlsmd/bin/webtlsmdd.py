@@ -802,6 +802,14 @@ class WebTLSMDDaemon(object):
     def job_get_header_id(self, job_id):
         return self.jobdb.job_data_get(job_id, "header_id")
 
+    ## This data comes from the REMARK line. Christoph Champ, 2009-02-09
+    ## It will be a string something like "1.80"
+    def job_set_resolution(self, job_id, resolution):
+        self.jobdb.job_data_set(job_id, "resolution", resolution)
+        return resolution
+    def job_get_resolution(self, job_id):
+        return self.jobdb.job_data_get(job_id, "resolution")
+
     def job_set_tls_model(self, job_id, tls_model):
         self.jobdb.job_data_set(job_id, "tls_model", tls_model)
         return tls_model
