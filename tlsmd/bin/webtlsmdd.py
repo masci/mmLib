@@ -810,6 +810,30 @@ class WebTLSMDDaemon(object):
     def job_get_resolution(self, job_id):
         return self.jobdb.job_data_get(job_id, "resolution")
 
+    def job_set_initial_residuals(self, job_id, initial_residuals):
+        self.jobdb.job_data_set(job_id, "initial_residuals", initial_residuals)
+        return initial_residuals
+    def job_get_initial_residuals(self, job_id):
+        return self.jobdb.job_data_get(job_id, "initial_residuals")
+
+    def job_set_final_residuals(self, job_id, final_residuals):
+        self.jobdb.job_data_set(job_id, "final_residuals", final_residuals)
+        return final_residuals
+    def job_get_final_residuals(self, job_id):
+        return self.jobdb.job_data_get(job_id, "final_residuals")
+
+    def job_set_stddev_bfact(self, job_id, stddev_bfact):
+        self.jobdb.job_data_set(job_id, "stddev_bfact", stddev_bfact)
+        return stddev_bfact
+    def job_get_stddev_bfact(self, job_id):
+        return self.jobdb.job_data_get(job_id, "stddev_bfact")
+
+    def job_set_chain_max_segs(self, job_id, chain_max_segs):
+        self.jobdb.job_data_set(job_id, "chain_max_segs", chain_max_segs)
+        return chain_max_segs
+    def job_get_chain_max_segs(self, job_id):
+        return self.jobdb.job_data_get(job_id, "chain_max_segs")
+
     def job_set_tls_model(self, job_id, tls_model):
         self.jobdb.job_data_set(job_id, "tls_model", tls_model)
         return tls_model
