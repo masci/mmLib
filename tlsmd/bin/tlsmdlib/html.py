@@ -384,27 +384,31 @@ class HTMLSummaryReport(Report):
             #self.pre_tls_chain_optimization(chain)
 
             ## Collect data for logfile and Berkeley DB
-            tmp_residuals = []
-            tmp_ntls = []
             segs = 0
+            tmp_min = 100.0
+            tmp_max = 0.0
             for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
                 ##fields: cpartition.rmsd_b(), cpartition.residual())
-                tmp_residuals.append("%.2f" % cpartition.rmsd_b())
-                tmp_ntls.append("%s" % ntls)
-                segs += 1
+                segs += 1 ## for max seg reached per chain
+
+                ## Roundabout way to find min/max values
+                if float(cpartition.rmsd_b()) >= tmp_max:
+                    tmp_max = cpartition.rmsd_b()
+                if float(cpartition.rmsd_b()) <= tmp_min:
+                    tmp_min = cpartition.rmsd_b()
+
+                ## Calculate the stddev for all temperature factors in a given
+                ## chain (for the first partition only)
                 if int(ntls) == 1:
                     for tls in cpartition.iter_tls_segments():
-                        ## Calculate the stddev for all temperature factors in
-                        ## a given chain.
                         tmp_temp_factor = []
                         for atm, Utls in tls.tls_group.iter_atm_Utls():
                             tmp_temp_factor.append(atm.temp_factor)
                         list_stddev.append("%s:%.2f" % (
                             chain.chain_id, numpy.std(tmp_temp_factor)))
-                else:
-                    continue
-            min_residuals.append("%s:%s" % (chain.chain_id, min(tmp_residuals)))
-            max_residuals.append("%s:%s" % (chain.chain_id, max(tmp_residuals)))
+
+            min_residuals.append("%s:%.2f" % (chain.chain_id, float(tmp_min)))
+            max_residuals.append("%s:%.2f" % (chain.chain_id, float(tmp_max)))
             max_ntls.append("%s:%s" % (chain.chain_id, segs))
 
             ## add tables for all TLS group selections using 1 TLS group
