@@ -210,8 +210,9 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
 
     l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
          '<tr>',
-         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments (overall rmsd_b=%.2f and residual=%.2f)</th>' % (
-             ntls, cpartition.rmsd_b(), cpartition.residual()), ## Added "overall rmsd_b + residual". Christoph Champ, 2008-04-05
+         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments ' % ntls,
+         '(overall rmsd_b=%.2f and residual=%.2f)</th>' % (
+             cpartition.rmsd_b(), cpartition.residual()), ## "overall rmsd_b + residual", 2008-04-05
          '</tr>',
 
          '<tr>',
@@ -242,7 +243,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
         tmp_temp_factor = []
         for atm, Utls in tls.tls_group.iter_atm_Utls():
             tmp_temp_factor.append(atm.temp_factor)
-	stddev=numpy.std(tmp_temp_factor)
+	stddev = numpy.std(tmp_temp_factor)
 
         tls_group = tls.tls_group
         mtls_info = tls.model_tls_info
@@ -337,8 +338,8 @@ class Report(object):
         
         l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
               '<td align="left"><font size="-5">%s</font></td>' % (timestr),
-              ## '<td align="center"><font size="-5">Released %s by <i>%s</i></font></td>' % (const.RELEASE_DATE, const.EMAIL),
-              '<td align="right"><font size="-5">TLSMD Version %s Released %s</font></td>' % (const.VERSION, const.RELEASE_DATE),
+              '<td align="right"><font size="-5">TLSMD Version %s Released %s</font></td>' % (
+                  const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
               '</body></html>\n']
         
@@ -375,8 +376,36 @@ class HTMLSummaryReport(Report):
         shutil.copy(conf.JMOL_PATH + "/Jmol.js", this_dir)
 
         ## Create preliminary summary.png plot
+        min_residuals = []
+        max_residuals = []
+        max_ntls = []
+        list_stddev = []
         for chain in self.tlsmd_analysis.iter_chains():
             #self.pre_tls_chain_optimization(chain)
+
+            ## Collect data for logfile and Berkeley DB
+            tmp_residuals = []
+            tmp_ntls = []
+            segs = 0
+            for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
+                ##fields: cpartition.rmsd_b(), cpartition.residual())
+                tmp_residuals.append("%.2f" % cpartition.rmsd_b())
+                tmp_ntls.append("%s" % ntls)
+                segs += 1
+                if int(ntls) == 1:
+                    for tls in cpartition.iter_tls_segments():
+                        ## Calculate the stddev for all temperature factors in
+                        ## a given chain.
+                        tmp_temp_factor = []
+                        for atm, Utls in tls.tls_group.iter_atm_Utls():
+                            tmp_temp_factor.append(atm.temp_factor)
+                        list_stddev.append("%s:%.2f" % (
+                            chain.chain_id, numpy.std(tmp_temp_factor)))
+                else:
+                    continue
+            min_residuals.append("%s:%s" % (chain.chain_id, min(tmp_residuals)))
+            max_residuals.append("%s:%s" % (chain.chain_id, max(tmp_residuals)))
+            max_ntls.append("%s:%s" % (chain.chain_id, segs))
 
             ## add tables for all TLS group selections using 1 TLS group
             ## up to max_ntls
@@ -386,6 +415,21 @@ class HTMLSummaryReport(Report):
                 import gc
                 gc.collect()
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
+
+        ## This will store the initial + final residual for each chain in the
+        ## Berkeley DB, as well as the stddev(Bfact) for each chain.
+        initial_residuals = ";".join(max_residuals)
+        final_residuals   = ";".join(min_residuals)
+        stddev_bfact      = ";".join(list_stddev)
+        chain_max_segs    = ";".join(max_ntls)
+        console.stdoutln("RESIDUALS: max = %s; min = %s" % (initial_residuals, final_residuals))
+        console.stdoutln("STDDEV_BFACT: %s" % stddev_bfact)
+        console.stdoutln("MAX_SEGS: %s" % chain_max_segs)
+        job_id = conf.globalconf.job_id
+        webtlsmdd.job_set_initial_residuals(job_id, initial_residuals)
+        webtlsmdd.job_set_final_residuals(job_id, final_residuals)
+        webtlsmdd.job_set_stddev_bfact(job_id, stddev_bfact)
+        webtlsmdd.job_set_chain_max_segs(job_id, chain_max_segs)
 
         self.write_summary_index()
         
@@ -932,7 +976,7 @@ class HTMLReport(Report):
                 start = time.time()
                 os.system(render_cmd)
                 elapsed = (time.time() - start)
-                console.stdoutln("[%s,%s] RENDERING TIME for %s: %s s" % (
+                console.stdoutln("[%s,%s] RENDERING TIME for %s: %.2f s" % (
                     chain.chain_id, cpartition.num_tls_segments(), 
                     png_file, elapsed)) ## LOGLINE
 	    except:
