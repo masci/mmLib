@@ -113,9 +113,9 @@ def log_job_end(jdict):
          "[State: %s] " % (jdict.get('state', 'None'))]
 
     try:
-        open(conf.LOG_PATH, "a").write(" ".join(l) + "\n")
+        open(conf.LOG_FILE, "a").write(" ".join(l) + "\n")
     except IOError:
-        log_write("ERROR: cannot open logfile %s" % (conf.LOG_PATH))
+        log_write("ERROR: cannot open logfile %s" % (conf.LOG_FILE))
 
 def timestring(raw_time):
     t = time.asctime(time.localtime(raw_time))
