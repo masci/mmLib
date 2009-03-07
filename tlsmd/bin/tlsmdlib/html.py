@@ -278,18 +278,25 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
         else:
             cpath = tls.color.thumbnail_path
 
-        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"></td>' % (cpath, tls.color.name),
-             '<td>%s</td>' % (tls.display_label()),
-             '<td>%d</td>'    % (tls.num_residues()),
-             '<td>%d</td>'    % (tls.num_atoms()),
-             '<td>%5.1f</td>' % (tls.mean_b()),
-             '<td>%5.2f</td>' % (stddev), ## Added. Christoph Champ, 2008-04-15
-             '<td>%4.2f</td>' % (tls.mean_anisotropy()),
-             '<td>%5.2f</td>' % (tls.rmsd_b), ## FIXME: Why are these values different from the off-diagonal matrix values?
-             '<td>%s</td>'    % (t_data),
-             '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),
-             '<td>%5.1f</td>' % (tls.tls_mean_b()),
-             '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()),
+        ## "Analysis of TLS Group n Chain Segments" table
+        ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
+        ## off-diagonal matrix values? The "RMSD B Values of Combined TLS Groups"
+        ## values.
+        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"/></td>' % (
+             cpath, tls.color.name),
+             ## Input Structure ================================================
+             '<td>%s</td>'    % (tls.display_label()),       ## "Segment"
+             '<td>%d</td>'    % (tls.num_residues()),        ## "Residues"
+             '<td>%d</td>'    % (tls.num_atoms()),           ## "Atoms"
+             '<td>%5.1f</td>' % (tls.mean_b()),              ## "<B>"
+             '<td>%5.2f</td>' % (stddev),                    ## "Brmsd", 2008-04-15
+             '<td>%4.2f</td>' % (tls.mean_anisotropy()),     ## "<Aniso>"
+             ## TLS Predictions ================================================
+             '<td>%5.2f</td>' % (tls.rmsd_b),                ## "RMSD B"
+             '<td>%s</td>'    % (t_data),                    ## "T^rB"
+             '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),  ## "eval(L) DEG^2"
+             '<td>%5.1f</td>' % (tls.tls_mean_b()),          ## "<B>"
+             '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()), ## "<Aniso>"
              '</tr>']
 
     l.append('</table>')
@@ -356,6 +363,7 @@ class HTMLSummaryReport(Report):
         self.struct = tlsmd_analysis.struct
         self.struct_id = tlsmd_analysis.struct_id
         self.struct_path = "%s.pdb" % (self.struct_id)
+        self.job_id = conf.globalconf.job_id
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
@@ -380,8 +388,11 @@ class HTMLSummaryReport(Report):
         max_residuals = []
         max_ntls = []
         list_stddev = []
+        residual_log = open(conf.RESIDUALS_LOG_FILE, "a+")
         for chain in self.tlsmd_analysis.iter_chains():
             #self.pre_tls_chain_optimization(chain)
+
+            residual_log.write("%s %s " % (self.job_id, chain.chain_id))
 
             ## Collect data for logfile and Berkeley DB
             segs = 0
@@ -390,6 +401,9 @@ class HTMLSummaryReport(Report):
             for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
                 ##fields: cpartition.rmsd_b(), cpartition.residual())
                 segs += 1 ## for max seg reached per chain
+
+                ## log all residuals (i.e., the residual for each partition)
+                residual_log.write("%.2f " % cpartition.rmsd_b())
 
                 ## Roundabout way to find min/max values
                 if float(cpartition.rmsd_b()) >= tmp_max:
@@ -407,6 +421,7 @@ class HTMLSummaryReport(Report):
                         list_stddev.append("%s:%.2f" % (
                             chain.chain_id, numpy.std(tmp_temp_factor)))
 
+            residual_log.write("\n")
             min_residuals.append("%s:%.2f" % (chain.chain_id, float(tmp_min)))
             max_residuals.append("%s:%.2f" % (chain.chain_id, float(tmp_max)))
             max_ntls.append("%s:%s" % (chain.chain_id, segs))
@@ -420,6 +435,8 @@ class HTMLSummaryReport(Report):
                 gc.collect()
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
+        residual_log.close()
+
         ## This will store the initial + final residual for each chain in the
         ## Berkeley DB, as well as the stddev(Bfact) for each chain.
         initial_residuals = ";".join(max_residuals)
@@ -429,11 +446,10 @@ class HTMLSummaryReport(Report):
         console.stdoutln("RESIDUALS: max = %s; min = %s" % (initial_residuals, final_residuals))
         console.stdoutln("STDDEV_BFACT: %s" % stddev_bfact)
         console.stdoutln("MAX_SEGS: %s" % chain_max_segs)
-        job_id = conf.globalconf.job_id
-        webtlsmdd.job_set_initial_residuals(job_id, initial_residuals)
-        webtlsmdd.job_set_final_residuals(job_id, final_residuals)
-        webtlsmdd.job_set_stddev_bfact(job_id, stddev_bfact)
-        webtlsmdd.job_set_chain_max_segs(job_id, chain_max_segs)
+        webtlsmdd.job_set_initial_residuals(self.job_id, initial_residuals)
+        webtlsmdd.job_set_final_residuals(self.job_id, final_residuals)
+        webtlsmdd.job_set_stddev_bfact(self.job_id, stddev_bfact)
+        webtlsmdd.job_set_chain_max_segs(self.job_id, chain_max_segs)
 
         self.write_summary_index()
         
@@ -2041,8 +2057,11 @@ class ChainNTLSAnalysisReport(Report):
                 chain_ntls, i+1, tls.tls_group.itls_L))
             flatfile.write("\nIS %s %s S = %s" % (
                 chain_ntls, i+1, tls.tls_group.itls_S))
-            flatfile.write("\nIO %s %s origin = %s" % (
-                chain_ntls, i+1, tls.tls_group.origin))
+            flatfile.write("\nIO %s %s origin = %.3f,%.3f,%.3f" % (
+                chain_ntls, i+1,
+                tls.tls_group.origin[0],
+                tls.tls_group.origin[1],
+                tls.tls_group.origin[2]))
             ##</FLATFILE>
 
         ## recombination values
@@ -2054,7 +2073,7 @@ class ChainNTLSAnalysisReport(Report):
         for i in xrange(m):
             flatfile.write('\nRO %s ' % chain_ntls) ## FLATFILE
             for j in xrange(n):
-                flatfile.write('%s,' % rmatrix[i, j]) ## FLATFILE
+                flatfile.write('%.2f,' % rmatrix[i, j]) ## FLATFILE
                 min_rmsd_b = min(min_rmsd_b, rmatrix[i, j])
                 max_rmsd_b = max(max_rmsd_b, rmatrix[i, j])
         b_range = max_rmsd_b - min_rmsd_b
