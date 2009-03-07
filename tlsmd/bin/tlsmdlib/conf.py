@@ -28,7 +28,8 @@ WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "tlsmdtraceback"
-LOG_PATH               = "/home/tlsmd/log/tlsmd_runlog.txt"
+LOG_FILE               = "/home/tlsmd/log/tlsmd_runlog.txt"
+RESIDUALS_LOG_FILE     = "/home/tlsmd/log/residuals.log"
 PDB_URL                = "http://www.pdb.org/pdb/explore/explore.do?structureId="
 GET_PDB_URL            = "http://www.rcsb.org/pdb/files"
 ## END: CONFIGURATION PATHS AND URLS
@@ -64,6 +65,10 @@ NPARTS = 20
 ## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH  = 320 ## default: 320
 VIS_HEIGHT = 200 ## default: 200
+
+## sanity checks globals
+MIN_STDDEV_BFACT = 0.1
+MAX_STDDEV_BFACT = 20.0
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
