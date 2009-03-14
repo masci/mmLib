@@ -1,16 +1,19 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python
 import subprocess
 import itertools
 import numpy
 import re ## to force residue numbers to be integers
 
+## pymmlib
 from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
 
+## TLSMD
 import console
 import table
 import misc

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -16,7 +16,7 @@ import xmlrpclib
 from tlsmdlib import const, conf
 
 SECS_IN_DAY = float(60*60*24)
-DELETE_DAYS = 120
+DELETE_DAYS = 14
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)

@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2008 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -230,6 +230,7 @@ class TLSAnimate(object):
                         atm.element = str(model.model_id)
 
                         ## raw input file for tlsanim2r3d->Raster3D
+                        ## E.g., "1 0 A 0 0 7.069 -24.991 -2.991"
                         if Lval == max_libration:
                             raw_r3d_file.write("1 ")
                         else:
