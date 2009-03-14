@@ -610,10 +610,13 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
 
     ## form unique pdbout/tlsout filenames
     listx = [struct_id]
-    for chain_id, ntls in chain_ntls:
-        listx.append("CHAIN%s" % (chain_id))
-        listx.append("NTLS%d" % (ntls))
-    outbase ="_".join(listx)
+    #for chain_id, ntls in chain_ntls:
+    #    ## FIXME: Filename lengths must be less than 255 characters.
+    #    listx.append("CHAIN%s" % (chain_id))
+    #    listx.append("NTLS%d" % (ntls))
+    #    #listx.append("%s%d" % (chain_id, ntls))
+    #outbase ="_".join(listx)
+    outbase = job_id
     pdbout = "%s.pdb" % (outbase)
 
     ## the tlsout from this program is going to be the tlsin
