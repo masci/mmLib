@@ -64,11 +64,13 @@ def TLSMD_Main(struct_file_path  = None,
 
         ## generate summary page. Allows the user to see some information
         ## before the analysis is fully complete
+        console.stdoutln("GENERATING SUMMARY PAGE")
         summary = html.HTMLSummaryReport(analysis)
         summary.write_summary(html_report_dir)
 
         if not conf.globalconf.skip_html:
             ## generate in-depth HTML report pages
+            console.stdoutln("GENERATING ANALYSIS/REPORT HTML PAGES")
             report = html.HTMLReport(analysis)
             report.write(html_report_dir)
 
