@@ -35,9 +35,6 @@ import table
 import captions
 from tls_animate import TLSAnimate, TLSAnimateFailure
 
-## GLOBALS
-webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
-
 
 class MyError(Exception):
     def __init__(self, value):
@@ -183,7 +180,7 @@ class ColorInfo(object):
         img.save(self.thumbnail_path, "png")
         
 
-def html_tls_group_table(ntls, chain, cpartition, report_root = None):
+def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = None):
     """Generate HTML for a table containing the details of the ntls-group partitioning
     of the given chain.
     """
@@ -237,6 +234,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
 
     bgcolor_flag = True
 
+    i = 1 ## which segment within the partition
     for tls in cpartition.iter_tls_segments():
 
         ## Calculate the stddev for all temperature factors in a given segment. Christoph Champ, 2008-04-15
@@ -277,6 +275,38 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None):
             cpath = os.path.join(report_root, tls.color.thumbnail_path)
         else:
             cpath = tls.color.thumbnail_path
+
+        ##======================================================================
+        ##<FLATFILE>
+        ## NOTE: This is in a standalone def "html_tls_group_table"
+        if detail:
+            ## "Analysis of TLS Group n Chain Segments" values
+            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+
+            chain_ntls = "%s,%s.%s" % (chain.chain_id, ntls, i)
+            flatfile.write("\nTIME %s [%s] html_tls_group_table" % (
+                chain_ntls, misc.timestamp()))
+            flatfile.write("\nCCCC %s Analysis of TLS Group %s Chain Segments" % (chain_ntls, ntls))
+            flatfile.write("\nDATA %s SEGMENT: %s" % (chain_ntls, tls.display_label()))
+            flatfile.write("\nDATA %s RESIDUES: %d" % (chain_ntls, tls.num_residues()))
+            flatfile.write("\nDATA %s ATOMS: %d" % (chain_ntls, tls.num_atoms()))
+            flatfile.write("\nDATA %s MEAN_B: %.1f" % (chain_ntls, tls.mean_b()))
+            flatfile.write("\nDATA %s Brmsd: %.2f" % (chain_ntls, stddev))
+            flatfile.write("\nDATA %s MEAN_ANISO: %.2f" % (chain_ntls, tls.mean_anisotropy()))
+            flatfile.write("\nDATA %s RMSD_B: %.2f" % (chain_ntls, tls.rmsd_b))
+            flatfile.write("\nDATA %s T^rB: %s" % (chain_ntls, t_data))
+            flatfile.write("\nDATA %s EVAL_L: %.2f,%.2f,%.2f" % (chain_ntls, L1, L2, L3))
+            flatfile.write("\nDATA %s TLS_MEAN_B: %.1f" % (chain_ntls, tls.tls_mean_b()))
+            flatfile.write("\nDATA %s TLS_MEAN_ANISO: %.2f" % (chain_ntls, tls.tls_mean_anisotropy()))
+
+            ## XXX: Are the following redundant?
+            flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
+            flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (chain_ntls, cpartition.residual()))
+
+            flatfile.close()
+            i += 1 ## increment segment within the partition
+        ##</FLATFILE>
+        ##======================================================================
 
         ## "Analysis of TLS Group n Chain Segments" table
         ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
@@ -368,7 +398,7 @@ class HTMLSummaryReport(Report):
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
         self.page_refinement_prep        = None
-        
+
     def write_summary(self, report_dir):
         """Write out the TLSMD report to the given directory.
         """
@@ -378,10 +408,13 @@ class HTMLSummaryReport(Report):
             os.mkdir(report_dir)
         os.chdir(report_dir)
 
-        this_dir = os.getcwd()
-        shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", this_dir)
-        shutil.copy(conf.JMOL_PATH + "/Jmol.jar", this_dir)
-        shutil.copy(conf.JMOL_PATH + "/Jmol.js", this_dir)
+        analysis_dir = os.getcwd()
+
+        self.flatfile_globals()
+
+        shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", analysis_dir)
+        shutil.copy(conf.JMOL_PATH + "/Jmol.jar", analysis_dir)
+        shutil.copy(conf.JMOL_PATH + "/Jmol.js", analysis_dir)
 
         ## Create preliminary summary.png plot
         min_residuals = []
@@ -438,21 +471,29 @@ class HTMLSummaryReport(Report):
         residual_log.close()
 
         ## This will store the initial + final residual for each chain in the
-        ## Berkeley DB, as well as the stddev(Bfact) for each chain.
+        ## flatfile, as well as the stddev(Bfact) for each chain.
         initial_residuals = ";".join(max_residuals)
         final_residuals   = ";".join(min_residuals)
         stddev_bfact      = ";".join(list_stddev)
         chain_max_segs    = ";".join(max_ntls)
-        console.stdoutln("RESIDUALS: max = %s; min = %s" % (initial_residuals, final_residuals))
+        console.stdoutln("RESIDUALS: INITIAL = %s" % initial_residuals)
+        console.stdoutln("RESIDUALS: FINAL = %s" % final_residuals)
         console.stdoutln("STDDEV_BFACT: %s" % stddev_bfact)
         console.stdoutln("MAX_SEGS: %s" % chain_max_segs)
-        webtlsmdd.job_set_initial_residuals(self.job_id, initial_residuals)
-        webtlsmdd.job_set_final_residuals(self.job_id, final_residuals)
-        webtlsmdd.job_set_stddev_bfact(self.job_id, stddev_bfact)
-        webtlsmdd.job_set_chain_max_segs(self.job_id, chain_max_segs)
+
+        ##======================================================================
+        ##<FLATFILE>
+        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile.write("\nGENR INITIAL_RESIDUALS: %s" % initial_residuals)
+        flatfile.write("\nGENR FINAL_RESIDUALS: %s" % final_residuals)
+        flatfile.write("\nGENR STDDEV_BFACT: %s" % stddev_bfact)
+        flatfile.write("\nGENR MAX_SEGS: %s" % chain_max_segs)
+        flatfile.close()
+        ## </FLATFILE>
+        ##======================================================================
 
         self.write_summary_index()
-        
+
         ## change back to original directory
         os.chdir(old_dir)
 
@@ -535,6 +576,7 @@ class HTMLSummaryReport(Report):
     def html_globals(self):
         """Output a HTML table displaying global TLSMD settings.
         """
+        ## NOTE: class HTMLSummaryReport()
         if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
             tls_model = "Isotropic"
         elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
@@ -575,6 +617,38 @@ class HTMLSummaryReport(Report):
              '</center>\n']
 
         return "".join(l)
+
+    def flatfile_globals(self):
+        """Store globals in flatfile
+        """
+        ## NOTE: class HTMLSummaryReport()
+        ##======================================================================
+        ##<FLATFILE>
+        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+
+        flatfile.write("\nGLOB JOB_ID: %s" % conf.globalconf.job_id)
+        flatfile.write("\nGLOB STRUCT_ID: %s" % conf.globalconf.struct_id)
+        flatfile.write("\nGLOB TLS_MODEL: %s" % conf.globalconf.tls_model)
+        flatfile.write("\nGLOB WEIGHT_MODEL: %s" % conf.globalconf.weight_model)
+        flatfile.write("\nGLOB INCLUDE_ATOMS: %s" % conf.globalconf.include_atoms)
+        flatfile.write("\nGLOB MIN_SUBSEGMENT_SIZE: %s" % conf.globalconf.min_subsegment_size)
+        flatfile.write("\nGLOB ADP_PROB: %s" % conf.globalconf.adp_prob)
+        flatfile.write("\nGLOB ADP_SMOOTHING: %s" % conf.globalconf.adp_smoothing)
+        flatfile.write("\nGLOB NPARTS: %s" % conf.globalconf.nparts)
+        flatfile.write("\nGLOB USE_SVG: %s" % conf.globalconf.use_svg)
+        flatfile.write("\nGLOB SKIP_HTML: %s" % conf.globalconf.skip_html)
+        flatfile.write("\nGLOB SKIP_JMOL: %s" % conf.globalconf.skip_jmol)
+        flatfile.write("\nGLOB SKIP_JMOL_VIEW: %s" % conf.globalconf.skip_jmol_view)
+        flatfile.write("\nGLOB SKIP_JMOL_ANIMATE: %s" % conf.globalconf.skip_jmol_animate)
+        flatfile.write("\nGLOB SKIP_HISTOGRAM: %s" % conf.globalconf.skip_histogram)
+        flatfile.write("\nGLOB CROSS_CHAIN_ANALYSIS: %s" % conf.globalconf.cross_chain_analysis)
+        flatfile.write("\nGLOB RECOMBINATION: %s" % conf.globalconf.recombination)
+        flatfile.write("\nGLOB TARGET_STRUCT_PATH: %s" % conf.globalconf.target_struct_path)
+        flatfile.write("\nGLOB TARGET_STRUCT_CHAIN_ID: %s" % conf.globalconf.target_struct_chain_id)
+
+        flatfile.close()
+        ##</FLATFILE>
+        ##======================================================================
 
 
 class HTMLReport(Report):
@@ -762,18 +836,24 @@ class HTMLReport(Report):
              '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">']
 
         if self.struct.title:
-            l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>' % (self.struct.title))
+            l += ['<tr style="background-color:#dddddd"><td>Title</td>',
+                  '<td><b>%s</b></td></tr>' % (self.struct.title)]
                 
         if self.struct.header:
-            l.append('<tr style="background-color:#dddddd"><td>Heading Summary</td><td><b>%s</b></td></tr>' % (self.struct.header))
+            l += ['<tr style="background-color:#dddddd"><td>Heading Summary</td>',
+                  '<td><b>%s</b></td></tr>' % (self.struct.header)]
 
         if self.struct.experimental_method:
-            l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>' % (self.struct.experimental_method))
+            l += ['<tr style="background-color:#dddddd"><td>Experimental Method</td>',
+                  '<td><b>%s</b></td></tr>' % (self.struct.experimental_method)]
 
              
-        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>' % (tls_model),
-             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
-             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
+        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td>',
+             '<td><b>%s</b></td></tr>' % (tls_model),
+             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td>',
+             '<td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
+             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td>',
+             '<td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
              '</table>',
              '</center>']
 
@@ -927,20 +1007,22 @@ class HTMLReport(Report):
 
         #self.write_tls_pdb_file(chain, cpartition) ## write out PDB file
 
-        ## Lookup Jmol viewer/animate skip in database
+        ## Lookup Jmol viewer/animate skip in globals
+        ## FIXME: This not not work without access to BerkeleyDB
         try:
             job_id = conf.globalconf.job_id
-            jmol_view_toggle = webtlsmdd.job_get_jmol_view(job_id)
-            jmol_animate_toggle = webtlsmdd.job_get_jmol_animate(job_id)
+            jmol_view_toggle = conf.globalconf.skip_jmol_view
+            jmol_animate_toggle = conf.globalconf.skip_jmol_animate
+            console.stdoutln("GLOBAL: skip_jmol_view = %s" % conf.globalconf.skip_jmol_view)
         except:
             jmol_view_toggle = ""
             jmol_animate_toggle = ""
-            console.stdoutln("     Warning: couldn't find Jmol toggle switches in database")
+            console.stdoutln("     Warning: couldn't find Jmol toggle globals")
             print console.formatExceptionInfo()
             pass
 
         ## Jmol Viewer Script
-        if conf.JMOL_SKIP or (jmol_view_toggle == 'ON'):
+        if conf.JMOL_SKIP or conf.globalconf.skip_jmol_view:
             jmol_file = ""
             console.stdoutln("NOTE: Skipping Jmol-viewer section") ## LOGLINE
         else:
@@ -954,7 +1036,7 @@ class HTMLReport(Report):
                 pass
 
         ## Jmol Animation Script
-        if conf.JMOL_SKIP or (jmol_animate_toggle == 'ON'):
+        if conf.JMOL_SKIP or conf.globalconf.skip_jmol_animate:
             console.stdoutln("NOTE: Skipping Jmol-animation section") ## LOGLINE
             jmol_animate_file = ""
             raw_r3d_file, r3d_body_file = self.generate_raw_backbone_file(chain, cpartition)
@@ -1093,7 +1175,8 @@ class HTMLReport(Report):
              '</table>',
 
              ## now the table. Pass "ntls" as well, 2008-04-05
-             html_tls_group_table(ntls, chain, cpartition),
+             ## NOTE: This is for the main "ANALYSIS" page.
+             html_tls_group_table(ntls, chain, cpartition, detail = True),
              
              '<br clear="all">']
         
@@ -1403,12 +1486,12 @@ class HTMLReport(Report):
         tls_file = TLS.TLSFile()
         tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
 
-        ##==FlatFile============================================================
+        ##======================================================================
+        ##<FLATFILE>
         chain_ntls = "%s,%s" % (chain_id, cpartition.num_tls_segments())
-        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
-        flatfile = open("flatfile.txt", "a+")
-        flatfile.write("TI [%s] %s write_tlsout_file\n" % (
-            timestamp, chain_ntls))
+        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile.write("\nTIME %s.0 [%s] write_tlsout_file" % (
+            chain_ntls, misc.timestamp()))
 
         for tls in cpartition.iter_tls_segments():
             ## don't write out bypass edges
@@ -1420,9 +1503,10 @@ class HTMLReport(Report):
             tls_desc.set_tls_group(tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
-                flatfile.write("XX %s TLSOUT %s:%s %f\n" % (
+                flatfile.write("\nCCCC %s.0 TLSOUT %s:%s %f" % (
                     chain_ntls, frag_id1, frag_id2, tls.tls_group.itls_T))
 
+        flatfile.close()
         tls_file.save(open(tlsout_file, "w"))
 
 	console.stdoutln("[%s,%s] REFMAC: Saving %s" % (
@@ -1905,7 +1989,8 @@ class ChainNTLSAnalysisReport(Report):
              
              '<br/>']
 
-        l += [self.html_tls_group_table(),'<br/><hr>']
+        ## NOTE: The following table is for the "Full TLS Partition Analysis" pages
+        l += [self.html_tls_group_table(detail = False),'<br/><hr>']
         l += [self.html_bmean(),'<br/><hr>'] ## REQUIRED!
         l += [self.tls_segment_recombination(),'<br/><hr>']
         l += [self.html_translation_analysis(),'<br/><hr>']
@@ -1918,7 +2003,7 @@ class ChainNTLSAnalysisReport(Report):
         
         ## Create histogram plots
         job_id = conf.globalconf.job_id
-        if conf.HISTOGRAM_SKIP or (webtlsmdd.job_get_histogram(job_id) == 'ON'):
+        if conf.HISTOGRAM_SKIP or conf.globalconf.skip_histogram:
             console.stdoutln("NOTE: Skipping Histogram section") ## LOGLINE
         else:
             try:
@@ -1938,9 +2023,9 @@ class ChainNTLSAnalysisReport(Report):
         open(self.index, "w").write("".join(l))
 	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
-    def html_tls_group_table(self):
+    def html_tls_group_table(self, detail):
         ## Pass "ntls" as well, 2008-04-05
-        return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..")
+        return html_tls_group_table(self.ntls, self.chain, self.cpartition, "..", detail)
 
     def html_translation_analysis(self):
         """Perform a translation analysis of the protein chain as
@@ -2030,11 +2115,11 @@ class ChainNTLSAnalysisReport(Report):
 
         ##======================================================================
         ##<FLATFILE>
-        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
-        flatfile = open("../flatfile.txt", "a+")
-        flatfile.write("TI [%s] %s tls_segment_recombination" % (
-            timestamp, chain_ntls))
-        flatfile.write("\nXX %s RECOMBINATION" % chain_ntls)
+        flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+
+        flatfile.write("\nTIME %s.0 [%s] tls_segment_recombination" % (
+            chain_ntls, misc.timestamp()))
+        flatfile.write("\nCCCC %s.0 RECOMBINATION" % chain_ntls)
         ##</FLATFILE>
         ##======================================================================
 
@@ -2049,15 +2134,31 @@ class ChainNTLSAnalysisReport(Report):
             tbl[0, i + 1] = tbl[i + 1, 0]
 
             ##<FLATFILE>
-            flatfile.write("\nRS %s %s rmsd_b = %.2f; residual_rmsd_b = %.2f" % (
-                chain_ntls, i+1, tls.rmsd_b, rmatrix[i, i]))
-            flatfile.write("\nIT %s %s T = %s" % (
+            flatfile.write("\nRECB %s.%s RMSD_B: %.2f" % (
+                chain_ntls, i+1, tls.rmsd_b))
+            flatfile.write("\nRECB %s.%s RESIDUAL_RMSD_B: %.2f" % (
+                chain_ntls, i+1, rmatrix[i, i]))
+            flatfile.write("\nRECB %s.%s T = %.8f" % (
                 chain_ntls, i+1, tls.tls_group.itls_T))
-            flatfile.write("\nIL %s %s L = %s" % (
-                chain_ntls, i+1, tls.tls_group.itls_L))
-            flatfile.write("\nIS %s %s S = %s" % (
-                chain_ntls, i+1, tls.tls_group.itls_S))
-            flatfile.write("\nIO %s %s origin = %.3f,%.3f,%.3f" % (
+            ## L = | 0,0 0,1 0,2 |
+            ##     | 1,0 1,1 1,2 |
+            ##     | 2,0 2,1 2,2 |
+            ## L = 0,0 1,1 2,2 1,0 2,1 2,0
+            ## L = [0][0] [1][1] [2][2] [1][0] [2][1] [2][0]
+            flatfile.write("\nRECB %s.%s L = %.8f,%.8f,%.8f,%.8f,%.8f,%.8f" % (
+                chain_ntls, i+1,
+                tls.tls_group.itls_L[0][0],
+                tls.tls_group.itls_L[1][1],
+                tls.tls_group.itls_L[2][2],
+                tls.tls_group.itls_L[1][0],
+                tls.tls_group.itls_L[2][1],
+                tls.tls_group.itls_L[2][0]))
+            flatfile.write("\nRECB %s.%s S = %.8f,%.8f,%.8f" % (
+                chain_ntls, i+1,
+                tls.tls_group.itls_S[0],
+                tls.tls_group.itls_S[1],
+                tls.tls_group.itls_S[2]))
+            flatfile.write("\nRECB %s.%s ORIGIN = %.3f,%.3f,%.3f" % (
                 chain_ntls, i+1,
                 tls.tls_group.origin[0],
                 tls.tls_group.origin[1],
@@ -2071,7 +2172,7 @@ class ChainNTLSAnalysisReport(Report):
         min_rmsd_b = rmatrix[0, 0]
         max_rmsd_b = rmatrix[0, 0]
         for i in xrange(m):
-            flatfile.write('\nRO %s ' % chain_ntls) ## FLATFILE
+            flatfile.write('\nMATX %s.%s ' % (chain_ntls, i+1)) ## FLATFILE
             for j in xrange(n):
                 flatfile.write('%.2f,' % rmatrix[i, j]) ## FLATFILE
                 min_rmsd_b = min(min_rmsd_b, rmatrix[i, j])
