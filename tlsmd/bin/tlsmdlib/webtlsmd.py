@@ -79,21 +79,45 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
     """
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
-    job_url = webtlsmdd.job_get_job_url(job_id)
+    ## XXX: OLD: The following was the old way of looking up the dirs/URLs from
+    ## the BerkeleyDB. It was slow and unnecessary, as most of it was globals.
+    #job_dir = webtlsmdd.job_get_job_dir(job_id)
+    #job_url = webtlsmdd.job_get_job_url(job_id)
+    #
+    #analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
+    #analysis_index = os.path.join(analysis_dir, "index.html")
+    #analysis_url = webtlsmdd.job_get_analysis_url(job_id)
+    #
+    #summary_index = os.path.join(job_dir, "ANALYSIS/summary.html")
+    #summary_url = os.path.join(job_url, "ANALYSIS/summary.html")
+    #
+    #logfile = os.path.join(job_dir, "log.txt")
+    #log_url = webtlsmdd.job_get_log_url(job_id)
+    #
+    #tarball_url = webtlsmdd.job_get_tarball_url(job_id)
 
-    analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
+    ## XXX: NEW: The following is the new way, bypassing the BerkeleyDB.
+    ## /home/tlsmd/public_html/jobs/TLSMD834_eFxxSCoB/
+    job_dir = os.path.join(conf.TLSMD_WWW_ROOT, "jobs", job_id)
+    ## http://skuld.bmsc.washington.edu/~tlsmd/jobs/TLSMD834_eFxxSCoB
+    job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+
+    ## /home/tlsmd/public_html/jobs/TLSMD834_eFxxSCoB/ANALYSIS
+    analysis_dir = os.path.join(job_dir, "ANALYSIS")
     analysis_index = os.path.join(analysis_dir, "index.html")
-    analysis_url = webtlsmdd.job_get_analysis_url(job_id)
+    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/ANALYSIS/index.html
+    analysis_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "ANALYSIS/index.html")
 
     summary_index = os.path.join(job_dir, "ANALYSIS/summary.html")
     summary_url = os.path.join(job_url, "ANALYSIS/summary.html")
 
     logfile = os.path.join(job_dir, "log.txt")
-    log_url = webtlsmdd.job_get_log_url(job_id)
+    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/log.txt
+    log_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "log.txt")
 
-    ## tarball. Christoph Champ, 2007-12-03
-    tarball_url = webtlsmdd.job_get_tarball_url(job_id)
+    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/TLSMD834_eFxxSCoB.tar.gz
+    tarball_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "%s.tar.gz" % job_id)
+    #===========================================================================
 
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
@@ -832,6 +856,7 @@ def extract_job_edit_form(form, webtlsmdd):
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
     ## JMol-viewer toggle feature (default=OFF/False). Christoph Champ, 2008-06-13
+    ## FIXME: This doesn't seem to work. Globals not saved here.
     if form.has_key("skip_jmol_view"):
         jmol_view_toggle = form["skip_jmol_view"].value.strip()
         if jmol_view_toggle in ["ON", "OFF"]:
@@ -1850,7 +1875,7 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
 	fstd.write("%s\t%s\n" % (res_id[s], stddev11))
-	if stddev11 < 0.1:
+        if stddev11 < conf.MIN_STDDEV_BFACT or stddev11 > conf.MAX_STDDEV_BFACT:
 	   nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
            fstd.write("\n\n")
@@ -1864,7 +1889,7 @@ set style data linespoints
 set output '<webtmp_path>/<tmpfile>.png'
 set yrange [0:*]
 set ytics nomirror tc rgb 'blue'
-set y2range [0:1]
+#set y2range [0:1]
 set y2label 'Å^2' norotate tc rgb 'red'
 set y2tics nomirror tc rgb 'red'
 set format y2 '%.1f'
