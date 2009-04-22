@@ -5,6 +5,7 @@
 ## included as part of this package.
 
 import time
+import datetime
 import console
 
 _STIME = 0.0
@@ -17,6 +18,11 @@ def end_timing():
     global _STIME
     tm = time.time() - _STIME
     return "Computation Time: %5.2f sec" % (tm)
+
+def timestamp():
+    ## TODO: Allow for either "-7" or "-10". 2009-03-25
+    ## Also, allow for "Y-M-D" format, etc.
+    return datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
 
 def begin_chain_timing(chain_id):
     console.stdoutln("BEGIN TIMING CHAIN %s %f" % (chain_id, time.time()))
