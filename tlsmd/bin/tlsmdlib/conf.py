@@ -67,8 +67,8 @@ VIS_WIDTH  = 320 ## default: 320
 VIS_HEIGHT = 200 ## default: 200
 
 ## sanity checks globals
-MIN_STDDEV_BFACT = 0.1
-MAX_STDDEV_BFACT = 20.0
+MIN_STDDEV_BFACT = 0.01
+MAX_STDDEV_BFACT = 60.0
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
@@ -84,7 +84,7 @@ BMEAN_PLOT_GROUP_TITLES = False
 JMOL_SKIP = False ## Toggle switch
 JMOL_SIZE = 600
 
-## These are for selecting only backbone atome; used in Raster3D
+## These are for selecting only backbone atoms; used in Raster3D
 DISPLACE_ATOM_NAME_DICT = {
     "CA": True, "P": True, "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True,
     "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
