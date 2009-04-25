@@ -69,6 +69,7 @@ VIS_HEIGHT = 200 ## default: 200
 ## sanity checks globals
 MIN_STDDEV_BFACT = 0.01
 MAX_STDDEV_BFACT = 60.0
+MIN_RESIDUES_PER_CHAIN = 10
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
