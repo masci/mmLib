@@ -326,12 +326,6 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     os.chdir(job_dir)
     webtlsmdd.jobdb.job_data_set(job_id, "job_dir", job_dir)
 
-    ## save original PDB file for later return to user
-    #original_pdb_filename = "original.pdb"
-    #filobj = open(original_pdb_filename, "w")
-    #filobj.write(struct_bin.data)
-    #filobj.close()
-
     ## save PDB file
     pdb_filename = "struct.pdb"
     webtlsmdd.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
@@ -404,7 +398,6 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             generate_sugars_r3d(job_dir, chain.chain_id)
 
         ## minimum number of residues per chain, 2009-04-24
-        #if num_frags < 10:
         if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
             continue
 
@@ -448,7 +441,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         webtlsmdd.remove_job(job_id)
         return 'Your submitted structure contained no atoms'
 
-    if largest_chain_seen > 1700:
+    if largest_chain_seen > conf.LARGEST_CHAIN_ALLOWED:
         webtlsmdd.remove_job(job_id)
         return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
 
@@ -500,7 +493,7 @@ def RemoveJob(webtlsmdd, job_id):
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
 
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         for root, dirs, files in os.walk(job_dir, topdown = False):
             for name in files:
@@ -519,7 +512,7 @@ def SignalJob(webtlsmdd, job_id):
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
 
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
             tmp_pid = webtlsmdd.job_get_pid(job_id)
@@ -544,7 +537,7 @@ def KillJob(webtlsmdd, job_id):
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
 
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
             ## Switched to storing pid in database
@@ -566,8 +559,10 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     dictionary of results is returned.
     """
     struct_id = webtlsmdd.job_get_structure_id(job_id)
-    analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
-    analysis_base_url = webtlsmdd.job_get_analysis_base_url(job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    analysis_dir = os.path.join(job_dir, "ANALYSIS")
+    job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+    analysis_base_url = "%s/ANALYSIS" % (job_url)
 
     if not os.path.isdir(analysis_dir):
         return "Job analysis directory does not exist"
