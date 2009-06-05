@@ -41,6 +41,7 @@ if os.path.exists(ALTCONF):
 
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
+WEBTLSMD_URL           = "%s/cgi-bin/webtlsmd.cgi" % (TLSMD_PUBLIC_URL)
 WEBTMP_PATH	       = "/var/www/webtmp"
 GNUPLOT                = "/usr/local/bin/gnuplot"
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
@@ -53,14 +54,14 @@ WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT, "pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR, "pdbids.txt")
 TLSANIM2R3D            = "/home/tlsmd/tlsmd/bin/tlsanim2r3d"
 
-## the isoprobability contour level for all visualizations
-ADP_PROB = 50
-
-## maximum number of parallel jobs allowable at the same time
-MAX_PARALLEL_JOBS = 4
-
-## number of TLS partitons for each chain
-NPARTS = 20
+## General defaults
+MAX_PARALLEL_JOBS     = 4  ## maximum number of parallel jobs allowable at the same time
+MAX_JOB_ID_LEN        = 19  ## maximum string length of "job_id" (e.g., "TLSMD1225_CrjLhBTM")
+LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger than this
+NPARTS                = 20  ## maximum number of TLS partitons for each chain (default/max allowed = 20)
+PRIVATE_JOBS          = True  ## controls the default "private" settings
+PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
+ADP_PROB              = 50  ## the isoprobability contour level for all visualizations
 
 ## the pixel width of the TLS visualization rendered ray traces
 VIS_WIDTH  = 320 ## default: 320
@@ -81,9 +82,11 @@ BMEAN_PLOT_WIDTH  = 640
 BMEAN_PLOT_HEIGHT = 250
 BMEAN_PLOT_GROUP_TITLES = False
 
-## the Jmol viewer is a square window, generated with this pixel size
-JMOL_SKIP = False ## Toggle switch
-JMOL_SIZE = 600
+## MySQL global
+USE_BDB   = False
+USE_MYSQL = True
+MYSQL_LOG = False
+MYSQL_LOG_FILE = "/home/tlsmd/log/mysql.log"
 
 ## These are for selecting only backbone atoms; used in Raster3D
 DISPLACE_ATOM_NAME_DICT = {
@@ -91,6 +94,9 @@ DISPLACE_ATOM_NAME_DICT = {
     "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
     }
 
+## the Jmol viewer is a square window, generated with this pixel size
+JMOL_SKIP = False ## Toggle switch
+JMOL_SIZE = 600
 ## turn on/off various sections
 RENDER_SKIP    = False
 REFMAC_SKIP    = False
@@ -124,9 +130,9 @@ class GlobalConfiguration(object):
         self.use_svg = False
         self.skip_html = False
         self.skip_jmol = False
-        self.skip_jmol_view = False
-        self.skip_jmol_animate = False
-        self.skip_histogram = True
+        self.generate_jmol_view = False
+        self.generate_jmol_animate = False
+        self.generate_histogram = False
         self.cross_chain_analysis = False
         self.webtlsmdd = None
         self.job_id = None
