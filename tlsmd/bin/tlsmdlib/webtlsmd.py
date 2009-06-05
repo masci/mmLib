@@ -431,32 +431,30 @@ def html_program_settings_table(fdict):
 
          '</tr><tr>'
          ## JMol view/animate toggle boxes (default=OFF/False)
-         ## FIXME: The radio buttons are backwards
          '<td valign="top" align="left">',
          '<fieldset><legend>JMol toggle switches</legend>',
          #'<div style="font-size:xx-small">Turn JMol analysis on/off.</div>',
          '<p>',
          '<label>Generate JMol-viewer pages: </label>',
-         '<input name="skip_jmol_view" type="radio" value="OFF" checked="checked" />yes',
-         '<input name="skip_jmol_view" type="radio" value="ON" />no',
+         '<input name="generate_jmol_view" type="radio" value="True" checked="checked" />yes',
+         '<input name="generate_jmol_view" type="radio" value="False" />no',
          '</p>',
          '<p>',
          '<label>Generate JMol-animation pages: </label>',
-         '<input name="skip_jmol_animate" type="radio" value="OFF" checked="checked" />yes',
-         '<input name="skip_jmol_animate" type="radio" value="ON" />no',
+         '<input name="generate_jmol_animate" type="radio" value="True" checked="checked" />yes',
+         '<input name="generate_jmol_animate" type="radio" value="False" />no',
          '</p>',
          '</fieldset>',
          '</td>',
 
-         ## histogram toggle boxes (default=ON/True)
-         ## FIXME: The radio buttons are backwards
+         ## Generate histogram plot? (default=False)
          '<td valign="top" align="left">',
          '<fieldset><legend>Histogram toggle switches</legend>',
          #'<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
          '<p>',
          '<label>Generate histogram plots: </label>',
-         '<input name="skip_histogram" type="radio" value="OFF" />yes',
-         '<input name="skip_histogram" type="radio" value="ON" checked="checked" />no',
+         '<input name="generate_histogram" type="radio" value="True" />yes',
+         '<input name="generate_histogram" type="radio" value="False" checked="checked" />no',
          '</p>',
          '</fieldset>',
          '</td>',
@@ -466,10 +464,11 @@ def html_program_settings_table(fdict):
          ## select number of partitions per chain
          '<td valign="top" align="left">',
          '<fieldset><legend>Set number of partitions/chain</legend>',
-         '<div style="font-size:xx-small">default/max = 20</div><br/>',
+         '<div style="font-size:xx-small">default/max = %s</div><br/>' % (conf.NPARTS),
          '<p>',
          '<label>Maximum number of segments: </label>',
-         '<input name="nparts" type="text" size="2" maxlength="2" value="20" />',
+         '<input name="nparts" type="text" size="2" maxlength="2" value="%s" />' % (
+         conf.NPARTS),
          '</p>',
          '</fieldset>',
          '</td>',
@@ -670,26 +669,26 @@ def html_job_info_table(fdict):
         x += left_justify_string('Include Atoms', 'C-Alpha Atoms')
 
     ## Jmol-viewer settings. 2008-11-13
-    if fdict.get("skip_jmol_view") == "" or fdict.get("skip_jmol_view") == "OFF":
-        x += left_justify_string('Generate Jmol-viewer files', 'ON')
-    elif fdict.get("skip_jmol_view") == "ON":
-        x += left_justify_string('Generate Jmol-viewer files', 'OFF')
+    if fdict.get("generate_jmol_view") == True:
+        x += left_justify_string('Generate Jmol-viewer files', 'True')
+    elif fdict.get("generate_jmol_view") == False:
+        x += left_justify_string('Generate Jmol-viewer files', 'False')
     else:
         x += left_justify_string('Generate Jmol-viewer files', 'n/a')
 
     ## Jmol-animation settings. 2008-11-13
-    if fdict.get("skip_jmol_animate") == "" or fdict.get("skip_jmol_animate") == "OFF":
-        x += left_justify_string('Generate Jmol-animation files', 'ON')
-    elif fdict.get("skip_jmol_animate") == "ON":
-        x += left_justify_string('Generate Jmol-animation files', 'OFF')
+    if fdict.get("generate_jmol_animate") == True:
+        x += left_justify_string('Generate Jmol-animation files', 'True')
+    elif fdict.get("generate_jmol_animate") == False:
+        x += left_justify_string('Generate Jmol-animation files', 'False')
     else:
         x += left_justify_string('Generate Jmol-animation files', 'n/a')
 
     ## Histogram settings. 2008-11-13
-    if fdict.get("skip_histogram") == "" or fdict.get("skip_histogram") == "OFF":
-        x += left_justify_string('Generate histogram files', 'ON')
-    elif fdict.get("skip_histogram") == "ON":
-        x += left_justify_string('Generate histogram files', 'OFF')
+    if fdict.get("generate_histogram") == True:
+        x += left_justify_string('Generate histogram files', 'True')
+    elif fdict.get("generate_histogram") == False:
+        x += left_justify_string('Generate histogram files', 'False')
     else:
         x += left_justify_string('Generate histogram files', 'n/a')
 
@@ -740,7 +739,7 @@ def check_job_id(form, webtlsmdd):
     """
     if form.has_key("job_id"):
         job_id = form["job_id"].value
-        if len(job_id)<20:
+        if len(job_id) < conf.MAX_JOB_ID_LEN:
             if job_id.startswith("TLSMD"):
                 if webtlsmdd.job_exists(job_id):
                     return job_id
@@ -775,6 +774,15 @@ def vet_email(email_address):
     if len(local_part) > 64:
         return False
     if len(domain_part) > 255:
+        return False
+    return True
+
+def vet_pdb_id(pdbid):
+    ## PDB ID must be exactly four characters long, alphanumeric, and
+    ## the first character must be an integer.
+    if len(pdbid) < 4 or not \
+       pdbid.isalnum() or not \
+       re.match(r'^[0-9][A-Za-z0-9]{3}$', pdbid):
         return False
     return True
 
@@ -853,33 +861,39 @@ def extract_job_edit_form(form, webtlsmdd):
         if plot_format in ["PNG", "SVG"]:
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
-    ## JMol-viewer toggle feature (default=OFF/False)
-    ## FIXME: This doesn't seem to work. Globals not saved here.
-    if form.has_key("skip_jmol_view"):
-        jmol_view_toggle = form["skip_jmol_view"].value.strip()
-        if jmol_view_toggle in ["ON", "OFF"]:
-            webtlsmdd.job_set_jmol_view(job_id, jmol_view_toggle)
+    ## Generate JMol-viewer feature (default=True)
+    if form.has_key("generate_jmol_view"):
+        generate_jmol_view = form["generate_jmol_view"].value.strip()
+        if generate_jmol_view == "True":
+            webtlsmdd.job_set_jmol_view(job_id, True)
+        else:
+            webtlsmdd.job_set_jmol_view(job_id, False)
 
-    ## JMol-animation toggle feature (default=OFF/False)
-    if form.has_key("skip_jmol_animate"):
-        jmol_animate_toggle = form["skip_jmol_animate"].value.strip()
-        if jmol_animate_toggle in ["ON", "OFF"]:
-            webtlsmdd.job_set_jmol_animate(job_id, jmol_animate_toggle)
+    ## Generate JMol-animation feature (default=True)
+    if form.has_key("generate_jmol_animate"):
+        generate_jmol_animate = form["generate_jmol_animate"].value.strip()
+        if generate_jmol_animate == "True":
+            webtlsmdd.job_set_jmol_animate(job_id, True)
+        else:
+            webtlsmdd.job_set_jmol_animate(job_id, False)
 
-    ## Histogram toggle feature (default=ON/True)
-    if form.has_key("skip_histogram"):
-        histogram_toggle = form["skip_histogram"].value.strip()
-        if histogram_toggle in ["ON", "OFF"]:
-            webtlsmdd.job_set_histogram(job_id, histogram_toggle)
+    ## Generate Histogram plots (default=False)
+    if form.has_key("generate_histogram"):
+        generate_histogram = form["generate_histogram"].value.strip()
+        if generate_histogram == "True":
+            webtlsmdd.job_set_histogram(job_id, True)
+        else:
+            webtlsmdd.job_set_histogram(job_id, False)
 
     ## Select number of partition/chain (default/max=20)
     if form.has_key("nparts"):
         nparts_value = form["nparts"].value.strip()
         if nparts_value.isdigit() == False:
+            #raise SubmissionException("Integer value required for 'Maximum number of segments: %s'" % nparts_value)
             return False
-        if int(nparts_value) > 20 or int(nparts_value) < 1:
+        if int(nparts_value) > conf.NPARTS or int(nparts_value) < 1:
             ## not a valid input; force value to be int(20)
-            nparts_value = int(20)
+            nparts_value = int(conf.NPARTS)
         try:
             value = int(nparts_value)
             webtlsmdd.job_set_nparts(job_id, value)
@@ -1723,11 +1737,7 @@ class SubmitPDBPage(Page):
     def html_page(self):
         if "pdbid" not in self.form:
             raise SubmissionException("Please enter a PDB ID")
-        elif len(self.form["pdbid"].value) < 4 or not \
-             self.form["pdbid"].value.isalnum() or not \
-             re.match(r'^[0-9][A-Za-z0-9]{3}$', self.form["pdbid"].value):
-            ## PDB ID must be exactly four characters long, alphanumeric, and
-            ## the first character must be an integer.
+        elif vet_pdb_id(self.form["pdbid"].value) == False:
             raise SubmissionException("Invalid PDB ID. Please try again.")
 
         pdbid = self.form["pdbid"].value.upper()
