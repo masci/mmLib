@@ -4,9 +4,8 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-##
-## NOTE: This file contains changes and additions by Christoph Champ, 2007-10-24
 
+## Python modules
 import os
 import sys
 import time
@@ -14,25 +13,24 @@ import socket
 import string
 import random
 import math
-
+import numpy
+import re
 import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
+import subprocess
 
-import const
-import conf
-import numpy		# Added by Christoph Champ, 2007-10-23
-import subprocess	# Added by Christoph Champ, 2007-11-20
-import datetime		# Added by Christoph Champ, 2008-02-01
-import re		# Added by Christoph Champ, 2008-02-07
-from mmLib import Library # tmp
+## Pymmlib
+from mmLib import Library ## checks if is_{amino,nucleic}_acid()
+
+## TLSMD
+import conf, const, misc
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
 def timestring(secs):
     tm_struct = time.localtime(secs)
-    ## Switched to international time format. Christoph Champ, 2008-02-07
     return time.strftime("%Y-%m-%d %H:%M %Z", tm_struct)
 
 def secdiffstring(secs):
@@ -48,7 +46,7 @@ def secdiffstring(secs):
     return x.replace(" ", "0")
 
 def timediffstring(begin, end):
-    secs  = int(end - begin)
+    secs = int(end - begin)
     return secdiffstring(secs)
 
 def left_justify_string(keyword, value):
@@ -66,13 +64,13 @@ def html_nav_bar(page_name=None):
     """
     l = ['<div id="navcontainer">',
          '  <ul>',
-	 '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
          '    <li><a href="webtlsmd.cgi?page=submit1">Start a New Job</a></li>', 
-	 '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
-	 '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
-	 '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
-	 '  </ul>',
-	 '</div>'
+         '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
+         '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
+         '  </ul>',
+         '</div>'
          ]
     return "\n".join(l)
 
@@ -125,7 +123,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x  = ''
     x += '<center>'
 
-    ## Summary page. Christoph Champ, 2008-04-29
+    ## Summary page
     if (webtlsmdd.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
         x += '<h3>View <a href="%s">Summary Analysis</a></h3>' % (summary_url)
 
@@ -135,7 +133,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     if os.path.isfile(logfile):
         x += '<h3>View <a href="%s">TLSMD Logfile</a></h3>' % (log_url)
 
-    ## tarball link. Christoph Champ, 2007-12-03
+    ## tarball link
     if os.path.isfile(analysis_index):
         x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (tarball_url)
 
@@ -178,7 +176,8 @@ def html_job_edit_form(fdict, pdb=False):
     ## email address
     x += '<tr>'
     x += '<td align="right"><label>EMail Address:</td><td>'
-    x += '<input type="text" name="email" value="%s" size="25" maxlength="40" />' % (fdict.get("email", ""))
+    x += '<input type="text" name="email" value="%s" size="25" maxlength="40" />' % (
+         fdict.get("email", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -186,7 +185,8 @@ def html_job_edit_form(fdict, pdb=False):
     if not pdb:
         x += '<tr>'
         x += '<td align="right"><label>Structure Code:</td><td>'
-        x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4" />' % (fdict.get("structure_id", ""))
+        x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4" />' % (
+             fdict.get("structure_id", ""))
         x += '</label></td>'
         x += '</tr>'
 
@@ -202,9 +202,9 @@ def html_job_edit_form(fdict, pdb=False):
 
     x += '<tr><td align="right">Job State:</td>'
     try:
-	x += '<td><b>%s</b></td></tr>' % (fdict["state"])
+        x += '<td><b>%s</b></td></tr>' % (fdict["state"])
     except:
-	x += '<td><b>None</b></td></tr>'
+        x += '<td><b>None</b></td></tr>'
     
     x += '<tr><td align="right">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
@@ -257,9 +257,9 @@ def html_job_edit_form(fdict, pdb=False):
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job" />'
     if fdict.has_key("signalbutton"):
-        x += '<input type="submit" name="submit" value="Signal Job" />' ## Added. Christoph Champ, 2008-04-10
+        x += '<input type="submit" name="submit" value="Signal Job" />'
     if fdict.has_key("killbutton"):
-        x += '<input type="submit" name="submit" value="Kill Job" />' ## Added. Christoph Champ, 2008-02-03
+        x += '<input type="submit" name="submit" value="Kill Job" />'
     if fdict.has_key("requeuebutton"):
         x += '<input type="submit" name="submit" value="Requeue Job" />'
     x += '</td>'
@@ -319,19 +319,22 @@ def html_user_info_table(fdict):
          ## User name
          '<tr>',
          '<td align="right"><label for="user_name">Your Name</label></td>',
-         '<td><input type="text" id="user_name" name="user_name" value="%s" size="25" maxlength="40" /></td>' % (fdict.get("user_name","")),
+         '<td><input type="text" id="user_name" name="user_name" value="%s" size="25" maxlength="40" /></td>' % (
+             fdict.get("user_name","")),
          '</tr>',
 
          ## User email address
          '<tr>',
          '<td align="right"><label for="email">EMail Address</label></td>',
-         '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40" /></td>' % (fdict.get("email", "")),
+         '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40" /></td>' % (
+             fdict.get("email", "")),
          '</tr>',
 
-	 ## User associated notes, 2007-12-18
+         ## User associated notes
          '<tr>',
          '<td align="right"><label for="user_comment">Associated Notes</label></td>',
-         '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128" /></td>' % (fdict.get("user_comment","")),
+         '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128" /></td>' % (
+             fdict.get("user_comment","")),
          '</tr>',
 
          '</table>',
@@ -344,12 +347,6 @@ def html_program_settings_table(fdict):
        selected advanced options before completing submission.
     """
 
-    ## NOTE: The following four options/variable never seem to be used.
-    opt_plot_svg = ""
-    opt_plot_png = ""
-    opt_atoms_all = ""
-    opt_atoms_mnchn = ""
-
     l = ['<table class="inner_table">',
          '<tr class="inner_title"><th>TLSMD Program Options</th></tr>',
 
@@ -360,7 +357,7 @@ def html_program_settings_table(fdict):
          ## left table
          '<table class="ninner_table">',
 
-         ## Changed default to 'private'. Christoph Champ, 2007-12-18
+         ## default is 'private' job
          '<tr><td align="left">',
          '<input type="checkbox" id="private_job" name="private_job" value="TRUE" checked="checked" />',
          '<label for="private_job">Keep Job Private</label>',
@@ -368,7 +365,8 @@ def html_program_settings_table(fdict):
 
          '<tr><td align="left">',
          '<label for="structure_id">4-Letter Structure ID </label>',
-         '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4" />' % (fdict.get("structure_id", "")),
+         '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4" />' % (
+             fdict.get("structure_id", "")),
          '</td></tr>',
 
          '</table>',
@@ -381,9 +379,11 @@ def html_program_settings_table(fdict):
          
     for cdict in fdict.get("chains", []):
         if cdict["selected"]:
-            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (cdict["name"], cdict["name"])
+            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
+                cdict["name"], cdict["name"])
         else:
-            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (cdict["name"], cdict["name"])
+            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (
+                cdict["name"], cdict["name"])
             
         l +=['<tr><td align="left">', x, cdict["desc"], '</td></tr>' ]
 
@@ -430,7 +430,7 @@ def html_program_settings_table(fdict):
          '</td>',
 
          '</tr><tr>'
-         ## JMol view/animate toggle boxes (default=OFF/False). Christoph Champ, 2008-06-13
+         ## JMol view/animate toggle boxes (default=OFF/False)
          ## FIXME: The radio buttons are backwards
          '<td valign="top" align="left">',
          '<fieldset><legend>JMol toggle switches</legend>',
@@ -448,7 +448,7 @@ def html_program_settings_table(fdict):
          '</fieldset>',
          '</td>',
 
-         ## histogram toggle boxes (default=ON/True). Christoph Champ, 2008-10-07
+         ## histogram toggle boxes (default=ON/True)
          ## FIXME: The radio buttons are backwards
          '<td valign="top" align="left">',
          '<fieldset><legend>Histogram toggle switches</legend>',
@@ -463,7 +463,7 @@ def html_program_settings_table(fdict):
 
          '</tr><tr>'
 
-         ## select number of partitions per chain. Christoph Champ, 2008-11-04
+         ## select number of partitions per chain
          '<td valign="top" align="left">',
          '<fieldset><legend>Set number of partitions/chain</legend>',
          '<div style="font-size:xx-small">default/max = 20</div><br/>',
@@ -557,7 +557,7 @@ def html_job_info_table(fdict):
     x += '</label></td>'
     x += '</tr>'
 
-    ## user comments. Christoph Champ, 2007-12-18
+    ## user comments
     x += '<tr>'
     x += '<td align="right"><label>Associated Notes:</td><td>'
     x += '<b>%s</b>' % (fdict.get("user_comment", ""))
@@ -632,16 +632,16 @@ def html_job_info_table(fdict):
         x += '<tr><td>'
         if cdict["selected"]:
             x += '<tr>'
-	    
+
             x += '<td>%s</td>' % (cdict["desc"])
 
             if cdict.has_key("processing_time"):
                 hours = secdiffstring(cdict["processing_time"])
-	    else:
-		hours = "---"
+            else:
+                hours = "---"
             x += '<td>%s</td>' % (hours)
 
-	    x += '</tr>' 
+            x += '</tr>' 
 
     x += '</table></td></tr>'
 
@@ -718,13 +718,11 @@ def html_job_info_table(fdict):
         x += '<td colspan="3" align="left">'
         x += '<input type="submit" name="submit" value="Remove Job" />'
 
-    ## Added. Christoph Champ, 2008-04-10
     if fdict.has_key("signalbutton"):
         x += '<input type="submit" name="submit" value="Signal Job" />'
 
-    ## Added. Christoph Champ, 2008-03-07
     if fdict.has_key("killbutton"):
-	x += '<input type="submit" name="submit" value="Kill Job" />'
+        x += '<input type="submit" name="submit" value="Kill Job" />'
 
     ## FIXME: This is redundant
     if fdict.has_key("removebutton"):
@@ -812,11 +810,11 @@ def extract_job_edit_form(form, webtlsmdd):
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()
         if vet_data(structure_id, 4):
-            ## remove non-alphanumeric characters. Christoph Champ, 2008-04-22
+            ## remove non-alphanumeric characters
             structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
-    ## user_comment field added. Christoph Champ, 2007-12-18
+    ## user_comment field added
     if form.has_key("user_comment"):
         user_comment = form["user_comment"].value.strip()
         ## store only the first 128 characters. 2009-01-07
@@ -855,26 +853,26 @@ def extract_job_edit_form(form, webtlsmdd):
         if plot_format in ["PNG", "SVG"]:
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
-    ## JMol-viewer toggle feature (default=OFF/False). Christoph Champ, 2008-06-13
+    ## JMol-viewer toggle feature (default=OFF/False)
     ## FIXME: This doesn't seem to work. Globals not saved here.
     if form.has_key("skip_jmol_view"):
         jmol_view_toggle = form["skip_jmol_view"].value.strip()
         if jmol_view_toggle in ["ON", "OFF"]:
             webtlsmdd.job_set_jmol_view(job_id, jmol_view_toggle)
 
-    ## JMol-animation toggle feature (default=OFF/False). Christoph Champ, 2008-06-13
+    ## JMol-animation toggle feature (default=OFF/False)
     if form.has_key("skip_jmol_animate"):
         jmol_animate_toggle = form["skip_jmol_animate"].value.strip()
         if jmol_animate_toggle in ["ON", "OFF"]:
             webtlsmdd.job_set_jmol_animate(job_id, jmol_animate_toggle)
 
-    ## Histogram toggle feature (default=ON/True). Christoph Champ, 2008-10-08
+    ## Histogram toggle feature (default=ON/True)
     if form.has_key("skip_histogram"):
         histogram_toggle = form["skip_histogram"].value.strip()
         if histogram_toggle in ["ON", "OFF"]:
             webtlsmdd.job_set_histogram(job_id, histogram_toggle)
 
-    ## Select number of partition/chain (default/max=20). Christoph Champ, 2008-11-04
+    ## Select number of partition/chain (default/max=20)
     if form.has_key("nparts"):
         nparts_value = form["nparts"].value.strip()
         if nparts_value.isdigit() == False:
@@ -959,7 +957,7 @@ class QueuePage(Page):
     def verify_admin(self, passcode):
         try:
             code = open(conf.ADMIN_PASSWORD_FILE, "r").read().strip()
-	except IOError:
+        except IOError:
             return False
         return code == passcode
 
@@ -969,17 +967,18 @@ class QueuePage(Page):
         struct_id = jdict.get("structure_id", "xxxx")
         if struct_id.lower() == "xxxx":
             return struct_id
-	## FIXME The following link should only point to pdb.org if it is a real PDBid.
-	#return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id) ## Christoph Champ, 2008-02-20
-	return struct_id ## Christoph Champ, 2008-03-10
+        ## FIXME The following link should only point to pdb.org if it is a
+        ## real PDBid, 2008-02-20
+        #return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id)
+        return struct_id
 
     def html_head_nocgi(self, title):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
              '<html>',
              '<head>',
              '  <title>%s</title>' % (title),
-	     '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
-	     '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
+             '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
+             '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
              '</head>',
              '<body><div id="page">']
         
@@ -988,7 +987,7 @@ class QueuePage(Page):
     def html_foot(self):
         l = ['<center>',
              '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (
-             const.VERSION, (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-10])),
+             const.VERSION, misc.timestamp()),
              '</center>',
              '</div></body></html>']
         
@@ -997,7 +996,7 @@ class QueuePage(Page):
     def html_page(self):
         title = 'TLSMD: Job Status'
         job_list = self.get_job_list()
-	
+
         l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar("queue"),
@@ -1050,12 +1049,11 @@ class QueuePage(Page):
             if isinstance(user_name, unicode):
                 user_name = ""
 
-            ## New user_comment added. Christoph Champ, 2007-12-18
             user_comment = jdict.get("user_comment", "")
             if isinstance(user_comment, unicode):
                 user_comment = ""
 
-	    email_address = jdict.get("email")
+            email_address = jdict.get("email")
             if isinstance(email_address, unicode):
                 email_address = ""
             
@@ -1064,7 +1062,6 @@ class QueuePage(Page):
             if user_name != "":
                 l.append('<br/>%s' % (user_name))
 
-            ## New user_comment added. Christoph Champ, 2007-12-18
             if user_comment != "":
                 l.append('<br/>%s' % (user_comment))
 
@@ -1074,12 +1071,13 @@ class QueuePage(Page):
             return "".join(l)
 
         if jdict.get("private_job", False):
-	    ## Return job number only (non-clickable)
-	    job_number = re.match(r'[^_]*', jdict["job_id"])
-	    if job_number: return job_number.group(0)
+            ## Return job number only (non-clickable)
+            job_number = re.match(r'[^_]*', jdict["job_id"])
+            if job_number: return job_number.group(0)
             return 'private'
     
-        return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, jdict["job_id"] ,jdict["job_id"])
+        return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
+            page, jdict["job_id"] ,jdict["job_id"])
     
     def chain_size_string(self, jdict):
         if jdict.has_key("chains") == False:
@@ -1091,16 +1089,16 @@ class QueuePage(Page):
                 ## Only show chains used selected for analysis
                 listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
 
-	strx = ''
-	while len(listx)>0:
+        strx = ''
+        while len(listx) > 0:
             l3 = listx[:5]
-	    listx = listx[5:]
+            listx = listx[5:]
 
-	    strx += " ".join(l3)
-	    if len(listx)>0:
+            strx += " ".join(l3)
+            if len(listx) > 0:
                 strx += '<br/>'
-	
-	return '%s' % (strx)
+
+        return '%s' % (strx)
 
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
@@ -1121,24 +1119,24 @@ class QueuePage(Page):
 
     def html_running_job_table(self, job_list):
 
-	## get an array of "running" jobs from the job dictionary.
+        ## get an array of "running" jobs from the job dictionary.
         run_jdict = []
         for jdict in job_list:
             if jdict.get("state") == "running":
-		run_jdict.append(jdict)
+                run_jdict.append(jdict)
 
-	x  = ['<center>',
-	      '<b>%d Running Jobs</b>' % (len(run_jdict)),
-	      '<table border="0" cellpadding="3" width="100%" class="status_table">',
-	      '<tr class="status_table_head">',
-	      '<th>Job ID</th>',
-	      '<th>Structure ID</th>',
-	      '<th>Chain:Num Res</th>',
-	      '<th>Submission Date</th>',
-	      '<th colspan="2">Running Time (HH:MM.SS)</th>',
-	      '</tr>']
+        x = ['<center>',
+             '<b>%d Running Jobs</b>' % (len(run_jdict)),
+             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<tr class="status_table_head">',
+             '<th>Job ID</th>',
+             '<th>Structure ID</th>',
+             '<th>Chain:Num Res</th>',
+             '<th>Submission Date</th>',
+             '<th colspan="2">Running Time (HH:MM.SS)</th>',
+             '</tr>']
 
-	## creates mutiple rows, _if_ there are multiple "running" jobs.
+        ## creates mutiple rows, _if_ there are multiple "running" jobs.
         row1 = True
         for jdict in run_jdict:
             if row1:
@@ -1153,23 +1151,23 @@ class QueuePage(Page):
                   '<td>%s</td>' % (timestring(jdict["submit_time"]))]
 
             if jdict.has_key("run_time_begin"):
-                 hours = timediffstring(jdict["run_time_begin"], time.time())
+                hours = timediffstring(jdict["run_time_begin"], time.time())
             else:
-                 hours = "---"
+                hours = "---"
 
-	    ## progress bar
-	    try:
-	         prog_file = open(jdict["job_dir"] + "/progress", 'r')
-	         progress = int(float(prog_file.read().strip())*100)
-		 prog_file.close()
-	    except:
-		 progress = 0
+            ## progress bar
+            try:
+                prog_file = open(jdict["job_dir"] + "/progress", 'r')
+                progress = int(float(prog_file.read().strip())*100)
+                prog_file.close()
+            except:
+                progress = 0
             x += '<td align=left><div class="prog-border">'
             x += '<div class="prog-bar" style="width: %s%%;"></div>' % (progress)
             x += '</div></td>'
-	    x += '<td align="right">%s</td></tr>' % (hours)
+            x += '<td align="right">%s</td></tr>' % (hours)
 
-	## for zero running jobs
+        ## for zero running jobs
         if len(run_jdict) == 0:
             x += ['<tr>',
                   '<td colspan="6" align="center">',
@@ -1177,8 +1175,8 @@ class QueuePage(Page):
                   '</td>',
                   '</tr>']
 
-	x.append('</table></center>')
-	return "".join(x)
+        x.append('</table></center>')
+        return "".join(x)
 
     def html_queued_job_table(self, job_list):
         queued_list = []
@@ -1211,7 +1209,7 @@ class QueuePage(Page):
                   '</tr>' ]
 
         if len(queued_list) == 0:
-	    l += ['<tr>',
+            l += ['<tr>',
                   '<td colspan="4" align="center">',
                   'No Jobs Queued',
                   '</td>',
@@ -1224,7 +1222,6 @@ class QueuePage(Page):
     def html_completed_job_table(self, job_list):
         completed_list = []
         for jdict in job_list:
-	    ## Added more states to job_table. Christoph Champ, 2008-02-03
             if jdict.get("state") in ["completed",
                                       "success",
                                       "errors",   # completed w/errors
@@ -1236,7 +1233,6 @@ class QueuePage(Page):
 
         completed_list.reverse()
 
-	## Added "Total Residues". Christoph Champ, 2008-02-20
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
              '<table border="0" cellpadding="3" width="100%" class="status_table">',
@@ -1245,7 +1241,7 @@ class QueuePage(Page):
              '<th>Struct ID</th>',
              '<th>Status</th>',
              '<th>Submission Date</th>',
-	     '<th>Total Residues</th>',
+             '<th>Total Residues</th>',
              '<th>Processing Time (HH:MM.SS)</th>',
              '</tr>']
 
@@ -1259,22 +1255,22 @@ class QueuePage(Page):
                                 
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
             l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
-	    ## Direct link to logfile. Christoph Champ, 2008-02-20
-	    if jdict.has_key("log_url"):
-		logfile = os.path.join(jdict["job_dir"], "log.txt")
-		log_url = webtlsmdd.job_get_log_url(jdict["job_id"])
-		if os.path.isfile(logfile) and jdict["private_job"] == False:
-		   l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict.get("state")))
-		else:
-		   l.append('<td>%s</td>' % (jdict.get("state")))
+            ## Direct link to logfile
+            if jdict.has_key("log_url"):
+                logfile = os.path.join(jdict["job_dir"], "log.txt")
+                log_url = webtlsmdd.job_get_log_url(jdict["job_id"])
+                if os.path.isfile(logfile) and jdict["private_job"] == False:
+                    l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict.get("state")))
+                else:
+                    l.append('<td>%s</td>' % (jdict.get("state")))
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
             l.append('<td align="right">%s</td>' % (
                 self.total_number_of_residues(jdict)))
 
             if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
                 hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
-	    else:
-		hours = "---"
+            else:
+                hours = "---"
             l.append('<td align="right">%s</td>' % (hours))
 
             l.append('</tr>')
@@ -1301,7 +1297,7 @@ class QueuePage(Page):
 
         x  = ''
         x += '<center>'
-	x += '<b>Partially Submitted Jobs</b>'
+        x += '<b>Partially Submitted Jobs</b>'
         x += '<table border="0" width="100%" class="status_table">'
         x += '<tr class="status_table_head">'
         x += '<th>Job ID</th>'
@@ -1313,8 +1309,8 @@ class QueuePage(Page):
         for jdict in limbo_list:
             x += '<tr>'
 
-	    ## Return job number only (non-clickable)
-	    job_number = re.match(r'[^_]*', jdict["job_id"]) ## Added. Christoph Champ, 2008-04-01
+            ## Return job number only (non-clickable)
+            job_number = re.match(r'[^_]*', jdict["job_id"])
             #x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (job_number.group(0))
             x += '<td>%s</td>' % (self.rcsb_href(jdict))
@@ -1338,7 +1334,7 @@ class ExploreJobPage(Page):
             x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
             x += self.html_foot()
             return x
-	    
+
         title = 'TLSMD: Explore Job ID %s' % (job_id)
         x  = ''
         x += self.html_head(title, None)
@@ -1358,13 +1354,13 @@ class AdminJobPage(Page):
         jdict = webtlsmdd.job_get_dict(job_id)
         pdb = jdict.get('via_pdb', False)
 
-	if job_id is None:
-	    title = 'TLSMD: View Job'
-	    x  = self.html_head(title, None)
-	    x += html_title(title)
-	    x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
-	    x += self.html_foot()
-	    return x
+        if job_id is None:
+            title = 'TLSMD: View Job'
+            x  = self.html_head(title, None)
+            x += html_title(title)
+            x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
+            x += self.html_foot()
+            return x
         
         title = 'TLSMD: Administrate Job %s' % (job_id)
 
@@ -1374,14 +1370,14 @@ class AdminJobPage(Page):
 
         x += html_nav_bar()
         if jdict.get("state") in ["errors", "warnings", "killed", "died", "defunct"]:
-            x += html_job_nav_bar(webtlsmdd, job_id) ## Added. Christoph Champ, 2008-04-15
+            x += html_job_nav_bar(webtlsmdd, job_id)
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
-	elif self.form.has_key("submit") and self.form["submit"].value == "Signal Job":
-	    x += self.kick(job_id) ## Kick PID past stuck stage. Christoph Champ, 2008-04-10
-	elif self.form.has_key("submit") and self.form["submit"].value == "Kill Job":
-	    x += self.kill(job_id) ## Kill PID of running job_id. Christoph Champ, 2008-03-07
+        elif self.form.has_key("submit") and self.form["submit"].value == "Signal Job":
+            x += self.kick(job_id) ## Kick PID past stuck stage
+        elif self.form.has_key("submit") and self.form["submit"].value == "Kill Job":
+            x += self.kill(job_id) ## Kill PID of running job_id
         elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
             x += self.requeue(job_id)
         else:
@@ -1402,9 +1398,9 @@ class AdminJobPage(Page):
         fdict = webtlsmdd.job_get_dict(job_id)
         fdict["page"] = "admin"
         fdict["removebutton"] = True
-	if state == "queued" or state == "running":
-            fdict["signalbutton"]  = True ## Christoph Champ, 2008-04-10
-            fdict["killbutton"]    = True ## Christoph Champ, 2008-03-07
+        if state == "queued" or state == "running":
+            fdict["signalbutton"]  = True
+            fdict["killbutton"]    = True
             fdict["requeuebutton"] = True
             
         if state == "running" or state == "success" or state == "completed":
@@ -1424,34 +1420,34 @@ class AdminJobPage(Page):
         return x
 
     def kick(self, job_id):
-	"""Kick PID of stuck job past current process and continue with next step.
+        """Kick PID of stuck job past current process and continue with next step.
         """
-	if webtlsmdd.signal_job(job_id):
-	    x  = ''
-	    x += '<center>'
-	    x += '<h3>Job %s has been signaled to kick it past the process it was stuck on.</h3>' % (job_id)
-	    x += '</center>'
-	else:
-	    x  = ''
-	    x += '<center>'
-	    x += '<h3>Error: Can not signal job %s. Might need to kill it.</h3>' % (job_id)
-	    x += '</center>'
-	return x
+        if webtlsmdd.signal_job(job_id):
+            x  = ''
+            x += '<center>'
+            x += '<h3>Job %s has been signaled to kick it past the process it was stuck on.</h3>' % (job_id)
+            x += '</center>'
+        else:
+            x  = ''
+            x += '<center>'
+            x += '<h3>Error: Can not signal job %s. Might need to kill it.</h3>' % (job_id)
+            x += '</center>'
+        return x
 
     def kill(self, job_id):
-	"""Kill PID of running job_id.
+        """Kill PID of running job_id.
         """
-	if webtlsmdd.kill_job(job_id):
-	    x  = ''
-	    x += '<center>'
-	    x += '<h3>Job %s has died or its associated pid has been manually killed.</h3>' % (job_id)
-	    x += '</center>'
-	else:
-	    x  = ''
-	    x += '<center>'
-	    x += '<h3>Error: Can not remove job %s.</h3>' % (job_id)
-	    x += '</center>'
-	return x
+        if webtlsmdd.kill_job(job_id):
+            x  = ''
+            x += '<center>'
+            x += '<h3>Job %s has died or its associated pid has been manually killed.</h3>' % (job_id)
+            x += '</center>'
+        else:
+            x  = ''
+            x += '<center>'
+            x += '<h3>Error: Can not remove job %s.</h3>' % (job_id)
+            x += '</center>'
+        return x
 
     def requeue(self, job_id):
         result = webtlsmdd.requeue_job(job_id)
@@ -1485,7 +1481,6 @@ class Submit1Page(Page):
     def html_page(self):
         title = 'TLSMD: Start a New Job'
 
-        ## Added html_nav_bar(). Christoph Champ, 2007-12-03
         l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar(),
@@ -1539,7 +1534,6 @@ class Submit2Page(Page):
     def html_page(self):        
         title = 'TLSMD: Start a New Job'
         
-        ## Added html_nav_bar(). Christoph Champ, 2007-12-03
         l = [self.html_head(title, None),
              html_title(title),html_nav_bar() ]
 
@@ -1607,10 +1601,10 @@ class Submit3Page(Page):
     def html_page(self):
         try:
             job_id = self.complete_submission()
-	except SubmissionException, err:
-	    title = 'TLSMD: Job Submission Failed'
+        except SubmissionException, err:
+            title = 'TLSMD: Job Submission Failed'
             html  = '<center><p class="perror">ERROR:<br/>%s</p></center>' % (err)
-	else:
+        else:
             title = 'TLSMD: Job Submission Succeeded'
 
             l = ['<center>',
@@ -1657,11 +1651,11 @@ class Submit3Page(Page):
             raise SubmissionException('Submission Error')
 
         ## make sure the job is in the right state to be submitted
-	state = webtlsmdd.job_get_state(job_id)
-	if state == "queued":
-	    raise SubmissionException("Your job is already queued")
-    	elif state == "running":
-	    raise SubmissionException("Your job is already running")
+        state = webtlsmdd.job_get_state(job_id)
+        if state == "queued":
+            raise SubmissionException("Your job is already queued")
+        elif state == "running":
+            raise SubmissionException("Your job is already running")
 
         ## verify the submission IP address
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
@@ -1746,15 +1740,6 @@ class SubmitPDBPage(Page):
         if len(pdbfile) == 0:
             raise SubmissionException("Could not download PDB File from RCSB.")
 
-        ## basic sanity checks. Christoph Champ, 2007-10-24
-        ## If check_upload returns anything but a empty string, the server will
-        ## inform the user of the problem and not proceed any further.
-        ## XXX: Moved down to prepare_submission(). 2009-02-03
-        #ln = pdbfile.split("\n")
-        #r = check_upload(ln)
-        #if r != '':
-        #    raise SubmissionException(str(r))
- 
         job_id = self.prepare_submission(pdbfile)
 
         if not webtlsmdd.set_pdb_db(pdbid):
@@ -1775,7 +1760,7 @@ class SubmitPDBPage(Page):
     def prepare_submission(self, pdbfile):
         job_id = webtlsmdd.job_new()
 
-        ## basic sanity checks. Christoph Champ, 2007-10-24
+        ## basic sanity checks
         ## If check_upload returns anything but a empty string, the server will
         ## inform the user of the problem and not proceed any further.
         ln = pdbfile.split("\n")
@@ -1822,7 +1807,7 @@ class SubmitPDBPage(Page):
         return "".join(redirect)
 
 def generate_random_filename(code_length = 8):
-    """Generates a random 8 character string. Christoph Champ, 2007-12-03
+    """Generates a random 8 character string
     """
     random.seed()
     codelist = list(5 * string.ascii_letters)
@@ -1849,11 +1834,11 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
             res_tfac = res_tfac + tfactor[n]
             atm = atm + 1
         else:
-	    avg_tfac.append(res_tfac/atm) # store previous guy
+            avg_tfac.append(res_tfac/atm) # store previous guy
             res_id.append(resnum[n-1])    # store previous guy
             fdat.write("%s\t%s\t%s\n" % (resnum[n-1], res_tfac/atm, chain[n-1]))
-	    res_tfac = tfactor[n]
-	    atm = 1
+            res_tfac = tfactor[n]
+            atm = 1
             prevrestype = restype[n]
             prevresnum = resnum[n]
             if(prevchain != chain[n]):
@@ -1874,11 +1859,11 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
-	fstd.write("%s\t%s\n" % (res_id[s], stddev11))
+        fstd.write("%s\t%s\n" % (res_id[s], stddev11))
         if stddev11 < conf.MIN_STDDEV_BFACT or stddev11 > conf.MAX_STDDEV_BFACT:
-	   nbad = nbad + 1
+            nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
-           fstd.write("\n\n")
+            fstd.write("\n\n")
     fstd.close()
 
     return nbad, tmpfile
@@ -1930,7 +1915,7 @@ def check_upload(job_id, file):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
             webtlsmdd.job_set_resolution(job_id, resolution)
         elif re.match('^ATOM.*[0-9][a-z]', line):
-            ## E.g., Don't allow "100b". Force it to be "100B". Christoph Champ, 2008-03-11
+            ## E.g., Don't allow "100b". Force it to be "100B"
             return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
             Library.library_is_amino_acid(line[17:20].strip()) or
