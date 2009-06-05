@@ -14,9 +14,9 @@ import string
 import random
 import traceback
 ## NOTE: The order of these signals is important!
-from signal import SIG_IGN # Needed for daemon_main(). Christoph Champ, 2008-03-10
-from signal import SIGUSR1 # Needed for SignalJob(). Christoph Champ, 2008-04-10
-from signal import SIGHUP  # Needed for KillJob(). Christoph Champ, 2008-03-18
+from signal import SIG_IGN ## Needed for daemon_main()
+from signal import SIGUSR1 ## Needed for SignalJob()
+from signal import SIGHUP  ## Needed for KillJob()
 import signal
 import cPickle
 import bsddb
@@ -34,22 +34,12 @@ import re         ## for "raw grey"-backbone rendering. 2008-12-03
 from mmLib import FileIO
 
 ## TLSMD
-from tlsmdlib import conf, const, tls_calcs, email
+from tlsmdlib import conf, const, tls_calcs, email, misc
 
 
 def fatal(text):
     sys.stderr.write("[FATAL ERROR] %s\n" % (text))
     raise SystemExit
-
-
-def generate_security_code(code_length = 8):
-    """Generates a random 8
-    """
-    random.seed()
-    codelist = list(5 * string.ascii_letters) 
-    random.shuffle(codelist)
-    code = "".join(random.sample(codelist, code_length)) 
-    return code
 
 
 class JobDatabase(object):
@@ -126,7 +116,7 @@ class JobDatabase(object):
                     j = job_nums.find("_")
                     job_nums = job_nums[:j]
                     job_num = int(job_nums)
-		    
+
                 listx.append((job_num, jdict))
 
         listx.sort()
@@ -140,7 +130,7 @@ class JobDatabase(object):
     def jdict_pdb_list(self):
         """Returns a sorted list of all jdicts with 'via_pdb' in the database
         """
-        ## retrieve all jdicts from database with 'via_pdb'. Christoph Champ, 2008-09-05
+        ## retrieve all jdicts from database with 'via_pdb'
         listx = []
         for dbkey in self.db.keys():
             if dbkey.startswith("TLSMD"):
@@ -170,13 +160,13 @@ class JobDatabase(object):
     def job_new(self):
         gdict = self.retrieve_globals()
         job_num = gdict["next_job_num"]
-        gdict["next_job_num"] =  job_num + 1
+        gdict["next_job_num"] = job_num + 1
         self.store_globals(gdict)
 
         ## assign job_id
-        security_code = generate_security_code()
+        security_code = misc.generate_security_code()
         job_id = "TLSMD%d_%s" % (job_num, security_code)
-	    
+
         ## create job dictionary
         jdict = {}
         jdict["job_id"] = job_id
@@ -197,7 +187,7 @@ class JobDatabase(object):
         if jdict is None:
             return ""
         value = jdict.get(key)
-	if isinstance(value, unicode):
+        if isinstance(value, unicode):
             return ""
         if value is None:
             return ""
@@ -364,7 +354,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     log_url = "%s/log.txt" % (job_url)
     webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
 
-    ## create tarball path and url. Christoph Champ, 2007-12-03
+    ## create tarball path and url
     tarball_url = "%s/%s.tar.gz" % (job_url, job_id)
     webtlsmdd.jobdb.job_data_set(job_id, "tarball_url", tarball_url)
 
@@ -526,23 +516,21 @@ def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
        the next step. It will eventually have a state "warnings"
     """
-    ## Christoph Champ, 2008-04-10
-
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
 
     job_dir = webtlsmdd.job_get_job_dir(job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
-	    tmp_pid = webtlsmdd.job_get_pid(job_id)
-	    pid = int(tmp_pid)
+            tmp_pid = webtlsmdd.job_get_pid(job_id)
+            pid = int(tmp_pid)
         except:
-	    return False
+            return False
         try:
             ## Send signal SIGUSR1 and try to continue to job process.
-	    os.kill(pid, SIGUSR1)
+            os.kill(pid, SIGUSR1)
         except:
-	    return False
+            return False
 
     return True
 
@@ -550,7 +538,6 @@ def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the 
        "Completed Jobs" section as "killed" state
     """
-    ## Christoph Champ, 2008-03-13
     ## NOTE: We want to keep the job_id around in order to inform the user
     ## that their job has been "killed".
 
@@ -560,15 +547,15 @@ def KillJob(webtlsmdd, job_id):
     job_dir = webtlsmdd.job_get_job_dir(job_id)
     if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
         try:
-	    ## Switched to storing pid in database. Christoph Champ, 2008-03-14
-	    tmp_pid = webtlsmdd.job_get_pid(job_id)
-	    pid = int(tmp_pid)
+            ## Switched to storing pid in database
+            tmp_pid = webtlsmdd.job_get_pid(job_id)
+            pid = int(tmp_pid)
         except:
-	    return False
+            return False
         try:
-	    os.kill(pid, SIGHUP)
+            os.kill(pid, SIGHUP)
         except:
-	    return False
+            return False
 
     return True
 
@@ -611,13 +598,6 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
         tlsins.append(tlsin)
 
     ## form unique pdbout/tlsout filenames
-    listx = [struct_id]
-    #for chain_id, ntls in chain_ntls:
-    #    ## FIXME: Filename lengths must be less than 255 characters.
-    #    listx.append("CHAIN%s" % (chain_id))
-    #    listx.append("NTLS%d" % (ntls))
-    #    #listx.append("%s%d" % (chain_id, ntls))
-    #outbase ="_".join(listx)
     outbase = job_id
     pdbout = "%s.pdb" % (outbase)
 
@@ -625,24 +605,24 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     ## for refinement, so it's important for the filename to have
     ## the tlsin extension so the user is not confused
     tlsout = "%s.tlsin" % (outbase)
-    phenixout = "%s.phenix" % (outbase) ## PHENIX, Christoph Champ, 2007-11-06
+    phenixout = "%s.phenix" % (outbase)
 
     ## make urls for linking
     pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
     tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
-    phenixout_url = "%s/%s" % (analysis_base_url, phenixout) ## PHENIX, Christoph Champ, 2007-11-06
+    phenixout_url = "%s/%s" % (analysis_base_url, phenixout)
 
     ## create the files
     tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
-    tls_calcs.phenix_prep(pdbin, tlsins, phenixout) ## PHENIX, Christoph Champ, 2007-11-06
+    tls_calcs.phenix_prep(pdbin, tlsins, phenixout)
 
     os.chdir(old_dir)
     return dict(pdbout = pdbout,
                 pdbout_url = pdbout_url,
                 tlsout = tlsout,
                 tlsout_url = tlsout_url,
-		phenixout = phenixout,
-		phenixout_url = phenixout_url)
+                phenixout = phenixout,
+                phenixout_url = phenixout_url)
 
     
 class WebTLSMDDaemon(object):
@@ -676,7 +656,6 @@ class WebTLSMDDaemon(object):
     def get_next_queued_job_id(self):
         job_list = self.job_list()
         for jdict in job_list:
-	    ## Changed. Christoph Champ, 2008-01-29
             if jdict.get("state") == "queued":
                 return jdict["job_id"]
         return ""
@@ -693,18 +672,16 @@ class WebTLSMDDaemon(object):
         return RemoveJob(self, job_id)
 
     def signal_job(self, job_id):
-	"""Signals a job stuck on a certain task to skip that step and move on
+        """Signals a job stuck on a certain task to skip that step and move on
            to the next step. It will eventually have a state "warnings".
-	"""
-	## Christoph Champ, 2008-04-10
-	return SignalJob(self, job_id)
+        """
+        return SignalJob(self, job_id)
 
     def kill_job(self, job_id):
-	"""Kills jobs in state "running" by pid and moves them to the
+        """Kills jobs in state "running" by pid and moves them to the
            "Completed Jobs" section as "killed" state.
-	"""
-	## Christoph Champ, 2008-03-07
-	return KillJob(self, job_id)
+        """
+        return KillJob(self, job_id)
 
     def job_set_remote_addr(self, job_id, remote_addr):
         self.jobdb.job_data_set(job_id, "ip_addr", remote_addr)
@@ -727,7 +704,6 @@ class WebTLSMDDaemon(object):
     def job_get_analysis_base_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "analysis_base_url")
 
-    ## Christoph Champ, 2008-04-29
     def job_get_job_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "job_url")
 
@@ -742,7 +718,6 @@ class WebTLSMDDaemon(object):
         self.jobdb.job_data_set(job_id, "pdb_dir", directory)
         return directory
 
-    ## New pid field added. Christoph Champ, 2008-03-14
     def job_set_pid(self, job_id, os_pid):
         self.jobdb.job_data_set(job_id, "pid", os_pid)
         return os_pid
@@ -752,7 +727,6 @@ class WebTLSMDDaemon(object):
     def job_get_log_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "log_url")
 
-    ## tarball url. Christoph Champ, 2007-12-03
     def job_get_tarball_url(self, job_id):
         return self.jobdb.job_data_get(job_id, "tarball_url")
 
@@ -774,7 +748,6 @@ class WebTLSMDDaemon(object):
     def job_get_user_name(self, job_id):
         return self.jobdb.job_data_get(job_id, "user_name")
 
-    ## New user_comment field added. Christoph Champ, 2007-12-18
     def job_set_user_comment(self, job_id, user_comment):
         self.jobdb.job_data_set(job_id, "user_comment", user_comment)
         return user_comment
@@ -799,7 +772,7 @@ class WebTLSMDDaemon(object):
     def job_get_structure_id(self, job_id):
         return self.jobdb.job_data_get(job_id, "structure_id")
 
-    ## This data comes from the HEADER line. Christoph Champ, 2009-02-03
+    ## This data comes from the HEADER line
     ## It will be a four character string and will be "xxxx" for RefMac.
     def job_set_header_id(self, job_id, header_id):
         self.jobdb.job_data_set(job_id, "header_id", header_id)
@@ -807,7 +780,7 @@ class WebTLSMDDaemon(object):
     def job_get_header_id(self, job_id):
         return self.jobdb.job_data_get(job_id, "header_id")
 
-    ## This data comes from the REMARK line. Christoph Champ, 2009-02-09
+    ## This data comes from the REMARK line
     ## It will be a string something like "1.80"
     def job_set_resolution(self, job_id, resolution):
         self.jobdb.job_data_set(job_id, "resolution", resolution)
@@ -869,28 +842,28 @@ class WebTLSMDDaemon(object):
     def job_get_plot_format(self, job_id):
         return self.jobdb.job_data_get(job_id, "plot_format")
 
-    ## JMol view toggle feature (default=ON/True). Christoph Champ, 2008-06-13
+    ## JMol view toggle feature (default=ON/True)
     def job_set_jmol_view(self, job_id, skip_jmol_view):
         self.jobdb.job_data_set(job_id, "skip_jmol_view", skip_jmol_view)
         return skip_jmol_view
     def job_get_jmol_view(self, job_id):
         return self.jobdb.job_data_get(job_id, "skip_jmol_view")
 
-    ## JMol animate toggle feature (default=ON/True). Christoph Champ, 2008-06-13
+    ## JMol animate toggle feature (default=ON/True)
     def job_set_jmol_animate(self, job_id, skip_jmol_animate):
         self.jobdb.job_data_set(job_id, "skip_jmol_animate", skip_jmol_animate)
         return skip_jmol_animate
     def job_get_jmol_animate(self, job_id):
         return self.jobdb.job_data_get(job_id, "skip_jmol_animate")
 
-    ## Histogram toggle feature (default=ON/True). Christoph Champ, 2008-10-08
+    ## Histogram toggle feature (default=ON/True)
     def job_set_histogram(self, job_id, skip_histogram):
         self.jobdb.job_data_set(job_id, "skip_histogram", skip_histogram)
         return skip_histogram
     def job_get_histogram(self, job_id):
         return self.jobdb.job_data_get(job_id, "skip_histogram")
 
-    ## Set/get number of partitions/chain. Christoph Champ, 2008-11-04
+    ## Set/get number of partitions/chain
     def job_set_nparts(self, job_id, nparts):
         self.jobdb.job_data_set(job_id, "nparts", nparts)
         return nparts
@@ -929,7 +902,7 @@ class WebTLSMDDaemon(object):
         try:
             f = open(conf.WEBTLSMDD_PDBID_FILE, 'r')
         except IOError:
-            # if it doesn't exist create it
+            ## if it doesn't exist create it
             f = open(conf.WEBTLSMDD_PDBID_FILE, 'w+')
         
         for line in f:
@@ -944,7 +917,6 @@ class WebTLSMDDaemon(object):
     def fetch_pdb(self, pdbid):
         """Retrives the PDB file from RCSB"""
         try:
-	    ## Changed to global variable. Christoph Champ, 2008-03-10
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
@@ -1027,7 +999,7 @@ def inspect():
 
     if sys.argv[1] == "remove":
         dbkey = sys.argv[2]
-	del webtlsmdd.db[dbkey]
+        del webtlsmdd.db[dbkey]
         webtlsmdd.db.sync()
 
 def usage():
