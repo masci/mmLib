@@ -6,37 +6,40 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python modules
 import os
 import sys
 import time
 import signal
 import re
 import fcntl
-from subprocess import Popen, call, PIPE  # Christoph Champ, 2008-03-17
+from subprocess import Popen, call, PIPE
 import subprocess
 import socket
 import xmlrpclib
 import shutil
-import tarfile	# Christoph Champ, 2007-12-03
-import datetime # Christoph Champ, 2008-01-29
+import tarfile
 
-from tlsmdlib import const, conf, email
+## TLSMD
+from tlsmdlib import const, conf, email, misc
 
+## XXX: This is never used, 2009-05-29
 ## if there are no lines of output from the tlsmd process
 ## in TIMEOUT_SECS, then kill the process
 TIMEOUT_SECS = 1 * (60 * 60)
 
 def log_write(x):
-    sys.stdout.write(x + "\n")
+    sys.stdout.write("[%s] " % misc.timestamp() + x + "\n")
     sys.stdout.flush()
 
-def log_job_start(jdict):
-    tlsmd = jdict["tlsmd"]
-    
+def log_job_start(tlsmd):
     ln  = ""
-    ## Changed date format to international: YYYY-MM-DD HH:MM:SS; Christoph Champ, 2008-01-29
-    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += " ".join(tlsmd)
+    log_write(ln)
+
+def log_job_died(job_id):
+    ln  = ""
+    ln += "Killed Job %s from CLI" % (job_id)
     log_write(ln)
 
 def chain_size_string(jdict):
@@ -62,16 +65,9 @@ def chain_type_string(jdict):
             else:
                 listx.append("%s:--")
     return ";".join(listx)
-    
-def log_job_died(job_id):
-    ln  = ""
-    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
-    ln += "Killed Job %s from CLI" % (job_id)
-    log_write(ln)
 
 def log_job_end(jdict):
     ln  = ""
-    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
  
@@ -107,9 +103,9 @@ def log_job_end(jdict):
          "[Initial residuals: %s] " % (jdict.get('initial_residuals', 'None')),
          "[Final residuals: %s] " % (jdict.get('final_residuals', 'None')),
          "[STDDEV Bfact: %s] " % (jdict.get('stddev_bfact', 'None')),
-         "[Jmol skip animate: %s] " % (jdict.get('skip_jmol_animate', 'None')),
-         "[Jmol skip viewer: %s] " % (jdict.get('skip_jmol_view', 'None')),
-         "[Histogram skip: %s] " % (jdict.get('skip_jmol_view', 'None')),
+         "[Jmol animate: %s] " % (jdict.get('generate_jmol_animate', 'None')),
+         "[Jmol viewer: %s] " % (jdict.get('generate_jmol_view', 'None')),
+         "[Histogram: %s] " % (jdict.get('generate_histogram', 'None')),
          "[State: %s] " % (jdict.get('state', 'None'))]
 
     try:
@@ -129,10 +125,9 @@ def timediff(begin, end):
     secs = secs - (min * 60)
     x = "%1d:%2d.%2d" % (hours, min, secs)
     return x.replace(" ", "0")
-    
+
 def log_error(jdict, err):
     ln  = ""
-    ln += "[%s]: " % (datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7])
     ln += "ERROR: %s" % (err)
     log_write(ln)
 
@@ -149,47 +144,46 @@ def run_tlsmd(webtlsmdd, jdict):
     ## write the tlsmd execution command out to a file
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
-    ### FORK SECTION: fork/execvp; 2008-01-22
-    ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN -xhttp://localhost:10100 -i1FIN -mISOT -cA -aALL struct.pdb"
+    ## FORK SECTION: fork/execvp; 2008-01-22
+    ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN \
+    ##               -i1FIN -mISOT -cA -aALL struct.pdb"
     args = ["python"] + tlsmd
     pid = os.fork()
     if not pid:
-	## We are child
+        ## We are child
 
-	redirect = os.open("log.txt", os.O_WRONLY | os.O_CREAT)
-	os.dup2(redirect, 1)                        # standard output (1)
-	os.dup2(redirect, 2)                        # standard error (2)
-	os.close(redirect)
+        redirect = os.open("log.txt", os.O_WRONLY | os.O_CREAT)
+        os.dup2(redirect, 1) ## standard output (1)
+        os.dup2(redirect, 2) ## standard error  (2)
+        os.close(redirect)
 
-	## Capture child pid. Christoph Champ, 2008-02-03
-        save_pid = os.getpid()
-	## Switched to using database field instead of file. Christoph Champ, 2008-03-14
-	webtlsmdd.job_set_pid(jdict["job_id"], save_pid)
+        save_pid = os.getpid()  ## capture child pid
+        webtlsmdd.job_set_pid(jdict["job_id"], save_pid)
 
-	## Set up the environment
-	## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
-	## os.environ.clear()  ## probably too drastic, but some cleaning might be good
-	pwd = {}
-	pwd["PWD"] = jdict["job_dir"]
-	os.environ.update(pwd)
-	#print os.environ.values
-	
-	os.execvp("python", args)
-	## WE NEVER COME BACK FROM execvp
+        ## Set up the environment
+        ## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
+        ## os.environ.clear()  ## probably too drastic, but some cleaning might be good
+        pwd = {}
+        pwd["PWD"] = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"])
+        os.environ.update(pwd)
+        #print os.environ.values
+
+        os.execvp("python", args)
+        ## NOTE: We never come back from 'execvp()'
 
     time.sleep(5.0)
     return
 
 def run_job(webtlsmdd, jdict):
     job_id = jdict["job_id"]
-    log_job_start(jdict)
+    log_job_start(jdict["tlsmd"])
 
     webtlsmdd.job_set_run_time_begin(job_id, time.time())
 
     old_dir = os.getcwd()
 
     ## change to the job directory, and run TLSMD
-    job_dir = webtlsmdd.job_get_job_dir(job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"])
     try:
         os.chdir(job_dir)
     except os.error, err:
@@ -200,48 +194,45 @@ def run_job(webtlsmdd, jdict):
     return
 
 def check_logfile_for_errors(file):
-    """Searches through the log.txt file for warnings and errors"""
-    ## Started by Christoph Champ, 2008-03-02
-    
+    """Searches through the log.txt file for warnings and errors
+    """
     warnings = False
     errors = False
     completed = False
     infil = open(file,'r').readlines()
     for line in infil:
-	## Switched to re.match() for regex capability. Christoph Champ, 2008-03-11
-	if re.match(r'^\s*Warning:', line):
-	    warnings = True
-	#elif re.match(r'^\s*[Ee][Rr][Rr][Oo][Rr]',line):
-	elif re.match(r'^.*[Ee][Rr][Rr][Oo][Rr]', line):
-	    errors = True
-	elif line.startswith('completed'):
-	    completed = True
+        if re.match(r'^\s*Warning:', line):
+            warnings = True
+        elif re.match(r'^.*[Ee][Rr][Rr][Oo][Rr]', line):
+            errors = True
+        elif line.startswith('completed'):
+            completed = True
         else:
             continue
 
     if not completed:
-	return "died"
+        return "died"
     if errors:
-	return "errors"
+        return "errors"
     if warnings:
-	return "warnings"
+        return "warnings"
     return "success"
 
 def cleanup_job(webtlsmdd, jdict):
     """Cleanup job directory upon completion and email user
     """
-
-    ## Force it to use correct path. Christoph Champ, 2008-02-01
     old_dir = os.getcwd()
-    job_dir = conf.TLSMD_WORK_DIR + "/" + jdict["job_id"]
+    job_id = jdict["job_id"]
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    pdb_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, job_id)
     try:
         os.chdir(job_dir)
     except os.error, err:
         log_error(jdict, str(err))
-	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
-	return
+        webtlsmdd.job_set_state(job_id, "lost_directory")
+        return
 
-    ### Check if user submitted job via PDB code (i.e., from pdb.org). Christoph Champ, 2008-02-12
+    ## Check if user submitted job via PDB code (i.e., from pdb.org)
     if jdict.get("via_pdb", False) and "pdb_dir" in jdict and len(jdict["pdb_dir"]) != 0:
         #print "%s: Archiving job..." % (time.ctime())
         pdb_dir = jdict['pdb_dir']
@@ -253,17 +244,18 @@ def cleanup_job(webtlsmdd, jdict):
         except OSError:
             raise
 
-    ## create tarball. Christoph Champ, 2007-12-03
-    tar = tarfile.open("%s.tar.gz" % jdict["job_id"], "w:gz")
+    ## create tarball
+    tar = tarfile.open("%s.tar.gz" % job_id, "w:gz")
     tar.add("ANALYSIS")
     tar.close()
 
     os.chdir(old_dir)
-    ## check 'log.txt' for warnings. Christoph Champ, 2008-03-02
+    ## check 'log.txt' for warnings
     if check_logfile_for_errors(job_dir + "/log.txt") == "warnings":
-        webtlsmdd.job_set_state(jdict["job_id"], "warnings")
-    webtlsmdd.job_set_run_time_end(jdict["job_id"], time.time())
-    log_job_end(webtlsmdd.job_get_dict(jdict["job_id"]))
+        webtlsmdd.job_set_state(job_id, "warnings")
+
+    webtlsmdd.job_set_run_time_end(job_id, time.time())
+    log_job_end(webtlsmdd.job_get_dict(job_id))
 
     ## send email now that the job is complete
     send_mail(jdict["job_id"])
@@ -271,6 +263,7 @@ def cleanup_job(webtlsmdd, jdict):
 def get_job(webtlsmdd):
     """Remove the top job from the queue file and return it.
     """
+    ## NOTE: This is the very first step in the entire webtlsmdrund.py process
     try:
         job_id = webtlsmdd.get_next_queued_job_id()
     except socket.error:
@@ -280,8 +273,8 @@ def get_job(webtlsmdd):
     if job_id == "":
         return None
 
-    ## change state of the job and re-load to catch
-    ## any updates which may have happened
+    ## change state of the job and re-load to catch any updates which may
+    ## have occurred
     if webtlsmdd.job_set_state(job_id, "running") == False:
         return None
 
@@ -292,12 +285,23 @@ def get_job(webtlsmdd):
     ## Construct the run command for this job
     tlsmd = [conf.TLSMD_PROGRAM_PATH, "-b", "-rANALYSIS" ]
 
-    ## Job ID and webtlsmdd URL
+    ## Job ID
     tlsmd.append("-j%s" % (job_id))
-    tlsmd.append("-x%s" % (conf.WEBTLSMDD))
+
+    ## webtlsmdd URL
+    ## NOTE: This is no longer needed, 2009-04-21
+    #tlsmd.append("-x%s" % (conf.WEBTLSMDD))
 
     ## override PDB ID
     tlsmd.append("-i%s" % (jdict["structure_id"]))
+
+    ## Jmol/Histogram features
+    if jdict["generate_jmol_view"] == True:
+        tlsmd.append("--generate-jmol-viewer")
+    if jdict["generate_jmol_animate"] == True:
+        tlsmd.append("--generate-jmol-animate")
+    if jdict["generate_histogram"] == True:
+        tlsmd.append("--generate-histogram")
 
     ## plot style
     if jdict.get("plot_format") == "SVG":
@@ -311,7 +315,7 @@ def get_job(webtlsmdd):
         tlsmd.append("-mANISO")
 
     ## set maximum number of segments
-    tlsmd.append("-n%s" %(jdict["nparts"]))
+    tlsmd.append("-n%s" % (jdict["nparts"]))
 
     ## select LSQ weighting
     #tlsmd.append("-w%s" % (jdict["weight"]))
@@ -324,11 +328,10 @@ def get_job(webtlsmdd):
     tlsmd.append("-c%s" % (",".join(cids)))
 
     ## included atoms
-    include_atoms = jdict["include_atoms"]
-    tlsmd.append("-a%s" % (include_atoms))
+    tlsmd.append("-a%s" % (jdict["include_atoms"]))
 
     ## input PDB file
-    tlsmd.append(jdict["pdb_filename"])
+    tlsmd.append(conf.PDB_FILENAME)
 
     jdict["tlsmd"] = tlsmd
     return jdict
@@ -367,22 +370,21 @@ def send_mail(job_id):
 
     address = jdict.get("email", "")
     if len(address) == 0:
-        log_write("NOTE: no email address")
+        log_write("NOTE: no email address: %s" % job_id)
         return
 
-    analysis_url = jdict.get("analysis_url", "")
+    job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
+    analysis_url = "%s/ANALYSIS/index.html" % (job_url)
     if len(analysis_url) == 0:
-        log_write("WARNING: no analysis_url")
+        log_write("WARNING: no analysis_url: %s" % job_id)
         return
 
-    ## user_comment added. Christoph Champ, 2007-12-18
     user_comment = jdict.get("user_comment", "")
     if len(user_comment) == 0:
-        log_write("NOTE: no user_comment")
-        #return # this was stopping "via_pdb" from emailing the user. Christoph Champ, 2008-02-12
+        log_write("NOTE: no user_comment: %s" % job_id)
+        #return ## this was stopping "via_pdb" from emailing the user
 
     ## send mail using msmtp
-    ## user_comment added. Christoph Champ, 2007-12-18
     mail_message = MAIL_MESSAGE
     mail_message = mail_message.replace("<BASE_URL>", conf.BASE_PUBLIC_URL)
     mail_message = mail_message.replace("<ANALYSIS_URL>", analysis_url)
@@ -395,7 +397,9 @@ def send_mail(job_id):
     log_write("NOTE: sent mail to: %s" % (address))
 
 def is_pid_running(full_cmd):
-    ## Check if a given PID is still running. Christoph Champ, 2008-03-17
+    """Checks if a given PID is still running. Returns "True" if job is still
+    running.
+    """
     try:
         p = Popen(full_cmd, shell=True, stdout=PIPE)
         output = p.communicate()[0]
@@ -410,7 +414,8 @@ def is_pid_running(full_cmd):
     return False
 
 def check_for_pid(webtlsmdd, jdict):
-    """Function for checking if process is running.
+    """Function for checking if process is running. Returns "True" if job is
+    still running.
     """
     try:
         tmp_pid = webtlsmdd.job_get_pid(jdict["job_id"])
@@ -424,25 +429,29 @@ def check_for_pid(webtlsmdd, jdict):
            return False ## PID _not_ running
 
     except Exception, e:
-        # Something wrong happened with the ps command
+        ## Something wrong happened with the ps command
         print "ERROR: Can't run is_pid_running(): %s" % e
 
     return False
 
 def job_completed(webtlsmdd, jdict):
-    ## Checks if "running" job is finished and sets state according to log.txt
-    ## messages. If there is a match, return False (job not completed).
-    ## Otherwise return True (job completed)
+    """Checks if "running" job is finished and sets state according to log.txt
+    messages. If there is a match, return False (job not completed).
+    Otherwise return True (job completed)
+    """
+    job_id = jdict["job_id"]
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     try:
-	os.chdir(conf.TLSMD_WORK_DIR + "/" + jdict["job_id"])
+        os.chdir(job_dir)
     except:
-	webtlsmdd.job_set_state(jdict["job_id"], "lost_directory")
-	return True
+        webtlsmdd.job_set_state(job_id, "lost_directory")
+        return True
 
     if check_for_pid(webtlsmdd, jdict):
-	return False
-    
-    webtlsmdd.job_set_state(jdict["job_id"], check_logfile_for_errors(jdict["job_dir"]+"/log.txt"))
+        ## Job is still running
+        return False
+
+    webtlsmdd.job_set_state(job_id, check_logfile_for_errors(logfile))
     return True
 
 def fetch_and_run_jobs_forever():
@@ -451,43 +460,44 @@ def fetch_and_run_jobs_forever():
 
     webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 
-    running_list = [] # New array to hold list of jobs currently running
+    running_list = [] ## New array to hold list of jobs currently running
     while True:
-        ### First clear out any jobs in run queue that have finished
-        ### Get information on jobs in queue; 2008-01-22
+        ## First clear out any jobs in run queue that have finished
+        ## Get information on jobs in queue
         job_list = webtlsmdd.job_list()
         for myjdict in job_list:
-	    if myjdict.get("state") == None:
-		## This is a "Partially Submitted" job, so go to next in list
-		continue
-	    ## Comment out the following three lines to refresh the states in the database
-	    if (myjdict.get("state") != "running"):
-		## Check for any other states besides None and "running"
-		continue
-	    if job_completed(webtlsmdd, myjdict):
-		for n in range(len(running_list)):
-		    if myjdict["job_id"] == running_list[n]:
-			if webtlsmdd.job_get_state(myjdict["job_id"]) != "died":
-			   cleanup_job(webtlsmdd, myjdict)
-			running_list.pop(n) ## remove completed job_id from array
-			break
+            if myjdict.get("state") == None:
+                ## This is a "Partially Submitted" job, so go to next in list
+                continue
+            ## Comment out the following three lines to refresh the states in
+            ## the database
+            if (myjdict.get("state") != "running"):
+                ## Check for any other states besides None and "running"
+                continue
+            if job_completed(webtlsmdd, myjdict):
+                for n in range(len(running_list)):
+                    if myjdict["job_id"] == running_list[n]:
+                        if webtlsmdd.job_get_state(myjdict["job_id"]) != "died":
+                            cleanup_job(webtlsmdd, myjdict)
 
-	### EAM 7-Feb-2008 revamp the logic limiting us to 4 run slots
+                        ## remove completed job_id from array
+                        running_list.pop(n)
+                        break
 
-	### Check whether there is a slot free to start a new run
-	if len(running_list) >= conf.MAX_PARALLEL_JOBS:
-	    time.sleep(5.0)
-	    continue
+        ## Check whether there is a slot free to start a new run
+        if len(running_list) >= conf.MAX_PARALLEL_JOBS:
+            time.sleep(5.0)
+            continue
 
-	### If there is a run slot free, get next job in queue
-	jdict = get_job(webtlsmdd)
-	if jdict == None:
-	    time.sleep(5.0)
-	    continue
+        ## If there is a run slot free, get next job in queue
+        jdict = get_job(webtlsmdd)
+        if jdict == None:
+            time.sleep(5.0)
+            continue
 
-	### Start the new job
-	running_list.append(jdict["job_id"])
-	run_job(webtlsmdd, jdict)
+        ## Start the new job
+        running_list.append(jdict["job_id"])
+        run_job(webtlsmdd, jdict)
 
 def main():
     try:
