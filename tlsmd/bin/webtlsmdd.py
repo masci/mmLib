@@ -199,7 +199,6 @@ def parse_molauto(infile, outfile):
        colour. 2008-12-03
     """
     file = open(outfile, "w")
-    #file.write("GOT HERE!")
     for line in open(infile).readlines():
         file.write("%s" % line)
         if(re.match(r'^  set segments', line)):
@@ -327,7 +326,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "job_dir", job_dir)
 
     ## save PDB file
-    pdb_filename = "struct.pdb"
+    pdb_filename = conf.PDB_FILENAME
     webtlsmdd.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
     filobj = open(pdb_filename, "w")
     filobj.write(struct_bin.data)
@@ -347,6 +346,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     log_url = "%s/log.txt" % (job_url)
     webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
+    log_file = "%s/log.txt" % (job_dir)
+    if not os.path.exists(log_file):
+        open(log_file, 'w').close() ## touch log.txt
 
     ## create tarball path and url
     tarball_url = "%s/%s.tar.gz" % (job_url, job_id)
@@ -454,10 +456,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
     webtlsmdd.jobdb.job_data_set(job_id, "private_job", False)
     webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
-    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_view", "OFF")
-    webtlsmdd.jobdb.job_data_set(job_id, "skip_jmol_animate", "OFF")
-    webtlsmdd.jobdb.job_data_set(job_id, "skip_histogram", "ON")
-    webtlsmdd.jobdb.job_data_set(job_id, "nparts", conf.NPARTS) ## select number of partitions (default: 20)
+    webtlsmdd.jobdb.job_data_set(job_id, "generate_jmol_view", conf.globalconf.generate_jmol_view)
+    webtlsmdd.jobdb.job_data_set(job_id, "generate_jmol_animate", conf.globalconf.generate_jmol_animate)
+    webtlsmdd.jobdb.job_data_set(job_id, "generate_histogram", False)
+    webtlsmdd.jobdb.job_data_set(job_id, "nparts", conf.globalconf.nparts) ## select number of partitions (default: 20)
 
     try:
         aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
@@ -475,7 +477,8 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     return ""
 
 def RequeueJob(webtlsmdd, job_id):
-    """Pushes job to the end of the list"""
+    """Pushes job to the end of the list
+    """
 
     if (webtlsmdd.jobdb.job_data_get(job_id,'state') == 'running'):
         return False
@@ -531,8 +534,8 @@ def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the 
        "Completed Jobs" section as "killed" state
     """
-    ## NOTE: We want to keep the job_id around in order to inform the user
-    ## that their job has been "killed".
+    ## FIXME: We want to keep the job_id around in order to inform the user
+    ## that their job has been "killed", 2009-05-29
 
     if not webtlsmdd.jobdb.job_exists(job_id):
         return False
@@ -607,7 +610,7 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
     phenixout_url = "%s/%s" % (analysis_base_url, phenixout)
 
-    ## create the files
+    ## create the REFMAC/PHENIX files
     tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
     tls_calcs.phenix_prep(pdbin, tlsins, phenixout)
 
@@ -837,26 +840,26 @@ class WebTLSMDDaemon(object):
     def job_get_plot_format(self, job_id):
         return self.jobdb.job_data_get(job_id, "plot_format")
 
-    ## JMol view toggle feature (default=ON/True)
-    def job_set_jmol_view(self, job_id, skip_jmol_view):
-        self.jobdb.job_data_set(job_id, "skip_jmol_view", skip_jmol_view)
-        return skip_jmol_view
+    ## Generate JMol view feature (default=True)
+    def job_set_jmol_view(self, job_id, generate_jmol_view):
+        self.jobdb.job_data_set(job_id, "generate_jmol_view", generate_jmol_view)
+        return generate_jmol_view
     def job_get_jmol_view(self, job_id):
-        return self.jobdb.job_data_get(job_id, "skip_jmol_view")
+        return self.jobdb.job_data_get(job_id, "generate_jmol_view")
 
-    ## JMol animate toggle feature (default=ON/True)
-    def job_set_jmol_animate(self, job_id, skip_jmol_animate):
-        self.jobdb.job_data_set(job_id, "skip_jmol_animate", skip_jmol_animate)
-        return skip_jmol_animate
+    ## Generate JMol animate feature (default=True)
+    def job_set_jmol_animate(self, job_id, generate_jmol_animate):
+        self.jobdb.job_data_set(job_id, "generate_jmol_animate", generate_jmol_animate)
+        return generate_jmol_animate
     def job_get_jmol_animate(self, job_id):
-        return self.jobdb.job_data_get(job_id, "skip_jmol_animate")
+        return self.jobdb.job_data_get(job_id, "generate_jmol_animate")
 
-    ## Histogram toggle feature (default=ON/True)
-    def job_set_histogram(self, job_id, skip_histogram):
-        self.jobdb.job_data_set(job_id, "skip_histogram", skip_histogram)
-        return skip_histogram
+    ## Generate Histogram plot (default=False)
+    def job_set_histogram(self, job_id, generate_histogram):
+        self.jobdb.job_data_set(job_id, "generate_histogram", generate_histogram)
+        return generate_histogram
     def job_get_histogram(self, job_id):
-        return self.jobdb.job_data_get(job_id, "skip_histogram")
+        return self.jobdb.job_data_get(job_id, "generate_histogram")
 
     ## Set/get number of partitions/chain
     def job_set_nparts(self, job_id, nparts):
@@ -953,6 +956,7 @@ def daemon_main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
     host_port = ("localhost", int(port))
 
+    sys.stdout.write("STARTING webtlsmdd.py DAEMON..................: %s\n" % misc.timestamp())
     sys.stdout.write("webtlsmdd.py xmlrpc server version %s\n" % (const.VERSION))
     sys.stdout.write("using database file...........................: %s\n" % (conf.WEBTLSMDD_DATABASE))
     sys.stdout.write("listening for incoming connections at URL.....: %s\n" % (conf.WEBTLSMDD))
