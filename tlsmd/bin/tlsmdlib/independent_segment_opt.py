@@ -3,12 +3,16 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python modules
 import math
 import numpy
-import gc
+import gc ## for garbage collection
 
+## Pymmlib
 from mmLib import Constants, TLS
 
+## TLSMD
 import misc
 import const
 import conf
@@ -106,7 +110,8 @@ class ISOptimization(hcsssp.HCSSSP):
             elif i == num_vertex - 1:
                 vertex_label = "C-TERM"
             else:
-                vertex_label = "%s{%s:%s}" % (chain_id, chain[i-1].fragment_id, chain[i].fragment_id)
+                vertex_label = "%s{%s:%s}" % (
+                    chain_id, chain[i-1].fragment_id, chain[i].fragment_id)
             vertex_label = "V%d[%s]" % (i, vertex_label)
             vertices.append(vertex_label)
 
@@ -122,16 +127,19 @@ class ISOptimization(hcsssp.HCSSSP):
             num_subsegments += 1
             pcomplete = round(100.0 * num_subsegments / total_num_subsegments)
             if pcomplete != pcomplete_old:
-                console.stdoutln("(%10d/%10d) %2d%% Complete" % (num_subsegments, total_num_subsegments, pcomplete))
+                console.stdoutln("(%10d/%10d) %2d%% Complete" % (
+                    num_subsegments, total_num_subsegments, pcomplete))
                 pcomplete_old = pcomplete
 
             if tlsdict == None:
-                console.stderrln("no TLS group %s{%s..%s}" % (chain_id, frag_id1, frag_id2))
+                console.stderrln("no TLS group %s{%s..%s}" % (
+                    chain_id, frag_id1, frag_id2))
                 raise SystemExit
             if tlsdict.has_key("error") is True:
                 continue
             if not tlsdict.has_key("residual"):
-                console.stderrln("no residual! %s{%s..%s}" % (chain_id, frag_id1, frag_id2))
+                console.stderrln("no residual! %s{%s..%s}" % (
+                    chain_id, frag_id1, frag_id2))
                 raise SystemExit
 
             residual = tlsdict["residual"]
