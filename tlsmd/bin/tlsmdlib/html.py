@@ -8,14 +8,15 @@
 ## Report Directory Generation
 ##
 
+## Python
 import os
 import time
-import datetime
 import numpy
 import shutil    ## for copying files around (e.g., jmol)
-import xmlrpclib ## for toggle switches
+#import xmlrpclib ## for toggle switches
 import sys       ## for try/except
 import itertools ## used in selecting backbone atoms, 2009-01-13
+import re        ## used in summary_file_update(), 2009-05-07
 
 ## Python Imaging Library imports
 import Image
@@ -68,6 +69,7 @@ def calc_inertia_tensor(atom_iter):
 
     evals, evecs = numpy.linalg.eig(I)
 
+    ## FIXME: Fix "Warning: invalid value encountered in divide", 2009-05-25
     elist = [(evals[0], evecs[0]),
              (evals[1], evecs[1]),
              (evals[2], evecs[2])]
@@ -223,7 +225,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
          '<th>Residues</th>',
          '<th>Atoms</th>',
          '<th>&#60;B&#62;</th>',
-         '<th>B<sub>rmsd</sub></th>', ## Added. Christoph Champ, 2008-04-15
+         '<th>B<sub>rmsd</sub></th>',
          '<th>&#60;Aniso&#62;</th>',
          '<th>RMSD B</th>',
          '<th>%s</th>' % (t_head),
@@ -345,9 +347,13 @@ class Report(object):
              '<title>%s</title>\n' % (title),
              '<style type="text/css" media="screen">',
              '<!-- ',
-             'BODY {background-color:white; margin-left:5%; margin-right:5%; border-left:5%; border-right:5%; margin-top:2%; border-top:2%;}',
+             'BODY {background-color:white; margin:2% 5% 0 5%; border:2% 5% 0 5%;}',
              'a.structimage{text-decoration:none;} img{border:0;padding:4px 0 0 0;}',
              'span.small {font-size:0.8em;font-weight:normal;text-align:center;}',
+             'table.title {border:0;width:100%;background-color:#eee;}',
+             'td.title {font-size:0.7em;} td.l {width:33%;text-align:left;}',
+             'td.c {width:33%;text-align:center;} td.r {width:33%;text-align:right;}',
+             'h2 {text-align:center;}',
              '-->',
              '</style>\n',
              '</head>',
@@ -356,26 +362,22 @@ class Report(object):
         return "".join(l)
 
     def html_title(self, title):
-        timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
-        
-        ## Added jobid in "title" bar (center position). Christoph Champ, 2007-12-17
-	l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>\n',
-              '<td align="left" valign="top"><font size="-5">%s</font></td>' % (timestr),
-	      '<td align="center"><font size="-5">JobID: %s</font></td>' % (conf.globalconf.job_id),
-              '<td align="right" valign="top"><font size="-5">TLSMD Version %s</font></td>\n' % (const.VERSION),
+	l  = ['<table class="title"><tr>\n',
+              '<td class="l title">%s</font></td>' % (misc.start_time()),
+	      '<td class="c title">JobID: %s</font></td>' % (conf.globalconf.job_id),
+              '<td class="r title">TLSMD Version %s</font></td>\n' % (const.VERSION),
               '</tr></table>\n',
-              '<center><font size="+2">%s</font></center><br/>\n' % (title)]
+              '<h2>%s</h2><br/>\n' % (title)]
         
         return "".join(l)
 
     def html_foot(self):
         """Footer for all HTML pages.
         """
-        timestr = time.strftime("%d %b %Y", time.localtime(conf.globalconf.start_time))
-        
-        l  = ['<table border="0" width="100%" style="background-color:#eeeeee"><tr>',
-              '<td align="left"><font size="-5">%s</font></td>' % (timestr),
-              '<td align="right"><font size="-5">TLSMD Version %s Released %s</font></td>' % (
+        l  = ['<table class="title"><tr>',
+              '<td class="l title">%s</font></td>' % (misc.start_time()),
+	      '<td class="c title">JobID: %s</font></td>' % (conf.globalconf.job_id),
+              '<td class="r title">TLSMD Version %s Released %s</font></td>' % (
                   const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
               '</body></html>\n']
@@ -500,7 +502,7 @@ class HTMLSummaryReport(Report):
     def write_summary_index(self):
         """Writes the summary.html file of the report.
         """
-        fil = open("summary.html", "w")
+        fil = open("index.html", "w")
         fil.write(self.html_summary_index())
         fil.close()
 	console.stdoutln("HTML: Saving summary.html") ## LOGLINE
@@ -514,6 +516,10 @@ class HTMLSummaryReport(Report):
 
         l = [self.html_head(title),
              self.html_title(title),
+
+             ## link back to job summary page, 2009-05-26
+             '<center><a href="%s?page=explore&amp;job_id=%s">Back to job summary page</a></center>' % (
+                 conf.WEBTLSMD_URL, self.job_id),
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
@@ -531,7 +537,7 @@ class HTMLSummaryReport(Report):
              '<p style="text-align:center; font-size:large bold;',
                  'width:70%; padding:10px; border:thin solid #f00;',
                  'background-color:#faa;">',
-             'Your job is still running and the analysis is incomplete.',
+             'Your job is still running and the analysis is incomplete. ',
              'This is a summary page.</p>\n']
 
         ## progress bar
@@ -622,6 +628,7 @@ class HTMLSummaryReport(Report):
         """Store globals in flatfile
         """
         ## NOTE: class HTMLSummaryReport()
+        ## TODO: Make sure this is only called once, 2009-05-22
         ##======================================================================
         ##<FLATFILE>
         flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
@@ -638,9 +645,9 @@ class HTMLSummaryReport(Report):
         flatfile.write("\nGLOB USE_SVG: %s" % conf.globalconf.use_svg)
         flatfile.write("\nGLOB SKIP_HTML: %s" % conf.globalconf.skip_html)
         flatfile.write("\nGLOB SKIP_JMOL: %s" % conf.globalconf.skip_jmol)
-        flatfile.write("\nGLOB SKIP_JMOL_VIEW: %s" % conf.globalconf.skip_jmol_view)
-        flatfile.write("\nGLOB SKIP_JMOL_ANIMATE: %s" % conf.globalconf.skip_jmol_animate)
-        flatfile.write("\nGLOB SKIP_HISTOGRAM: %s" % conf.globalconf.skip_histogram)
+        flatfile.write("\nGLOB GENERATE_JMOL_VIEW: %s" % conf.globalconf.generate_jmol_view)
+        flatfile.write("\nGLOB GENERATE_JMOL_ANIMATE: %s" % conf.globalconf.generate_jmol_animate)
+        flatfile.write("\nGLOB GENERATE_HISTOGRAM: %s" % conf.globalconf.generate_histogram)
         flatfile.write("\nGLOB CROSS_CHAIN_ANALYSIS: %s" % conf.globalconf.cross_chain_analysis)
         flatfile.write("\nGLOB RECOMBINATION: %s" % conf.globalconf.recombination)
         flatfile.write("\nGLOB TARGET_STRUCT_PATH: %s" % conf.globalconf.target_struct_path)
@@ -661,18 +668,19 @@ class HTMLReport(Report):
         self.struct = tlsmd_analysis.struct
         self.struct_id = tlsmd_analysis.struct_id
         self.struct_path = "%s.pdb" % (self.struct_id)
+        self.job_id = conf.globalconf.job_id
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
         self.page_refinement_prep        = None
 
-        ## moved global orientation here. 2008-09-30
         self.orient = {}
         self.r3d_header_file = None
         
     def write(self, report_dir):
         """Write out the TLSMD report to the given directory.
         """
+        ## class HTMLReport()
         ## create new directory and move into it
         old_dir = os.getcwd()
         if not os.path.isdir(report_dir):
@@ -688,6 +696,7 @@ class HTMLReport(Report):
         """Generated the self.colors dictionary of colors for the report,
         and also writes thumbnail .png images of all the colors.
         """
+        ## class HTMLReport()
         thumbnail_dir = "colors"
 
         ## make the thumbnail subdirectory
@@ -718,6 +727,7 @@ class HTMLReport(Report):
         """Returns the color dict description for a TLS segment of the
         given index, starting at 0.
         """
+        ## class HTMLReport()
         ## skip the first two colors; they are black and white
         i = tls_index + 2
         return self.colors[i % 50] ## switched to mod(50) for wrap-around
@@ -725,6 +735,7 @@ class HTMLReport(Report):
     def write_cwd(self):
         """Write out all the files in the report.
         """
+        ## class HTMLReport()
         ## write a local copy of the Structure
         FileIO.SaveStructure(fil = self.struct_path, struct = self.struct)
 
@@ -747,6 +758,9 @@ class HTMLReport(Report):
 	##    - assume this portion of the run occupies 0.5 -> 1.0 of the total time
 	progress = 0.5
 
+        ## save globals to flatfile
+        #self.flatfile_globals()
+
         ## write out all TLSGraph reports
         for chain in self.tlsmd_analysis.iter_chains():
             self.write_tls_chain_optimization(chain)
@@ -762,22 +776,51 @@ class HTMLReport(Report):
         ## write out index page
         self.write_index()
 
+        ## update summary.html to show completed status
+        #self.summary_file_update()
+
     def write_index(self):
         """Writes the main index.html file of the report.
         """
+        ## class HTMLReport()
         fil = open("index.html","w")
         fil.write(self.html_index())
         fil.close()
 	console.stdoutln("HTML: Saving main index.html") ## LOGLINE
 
+    def summary_file_update(self):
+        """Updates summary.html to reflect status."""
+        ## class HTMLReport()
+
+        link = '<a href="%s/jobs/%s/ANALYSIS/index.html">' % (
+            conf.TLSMD_PUBLIC_URL, conf.globalconf.job_id)
+        data = ""
+        lines = open("index.html", 'r').readlines()
+        for line in lines:
+            if re.match(r'(.*job is) still running and the analysis is incomplete(.*)', line):
+                data += re.sub(r'(.*job is) still running and the analysis is incomplete(.*)', '\\1 %scompleted</a>\\2' % link, line)
+            elif re.match(r'.*#8FBC8F;width: 50%;"></div></div>50% (Complete.)', line):
+                data += re.sub(r'(.*#8FBC8F;width:) 50%(;"\>\<\/div\>\<\/div)\>50% (.*)', '\\1 100%\\2>100% \\3', line)
+            else:
+                data += line
+
+        outfile = open("index.html", 'w')
+        outfile.write(data)
+        outfile.close()
+
     def html_index(self):
         """Generate and returns the HTML string for the main index.html
         file of the report.
         """
+        ## class HTMLReport()
         title = "TLSMD Thermal Parameter Analysis of Structure %s" % (self.struct_id)
 
         l = [self.html_head(title),
              self.html_title(title),
+
+             ## link back to job summary page, 2009-05-26
+             '<center><a href="%s?page=explore&amp;job_id=%s">Back to job summary page</a></center>' % (
+                 conf.WEBTLSMD_URL, self.job_id),
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
@@ -817,6 +860,7 @@ class HTMLReport(Report):
     def html_globals(self):
         """Output a HTML table displaying global TLSMD settings.
         """
+        ## class HTMLReport()
         if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
             tls_model = "Isotropic"
         elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
@@ -862,6 +906,7 @@ class HTMLReport(Report):
     def write_tls_chain_optimization(self, chain):
         """Writes the HTML report analysis of a single TLS graphed chain.
         """
+        ## class HTMLReport()
         path  = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, chain.chain_id)
         title = "Chain %s TLS Analysis" % (chain.chain_id)
 
@@ -878,6 +923,7 @@ class HTMLReport(Report):
         """Generates and returns the HTML string report analysis of a
         single TLS graphed chain.
         """
+        ## class HTMLReport()
         title = "Chain %s TLS Analysis of %s" % (chain.chain_id, self.struct_id)
         
         l  = [self.html_head(title),
@@ -946,7 +992,7 @@ class HTMLReport(Report):
         """Generates the Gnuplot/PNG image plot, and returns the HTML
         fragment for its display in a web page.
         """
-	## NOTE (by Christoph):
+        ## class HTMLReport()
 	## Least SQuare Residual (LSQR) vs. Number of TLS Segments
         gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
 
@@ -961,6 +1007,7 @@ class HTMLReport(Report):
     def html_chain_alignment_plot(self, chain):
         """generate a plot comparing all segmentations
         """
+        ## class HTMLReport()
         plot = sequence_plot.TLSSegmentAlignmentPlot()
         
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
@@ -1001,6 +1048,7 @@ class HTMLReport(Report):
         """Generates the HTML table describing the path (set of tls groups)
         for the given number of segments(h, or ntls)
         """
+        ## class HTMLReport()
         cpartition = chain.partition_collection.get_chain_partition(ntls)
         if cpartition == None:
             return None
@@ -1008,21 +1056,20 @@ class HTMLReport(Report):
         #self.write_tls_pdb_file(chain, cpartition) ## write out PDB file
 
         ## Lookup Jmol viewer/animate skip in globals
-        ## FIXME: This not not work without access to BerkeleyDB
         try:
             job_id = conf.globalconf.job_id
-            jmol_view_toggle = conf.globalconf.skip_jmol_view
-            jmol_animate_toggle = conf.globalconf.skip_jmol_animate
-            console.stdoutln("GLOBAL: skip_jmol_view = %s" % conf.globalconf.skip_jmol_view)
+            jmol_view_toggle = conf.globalconf.generate_jmol_view
+            jmol_animate_toggle = conf.globalconf.generate_jmol_animate
+            console.stdoutln("GLOBAL: generate_jmol_view = %s" % conf.globalconf.generate_jmol_view)
         except:
             jmol_view_toggle = ""
             jmol_animate_toggle = ""
-            console.stdoutln("     Warning: couldn't find Jmol toggle globals")
+            console.stdoutln("     Warning: couldn't find Jmol-viewer settings")
             print console.formatExceptionInfo()
             pass
 
         ## Jmol Viewer Script
-        if conf.JMOL_SKIP or conf.globalconf.skip_jmol_view:
+        if conf.globalconf.generate_jmol_view == False:
             jmol_file = ""
             console.stdoutln("NOTE: Skipping Jmol-viewer section") ## LOGLINE
         else:
@@ -1036,7 +1083,7 @@ class HTMLReport(Report):
                 pass
 
         ## Jmol Animation Script
-        if conf.JMOL_SKIP or conf.globalconf.skip_jmol_animate:
+        if conf.globalconf.generate_jmol_animate == False:
             console.stdoutln("NOTE: Skipping Jmol-animation section") ## LOGLINE
             jmol_animate_file = ""
             raw_r3d_file, r3d_body_file = self.generate_raw_backbone_file(chain, cpartition)
@@ -1186,6 +1233,7 @@ class HTMLReport(Report):
     def generate_raster3d_header(self, chain):
         """Render TLS visualizations using Raster3D.
         """
+        ## class HTMLReport()
         r3d_header_file = "%s_CHAIN%s_header.r3d" % (
             self.struct_id, chain.chain_id)
         console.stdoutln("Raster3D: generating header %s..." % r3d_header_file) ## LOGLINE
@@ -1446,6 +1494,7 @@ class HTMLReport(Report):
         """Write out a PDB file with the TLS predicted anisotropic ADPs for
         this segmentation.
         """
+        ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d_UTLS"  % (
                    self.struct_id, chain.chain_id,
                    cpartition.num_tls_segments())
@@ -1475,6 +1524,7 @@ class HTMLReport(Report):
     def write_tlsout_file(self, chain, cpartition):
         """Writes the TLSOUT file for the segmentation.
         """
+        ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d" % (
                    self.struct_id, chain.chain_id,
                    cpartition.num_tls_segments())
@@ -1517,7 +1567,7 @@ class HTMLReport(Report):
     def write_phenixout_file(self, chain, cpartition):
         """Writes the TLS-PHENIX-OUT file for the segmentation.
         """
-        ## Added by Christoph Champ, 2007-12-14
+        ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d" % (
                    self.struct_id, chain.chain_id,
                    cpartition.num_tls_segments())
@@ -1550,6 +1600,7 @@ class HTMLReport(Report):
     def chain_ntls_analysis(self, chain, cpartition):
         """Generate ntls optimization constraint report and free memory.
         """
+        ## class HTMLReport()
         report = ChainNTLSAnalysisReport(chain, cpartition)
         return report
 
@@ -1557,6 +1608,7 @@ class HTMLReport(Report):
         """Writes out the HTML page which will display the
         structure using the Jmol Applet.
         """
+        ## class HTMLReport()
         jmol_file = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (
                     self.struct_id, chain.chain_id,
                     cpartition.num_tls_segments())
@@ -1612,6 +1664,7 @@ class HTMLReport(Report):
     def iter_filter_atoms(self, atom_iter):
         """Filters out any non-backbone atoms.
         """
+        ## class HTMLReport()
         filter = lambda atm: conf.DISPLACE_ATOM_NAME_DICT.has_key(atm.name)
         return itertools.ifilter(filter, atom_iter)
 
@@ -1619,6 +1672,7 @@ class HTMLReport(Report):
         """Writes out the 'raw' backbone data for the tlsanim2r3d program.
            NOTE: This should only be run if JMOL_SKIP == True.
         """
+        ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d" % (
             self.struct_id, chain.chain_id, cpartition.num_tls_segments())
         raw_r3d_file  = "%s.raw" % (basename)
@@ -1650,6 +1704,7 @@ class HTMLReport(Report):
         """Writes out the HTML page which will display the
         structure using the Jmol Applet.
         """
+        ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
             self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
@@ -1785,6 +1840,7 @@ class HTMLReport(Report):
     def write_multi_chain_alignment(self):
         """Write out the chain residue alignment page.
         """
+        ## class HTMLReport()
         ## only write out the comparison page if there is more than one
         ## chain analyzed in the structure
         if self.tlsmd_analysis.num_chains() < 2:
@@ -1801,13 +1857,11 @@ class HTMLReport(Report):
         fil.write(self.html_multi_chain_alignment())
         fil.close()
 
-        #chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
-	#console.stdoutln("[%s] HTML: Saving %s" % (chain_ntls, path)) ## LOGLINE
-    
     def html_multi_chain_alignment(self):
         """Write out all HTML/PDB/TLSIN files which compare
         chains in the structure.
         """
+        ## class HTMLReport()
         title = self.page_multi_chain_alignment["title"]
 
         l = [ self.html_head(title),
@@ -1875,6 +1929,7 @@ class HTMLReport(Report):
         """Generate form to allow users to select the number of TLS groups
         to use per chain.
         """
+        ## class HTMLReport()
         path  = "%s_REFINEMENT_PREP.html" % (self.struct_id)
         title = "Generate input files for multigroup TLS Refinement"
  
@@ -1886,10 +1941,10 @@ class HTMLReport(Report):
         fil.write(self.html_refinement_prep())
         fil.close()
 
-        #chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
 	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
 
     def html_refinement_prep(self):
+        ## class HTMLReport()
         title = self.page_refinement_prep["title"]
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
@@ -2003,7 +2058,8 @@ class ChainNTLSAnalysisReport(Report):
         
         ## Create histogram plots
         job_id = conf.globalconf.job_id
-        if conf.HISTOGRAM_SKIP or conf.globalconf.skip_histogram:
+        #if conf.HISTOGRAM_SKIP or conf.globalconf.generate_histogram == False:
+        if conf.globalconf.generate_histogram == False:
             console.stdoutln("NOTE: Skipping Histogram section") ## LOGLINE
         else:
             try:
