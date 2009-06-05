@@ -13,7 +13,7 @@
 ##     webtlsmdrund.py
 ##         get_job()
 
-## Python
+## Python modules
 import os
 import sys
 import getopt
@@ -39,10 +39,10 @@ def usage():
     print "            [-i <struct_id>] Override struct_id in PDB file"
     print "            [-s] output Gnuplot plots using SVG (default=False)"
     print "            [-k] skip generating JMOL files (default=False)"
-    print "            [--skip-jmol-viewer] skip generating JMOL-viewer files (default=False)"
-    print "            [--skip-jmol-animate] skip generating JMOL-animation files (default=False)"
+    print "            [--generate-jmol-viewer] skip generating JMOL-viewer files (default=False)"
+    print "            [--generate-jmol-animate] skip generating JMOL-animation files (default=False)"
     print "            [--skip-html] skip generating HTML files (default=False)"
-    print "            [--skip-histogram] skip generating histogram files (default=True)"
+    print "            [--generate-histogram] skip generating histogram files (default=True)"
     print "            [-t struct.pdb:chain_id ] compare TLS displacments with another structure"
     print "            [-e] recombine linear TLSMD segments to find disjoint TLS groups"
     print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues (default=0)"
@@ -81,6 +81,7 @@ def analysis_main(struct_path, opt_dict):
     ## set option vars and defaults
     chain_ids         = opt_dict.get("-c")
 
+    #conf.globalconf.recombination = opt_dict.has_key("-e")
     if opt_dict.has_key("-e"):
         conf.globalconf.recombination = True
 
@@ -92,7 +93,6 @@ def analysis_main(struct_path, opt_dict):
             usage()
         conf.globalconf.adp_smoothing = nsmooth
 
-    ## Added. Christoph Champ, 2008-05-13
     if opt_dict.has_key("-u"):
         print opt_dict["-u"]
         try:
@@ -102,7 +102,6 @@ def analysis_main(struct_path, opt_dict):
             usage()
         conf.globalconf.min_subsegment_size = min_subseg
 
-    ## Added. Christoph Champ, 2008-06-09
     if opt_dict.has_key("-n"):
         try:
             num_segs = int(opt_dict["-n"])
@@ -122,7 +121,6 @@ def analysis_main(struct_path, opt_dict):
     if opt_dict.has_key("-s"):
         conf.globalconf.use_svg = True
 
-    ## Added. Christoph Champ, 2008-05-13
     if opt_dict.has_key("-k"):
         conf.globalconf.skip_jmol = True
 
@@ -164,14 +162,14 @@ def analysis_main(struct_path, opt_dict):
     if opt_dict.has_key("--skip-html"):
         conf.globalconf.skip_html = True
 
-    if opt_dict.has_key("--skip-jmol-viewer"):
-        conf.globalconf.skip_jmol_view = True
+    if opt_dict.has_key("--generate-jmol-viewer"):
+        conf.globalconf.generate_jmol_view = True
 
-    if opt_dict.has_key("--skip-jmol-animate"):
-        conf.globalconf.skip_jmol_animate = True
+    if opt_dict.has_key("--generate-jmol-animate"):
+        conf.globalconf.generate_jmol_animate = True
 
-    if opt_dict.has_key("--skip-histogram"):
-        conf.globalconf.skip_histogram = True
+    if opt_dict.has_key("--generate-histogram"):
+        conf.globalconf.generate_histogram = True
 
     if opt_dict.has_key("--help") or opt_dict.has_key("-h"):
         usage()
@@ -189,17 +187,14 @@ def analysis_main(struct_path, opt_dict):
 
 if __name__ == "__main__":
     try:
-        ## added option "-u" = min_subsegment_size. Christoph Champ, 2008-05-13
-        ## added option "-k" = skip_jmol. Christoph Champ, 2008-05-13
-        ## added option "-n" = nparts. Christoph Champ, 2008-06-09
         ## used letters: abcdeijmnorstuvwx
         ## available   : fglpqyz
         (opts, args) = getopt.getopt(sys.argv[1:], "n:u:a:t:c:d:i:w:m:r:j:x:khvseo:b", [
             "help",
             "skip-html",
-            "skip-jmol-viewer",
-            "skip-jmol-animate",
-            "skip-histogram"])
+            "generate-jmol-viewer",
+            "generate-jmol-animate",
+            "generate-histogram"])
     except getopt.GetoptError, err:
         print str(err)
         usage()
