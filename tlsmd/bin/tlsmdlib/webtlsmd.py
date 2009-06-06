@@ -80,16 +80,17 @@ def html_job_nav_bar(webtlsmdd, job_id):
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
 
-    analysis_dir = os.path.join(job_dir, "ANALYSIS")
+    analysis_dir   = os.path.join(job_dir, "ANALYSIS")
     analysis_index = os.path.join(analysis_dir, "index.html")
-    analysis_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "ANALYSIS/index.html")
+    analysis_url   = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "ANALYSIS/index.html")
 
     summary_index = os.path.join(job_dir, "ANALYSIS/index.html")
-    summary_url = os.path.join(job_url, "ANALYSIS/index.html")
+    summary_url   = os.path.join(job_url, "ANALYSIS/index.html")
 
     logfile = os.path.join(job_dir, "log.txt")
     log_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "log.txt")
 
+    tarball     = os.path.join(job_dir, "%s.tar.gz" % job_id)
     tarball_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "%s.tar.gz" % job_id)
 
     ## TODO: Should this only check for the logfile? 2009-05-27
@@ -99,7 +100,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x  = ''
     x += '<center>'
 
-    ## Summary page
+    ## Summary page link
     if (webtlsmdd.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
         x += '<h3>View <a href="%s">Summary Analysis</a></h3>' % (summary_url)
 
@@ -110,7 +111,7 @@ def html_job_nav_bar(webtlsmdd, job_id):
         x += '<h3>View <a href="%s">TLSMD Logfile</a></h3>' % (log_url)
 
     ## tarball link
-    if os.path.isfile(analysis_index):
+    if os.path.isfile(tarball):
         x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (tarball_url)
 
     x += '</center>'
@@ -151,7 +152,7 @@ def html_job_edit_form(fdict, pdb=False):
 
     ## email address
     x += '<tr>'
-    x += '<td align="right"><label>EMail Address:</td><td>'
+    x += '<td class="r"><label>EMail Address:</td><td>'
     x += '<input type="text" name="email" value="%s" size="25" maxlength="40" />' % (
          fdict.get("email", ""))
     x += '</label></td>'
@@ -160,7 +161,7 @@ def html_job_edit_form(fdict, pdb=False):
     ## structure code
     if not pdb:
         x += '<tr>'
-        x += '<td align="right"><label>Structure Code:</td><td>'
+        x += '<td class="r"><label>Structure Code:</td><td>'
         x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4" />' % (
              fdict.get("structure_id", ""))
         x += '</label></td>'
@@ -173,19 +174,19 @@ def html_job_edit_form(fdict, pdb=False):
     ## session info
     x += '<td valign="top"><table>'
 
-    x += '<tr><td align="right">TLSMD Job ID:</td>'
+    x += '<tr><td class="r">TLSMD Job ID:</td>'
     x += '<td><b>%s</b></td></tr>' % (fdict["job_id"])
 
-    x += '<tr><td align="right">Job State:</td>'
+    x += '<tr><td class="r">Job State:</td>'
     try:
         x += '<td><b>%s</b></td></tr>' % (fdict["state"])
     except:
         x += '<td><b>None</b></td></tr>'
-    
-    x += '<tr><td align="right">Submission IP Address: </td>'
+
+    x += '<tr><td class="r">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
 
-    x += '<tr><td align="right">Submission Date: </td>'
+    x += '<tr><td class="r">Submission Date: </td>'
 
     if fdict.has_key("submit_time"):
         date = timestring(fdict["submit_time"])
@@ -229,7 +230,7 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<table width="100%">'
     x += '<tr>'
     
-    x += '<td align="left">'
+    x += '<td class="l">'
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job" />'
     if fdict.has_key("signalbutton"):
@@ -240,7 +241,7 @@ def html_job_edit_form(fdict, pdb=False):
         x += '<input type="submit" name="submit" value="Requeue Job" />'
     x += '</td>'
     
-    x += '<td align="right">'
+    x += '<td class="r">'
     x += '<input type="submit" name="submit" value="Next" />'
     x += '</tr>'
     x += '</table>'
@@ -264,19 +265,19 @@ def html_session_info_table(fdict):
          '">Show Session Information</a>',
          '</th></tr>',
 
-         '<tr><td align="center">',
+         '<tr><td class="c">',
 
          '<div id="id2" style="display:none"><table class="ninner_table">',
-         '<tr><td align="right">TLSMD Job ID:</td>',
+         '<tr><td class="r">TLSMD Job ID:</td>',
          '<td><b>%s</b></td></tr>' % (fdict["job_id"]),
          
-         '<tr><td align="right">Job State:</td>',
+         '<tr><td class="r">Job State:</td>',
          '<td><b>%s</b></td></tr>' % (fdict["state"]),
          
-         '<tr><td align="right">Submission IP Address: </td>',
+         '<tr><td class="r">Submission IP Address: </td>',
          '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", "")),
          
-         '<tr><td align="right">Submission Date: </td>',
+         '<tr><td class="r">Submission Date: </td>',
          '<td><b>%s</b></td></tr>' % (date),
          '</table></div>',
          
@@ -289,26 +290,26 @@ def html_user_info_table(fdict):
 
          '<tr class="inner_title"><th colspan="2">User Information</th></tr>',
 
-         '<tr><td align="center">',
+         '<tr><td class="c">',
          '<table class="ninner_table">',
 
          ## User name
          '<tr>',
-         '<td align="right"><label for="user_name">Your Name</label></td>',
+         '<td class="r"><label for="user_name">Your Name</label></td>',
          '<td><input type="text" id="user_name" name="user_name" value="%s" size="25" maxlength="40" /></td>' % (
              fdict.get("user_name","")),
          '</tr>',
 
          ## User email address
          '<tr>',
-         '<td align="right"><label for="email">EMail Address</label></td>',
+         '<td class="r"><label for="email">EMail Address</label></td>',
          '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40" /></td>' % (
              fdict.get("email", "")),
          '</tr>',
 
          ## User associated notes
          '<tr>',
-         '<td align="right"><label for="user_comment">Associated Notes</label></td>',
+         '<td class="r"><label for="user_comment">Associated Notes</label></td>',
          '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128" /></td>' % (
              fdict.get("user_comment","")),
          '</tr>',
@@ -326,9 +327,9 @@ def html_program_settings_table(fdict):
     l = ['<table class="inner_table">',
          '<tr class="inner_title"><th>TLSMD Program Options</th></tr>',
 
-         '<tr><td align="center">',
+         '<tr><td class="c">',
          '<table width="100%">',
-         '<tr><td align="center" valign="top">',
+         '<tr><td class="c" valign="top">',
 
          ## left table
          '<table class="ninner_table">',
@@ -341,7 +342,7 @@ def html_program_settings_table(fdict):
     l += ['<label for="private_job">Keep Job Private</label>',
          '</td></tr>',
 
-         '<tr><td align="left">',
+         '<tr><td class="l">',
          '<label for="structure_id">4-Letter Structure ID </label>',
          '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4" />' % (
              fdict.get("structure_id", "")),
@@ -349,7 +350,7 @@ def html_program_settings_table(fdict):
 
          '</table>',
 
-         '</td><td align="center" valign="top">',
+         '</td><td class="c" valign="top">',
 
          ## right table
          '<table class="ninner_table">',
@@ -363,7 +364,7 @@ def html_program_settings_table(fdict):
             x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (
                 cdict["name"], cdict["name"])
             
-        l +=['<tr><td align="left">', x, cdict["desc"], '</td></tr>' ]
+        l +=['<tr><td class="l">', x, cdict["desc"], '</td></tr>' ]
 
     l +=['</table>',
 
@@ -377,12 +378,12 @@ def html_program_settings_table(fdict):
          '">Show Advanced Program Options</a>',
          '</th></tr>',
          
-         '<tr><td align="center">',
+         '<tr><td class="c">',
          '<div id="id1" style="display:none">',
          '<table class="ninner_table">',
          '<tr>',
 
-         '<td valign="top" align="left">',
+         '<td valign="top" class="l">',
          '<fieldset><legend>Plot Output Format</legend>',
          '<div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5+.</div>',
          '<p><label>',
@@ -394,7 +395,7 @@ def html_program_settings_table(fdict):
          '</fieldset>',
          '</td>',
 
-         '<td valign="top" align="left">',
+         '<td valign="top" class="l">',
          '<fieldset><legend>Atom Class Selection</legend>',
          '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div>',
          '<p><label>',
@@ -409,7 +410,7 @@ def html_program_settings_table(fdict):
 
          '</tr><tr>'
          ## Generate Jmol view/animate? (default=True)
-         '<td valign="top" align="left">',
+         '<td valign="top" class="l">',
          '<fieldset><legend>Jmol toggle switches</legend>',
          #'<div style="font-size:xx-small">Turn Jmol analysis on/off.</div>',
          '<p>',
@@ -426,7 +427,7 @@ def html_program_settings_table(fdict):
          '</td>',
 
          ## Generate histogram plot? (default=False)
-         '<td valign="top" align="left">',
+         '<td valign="top" class="l">',
          '<fieldset><legend>Histogram toggle switches</legend>',
          #'<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
          '<p>',
@@ -440,7 +441,7 @@ def html_program_settings_table(fdict):
          '</tr><tr>'
 
          ## select number of partitions per chain
-         '<td valign="top" align="left">',
+         '<td valign="top" class="l">',
          '<fieldset><legend>Set number of partitions/chain</legend>',
          '<div style="font-size:xx-small">default/max = %s</div><br/>' % (conf.NPARTS),
          '<p>',
@@ -493,11 +494,11 @@ def html_job_edit_form2(fdict, title=""):
          '<table width="100%" class="submit_table">',
          '<tr><th class="step_title">%s</th></tr>' % (title),
 
-         '<tr><td align="center">', html_user_info_table(fdict), '</td></tr>',
-         '<tr><td align="center">', html_program_settings_table(fdict), '</td></tr>',
-         '<tr><td align="center">', html_session_info_table(fdict), '</td></tr>',
+         '<tr><td class="c">', html_user_info_table(fdict), '</td></tr>',
+         '<tr><td class="c">', html_program_settings_table(fdict), '</td></tr>',
+         '<tr><td class="c">', html_session_info_table(fdict), '</td></tr>',
 
-         '<tr><td align="center"><input type="submit" name="submit" value="Submit Job" /></td></tr>',
+         '<tr><td class="c"><input type="submit" name="submit" value="Submit Job" /></td></tr>',
 
          '</table>',
          '</form>',
@@ -509,7 +510,7 @@ def html_job_info_table(fdict):
     x  = ''
     x += '<center>'
 
-    x += '<table border="1" width="100%">'
+    x += '<table border="0" cellpadding="3" width="100%" class="explore_table">'
 
     ## user/email/passcode/structure name
     x += '<tr>'
@@ -521,23 +522,23 @@ def html_job_info_table(fdict):
     x += '<table>'
 
     ## email address
-    x += '<tr>'
-    x += '<td align="right"><label>EMail Address:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("email", ""))
+    x += '<tr class="explore_table_row">'
+    x += '<td class="r"><label>EMail Address:</td>'
+    x += '<td class="l"><b>%s</b>' % (fdict.get("email", ""))
     x += '</label></td>'
     x += '</tr>'
 
     ## structure code
     x += '<tr>'
-    x += '<td align="right"><label>Structure Code:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("structure_id", ""))
+    x += '<td class="r"><label>Structure Code:</td>'
+    x += '<td class="l"><b>%s</b>' % (fdict.get("structure_id", ""))
     x += '</label></td>'
     x += '</tr>'
 
     ## user comments
     x += '<tr>'
-    x += '<td align="right"><label>Associated Notes:</td><td>'
-    x += '<b>%s</b>' % (fdict.get("user_comment", ""))
+    x += '<td class="r"><label>Associated Notes:</td>'
+    x += '<td class="l"><b>%s</b>' % (fdict.get("user_comment", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -548,41 +549,41 @@ def html_job_info_table(fdict):
     ## session info
     x += '<td valign="top"><table>'
 
-    x += '<tr><td align="right">TLSMD Job ID:</td>'
+    x += '<tr><td class="r">TLSMD Job ID:</td>'
     x += '<td><b>%s</b></td></tr>' % (fdict["job_id"])
 
-    x += '<tr><td align="right">Job State:</td>'
+    x += '<tr><td class="r">Job State:</td>'
     if fdict.has_key("state"):
         jobstate = (fdict["state"])
     else:
         jobstate = "unknown"
     x += '<td><b>%s</b></td></tr>' % (jobstate)
     
-    x += '<tr><td align="right">Submission IP Address: </td>'
+    x += '<tr><td class="r">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
 
-    x += '<tr><td align="right">Submission Date: </td>'
+    x += '<tr><td class="r">Submission Date: </td>'
     if fdict.has_key("submit_time"):
         date = timestring(fdict["submit_time"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
 
-    x += '<tr><td align="right">Processing Start Date: </td>'
+    x += '<tr><td class="r">Processing Start Date: </td>'
     if fdict.has_key("run_time_begin"):
         date = timestring(fdict["run_time_begin"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
 
-    x += '<tr><td align="right">Processing End Date: </td>'
+    x += '<tr><td class="r">Processing End Date: </td>'
     if fdict.has_key("run_time_end"):
         date = timestring(fdict["run_time_end"])
     else:
         date = "---"
     x += '<td><b>%s</b></td></tr>' % (date)
 
-    x += '<tr><td align="right">Processing Time(HH:MM): </td>'
+    x += '<tr><td class="r">Processing Time(HH:MM): </td>'
     if fdict.has_key("run_time_end") and fdict.has_key("run_time_begin"):
         hours = timediffstring(fdict["run_time_begin"], fdict["run_time_end"])
     else:
@@ -594,16 +595,21 @@ def html_job_info_table(fdict):
     x += '</tr>'
 
     ##==========================================================================
-    ## Select Chains for Analysis
-    x += '<tr><th colspan="3">Selected Chains</th></tr>'
+    ## Selected Chains for Analysis
+    x += '<tr class="explore_table_head">'
+    x += '<th colspan="3">Selected Chains</th></tr>'
 
     x += '<tr><td colspan="3">'
-    x += '<table cellpadding="5">'
+    x += '<table cellpadding="5" style="text-align:center;">'
+
+    ## Thumbnail image of user's structure
+    if conf.THUMBNAIL:
+        x += '<tr><th colspan="3"><img src="%s"/></th></tr>' % (
+            conf.TLSMD_WORK_URL + "/" + fdict["job_id"] + "/struct.png")
+
+    ## Selected chains information
     x += '<tr><th><font size="-5">Chain</font></th>'
     x += '<th><font size="-5">Processing Time (HH:MM.SS)</font></th>'
-    if conf.THUMBNAIL:
-        x += '<img src="%s"/>' % (fdict["job_url"] + "/struct.png")
-    x += '</tr>'
 
     for cdict in fdict.get("chains", []):
         x += '<tr><td>'
@@ -624,7 +630,7 @@ def html_job_info_table(fdict):
 
     ##==========================================================================
     ## Detailed advanced settings list
-    x += '<tr><td align="left"><pre>'
+    x += '<tr><td class="l"><pre>'
 
     ## TLS Model
     if fdict.get("tls_model") is None or fdict.get("tls_model") == "ISOT":
@@ -688,11 +694,11 @@ def html_job_info_table(fdict):
         x += '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE" />'
         x += '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"])
-        x += '<input type="hidden" name="user" value="%s" />' % (fdict["user"])
-        x += '<input type="hidden" name="passwd" value="%s" />' % (fdict["passwd"])
+        #x += '<input type="hidden" name="user" value="%s" />' % (fdict["user"])
+        #x += '<input type="hidden" name="passwd" value="%s" />' % (fdict["passwd"])
 
         x += '<tr>'
-        x += '<td colspan="3" align="left">'
+        x += '<td colspan="3" class="l">'
         x += '<input type="submit" name="submit" value="Remove Job" />'
 
     if fdict.has_key("signalbutton"):
@@ -712,7 +718,7 @@ def html_job_info_table(fdict):
 
 
 def check_job_id(form, webtlsmdd):
-    """Retrieves and confirms the job_id from a incomming form.  Returns
+    """Retrieves and confirms the job_id from a incomming form. Returns
     None on error, or the job_id on success.
     """
     if form.has_key("job_id"):
@@ -731,11 +737,6 @@ def vet_data(data, max_len):
         return False
     if not data.isalnum():
         return False
-
-    ## FIXME: This doesn't work yet.
-    ## only allow 1-4 alphanumeric characters
-    #if not re.match(r'[A-Za-z0-9]{1,4}',data):
-    #    return False
     return True
 
 def vet_email(email_address):
@@ -784,9 +785,12 @@ def extract_job_edit_form(form, webtlsmdd):
         webtlsmdd.job_set_private_job(job_id, True)
 
     if form.has_key("user_name"):
+        ## TODO: Set blank/no-user-input strings to NULL/None, 2009-05-22
         user_name = form["user_name"].value.strip()
+        ## store only the first 100 characters
         user_name = user_name[:100]
-        webtlsmdd.job_set_user_name(job_id, user_name)
+        if vet_data(user_name, 100):
+            webtlsmdd.job_set_user_name(job_id, user_name)
             
     if form.has_key("email"):
         email_address = form["email"].value.strip()
@@ -800,12 +804,13 @@ def extract_job_edit_form(form, webtlsmdd):
             structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
             webtlsmdd.job_set_structure_id(job_id, structure_id)
 
-    ## user_comment field added
     if form.has_key("user_comment"):
+        ## FIXME: This value is not being captured, 2009-06-02
         user_comment = form["user_comment"].value.strip()
-        ## store only the first 128 characters. 2009-01-07
+        ## store only the first 128 characters
         user_comment = user_comment[:128]
-        webtlsmdd.job_set_user_comment(job_id, user_comment)
+        if vet_data(user_comment, 128):
+            webtlsmdd.job_set_user_comment(job_id, user_comment)
 
     num_chains_selected = 0
     chains = webtlsmdd.job_get_chains(job_id)
@@ -870,7 +875,7 @@ def extract_job_edit_form(form, webtlsmdd):
             #raise SubmissionException("Integer value required for 'Maximum number of segments: %s'" % nparts_value)
             return False
         if int(nparts_value) > conf.NPARTS or int(nparts_value) < 1:
-            ## not a valid input; force value to be int(20)
+            ## not a valid input; force value to be int(2)
             nparts_value = int(conf.NPARTS)
         try:
             value = int(nparts_value)
@@ -957,7 +962,9 @@ class QueuePage(Page):
         if jdict.get("private_job", False):
             return "----"
         struct_id = jdict.get("structure_id", "xxxx")
-        if struct_id.lower() == "xxxx":
+        if struct_id == None:
+            return "----"
+        elif struct_id.lower() == "xxxx":
             return struct_id
         ## FIXME The following link should only point to pdb.org if it is a
         ## real PDBid, 2008-02-20
@@ -973,16 +980,16 @@ class QueuePage(Page):
              '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
              '</head>',
              '<body><div id="page">']
-        
+
         return "".join(l)
-    
+
     def html_foot(self):
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last Updated %s PST</p>' % (
+             '<p><small><b>Version %s</b> Last updated %s PST</p>' % (
              const.VERSION, misc.timestamp()),
              '</center>',
              '</div></body></html>']
-        
+
         return "".join(l)
 
     def html_page(self):
@@ -1009,26 +1016,28 @@ class QueuePage(Page):
             l.append(limbo)
 
         l.append(self.html_foot())
-        
+
         return "".join(l)
 
     def html_private_form(self):
         l = ['<form action="webtlsmd.cgi" method="post">',
              '<input type="hidden" name="page" value="explore" />',
-             
+
              '<center>',
              '<b>To access a private job, enter its Job ID below</b>',
              '</center>',
-             
+
              '<center>',
              '<input type="text" name="job_id" size="50" />',
              '</center>',
-             
+
              '</form>']
 
         return "".join(l)
 
     def explore_href(self, jdict):
+        """QueuePage
+        """
         if self.admin:
             page = "admin"
         else:
@@ -1048,8 +1057,9 @@ class QueuePage(Page):
             email_address = jdict.get("email")
             if isinstance(email_address, unicode):
                 email_address = ""
-            
-            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (page, job_id, job_id)]
+
+            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
+                page, job_id, job_id)]
 
             if user_name != "":
                 l.append('<br/>%s' % (user_name))
@@ -1067,11 +1077,13 @@ class QueuePage(Page):
             job_number = re.match(r'[^_]*', jdict["job_id"])
             if job_number: return job_number.group(0)
             return 'private'
-    
+
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
             page, jdict["job_id"] ,jdict["job_id"])
-    
+
     def chain_size_string(self, jdict):
+        """QueuePage
+        """
         if jdict.has_key("chains") == False:
             return "---"
 
@@ -1110,8 +1122,10 @@ class QueuePage(Page):
         return total
 
     def html_running_job_table(self, job_list):
+        """QueuePage
+        """
 
-        ## get an array of "running" jobs from the job dictionary.
+        ## get an array of "running" jobs from the job dictionary
         run_jdict = []
         for jdict in job_list:
             if jdict.get("state") == "running":
@@ -1128,7 +1142,7 @@ class QueuePage(Page):
              '<th colspan="2">Running Time (HH:MM.SS)</th>',
              '</tr>']
 
-        ## creates mutiple rows, _if_ there are multiple "running" jobs.
+        ## creates mutiple rows, _if_ there are multiple "running" jobs
         row1 = True
         for jdict in run_jdict:
             if row1:
@@ -1154,15 +1168,15 @@ class QueuePage(Page):
                 prog_file.close()
             except:
                 progress = 0
-            x += '<td align=left><div class="prog-border">'
+            x += '<td class="l"><div class="prog-border">'
             x += '<div class="prog-bar" style="width: %s%%;"></div>' % (progress)
             x += '</div></td>'
-            x += '<td align="right">%s</td></tr>' % (hours)
+            x += '<td class="r">%s</td></tr>' % (hours)
 
         ## for zero running jobs
         if len(run_jdict) == 0:
             x += ['<tr>',
-                  '<td colspan="6" align="center">',
+                  '<td colspan="6" class="c">',
                   'No Jobs Running',
                   '</td>',
                   '</tr>']
@@ -1171,6 +1185,8 @@ class QueuePage(Page):
         return "".join(x)
 
     def html_queued_job_table(self, job_list):
+        """QueuePage
+        """
         queued_list = []
         for jdict in job_list:
             if jdict.get("state") == "queued":
@@ -1202,16 +1218,18 @@ class QueuePage(Page):
 
         if len(queued_list) == 0:
             l += ['<tr>',
-                  '<td colspan="4" align="center">',
+                  '<td colspan="4" class="c">',
                   'No Jobs Queued',
                   '</td>',
                   '</tr>']
 
         l.append('</table></center>')
-        
+
         return "".join(l)
 
     def html_completed_job_table(self, job_list):
+        """QueuePage
+        """
         completed_list = []
         for jdict in job_list:
             if jdict.get("state") in ["completed",
@@ -1244,9 +1262,13 @@ class QueuePage(Page):
             else:
                 l.append('<tr class="status_table_row2">')
             row1 = not row1
-                                
+
+            ## "Job ID"
             l.append('<td>%s</td>' % (self.explore_href(jdict)))
+
+            ## "Struct ID"
             l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
+
             ## Direct link to logfile
             if jdict.has_key("log_url"):
                 logfile = os.path.join(jdict["job_dir"], "log.txt")
@@ -1255,23 +1277,30 @@ class QueuePage(Page):
                     l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict.get("state")))
                 else:
                     l.append('<td>%s</td>' % (jdict.get("state")))
+
+            ## "Submission Date"
             l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
-            l.append('<td align="right">%s</td>' % (
+
+            ## "Total Residues"
+            l.append('<td class="r">%s</td>' % (
                 self.total_number_of_residues(jdict)))
 
+            ## "Processing Time (HH:MM.SS)"
             if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
                 hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
             else:
                 hours = "---"
-            l.append('<td align="right">%s</td>' % (hours))
+            l.append('<td class="r">%s</td>' % (hours))
 
             l.append('</tr>')
 
         l.append('</table>')
         l.append('</center>')
         return "".join(l)
-    
+
     def html_limbo_job_table(self, job_list):
+        """QueuePage
+        """
         limbo_list = []
         for jdict in job_list:
             if jdict.get("state") not in ["completed",
@@ -1308,7 +1337,7 @@ class QueuePage(Page):
             x += '<td>%s</td>' % (self.rcsb_href(jdict))
             x += '<td>%s</td>' % (jdict.get("state"))
             x += '<td>%s</td>' % (timestring(jdict.get("submit_time")))
-                                  
+
             x += '</tr>'
 
         x += '</table>'
@@ -1485,19 +1514,19 @@ class Submit1Page(Page):
              '<tr><th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th></tr>',
 
              '<tr>',
-             '<td align="left">Upload PDB File:</td>',
+             '<td class="l">Upload PDB File:</td>',
              '<td><input name="pdbfile" size="50" type="file" /></td>',
              '</tr>',
-             
 
-             '<tr><td colspan="2" align="center">',
+             '<tr><td colspan="2" class="c">',
              '<input value="Upload File and Proceed to Step 2" type="submit" />',
              '</td></tr>',
              '</table>',
              '</form>',
-             
+
              '</center>',
-             
+
+             ## Submit from pdb.org ============================================
              '<center><h4>OR</h4></center>',
 
              '<center>',
@@ -1604,7 +1633,7 @@ class Submit3Page(Page):
                  '<table class="submit_table">',
                  '<tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>',
 
-                 '<tr><td align="center">Your job ID is <B>%s</B></td></tr>' % (job_id),
+                 '<tr><td class="c">Your job ID is <B>%s</B></td></tr>' % (job_id),
 
                  '<tr><td>%s</td></tr>' % (self.submission_summary_info(job_id)),
 
@@ -1794,21 +1823,11 @@ class SubmitPDBPage(Page):
         redirect.append(self.html_foot())
         return "".join(redirect)
 
-def generate_random_filename(code_length = 8):
-    """Generates a random 8 character string
-    """
-    random.seed()
-    codelist = list(5 * string.ascii_letters)
-    random.shuffle(codelist)
-    code = "".join(random.sample(codelist, code_length))
-    return code
-
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
        of a given set of residues (controlled by the 'window' variable).
     """
-    ######### EAM 3-Dec-2007 #########
-    tmpfile = generate_random_filename()
+    tmpfile = misc.generate_security_code()
     n = atm = res_tfac = 0
     avg_tfac = []
     res_id = []
