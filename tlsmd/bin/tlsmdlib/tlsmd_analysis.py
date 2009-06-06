@@ -140,6 +140,7 @@ class TLSMDAnalysis(object):
             naa = chain.count_amino_acids()
             nna = chain.count_nucleic_acids()
             num_frags = max(naa, nna)
+            ## TODO: Switch to globals, 2009-06-04
             if num_frags < 10:
                 continue
             
@@ -183,10 +184,12 @@ def LoadStructure(struct_source):
 
     ## load struct
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
+    job_dir = str(os.path.dirname(str(struct_source)))
 
     console.kvformat("HEADER", struct.header) ## LOGLINE 9
     console.kvformat("TITLE", struct.title) ## LOGLINE 10
     console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
+    console.kvformat("PATH", job_dir) ## LOGLINE
     
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
@@ -213,7 +216,11 @@ def LoadStructure(struct_source):
 
         ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
         for tls_desc in tls_file.tls_desc_list:
-            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+            try:
+                tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+            except:
+                print console.formatExceptionInfo()
+
             console.stdoutln("    TLS GROUP: %s" % (tls_group.name))
             for atm, Utls in tls_group.iter_atm_Utls():
                 bresi = atm.temp_factor
@@ -245,10 +252,10 @@ def ConstructSegmentForAnalysis(raw_chain):
     nna = raw_chain.count_nucleic_acids()
 
     if naa > nna:
-	## Probably a protein with (possibly) some nucleic acids.
+        ## Probably a protein with (possibly) some nucleic acids.
         iter_residues = raw_chain.iter_amino_acids()
     elif nna > naa:
-	## Probably a nucleic acid with (possibly) some amino acids.
+        ## Probably a nucleic acid with (possibly) some amino acids.
         iter_residues = raw_chain.iter_nucleic_acids()
         
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
@@ -310,7 +317,7 @@ def RecombineIndependentTLSSegments(analysis):
     console.debug_stdoutln(">Entering: tlsmd_analysis.py->RecombineIndependentTLSSegments()...") ## DEBUG
     console.stdoutln("TLS SEGMENT RECOMBINATION") ## LOGLINE
     for chain in analysis.chains:
-	## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
+        ## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
 
 def FitConstrainedTLSModel(analysis):
@@ -334,19 +341,26 @@ def FitConstrainedTLSModel(analysis):
         for cpartition in chain.partition_collection.iter_chain_partitions():
             console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments())) ## LOGLINE
             for tls in cpartition.iter_tls_segments():
-		try:
+                try:
                     ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
-		    tls.fit_to_chain(cpartition.chain)
+                    tls.fit_to_chain(cpartition.chain)
 
-		except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
-		    console.stdoutln("            Runtime error: %s, trying to continue..." % e)
-		    pass
+                    ## TODO: Write out data for residual plots.
+                    #gp = gnuplots.LSQR_vs_TLS_Segments_Pre_Plot(cpartition.chain)
+                    #console.stdoutln("FIT_TO_CHAIN_PATH: %s" % analysis.struct2_file_path)
 
-	## Track progress
-	progress += 0.4/analysis.num_chains()
-	progress_report = open("progress","w+")
-	print >> progress_report, progress
-	progress_report.close()
+                except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
+                    console.stdoutln("            Runtime error for [%s]: %s, trying to continue..." % (
+                        tls, e))
+                    print console.formatExceptionInfo()
+                    pass
+
+        ## Track progress
+        progress += 0.4/analysis.num_chains()
+        progress_report = open("progress","w+")
+        print >> progress_report, progress
+        ## progress_report.write(progress)
+        progress_report.close()
 
     console.endln() ## LOGLINE
 
