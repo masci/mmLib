@@ -47,7 +47,7 @@ class TLSSegment(object):
         self.superposition_vscrew = None
 
     def __str__(self):
-	## E.g., "A:16-75; 82-94; 101-116"
+        ## E.g., "A:16-75; 82-94; 101-116"
         return "%s:%s" % (self.chain_id, self.display_label())
 
     def copy(self):
@@ -167,7 +167,10 @@ class TLSSegment(object):
             raise SystemExit
 
         ## fit the TLS group parameters
-        self.fit_tls_parameters(chain)
+        try:
+            self.fit_tls_parameters(chain)
+        except:
+            print console.formatExceptionInfo()
         
         ## helpful additions
         tls_info  = self.tls_group.calc_tls_info()
@@ -187,7 +190,10 @@ class TLSSegment(object):
             self.tls_group.model = "ANISO"
             self.model_tls_info = tls_info
 
-        self.rmsd_b = tls_calcs.calc_rmsd_tls_biso(self.tls_group)
+        try:
+            self.rmsd_b = tls_calcs.calc_rmsd_tls_biso(self.tls_group)
+        except:
+            print console.formatExceptionInfo()
 
     def fit_tls_parameters(self, chain):
         """Use the non-linear TLS model to calculate tensor values.
