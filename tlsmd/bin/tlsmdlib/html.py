@@ -239,7 +239,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
     i = 1 ## which segment within the partition
     for tls in cpartition.iter_tls_segments():
 
-        ## Calculate the stddev for all temperature factors in a given segment. Christoph Champ, 2008-04-15
+        ## Calculate the stddev for all temperature factors in a given segment
         tmp_temp_factor = []
         for atm, Utls in tls.tls_group.iter_atm_Utls():
             tmp_temp_factor.append(atm.temp_factor)
@@ -362,6 +362,8 @@ class Report(object):
         return "".join(l)
 
     def html_title(self, title):
+        """Title for all HTML pages.
+        """
 	l  = ['<table class="title"><tr>\n',
               '<td class="l title">%s</font></td>' % (misc.start_time()),
 	      '<td class="c title">JobID: %s</font></td>' % (conf.globalconf.job_id),
@@ -500,15 +502,15 @@ class HTMLSummaryReport(Report):
         os.chdir(old_dir)
 
     def write_summary_index(self):
-        """Writes the summary.html file of the report.
+        """Writes the summary index.html file of the report.
         """
         fil = open("index.html", "w")
         fil.write(self.html_summary_index())
         fil.close()
-	console.stdoutln("HTML: Saving summary.html") ## LOGLINE
+	console.stdoutln("HTML: Saving summary index.html")
 
     def html_summary_index(self):
-        """Generate and returns the HTML string for the summary.html
+        """Generate and returns the HTML string for the summary index.html
         file of the report.
         """
         title = "TLSMD Thermal Parameter Analysis of Structure %s" % (
@@ -747,7 +749,7 @@ class HTMLReport(Report):
         ## a report page comparing the tls group segments of all
         ## chains against each other
 	try:
-	    console.stdoutln("Writing multi-chain alignment") ## LOGLINE
+	    console.stdoutln("Writing multi-chain alignment")
             self.write_multi_chain_alignment()
 	except:
 	    console.stdoutln("        Error: Couldn't deal with multi-chain alignment")
@@ -776,7 +778,7 @@ class HTMLReport(Report):
         ## write out index page
         self.write_index()
 
-        ## update summary.html to show completed status
+        ## update summary index.html to show completed status
         #self.summary_file_update()
 
     def write_index(self):
@@ -786,10 +788,11 @@ class HTMLReport(Report):
         fil = open("index.html","w")
         fil.write(self.html_index())
         fil.close()
-	console.stdoutln("HTML: Saving main index.html") ## LOGLINE
+	console.stdoutln("HTML: Saving main index.html")
 
     def summary_file_update(self):
-        """Updates summary.html to reflect status."""
+        """Updates the summary index.html to reflect status.
+        """
         ## class HTMLReport()
 
         link = '<a href="%s/jobs/%s/ANALYSIS/index.html">' % (
@@ -917,7 +920,7 @@ class HTMLReport(Report):
         fil = open(path, "w")
         fil.write(self.html_tls_chain_optimization(chain))
         fil.close()
-	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
+	console.stdoutln("HTML: Saving %s" % path)
         
     def html_tls_chain_optimization(self, chain):
         """Generates and returns the HTML string report analysis of a
@@ -973,7 +976,7 @@ class HTMLReport(Report):
         ## add tables for all TLS group selections using 1 TLS group
         ## up to max_ntls
         for ntls in chain.partition_collection.iter_ntls():
-	    console.stdoutln("=" * 80) ## LOGLINE: Entering new segment
+	    console.stdoutln("=" * 80) ## Entering new segment
 	    try:
                 tmp = self.html_tls_graph_path(chain, ntls)
                 if tmp != None:
@@ -1055,7 +1058,7 @@ class HTMLReport(Report):
 
         #self.write_tls_pdb_file(chain, cpartition) ## write out PDB file
 
-        ## Lookup Jmol viewer/animate skip in globals
+        ## Find generate Jmol viewer/animate in globals
         try:
             job_id = conf.globalconf.job_id
             jmol_view_toggle = conf.globalconf.generate_jmol_view
@@ -1069,9 +1072,10 @@ class HTMLReport(Report):
             pass
 
         ## Jmol Viewer Script
+        #if conf.JMOL_SKIP or conf.globalconf.generate_jmol_view:
         if conf.globalconf.generate_jmol_view == False:
             jmol_file = ""
-            console.stdoutln("NOTE: Skipping Jmol-viewer section") ## LOGLINE
+            console.stdoutln("NOTE: Skipping Jmol-viewer section")
         else:
             try:
                 jmol_file = self.jmol_html(chain, cpartition)
@@ -1083,8 +1087,9 @@ class HTMLReport(Report):
                 pass
 
         ## Jmol Animation Script
+        #if conf.JMOL_SKIP or conf.globalconf.generate_jmol_animate:
         if conf.globalconf.generate_jmol_animate == False:
-            console.stdoutln("NOTE: Skipping Jmol-animation section") ## LOGLINE
+            console.stdoutln("NOTE: Skipping Jmol-animation section")
             jmol_animate_file = ""
             raw_r3d_file, r3d_body_file = self.generate_raw_backbone_file(chain, cpartition)
         else:
@@ -1127,7 +1132,7 @@ class HTMLReport(Report):
                 elapsed = (time.time() - start)
                 console.stdoutln("[%s,%s] RENDERING TIME for %s: %.2f s" % (
                     chain.chain_id, cpartition.num_tls_segments(), 
-                    png_file, elapsed)) ## LOGLINE
+                    png_file, elapsed))
 	    except:
                 raw_r3d_file = ""
                 r3d_body_file = ""
@@ -1140,7 +1145,7 @@ class HTMLReport(Report):
         if conf.REFMAC_SKIP:
             tlsout_file = ""
             phenixout_file = ""
-            console.stdoutln("NOTE: Skipping Refmac/Phenix section") ## LOGLINE
+            console.stdoutln("NOTE: Skipping Refmac/Phenix section")
         else:
             try:
                 ## tlsout (for refmac) and phenix files
@@ -1162,7 +1167,6 @@ class HTMLReport(Report):
             pass
 
         ## BMean Plot
-        ## switched to globals. Christoph Champ, 2008-10-14
         ntls_analysis.bmean_plot.width = conf.BMEAN_PLOT_WIDTH
         ntls_analysis.bmean_plot.height = conf.BMEAN_PLOT_HEIGHT
         ntls_analysis.bmean_plot.tls_group_titles = conf.BMEAN_PLOT_GROUP_TITLES
@@ -1201,7 +1205,6 @@ class HTMLReport(Report):
              '<br/>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_file),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
-             ## TLS-PHENIX-OUT. Christoph Champ, 2007-12-18
              '<a href="%s">Group description for PHENIX</a>' % (phenixout_file),
              '&nbsp;&nbsp;&nbsp;&nbsp;',
              '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % (
@@ -1236,7 +1239,7 @@ class HTMLReport(Report):
         ## class HTMLReport()
         r3d_header_file = "%s_CHAIN%s_header.r3d" % (
             self.struct_id, chain.chain_id)
-        console.stdoutln("Raster3D: generating header %s..." % r3d_header_file) ## LOGLINE
+        console.stdoutln("Raster3D: generating header %s..." % r3d_header_file)
 
         ori = self.orient
         struct_id = self.struct_id
@@ -1351,7 +1354,7 @@ class HTMLReport(Report):
         r3d_file = open(r3d_header_file, "w")
         r3d_file.write("\n".join(header_list))
         r3d_file.close()
-        console.stdoutln("Raster3D: Finish creating r3d_header %s..." % r3d_header_file) ## LOGLINE
+        console.stdoutln("Raster3D: Finish creating r3d_header %s..." % r3d_header_file)
 
         return r3d_header_file
         ##=====================================================================
@@ -1487,7 +1490,7 @@ class HTMLReport(Report):
                 atm.position = atm.orig_position
                 del atm.orig_position
 
-        console.stdoutln("Raster3D: Finish rendering %s..." % png_file) ## LOGLINE
+        console.stdoutln("Raster3D: Finish rendering %s..." % png_file)
         return "", png_file
 
     def write_tls_pdb_file(self, chain, cpartition):
@@ -1514,7 +1517,7 @@ class HTMLReport(Report):
         FileIO.SaveStructure(fil = pdb_file, struct = self.struct)
 
 	console.stdoutln("[%s,%s] PDB: Saving %s" % (
-            chain.chain_id, cpartition.num_tls_segments(), pdb_file)) ## LOGLINE
+            chain.chain_id, cpartition.num_tls_segments(), pdb_file))
 
         ## restore atom temp_factor and U
         for atm, temp_factor in old_temp_factor.iteritems():
@@ -1560,7 +1563,7 @@ class HTMLReport(Report):
         tls_file.save(open(tlsout_file, "w"))
 
 	console.stdoutln("[%s,%s] REFMAC: Saving %s" % (
-            chain_id, cpartition.num_tls_segments(), tlsout_file)) ## LOGLINE
+            chain_id, cpartition.num_tls_segments(), tlsout_file))
 
         return tlsout_file
 
@@ -1593,7 +1596,7 @@ class HTMLReport(Report):
         phenix_file.save(open(phenixout_file, "w"))
 
 	console.stdoutln("[%s,%s] PHENIX: Saving %s" % (
-            chain_id, cpartition.num_tls_segments(), phenixout_file)) ## LOGLINE
+            chain_id, cpartition.num_tls_segments(), phenixout_file))
 
         return phenixout_file
 
@@ -1657,7 +1660,7 @@ class HTMLReport(Report):
         open(jmol_file, "w").write("".join(l))
 
 	console.stdoutln("[%s,%s] JMOL: Saving %s" % (
-            chain.chain_id, cpartition.num_tls_segments(), jmol_file)) ## LOGLINE
+            chain.chain_id, cpartition.num_tls_segments(), jmol_file))
 
         return jmol_file
 
@@ -1716,7 +1719,7 @@ class HTMLReport(Report):
         ## generate animation PDB file
         try:
             console.stdoutln("[%s,%s] TLSAnimate: creating animation PDB file..." % (
-                chain.chain_id, cpartition.num_tls_segments())) ## LOGLINE
+                chain.chain_id, cpartition.num_tls_segments()))
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_file, raw_r3d_file)
         except TLSAnimateFailure:
@@ -1734,7 +1737,7 @@ class HTMLReport(Report):
               'trace on;']
 
         ## figure out which libration eigen value is the largest and
-        ## use that value in the animation. Christoph Champ, 2008-08-15
+        ## use that value in the animation
         n = 0 ## counter for which max_libration to use
         max_libration = []
         for tls in cpartition.iter_tls_segments():
@@ -1833,7 +1836,7 @@ class HTMLReport(Report):
         open(html_file, "w").write("".join(l))
 
 	console.stdoutln("[%s,%s] HTML: Saving %s" % (
-            chain.chain_id, cpartition.num_tls_segments(), html_file)) ## LOGLINE
+            chain.chain_id, cpartition.num_tls_segments(), html_file))
 
         return html_file, raw_r3d_file, r3d_body_file
 
@@ -1941,7 +1944,7 @@ class HTMLReport(Report):
         fil.write(self.html_refinement_prep())
         fil.close()
 
-	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
+	console.stdoutln("HTML: Saving %s" % path)
 
     def html_refinement_prep(self):
         ## class HTMLReport()
@@ -2060,7 +2063,7 @@ class ChainNTLSAnalysisReport(Report):
         job_id = conf.globalconf.job_id
         #if conf.HISTOGRAM_SKIP or conf.globalconf.generate_histogram == False:
         if conf.globalconf.generate_histogram == False:
-            console.stdoutln("NOTE: Skipping Histogram section") ## LOGLINE
+            console.stdoutln("NOTE: Skipping Histogram section")
         else:
             try:
                 for tls in self.cpartition.iter_tls_segments():
@@ -2077,7 +2080,7 @@ class ChainNTLSAnalysisReport(Report):
         l.append(self.html_foot())
         
         open(self.index, "w").write("".join(l))
-	console.stdoutln("HTML: Saving %s" % path) ## LOGLINE
+	console.stdoutln("HTML: Saving %s" % path)
 
     def html_tls_group_table(self, detail):
         ## Pass "ntls" as well, 2008-04-05
@@ -2167,7 +2170,7 @@ class ChainNTLSAnalysisReport(Report):
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
 
         open(filename, "w").write(str(tbl))
-	console.stdoutln("[%s] RECOMBINATION: Saving %s" % (chain_ntls, filename)) ## LOGLINE
+	console.stdoutln("[%s] RECOMBINATION: Saving %s" % (chain_ntls, filename))
 
         ##======================================================================
         ##<FLATFILE>
