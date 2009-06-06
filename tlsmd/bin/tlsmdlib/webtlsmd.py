@@ -1823,6 +1823,13 @@ class SubmitPDBPage(Page):
         redirect.append(self.html_foot())
         return "".join(redirect)
 
+def min_subsegment_stddev(atomnum, restype, resnum, chain, tfactor):
+    """Calculates a running standard deviation for residue windows the same
+       size as whatever the global 'min_subsegment_size' in conf.py is set to.
+    """
+    ## FIXME: Doesn't do anything yet, 2009-06-05
+    min_subsegment_size = conf.globalconf.min_subsegment_size
+
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
        of a given set of residues (controlled by the 'window' variable).
