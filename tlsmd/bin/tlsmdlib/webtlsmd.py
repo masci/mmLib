@@ -77,46 +77,22 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(webtlsmdd, job_id):
     """Navigation bar to the TLSMD output files.
     """
-    ## XXX: OLD: The following was the old way of looking up the dirs/URLs from
-    ## the BerkeleyDB. It was slow and unnecessary, as most of it was globals.
-    #job_dir = webtlsmdd.job_get_job_dir(job_id)
-    #job_url = webtlsmdd.job_get_job_url(job_id)
-    #
-    #analysis_dir = webtlsmdd.job_get_analysis_dir(job_id)
-    #analysis_index = os.path.join(analysis_dir, "index.html")
-    #analysis_url = webtlsmdd.job_get_analysis_url(job_id)
-    #
-    #summary_index = os.path.join(job_dir, "ANALYSIS/summary.html")
-    #summary_url = os.path.join(job_url, "ANALYSIS/summary.html")
-    #
-    #logfile = os.path.join(job_dir, "log.txt")
-    #log_url = webtlsmdd.job_get_log_url(job_id)
-    #
-    #tarball_url = webtlsmdd.job_get_tarball_url(job_id)
-
-    ## XXX: NEW: The following is the new way, bypassing the BerkeleyDB.
-    ## /home/tlsmd/public_html/jobs/TLSMD834_eFxxSCoB/
-    job_dir = os.path.join(conf.TLSMD_WWW_ROOT, "jobs", job_id)
-    ## http://skuld.bmsc.washington.edu/~tlsmd/jobs/TLSMD834_eFxxSCoB
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
 
-    ## /home/tlsmd/public_html/jobs/TLSMD834_eFxxSCoB/ANALYSIS
     analysis_dir = os.path.join(job_dir, "ANALYSIS")
     analysis_index = os.path.join(analysis_dir, "index.html")
-    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/ANALYSIS/index.html
     analysis_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "ANALYSIS/index.html")
 
-    summary_index = os.path.join(job_dir, "ANALYSIS/summary.html")
-    summary_url = os.path.join(job_url, "ANALYSIS/summary.html")
+    summary_index = os.path.join(job_dir, "ANALYSIS/index.html")
+    summary_url = os.path.join(job_url, "ANALYSIS/index.html")
 
     logfile = os.path.join(job_dir, "log.txt")
-    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/log.txt
-    log_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "log.txt")
+    log_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "log.txt")
 
-    ## /~tlsmd/jobs/TLSMD834_eFxxSCoB/TLSMD834_eFxxSCoB.tar.gz
-    tarball_url = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "%s.tar.gz" % job_id)
-    #===========================================================================
+    tarball_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "%s.tar.gz" % job_id)
 
+    ## TODO: Should this only check for the logfile? 2009-05-27
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
 
@@ -357,10 +333,12 @@ def html_program_settings_table(fdict):
          ## left table
          '<table class="ninner_table">',
 
-         ## default is 'private' job
-         '<tr><td align="left">',
-         '<input type="checkbox" id="private_job" name="private_job" value="TRUE" checked="checked" />',
-         '<label for="private_job">Keep Job Private</label>',
+    if conf.PRIVATE_JOBS:
+         l += '<input type="checkbox" id="private_job" name="private_job" value="TRUE" checked="checked" />'
+    else:
+         l += '<input type="checkbox" id="private_job" name="private_job" value="TRUE" />'
+
+    l += ['<label for="private_job">Keep Job Private</label>',
          '</td></tr>',
 
          '<tr><td align="left">',
@@ -430,17 +408,17 @@ def html_program_settings_table(fdict):
          '</td>',
 
          '</tr><tr>'
-         ## JMol view/animate toggle boxes (default=OFF/False)
+         ## Generate Jmol view/animate? (default=True)
          '<td valign="top" align="left">',
-         '<fieldset><legend>JMol toggle switches</legend>',
-         #'<div style="font-size:xx-small">Turn JMol analysis on/off.</div>',
+         '<fieldset><legend>Jmol toggle switches</legend>',
+         #'<div style="font-size:xx-small">Turn Jmol analysis on/off.</div>',
          '<p>',
-         '<label>Generate JMol-viewer pages: </label>',
+         '<label>Generate Jmol-viewer pages: </label>',
          '<input name="generate_jmol_view" type="radio" value="True" checked="checked" />yes',
          '<input name="generate_jmol_view" type="radio" value="False" />no',
          '</p>',
          '<p>',
-         '<label>Generate JMol-animation pages: </label>',
+         '<label>Generate Jmol-animation pages: </label>',
          '<input name="generate_jmol_animate" type="radio" value="True" checked="checked" />yes',
          '<input name="generate_jmol_animate" type="radio" value="False" />no',
          '</p>',
@@ -861,7 +839,7 @@ def extract_job_edit_form(form, webtlsmdd):
         if plot_format in ["PNG", "SVG"]:
             webtlsmdd.job_set_plot_format(job_id, plot_format)
 
-    ## Generate JMol-viewer feature (default=True)
+    ## Generate Jmol-viewer feature (default=True)
     if form.has_key("generate_jmol_view"):
         generate_jmol_view = form["generate_jmol_view"].value.strip()
         if generate_jmol_view == "True":
@@ -869,7 +847,7 @@ def extract_job_edit_form(form, webtlsmdd):
         else:
             webtlsmdd.job_set_jmol_view(job_id, False)
 
-    ## Generate JMol-animation feature (default=True)
+    ## Generate Jmol-animation feature (default=True)
     if form.has_key("generate_jmol_animate"):
         generate_jmol_animate = form["generate_jmol_animate"].value.strip()
         if generate_jmol_animate == "True":
@@ -1026,7 +1004,7 @@ class QueuePage(Page):
              self.html_completed_job_table(job_list)]
 
         limbo = self.html_limbo_job_table(job_list)
-        if limbo!=None:
+        if limbo != None:
             l.append('<br/>')
             l.append(limbo)
 
@@ -1336,7 +1314,7 @@ class QueuePage(Page):
         x += '</table>'
         x += '</center>'
         return x
-    
+
 
 class ExploreJobPage(Page):
     def html_page(self):
