@@ -3,8 +3,12 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python modules
 import sys
-import time, datetime
+
+## TLSMD
+import misc
 
 console_output_enabled = True
 debug_output_enabled = False
@@ -69,13 +73,11 @@ def endln():
     stdout("\n")
 
 def stdoutln(line):
-    timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
-    stdout("[%s] %s\n" % (timestamp, line))
+    stdout("[%s] %s\n" % (misc.timestamp(), line))
 
 def debug_stdoutln(line):
     if debug_output_enabled:
-        timestamp = datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
-        stdout("[%s] %s\n" % (timestamp, line))
+        stdout("[%s] %s\n" % (misc.timestamp(), line))
 
 def stderrln(line):
     stderr(line + "\n")
