@@ -162,7 +162,7 @@ class ISOptimization(hcsssp.HCSSSP):
         ## perform the minimization
         if len(edges) > 0:
             console.stdoutln("run_minimization(chain_id=%s): HCSSSP Minimizing..." % (chain_id))
-        
+
             D, P, T = self.HCSSSP_minimize(vertices, edges, self.nparts)
 
             self.minimized = True
@@ -199,12 +199,12 @@ class ISOptimization(hcsssp.HCSSSP):
             return None
 
         cpartition = opt_containers.ChainPartition(self.chain, nparts)
-        
+
         for hi, hj, edge in self.HCSSSP_path_iter(self.V, self.D, self.P, self.T, nparts):
             if edge is None:
                 continue
             i, j, cost, frag_range, tlsdict = edge
-            
+
             ## check if the edge is a bypass-edge type
             if len(frag_range) == 2:
                 tls_segment = self.construct_tls_segment(edge)
@@ -232,7 +232,7 @@ class ISOptimization(hcsssp.HCSSSP):
         """Debug
         """
         hops = self.nparts
-        
+
         if not self.minimized:
             return
         dest_j = len(self.V) - 1
@@ -248,11 +248,11 @@ class ISOptimization(hcsssp.HCSSSP):
         the destination vertex (end vertex) given the hop_constraint.
         """
         num_vertex = len(D[0])
-        
+
         ## start at the destination vertex
         curr_v = num_vertex - 1
         h = hop_constraint
-        
+
         while curr_v >= 0:
             prev_vertex  = P[h,curr_v]
             vertex_label = V[curr_v].ljust(20)
