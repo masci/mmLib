@@ -28,6 +28,8 @@ import conf, const, misc
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
+import mysql_support
+mysql = mysql_support.MySQLConnect()
 
 def timestring(secs):
     tm_struct = time.localtime(secs)
@@ -35,10 +37,10 @@ def timestring(secs):
 
 def secdiffstring(secs):
     secs = int(secs)
-    
+
     hours = secs / 3600
     secs = secs - (hours * 3600)
- 
+
     min = secs / 60
     secs = secs - (min * 60)
 
@@ -74,7 +76,7 @@ def html_nav_bar(page_name=None):
          ]
     return "\n".join(l)
 
-def html_job_nav_bar(webtlsmdd, job_id):
+def html_job_nav_bar(job_id):
     """Navigation bar to the TLSMD output files.
     """
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
@@ -101,10 +103,10 @@ def html_job_nav_bar(webtlsmdd, job_id):
     x += '<center>'
 
     ## Summary page link
-    if (webtlsmdd.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
+    if (mysql.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
         x += '<h3>View <a href="%s">Summary Analysis</a></h3>' % (summary_url)
 
-    if os.path.isfile(analysis_index):
+    if (mysql.job_get_state(job_id) != 'running') and os.path.isfile(analysis_index):
         x += '<h3>View <a href="%s">Completed TLSMD Analysis</a></h3>' % (analysis_url)
 
     if os.path.isfile(logfile):
@@ -168,7 +170,7 @@ def html_job_edit_form(fdict, pdb=False):
         x += '</tr>'
 
         x += '</td>'
-    
+
     x += '</table>'
 
     ## session info
@@ -184,7 +186,7 @@ def html_job_edit_form(fdict, pdb=False):
         x += '<td><b>None</b></td></tr>'
 
     x += '<tr><td class="r">Submission IP Address: </td>'
-    x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
+    x += '<td><b>%s</b></td></tr>' % (fdict["ip_address"])
 
     x += '<tr><td class="r">Submission Date: </td>'
 
@@ -199,28 +201,42 @@ def html_job_edit_form(fdict, pdb=False):
     x += '</tr>'
 
     ## Select Chains for Analysis
+    chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
     if not pdb:
         x += '<tr><th colspan="3">Select Chains for Analysis</th></tr>'
 
         x += '<tr><td colspan="3">'
         x += '<table>'
-        for cdict in fdict.get("chains", []):
+
+        for c in chains.split(';'):
             x += '<tr><td>'
             x += '<label>'
-            if cdict["selected"]:
-                x += '<input type="checkbox" name="%s" value="TRUE" checked="checked" />' % (cdict["name"])
+            chid, length, selected, type = misc.parse_chains(c)
+            if type == "aa":
+                desc = "Chain %s (%s Amino Acid Residues)" % (chid, length)
+            elif type == "na":
+                desc = "Chain %s (%s Nucleic Acid Residues)" % (chid, length)
+            name = "CHAIN%s" % chid
+            if selected == "1":
+                x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
+                    name, name)
             else:
-                x += '<input type="checkbox" name="%s" value="TRUE" />' % (cdict["name"])
-            x += '%s' % (cdict["desc"])
+                ## TODO: Should value='TRUE' or 'FALSE'? 2009-06-01
+                #x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (
+                x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
+                    name, name)
+            x += '%s' % desc
             x += '</label>'
 
             x += '</td></tr>'
 
         x += '</table></td></tr>'
     else:
-        # select all the chains by default
-        for cdict in fdict.get("chains", []):
-            x += '<input type="hidden" name="%s" value="TRUE" />' % (cdict['name'])
+        ## select all the chains by default
+        for c in chains.split(';'):
+            chid, length, selected, type = misc.parse_chains(c)
+            name = "CHAIN%s" % chid
+            x += '<input type="hidden" name="%s" value="TRUE" />' % name
 
     x += '</table>'
     ## end form
@@ -229,7 +245,7 @@ def html_job_edit_form(fdict, pdb=False):
 
     x += '<table width="100%">'
     x += '<tr>'
-    
+
     x += '<td class="l">'
     if fdict.has_key("removebutton"):
         x += '<input type="submit" name="submit" value="Remove Job" />'
@@ -240,7 +256,7 @@ def html_job_edit_form(fdict, pdb=False):
     if fdict.has_key("requeuebutton"):
         x += '<input type="submit" name="submit" value="Requeue Job" />'
     x += '</td>'
-    
+
     x += '<td class="r">'
     x += '<input type="submit" name="submit" value="Next" />'
     x += '</tr>'
@@ -270,17 +286,17 @@ def html_session_info_table(fdict):
          '<div id="id2" style="display:none"><table class="ninner_table">',
          '<tr><td class="r">TLSMD Job ID:</td>',
          '<td><b>%s</b></td></tr>' % (fdict["job_id"]),
-         
+
          '<tr><td class="r">Job State:</td>',
          '<td><b>%s</b></td></tr>' % (fdict["state"]),
-         
+
          '<tr><td class="r">Submission IP Address: </td>',
          '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", "")),
-         
+
          '<tr><td class="r">Submission Date: </td>',
          '<td><b>%s</b></td></tr>' % (date),
          '</table></div>',
-         
+
          '</table>']
 
     return "".join(l)
@@ -321,7 +337,7 @@ def html_user_info_table(fdict):
 
 def html_program_settings_table(fdict):
     """Used in 'Step 2: Fill out Submission Form'. Also allows the user to
-       selected advanced options before completing submission.
+    selected advanced options before completing submission.
     """
 
     l = ['<table class="inner_table">',
@@ -334,6 +350,7 @@ def html_program_settings_table(fdict):
          ## left table
          '<table class="ninner_table">',
 
+         '<tr><td class="l">']
     if conf.PRIVATE_JOBS:
          l += '<input type="checkbox" id="private_job" name="private_job" value="TRUE" checked="checked" />'
     else:
@@ -345,7 +362,7 @@ def html_program_settings_table(fdict):
          '<tr><td class="l">',
          '<label for="structure_id">4-Letter Structure ID </label>',
          '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4" />' % (
-             fdict.get("structure_id", "")),
+         fdict.get("structure_id", "")),
          '</td></tr>',
 
          '</table>',
@@ -355,16 +372,24 @@ def html_program_settings_table(fdict):
          ## right table
          '<table class="ninner_table">',
          '<tr style="line-height:2em"><th>Select Chains for Analysis</th></tr>']
-         
-    for cdict in fdict.get("chains", []):
-        if cdict["selected"]:
+
+    ## Select Chains for Analysis
+    chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
+    for c in chains.split(';'):
+        chid, length, selected, type = misc.parse_chains(c)
+        if type == "aa":
+            desc = "Chain %s (%s Amino Acid Residues)" % (chid, length)
+        elif type == "na":
+            desc = "Chain %s (%s Nucleic Acid Residues)" % (chid, length)
+        name = "CHAIN%s" % chid
+        if selected == "1":
             x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
-                cdict["name"], cdict["name"])
+                name, name)
         else:
-            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (
-                cdict["name"], cdict["name"])
-            
-        l +=['<tr><td class="l">', x, cdict["desc"], '</td></tr>' ]
+            x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
+                name, name)
+
+        l +=['<tr><td class="l">', x, desc, '</td></tr>']
 
     l +=['</table>',
 
@@ -377,7 +402,7 @@ def html_program_settings_table(fdict):
          "ToggleDivVisibility('cid1','id1','Show Advanced Program Options','Hide Advanced Program Options')",
          '">Show Advanced Program Options</a>',
          '</th></tr>',
-         
+
          '<tr><td class="c">',
          '<div id="id1" style="display:none">',
          '<table class="ninner_table">',
@@ -412,7 +437,6 @@ def html_program_settings_table(fdict):
          ## Generate Jmol view/animate? (default=True)
          '<td valign="top" class="l">',
          '<fieldset><legend>Jmol toggle switches</legend>',
-         #'<div style="font-size:xx-small">Turn Jmol analysis on/off.</div>',
          '<p>',
          '<label>Generate Jmol-viewer pages: </label>',
          '<input name="generate_jmol_view" type="radio" value="True" checked="checked" />yes',
@@ -429,7 +453,6 @@ def html_program_settings_table(fdict):
          ## Generate histogram plot? (default=False)
          '<td valign="top" class="l">',
          '<fieldset><legend>Histogram toggle switches</legend>',
-         #'<div style="font-size:xx-small">Turn Histogram analysis on/off.</div><br/>',
          '<p>',
          '<label>Generate histogram plots: </label>',
          '<input name="generate_histogram" type="radio" value="True" />yes',
@@ -458,7 +481,7 @@ def html_program_settings_table(fdict):
          '</div>',
          '</td></tr>',
          '</table>']
-         
+
     return "".join(l)
 
 
@@ -467,12 +490,12 @@ def html_job_edit_form2(fdict, title=""):
         remove_button = '<input type="submit" name="submit" value="Remove Job" />'
     else:
         remove_button = ''
-    
+
     l = ['<script language=javascript type="text/javascript">',
          'function ToggleDivVisibility(control_id, target_id, show_val, hide_val) {',
          '  var ctrl_element = document.getElementById(control_id);',
          '  var target_element = document.getElementById(target_id);',
-         
+
          '  if (target_element.style.display != "none") {',
          '    target_element.style.display = "none";',
          '    ctrl_element.firstChild.nodeValue = show_val;',
@@ -486,11 +509,11 @@ def html_job_edit_form2(fdict, title=""):
          '<center>',
 
          '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
-         
+
          '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index")),
          '<input type="hidden" name="edit_form" value="TRUE" />',
          '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"]),
-         
+
          '<table width="100%" class="submit_table">',
          '<tr><th class="step_title">%s</th></tr>' % (title),
 
@@ -507,13 +530,17 @@ def html_job_edit_form2(fdict, title=""):
     return "".join(l)
 
 def html_job_info_table(fdict):
+    """Returns a table of information on a given job with data taken from the
+    MySQL database
+    """
+
     x  = ''
     x += '<center>'
 
     x += '<table border="0" cellpadding="3" width="100%" class="explore_table">'
 
     ## user/email/passcode/structure name
-    x += '<tr>'
+    x += '<tr class="explore_table_head">'
     x += '<th colspan="2">User Information</th>'
     x += '<th>Session Information</th>'
     x += '</tr>'
@@ -558,9 +585,9 @@ def html_job_info_table(fdict):
     else:
         jobstate = "unknown"
     x += '<td><b>%s</b></td></tr>' % (jobstate)
-    
+
     x += '<tr><td class="r">Submission IP Address: </td>'
-    x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_addr", ""))
+    x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_address", ""))
 
     x += '<tr><td class="r">Submission Date: </td>'
     if fdict.has_key("submit_time"):
@@ -585,7 +612,10 @@ def html_job_info_table(fdict):
 
     x += '<tr><td class="r">Processing Time(HH:MM): </td>'
     if fdict.has_key("run_time_end") and fdict.has_key("run_time_begin"):
-        hours = timediffstring(fdict["run_time_begin"], fdict["run_time_end"])
+        if (fdict["run_time_begin"] == None) or (fdict["run_time_end"] == None):
+            hours = "----"
+        else:
+            hours = timediffstring(fdict["run_time_begin"], fdict["run_time_end"])
     else:
         hours = "---"
     x += '<td><b>%s</b></td></tr>' % (hours)
@@ -611,25 +641,36 @@ def html_job_info_table(fdict):
     x += '<tr><th><font size="-5">Chain</font></th>'
     x += '<th><font size="-5">Processing Time (HH:MM.SS)</font></th>'
 
-    for cdict in fdict.get("chains", []):
+    chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
+    for c in chains.split(';'):
         x += '<tr><td>'
-        if cdict["selected"]:
+        chid, length, selected, type = misc.parse_chains(c)
+        name = "CHAIN%s" % chid
+        if selected == "1":
+            if type == "aa":
+                desc = "Chain: %s (%s Amino Acid Residues)" % (chid, length)
+            elif type == "na":
+                desc = "Chain: %s (%s Nucleic Acid Residues)" % (chid, length)
             x += '<tr>'
+            x += '<td>%s</td>' % desc
 
-            x += '<td>%s</td>' % (cdict["desc"])
-
-            if cdict.has_key("processing_time"):
-                hours = secdiffstring(cdict["processing_time"])
+            ## TODO: Record running time for each chain, 2009-05-29
+            processing_time = False
+            #if cdict.has_key("processing_time"):
+            if processing_time:
+                #hours = secdiffstring(cdict["processing_time"])
+                hours = "0000"
             else:
                 hours = "---"
             x += '<td>%s</td>' % (hours)
-
             x += '</tr>' 
 
     x += '</table></td></tr>'
 
     ##==========================================================================
     ## Detailed advanced settings list
+    x += '<tr class="explore_table_head">'
+    x += '<th colspan="3">Advanced Settings</th></tr>'
     x += '<tr><td class="l"><pre>'
 
     ## TLS Model
@@ -680,7 +721,7 @@ def html_job_info_table(fdict):
     if fdict.get("nparts") == "":
         x += left_justify_string('Maximum number of segments', 'n/a')
     else:
-        x += left_justify_string('Maximum number of segments', '%s' % fdict.get("nparts"))
+        x += left_justify_string('Maximum number of segments', '%s' % fdict["nparts"])
 
     x += '</pre></td>'
     x += '</tr>'
@@ -694,8 +735,6 @@ def html_job_info_table(fdict):
         x += '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE" />'
         x += '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"])
-        #x += '<input type="hidden" name="user" value="%s" />' % (fdict["user"])
-        #x += '<input type="hidden" name="passwd" value="%s" />' % (fdict["passwd"])
 
         x += '<tr>'
         x += '<td colspan="3" class="l">'
@@ -717,7 +756,7 @@ def html_job_info_table(fdict):
     return x
 
 
-def check_job_id(form, webtlsmdd):
+def check_job_id(form):
     """Retrieves and confirms the job_id from a incomming form. Returns
     None on error, or the job_id on success.
     """
@@ -725,12 +764,12 @@ def check_job_id(form, webtlsmdd):
         job_id = form["job_id"].value
         if len(job_id) < conf.MAX_JOB_ID_LEN:
             if job_id.startswith("TLSMD"):
-                if webtlsmdd.job_exists(job_id):
+                if mysql.job_exists(job_id):
                     return job_id
     return None
 
 
-def vet_data(data, max_len):
+def vet_struct_id(data, max_len):
     if isinstance(data, unicode):
         return False
     if len(data) > max_len:
@@ -739,13 +778,20 @@ def vet_data(data, max_len):
         return False
     return True
 
+def cleanup_input(data):
+    """Vet all user-input via forms. Allow only alphanumeric characters and
+    some punctuation: " ", "_", ",", "."
+    """
+    data = re.sub(r'[^0-9A-Za-z _,.]', '', data)
+    return data
+
 def vet_email(email_address):
     """Vet email addresses. The local part (the part before the '@') must not
-       exceed 64 characters and the domain part (after the '@') must not
-       exceed 255 characters. The entire email address length must not exceed
-       320 characters.
+    exceed 64 characters and the domain part (after the '@') must not
+    exceed 255 characters. The entire email address length must not exceed
+    320 characters.
     """
-    ## verify email (NOTE: Doesn't warn user!)
+    ## FIXME: Doesn't warn user!
     if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', email_address):
         return False
     local_part  = re.sub(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', '\\1', email_address)
@@ -757,131 +803,130 @@ def vet_email(email_address):
     return True
 
 def vet_pdb_id(pdbid):
-    ## PDB ID must be exactly four characters long, alphanumeric, and
-    ## the first character must be an integer.
+    """PDB ID must be exactly four characters long, alphanumeric, and
+    the first character must be an integer.
+    """
     if len(pdbid) < 4 or not \
        pdbid.isalnum() or not \
        re.match(r'^[0-9][A-Za-z0-9]{3}$', pdbid):
         return False
     return True
 
-def extract_job_edit_form(form, webtlsmdd):
-    """Extract the input from the Job Edit Form and update the webtlsmdd
+def extract_job_edit_form(form):
+    """Extract the input from the Job Edit Form and update the MySQL
     database with the information.
     """
     if not form.has_key("edit_form"):
         return False
 
-    job_id = check_job_id(form, webtlsmdd)
+    job_id = check_job_id(form)
     if job_id is None:
         return False
 
-    if form.has_key("user"):
-        user = form["user"].value.strip()
-        if vet_data(user, 10):
-            webtlsmdd.job_set_user(job_id, user)
+    mysql.job_set_submit_time(job_id, time.time())
 
     if form.has_key("private_job"):
-        webtlsmdd.job_set_private_job(job_id, True)
+        mysql.job_set_private_job(job_id, "1") ## 1 = True
 
     if form.has_key("user_name"):
-        ## TODO: Set blank/no-user-input strings to NULL/None, 2009-05-22
         user_name = form["user_name"].value.strip()
         ## store only the first 100 characters
-        user_name = user_name[:100]
-        if vet_data(user_name, 100):
-            webtlsmdd.job_set_user_name(job_id, user_name)
-            
+        user_name = cleanup_input(user_name[:100])
+        mysql.job_set_user_name(job_id, user_name)
+
     if form.has_key("email"):
         email_address = form["email"].value.strip()
-        if vet_email(email_address):
-            webtlsmdd.job_set_email(job_id, email_address)
+        if vet_email(email_address) or email_address == "":
+            mysql.job_set_email(job_id, email_address)
+        else:
+            raise SubmissionException('Not a valid email address')
 
     if form.has_key("structure_id"):
         structure_id = form["structure_id"].value.strip()
-        if vet_data(structure_id, 4):
+        if vet_struct_id(structure_id, 4):
             ## remove non-alphanumeric characters
             structure_id = re.sub(r'[^A-Za-z0-9]', '', structure_id)
-            webtlsmdd.job_set_structure_id(job_id, structure_id)
+            mysql.job_set_structure_id(job_id, structure_id)
 
     if form.has_key("user_comment"):
-        ## FIXME: This value is not being captured, 2009-06-02
         user_comment = form["user_comment"].value.strip()
         ## store only the first 128 characters
-        user_comment = user_comment[:128]
-        if vet_data(user_comment, 128):
-            webtlsmdd.job_set_user_comment(job_id, user_comment)
+        user_comment = cleanup_input(user_comment[:128])
+        mysql.job_set_user_comment(job_id, user_comment)
 
+    ## Selected chains for analysis
     num_chains_selected = 0
-    chains = webtlsmdd.job_get_chains(job_id)
-    for cdict in chains:
-        if form.has_key(cdict["name"]):
-            cdict["selected"] = True
+    update_chains = ""
+    chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
+    for c in chains.split(';'):
+        chid, length, selected, type = misc.parse_chains(c)
+        name = "CHAIN%s" % chid
+        chname = str(name)
+        if form.has_key(chname):
+            update_chains = update_chains + "%s:%s:%s:%s;" % (
+                chid, length, "1", type)
             num_chains_selected += 1
         else:
-            cdict["selected"] = False
+            update_chains = update_chains + "%s:%s:%s:%s;" % (
+                chid, length, "0", type)
     if num_chains_selected == 0:
         raise SubmissionException('You did not select any chains. Will not proceed any further.')
-    webtlsmdd.job_set_chains(job_id, chains)
+    mysql.job_set_chain_sizes(job_id, update_chains)
 
     if form.has_key("tls_model"):
         tls_model = form["tls_model"].value.strip()
         if tls_model in ["ISOT", "ANISO"]:
-            webtlsmdd.job_set_tls_model(job_id, tls_model)
+            mysql.job_set_tls_model(job_id, tls_model)
 
     if form.has_key("weight"):
         weight = form["weight"].value.strip()
         if weight in ["NONE", "IUISO"]:
-            webtlsmdd.job_set_weight_model(job_id, weight)
+            mysql.job_set_weight_model(job_id, weight)
 
     if form.has_key("include_atoms"):
         include_atoms = form["include_atoms"].value.strip()
         if include_atoms in ["ALL", "MAINCHAIN"]:
-            webtlsmdd.job_set_include_atoms(job_id, include_atoms)
+            mysql.job_set_include_atoms(job_id, include_atoms)
 
     if form.has_key("plot_format"):
         plot_format = form["plot_format"].value.strip()
         if plot_format in ["PNG", "SVG"]:
-            webtlsmdd.job_set_plot_format(job_id, plot_format)
+            mysql.job_set_plot_format(job_id, plot_format)
 
     ## Generate Jmol-viewer feature (default=True)
     if form.has_key("generate_jmol_view"):
         generate_jmol_view = form["generate_jmol_view"].value.strip()
         if generate_jmol_view == "True":
-            webtlsmdd.job_set_jmol_view(job_id, True)
+            mysql.job_set_jmol_view(job_id, "1")
         else:
-            webtlsmdd.job_set_jmol_view(job_id, False)
+            mysql.job_set_jmol_view(job_id, "0")
 
     ## Generate Jmol-animation feature (default=True)
     if form.has_key("generate_jmol_animate"):
         generate_jmol_animate = form["generate_jmol_animate"].value.strip()
         if generate_jmol_animate == "True":
-            webtlsmdd.job_set_jmol_animate(job_id, True)
+            mysql.job_set_jmol_animate(job_id, "1")
         else:
-            webtlsmdd.job_set_jmol_animate(job_id, False)
+            mysql.job_set_jmol_animate(job_id, "0")
 
     ## Generate Histogram plots (default=False)
     if form.has_key("generate_histogram"):
         generate_histogram = form["generate_histogram"].value.strip()
         if generate_histogram == "True":
-            webtlsmdd.job_set_histogram(job_id, True)
+            mysql.job_set_histogram(job_id, "1")
         else:
-            webtlsmdd.job_set_histogram(job_id, False)
+            mysql.job_set_histogram(job_id, "0")
 
     ## Select number of partition/chain (default/max=20)
     if form.has_key("nparts"):
         nparts_value = form["nparts"].value.strip()
         if nparts_value.isdigit() == False:
-            #raise SubmissionException("Integer value required for 'Maximum number of segments: %s'" % nparts_value)
+            raise SubmissionException("Integer value required for 'Maximum number of segments: %s'" % nparts_value)
             return False
         if int(nparts_value) > conf.NPARTS or int(nparts_value) < 1:
             ## not a valid input; force value to be int(2)
             nparts_value = int(conf.NPARTS)
-        try:
-            value = int(nparts_value)
-            webtlsmdd.job_set_nparts(job_id, value)
-        except:
-            return False ## not a valid input; must be positive integer < 20
+        mysql.job_set_nparts(job_id, int(nparts_value))
 
     return True
 
@@ -916,7 +961,7 @@ class Page(object):
              '</small></p>',
              '</center>',
              '</div></body></html>']
-        
+
         return "".join(l)
 
 
@@ -924,7 +969,7 @@ class ErrorPage(Page):
     def __init__(self, form, text=None):
         Page.__init__(self, form)
         self.text = text
-    
+
     def html_page(self):
         title = 'TLSMD: Error'
 
@@ -933,7 +978,7 @@ class ErrorPage(Page):
              html_nav_bar(),
              '<br/>',
              '<center><p class="perror">Error<br/>' ]
-        
+
         if self.text is not None:
             l.append(self.text)
 
@@ -966,9 +1011,6 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
-        ## FIXME The following link should only point to pdb.org if it is a
-        ## real PDBid, 2008-02-20
-        #return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id)
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -1003,7 +1045,6 @@ class QueuePage(Page):
              '<center><b>',
              'Or click on the Job ID you wish to view',
              '</b></center>',
-             '<br/>',
              self.html_running_job_table(job_list),
              '<br/>',
              self.html_queued_job_table(job_list),
@@ -1035,51 +1076,40 @@ class QueuePage(Page):
 
         return "".join(l)
 
-    def explore_href(self, jdict):
+    def explore_href(self, job_id):
         """QueuePage
         """
+        jdict = mysql.job_get_dict(job_id)
+
         if self.admin:
             page = "admin"
         else:
             page = "explore"
- 
+
         if self.admin:
-            job_id = jdict.get("job_id", "")
-
-            user_name = jdict.get("user_name", "")
-            if isinstance(user_name, unicode):
-                user_name = ""
-
-            user_comment = jdict.get("user_comment", "")
-            if isinstance(user_comment, unicode):
-                user_comment = ""
-
-            email_address = jdict.get("email")
-            if isinstance(email_address, unicode):
-                email_address = ""
-
             l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
                 page, job_id, job_id)]
 
-            if user_name != "":
-                l.append('<br/>%s' % (user_name))
+            if jdict["user_name"] != "":
+                l.append('<br/>%s' % (jdict["user_name"]))
 
-            if user_comment != "":
-                l.append('<br/>%s' % (user_comment))
+            if jdict["user_comment"] != "" or jdict["user_comment"] != None:
+                l.append('<br/>%s' % (jdict["user_comment"]))
 
-            if email_address != "":
-                l.append('<br/>%s' % (email_address))
+            if jdict["email"] != "":
+                l.append('<br/>%s' % (jdict["email"]))
 
             return "".join(l)
 
-        if jdict.get("private_job", False):
+        if mysql.job_get_private_job(job_id):
             ## Return job number only (non-clickable)
-            job_number = re.match(r'[^_]*', jdict["job_id"])
-            if job_number: return job_number.group(0)
+            job_number = re.match(r'[^_]*', job_id)
+            if job_number:
+                return job_number.group(0)
             return 'private'
 
         return '<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
-            page, jdict["job_id"] ,jdict["job_id"])
+            page, job_id, job_id)
 
     def chain_size_string(self, jdict):
         """QueuePage
@@ -1107,17 +1137,40 @@ class QueuePage(Page):
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
         """
-        return webtlsmdd.job_list()
+        return mysql.job_list()
+
+    def pid_exists(self, job_id):
+        """QueuePage
+        """
+        pid = int(mysql.job_get_pid(job_id))
+        try:
+            #os.kill(pid, 0) ## This does not work, 2009-05-27
+            ## NOTE: Three possible results:
+            ## (1): os.kill(pid, 0) -> None: process exists, and you are process
+            ##                         owner or root
+            ## (2): os.kill(pid, 0) -> OSError, Operation not permitted:
+            ##                         process exists, you are not owner or root
+            ## (3): os.kill(pid, 0) -> OSError, No such process:
+            ##                         process does not exist
+            if os.path.exists("/proc/%s" % pid):
+                return True ## process is still running
+            return False
+        except:
+            return False
 
     def total_number_of_residues(self, jdict):
         """Calculate the total number of residues (with/without chains).
         """
+        chain_sizes = jdict["chain_sizes"]
         total = 0
-        if not jdict.has_key("chains"):
-            return total
+        if chain_sizes == None:
+            return "NULL"
 
-        for cdict in jdict["chains"]:
-            total += cdict["length"]
+        ## Sum total number of residues from each chain (ignore type)
+        for c in chain_sizes.split(';'):
+            chid, length, selected, type = misc.parse_chains(c)
+            if selected == "1":
+                total += int(length)
 
         return total
 
@@ -1128,7 +1181,9 @@ class QueuePage(Page):
         ## get an array of "running" jobs from the job dictionary
         run_jdict = []
         for jdict in job_list:
-            if jdict.get("state") == "running":
+            if jdict["state"] == "running":
+                if self.pid_exists(jdict["job_id"]) == False:
+                    mysql.job_set_state(jdict["job_id"], "syserror")
                 run_jdict.append(jdict)
 
         x = ['<center>',
@@ -1151,19 +1206,22 @@ class QueuePage(Page):
                 x.append('<tr class="status_table_row2">')
             row1 = not row1
 
-            x += ['<td>%s</td>' % (self.explore_href(jdict)),
+            x += ['<td>%s</td>' % (self.explore_href(jdict["job_id"])),
                   '<td>%s</td>' % (self.rcsb_href(jdict)),
-                  '<td>%s</td>' % (self.chain_size_string(jdict)),
+                  '<td>%s</td>' % (self.total_number_of_residues(jdict)),
                   '<td>%s</td>' % (timestring(jdict["submit_time"]))]
 
-            if jdict.has_key("run_time_begin"):
-                hours = timediffstring(jdict["run_time_begin"], time.time())
+            if jdict["run_time_begin"] == None:
+                hours = "----"
+            elif jdict.has_key("run_time_begin"):
+                hours = timediffstring(float(jdict["run_time_begin"]), time.time())
             else:
                 hours = "---"
 
             ## progress bar
             try:
-                prog_file = open(jdict["job_dir"] + "/progress", 'r')
+                job_dir = conf.TLSMD_WORK_DIR + "/" + jdict["job_id"]
+                prog_file = open(job_dir + "/progress", 'r')
                 progress = int(float(prog_file.read().strip())*100)
                 prog_file.close()
             except:
@@ -1190,6 +1248,7 @@ class QueuePage(Page):
         queued_list = []
         for jdict in job_list:
             if jdict.get("state") == "queued":
+                ## Populate queued list for XHTML table below
                 queued_list.append(jdict)
 
         l = ['<center>',
@@ -1210,7 +1269,7 @@ class QueuePage(Page):
                 l.append('<tr class="status_table_row2">')
             row1 = not row1
 
-            l += ['<td>%s</td>' % (self.explore_href(jdict)),
+            l += ['<td>%s</td>' % (self.explore_href(jdict["job_id"])),
                   '<td>%s</td>' % (self.rcsb_href(jdict)),
                   '<td>%s</td>' % (self.chain_size_string(jdict)),
                   '<td>%s</td>' % (timestring(jdict["submit_time"])),
@@ -1238,10 +1297,9 @@ class QueuePage(Page):
                                       "warnings", # completed w/warnings
                                       "killed",
                                       "died",
+                                      "syserror",
                                       "defunct"]:
                 completed_list.append(jdict)
-
-        completed_list.reverse()
 
         l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
              '<center>',
@@ -1264,22 +1322,29 @@ class QueuePage(Page):
             row1 = not row1
 
             ## "Job ID"
-            l.append('<td>%s</td>' % (self.explore_href(jdict)))
+            l.append('<td>%s</td>' % (self.explore_href(jdict["job_id"])))
 
             ## "Struct ID"
-            l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
+            if ((jdict["structure_id"] == None) or \
+                (jdict["structure_id"].lower() == "xxxx")):
+                l.append('<td>----</td>')
+            else:
+                l.append('<td>%s</td>' % (jdict["structure_id"]))
 
             ## Direct link to logfile
-            if jdict.has_key("log_url"):
-                logfile = os.path.join(jdict["job_dir"], "log.txt")
-                log_url = webtlsmdd.job_get_log_url(jdict["job_id"])
-                if os.path.isfile(logfile) and jdict["private_job"] == False:
-                    l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict.get("state")))
-                else:
-                    l.append('<td>%s</td>' % (jdict.get("state")))
+            logfile = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"], "log.txt")
+            log_url = conf.TLSMD_WORK_URL + "/" + jdict["job_id"] + "/log.txt"
+            if os.path.isfile(logfile) and jdict["private_job"] == 0:
+                l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict["state"]))
+            else:
+                l.append('<td>%s</td>' % jdict["state"])
 
             ## "Submission Date"
-            l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
+            if ((jdict["submit_time"] == None) or \
+                (float(jdict["submit_time"]) == 0.00)):
+                l.append('<td>n/a</td>')
+            else:
+                l.append('<td>%s</td>' % (timestring(jdict["submit_time"])))
 
             ## "Total Residues"
             l.append('<td class="r">%s</td>' % (
@@ -1287,7 +1352,14 @@ class QueuePage(Page):
 
             ## "Processing Time (HH:MM.SS)"
             if jdict.has_key("run_time_begin") and jdict.has_key("run_time_end"):
-                hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
+                if ((jdict["run_time_begin"] == None) or \
+                    (jdict["run_time_end"] == None)):
+                    hours = "----"
+                elif ((float(jdict["run_time_begin"]) == 0.0) or \
+                    (float(jdict["run_time_end"]) == 0.0)):
+                    hours = "---"
+                else:
+                    hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
             else:
                 hours = "---"
             l.append('<td class="r">%s</td>' % (hours))
@@ -1332,7 +1404,6 @@ class QueuePage(Page):
 
             ## Return job number only (non-clickable)
             job_number = re.match(r'[^_]*', jdict["job_id"])
-            #x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (job_number.group(0))
             x += '<td>%s</td>' % (self.rcsb_href(jdict))
             x += '<td>%s</td>' % (jdict.get("state"))
@@ -1347,7 +1418,7 @@ class QueuePage(Page):
 
 class ExploreJobPage(Page):
     def html_page(self):
-        job_id = check_job_id(self.form, webtlsmdd)
+        job_id = check_job_id(self.form)
         if job_id is None:
             title = 'TLSMD: Explore Job'
             x  = self.html_head(title, None)
@@ -1361,8 +1432,8 @@ class ExploreJobPage(Page):
         x += self.html_head(title, None)
         x += html_title(title)
         x += html_nav_bar()
-        x += html_job_nav_bar(webtlsmdd, job_id)
-        jdict = webtlsmdd.job_get_dict(job_id)
+        x += html_job_nav_bar(job_id)
+        jdict = mysql.job_get_dict(job_id)
         x += html_job_info_table(jdict)
         x += self.html_foot()
 
@@ -1371,8 +1442,8 @@ class ExploreJobPage(Page):
 
 class AdminJobPage(Page):
     def html_page(self):
-        job_id = check_job_id(self.form, webtlsmdd)
-        jdict = webtlsmdd.job_get_dict(job_id)
+        job_id = check_job_id(self.form)
+        jdict = mysql.job_get_dict(job_id)
         pdb = jdict.get('via_pdb', False)
 
         if job_id is None:
@@ -1382,7 +1453,7 @@ class AdminJobPage(Page):
             x += '<center><p class="perror">ERROR: Invalid Job ID</p></center>'
             x += self.html_foot()
             return x
-        
+
         title = 'TLSMD: Administrate Job %s' % (job_id)
 
         x  = ''
@@ -1391,7 +1462,7 @@ class AdminJobPage(Page):
 
         x += html_nav_bar()
         if jdict.get("state") in ["errors", "warnings", "killed", "died", "defunct"]:
-            x += html_job_nav_bar(webtlsmdd, job_id)
+            x += html_job_nav_bar(job_id)
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
@@ -1403,7 +1474,7 @@ class AdminJobPage(Page):
             x += self.requeue(job_id)
         else:
             x += self.edit(job_id, pdb)
-        
+
         x += self.html_foot()
         return x
 
@@ -1411,25 +1482,25 @@ class AdminJobPage(Page):
         x = ''
 
         ## if the job is not in the "queued" state, then it is not safe to edit
-        state = webtlsmdd.job_get_state(job_id)
+        state = mysql.job_get_state(job_id)
         if state == "queued":
-            extract_job_edit_form(self.form, webtlsmdd)
+            extract_job_edit_form(self.form)
 
         ## get the state dictionary for the entire job
-        fdict = webtlsmdd.job_get_dict(job_id)
+        fdict = mysql.job_get_dict(job_id)
         fdict["page"] = "admin"
         fdict["removebutton"] = True
         if state == "queued" or state == "running":
             fdict["signalbutton"]  = True
             fdict["killbutton"]    = True
             fdict["requeuebutton"] = True
-            
+
         if state == "running" or state == "success" or state == "completed":
-            x += html_job_nav_bar(webtlsmdd, job_id)
+            x += html_job_nav_bar(job_id)
             x += html_job_info_table(fdict)
         else:
             x += html_job_edit_form(fdict, pdb)
-        
+
         return x
 
     def remove(self, job_id):
@@ -1554,7 +1625,7 @@ class Submit2Page(Page):
 
     def html_page(self):        
         title = 'TLSMD: Start a New Job'
-        
+
         l = [self.html_head(title, None),
              html_title(title),html_nav_bar() ]
 
@@ -1569,7 +1640,7 @@ class Submit2Page(Page):
         return "".join(l)
 
     def job_edit_form(self, job_id, show_warnings = False):
-        fdict = webtlsmdd.job_get_dict(job_id)
+        fdict = mysql.job_get_dict(job_id)
         fdict["page"] = "submit3"
         return html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
 
@@ -1578,10 +1649,11 @@ class Submit2Page(Page):
             raise SubmissionException("No PDB file uploaded")
 
         ## allocate a new JobID
-        job_id = webtlsmdd.job_new()
+        job_id = mysql.job_new()
+
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        webtlsmdd.job_set_remote_addr(job_id, ip_addr)
-        
+        mysql.job_set_remote_addr(job_id, ip_addr)
+
         ## save PDB file
         infil = self.form["pdbfile"].file
         line_list = []
@@ -1629,7 +1701,7 @@ class Submit3Page(Page):
             title = 'TLSMD: Job Submission Succeeded'
 
             l = ['<center>',
-                 
+
                  '<table class="submit_table">',
                  '<tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>',
 
@@ -1645,13 +1717,13 @@ class Submit3Page(Page):
                  'job is complete, a link to the completed TLSMD analysis will appear ',
                  'on it.',
                  '</p>',
-                 
+
                  '<p>%s</p>' % (SUBMIT3_CAP1),
 
                  '</td></tr>',
                  '</table>',
                  '</center>']
-            
+
             html = "".join(l)
 
         x  = self.html_head(title, None)
@@ -1667,33 +1739,36 @@ class Submit3Page(Page):
             raise SubmissionException('Submission Error')
 
         ## get job_id; verify job exists
-        job_id = check_job_id(self.form, webtlsmdd)
+        job_id = check_job_id(self.form)
         if job_id is None:
             raise SubmissionException('Submission Error')
 
         ## make sure the job is in the right state to be submitted
-        state = webtlsmdd.job_get_state(job_id)
+        state = mysql.job_get_state(job_id)
         if state == "queued":
             raise SubmissionException("Your job is already queued")
         elif state == "running":
             raise SubmissionException("Your job is already running")
 
         ## verify the submission IP address
+        ## FIXME: This does not work yet, 2009-06-01
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        ip_addr_verify = webtlsmdd.job_get_remote_addr(job_id)
-        if ip_addr != ip_addr_verify:
-            raise SubmissionException('Submission IP Address Mismatch')
+        ip_addr_verify = mysql.job_get_remote_addr(job_id)
+        #if ip_addr != ip_addr_verify:
+        #    raise SubmissionException('Submission IP Address Mismatch')
+        ip_addr_verify = ip_addr ## XXX: Temporary until above is fixed, 2009-06-05
 
         ## completely remove the job
         if self.form["submit"].value == "Cancel Job Submission":
             webtlsmdd.remove_job(job_id)
             raise SubmissionException('You cancelled the job')
 
-        extract_job_edit_form(self.form, webtlsmdd)
+        extract_job_edit_form(self.form)
 
         ## if everything with the form is okay, then change
         ## the job state to queued
-        webtlsmdd.job_set_state(job_id, "queued")
+        mysql.job_set_state(job_id, "queued")
+        mysql.job_set_remote_addr(job_id, ip_addr_verify)
 
         return job_id
 
@@ -1701,45 +1776,45 @@ class Submit3Page(Page):
         """Checks for any "other" problems with the user-selected chains.
         """
         ## TODO: Post-sanity checks, 2009-01-08
-        #sanity = self.form["pdbfile"].value
-        #sanity = webtlsmdd.job_get_job_dir(job_id)
-        summary_data = webtlsmdd.job_get_chains(job_id)
+        chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
         ## E.g.,
         # name: CHAINA
         # selected: True
         # chain_id: A
         # length: 39
-        # preview: MET ILE TYR ALA GLY
         # desc: Chain A (39 Amino Acid Residues)
         sum = '<table border="0" cellpadding="3" width="100%" class="status_table">'
         sum += '<tr class="status_table_head">'
         sum += '<th>Chain<th>Analyze</th><th>Residues</th>'
-        sum += '<th>Preview</th><th>Ignored residues/atoms</th>'
+        sum += '<th>Ignored residues/atoms</th>'
         next_chain = ''
-        for list in summary_data:
-            #for k,v in list.items():
-            if next_chain != list["chain_id"]:
+        for c in chains.split(';'):
+            chid, length, selected, type = misc.parse_chains(c)
+            if next_chain != chid:
                 sum += '</tr>'
                 row1 = True
-                next_chain = list["chain_id"]
+                next_chain = chid
             if row1:
                 sum += '<tr class="status_table_row1">'
             else:
                 sum += '<tr class="status_table_row2">'
             row1 = not row1
-            sum += '<td>%s</td>' % list["chain_id"]
-            sum += '<td>%s</td>' % list["selected"]
-            sum += '<td>%s</td>' % list["length"]
-            sum += '<td>%s ...</td>' % list["preview"]
-            sum += '<td>none</td>'
+            sum += '<td class="c">%s</td>' % chid
+            if selected == "1":
+                sum += '<td class="c">True</td>'
+            else:
+                sum += '<td class="c">False</td>'
+            sum += '<td class="c">%s</td>' % length
+            sum += '<td class="c">none</td>'
         sum += '</tr></table>'
 
         return sum
 
 
 class SubmitPDBPage(Page):
-    """Handles requests submitted via a PDB ID"""
+    """Handles requests submitted via a PDB ID
+    """
 
     def html_page(self):
         if "pdbid" not in self.form:
@@ -1748,8 +1823,10 @@ class SubmitPDBPage(Page):
             raise SubmissionException("Invalid PDB ID. Please try again.")
 
         pdbid = self.form["pdbid"].value.upper()
-         
-        if webtlsmdd.pdb_exists(pdbid):
+        if not vet_struct_id(pdbid, 4):
+            raise SubmissionException("Not a valid PDB ID")
+
+        if mysql.pdb_exists(pdbid) != None:
             return self.redirect_page(pdbid)
 
         pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
@@ -1759,14 +1836,21 @@ class SubmitPDBPage(Page):
 
         job_id = self.prepare_submission(pdbfile)
 
-        if not webtlsmdd.set_pdb_db(pdbid):
+        if not mysql.set_pdb_db(pdbid):
             raise SubmissionException("Could not write to internal PDB DB")
 
-        webtlsmdd.job_set_pdb_dir(job_id, pdbid)
-        
-        fdict = webtlsmdd.job_get_dict(job_id)
+        mysql.job_set_via_pdb(job_id, "1")
+        mysql.job_set_jmol_view(job_id, "1")
+        mysql.job_set_jmol_animate(job_id, "1")
+        mysql.job_set_histogram(job_id, "1")
+        mysql.job_set_private_job(job_id, "0")
+
+        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+        mysql.job_set_remote_addr(job_id, ip_addr)
+
+        fdict = mysql.job_get_dict(job_id)
         fdict["page"] = "submit3"
-        
+
         title = "Enter contact info:"
         l = [self.html_head(title, None), html_title(title)]
         l.append(html_job_edit_form(fdict, pdb=True))
@@ -1775,7 +1859,9 @@ class SubmitPDBPage(Page):
         return "".join(l)
 
     def prepare_submission(self, pdbfile):
-        job_id = webtlsmdd.job_new()
+        """class SubmitPDBPage
+        """
+        job_id = mysql.job_new()
 
         ## basic sanity checks
         ## If check_upload returns anything but a empty string, the server will
@@ -1785,17 +1871,17 @@ class SubmitPDBPage(Page):
         if r != '':
             raise SubmissionException(str(r))
 
-        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        webtlsmdd.job_set_remote_addr(job_id, ip_addr)
-        webtlsmdd.job_set_via_pdb(job_id, True)
+        #ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+        #mysql.job_set_remote_addr(job_id, ip_addr)
+
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary(pdbfile))
         if result != "":
-            return SubmissionException("Failed to submit structure.")
+            raise SubmissionException("Failed to submit structure. Please try again.")
         return job_id
 
     def redirect_page(self, pdbid):
         """If a given PDB (from pdb.org) has already been analyzed, inform
-           user and redirect them to correct analysis page.
+        user and redirect them to correct analysis page.
         """
         # check to see if this job is still running
         try:
@@ -1806,7 +1892,6 @@ class SubmitPDBPage(Page):
                     html_title(title),
                     self.html_foot()]
             return "".join(page)
-
 
         title = "This protein has already been analyzed"
         analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, pdbid)
@@ -1823,16 +1908,9 @@ class SubmitPDBPage(Page):
         redirect.append(self.html_foot())
         return "".join(redirect)
 
-def min_subsegment_stddev(atomnum, restype, resnum, chain, tfactor):
-    """Calculates a running standard deviation for residue windows the same
-       size as whatever the global 'min_subsegment_size' in conf.py is set to.
-    """
-    ## FIXME: Doesn't do anything yet, 2009-06-05
-    min_subsegment_size = conf.globalconf.min_subsegment_size
-
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
-       of a given set of residues (controlled by the 'window' variable).
+    of a given set of residues (controlled by the 'window' variable).
     """
     tmpfile = misc.generate_security_code()
     n = atm = res_tfac = 0
@@ -1903,7 +1981,8 @@ plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filled
 """
 
 def check_upload(job_id, file):
-    """Runs sanity checks on uploaded file"""
+    """Runs sanity checks on uploaded file
+    """
     ## Checks if PDB contains valids aa/na residues
     ## PDB must have at least 30 ATOMs
     ## PDB can not have lowercase alt. res. numbers
@@ -1922,12 +2001,10 @@ def check_upload(job_id, file):
     for line in file:
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
-            webtlsmdd.job_set_header_id(job_id, header_id)
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
-            webtlsmdd.job_set_resolution(job_id, resolution)
         elif re.match('^ATOM.*[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B"
             return "Please change lowercase to uppercase for alternate residue numbers."
@@ -1949,10 +2026,6 @@ def check_upload(job_id, file):
                 temp_factors.append(float(line[60:65].strip()))
         else:
             continue
-
-    ## FIXME: This does not work yet.
-    #if(ignore == num_total):
-    #    return "All occupancies are less than 1.0, so all atoms will be ignored. Nothing to do."
 
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
