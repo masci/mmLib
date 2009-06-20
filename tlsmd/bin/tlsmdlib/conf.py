@@ -42,7 +42,7 @@ if os.path.exists(ALTCONF):
 ## derived paths
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 WEBTLSMD_URL           = "%s/cgi-bin/webtlsmd.cgi" % (TLSMD_PUBLIC_URL)
-WEBTMP_PATH	       = "/var/www/webtmp"
+WEBTMP_PATH            = "/var/www/webtmp"
 GNUPLOT                = "/usr/local/bin/gnuplot"
 GNUPLOT_FONT           = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 REFINEPREP_URL         = "%s/cgi-bin/refineprep.cgi" % (TLSMD_PUBLIC_URL)
@@ -59,7 +59,7 @@ MAX_PARALLEL_JOBS     = 4  ## maximum number of parallel jobs allowable at the s
 MAX_JOB_ID_LEN        = 19  ## maximum string length of "job_id" (e.g., "TLSMD1225_CrjLhBTM")
 LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger than this
 NPARTS                = 20  ## maximum number of TLS partitons for each chain (default/max allowed = 20)
-PRIVATE_JOBS          = True  ## controls the default "private" settings
+PRIVATE_JOBS          = True  ## controls the default "private" settings; overrides form!
 PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
 ADP_PROB              = 50  ## the isoprobability contour level for all visualizations
 
@@ -156,6 +156,6 @@ class GlobalConfiguration(object):
         assert self.tls_model     in ["ANISO", "ISOT", "NLANISO", "NLISOT"]
         assert self.weight_model  in ["UNIT", "IUISO"]
         assert self.include_atoms in ["ALL", "MAINCHAIN", "CA"]
-        
+
 globalconf = GlobalConfiguration()
 
