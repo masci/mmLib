@@ -4,7 +4,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-## Python modules
+## Python
 import math
 import numpy
 import console
@@ -45,14 +45,14 @@ def tlsdict2tensors(tlsdict):
         [ [tlsdict["t11"], tlsdict["t12"], tlsdict["t13"]],
           [tlsdict["t12"], tlsdict["t22"], tlsdict["t23"]],
           [tlsdict["t13"], tlsdict["t23"], tlsdict["t33"]] ], float)
-    
+
     L = numpy.array(
         [ [tlsdict["l11"], tlsdict["l12"], tlsdict["l13"]],
           [tlsdict["l12"], tlsdict["l22"], tlsdict["l23"]],
           [tlsdict["l13"], tlsdict["l23"], tlsdict["l33"]] ], float)
-    
+
     s11, s22, s33 = TLS.calc_s11_s22_s33(tlsdict["s2211"], tlsdict["s1133"]) 
-        
+
     S = numpy.array(
         [ [       s11, tlsdict["s12"], tlsdict["s13"]],
           [tlsdict["s21"],        s22, tlsdict["s23"]],
@@ -65,14 +65,14 @@ def isotlsdict2tensors(itlsdict):
     tensors.
     """
     origin = numpy.array([itlsdict["x"], itlsdict["y"], itlsdict["z"]], float)
-    
+
     IT = itlsdict["it"]
-        
+
     IL = numpy.array(
         [ [itlsdict["il11"], itlsdict["il12"], itlsdict["il13"]],
           [itlsdict["il12"], itlsdict["il22"], itlsdict["il23"]],
           [itlsdict["il13"], itlsdict["il23"], itlsdict["il33"]] ], float)
-    
+
     IS = numpy.array([itlsdict["is1"], itlsdict["is2"], itlsdict["is3"]], float)
 
     return IT, IL, IS, origin 
@@ -112,20 +112,19 @@ def calc_rmsd_tls_biso(tls_group):
     L = tls_group.itls_L
     S = tls_group.itls_S
     O = tls_group.origin
-    
+
     msd_sum = 0.0
-    
+
     for atm, uiso_tls in TLS.iter_itls_uiso(iter(tls_group), T, L, S, O):
         msd_sum += (Constants.U2B*uiso_tls - atm.temp_factor)**2
-        
-    if len(tls_group)>0:
+
+    if len(tls_group) > 0:
         msd = msd_sum / len(tls_group)
         rmsd = math.sqrt(msd)
     else:
         rmsd = 0.0
 
     return rmsd
-     
 
 def calc_mean_biso_obs(chain):
     """Calculates the mean B value per residue in the chain (as observed in the input structure).
@@ -222,7 +221,7 @@ def calc_residue_mean_rmsd(chain, cpartition):
                 cmtx[i,j] = rmsd
 
     return cmtx
-     
+
 def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     """Use TLS model + Uiso for each atom.  Output xyzout with the
     residual Uiso only.
@@ -254,7 +253,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         for atm, Utls in tls_group.iter_atm_Utls():
             tls_tf = numpy.trace(Utls) / 3.0
             ref_tf = numpy.trace(atm.get_U()) / 3.0
-                
+
             if ref_tf > tls_tf:
                 max_Uiso = max(ref_tf - tls_tf, max_Uiso)
             else:
@@ -269,8 +268,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         (T_eval, TR) = numpy.linalg.eig(tls_group.T)
         T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
-	# FIXME: allclose(some_array, some_scalar)
-	# The next three lines appear to cause this def to crash, 2007-10-04
+        ## FIXME: allclose(some_array, some_scalar)
+        ## The next three lines appear to cause this def to crash, 2007-10-04
         #assert numpy.allclose(T[0,1], 0.0)
         #assert numpy.allclose(T[0,2], 0.0)
         #assert numpy.allclose(T[1,2], 0.0)
@@ -284,11 +283,11 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         min_T    = min(T[0,0], min(T[1,1], T[2,2]))
         sub_T    = min_T * 0.50
         add_Uiso = min_T - sub_T
-        
+
         T[0,0] = T[0,0] - sub_T
         T[1,1] = T[1,1] - sub_T
         T[2,2] = T[2,2] - sub_T
-        
+
         ## rotate T back to original orientation
         tls_group.T = numpy.dot(
             numpy.transpose(TR),
@@ -311,7 +310,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
-    
+
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
        Use TLS model + Uiso for each atom.  Output xyzout with the
@@ -344,7 +343,7 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
         for atm, Utls in tls_group.iter_atm_Utls():
             tls_tf = numpy.trace(Utls) / 3.0
             ref_tf = numpy.trace(atm.get_U()) / 3.0
-                
+
             if ref_tf > tls_tf:
                 max_Uiso = max(ref_tf - tls_tf, max_Uiso)
             else:
@@ -359,8 +358,8 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
         (T_eval, TR) = numpy.linalg.eig(tls_group.T)
         T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
-	# FIXME: allclose(some_array, some_scalar)
-	# The next three lines appear to cause this def to crash, 2007-10-04
+        ## FIXME: allclose(some_array, some_scalar)
+        ## The next three lines appear to cause this def to crash, 2007-10-04
         #assert numpy.allclose(T[0,1], 0.0)
         #assert numpy.allclose(T[0,2], 0.0)
         #assert numpy.allclose(T[1,2], 0.0)
@@ -374,11 +373,11 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
         min_T    = min(T[0,0], min(T[1,1], T[2,2]))
         sub_T    = min_T * 0.50
         add_Uiso = min_T - sub_T
-        
+
         T[0,0] = T[0,0] - sub_T
         T[1,1] = T[1,1] - sub_T
         T[2,2] = T[2,2] - sub_T
-        
+
         ## rotate T back to original orientation
         tls_group.T = numpy.dot(
             numpy.transpose(TR),
