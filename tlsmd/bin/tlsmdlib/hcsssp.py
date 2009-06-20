@@ -51,7 +51,7 @@ class HCSSSP(object):
 
         ## now the matrix Dij and Pij are complete
         return D, P, T
-            
+
     def HCSSSP_minimize_relax(self, D, P, T, edge, hop_constraint):
         """Relax vertices for the current number of hops using the cost array
         from the costs calculated using the previous number of hops.
@@ -78,7 +78,7 @@ class HCSSSP(object):
             Dc[vertex_j]               = Dp[vertex_i] + weight
             P[hop_constraint,vertex_j] = vertex_i
             T[hop_constraint][vertex_j]= edge
-            
+
     def HCSSSP_maximize(self, V, E, hops):
         """Hop-Constrained Single Source Shorted Path minimization,
         loosely based on the Bellman-Ford SSSP algorithm using
@@ -117,7 +117,7 @@ class HCSSSP(object):
 
         ## now the matrix Dij and Pij are complete
         return D, P, T
-            
+
     def HCSSSP_maximize_relax(self, D, P, T, edge, hop_constraint):
         """Relax vertices for the current number of hops using the cost array
         from the costs calculated using the previous number of hops.
@@ -153,19 +153,19 @@ class HCSSSP(object):
         """
         edge_list  = []
         num_vertex = len(D[0])
-        
+
         ## start at the destination vertex
         curr_v = num_vertex - 1
         h      = hop_constraint
 
-        while curr_v>0:
+        while curr_v > 0:
             prev_vertex  = P[h,curr_v]
             edge         = T[h][curr_v]
             curr_v       = prev_vertex
             h            -= 1
 
             edge_list.append((h, h+1, edge))
-            
+
         edge_list.reverse()
         for edge in edge_list:
             yield edge
