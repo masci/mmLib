@@ -3,14 +3,19 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python
 import numpy
 import itertools
 
+## pymmlib
 from mmLib import Constants, Library
 
+## TLSMD
 import conf
 import const
 import console
+
 
 def iter_mainchain_atoms(atom_iter):
     filter = lambda atm: const.MAINCHAIN_ATOMS.has_key(atm.res_name)
@@ -18,7 +23,7 @@ def iter_mainchain_atoms(atom_iter):
 
 def calc_include_atom(atm, reject_messages = False):
     """Filter out atoms from the model which will cause problems or
-    cont contribute to the TLS analysis.
+    can't contribute to the TLS analysis.
     """
     if atm.position == None:
         return False
@@ -31,7 +36,7 @@ def calc_include_atom(atm, reject_messages = False):
     if atm.occupancy > 1.0:
         atm.occupancy = 1.0
         console.stdoutln("calc_include_atom(%s): atom occupancy greator than 1.0; truncating" % (atm))
-    
+
     if numpy.trace(atm.get_U()) <= const.TSMALL:
         if reject_messages == True:
             console.stdoutln("calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm))
@@ -48,6 +53,7 @@ def calc_include_atom(atm, reject_messages = False):
 def calc_atom_weight(atm):
     """Weight the least-squares fit according to this function.
     """
+    ## TODO: This function seems useless, 2009-06-18
     return atm.occupancy
 
 def chain_to_xmlrpc_list(atom_iter):
