@@ -13,10 +13,9 @@ class StringTable(object):
                  title = None,
                  column_titles = None):
 
-        
         assert m >= 0 and n >= 0
         assert column_titles is None or len(column_titles) <= n
-        
+
         self.__data = [[default for j in xrange(n)] for i in xrange(m)]
         self.__spacing = spacing
         self.__min_column_width = min_column_width
@@ -37,7 +36,7 @@ class StringTable(object):
     def __getitem__(self, location):
         i, j = location
         return self.__data[i][j]
-        
+
     def __str__(self):
         l = []
         if self.__title is not None:
@@ -45,10 +44,10 @@ class StringTable(object):
                 l.append("#")
                 l.append(ln)
                 l.append("\n")
-                
+
         field_width = [w for w in self.__column_width]
         space = " " * self.__spacing
-                
+
         if self.__column_titles is not None:
             first = True
             for value, width in itertools.izip(self.__column_titles, field_width):
@@ -60,7 +59,7 @@ class StringTable(object):
                     l.append(space)
                     l.append(value.center(width, "."))
             l.append("\n")
-            
+
         field_width = [w  for w in self.__column_width]
         for row in self.__data:
             first = True
@@ -82,7 +81,7 @@ class StringTable(object):
             row[j] = value
             width = max(width, len(value))
         self.__column_width[j] = max(self.__column_width[j], width)
-            
+
     def append_row(self, *row_tuple):
         row = []
         self.__data.append(row)
@@ -113,7 +112,7 @@ class StringTable(object):
             return self.__title
         else:
             return ""
-        
+
     def size(self):
         return len(self.__data), max(itertools.imap(len, self.__data))
 
@@ -142,7 +141,7 @@ def testmain():
     print "size", t.size()
     print str(t)
     print "============="
-    
+
     t = StringTable(5, 5, "*")
     t[3,4] = 5.0
     print str(t)
