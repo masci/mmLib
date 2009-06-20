@@ -4,7 +4,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-## Python
+## Python modules
 import math
 import numpy
 import console
@@ -125,6 +125,7 @@ def calc_rmsd_tls_biso(tls_group):
         rmsd = 0.0
 
     return rmsd
+     
 
 def calc_mean_biso_obs(chain):
     """Calculates the mean B value per residue in the chain (as observed in the input structure).
@@ -196,48 +197,6 @@ def calc_residue_mean_rmsd(chain, cpartition):
         S = tls_group.itls_S # array(3): S[0], S[1], S[2]
         O = tls_group.origin # array(3)
 
-        ##======================================================================
-        ##<TLS_FILE>
-        ##TLS 3
-        ##CHAIN D
-        ##RANGE 47-103
-        ##ORIGIN -3.806092 0.302217 8.665245
-        ##T 0.147191
-        ##L 0.001070 0.000058 0.000790 0.000007 0.000229 -0.000206
-        ##S -0.004597 0.001594 -0.002114
-        ##
-        ## note: S1 == S21-S12; S2 == S13-S31; S3 == S32-S23
-        ## u_tls = T + (
-        ##         L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy)
-        ##         - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z
-        ##         + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
-        ##
-        O1, O2, O3 = O
-        ## tls = "A:1-10" || "G:5A-14" || "G:-1--10"
-        chain_id  = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\1', str(tls))
-        seg_start = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\2', str(tls))
-        seg_end   = re.sub(r'^([A-Za-z0-9]):(-?[A-Za-z0-9]{1,})-(-?[A-Za-z0-9]{1,})', '\\3', str(tls))
-
-        seg_start = create_fractional_residue_number(seg_start)
-        seg_end   = create_fractional_residue_number(seg_end)
-
-        filename = "CHAIN%s_NTLS%s-%s.tls_model" % (chain_id, num_tls, i+1)
-        tls_file = open(filename, "w")
-        console.stdoutln("TLS_MODEL: Saving %s" % filename) ## LOGFILE
-        tls_file.write("TLS %s SEG %s\nCHAIN %s\nRANGE %s-%s\nORIGIN %f %f %f\n" % (
-                       num_tls, i_ntls + 1, chain_id, seg_start, seg_end,
-                       O1, O2, O3))
-        tls_file.write("T %f\nL %f %f %f %f %f %f\nS %f %f %f\n" % (
-                       T, L[0,0], L[1,1], L[2,2], L[0,1], L[0,2], L[1,2], 
-                       S[0], S[1], S[2]))
-        tls_file.close()
-        ##</TLS_FILE>
-        ##======================================================================
-
-        filename = "CHAIN%s_NTLS%s-%s.b_obs" % (chain_id, num_tls, i+1)
-        b_obs_file = open(filename, "w")
-        console.stdoutln("B_OBS: Saving %s" % filename) ## LOGFILE
-
         for j, frag in enumerate(chain):
             ## NOTE: j = res_num, frag = Res(ALA,23,A)
 
@@ -251,40 +210,9 @@ def calc_residue_mean_rmsd(chain, cpartition):
 
                 num_atoms += 1
 
-                ##==============================================================
-                ##<DEBUG>
-                ## Equation:
-                ##u_tls = T + (
-                ##        L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy)
-                ##        - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z
-                ##        + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
-                ##    0   1   2
-                ## 0 0,0 0,1 0,2
-                ## 1 1,0 1,1 1,2
-                ## 2 2,0 2,1 2,2
-                ##</DEBUG>
-
                 b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 delta = atm.temp_factor - b_iso_tls
                 msd_sum += delta**2
-
-                ##==============================================================
-                ##<B_OBS_DATA>
-                ## frag = "Res(VAL,39,A)" || "Res(G,5A,A)" || "Res(GLY,-1,A)"
-                x, y, z = atm.position
-
-                res_name = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9-]{1,}),[A-Za-z0-9]\)', '\\1', str(frag)).upper()
-                res_num  = re.sub(r'^Res\(([A-Za-z]{1,3}),([A-Za-z0-9-]{1,}),[A-Za-z0-9]\)', '\\2', str(frag)).upper()
-                res_num  = create_fractional_residue_number(res_num)
-
-                if num_tls > 0 and (
-                   (float(res_num) >= float(seg_start)) and 
-                   (float(res_num) <= float(seg_end)) ):
-                    b_obs_file.write("TLS:%s %s,%s,%s %.3f %.3f %.3f %.2f %.2f %.2f\n" % (
-                        num_tls, res_name, res_num, chain_id, x, y, z,
-                        atm.occupancy, atm.temp_factor, b_iso_tls))
-                ##</B_OBS_DATA>
-                ##==============================================================
 
             if num_atoms > 0:
                 msd = msd_sum / num_atoms
@@ -292,8 +220,6 @@ def calc_residue_mean_rmsd(chain, cpartition):
 
                 ## set the cross prediction matrix
                 cmtx[i,j] = rmsd
-
-        b_obs_file.close()
 
     return cmtx
      
@@ -344,7 +270,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
         T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
 	# FIXME: allclose(some_array, some_scalar)
-	# Christoph: The next three lines appear to be the problem (2007-10-04)
+	# The next three lines appear to cause this def to crash, 2007-10-04
         #assert numpy.allclose(T[0,1], 0.0)
         #assert numpy.allclose(T[0,2], 0.0)
         #assert numpy.allclose(T[1,2], 0.0)
@@ -385,7 +311,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
-
+    
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
        Use TLS model + Uiso for each atom.  Output xyzout with the
@@ -434,7 +360,7 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
         T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
 
 	# FIXME: allclose(some_array, some_scalar)
-	# Christoph: The next three lines appear to be the problem (2007-10-04)
+	# The next three lines appear to cause this def to crash, 2007-10-04
         #assert numpy.allclose(T[0,1], 0.0)
         #assert numpy.allclose(T[0,2], 0.0)
         #assert numpy.allclose(T[1,2], 0.0)
