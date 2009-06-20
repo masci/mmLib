@@ -9,6 +9,7 @@ import Image
 import ImageDraw
 import ImageFont
 
+## TLSMD
 import misc
 import conf
 
@@ -62,9 +63,8 @@ class TLSSegmentAlignmentPlot(object):
 
         ## bars are 15 pixels height
         self.pheight    = ALIGN_HEIGHT
-        
-        ## spacing pixels between stacked bars
 
+        ## spacing pixels between stacked bars
         self.spacing    = ALIGN_SPACING
 
         ## background color
@@ -72,12 +72,11 @@ class TLSSegmentAlignmentPlot(object):
 
         ## height of the x-axis scale
         self.xscale_height = 20
-        
+
         self.frag_list      = []
         self.configurations = []
 
         self.chain_partition_list = []
-        
 
     def add_tls_segmentation(self, cpartition):
         """Add a TLS optimization to the alignment plot.
@@ -94,13 +93,13 @@ class TLSSegmentAlignmentPlot(object):
             if fid not in self.frag_list:
                 self.frag_list.append(fid)
         self.frag_list.sort()
-       
+
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
         if len(self.frag_list) == 0 or len(self.chain_partition_list) == 0:
             return False
-        
+
         nfrag = len(self.frag_list)
         target_width = 500
         fw = int(round(float(ALIGN_TARGET_WIDTH) / nfrag))
@@ -110,7 +109,7 @@ class TLSSegmentAlignmentPlot(object):
         ## adjust the width of the graph as necessary
         pheight = self.pheight
         img_width = (2 * self.border_width) + (one_frag_width * len(self.frag_list))
-            
+
         ## calculate the total height of the image
         num_plots = len(self.chain_partition_list)
         img_height = (2 * self.border_width) + (pheight * num_plots) + (self.spacing * (num_plots-1)) + self.xscale_height
@@ -133,7 +132,7 @@ class TLSSegmentAlignmentPlot(object):
         ## draw labels draw some ruler lines
         x_start = self.border_width
         y_xscale = self.border_width + (num_plots * pheight) + ((num_plots+1) * self.spacing)
-        
+
         y_ruler_top = self.border_width - 1
         y_ruler_bottom = self.border_width + (num_plots * (pheight + self.spacing))
 
@@ -188,7 +187,7 @@ class TLSSegmentAlignmentPlot(object):
 
         ## x/y offsets
         xo, yo = offset
-        
+
         ## draw a gray background for the length of the chain;
         ## the colored TLS segments will be drawn on top of this
         fid1 = FragmentID(cpartition.chain[0].fragment_id)
