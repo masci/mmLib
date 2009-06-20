@@ -6,14 +6,17 @@
 ##
 ## NOTE: Some of the code in here is used for rendering images with Raster3D
 
+## Python modules
 import copy
 import string
 import math
 import itertools
 import numpy
 
+## Pymmlib
 from mmLib import Structure, FileIO, Gaussian, AtomMath, TLS, Constants
 
+## TLSMD
 import conf
 import console
 
@@ -45,11 +48,11 @@ class TLSAnimate(object):
     """Create a multi-model PDB file which each model a frame of a TLS
     animation.
     """
-    
+
     def __init__(self, chain, cpartition):
         ## copy and get the anisotropic ADPs out of the structure
         self.struct = self.copy_struct(chain.struct, chain)
-        
+
         self.chain = chain
         self.cpartition = cpartition
 
@@ -70,9 +73,9 @@ class TLSAnimate(object):
 
             if chain.chain_id == chain_id or chain.count_fragments() < 200:
                 include_chain = True
-	    else:
-		include_chain = False
-		
+            else:
+                include_chain = False
+
             for frag in chain.iter_fragments():
 
                 ## skip all waters
@@ -108,7 +111,7 @@ class TLSAnimate(object):
 
         cp_struct.sort()
         return cp_struct
-                
+
     def construct_animation(self, filename, raw_r3d_filename):
         """Save the animated structure to the given filename.
         """
@@ -128,7 +131,7 @@ class TLSAnimate(object):
             model = self.struct.get_model(model_id)
             if model == None:
                 return model_id
-            
+
     def next_chain_id(self):
         """Return the next availible chain_id in self.astruct
         """
@@ -151,7 +154,7 @@ class TLSAnimate(object):
         self.L3_chain = copy.deepcopy(self.L1_chain)
         self.L3_chain.set_chain_id(self.next_chain_id())
         self.struct.add_chain(self.L3_chain, True)
-        
+
     def construct_frame(self, phase, raw_r3d_file):
         """Create a new model in self.struct with the TLS displacements
         caused from the three screw dispacement axes displaced by the
@@ -159,7 +162,7 @@ class TLSAnimate(object):
         """
         ## copy the original model and add it to the structure
         model1 = self.struct.get_model(1)
-        
+
         model = copy.deepcopy(model1)
         model.set_model_id(self.next_model_id())
         self.struct.add_model(model, True)
@@ -210,12 +213,12 @@ class TLSAnimate(object):
             Lrot = Gaussian.GAUSS3C[conf.ADP_PROB] * Lrmsd * phase
             D = AtomMath.dmatrixu(Lvec, Lrot)
             d_screw = (Lrot * Lpitch) * Lvec
-            
-            if n==1:
+
+            if n == 1:
                 chain_id = self.L1_chain.chain_id
-            elif n==2:
+            elif n == 2:
                 chain_id = self.L2_chain.chain_id
-            elif n==3:
+            elif n == 3:
                 chain_id = self.L3_chain.chain_id
 
             chain = model.get_chain(chain_id)
