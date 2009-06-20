@@ -14,7 +14,7 @@
 ##			html_multi_chain_alignment()
 ##			html_refinement_prep()
 
-## Python
+## Python modules
 import sys
 import math
 import numpy
@@ -105,7 +105,7 @@ class TLSMDAnalysis(object):
             self.struct = LoadStructure(struct_file_object)
         elif struct is not None:
             self.struct = struct
-        
+
         self.struct_id = self.struct.structure_id
         self.chains = None
 
@@ -122,13 +122,13 @@ class TLSMDAnalysis(object):
         console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
         console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
         console.endln() ## LOGLINE
-        
+
     def select_chains(self):
         """Selects chains for analysis.
         """
         ## select viable chains for TLS analysis
         segments = []
-        
+
         for chain in self.struct.iter_chains():
             ## if self.sel_chain_ids is set, then only use those
             ## selected chain ids
@@ -140,14 +140,13 @@ class TLSMDAnalysis(object):
             naa = chain.count_amino_acids()
             nna = chain.count_nucleic_acids()
             num_frags = max(naa, nna)
-            ## TODO: Switch to globals, 2009-06-04
-            if num_frags < 10:
+            if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
                 continue
-            
+
             segment = ConstructSegmentForAnalysis(chain)
             segments.append(segment)
             segment.struct = self.struct
-        
+
         self.chains = segments
 
     def iter_chains(self):
@@ -182,6 +181,7 @@ def LoadStructure(struct_source):
     else:
         raise ValueError
 
+    ## TODO: Is this the same load struct used during the sanity checks? 2009-05-28
     ## load struct
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
     job_dir = str(os.path.dirname(str(struct_source)))
@@ -190,7 +190,7 @@ def LoadStructure(struct_source):
     console.kvformat("TITLE", struct.title) ## LOGLINE 10
     console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
     console.kvformat("PATH", job_dir) ## LOGLINE
-    
+
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
         struct_id = conf.globalconf.struct_id
@@ -231,7 +231,7 @@ def LoadStructure(struct_source):
 
     return struct
 
-        
+
 def ConstructSegmentForAnalysis(raw_chain):
     """Returns a list of Segment instance from the
     Chain instance which is properly modified for use in
@@ -243,7 +243,8 @@ def ConstructSegmentForAnalysis(raw_chain):
     ## Sets that atm.include attribute for each atom in the chains
     ## being analyzed by tlsmd
     for atm in raw_chain.iter_all_atoms():
-        atm.include = atom_selection.calc_include_atom(atm)
+        #atm.include = atom_selection.calc_include_atom(atm)
+        atm.include = atom_selection.calc_include_atom(atm, reject_messages = True)
 
     ## ok, use the chain but use a segment and cut off
     ## any leading and trailing non-amino acid residues
@@ -257,7 +258,7 @@ def ConstructSegmentForAnalysis(raw_chain):
     elif nna > naa:
         ## Probably a nucleic acid with (possibly) some amino acids.
         iter_residues = raw_chain.iter_nucleic_acids()
-        
+
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
     for frag in iter_residues:
         for atm in frag.iter_all_atoms():
@@ -278,7 +279,7 @@ def ConstructSegmentForAnalysis(raw_chain):
         ## 1 : Res(ILE,2,A)
         ## ...
         frag.ifrag = i
-    
+
     ## create a TLSModelAnalyzer instance for the chain, and attach the
     ## instance to the chain for use by the rest of the program
     segment.tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
@@ -344,10 +345,6 @@ def FitConstrainedTLSModel(analysis):
                 try:
                     ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
                     tls.fit_to_chain(cpartition.chain)
-
-                    ## TODO: Write out data for residual plots.
-                    #gp = gnuplots.LSQR_vs_TLS_Segments_Pre_Plot(cpartition.chain)
-                    #console.stdoutln("FIT_TO_CHAIN_PATH: %s" % analysis.struct2_file_path)
 
                 except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
                     console.stdoutln("            Runtime error for [%s]: %s, trying to continue..." % (
