@@ -31,7 +31,7 @@ def calc_include_atom(atm, reject_messages = False):
     if atm.occupancy < 0.1:
         if reject_messages == True:
             console.stdoutln("calc_include_atom(%s): rejected because of low occupancy" % (atm))
-	return False
+        return False
 
     if atm.occupancy > 1.0:
         atm.occupancy = 1.0
@@ -47,7 +47,7 @@ def calc_include_atom(atm, reject_messages = False):
             if reject_messages == True:
                 console.stdoutln("calc_include_atom(%s): rejected non-mainchain atom" % (atm))
             return False
-    
+
     return True
 
 def calc_atom_weight(atm):
