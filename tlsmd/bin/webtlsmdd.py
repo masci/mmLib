@@ -34,8 +34,9 @@ import re         ## for "raw grey"-backbone rendering. 2008-12-03
 from mmLib import FileIO
 
 ## TLSMD
-from tlsmdlib import conf, const, tls_calcs, email, misc
+from tlsmdlib import conf, const, tls_calcs, email, misc, mysql_support
 
+mysql = mysql_support.MySQLConnect()
 
 def fatal(text):
     sys.stderr.write("[FATAL ERROR] %s\n" % (text))
@@ -43,6 +44,7 @@ def fatal(text):
 
 
 class JobDatabase(object):
+    ## TODO: Most of the following is never used, 2009-06-19
     def __init__(self, db_file):
         self.db_file = db_file
         self.db = bsddb.hashopen(self.db_file, "c")
@@ -53,7 +55,7 @@ class JobDatabase(object):
     def __store_dict(self, dbkey, dictx):
         self.db[dbkey] = cPickle.dumps(dictx)
         self.db.sync()
-    
+
     def __retrieve_dict(self, dbkey):
         try:
             data = self.db[dbkey]
@@ -82,7 +84,7 @@ class JobDatabase(object):
         job_id = jdict["job_id"]
         assert job_id.startswith("TLSMD")
         self.__store_dict(job_id, jdict)
-    
+
     def retrieve_jdict(self, job_id):
         assert job_id.startswith("TLSMD")
         return self.__retrieve_dict(job_id)
@@ -142,10 +144,6 @@ class JobDatabase(object):
                     pdb_id = jdict["via_pdb"]
                 else:
                     continue
-                    #job_nums = job_id[5:]
-                    #j = job_nums.find("_")
-                    #job_nums = job_nums[:j]
-                    #job_num = int(job_nums)
 
                 listx.append((pdb_id, jdict))
 
@@ -262,8 +260,6 @@ def generate_raw_grey_struct(job_dir):
 
     extract_raw_backbone("%s/struct.pdb" % job_dir, "%s/struct.raw" % job_dir)
 
-    #cmdlist = ["%s < %s/struct.pdb | %s - > %s/struct.r3d 2>/dev/null" % (
-    #          conf.RAW_GREY_SCRIPT, job_dir, conf.TLSANIM2R3D, job_dir)]
     cmdlist = ["%s < %s/struct.raw > %s/struct.r3d 2>/dev/null" % (
               conf.TLSANIM2R3D, job_dir, job_dir)]
     proc = subprocess.Popen(cmdlist,
@@ -308,13 +304,14 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     """Creates job directory, saves structure file to the job directory,
     and sets all jdict defaults.
     """
-    if not webtlsmdd.job_exists(job_id):
+    if not mysql.job_exists(job_id):
         return False
 
     try:
         os.chdir(conf.TLSMD_WORK_DIR)
     except OSError:
-        return "Unable to change to conf.TLSMD_WORK_DIR = '%s'" % (conf.TLSMD_WORK_DIR)
+        return "Unable to change to conf.TLSMD_WORK_DIR = '%s'" % (
+            conf.TLSMD_WORK_DIR)
 
     try:
         os.mkdir(job_id)
@@ -323,11 +320,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     os.chdir(job_dir)
-    webtlsmdd.jobdb.job_data_set(job_id, "job_dir", job_dir)
 
     ## save PDB file
     pdb_filename = conf.PDB_FILENAME
-    webtlsmdd.jobdb.job_data_set(job_id, "pdb_filename", pdb_filename)
     filobj = open(pdb_filename, "w")
     filobj.write(struct_bin.data)
     filobj.close()
@@ -342,32 +337,26 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     ## set basic properties of the job
     job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
-    webtlsmdd.jobdb.job_data_set(job_id, "job_url", job_url)
 
     log_url = "%s/log.txt" % (job_url)
-    webtlsmdd.jobdb.job_data_set(job_id, "log_url", log_url)
     log_file = "%s/log.txt" % (job_dir)
     if not os.path.exists(log_file):
         open(log_file, 'w').close() ## touch log.txt
 
-    ## create tarball path and url
-    tarball_url = "%s/%s.tar.gz" % (job_url, job_id)
-    webtlsmdd.jobdb.job_data_set(job_id, "tarball_url", tarball_url)
-
-    analysis_dir = "%s/ANALYSIS" % (job_dir)
-    webtlsmdd.jobdb.job_data_set(job_id, "analysis_dir", analysis_dir)
-
+    tarball_url       = "%s/%s.tar.gz" % (job_url, job_id)
+    analysis_dir      = "%s/ANALYSIS" % (job_dir)
     analysis_base_url = "%s/ANALYSIS" % (job_url)
-    webtlsmdd.jobdb.job_data_set(job_id, "analysis_base_url", analysis_base_url)
-
-    analysis_url = "%s/ANALYSIS/index.html" % (job_url)
-    webtlsmdd.jobdb.job_data_set(job_id, "analysis_url", analysis_url)
-
-    webtlsmdd.jobdb.job_data_set(job_id, "version", const.VERSION)
+    analysis_url      = "%s/ANALYSIS/index.html" % (job_url)
 
     ## submission time and initial state
-    webtlsmdd.jobdb.job_data_set(job_id, "state", "submit1")
-    webtlsmdd.jobdb.job_data_set(job_id, "submit_time", time.time())
+    submit_time = time.time()
+    mysql.job_set_state(job_id, "submit1")
+    mysql.job_set_submit_time(job_id, submit_time)
+
+    ## This is for internal use only
+    tm_struct = time.localtime(submit_time)
+    submit_date = time.strftime("%Y-%m-%d %H:%M:%S", tm_struct)
+    mysql.job_set_submit_date(job_id, submit_date)
 
     ## now load the structure and build the submission form
     try:
@@ -377,13 +366,14 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     if not struct.structure_id:
         struct.structure_id = "XXXX"
-    webtlsmdd.jobdb.job_data_set(job_id, "structure_id", struct.structure_id)
+    mysql.job_set_structure_id(job_id, struct.structure_id)
 
     ## Select Chains for Analysis
     num_atoms = 0
     num_aniso_atoms = 0
     largest_chain_seen = 0
 
+    mycb_desc = ""
     chains = []
     for chain in struct.iter_chains():
         naa = chain.count_amino_acids()
@@ -407,37 +397,21 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
         ## form name
         cb_name = 'CHAIN%s' % (chain.chain_id)
+        mycb_desc = mycb_desc + chain.chain_id + ":"
 
+        ## chains = "A:10:0:aa;B:20:1:na;C:30:0:na;"
         ## create chain description label cb_desc
         if naa > 0:
-            cb_desc = 'Chain %s (%d Amino Acid Residues)' % (chain.chain_id, num_frags)
+            mycb_desc = mycb_desc + str(num_frags) + ":1:aa;"
         elif nna > 0:
-            cb_desc = 'Chain %s (%d Nucleic Acid Residues)' % (chain.chain_id, num_frags)
+            mycb_desc = mycb_desc + str(num_frags) + ":1:na;"
         else:
             continue
-            
+
         for atm in chain.iter_all_atoms():
             num_atoms += 1
             if atm.U is not None:
                 num_aniso_atoms += 1
-
-        listx = []
-        i = 0
-        for frag in chain.iter_fragments():
-            i += 1
-            if i > 5:
-                break
-            listx.append(frag.res_name)
-        cb_preview = string.join(listx, " ")
-
-        cdict = {}
-        chains.append(cdict)
-        cdict["chain_id"] = chain.chain_id
-        cdict["length"] = num_frags
-        cdict["name"] = cb_name
-        cdict["desc"] = cb_desc
-        cdict["preview"] = cb_preview
-        cdict["selected"] = True
 
     if num_atoms < 1:
         webtlsmdd.remove_job(job_id)
@@ -447,19 +421,28 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         webtlsmdd.remove_job(job_id)
         return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
 
-    webtlsmdd.jobdb.job_data_set(job_id, "chains", chains)
+    mysql.job_set_chain_sizes(job_id, mycb_desc)
 
-    ## defaults
-    webtlsmdd.jobdb.job_data_set(job_id, "user", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "passwd", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "email", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "comment", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "private_job", False)
-    webtlsmdd.jobdb.job_data_set(job_id, "plot_format", "PNG")
-    webtlsmdd.jobdb.job_data_set(job_id, "generate_jmol_view", conf.globalconf.generate_jmol_view)
-    webtlsmdd.jobdb.job_data_set(job_id, "generate_jmol_animate", conf.globalconf.generate_jmol_animate)
-    webtlsmdd.jobdb.job_data_set(job_id, "generate_histogram", False)
-    webtlsmdd.jobdb.job_data_set(job_id, "nparts", conf.globalconf.nparts) ## select number of partitions (default: 20)
+    ## set defaults
+    mysql.job_set_user_name(job_id, "")
+    mysql.job_set_email(job_id, "")
+    mysql.job_set_user_comment(job_id, "")
+    mysql.job_set_plot_format(job_id, "PNG")
+    mysql.job_set_nparts(job_id, conf.globalconf.nparts)
+    mysql.job_set_via_pdb(job_id, "0")
+
+    mysql.job_set_private_job(job_id, "0")
+    mysql.job_set_jmol_view(job_id, "0")
+    mysql.job_set_jmol_animate(job_id, "0")
+    mysql.job_set_histogram(job_id, "0")
+    if conf.PRIVATE_JOBS:
+        mysql.job_set_private_job(job_id, "1")
+    if conf.globalconf.generate_jmol_view:
+        mysql.job_set_jmol_view(job_id, "1")
+    if conf.globalconf.generate_jmol_animate:
+        mysql.job_set_jmol_animate(job_id, "1")
+    if conf.globalconf.generate_histogram:
+        mysql.job_set_histogram(job_id, "1")
 
     try:
         aniso_ratio = float(num_aniso_atoms) / float(num_atoms)
@@ -467,19 +450,18 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         return 'Your submitted structure contained no atoms'
 
     if aniso_ratio > 0.90:
-        webtlsmdd.jobdb.job_data_set(job_id, "tls_model", "ANISO")
+        mysql.job_set_tls_model(job_id, "ANISO")
     else:
-        webtlsmdd.jobdb.job_data_set(job_id, "tls_model", "ISOT")
+        mysql.job_set_tls_model(job_id, "ISOT")
 
-    webtlsmdd.jobdb.job_data_set(job_id, "weight", "")
-    webtlsmdd.jobdb.job_data_set(job_id, "include_atoms", "ALL")
+    mysql.job_set_weight_model(job_id, "NONE")
+    mysql.job_set_include_atoms(job_id, "ALL")
 
     return ""
 
 def RequeueJob(webtlsmdd, job_id):
     """Pushes job to the end of the list
     """
-
     if (webtlsmdd.jobdb.job_data_get(job_id,'state') == 'running'):
         return False
     else:
@@ -493,11 +475,11 @@ def RequeueJob(webtlsmdd, job_id):
 def RemoveJob(webtlsmdd, job_id):
     """Removes the job from both the database and working directory.
     """
-    if not webtlsmdd.jobdb.job_exists(job_id):
+    if not mysql.job_exists(job_id):
         return False
 
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+    if job_dir and os.path.isdir(job_dir):
         for root, dirs, files in os.walk(job_dir, topdown = False):
             for name in files:
                 os.remove(os.path.join(root, name))
@@ -505,21 +487,21 @@ def RemoveJob(webtlsmdd, job_id):
                 os.rmdir(os.path.join(root, name))
         os.rmdir(job_dir)
 
-    webtlsmdd.jobdb.delete_jdict(job_id)
+    mysql.delete_jdict(job_id)
     return True
 
 def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
        the next step. It will eventually have a state "warnings"
     """
-    if not webtlsmdd.jobdb.job_exists(job_id):
+    ## FIXME: Doesn't seem to work, 2009-06-12
+    if not mysql.job_exists(job_id):
         return False
 
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+    if job_dir and os.path.isdir(job_dir):
         try:
-            tmp_pid = webtlsmdd.job_get_pid(job_id)
-            pid = int(tmp_pid)
+            pid = int(mysql.job_get_pid(job_id))
         except:
             return False
         try:
@@ -534,18 +516,13 @@ def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the 
        "Completed Jobs" section as "killed" state
     """
-    ## FIXME: We want to keep the job_id around in order to inform the user
-    ## that their job has been "killed", 2009-05-29
-
-    if not webtlsmdd.jobdb.job_exists(job_id):
+    if not mysql.job_exists(job_id):
         return False
 
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    if job_dir and job_dir.startswith(conf.TLSMD_WORK_DIR) and os.path.isdir(job_dir):
+    if job_dir and os.path.isdir(job_dir):
         try:
-            ## Switched to storing pid in database
-            tmp_pid = webtlsmdd.job_get_pid(job_id)
-            pid = int(tmp_pid)
+            pid = int(mysql.job_get_pid(job_id))
         except:
             return False
         try:
@@ -555,13 +532,13 @@ def KillJob(webtlsmdd, job_id):
 
     return True
 
-def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
+def Refmac5RefinementPrep(job_id, chain_ntls):
     """Called with a list of tuples (chain_id, ntls).
     Generates PDB and TLSIN files for refinement with REFMAC5.
     Returns a single string if there is an error, otherwise a
     dictionary of results is returned.
     """
-    struct_id = webtlsmdd.job_get_structure_id(job_id)
+    struct_id = mysql.job_get_structure_id(job_id)
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     analysis_dir = os.path.join(job_dir, "ANALYSIS")
     job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
@@ -602,12 +579,12 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
     ## the tlsout from this program is going to be the tlsin
     ## for refinement, so it's important for the filename to have
     ## the tlsin extension so the user is not confused
-    tlsout = "%s.tlsin" % (outbase)
+    tlsout    = "%s.tlsin"  % (outbase)
     phenixout = "%s.phenix" % (outbase)
 
     ## make urls for linking
-    pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
-    tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
+    pdbout_url    = "%s/%s" % (analysis_base_url, pdbout)
+    tlsout_url    = "%s/%s" % (analysis_base_url, tlsout)
     phenixout_url = "%s/%s" % (analysis_base_url, phenixout)
 
     ## create the REFMAC/PHENIX files
@@ -622,12 +599,12 @@ def Refmac5RefinementPrep(webtlsmdd, job_id, chain_ntls):
                 phenixout = phenixout,
                 phenixout_url = phenixout_url)
 
-    
+
 class WebTLSMDDaemon(object):
     def __init__(self, db_file):
         self.db_file = db_file
         self.jobdb = None
-        
+
     def job_list(self):
         """Returns a ordered list of all jdicts in the database
         """
@@ -638,10 +615,10 @@ class WebTLSMDDaemon(object):
            containing 'via_pdb'
         """
         return self.jobdb.jdict_pdb_list()
-        
+
     def job_new(self):
         return self.jobdb.job_new()
-        
+
     def job_exists(self, job_id):
         return self.jobdb.job_exists(job_id)
 
@@ -707,10 +684,10 @@ class WebTLSMDDaemon(object):
 
     def job_get_job_dir(self, job_id):
         return self.jobdb.job_data_get(job_id, "job_dir")
-    
+
     def job_get_pdb_dir(self, job_id):
         return self.jobdb.job_data_get(job_id, "pdb_dir")
-    
+
     def job_set_pdb_dir(self, job_id, pdb_id):
         directory = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
         self.jobdb.job_data_set(job_id, "pdb_dir", directory)
@@ -751,13 +728,13 @@ class WebTLSMDDaemon(object):
         return user_comment
     def job_get_user_comment(self, job_id):
         return self.jobdb.job_data_get(job_id, "user_comment")
-    
+
     def job_set_email(self, job_id, email_address):
         self.jobdb.job_data_set(job_id, "email", email_address)
         return email_address
     def job_get_email(self, job_id):
         return self.jobdb.job_data_get(job_id, "email")
-    
+
     def job_set_private_job(self, job_id, private_job):
         self.jobdb.job_data_set(job_id, "private_job", private_job)
         return private_job
@@ -810,12 +787,14 @@ class WebTLSMDDaemon(object):
     def job_get_chain_max_segs(self, job_id):
         return self.jobdb.job_data_get(job_id, "chain_max_segs")
 
+    ## FIXME: Why are there two of these? #1
     def job_set_tls_model(self, job_id, tls_model):
         self.jobdb.job_data_set(job_id, "tls_model", tls_model)
         return tls_model
     def job_get_tls_model(self, job_id):
         return self.jobdb.job_data_get(job_id, "tls_model")
 
+    ## FIXME: Why are there two of these? #2
     def job_set_tls_model(self, job_id, tls_model):
         self.jobdb.job_data_set(job_id, "tls_model", tls_model)
         return tls_model
@@ -867,7 +846,7 @@ class WebTLSMDDaemon(object):
         return nparts
     def job_get_nparts(self, job_id):
         return self.jobdb.job_data_get(job_id, "nparts")
-        
+
     def job_set_run_time_begin(self, job_id, run_time_begin):
         self.jobdb.job_data_set(job_id, "run_time_begin", run_time_begin)
         return run_time_begin
@@ -887,14 +866,14 @@ class WebTLSMDDaemon(object):
     def requeue_job(self, job_id):
         """Pushes the job to the back of the queue"""
         return RequeueJob(self, job_id)
-    
+
     def refmac5_refinement_prep(self, job_id, chain_ntls):
         """Called with a list of tuples (chain_id, ntls).
         Generates PDB and TLSIN files for refinement with REFMAC5.
         Returns a single string if there is an error, otherwise a
         dictionary of results is returned.
         """
-        return Refmac5RefinementPrep(self, job_id, chain_ntls)
+        return Refmac5RefinementPrep(job_id, chain_ntls)
 
     def pdb_exists(self, pdbid):
         try:
@@ -902,20 +881,21 @@ class WebTLSMDDaemon(object):
         except IOError:
             ## if it doesn't exist create it
             f = open(conf.WEBTLSMDD_PDBID_FILE, 'w+')
-        
+
         for line in f:
             if line == pdbid + '\n':
                 f.close()
                 return True
-        
+
         f.close()
-        
+
         return False
 
     def fetch_pdb(self, pdbid):
         """Retrives the PDB file from RCSB"""
         try:
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
+            sys.stdout.write("FOUND PDB: %s" % pdbid)
             data = gzip.GzipFile(fileobj = StringIO.StringIO(cdata)).read()
         except IOError:
             return xmlrpclib.Binary("")
@@ -951,7 +931,8 @@ class WebTLSMD_XMLRPCServer(
             host_port,
             WebTLSMD_XMLRPCRequestHandler,
             False)
-                
+
+
 def daemon_main():
     rtype, baseurl, port = conf.WEBTLSMDD.split(":")
     host_port = ("localhost", int(port))
@@ -966,7 +947,7 @@ def daemon_main():
 
     ## Switched from handle_SIGCHLD to SIG_IGN. Christoph Champ, 2008-03-10
     signal.signal(signal.SIGCHLD, SIG_IGN)
-    
+
     webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
 
     try:
@@ -988,7 +969,7 @@ def main():
 
 def inspect():
     database_path = sys.argv[2]
-    
+
     webtlsmdd = WebTLSMDDaemon(database_path)
 
     if sys.argv[1] == "list":
@@ -1003,7 +984,7 @@ def inspect():
 
 def usage():
     print "webtlsmdd.py [list | remove] args..."
-    
+
 if __name__=="__main__":
     if len(sys.argv) == 1:
         try:
