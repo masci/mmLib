@@ -4,6 +4,7 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python modules
 import os
 import sys
 import time
@@ -12,11 +13,14 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 
+## TLSMD
 import const
 import conf
+import mysql_support
 
 ## GLOBALS
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
+mysql = mysql_support.MySQLConnect()
 
 CAPTION = """\
 <b>Refmac5:</b> Download both the modified PDBIN file for your structure and the corresponding
@@ -69,10 +73,10 @@ class ErrorPage(Page):
     def __init__(self, form, text):
         Page.__init__(self, form)
         self.text = text
-    
+
     def html_page(self):
         title = 'TLSMD: Error'
-        
+
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
@@ -81,7 +85,7 @@ class ErrorPage(Page):
 
         if self.text!=None:
             x += self.text
-            
+
         x += self.html_foot()
         return x
 
@@ -94,11 +98,10 @@ class RefinePrepError(Exception):
 
 class RefinePrepPage(Page):
     def html_page(self):
-        
         job_id = check_job_id(self.form)
-    
+
         title = 'Input Files for TLS Refinement'
-        
+
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
@@ -108,7 +111,7 @@ class RefinePrepPage(Page):
         x += 'Step 2: Download the generated XYZIN(PDBIN), TLSIN, and PHENIX files below'
         x += '</h3>'
         x += '</center>'
-        
+
         ## extract ntls selections from CGI form
         chain_ntls = []
         for key in self.form.keys():
@@ -180,7 +183,7 @@ def check_job_id(form):
         job_id = form["job_id"].value
         if len(job_id) < 20:
             if job_id.startswith("TLSMD"):
-                if webtlsmdd.job_exists(job_id):
+                if mysql.job_exists(job_id):
                     return job_id
     return None
 
