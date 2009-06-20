@@ -346,6 +346,10 @@ def FitConstrainedTLSModel(analysis):
                     ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
                     tls.fit_to_chain(cpartition.chain)
 
+                    ## TODO: Write out data for residual plots.
+                    #gp = gnuplots.LSQR_vs_TLS_Segments_Pre_Plot(cpartition.chain)
+                    #console.stdoutln("FIT_TO_CHAIN_PATH: %s" % analysis.struct2_file_path)
+
                 except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
                     console.stdoutln("            Runtime error for [%s]: %s, trying to continue..." % (
                         tls, e))
