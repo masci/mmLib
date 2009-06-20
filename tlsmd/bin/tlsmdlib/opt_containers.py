@@ -28,7 +28,7 @@ class TLSSegment(object):
         self.__residual = args.get("residual")
         self.__num_atoms = args.get("num_atoms")
         self.__num_residues = args.get("num_residues")
-        
+
         ## added by a call to the method fit_to_chain()
         self.tls_group = None
         self.tls_info = None
@@ -171,7 +171,7 @@ class TLSSegment(object):
             self.fit_tls_parameters(chain)
         except:
             print console.formatExceptionInfo()
-        
+
         ## helpful additions
         tls_info  = self.tls_group.calc_tls_info()
         itls_info = TLS.calc_itls_center_of_reaction(
@@ -199,7 +199,7 @@ class TLSSegment(object):
         """Use the non-linear TLS model to calculate tensor values.
         """
         tls_group = self.tls_group
-        
+
         ## anisotropic model
         tlsdict = chain.tls_analyzer.constrained_anisotropic_fit(self.segment_ranges)
         T, L, S, origin = tls_calcs.tlsdict2tensors(tlsdict)
@@ -332,7 +332,7 @@ class ChainPartitionCollection(object):
 
     def min_ntls(self):
         return min(self.iter_ntls())
-    
+
     def get_chain_id(self):
         ## Added. Christoph Champ, 2008-04-04
         return self.chain_id
