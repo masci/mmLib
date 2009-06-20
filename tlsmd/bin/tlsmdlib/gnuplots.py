@@ -25,8 +25,6 @@ def create_fractional_residue_number(res_num):
        E.g., "5A" -> "5.0"
        This is so gnuplot can handle x-axis number values.
     """
-    ## TODO: Figure out a better way to handle insertion residues, 2008-12-03
-
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ## used for index position
 
     if re.sub(r'.?([A-Za-z]?)', '\\1', res_num) != '':
@@ -173,14 +171,13 @@ plot "<txtfile>" using 1:2 title "Minimization (Weighted) Residual" ls 1 with li
 """
 
 class LSQR_vs_TLS_Segments_Plot(GNUPlot):
-    ## TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
-    ## by minimizing an overall residual function. This plot shows the value
-    ## of the residual as a function of the number of TLS groups allowed in
-    ## the partition. Adding additional TLS groups will always make this
-    ## residual lower, but there is an issue of diminishing returns as you go
-    ## to larger numbers of groups.
-    ##
-    ## NOTE (by Christoph):
+    """TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
+    by minimizing an overall residual function. This plot shows the value
+    of the residual as a function of the number of TLS groups allowed in
+    the partition. Adding additional TLS groups will always make this
+    residual lower, but there is an issue of diminishing returns as you go
+    to larger numbers of groups.
+    """
     ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
     def __init__(self, chain,  **args):
         GNUPlot.__init__(self, **args)
@@ -215,14 +212,13 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
 
 
 class LSQR_vs_TLS_Segments_Pre_Plot(GNUPlot):
-    ## TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
-    ## by minimizing an overall residual function. This plot shows the value
-    ## of the residual as a function of the number of TLS groups allowed in
-    ## the partition. Adding additional TLS groups will always make this
-    ## residual lower, but there is an issue of diminishing returns as you go
-    ## to larger numbers of groups.
-    ##
-    ## NOTE (by Christoph):
+    """TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups
+    by minimizing an overall residual function. This plot shows the value
+    of the residual as a function of the number of TLS groups allowed in
+    the partition. Adding additional TLS groups will always make this
+    residual lower, but there is an issue of diminishing returns as you go
+    to larger numbers of groups.
+    """
     ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
     def __init__(self, chain,  **args):
         GNUPlot.__init__(self, **args)
