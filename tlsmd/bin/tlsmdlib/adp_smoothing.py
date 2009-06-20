@@ -3,11 +3,15 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python modules
 import math
 import numpy
 
+## Pymmlib
 from mmLib import Constants, TLS
 
+## TLSMD
 import console
 import atom_selection
 import tls_calcs
@@ -17,10 +21,10 @@ import tlsmdmodule
 def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
     segment = chain[frag_id1:frag_id2]
     atoms = list(segment.iter_all_atoms())
-    
+
     orig_num_atoms = len(atoms)
     rejected = 0
-    
+
     while True:
         tls_analyzer = tlsmdmodule.TLSModelAnalyzer()
         xlist = atom_selection.chain_to_xmlrpc_list(iter(atoms))
@@ -61,7 +65,7 @@ def IsotropicADPDataSmoother(chain, num_smooth = 1):
     console.endln()
     console.stdoutln("SMOOTHING CHAIN %s ADPs" % (chain.chain_id))
     conesole.kvformat("SMOOTH WINDOW", 2 * num_smooth + 1)
-    
+
     num_frags = len(chain)
 
     smooth_uiso = dict()
@@ -78,7 +82,7 @@ def IsotropicADPDataSmoother(chain, num_smooth = 1):
 
         for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
             smooth_uiso[atm] = uiso
-        
+
         if ifrag == ifrag_start:
             for i in range(ifrag_start):
                 smooth_frag = chain[i]
