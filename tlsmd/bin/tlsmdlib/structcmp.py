@@ -13,22 +13,23 @@ except ImportError:
     print "Bio.pairwise2 from BioPython is not installed"
     raise SystemExit
 
+## Pymmlib
 from mmLib import Constants, AtomMath, Structure, Superposition, TLS
+
+## TLSMD
 import console
 
-SUPER_ATOMS  = ["N","CA","C"]
+SUPER_ATOMS = ["N","CA","C"]
 
 def calc_angle(a, b):
     cos_ab = numpy.dot(a, b)/ (AtomMath.length(a) * AtomMath.length(b))
     return Constants.RAD2DEG * abs(math.acos(cos_ab))
-
 
 def calc_directional_overlap(a, b):
     cos_ab = numpy.dot(a, b) / (AtomMath.length(a) * AtomMath.length(b))
     if cos_ab < 0.0:
         return 0.0
     return abs(cos_ab)
-
 
 def align_chains(chain1, chain2):
     """Adds a .equiv attribute to each fragment of the chain
@@ -50,7 +51,7 @@ def align_chains(chain1, chain2):
 
     chain1_equiv = {}
     chain2_equiv = {}
-    
+
     for i in xrange(len(seq1_align)):
         frag1 = None
         frag2 = None
@@ -89,7 +90,7 @@ def SuperimposeChains(source_chain, target_chain, srcdst_equiv, atom_names = ["C
     return Superposition.SuperimposeAtomsOutlierRejection(alist, 0.5)
     #return Superposition.SuperimposeAtoms(alist)
 
-        
+
 class TLSConformationPredctionHypothosis(object):
     """Calculate the directional overlap of the TLS displacements in
     struct_file/tls_file with the displacements in target_struct_file.
@@ -122,7 +123,7 @@ class TLSConformationPredctionHypothosis(object):
         ## residue type mismatches in the sequence alignment of the fragments
         for frag1 in self.chain.iter_fragments():
             try:
-                frag2 =  self.srctgt_equiv[frag1]
+                frag2 = self.srctgt_equiv[frag1]
             except KeyError:
                 continue
             if frag1.res_name != frag2.res_name:
@@ -151,7 +152,7 @@ class TLSConformationPredctionHypothosis(object):
                 plist.append((atm1.position, atm2.align_position))
                 d = atm1.position - atm2.align_position
                 msd += numpy.dot(d,d)
-                    
+
         rmsd_pre_alignment = math.sqrt(msd / len(plist))
         tls.rmsd_pre_alignment = rmsd_pre_alignment
 
@@ -178,7 +179,7 @@ class TLSConformationPredctionHypothosis(object):
         for i in (0,1,2):
             eval = evals[i]
             evec = evecs[i]
-            
+
             lname = "L%d_eigen_val" % (i)
 
             if (eval * Constants.RAD2DEG2) < 1.0:
@@ -188,5 +189,3 @@ class TLSConformationPredctionHypothosis(object):
 
             console.stdoutln("%s  magnitude::%6.2f  vector angle::%6.2f" % (
                 lname, eval*Constants.RAD2DEG2, ang))
-            
-
