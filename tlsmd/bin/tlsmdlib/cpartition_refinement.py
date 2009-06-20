@@ -3,11 +3,15 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+
+## Python modules
 import math
 import numpy
 
+## Pymmlib
 from mmLib import Constants, Structure, FileIO
 
+## TLSMD
 import const
 import conf
 import console
@@ -19,7 +23,7 @@ class Partition(object):
     """A Partition instance represents the interface of two adjacent
     TLS segments.
     """
-    
+
     def __init__(self, cpartition, lhs_tls, lhs_range, rhs_tls, rhs_range, auto_fit_residual = True):
         assert isinstance(cpartition, opt_containers.ChainPartition)
         assert isinstance(lhs_tls, opt_containers.TLSSegment)
@@ -63,7 +67,7 @@ class Partition(object):
         """Move the partition point num_frags.
         """
         chain = self.cpartition.chain
-        
+
         lhs_frag_id1, lhs_frag_id2 = self.lhs_range()
         rhs_frag_id1, rhs_frag_id2 = self.rhs_range()
 
@@ -78,7 +82,7 @@ class Partition(object):
         if new_lhs_ifrag2 < (lhs_frag1.ifrag + (self.min_num_frags-1)) or \
            new_rhs_ifrag1 > (rhs_frag2.ifrag - (self.min_num_frags-1)):
             raise ValueError
-            
+
         new_lhs_frag2 = chain[new_lhs_ifrag2]
         new_lhs_range = (lhs_frag_id1, new_lhs_frag2.fragment_id)
 
@@ -128,10 +132,10 @@ def ChainPartitionList(cpartition):
         partition = Partition(cpartition, prev_tls, prev_range, tls, range)
         partitions.append(partition)
         prev_sr = sr
-        
+
     return partitions
 
-    
+
 def RefineChainPartitionPositions(cpartition):
     """Refines positions of the partition points of the
     given ChainPartition instance.
@@ -143,23 +147,23 @@ def RefineChainPartitionPositions(cpartition):
 ## testing
 def testmain():
     import tlsmd_analysis
-    
+
     struct = FileIO.LoadStructure(
         file = "/home/tlsmd/public_html/examples/1KP8/ANALYSIS/1KP8.pdb")
     chain = tlsmd_analysis.ConstructSegmentForAnalysis(struct.get_chain("A"))
-    
+
     cpartition = opt_containers.ChainPartition(chain, 3)
     groups = [
         [("2", "135"), ("411", "525")],
         [("136", "190"), ("375", "410")],
         [("191", "374")]]
-    
+
     for segment_ranges in groups:
         tls = opt_containers.TLSSegment(segment_ranges)
         cpartition.add_tls_segment(tls)
 
     cpartition.fit_residual()
-    
+
     partitions = ChainPartitionList(cpartition)
     print partitions,  cpartition.residual()
 
@@ -175,7 +179,7 @@ def testmain():
         part.move_left(10)
 
     return
-    
+
     for x in range(60):
         try:
             partitions[2].move_right()
@@ -193,7 +197,6 @@ def testmain():
             print "reached limit"
         print partitions, cpartition.residual()
 
-    
 
 if __name__ == "__main__":
     testmain()
