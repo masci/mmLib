@@ -21,7 +21,7 @@ import shutil
 import tarfile
 
 ## TLSMD
-from tlsmdlib import const, conf, email, misc
+from tlsmdlib import const, conf, email, misc, mysql_support
 
 ## XXX: This is never used, 2009-05-29
 ## if there are no lines of output from the tlsmd process
@@ -42,58 +42,50 @@ def log_job_died(job_id):
     ln += "Killed Job %s from CLI" % (job_id)
     log_write(ln)
 
-def chain_size_string(jdict):
-    if jdict.has_key("chains") == False:
-        return "---"
+def chain_size_string(chain_sizes):
     listx = []
-    for cdict in jdict["chains"]:
-        if cdict["selected"]:
-            listx.append("%s:%d" % (cdict["chain_id"], cdict["length"]))
+    for c in chain_sizes.split(';'):
+        chid, length, selected, type = misc.parse_chains(c)
+        if selected == "1":
+            listx.append("%s:%s" % (chid, length))
     return ";".join(listx)
 
-def chain_type_string(jdict):
-    if jdict.has_key("chains") == False:
-        return "---"
+def chain_type_string(chain_sizes):
     listx = []
-    for cdict in jdict["chains"]:
-        if cdict["selected"]:
-            type = re.sub(r'Chain [A-Za-z0-9] \([0-9]{1,} (.*) Acid Residues\)', '\\1', cdict["desc"])
-            if type == "Amino":
-                listx.append("%s:aa" % cdict["chain_id"])
-            elif type == "Nucleic":
-                listx.append("%s:na" % cdict["chain_id"])
-            else:
-                listx.append("%s:--")
+    for c in chain_sizes.split(';'):
+        chid, length, selected, type = misc.parse_chains(c)
+        if selected == "1":
+            listx.append("%s:%s" % (chid, type))
     return ";".join(listx)
 
 def log_job_end(jdict):
     ln  = ""
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
- 
+
     ## write to a special log file
     if jdict.get("private_job", True):
         private_text = "private"
     else:
         private_text = "public"
-    
+
     submit_time = jdict.get('submit_time', 0.0)
     run_time_begin = jdict.get('run_time_begin', 0.0)
     run_time_end = jdict.get('run_time_end', 0.0)
     processing_time = timediff(run_time_begin, run_time_end)
 
-    l = ["[Submit time: %s]"  % (timestring(submit_time)),
+    l = ["[Submit time: %s]"  % (timestring(submit_time)), ## 2009-04-21 17:31 PDT
          "[Start time: %s] " % (timestring(run_time_begin)),
          "[End time: %s] " % (timestring(run_time_end)),
          "[Processing time: %s] " % (processing_time),
-         "[IP : %s] " % (jdict.get("ip_addr", "000.000.000.000")),
+         "[IP : %s] " % (jdict.get("ip_address", "000.000.000.000")),
          "[Email: %s] " % (jdict.get("email", "nobody@nowhere.com")),
          "[Privacy: %s] " % (private_text),
          "[Job ID: %s] " % (jdict.get("job_id", "EEK!!")),
          "[Structure ID: %s] " % (jdict.get("structure_id", "----")),
          "[Header ID: %s] " % (jdict.get("header_id", "----")),
-         "[Chain sizes: %s] " % (chain_size_string(jdict)),
-         "[Chain types: %s] " % (chain_type_string(jdict)),
+         "[Chain sizes: %s] " % (chain_size_string(jdict["chain_sizes"])),
+         "[Chain types: %s] " % (chain_type_string(jdict["chain_sizes"])),
          "[TLS Model: %s] " % (jdict.get('tls_model', 'None')),
          "[Weight: %s] " % (jdict.get('weight', 'None')),
          "[Atoms: %s] " % (jdict.get('include_atoms', 'None')),
@@ -117,6 +109,10 @@ def timestring(raw_time):
     t = time.asctime(time.localtime(raw_time))
     return t
 
+def itimestring(secs):
+    tm_struct = time.localtime(secs)
+    return time.strftime("%Y-%m-%d %H:%M:%S", tm_struct)
+
 def timediff(begin, end):
     secs = int(end - begin)
     hours = secs / 3600
@@ -126,7 +122,7 @@ def timediff(begin, end):
     x = "%1d:%2d.%2d" % (hours, min, secs)
     return x.replace(" ", "0")
 
-def log_error(jdict, err):
+def log_error(err):
     ln  = ""
     ln += "ERROR: %s" % (err)
     log_write(ln)
@@ -137,7 +133,7 @@ def get_cdict(chains, chain_id):
             return cdict
     return None
 
-def run_tlsmd(webtlsmdd, jdict):
+def run_tlsmd(mysql, jdict):
     """main tlsmd fork/exec routine"""
     tlsmd = jdict["tlsmd"]
 
@@ -158,15 +154,12 @@ def run_tlsmd(webtlsmdd, jdict):
         os.close(redirect)
 
         save_pid = os.getpid()  ## capture child pid
-        webtlsmdd.job_set_pid(jdict["job_id"], save_pid)
+        mysql.job_set_pid(jdict["job_id"], save_pid)
 
         ## Set up the environment
-        ## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
-        ## os.environ.clear()  ## probably too drastic, but some cleaning might be good
         pwd = {}
         pwd["PWD"] = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"])
         os.environ.update(pwd)
-        #print os.environ.values
 
         os.execvp("python", args)
         ## NOTE: We never come back from 'execvp()'
@@ -174,11 +167,11 @@ def run_tlsmd(webtlsmdd, jdict):
     time.sleep(5.0)
     return
 
-def run_job(webtlsmdd, jdict):
+def run_job(mysql, jdict):
     job_id = jdict["job_id"]
     log_job_start(jdict["tlsmd"])
 
-    webtlsmdd.job_set_run_time_begin(job_id, time.time())
+    mysql.job_set_run_time_begin(job_id, time.time())
 
     old_dir = os.getcwd()
 
@@ -187,10 +180,10 @@ def run_job(webtlsmdd, jdict):
     try:
         os.chdir(job_dir)
     except os.error, err:
-        log_error(jdict, str(err))
+        log_error(str(err))
     else:
-        run_tlsmd(webtlsmdd, jdict)
- 
+        run_tlsmd(mysql, jdict)
+
     return
 
 def check_logfile_for_errors(file):
@@ -218,25 +211,22 @@ def check_logfile_for_errors(file):
         return "warnings"
     return "success"
 
-def cleanup_job(webtlsmdd, jdict):
+def cleanup_job(mysql, jdict):
     """Cleanup job directory upon completion and email user
     """
     old_dir = os.getcwd()
     job_id = jdict["job_id"]
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    pdb_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, job_id)
+    pdb_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, jdict["structure_id"])
     try:
         os.chdir(job_dir)
     except os.error, err:
-        log_error(jdict, str(err))
-        webtlsmdd.job_set_state(job_id, "lost_directory")
+        log_error(str(err))
+        mysql.job_set_state(job_id, "lost_directory")
         return
 
     ## Check if user submitted job via PDB code (i.e., from pdb.org)
-    if jdict.get("via_pdb", False) and "pdb_dir" in jdict and len(jdict["pdb_dir"]) != 0:
-        #print "%s: Archiving job..." % (time.ctime())
-        pdb_dir = jdict['pdb_dir']
-    
+    if int(jdict["via_pdb"]) == 1:
         if os.path.exists(pdb_dir):
             shutil.rmtree(pdb_dir)
         try:
@@ -252,22 +242,22 @@ def cleanup_job(webtlsmdd, jdict):
     os.chdir(old_dir)
     ## check 'log.txt' for warnings
     if check_logfile_for_errors(job_dir + "/log.txt") == "warnings":
-        webtlsmdd.job_set_state(job_id, "warnings")
+        mysql.job_set_state(job_id, "warnings")
 
-    webtlsmdd.job_set_run_time_end(job_id, time.time())
-    log_job_end(webtlsmdd.job_get_dict(job_id))
+    mysql.job_set_run_time_end(job_id, time.time())
+    log_job_end(mysql.job_get_dict(job_id))
 
     ## send email now that the job is complete
-    send_mail(jdict["job_id"])
+    send_mail(jdict)
 
-def get_job(webtlsmdd):
+def get_job(mysql):
     """Remove the top job from the queue file and return it.
     """
     ## NOTE: This is the very first step in the entire webtlsmdrund.py process
     try:
-        job_id = webtlsmdd.get_next_queued_job_id()
+        job_id = mysql.get_next_queued_job_id()
     except socket.error:
-        log_write("[ERROR] unable to connect to webtlsmdd.py")
+        log_write("[ERROR] unable to connect to MySQL")
         raise SystemExit
 
     if job_id == "":
@@ -275,10 +265,11 @@ def get_job(webtlsmdd):
 
     ## change state of the job and re-load to catch any updates which may
     ## have occurred
-    if webtlsmdd.job_set_state(job_id, "running") == False:
+    if mysql.job_set_state(job_id, "running") == False:
         return None
+    mysql.job_set_state(job_id, "running")
 
-    jdict = webtlsmdd.job_get_dict(job_id)
+    jdict = mysql.job_get_dict(job_id)
     if jdict == None:
         return None
 
@@ -287,10 +278,6 @@ def get_job(webtlsmdd):
 
     ## Job ID
     tlsmd.append("-j%s" % (job_id))
-
-    ## webtlsmdd URL
-    ## NOTE: This is no longer needed, 2009-04-21
-    #tlsmd.append("-x%s" % (conf.WEBTLSMDD))
 
     ## override PDB ID
     tlsmd.append("-i%s" % (jdict["structure_id"]))
@@ -304,7 +291,7 @@ def get_job(webtlsmdd):
         tlsmd.append("--generate-histogram")
 
     ## plot style
-    if jdict.get("plot_format") == "SVG":
+    if jdict["plot_format"] == "SVG":
         tlsmd.append("-s")
 
     ## select TLS model
@@ -317,14 +304,13 @@ def get_job(webtlsmdd):
     ## set maximum number of segments
     tlsmd.append("-n%s" % (jdict["nparts"]))
 
-    ## select LSQ weighting
-    #tlsmd.append("-w%s" % (jdict["weight"]))
-
     ## select chain IDs to analyze
     cids = []
-    for cdict in jdict["chains"]:
-        if cdict["selected"] == True:
-            cids.append(cdict["chain_id"])
+    chains = jdict["chain_sizes"].rstrip(";")
+    for c in chains.split(';'):
+        chid, length, selected, type = misc.parse_chains(c)
+        if selected == "1":
+            cids.append(chid)
     tlsmd.append("-c%s" % (",".join(cids)))
 
     ## included atoms
@@ -356,21 +342,18 @@ Ethan Merritt <merritt@u.washington.edu>
 
 """
 
-def send_mail(job_id):
+def send_mail(jdict):
     if not os.path.isfile(conf.MAIL):
         log_write("ERROR: mail client not found: %s" % (conf.MAIL))
         return
 
-    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
-
-    jdict = webtlsmdd.job_get_dict(job_id)
+    job_id = jdict["job_id"]
     if jdict == False:
-        log_write("WARNING: job_id not found: %s" % (job_id))
+        log_write("WARNING: Trying to email but job_id not found: %s" % (job_id))
         return
 
     address = jdict.get("email", "")
     if len(address) == 0:
-        log_write("NOTE: no email address: %s" % job_id)
         return
 
     job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
@@ -381,8 +364,7 @@ def send_mail(job_id):
 
     user_comment = jdict.get("user_comment", "")
     if len(user_comment) == 0:
-        log_write("NOTE: no user_comment: %s" % job_id)
-        #return ## this was stopping "via_pdb" from emailing the user
+        user_comment = "no comment"
 
     ## send mail using msmtp
     mail_message = MAIL_MESSAGE
@@ -393,8 +375,6 @@ def send_mail(job_id):
         address,
         "Your TLSMD Job %s is Complete" % (job_id),
         mail_message)
-
-    log_write("NOTE: sent mail to: %s" % (address))
 
 def is_pid_running(full_cmd):
     """Checks if a given PID is still running. Returns "True" if job is still
@@ -413,13 +393,11 @@ def is_pid_running(full_cmd):
 
     return False
 
-def check_for_pid(webtlsmdd, jdict):
+def check_for_pid(pid):
     """Function for checking if process is running. Returns "True" if job is
     still running.
     """
     try:
-        tmp_pid = webtlsmdd.job_get_pid(jdict["job_id"])
-        pid = int(tmp_pid)
         cmd = "ps -p %s --no-heading" % pid
         res = is_pid_running(cmd)
 
@@ -434,7 +412,7 @@ def check_for_pid(webtlsmdd, jdict):
 
     return False
 
-def job_completed(webtlsmdd, jdict):
+def job_completed(mysql, jdict):
     """Checks if "running" job is finished and sets state according to log.txt
     messages. If there is a match, return False (job not completed).
     Otherwise return True (job completed)
@@ -444,41 +422,43 @@ def job_completed(webtlsmdd, jdict):
     try:
         os.chdir(job_dir)
     except:
-        webtlsmdd.job_set_state(job_id, "lost_directory")
+        mysql.job_set_state(job_id, "lost_directory")
         return True
 
-    if check_for_pid(webtlsmdd, jdict):
+    pid = int(mysql.job_get_pid(job_id))
+    if check_for_pid(pid):
         ## Job is still running
         return False
 
-    webtlsmdd.job_set_state(job_id, check_logfile_for_errors(logfile))
+    logfile = os.path.join(job_dir, "log.txt")
+    mysql.job_set_state(job_id, check_logfile_for_errors(logfile))
     return True
 
 def fetch_and_run_jobs_forever():
     log_write("starting webtlsmdrund.py  version %s" % (const.VERSION))
     log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
 
-    webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
+    mysql = mysql_support.MySQLConnect()
 
     running_list = [] ## New array to hold list of jobs currently running
     while True:
         ## First clear out any jobs in run queue that have finished
         ## Get information on jobs in queue
-        job_list = webtlsmdd.job_list()
+        job_list = mysql.job_list()
         for myjdict in job_list:
             if myjdict.get("state") == None:
                 ## This is a "Partially Submitted" job, so go to next in list
                 continue
             ## Comment out the following three lines to refresh the states in
             ## the database
-            if (myjdict.get("state") != "running"):
+            if myjdict.get("state") != "running":
                 ## Check for any other states besides None and "running"
                 continue
-            if job_completed(webtlsmdd, myjdict):
+            if job_completed(mysql, myjdict):
                 for n in range(len(running_list)):
                     if myjdict["job_id"] == running_list[n]:
-                        if webtlsmdd.job_get_state(myjdict["job_id"]) != "died":
-                            cleanup_job(webtlsmdd, myjdict)
+                        if mysql.job_get_state(myjdict["job_id"]) != "died":
+                            cleanup_job(mysql, myjdict)
 
                         ## remove completed job_id from array
                         running_list.pop(n)
@@ -490,14 +470,14 @@ def fetch_and_run_jobs_forever():
             continue
 
         ## If there is a run slot free, get next job in queue
-        jdict = get_job(webtlsmdd)
+        jdict = get_job(mysql)
         if jdict == None:
             time.sleep(5.0)
             continue
 
         ## Start the new job
         running_list.append(jdict["job_id"])
-        run_job(webtlsmdd, jdict)
+        run_job(mysql, jdict)
 
 def main():
     try:
