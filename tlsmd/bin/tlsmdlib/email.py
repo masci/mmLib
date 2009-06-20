@@ -4,18 +4,20 @@
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python modules
 import os
 import sys
 import subprocess
 import traceback
 
+## TLSMD
 import conf
 
 def SendEmail(address, subject, body):
     if not os.path.isfile(conf.MAIL):
         sys.stderr.write("mail client not found: %s" % (conf.MAIL))
         return
-    
+
     ## send mail using /usr/bin/mail
     try:
         pobj = subprocess.Popen([conf.MAIL, "-s", subject, address],
@@ -27,11 +29,10 @@ def SendEmail(address, subject, body):
     except OSError:
         sys.stderr.write("[ERROR] mail client failed to execute: %s" % (conf.MAIL))
         return
-        
+
     pobj.stdin.write(body)
     pobj.stdin.close()
     pobj.wait()
-    
 
 def SendTracebackEmail(context):
     SendEmail(conf.TRACEBACK_EMAIL, context, traceback.format_exc())
