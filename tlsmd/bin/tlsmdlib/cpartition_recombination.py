@@ -42,11 +42,11 @@ def join_segment_ranges(chain, segrange1, segrange2):
 
     if len(tmp_segrange) == 0:
         return []
-    
+
     segrange = []
     frag1 = None
     frag2 = None
-    
+
     for fid1, fid2 in tmp_segrange:
         xfrag1 = chain[fid1] ## e.g., "Res(ILE,16,A)"
         xfrag2 = chain[fid2]
@@ -57,10 +57,9 @@ def join_segment_ranges(chain, segrange1, segrange2):
             segrange.append((frag1.fragment_id, frag2.fragment_id))
         frag1 = xfrag1
         frag2 = xfrag2
-    
+
     segrange.append((frag1.fragment_id, frag2.fragment_id))
     return segrange
-    
 
 def recombination2_iter(nparts):
     for part1 in xrange(0, nparts):
@@ -148,7 +147,7 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         ##    {i=1:j=2} = 7.28134425393
         rmsd_b_mtx[i, j] = rmsd_b
         rmsd_b_mtx[j, i] = rmsd_b
-        
+
         residual_delta = (residual - (tls1.residual() + tls2.residual())) / num_residues
         recombination_list.append((residual_delta, tls1, tls2, tlsdict))
 
@@ -222,7 +221,7 @@ def ChainPartitionRecombinationOptimization(chain):
     console.debug_stdoutln(">Entering: cpartition_recombination.py->ChainPartitionRecombinationOptimization()...") ## DEBUG
 
     visited = {}
-    
+
     ntls_best = {}
     orig_best = {}
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
@@ -250,7 +249,7 @@ def ChainPartitionRecombinationOptimization(chain):
             console.stdoutln("RESIDUAL-%sc: %s" % (ntls, cpartition.residual()))
 
             continue ## No recombination needed for a single ntls group
-        
+
         console.stdoutln("=" * 80) ## LOGLINE
         console.stdoutln("%d INTO %d TO 2" % (ntls, ntls - 1)) ## LOGLINE
 
@@ -319,7 +318,7 @@ def ChainPartitionRecombinationOptimization(chain):
             proot = ptree
             if search_depth > max_depth:
                 break
-            
+
     ## insert replacement ChainPartitions
     if conf.globalconf.recombination:
         for ntls, cpartition in ntls_best.iteritems():
