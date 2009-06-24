@@ -425,7 +425,14 @@ def job_completed(mysql, jdict):
         mysql.job_set_state(job_id, "lost_directory")
         return True
 
-    pid = int(mysql.job_get_pid(job_id))
+    pid = mysql.job_get_pid(job_id)
+    if pid == None:
+        ## job PID wasn't stored in database; something must have gone wrong
+        mysql.job_set_state(job_id, "syserror")
+        return True
+    else:
+        pid = int(pid)
+
     if check_for_pid(pid):
         ## Job is still running
         return False
