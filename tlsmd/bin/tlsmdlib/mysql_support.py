@@ -6,7 +6,6 @@
 ## included as part of this package.
 
 ## Python modules
-#import time, datetime
 import re
 import MySQLdb
 
@@ -137,12 +136,10 @@ class MySQLConnect():
         assert job_id.startswith("TLSMD")
         if not self.job_exists(job_id):
             return False
-        #string = """INSERT INTO %s (submit_date,job_id) 
-        #         SELECT submit_date,job_id FROM %s 
-        #         WHERE submit_date < DATE(CURRENT_DATE - 15);""" % (
-        #    self.archive_tbl, self.status_page_tbl)
-        string = """INSERT INTO %s (submit_date,job_id) 
-                 SELECT submit_date,job_id FROM %s 
+
+        ## Dump the entire contents of 'status_page' into 'archive'
+        string = """INSERT INTO %s
+                 SELECT * FROM %s 
                  WHERE job_id='%s';""" % (
             self.archive_tbl, self.status_page_tbl, job_id)
         return self.execute_cmd(string)
