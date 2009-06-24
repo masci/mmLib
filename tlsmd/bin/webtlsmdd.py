@@ -474,6 +474,8 @@ def RequeueJob(webtlsmdd, job_id):
 
 def RemoveJob(webtlsmdd, job_id):
     """Removes the job from both the database and working directory.
+    If job is still running when this function is called, it will first call
+    KillJob(), then remove the associated data and files.
     """
     if not mysql.job_exists(job_id):
         return False
@@ -522,7 +524,10 @@ def KillJob(webtlsmdd, job_id):
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and os.path.isdir(job_dir):
         try:
-            pid = int(mysql.job_get_pid(job_id))
+            if mysql.job_get_pid(job_id) == None:
+                return False
+            else:
+                pid = int(mysql.job_get_pid(job_id))
         except:
             return False
         try:
@@ -643,7 +648,13 @@ class WebTLSMDDaemon(object):
 
     def remove_job(self, job_id):
         """Removes the job from both the database and working directory.
+        If job is still running when this function is called, it will first call
+        KillJob(), then remove the associated data and files.
         """
+        try:
+            KillJob(self, job_id)
+        except:
+            pass
         return RemoveJob(self, job_id)
 
     def signal_job(self, job_id):
