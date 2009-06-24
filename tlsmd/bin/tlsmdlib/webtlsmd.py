@@ -1142,7 +1142,13 @@ class QueuePage(Page):
     def pid_exists(self, job_id):
         """QueuePage
         """
-        pid = int(mysql.job_get_pid(job_id))
+        pid = mysql.job_get_pid(job_id)
+        if pid == None:
+            ## job PID somehow did not get stored in the database, so return
+            ## False => state='syserror'; job may still be running!
+            return False
+        else:
+            pid = int(pid)
         try:
             #os.kill(pid, 0) ## This does not work, 2009-05-27
             ## NOTE: Three possible results:
