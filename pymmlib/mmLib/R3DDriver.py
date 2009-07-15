@@ -56,7 +56,7 @@ class Raster3DDriver(object):
     for the Raster3D ray tracer.
     """
     def __init__(self):
-        self.render_program_path = "render"
+        self.render_program_path = Constants.RENDER
         self.render_png_path     = "ray.png"
         self.render_stdin        = None
         
