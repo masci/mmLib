@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -32,7 +32,7 @@ def assemble_paths_list():
     """
     PATHS = [
         ("/usr/lib",       "/usr/include"),
-        ("/usr/lib64",       "/usr/include"),
+        ("/usr/lib64",     "/usr/include"),
         ("/usr/X11/lib",   "/usr/X11/include"),
         ("/usr/X11R6/lib", "/usr/X11R6/include"),
         ("/usr/local/lib", "/usr/local/include"),
