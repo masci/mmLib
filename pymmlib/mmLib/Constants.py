@@ -17,3 +17,6 @@ DEG2RAD2 = DEG2RAD**2
 ## factor values
 U2B = 8.0 * PI2
 B2U = 1.0 / (8.0 * PI2)
+
+## Path to render (Raster3D) binary
+RENDER = "/usr/local/bin/render"
