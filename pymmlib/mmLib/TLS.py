@@ -738,10 +738,9 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
     #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
     #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
     #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
-    #Original: "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([0-9]+)\.[']\s+[']([A-Z])\s*([0-9]+)\.[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
@@ -855,20 +854,10 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
         """        
         listx = []
 
-        #if tls_desc.name != "":
-        #    listx.append("TLS %s" % (tls_desc.name))
-        #else:
-        #    listx.append("TLS")
-
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
-            #frag_id1 = self.convert_frag_id_save(frag_id1)
-            #frag_id2 = self.convert_frag_id_save(frag_id2)
-            #listx.append("RANGE  '%s%s' '%s%s' %s" % (chain_id1, frag_id1.rjust(5),chain_id2, frag_id2.rjust(5), sel))
-	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1,frag_id2))
-        # ORIGIN (was here)
-	# T (was here)
-	# L (was here)
-	# S (was here)
+	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
+                chain_id1, frag_id1, frag_id2))
+
         return "\n".join(listx)
 
     def save(self, fil, tls_desc_list):
@@ -881,9 +870,9 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
 ## END: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
-###########################################################################################################################
+################################################################################
 
-###########################################################################################################################
+################################################################################
 ## START: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
 class TLSFileFormatPHENIX(TLSFileFormat):
     """Read/Write PHENIX TLSIN/TLSOUT files.
@@ -894,17 +883,16 @@ class TLSFileFormatPHENIX(TLSFileFormat):
     #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
     #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
     #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
-    #Original: "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([0-9]+)\.[']\s+[']([A-Z])\s*([0-9]+)\.[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
         }
 
-    ## Needs to look something like the following (from Pavel):
+    ## Converts the above into the following (example):
     #refinement.refine {
     # adp {
     #  tls="(chain A and resid 1:155)"
@@ -1019,41 +1007,15 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         """        
         listx = []
 
-        #if tls_desc.name != "":
-        #    listx.append("TLS %s" % (tls_desc.name))
-        #else:
-        #    listx.append("TLS")
-        #listx.append("refinement.refine { adp {")
-
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
-	    # Commented out next two lines, by Christoph Champ, 2007-11-23
-            #frag_id1 = self.convert_frag_id_save(frag_id1)
-            #frag_id2 = self.convert_frag_id_save(frag_id2)
-            # RANGE  'A  16.' 'A  25.' ALL
-            #listx.append("RANGE  '%s%s' '%s%s' %s" % (
-            #    chain_id1, frag_id1.rjust(5),
-            #    chain_id2, frag_id2.rjust(5), sel))
-	    # tls = chain A and resid 80:187
-   	    ## NEW:
-	    #refinement.refine {
-	    # adp {
-	    #  tls="(chain A and resid 1:155)"
-	    #  tls="(chain B and resid 0:155)"
-	    #  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
-	    # }
-	    #listx.append("\ttls = chain %s and resid %s:%s" % (chain_id1,frag_id1.rjust(5),frag_id2.rjust(5)))
-	    #listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1.rjust(5),frag_id2.rjust(5)))
-	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (chain_id1,frag_id1,frag_id2))
-        # ORIGIN (was here)
-	# T (was here)
-	# L (was here)
-	# S (was here)
+	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
+                chain_id1, frag_id1, frag_id2))
+
         return "\n".join(listx)
 
     def save(self, fil, tls_desc_list):
         ## with this line, the tensor components will be read by some
         ## programs in a different order, mangling the tensor values
-        #fil.write("PHENIX\n\n")
         fil.write("refinement.refine {\n adp {\n")
         
         for tls_desc in tls_desc_list:
@@ -1061,7 +1023,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
 ## END: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
-############################################################################################################################
+###############################################################################
 
 ###############################################################################
 ## SOLVE TLS LSQ-FIT BY SVD (Singular Value Decomposition)
