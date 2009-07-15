@@ -5,3 +5,4 @@ Dr. Ethan Merritt <merritt@u.washington.edu>
 Programmer
 ----------
 Jay Painter <jpaint@u.washington.edu>
+Christoph Champ <champc@u.washington.edu>
