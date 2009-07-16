@@ -3,23 +3,22 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Program constants
+"""TLSMD program constants
 """
-from mmLib import Constants
-
-## unreasonably small T/L eigenvalues B <= 0.01
-TSMALL = 0.1 * Constants.B2U
-
-## L RMSD <= 0.1 DEG
-LSMALL = (0.1)**2 * Constants.DEG2RAD2
-
 ## program info
-## 3rd decimal place is for internal development on (Verdandi) 
+## NOTE: 3rd decimal place is for internal development (on Verdandi)
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
 VERSION       = "1.3.0"
 RELEASE_DATE  = "19 June 2009"
 AUTHOR        = "Ethan Merritt"
 EMAIL         = "merritt@u.washington.edu"
+
+from mmLib import Constants
+## unreasonably small T/L eigenvalues B <= 0.01
+TSMALL = 0.1 * Constants.B2U
+
+## L RMSD <= 0.1 DEG
+LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## mainchain atom definitions
 AMINO_ACID_MAINCHAIN_ATOMS = ["N", "CA", "C", "O", "CB"]
@@ -29,3 +28,10 @@ MAINCHAIN_ATOMS = AMINO_ACID_MAINCHAIN_ATOMS + NUCLEIC_ACID_MAINCHAIN_ATOMS
 MAINCHAIN_ATOM_DICT = {}
 for res_name in MAINCHAIN_ATOMS:
     MAINCHAIN_ATOM_DICT[res_name] = True
+
+## used in tls_animate.py to filter selected atoms
+DISPLACE_ATOM_NAME_DICT = {
+    "CA": True, "P": True, 
+    "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True,
+    "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
+    }
