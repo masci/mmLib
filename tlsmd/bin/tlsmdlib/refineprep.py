@@ -23,11 +23,13 @@ webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 mysql = mysql_support.MySQLConnect()
 
 CAPTION = """\
-<b>Refmac5:</b> Download both the modified PDBIN file for your structure and the corresponding
-TLSIN file. Feed these to REFMAC5 as a starting point for multi-TLS group refinement.
+<b>Refmac5:</b> Download both the modified PDBIN file for your structure and
+the corresponding TLSIN file. Feed these to REFMAC5 as a starting point for
+multi-TLS group refinement.
 See the TLSMD documentation for detailed instructions.
 <p>
-<b>PHENIX:</b> The PHENIX file contains a description of the TLS groups you selected.
+<b>PHENIX:</b> The PHENIX file contains a description of the TLS groups you
+selected.
 This file is intended to be read by the PHENIX.refine input scripts. 
 """
 
@@ -60,7 +62,8 @@ class Page(object):
     def html_foot(self):
         x = ''
         x += '<center>'
-        x += '<p><small><b>Version %s</b> Released %s' % (const.VERSION, const.RELEASE_DATE)
+        x += '<p><small><b>Version %s</b> Released %s' % (
+            const.VERSION, const.RELEASE_DATE)
         x += ' by %s ' % (const.AUTHOR)
         x += '<i>%s</i></small></p>' % (const.EMAIL)
         x += '</center>'
@@ -80,7 +83,7 @@ class ErrorPage(Page):
         x  = ''
         x += self.html_head(title)
         x += self.html_title(title)
-        x += '<br>'
+        x += '<br/>'
         x += '<center><h3>An Error Occured</h3></center>'
 
         if self.text!=None:
@@ -129,40 +132,31 @@ class RefinePrepPage(Page):
         if len(chain_ntls) == 0:
             raise RefinePrepError("Form Processing Error: No Chains Selected")
 
-        # EAM DEBUG 1
-        #fault_html = "DEBUG in RefinePrepPage at #1: job_id = %s chain_ntls = %s" % (job_id, chain_ntls)
-        #dpage = ErrorPage(self.form, fault_html)
-        #print dpage.html_page()
-        # EAM DEBUG
-
-        ## call webtlsmdd to generate files
+        ## call webtlsmdd to generate files (Refmac5 + PHENIX)
         result = webtlsmdd.refmac5_refinement_prep(job_id, chain_ntls)
         if isinstance(result, str):
             raise RefinePrepError(result)
 
         x += '<p>%s</p>' % (CAPTION)
 
-        # EAM DEBUG 2
-        #fault_html = "DEBUG in RefinePrepPage at #2: job_id = %s" % (job_id)
-        #dpage = ErrorPage(self.form, fault_html)
-        #print dpage.html_page()
-        # EAM DEBUG
-
-        ## success -- make download links
+        ## success! Now make download links
         x += '<center>'
         x += '<table border="0" style="background-color:#eeeeee">'
         x += '<tr>'
         x += '<td align="right"><b>PDBIN File</b></td>'
-        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (result["pdbout_url"], result["pdbout"])
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
+            result["pdbout_url"], result["pdbout"])
         x += '</tr><tr>'
         x += '<td align="right"><b>TLSIN File</b></td>'
-        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (result["tlsout_url"], result["tlsout"])
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
+            result["tlsout_url"], result["tlsout"])
         x += '</tr><tr>'
         x += '<td align="right"><b>PHENIX File</b></td>'
-        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (result["phenixout_url"], result["phenixout"])
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
+            result["phenix_url"], result["phenix"])
         x += '</table>'
 
-        x += '<br>'
+        x += '<br/>'
 
         x += '<center>'
         x += '<h3>'
@@ -176,8 +170,8 @@ class RefinePrepPage(Page):
 
 
 def check_job_id(form):
-    """Retrieves and confirms the job_id from a incomming form.  Returns
-    None on error, or the job_id on success.
+    """Retrieves and confirms the job_id from a incomming form.
+    Returns None on error, or the job_id on success.
     """
     if form.has_key("job_id"):
         job_id = form["job_id"].value
@@ -207,7 +201,8 @@ def main():
         print page.html_page()
 
     except xmlrpclib.Fault, fault:
-        fault_html = "xmlrpclib.Fault from refineprep.py:<br>fault code: %s<br>fault string: %s" % (fault.faultCode, fault.faultString)
+        fault_html = "xmlrpclib.Fault from refineprep.py:<br/>fault code: %s<br/>fault string: %s" % (
+            fault.faultCode, fault.faultString)
         page = ErrorPage(form, fault_html)
         print page.html_page()
 
