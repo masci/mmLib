@@ -1,0 +1,288 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<head>
+	<title>TLSMD: Installation</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="TLSMD,Mandriva Linux,Python Macromolecular Library,Ar,Nm,Ranlib" />
+	<link rel="shortcut icon" href="/favicon.ico" />
+	<link title="Creative Commons" type="application/rdf+xml" href="/index.php?title=TLSMD&amp;action=creativecommons" rel="meta" />
+	<link rel="stylesheet" href="tlsmd.css" type="text/css" media="screen" />
+	<link rel="stylesheet" href="tlsmd_print.css" type="text/css" media="print" />
+<style type="text/css">/*<![CDATA[*/
+hr {
+    height:1px;
+    color:#aaa;
+    background-color:#aaa;
+    border:0;
+    margin:0.2em 0 0.2em 0;
+    }
+h1, h2, h3, h4, h5, h6 {
+    color:black;
+    background:none;
+    font-weight:normal;
+    margin:0;
+    padding-top:0.5em;
+    padding-bottom:0.17em;
+    border-bottom:1px solid #aaa;
+    }
+h1 { font-size:188%; }
+h2 { font-size:150%; }
+h3, h4, h5, h6 {
+    border-bottom:none;
+    font-weight:bold;
+    }
+h3 { font-size:132%; }
+h4 { font-size:116%; }
+h5 { font-size:100%; }
+h6 { font-size:80%;  }
+ul {
+    line-height:1.5em;
+    list-style-type:square;
+    margin:0.3em 0 0 1.5em;
+    padding:0;
+    }
+ol {
+    line-height:1.5em;
+    margin:0.3em 0 0 3.2em;
+    padding:0;
+    list-style-image:none;
+    }
+li {
+    margin-bottom:0.1em;
+    }
+dt {
+    font-weight:bold;
+    margin-bottom:0.1em;
+    }
+dl {
+    margin-top:0.2em;
+    margin-bottom:0.5em;
+    }
+dd {
+    line-height:1.5em;
+    margin-left:2em;
+    margin-bottom:0.1em;
+    }
+blockquote { background-color:#eee; }
+code { background-color:#f9f9f9; }
+tt { background-color:#FEECA9; }
+pre {
+    display:block;
+    font:11pt/1.1em Courier, "Lucida Typewriter", "lucida console", fixed, console;
+    line-height:1.5em;
+    background-color:#E8FFE2 !important;
+    background-color:#F1F6E4 !important;
+    border:dotted 1px #999;
+    padding:10px 15px;
+    margin:10px 4px;
+    overflow:auto;
+    }
+/*]]>*/</style>
+</head>
+<body>
+<div id="page">
+<center><h1>TLSMD: Installation</h1></center>
+
+<div id="navcontainer">
+  <ul>
+      <li><a href="/~tlsmd/index.html" id="current">Home</a></li>
+      <li><a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a></li>
+      <li><a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a></li>
+      <li><a href="/~tlsmd/examples/index.html">Examples</a></li>
+      <li><a href="/~tlsmd/documentation.html">Documentation</a></li>
+    </ul>
+</div>
+
+<p><b><a href="http://skuld.bmsc.washington.edu/~tlsmd/">TLS Motion Determination</a></b> (<b>TLSMD</b>) analyzes a protein crystal structure for evidence of flexibility, e.g. local or inter-domain motions.<sup id="_ref-Painter2006a_0" class="reference"><a href="#_note-Painter2006a" title="">[1]</a></sup><sup id="_ref-Painter2006b_0" class="reference"><a href="#_note-Painter2006b" title="">[2]</a></sup> It does this by partitioning the protein chains into multiple segments that are modeled as rigid bodies undergoing TLS (Translation/Libration/Screw) vibrational motion. It generates all possible partitions up to a specified maximum number of TLS groups. Each trial partition is evaluated by how well it predicts the observed atomic displacement parameters (ADPs, "thermal parameters") that came out of crystallographic refinement.</p>
+
+<blockquote><b>Note</b>: On 2008-02-15, we released version 1.0.0 of tlsmd. It is available for download on <a href="https://pymmlib.svn.sourceforge.net/svnroot/pymmlib/trunk" class='external text' title="https://pymmlib.svn.sourceforge.net/svnroot/pymmlib/trunk" rel="nofollow">sourceforge</a>.</blockquote>
+
+<table id="toc" class="toc" summary="Contents"><tr><td><div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class='toclevel-1'><a href="#Installation"><span class="tocnumber">1</span> <span class="toctext">Installation</span></a>
+<ul>
+<li class='toclevel-2'><a href="#Dependencies"><span class="tocnumber">1.1</span> <span class="toctext">Dependencies</span></a></li>
+<li class='toclevel-2'><a href="#LAPACK_.2F_BLAS"><span class="tocnumber">1.2</span> <span class="toctext">LAPACK / BLAS</span></a></li>
+<li class='toclevel-2'><a href="#Build"><span class="tocnumber">1.3</span> <span class="toctext">Build</span></a></li>
+<li class='toclevel-2'><a href="#tlsmdmodule.so"><span class="tocnumber">1.4</span> <span class="toctext">tlsmdmodule.so</span></a></li>
+<li class='toclevel-2'><a href="#conf.py"><span class="tocnumber">1.5</span> <span class="toctext">conf.py</span></a></li>
+<li class='toclevel-2'><a href="#Resources"><span class="tocnumber">1.6</span> <span class="toctext">Resources</span></a>
+<ul>
+<li class='toclevel-3'><a href="#ranlib"><span class="tocnumber">1.6.1</span> <span class="toctext">ranlib</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class='toclevel-1'><a href="#Keywords"><span class="tocnumber">2</span> <span class="toctext">Keywords</span></a></li>
+<li class='toclevel-1'><a href="#See_also"><span class="tocnumber">3</span> <span class="toctext">See also</span></a></li>
+<li class='toclevel-1'><a href="#References"><span class="tocnumber">4</span> <span class="toctext">References</span></a></li>
+<li class='toclevel-1'><a href="#External_links"><span class="tocnumber">5</span> <span class="toctext">External links</span></a></li>
+</ul>
+</td></tr>
+</table>
+
+<h2>Installation</h2>
+<p><i>Note: This section will cover the install of pymmlib, including tlsmd, on a 64-bit system running Mandriva Linux (>=2007.1). However, most of it should work for 32-bit systems and any other Linux distribution.</i>
+
+</p><p>It is best to get the package as follows:
+</p>
+<pre>svn co https://pymmlib.svn.sourceforge.net/svnroot/pymmlib/trunk pymmlib
+</pre>
+<h3>Dependencies</h3>
+<p><i>Note: It very much depends if you are running on a 32- or 64-bit machine. So, instead of, say "<code>liblapack</code>" (32-bit), you would install "<code>lib64lapack</code>" (64-bit)</i>
+</p>
+<ul>
+	<li><a href="http://www.python.org/" class='external text' title="http://www.python.org/" rel="nofollow">Python</a> (&gt;= 2.4): <code>python + libpython2.5-devel</code> (if using Python 2.5)</li>
+	<li><a href="http://numpy.scipy.org/" class='external text' title="http://numpy.scipy.org/" rel="nofollow">NumPy</a> (&gt;= 0.9.6): <code>python-numpy + python-numpy-devel</code></li>
+	<li><a href="http://pyopengl.sourceforge.net/" class='external text' title="http://pyopengl.sourceforge.net/" rel="nofollow">PyOpenGL</a>: <code>python-opengl</code></li>
+	<li><a href="http://www.gtk.org/" class='external text' title="http://www.gtk.org/" rel="nofollow">Gtk+-2.2 or Gtk+-2.4</a>: <code>libgtk+2.0_0-devel</code></li>
+	<li><a href="http://www.pygtk.org/" class='external text' title="http://www.pygtk.org/" rel="nofollow">PyGTK</a> (&gt;= 2.x): <code>pygtk2.0-devel + python-gtkglext</code></li>
+	<li><a href="http://www.k-3d.org/gtkglext/Main_Page" class='external text' title="http://www.k-3d.org/gtkglext/Main_Page" rel="nofollow">GtkGlExt</a>: <code>lib64gtkglext-devel</code></li>
+	<li><a href="http://www.k-3d.org/gtkglext/Main_Page" class='external text' title="http://www.k-3d.org/gtkglext/Main_Page" rel="nofollow">PyGtkGLExt</a>: <code>libgtkglext-1.0_0 + libgtkglext-1.0_0-devel</code></li>
+	<li><a href="http://www.pythonware.com/products/pil/" class='external text' title="http://www.pythonware.com/products/pil/" rel="nofollow">Python Imaging Library</a> (&gt;= 1.1.5): <code>python-imaging-devel</code></li>
+	<li><a href="http://www.cherrypy.org/" class='external text' title="http://www.cherrypy.org/" rel="nofollow">CherryPy</a>: <code>python-cherrypy</code></li>
+	<li><a href="http://www.netlib.org/lapack/" class='external text' title="http://www.netlib.org/lapack/" rel="nofollow">LAPACK</a> (see section below; &gt;= 3.0): <code>lapack + liblapack3.0-devel</code></li>
+	<li><a href="http://math-atlas.sourceforge.net/" class='external text' title="http://math-atlas.sourceforge.net/" rel="nofollow">ATLAS</a> (&gt;= 3.6.0): <code>atlas</code></li>
+	<li><a href="http://www.netlib.org/minpack/" class='external text' title="http://www.netlib.org/minpack/" rel="nofollow">MINPACK</a></li>
+	<li>Other
+		<ul>
+			<li><code>lib64xmu6-devel</code></li>
+			<li><code>lib64xmlrpc0</code></li>
+			<li><code>lib64xmlrpc0-devel</code></li>
+			<li><code>libcairo2-devel</code></li>
+			<li><code>glib-gettextize</code></li>
+			<li><code>libglib2.0_0-devel</code></li>
+			<li><code>libatk1.0_0-devel</code></li>
+			<li><code>libpango1.0_0-devel</code></li>
+			<li><code>libgdk_pixbuf2.0_0-devel</code></li>
+		</ul>
+	</li>
+</ul>
+
+<h3>LAPACK / BLAS</h3>
+<p><i>Note: See <a href="http://www.netlib.org/lapack/lawn41/index.html" class='external text' title="http://www.netlib.org/lapack/lawn41/index.html" rel="nofollow">Installation Guide for LAPACK</a> for detailed information.</i>
+</p>
+<ul><li>Download LAPACK (grab latest version of full package; must be at least &gt;=3.0.0):</li></ul>
+<pre>wget http://www.netlib.org/lapack/lapack.tgz
+tar xvf lapack.tgz &amp;&amp; cd lapack-3.1.1/
+</pre>
+
+<ul><li>Modify <code>make.inc</code> file for your system. Below is an <i>example</i>:</li></ul>
+<pre>SHELL    = /bin/sh
+PLAT     = _LINUX
+FORTRAN  = gcc -fPIC -shared
+OPTS     = -funroll-all-loops -O3
+DRVOPTS  = $(OPTS)
+NOOPT    =
+LOADER   = gcc -fPIC
+LOADOPTS =
+TIMER    = NONE  # not needed
+ARCH     = ar
+ARCHFLAGS= cr
+RANLIB   = ranlib
+BLASLIB  = ../../blas$(PLAT).a
+LAPACKLIB= lapack$(PLAT).a
+TMGLIB   = tmglib$(PLAT).a
+EIGSRCLIB= eigsrc$(PLAT).a
+LINSRCLIB= linsrc$(PLAT).a
+</pre>
+
+<ul><li>Enter <code>SRC/</code> directory and</li></ul>
+<pre>make
+</pre>
+
+<ul><li>Enter <code>BLAS/SRC/</code> directory and</li></ul>
+<pre>make
+</pre>
+
+<p>Note: The default build will produce <code>lapack_LINUX.a</code>. However, we want a shared object (i.e., <code>lapack.so</code>).</p>
+
+<ul><li>Create shared object from archive:</li></ul>
+<pre>nm lapack_LINUX.a|grep gfortran  # check that gfortran was used
+mkdir tmp_lapack; cp lapack_LINUX.a tmp_lapack/; cd tmp_lapack/
+ar -x lapack_LINUX.a  # extract objects from archive
+gcc -fPIC -lgfortran -shared *.o -Wl,-soname,lapack.so.3.1.1 -o lapack.so.3.1.1
+objdump -p lapack.so.3.1.1 |grep SONAME  # should return "lapack.so.3.1.1"
+ldd lapack.so.3.1.1   # will show you which version of libgfortran was used
+
+# Do the same for blas
+mkdir tmp_blas; cp blas_LINUX.a tmp_blas/; cd tmp_blas/
+ar -x blas_LINUX.a
+gcc -fPIC -lgfortran -shared *.o -W1,-soname,blas.so.3.1.1 -o blas.so.3.1.1
+objdump -p blas.so.3.1.1 |grep SONAME
+ldd blas.so.3.1.1
+</pre>
+
+<ul><li>Update your <code>/etc/ld.so.cache</code> (make sure the absolute path of your newly created shared libraries are in <code>/etc/ld.so.conf</code>):
+</li></ul>
+<pre>ldconfig  # as root
+</pre>
+<ul><li>Symlinks: Instead of doing the following:
+</li></ul>
+<pre>mv lapack.so.3.1.1 /lib64/; cd&nbsp;!$
+ln -s /lib64/lapack.so.3.1.1 lapack.so
+ln -s /lib64/lapack.so.3.1.1 lapack_LINUX.so
+mv blas.so.3.1.1 /lib64/; cd&nbsp;!$
+ln -s /lib64/blas.so.3.1.1 blas.so
+ln -s /lib64/blas.so.3.1.1 blas_LINUX.so
+</pre>
+<p>you can let <tt>ldconfig</tt> take care of it, <b>iff</b> you have correctly labeled <code>SONAME</code>'s in the shared libraries you just built.</p>
+
+<h3>Build</h3>
+<p>Before you build/install anything, check the following file for the correct settings (e.g., correct paths):</p>
+<pre>vi pymmlib/mmLib/Constants.py</pre>
+<pre>python setup.py buildlib
+python setup.py checkdeps  # if all is good, then
+python setup.py build      # if all is good, then
+python setup.py install    # as root
+</pre>
+
+<p>Set the <code>PYTHONPATH</code> environment variable:</p>
+<pre>export PYTHONPATH=/usr/bin/python:$HOME/tlsmd/pymmlib:$HOME/tlsmd/pymmlib/mmLib</pre>
+
+<h3>tlsmdmodule.so</h3>
+
+<p>Make the necessary changes to:</p>
+<pre>tlsmd/src/Makefile</pre>
+
+<p>Then,</p>
+<pre>make
+make install  # creates tlsmdmodule.so and copies it to tlsmd/bin/
+</pre>
+
+<h3>conf.py</h3>
+<p>Make the necessary changes to the following file:</p>
+<pre>tlsmd/bin/tlsmdlib/conf.py</pre>
+
+<h3>Resources</h3>
+<dl><dt>SONAME&nbsp;</dt><dd> a soname is a field of data in a shared object file. The soname provides version backwards-compatibility information to the system. For instance, if a program requests to use version 1.0 of a shared object but the system only includes version 2.0 of that shared object, the soname field of the shared object tells the system whether it is usable in the place of version 1.0.
+</dd></dl>
+<ul><li><a href="http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html" class='external text' title="http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html" rel="nofollow">Shared Libraries</a></li><li><a href="http://wiki.linuxquestions.org/wiki/Library-related_Commands_and_Files" class='external text' title="http://wiki.linuxquestions.org/wiki/Library-related_Commands_and_Files" rel="nofollow">Library-related Commands and Files</a></li></ul>
+
+<h4>ranlib</h4>
+
+<p>ranlib generates an index to the contents of an archive and stores it in the archive. The index lists each symbol defined by a member of an archive that is a relocatable object file.</p>
+<p>You may use <tt>nm -s</tt> or <tt>nm --print-armap</tt> to list this index.</p>
+<p>An archive with such an index speeds up linking to the library and allows routines in the library to call each  other without regard to their placement in the archive.</p>
+<p>The GNU ranlib program is another form of GNU ar; running ranlib is completely equivalent to executing <tt>ar -s</tt>.</p>
+
+<h2>Keywords</h2>
+<p>TLSMD; TLS motion; web server; computer programs; TLS, translation libration screw; macromolecular crystallography; protein crystallography.</p>
+
+<h2>See also</h2>
+<ul>
+	<li><a href="http://pymmlib.sourceforge.net/" title="Python Macromolecular Library">Python Macromolecular Library</a> (mmLib)</li>
+	<li>ar &mdash; create, modify, and extract from archives.</li>
+	<li>nm &mdash; list symbols from object files.</li>
+	<li>ranlib &mdash; generate index to archive.</li>
+</ul>
+
+<h2>References</h2>
+<ol class="references">
+<li id="_note-Painter2006a"><a href="#_ref-Painter2006a_0" title="">↑</a> Painter J, Merritt EA (2006). "<a href="http://skuld.bmsc.washington.edu/~tlsmd/Acta_D62_439.pdf" class='external text' title="http://skuld.bmsc.washington.edu/~tlsmd/Acta_D62_439.pdf" rel="nofollow">Optimal description of a protein structure in terms of multiple groups undergoing TLS motion</a>". <i>Acta Cryst, D62(4):439-450</i>. <small>DOI</small>:<a href="http://dx.doi.org/10.1107/S0907444906005270" class='external text' title="http://dx.doi.org/10.1107/S0907444906005270" rel="nofollow">10.1107/S0907444906005270</a> .</li>
+<li id="_note-Painter2006b"><a href="#_ref-Painter2006b_0" title="">↑</a> Painter J, Merritt EA (2006). "<a href="http://skuld.bmsc.washington.edu/~tlsmd/JApplCryst_39_109.pdf" class='external text' title="http://skuld.bmsc.washington.edu/~tlsmd/JApplCryst_39_109.pdf" rel="nofollow">TLSMD web server for the generation of multi-group TLS models</a>". <i>J Appl Cryst, 39(1):109-111</i>. <small>DOI</small>:<a href="http://dx.doi.org/10.1107/S0021889805038987" class='external text' title="http://dx.doi.org/10.1107/S0021889805038987" rel="nofollow">10.1107/S0021889805038987</a> </li>
+</ol>
+
+<center><p><small>Last Modified 21 March 2008</small></p></center>
+</div>
+</body></html>
