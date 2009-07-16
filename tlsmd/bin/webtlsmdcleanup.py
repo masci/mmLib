@@ -56,6 +56,11 @@ def main():
     jdict_remove_list = []
 
     for jdict in job_list:
+        if jdict["via_pdb"]:
+            print "[%s] saving to database PDB: %s" % (
+                t, jdict["structure_id"])
+            mysql.archive_pdb_jobs(jdict["job_id"])
+
         if check_remove(jdict):
             jdict_remove_list.append(jdict)
 
