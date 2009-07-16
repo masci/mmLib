@@ -56,8 +56,10 @@ def TLSMD_Main(struct_file_path  = None,
     IndependentTLSSegmentOptimization(analysis)
     RecombineIndependentTLSSegments(analysis)
 
-    if analysis.struct2_file_path is not None and analysis.struct2_chain_id is not None:
-        SumperimposeHomologousStructure(analysis)
+    if analysis.struct2_file_path is not None and \
+       analysis.struct2_chain_id is not None:
+        console.stdoutln("SUPERIMPOSING HOMOLOGOUS STRUCTURE")
+        SuperimposeHomologousStructure(analysis)
 
     if html_report_dir is not None and analysis.num_chains() > 0:
         FitConstrainedTLSModel(analysis)
@@ -118,7 +120,7 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
-        console.debug_stdoutln(">Entering: tlsmd_analysis.py->TLSMDAnalysis()...") ## DEBUG
+        console.debug_stdoutln(">Entering: tlsmd_analysis.py->TLSMDAnalysis()...")
         console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
         console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
         console.endln() ## LOGLINE
@@ -164,11 +166,11 @@ class TLSMDAnalysis(object):
 
 def LoadStructure(struct_source):
     """Loads Structure, chooses a unique struct_id string.
-    Also, search the REMARK records for TLS group records.  If they
+    Also, search the REMARK records for TLS group records. If they
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
-    console.debug_stdoutln(">Entering: tlsmd_analysis.py->LoadStructure()...") ## DEBUG
+    console.debug_stdoutln(">Entering: tlsmd_analysis.py->LoadStructure()...")
 
     ## determine the argument type
     if isinstance(struct_source, str):
@@ -366,7 +368,7 @@ def FitConstrainedTLSModel(analysis):
     console.endln() ## LOGLINE
 
 
-def SumperimposeHomologousStructure(analysis):
+def SuperimposeHomologousStructure(analysis):
     """
     """
     import structcmp
