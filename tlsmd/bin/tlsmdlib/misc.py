@@ -10,6 +10,7 @@ import datetime
 import random
 import string
 import re
+import subprocess ## for render of 'struct.png'
 
 ## TLSMD
 import console
@@ -76,3 +77,98 @@ def parse_chains(chains):
     selected = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\3;', chains).rstrip(";")
     type     = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\4;', chains).rstrip(";")
     return chid, length, selected, type
+
+def parse_molauto(infile, outfile):
+    """Parses the molauto output to force each chain to have its own unique
+    colour.
+    """
+    file = open(outfile, "w")
+    for line in open(infile).readlines():
+        file.write("%s" % line)
+        if(re.match(r'^  set segments', line)):
+            file.write("  set segments 10;\n")
+            file.write("  set planecolour hsb 0.6667 1 1;")
+        elif(re.match(r'^  set planecolour', line)):
+            colour = line
+        elif(re.match(r'^  .* from ', line)):
+            chain1 = chain2 = line
+            chain1 = re.sub(r'^  .* from ([A-Z])[0-9]{1,} to ([A-Z])[0-9].*$', '\\1', line).strip()
+            chain2 = re.sub(r'^  .* from ([A-Z])[0-9]{1,} to ([A-Z])[0-9].*$', '\\2', line).strip()
+            file.write("%s" % line)
+            if(chain1 != chain2):
+                file.write("%s" % colour)
+        else:
+            file.write("%s" % line)
+    file.close()
+    return
+
+def run_subprocess(cmdlist):
+    """General call to 'subprocess' for a given command list.
+    """
+    proc = subprocess.Popen(cmdlist,
+                            shell = True,
+                            stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE,
+                            close_fds = True,
+                            bufsize = 32768)
+
+def render_struct(job_dir):
+    """Generate struct.png via molauto/parse_molauto/molscript/render
+    """
+    ## cmd: molauto smallAB.pdb|parse_molauto.pl|molscript -r |\
+    ##      render -bg white -size 200x200 -png mymol.png
+    cmdlist = ["%s %s/struct.pdb | %s | %s -r | %s -bg white -size %s -png %s/struct.png 1>&2" % (
+              conf.MOLAUTO, job_dir, conf.PARSE_MOLAUTO_SCRIPT,
+              conf.MOLSCRIPT, conf.RENDER,
+              conf.RENDER_SIZE, job_dir)]
+    run_subprocess(cmdlist)
+
+def extract_raw_backbone(infile, outfile):
+    """Extracts all backbone atoms (amino acid or nucleic acid)
+    for use in tlsanim2r3d
+    """
+    file = open(outfile, "w")
+    for line in open(infile).readlines():
+        if(re.match(r'^ATOM........ CA .*', line) or \
+           re.match(r'^ATOM........ P  .*', line) or \
+           re.match(r'^ATOM........ C[543]\'.*', line) or \
+           re.match(r'^ATOM........ O[53]\'.*', line)):
+            chain_id = line[21:22]
+            x = float(line[30:38].strip())
+            y = float(line[38:46].strip())
+            z = float(line[46:54].strip())
+
+            file.write("1 0 %s 0 0 %.3f %.3f %.3f\n" % (chain_id, x, y, z))
+    file.close()
+    return
+
+def generate_raw_grey_struct(job_dir):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+    sections, for _all_ chains.
+    """
+    ## cmd: ./extract_raw_chains.pl <smallAB.pdb |./tlsanim2r3d - >ANALYSIS/struct.r3d
+    extract_raw_backbone("%s/struct.pdb" % job_dir, "%s/struct.raw" % job_dir)
+
+    ## cmd: ./tlsanim2r3d < struct.raw >ANALYSIS/struct.r3d
+    cmdlist = ["%s < %s/struct.raw > %s/struct.r3d 2>/dev/null" % (
+              conf.TLSANIM2R3D, job_dir, job_dir)]
+    run_subprocess(cmdlist)
+
+def generate_bases_r3d(job_dir, chain_id):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+    sections, for _all_ chains.
+    """
+    ## cmd: grep '^ATOM.................B.*' | rings3d -bases >>bases.r3d
+    cmdlist = ["grep '^ATOM.................%s.*' %s/struct.pdb | %s -bases >>%s/bases.r3d 2>/dev/null" % (
+              chain_id, job_dir, conf.RINGS3D, job_dir)]
+    run_subprocess(cmdlist)
+
+def generate_sugars_r3d(job_dir, chain_id):
+    """Generate 'raw' input for tlsanim2r3d, but only for the non-animated
+    sections, for _all_ chains.
+    """
+    ## cmd: grep '^ATOM.................B.*' | rings3d -ribose >>sugars.r3d
+    cmdlist = ["grep '^ATOM.................%s.*' %s/struct.pdb | %s -ribose >>%s/sugars.r3d 2>/dev/null" % (
+              chain_id, job_dir, conf.RINGS3D, job_dir)]
+    run_subprocess(cmdlist)
