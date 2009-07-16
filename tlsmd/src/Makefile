@@ -1,7 +1,8 @@
 # Makefile for the tlsmdmodule
-# Note: This is for the 64-bit compile. Christoph Champ, 2008-02-15
+## Note: This is for the 64-bit compile. Christoph Champ, 2008-02-15
+## Updated for 2009.1, 2009-07-10
 TARGET    =tlsmdmodule.so
-INCLUDES  =-I/usr/include/python2.5/
+INCLUDES  =-I/usr/include/python2.6/
 DEFINES   =-D_UNIX
 DEFAULT_LIB_INSTALL_PATH = /home/tlsmd/tlsmd/src
 CFLAGS 	  =-fPIC -g -O3 -Wall
@@ -9,9 +10,7 @@ LDFLAGS   = -lgfortran
 CPP       =g++
 CC 	  =gcc
 
-LAPACK_ROOT   =/lib64
-TMP_ROOT	=/home/tlsmd/tlsmd/src
-LAPACK        =$(LAPACK_ROOT)/lapack_LINUX.so $(LAPACK_ROOT)/blas_LINUX.so
+LAPACK	= -llapack -lblas
 
 MINPACK_ROOT  =/usr/local/lib
 MINPACK       =$(MINPACK_ROOT)/libminpack.a
