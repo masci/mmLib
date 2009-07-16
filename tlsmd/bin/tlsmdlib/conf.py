@@ -50,9 +50,11 @@ TLSMD_WORK_DIR         = os.path.join(TLSMD_WWW_ROOT, "jobs")
 TLSMD_WORK_URL         = "%s/jobs" % (TLSMD_BASE_URL)
 JMOL_DIR               = "../../../jmol" # Directory path must be relative, not an absolute URL.
 JMOL_PATH              = "/home/tlsmd/tlsmd/bin/jmol"
+WEBTLSMDD_PDB_URL      = "%s/pdb" % (TLSMD_PUBLIC_URL)
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT, "pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR, "pdbids.txt")
 TLSANIM2R3D            = "/home/tlsmd/tlsmd/bin/tlsanim2r3d"
+PDB_ANIMATE_SCRIPT     = "/home/tlsmd/tlsmd/bin/pdb_animate.pl"
 
 ## General defaults
 MAX_PARALLEL_JOBS     = 4  ## maximum number of parallel jobs allowable at the same time
