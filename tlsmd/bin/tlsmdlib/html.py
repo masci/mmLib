@@ -201,7 +201,6 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
     else:
         return ""
 
-    ## XXX
     console.stdoutln("RMSD_B-%s: %.2f" % (ntls, cpartition.rmsd_b()))
     console.stdoutln("RESIDUAL-%s: %.2f" % (ntls, cpartition.residual()))
 
@@ -209,7 +208,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
          '<tr>',
          '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments ' % ntls,
          '(overall rmsd_b=%.2f and residual=%.2f)</th>' % (
-             cpartition.rmsd_b(), cpartition.residual()), ## "overall rmsd_b + residual", 2008-04-05
+             cpartition.rmsd_b(), cpartition.residual()),
          '</tr>',
 
          '<tr>',
@@ -414,9 +413,17 @@ class HTMLSummaryReport(Report):
 
         self.flatfile_globals()
 
+        ## These are the Jmol Java files needed for the viewer and animator
         shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.js", analysis_dir)
+
+        ## This is a script that allows the user to animate a given partition
+        ## of a given chain into the 8 phases of its associated libration.
+        try:
+            shutil.copy(conf.PDB_ANIMATE_SCRIPT, analysis_dir)
+        except:
+            console.stdoutln("NOTE: Could not find pdb_animate.pl")
 
         ## Create preliminary summary.png plot
         min_residuals = []
@@ -529,6 +536,7 @@ class HTMLSummaryReport(Report):
              '<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>\n',
+             '<p>TODO: Add info on animated GIFs</p>\n',
              '<table><tr><td valign=top>',
              '<p style="font-size:small; text-align:left">%s</p>\n' % (
                  captions.MOTION_ANALYSIS_TEXT)]
@@ -734,10 +742,12 @@ class HTMLReport(Report):
         """Write out all the files in the report.
         """
         ## class HTMLReport()
-        ## write a local copy of the Structure
+
+        ## write a local copy of the Structure (adds "HEADER" + "CRYST1" data
+        ## even if nothing existed in the original, user-contributed PDB file)
         FileIO.SaveStructure(fil = self.struct_path, struct = self.struct)
 
-        ## generate small .png images so  they can be placed in the
+        ## generate small .png images so they can be placed in the
         ## TLS group tables to identify the TLS group tabular data
         ## with the generated visualization
         self.init_colors()
@@ -1055,7 +1065,6 @@ class HTMLReport(Report):
             job_id = conf.globalconf.job_id
             jmol_view_toggle = conf.globalconf.generate_jmol_view
             jmol_animate_toggle = conf.globalconf.generate_jmol_animate
-            console.stdoutln("GLOBAL: generate_jmol_view = %s" % conf.globalconf.generate_jmol_view)
         except:
             jmol_view_toggle = ""
             jmol_animate_toggle = ""
@@ -1064,8 +1073,6 @@ class HTMLReport(Report):
             pass
 
         ## Jmol Viewer Script
-        ## TODO: Maybe switch from "False" to "0"? 2009-06-17
-        #if conf.JMOL_SKIP or conf.globalconf.generate_jmol_view:
         if conf.globalconf.generate_jmol_view == False:
             jmol_file = ""
             console.stdoutln("NOTE: Skipping Jmol-viewer section")
@@ -1080,7 +1087,6 @@ class HTMLReport(Report):
                 pass
 
         ## Jmol Animation Script
-        #if conf.JMOL_SKIP or conf.globalconf.generate_jmol_animate:
         if conf.globalconf.generate_jmol_animate == False:
             console.stdoutln("NOTE: Skipping Jmol-animation section")
             jmol_animate_file = ""
@@ -1100,6 +1106,7 @@ class HTMLReport(Report):
             png_file = ""
             pml_file = ""
         else:
+            ## TODO: Only run if *.r3d files exist, 2009-07-06
             try:
                 basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
                 png_file = "%s.png" % (basename)
@@ -1225,7 +1232,6 @@ class HTMLReport(Report):
 
         return "".join(l)
 
-    #def raster3d_render_tls_graph_path(self, chain, cpartition):
     def generate_raster3d_header(self, chain):
         """Render TLS visualizations using Raster3D.
         """
@@ -1442,7 +1448,7 @@ class HTMLReport(Report):
             mtls_info = tls.model_tls_info
             tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
 
-            ## too big usually for good visualization -- cheat and scale it down
+            ## too big usually for good visualization; cheat and scale it down
             radius = 0.30
 
             if has_amino_acids:
@@ -2054,7 +2060,6 @@ class ChainNTLSAnalysisReport(Report):
 
         ## Create histogram plots
         job_id = conf.globalconf.job_id
-        #if conf.HISTOGRAM_SKIP or conf.globalconf.generate_histogram == False:
         if conf.globalconf.generate_histogram == False:
             console.stdoutln("NOTE: Skipping Histogram section")
         else:
