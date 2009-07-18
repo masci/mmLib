@@ -164,12 +164,14 @@ NUCLEIC_ACID_RES_NAME_DICT = {
     "U": "U", "U+": "U", "Ur": "U", "+U": "U",
     }
 
+## Add alternate residue monomer names here:
 ALT_RES_NAME_DICT = {
     "C+": "C", "Cr": "C", "+C": "C",
     "G+": "G", "Gr": "G", "+G": "G",
     "A+": "A", "Ar": "A", "+A": "A",
     "T+": "T", "Tr": "T", "+T": "T",
     "U+": "U", "Ur": "U", "+U": "U",
+    "Ad": "A", "Td": "T", "Gd": "G", "Cd": "C",
     }
     
 ###############################################################################
