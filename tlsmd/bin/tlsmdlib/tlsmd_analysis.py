@@ -142,7 +142,9 @@ class TLSMDAnalysis(object):
             naa = chain.count_amino_acids()
             nna = chain.count_nucleic_acids()
             num_frags = max(naa, nna)
-            if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
+            if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN) or\
+               (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
+                console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
                 continue
 
             segment = ConstructSegmentForAnalysis(chain)
