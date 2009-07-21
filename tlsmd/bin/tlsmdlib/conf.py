@@ -60,6 +60,8 @@ PDB_ANIMATE_SCRIPT     = "/home/tlsmd/tlsmd/bin/pdb_animate.pl"
 MAX_PARALLEL_JOBS     = 4  ## maximum number of parallel jobs allowable at the same time
 MAX_JOB_ID_LEN        = 19  ## maximum string length of "job_id" (e.g., "TLSMD1225_CrjLhBTM")
 LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger than this
+MIN_AMINO_PER_CHAIN   = 10 ## minimum (amino acid) residues per chain
+MIN_NUCLEIC_PER_CHAIN = 5  ## minimum (nucleic acid) residues per chain
 NPARTS                = 20  ## maximum number of TLS partitons for each chain (default/max allowed = 20)
 PRIVATE_JOBS          = True  ## controls the default "private" settings; overrides form!
 PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
@@ -72,7 +74,6 @@ VIS_HEIGHT = 200 ## default: 200
 ## sanity checks globals
 MIN_STDDEV_BFACT = 0.01
 MAX_STDDEV_BFACT = 60.0
-MIN_RESIDUES_PER_CHAIN = 10
 
 ## gnuplot globals
 GNUPLOT_FONT_SIZE = 10
