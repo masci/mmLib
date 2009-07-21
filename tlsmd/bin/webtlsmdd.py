@@ -389,8 +389,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             generate_bases_r3d(job_dir, chain.chain_id)
             generate_sugars_r3d(job_dir, chain.chain_id)
 
-        ## minimum number of residues per chain, 2009-04-24
-        if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
+        ## minimum number of residues (amino/nucleic) per chain
+        if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN) or\
+           (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
             continue
 
         largest_chain_seen = max(num_frags, largest_chain_seen)
