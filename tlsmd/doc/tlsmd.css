@@ -89,9 +89,11 @@ body {
 	}
 
 .status_table {
+        width:100%;
+        padding:1px;
 	background-color:#eee;
 	font-size:x-small;
-	border:thin solid #aaa;
+	border:1px solid #aaa;
 	}
 .status_table_head { background-color:#8FBC8F; /*#aad;*/ }
 .status_table_row1 { background-color:#ddd; }
@@ -99,9 +101,11 @@ body {
 
 /* 2009-05-13 */
 .explore_table {
+        width:100%;
+        padding:1px;
 	background-color:#fff; /*#eee;*/
 	font-size:x-small;
-	border:thin solid #aaa;
+	border:1px solid #aaa;
 	}
 .explore_table_head { background-color:#8FBC8F; }
 .explore_table_row { background-color:#fff; }
@@ -110,6 +114,11 @@ td.c { text-align:center; }
 td.l { text-align:left; }
 td.r { text-align:right; }
 tr.r { text-align:right; }
+
+span.warning {
+	color:#f00;
+	font-style:italic;
+	}
 
 .prog-border {
 	height: 100%;
