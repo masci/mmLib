@@ -1,0 +1,114 @@
+/*
+tlsmd_print.css - Christoph Champ, 2008-02-06
+This is the print version of the CSS file.
+It will not print any background-color or navigation bars
+*/
+body {
+	background-color:#cdc8b0;  /*was:#ddd;*/
+	background-color:#fff;
+	margin:2% 5% 2% 5%;
+	}
+
+#page {
+	background-color:#fff;
+	outline:#aaa solid thin;
+	padding:1%;
+	font-family:arial, helvetica, sans-serif;
+	}
+#page h1 {
+	font-size:x-large;
+	color:#ff9933;
+	}
+
+#navcontainer ul {
+	font-size:small;
+	padding-left:0;
+	margin-left:0;
+	background-color:#ccc;
+	color:#fff;
+	width:100%;
+	display:none;
+	}
+#navcontainer ul li { display:inline; }
+#navcontainer ul li a {
+	padding:0.1em 1.0em;
+	margin-left:0.5em;
+	background-color:#bbb;
+	color:#fff;
+	text-decoration:none;
+	border:1px solid #999;
+	display:none;
+	}
+#navcontainer ul li a:hover {
+	background-color:#eee;
+	color:black;
+	display:none;
+	}
+
+/* style classes used by webtlsmd.cgi */
+
+.step_title {
+	line-height:2.0em;
+	font-size:large
+	}
+  
+.submit_table {
+	padding:10px;
+	border:thin solid #00f;
+	background-color:#eeeeee;
+	}
+  
+.inner_table {
+	font-size:small;
+	width:90%;
+	padding:10px;
+	border:thin solid #000;
+	background-color:#ddd;
+	}
+
+.inner_title {
+	background-color:#ccccff;
+	line-height:2.0em;
+	}
+
+.ninner_table {
+	font-size:small;
+	width:95%;
+	padding:2%;
+	border:thin solid #aaa;
+	background-color:#eee;
+	}
+
+.perror {
+	text-align:left;
+	font-size:x-small;
+	width:70%;
+	padding:10px;
+	border:thin solid #f00;
+	background-color:#faa;
+	}
+
+.status_table {
+	background-color:#eee;
+	font-size:x-small;
+	border:thin solid #aaa;
+	}
+.status_table_head { background-color:#8FBC8F; /*#aad;*/ }
+.status_table_row1 { background-color:#ddd; }
+.status_table_row2 { background-color:#eee; }
+
+.prog-border {
+	height: 100%;
+	width:  150px;
+	background: #fff;
+	border: 1px solid black;
+	margin: 0;
+	padding: 0;
+	}
+.prog-bar {
+	height: 10px;
+	margin: 0px;
+	padding: 0;
+	background: #8FBC8F;
+	}
+
