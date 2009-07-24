@@ -1,9 +1,17 @@
+## TLS Motion Determination (TLSMD)
+## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
+## This code is part of the TLSMD distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+
+## Python modules
 import sys
 import getopt
 import math
 import random
 import numpy
 
+## pymmlib
 from mmLib import FileIO, Structure, TLS, AtomMath, Constants
 
 def usage():
@@ -56,13 +64,13 @@ def random_vec():
 def rt_random(T):
     theta = (random.random() - 0.5) * math.pi
     R = AtomMath.rmatrixu(random_vec(), theta)
-    return numpy.matrixmultiply(numpy.matrixmultiply(R, T), numpy.transpose(R))
+    return numpy.dot(numpy.dot(R, T), numpy.transpose(R))
     
 def rt_random2(T1, T2):
     theta = (random.random() - 0.5) * math.pi
     R = AtomMath.rmatrixu(random_vec(), theta)
-    T1R = numpy.matrixmultiply(numpy.matrixmultiply(R, T1), numpy.transpose(R))
-    T2R = numpy.matrixmultiply(numpy.matrixmultiply(R, T2), numpy.transpose(R))
+    T1R = numpy.dot(numpy.dot(R, T1), numpy.transpose(R))
+    T2R = numpy.dot(numpy.dot(R, T2), numpy.transpose(R))
     return T1, T2
     
 def main(path, opt_dict):
@@ -84,7 +92,8 @@ def main(path, opt_dict):
         tls_file.load(fil)
         
         for tls_desc in tls_file.tls_desc_list:
-            tls = tls_desc.generate_tls_group(struct)
+            #tls = tls_desc.generate_tls_group(struct) ## old def
+            tls = tls_desc.construct_tls_group_with_atoms(struct)
             tls.tls_desc = tls_desc
             tls_group_list.append(tls)
 
