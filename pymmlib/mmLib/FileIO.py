@@ -7,7 +7,6 @@ The mmCIF and PDB file formats are currently supported.
 """
 import os
 import types
-import popen2
 
 from mmCIF        import mmCIFFile
 from mmCIFBuilder import mmCIFStructureBuilder, mmCIFFileBuilder
@@ -45,6 +44,7 @@ def OpenFile(path, mode):
             import gzip
             return gzip.open(path, mode)
         elif ext == ".Z" and mode == "r":
+            import popen2
             return ZCat(path)
         return open(path, mode)
 
