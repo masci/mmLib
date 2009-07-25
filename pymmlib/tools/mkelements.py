@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
-## This program creates elements.cif using the data in this file, and the
-## CCP4 atomsf library file
+## This program creates "elements.cif" using the data in this file, and the
+## CCP4 "atomsf.lib" library file
 
 import os
 import sys
@@ -43,7 +43,7 @@ class Element(object):
 
     def __str__(self):
         return "Element=%s" % (self.name)
-    
+
 H  = Element(
     name                 = "Hydrogen",
     symbol               = "H",
@@ -896,7 +896,7 @@ def new_doc():
         cif_table["number"] = str(e.atomic_number)
         cif_table["atomic_weight"] = "%.6f"%(e.atomic_weight)
         cif_table["van_der_walls_radius"] = "%.6f"%(e.van_der_waals_radius)
-        
+
         if e.color != (1.0, 1.0, 1.0):
             cx = "#"
             for x in e.color:
@@ -928,7 +928,6 @@ def add_CCP4_atomsf(cif_file, path):
 
     charge = "0"
 
-    
     fil = open(path, "r")
     for ln in fil.readlines():
         ln = ln.rstrip()
@@ -954,7 +953,7 @@ def add_CCP4_atomsf(cif_file, path):
                 except KeyError:
                     state = -1
                     continue
-                
+
             else:
                 charge = "0"
 
@@ -963,7 +962,7 @@ def add_CCP4_atomsf(cif_file, path):
                 except KeyError:
                     state = -1
                     continue
-            
+
             state += 1
 
         elif state == 1:
@@ -984,7 +983,7 @@ def add_CCP4_atomsf(cif_file, path):
             sf_cif_row["wavelength"] = "CuKa"
             sf_cif_row["charge"] = charge
             sf_cif_row["c"] = str(ec)
-            
+
             state += 1
 
         elif state == 2:
@@ -992,7 +991,7 @@ def add_CCP4_atomsf(cif_file, path):
             for i in range(len(listx)):
                 column = "a%d" % (i+1)
                 sf_cif_row[column] = str(listx[i])
-                
+
             state += 1
 
         elif state == 3:
@@ -1004,7 +1003,6 @@ def add_CCP4_atomsf(cif_file, path):
             state += 1
 
         elif state == 4:
-            
             try:
                 asf_cif_table = elem_cif_data["anomalous_scattering_factors"]
             except KeyError:
@@ -1028,7 +1026,7 @@ def add_CCP4_atomsf(cif_file, path):
             asf_cif_row["d2F"] = str(listx[3])
 
             state += 1
- 
+
 
 if __name__ == "__main__":
     try:
@@ -1037,9 +1035,11 @@ if __name__ == "__main__":
         doc = new_doc()
     else:
         doc = parse(open(sys.argv[1], "r"))
-        
+
     ## add scattering factors
-    add_CCP4_atomsf(doc, "/home/jpaint/ccp4/ccp4-4.2.2/lib/data/atomsf.lib")
+    ## NOTE: The 'atomsf.lib' file can be found in the lib/data/ directory of
+    ## the latest CCP4 source tarball
+    add_CCP4_atomsf(doc, "atomsf.lib")
 
     doc.save_file(fil=sys.stdout)
 
