@@ -46,8 +46,8 @@ def calc_inertia_tensor(atom_iter):
     """Calculate moment of inertia tensor at the centroid
     of the atoms.
     """
-    al              = Structure.AtomList(atom_iter)
-    centroid        = al.calc_centroid()
+    al       = Structure.AtomList(atom_iter)
+    centroid = al.calc_centroid()
 
     I = numpy.zeros((3,3), float)
     for atm in al:
@@ -181,8 +181,8 @@ class ColorInfo(object):
         img.save(self.thumbnail_path, "png")
 
 def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = None):
-    """Generate HTML for a table containing the details of the ntls-group partitioning
-    of the given chain.
+    """Generate HTML for a table containing the details of the ntls-group
+    partitioning of the given chain.
     """
     ## inspect the first tls group dictionary to determine TLS model type
     try:
@@ -201,10 +201,11 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
     else:
         return ""
 
+    ## XXX
     console.stdoutln("RMSD_B-%s: %.2f" % (ntls, cpartition.rmsd_b()))
     console.stdoutln("RESIDUAL-%s: %.2f" % (ntls, cpartition.residual()))
 
-    l = ['<table width="100%" border=0 style="background-color:#eeeeee; font-size:x-small">',
+    l = ['<table class="tls_segments">',
          '<tr>',
          '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments ' % ntls,
          '(overall rmsd_b=%.2f and residual=%.2f)</th>' % (
@@ -244,9 +245,11 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
 
         tls_group = tls.tls_group
         mtls_info = tls.model_tls_info
-        ## EAM DEBUG - I think this results from a previous exception in html_tls_graph_path()
+        ## EAM DEBUG - I think this results from a previous exception in 
+        ## html_tls_graph_path()
         if mtls_info == None:
-            l.append('<tr style="background-color:#ffeeee"><td colspan="12" align-text="center">Error</td></tr>')
+            l += ['<tr style="background-color:#ffeeee">',
+                  '<td colspan="12" align-text="center">Error</td></tr>']
             continue
 
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
@@ -301,6 +304,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
             ## XXX: Are the following redundant?
             flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
             flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (chain_ntls, cpartition.residual()))
+            flatfile.write("\nTLST %s" % t_data)
 
             flatfile.close()
             i += 1 ## increment segment within the partition
@@ -332,6 +336,56 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
     return "".join(l)
 
 
+_REPORT_CSS_STYLES = """\
+BODY {background-color:white; margin:2% 5% 0 5%; border:2% 5% 0 5%;}
+a.structimage {text-decoration:none;}
+img {border:0;padding:4px 0 0 0;}
+span.small {font-size:0.8em;font-weight:normal;text-align:center;}
+table.title {border:0;width:100%;background-color:#eee;}
+td.title {font-size:0.7em;}
+table.report_globals {
+    padding:3px; width:75%; background-color:#eee; 
+    font-size:small; border:0 
+    }
+tr.report_globals { background-color:#ddd; }
+table.tls_segments {
+    width:100%; border:0;
+    background-color:#eeeeee; font-size:x-small;
+    }
+table.matrix {
+    background-color:#bbbbff;
+    border:thin solid black;
+    }
+td.matrix {
+    padding:5px;font-size:x-small;
+    }
+td.l {width:33%;text-align:left;}
+td.c {width:33%;text-align:center;}
+td.r {width:33%;text-align:right;}
+h2 {text-align:center;}
+ul { list-style-type:none; margin:0px; padding:0px; }
+li { line-height:20px }
+
+p.captions {
+    font-size:small; text-align:left;
+    }
+p.notes {
+    width:70%; padding:10px;
+    text-align:center;
+    font-size:large bold;
+    border:thin solid #f00;
+    background-color:#faa;
+    }
+.prog-border {
+    margin:0;padding:0;height:100%;width:150px;
+    background:#fff;border:1px solid black;text-align:left;
+    }
+.prog-bar {
+    margin:0px;padding:0;height:10px;
+    background:#8FBC8F;
+    }
+"""
+
 class Report(object):
     """Base class of HTML Report generating objects.
     """
@@ -344,13 +398,7 @@ class Report(object):
              '<title>%s</title>\n' % (title),
              '<style type="text/css" media="screen">',
              '<!-- ',
-             'BODY {background-color:white; margin:2% 5% 0 5%; border:2% 5% 0 5%;}',
-             'a.structimage{text-decoration:none;} img{border:0;padding:4px 0 0 0;}',
-             'span.small {font-size:0.8em;font-weight:normal;text-align:center;}',
-             'table.title {border:0;width:100%;background-color:#eee;}',
-             'td.title {font-size:0.7em;} td.l {width:33%;text-align:left;}',
-             'td.c {width:33%;text-align:center;} td.r {width:33%;text-align:right;}',
-             'h2 {text-align:center;}',
+             '%s' % _REPORT_CSS_STYLES,
              '-->',
              '</style>\n',
              '</head>',
@@ -363,8 +411,10 @@ class Report(object):
         """
         l  = ['<table class="title"><tr>\n',
               '<td class="l title">%s</font></td>' % (misc.start_time()),
-              '<td class="c title">JobID: %s</font></td>' % (conf.globalconf.job_id),
-              '<td class="r title">TLSMD Version %s</font></td>\n' % (const.VERSION),
+              '<td class="c title">JobID: %s</font></td>' % (
+                  conf.globalconf.job_id),
+              '<td class="r title">TLSMD Version %s</font></td>\n' % (
+                  const.VERSION),
               '</tr></table>\n',
               '<h2>%s</h2><br/>\n' % (title)]
 
@@ -375,7 +425,8 @@ class Report(object):
         """
         l  = ['<table class="title"><tr>',
               '<td class="l title">%s</font></td>' % (misc.start_time()),
-              '<td class="c title">JobID: %s</font></td>' % (conf.globalconf.job_id),
+              '<td class="c title">JobID: %s</font></td>' % (
+                  conf.globalconf.job_id),
               '<td class="r title">TLSMD Version %s Released %s</font></td>' % (
                   const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
@@ -423,7 +474,8 @@ class HTMLSummaryReport(Report):
         try:
             shutil.copy(conf.PDB_ANIMATE_SCRIPT, analysis_dir)
         except:
-            console.stdoutln("NOTE: Could not find pdb_animate.pl")
+            console.stdoutln("NOTE: Could not find %s" % (
+                conf.PDB_ANIMATE_SCRIPT))
 
         ## Create preliminary summary.png plot
         min_residuals = []
@@ -538,13 +590,9 @@ class HTMLSummaryReport(Report):
              '</center>\n',
              '<p>TODO: Add info on animated GIFs</p>\n',
              '<table><tr><td valign=top>',
-             '<p style="font-size:small; text-align:left">%s</p>\n' % (
-                 captions.MOTION_ANALYSIS_TEXT)]
+             '<p class="captions">%s</p>\n' % (captions.MOTION_ANALYSIS_TEXT)]
 
-        l += ['<center>',
-             '<p style="text-align:center; font-size:large bold;',
-                 'width:70%; padding:10px; border:thin solid #f00;',
-                 'background-color:#faa;">',
+        l += ['<center><p class="notes">',
              'Your job is still running and the analysis is incomplete. ',
              'This is a summary page.</p>\n']
 
@@ -555,11 +603,9 @@ class HTMLSummaryReport(Report):
             prog_file.close()
         except:
             progress = 20
-        l += ['<p><div style="margin:0;padding:0;height:100%;width:150px;',
-               'background:#fff;border:1px solid black;text-align:left;">',
-             '<div style="margin:0px;padding:0;height:10px;',
-               'background:#8FBC8F;width: %s%%;"></div></div>' % progress,
-             '%s%% Complete</p>\n' % progress,
+        l += ['<p><div class="prog-border">',
+             '<div class="prog-bar" style="width: %s%%;">' % progress,
+             '</div></div>%s%% Complete</p>\n' % progress,
              '</center>']
 
         l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
@@ -568,19 +614,25 @@ class HTMLSummaryReport(Report):
         l +=['<br/>',
              ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
-             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
+             '<p class="captions">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
 
-        if self.page_multi_chain_alignment!=None:
-            l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
+        if self.page_multi_chain_alignment != None:
+            l.append('<p><a href="%s">%s</a></p>' % (
+                self.page_multi_chain_alignment["href"], 
+                self.page_multi_chain_alignment["title"]))
         else:
-            l.append('<p><u>Only one chain was analyized in this structure, so the multi-chain alignment analysis was not performed.</u></p>')
+            l.append('<p><u>Only one chain was analyized in this structure, ')
+            l.append('so the multi-chain alignment analysis was not performed.</u></p>')
 
         if self.page_refinement_prep is not None:
             l +=['<br/>',
                 ## REFINEMENT PREP
                 '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
-                '<p style="font-size:small; text-align:left">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
-                '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"])]
+                '<p class="captions">%s</p>' % (
+                    captions.REFINEMENT_PREP_TEXT),
+                '<p><a href="%s">%s</a></p>' % (
+                self.page_refinement_prep["href"], 
+                self.page_refinement_prep["title"])]
         """
 
         l += [self.html_foot()]
@@ -606,26 +658,34 @@ class HTMLSummaryReport(Report):
         else:
             include_atoms = "All Protein Atoms"
 
-        l = ['<center>',
-             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">\n']
+        l = ['<center><table class="report_globals">\n']
 
         if self.struct.title:
-            l.append('<tr style="background-color:#dddddd"><td>Title</td><td><b>%s</b></td></tr>\n' % (
-                self.struct.title))
+            l += ['<tr class="report_globals">',
+                  '<td>Title</td><td><b>%s</b></td></tr>\n' % (
+                  self.struct.title)]
 
         if self.struct.header:
-            l.append('<tr style="background-color:#dddddd"><td>Heading Summary</td><td><b>%s</b></td></tr>\n' % (
-                self.struct.header))
+            l += ['<tr class="report_globals">',
+                  '<td>Heading Summary</td><td><b>%s</b></td></tr>\n' % (
+                  self.struct.header)]
 
         if self.struct.experimental_method:
-            l.append('<tr style="background-color:#dddddd"><td>Experimental Method</td><td><b>%s</b></td></tr>\n' % (
-                self.struct.experimental_method))
+            l += ['<tr class="report_globals">',
+                  '<td>Experimental Method</td><td><b>%s</b></td></tr>\n' % (
+                  self.struct.experimental_method)]
 
-        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td><td><b>%s</b></td></tr>\n' % (tls_model),
-             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td><td><b>%s Residues</b></td></tr>\n' % (
-                conf.globalconf.min_subsegment_size),
-             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td><td><b>%s</b></td></tr>\n' % (
-                conf.globalconf.include_atoms),
+        l +=['<tr class="report_globals">',
+             '<td>Temperature Factors</td><td><b>%s</b></td></tr>\n' % (
+             tls_model),
+             '<tr class="report_globals">',
+             '<td>Minimum TLS Segment Length</td>',
+             '<td><b>%s Residues</b></td></tr>\n' % (
+             conf.globalconf.min_subsegment_size),
+             '<tr class="report_globals">',
+             '<td>Atoms Analyzed</td>',
+             '<td><b>%s</b></td></tr>\n' % (
+             conf.globalconf.include_atoms),
              '</table>',
              '</center>\n']
 
@@ -712,7 +772,9 @@ class HTMLReport(Report):
         ## clear the colors list
         self.colors = []
 
-        ## skip the first two colors which are black/white
+        ## skip the first two colors, which are black/white
+        ## NOTE: Generates only 52 colors. If there are more TLS partitions to
+        ## segment, the code will reuse the colors by looping around.
         for i in xrange(len(Colors.COLORS)):
             cname, rgbf = Colors.COLORS[i]
             color = ColorInfo(i, cname, rgbf, thumbnail_dir)
@@ -762,8 +824,9 @@ class HTMLReport(Report):
             print console.formatExceptionInfo()
             pass
 
-        ## Progress tracking
-        ##    - assume this portion of the run occupies 0.5 -> 1.0 of the total time
+        ## Progress tracking:
+        ##    - assume this portion of the run occupies 0.5 -> 1.0 of the
+        ##      total time
         progress = 0.5
 
         ## write out all TLSGraph reports
@@ -819,7 +882,8 @@ class HTMLReport(Report):
         file of the report.
         """
         ## class HTMLReport()
-        title = "TLSMD Thermal Parameter Analysis of Structure %s" % (self.struct_id)
+        title = "TLSMD Thermal Parameter Analysis of Structure %s" % (
+            self.struct_id)
 
         l = [self.html_head(title),
              self.html_title(title),
@@ -837,7 +901,7 @@ class HTMLReport(Report):
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>',
              '<table><tr><td valign=top>',
-             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
+             '<p class="captions">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
         for xdict in self.pages_chain_motion_analysis:
             l.append('<p><a href="%s">%s</a></p>' % (xdict["href"], xdict["title"]))
@@ -847,18 +911,24 @@ class HTMLReport(Report):
         l +=['<br/>',
              ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
-             '<p style="font-size:small; text-align:left">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
+             '<p class="captions">%s</p>' % (
+                 captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
 
         if self.page_multi_chain_alignment!=None:
-            l.append('<p><a href="%s">%s</a></p>' % (self.page_multi_chain_alignment["href"], self.page_multi_chain_alignment["title"]))
+            l.append('<p><a href="%s">%s</a></p>' % (
+                self.page_multi_chain_alignment["href"], 
+                self.page_multi_chain_alignment["title"]))
         else:
-            l.append('<p><u>Only one chain was analyized in this structure, so the multi-chain alignment analysis was not performed.</u></p>')
+            l.append('<p><u>Only one chain was analyized in this structure, ')
+            l.append('so the multi-chain alignment analysis was not performed.</u></p>')
 
         l +=['<br/>',
              ## REFINEMENT PREP
              '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
-             '<p style="font-size:small; text-align:left">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
-             '<p><a href="%s">%s</a></p>' % (self.page_refinement_prep["href"], self.page_refinement_prep["title"]),
+             '<p class="captions">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
+             '<p><a href="%s">%s</a></p>' % (
+                 self.page_refinement_prep["href"], 
+                 self.page_refinement_prep["title"]),
              self.html_foot()]
 
         return "".join(l)
@@ -882,26 +952,28 @@ class HTMLReport(Report):
         else:
             include_atoms = "All Protein Atoms"
 
-        l = ['<center>',
-             '<table border="0" cellpadding="3" width="75%" style="background-color:#eeeeee; font-size:small">']
+        l = ['<center><table class="report_globals">']
 
         if self.struct.title:
-            l += ['<tr style="background-color:#dddddd"><td>Title</td>',
+            l += ['<tr class="report_globals"><td>Title</td>',
                   '<td><b>%s</b></td></tr>' % (self.struct.title)]
 
         if self.struct.header:
-            l += ['<tr style="background-color:#dddddd"><td>Heading Summary</td>',
+            l += ['<tr class="report_globals"><td>Heading Summary</td>',
                   '<td><b>%s</b></td></tr>' % (self.struct.header)]
 
         if self.struct.experimental_method:
-            l += ['<tr style="background-color:#dddddd"><td>Experimental Method</td>',
-                  '<td><b>%s</b></td></tr>' % (self.struct.experimental_method)]
+            l += ['<tr class="report_globals"><td>Experimental Method</td>',
+                  '<td><b>%s</b></td></tr>' % (
+                  self.struct.experimental_method)]
 
-        l +=['<tr style="background-color:#dddddd"><td>Temperature Factors</td>',
+        l +=['<tr class="report_globals"><td>Temperature Factors</td>',
              '<td><b>%s</b></td></tr>' % (tls_model),
-             '<tr style="background-color:#dddddd"><td>Minimum TLS Segment Length</td>',
-             '<td><b>%s Residues</b></td></tr>' % (conf.globalconf.min_subsegment_size),
-             '<tr style="background-color:#dddddd"><td>Atoms Analyzed</td>',
+             '<tr class="report_globals">',
+             '<td>Minimum TLS Segment Length</td>',
+             '<td><b>%s Residues</b></td></tr>' % (
+                 conf.globalconf.min_subsegment_size),
+             '<tr class="report_globals"><td>Atoms Analyzed</td>',
              '<td><b>%s</b></td></tr>' % (conf.globalconf.include_atoms),
              '</table>',
              '</center>']
@@ -961,6 +1033,7 @@ class HTMLReport(Report):
             #    height    = ori["pheight"],
             #    bg_color  = "White")
         except:
+            ## TODO: Create "warning_stdoutln()" in console.py, 2009-07-16
             console.stdoutln("     Warning: failed to find orientation for graphics output")
             print console.formatExceptionInfo()
             pass
@@ -1023,7 +1096,8 @@ class HTMLReport(Report):
 
         plot.plot(plot_file)
 
-        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (chain.chain_id),
+        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (
+                 chain.chain_id),
              '<center>',
              '<table border="0" style="background-color:#dddddd">',
              '<tr><th># of TLS<br/>Groups</th>',
@@ -1031,17 +1105,17 @@ class HTMLReport(Report):
              '<tr>',
 
              '<td align="right" valign="top">',
-             '<p style="font-size:xx-small; margin-top:%dpx">' % (plot.border_width)]
+             '<p style="font-size:xx-small; margin-top:%dpx">' % (
+                 plot.border_width)]
 
-        l.append('<ul style="list-style-type:none;margin:0px;padding:0px">')
-
+        l.append('<ul>')
         for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
-            l.append('<li style="line-height:20px"><a href="#NTLS%d">%d</a><br/>' % (ntls, ntls))
-
+            l.append('<li><a href="#NTLS%d">%d</a><br/>' % (ntls, ntls))
         l.append('</ul>')
 
         l +=['</td>',
-             '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (plot_file),
+             '<td><img src="%s" alt="Sequence Alignment Plot"></td>' % (
+                 plot_file),
              '</tr>',
              '</table>',
              '</center>',
@@ -1073,6 +1147,7 @@ class HTMLReport(Report):
             pass
 
         ## Jmol Viewer Script
+        ## TODO: Maybe switch from "False" to "0"? 2009-06-17
         if conf.globalconf.generate_jmol_view == False:
             jmol_file = ""
             console.stdoutln("NOTE: Skipping Jmol-viewer section")
@@ -1090,10 +1165,12 @@ class HTMLReport(Report):
         if conf.globalconf.generate_jmol_animate == False:
             console.stdoutln("NOTE: Skipping Jmol-animation section")
             jmol_animate_file = ""
-            raw_r3d_file, r3d_body_file = self.generate_raw_backbone_file(chain, cpartition)
+            raw_r3d_file, r3d_body_file =\
+                self.generate_raw_backbone_file(chain, cpartition)
         else:
             try:
-                jmol_animate_file, raw_r3d_file, r3d_body_file = self.jmol_animate_html(chain, cpartition)
+                jmol_animate_file, raw_r3d_file, r3d_body_file =\
+                    self.jmol_animate_html(chain, cpartition)
             except:
                 ## EAM FIXME:  But really something must have gone wrong before this point.
                 jmol_animate_file = ""
@@ -1108,11 +1185,14 @@ class HTMLReport(Report):
         else:
             ## TODO: Only run if *.r3d files exist, 2009-07-06
             try:
-                basename = "%s_CHAIN%s_NTLS%d" % (self.struct_id, chain.chain_id, cpartition.num_tls_segments())
+                basename = "%s_CHAIN%s_NTLS%d" % (
+                    self.struct_id, chain.chain_id, 
+                    cpartition.num_tls_segments())
                 png_file = "%s.png" % (basename)
                 pml_file = "" ## never used
 
-                gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
+                gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (
+                    conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
                 os.system(gen_r3d_body_cmd)
 
                 if os.path.isfile("../bases.r3d"):
@@ -1181,14 +1261,15 @@ class HTMLReport(Report):
              '<br/>',
 
              ## navigation links
-             '<a href="%s">Full TLS Partition Analysis</a>' % (ntls_analysis.url),
+             '<a href="%s">Full TLS Partition Analysis</a>' % (
+                 ntls_analysis.url),
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
 
              '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (
-             jmol_file),
+                 jmol_file),
              'width=%d,height=%d,screenX=10,screenY=10,left=10,top=10&quot;);' % (
-             conf.JMOL_SIZE, conf.JMOL_SIZE),
+                 conf.JMOL_SIZE, conf.JMOL_SIZE),
              'return false;">View with Jmol</a>',
 
              '&nbsp;&nbsp;&nbsp;&nbsp;',
@@ -1200,7 +1281,7 @@ class HTMLReport(Report):
              '&quot;width=%d,height=%d,screenX=10,'\
              'screenY=10,left=10,top=10&quot;);'\
              'return false;">Animate Screw Displacement with Jmol</a>' % (
-             jmol_animate_file, conf.JMOL_SIZE, conf.JMOL_SIZE),
+                 jmol_animate_file, conf.JMOL_SIZE, conf.JMOL_SIZE),
 
              '<br/>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_file),
@@ -1215,9 +1296,10 @@ class HTMLReport(Report):
              ## raytraced image
              '<table style="background-color:white" width="100%" border=0>',
              '<tr><th>',
-             '<center><a href="%s" class="imageview"><img src="%s" height="320" alt="structimage"/></a>' % (
-             png_file, png_file),
-             '<span class="small">Click on image for expanded view</span></center></th></tr>',
+             '<center><a href="%s" class="imageview">' % (png_file),
+             '<img src="%s" height="320" alt="structimage"/></a>' % (png_file),
+             '<span class="small">Click on image for expanded view</span>',
+             '</center></th></tr>',
 
              '<tr><th><center>',
              ntls_analysis.bmean_plot.html_link(),
@@ -1232,6 +1314,7 @@ class HTMLReport(Report):
 
         return "".join(l)
 
+    #def raster3d_render_tls_graph_path(self, chain, cpartition):
     def generate_raster3d_header(self, chain):
         """Render TLS visualizations using Raster3D.
         """
@@ -1357,13 +1440,14 @@ class HTMLReport(Report):
 
         return r3d_header_file
         ##=====================================================================
+        ## NOTE: None of the following is used anymore
 
         ## turn off axes and unit cell visualization
         gl_struct.glo_update_properties_path("gl_axes/visible", False)
         gl_struct.glo_update_properties_path("gl_unit_cell/visible", False)
 
         ## setup base structural visualization
-        console.debug_stdoutln(">html.py->Raster3D: setup base structural visualization") ## DEBUG
+        console.debug_stdoutln(">html.py->Raster3D: setup base structural visualization")
         for gl_chain in gl_struct.glo_iter_children():
             if not isinstance(gl_chain, Viewer.GLChain):
                 continue
@@ -1414,7 +1498,7 @@ class HTMLReport(Report):
         has_amino_acids = cpartition.chain.has_amino_acids()
         has_nucleic_acids = cpartition.chain.has_nucleic_acids()
 
-        console.debug_stdoutln(">html.py->Raster3D: add the TLS group visualizations") ## DEBUG
+        console.debug_stdoutln(">html.py->Raster3D: add the TLS group visualizations")
         for tls in cpartition.iter_tls_segments():
             if tls.method != "TLS":
                 continue
@@ -1446,7 +1530,9 @@ class HTMLReport(Report):
 
             ## set width of trace according to the group's translationral tensor trace
             mtls_info = tls.model_tls_info
-            tiso = (mtls_info["Tr1_eigen_val"] + mtls_info["Tr2_eigen_val"] + mtls_info["Tr3_eigen_val"]) / 3.0
+            tiso = (mtls_info["Tr1_eigen_val"] +\
+                    mtls_info["Tr2_eigen_val"] +\
+                    mtls_info["Tr3_eigen_val"]) / 3.0
 
             ## too big usually for good visualization; cheat and scale it down
             radius = 0.30
@@ -1615,6 +1701,10 @@ class HTMLReport(Report):
                     self.struct_id, chain.chain_id,
                     cpartition.num_tls_segments())
 
+        ## SEE:
+        ##    - http://wiki.jmol.org:81/index.php/AtomSets
+        ##    - http://chemapps.stolaf.edu/jmol/docs/index.htm
+
         ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js = ['load %s;' % (self.struct_path),
@@ -1672,7 +1762,7 @@ class HTMLReport(Report):
 
     def generate_raw_backbone_file(self, chain, cpartition):
         """Writes out the 'raw' backbone data for the tlsanim2r3d program.
-           NOTE: This should only be run if JMOL_SKIP == True.
+        NOTE: This should only be run if JMOL_SKIP == True.
         """
         ## class HTMLReport()
         basename = "%s_CHAIN%s_NTLS%d" % (
@@ -1710,6 +1800,7 @@ class HTMLReport(Report):
         basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
             self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
+        ## TODO: Include http://www.wwpdb.org/documentation/format32/sect8.html
         html_file     = "%s.html" % (basename)
         pdb_file      = "%s.pdb" % (basename)
         raw_r3d_file  = "%s.raw" % (basename)
@@ -1815,8 +1906,9 @@ class HTMLReport(Report):
              '<html>',
              '<head>',
              '<title>Chain %s using %d TLS Groups</title>' % (
-             chain.chain_id, cpartition.num_tls_segments()),
-             '<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
+                 chain.chain_id, cpartition.num_tls_segments()),
+             '<script type="text/javascript" src="%s/Jmol.js">' % (
+                 conf.JMOL_DIR),
              '</script>',
              '</head>',
              '<body>',
@@ -1916,13 +2008,14 @@ class HTMLReport(Report):
                   '<table border="0" cellspacing="0" cellpadding="0">' ]
 
             for chain_id in chain_id_list:
-                l.append('<tr><td align="right" valign="middle" height="20"><font size="-20">%s</font></td></tr>' % (chain_id))
+                l.append('<tr><td align="right" valign="middle" height="20">')
+                l.append('<font size="-20">%s</font></td></tr>' % (chain_id))
 
             l += ['</table>'
                   '</td>',
                   '<td><img src="%s" alt="Segmentation Plot" /></td>' % (plot_file),
                   '</tr>',
-                  '</table>' ]
+                  '</table>']
 
         l.append(self.html_foot())
         return "".join(l)
@@ -1959,8 +2052,10 @@ class HTMLReport(Report):
              '<a href="index.html">Back to Index</a>',
              '</center>',
              '<br/>',
-             '<form enctype="multipart/form-data" action="%s" method="post">' % (conf.REFINEPREP_URL),
-             '<input type="hidden" name="job_id" value="%s">' % (conf.globalconf.job_id),
+             '<form enctype="multipart/form-data" action="%s" method="post">' % (
+                 conf.REFINEPREP_URL),
+             '<input type="hidden" name="job_id" value="%s">' % (
+                 conf.globalconf.job_id),
              '<p>%s</p>' % (captions.REFINEMENT_PREP_INFO),
              '<center><table><tr><td>',
              plot.html_link(),
@@ -2010,7 +2105,8 @@ class ChainNTLSAnalysisReport(Report):
         self.ntls = cpartition.num_tls_segments()
 
         self.root  = ".."
-        self.dir   = "%s_CHAIN%s_NTLS%d"  % (self.struct_id, self.chain_id, self.ntls)
+        self.dir   = "%s_CHAIN%s_NTLS%d"  % (
+            self.struct_id, self.chain_id, self.ntls)
         self.index = "%s.html" % (self.dir)
         self.url   = "%s/%s" % (self.dir, self.index)
 
@@ -2032,7 +2128,8 @@ class ChainNTLSAnalysisReport(Report):
     def write_all_files(self):
         """Writes analysis details of each TLS group.
         """
-        title = "Chain %s Partitioned by %d TLS Groups" % (self.chain_id, self.ntls)
+        title = "Chain %s Partitioned by %d TLS Groups" % (
+            self.chain_id, self.ntls)
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
 
         l = [self.html_head(title),
@@ -2041,12 +2138,14 @@ class ChainNTLSAnalysisReport(Report):
              '<center>',
              '<a href="../index.html">Back to Index</a>',
              '&nbsp;&nbsp;&nbsp;&nbsp;',
-             '<a href="../%s">Back to Chain %s Analysis</a>' % (path, self.chain_id),
+             '<a href="../%s">Back to Chain %s Analysis</a>' % (
+                 path, self.chain_id),
              '</center>',
 
              '<br/>']
 
-        ## NOTE: The following table is for the "Full TLS Partition Analysis" pages
+        ## NOTE: The following table is for the "Full TLS Partition Analysis"
+        ## pages
         l += [self.html_tls_group_table(detail = False),'<br/><hr>']
         l += [self.html_bmean(),'<br/><hr>'] ## REQUIRED!
         l += [self.tls_segment_recombination(),'<br/><hr>']
@@ -2055,7 +2154,8 @@ class ChainNTLSAnalysisReport(Report):
         l += [self.html_ca_differance(),'<br/><hr>']
         l += [self.html_rmsd_plot()] ## REQUIRED!
 
-        ## EAM April 2008 - This sure looks redundant to me.  Let's try doing without it
+        ## EAM April 2008 - This sure looks redundant to me.
+        ## Let's try doing without it
         #self.tls_segment_recombination()
 
         ## Create histogram plots
@@ -2123,7 +2223,7 @@ class ChainNTLSAnalysisReport(Report):
         self.bmean_plot = gnuplots.BMeanPlot(self.chain, self.cpartition)
         l = ['<center>',
              self.bmean_plot.html_markup("Mean BFactor Analysis",
-                                         "Comparison of TLS predicted B factors with experimental (input) B factors."),
+                 "Comparison of TLS predicted B factors with experimental (input) B factors."),
              '</center>']
         return "".join(l)
 
@@ -2139,7 +2239,8 @@ class ChainNTLSAnalysisReport(Report):
         """histogram of atomic U_ISO - U_TLS_ISO
         """
         his = gnuplots.UIso_vs_UtlsIso_Histogram(self.chain, self.cpartition, tls)
-        title = 'Distribution Histogram of TLS Group %s' % (tls.display_label())
+        title = 'Distribution Histogram of TLS Group %s' % (
+            tls.display_label())
         l = ['<center>',
              his.html_markup(title, ""),
              '</center>']
@@ -2158,10 +2259,12 @@ class ChainNTLSAnalysisReport(Report):
 
         rmatrix = self.cpartition.rmsd_b_mtx
         m, n = rmatrix.shape
-        chain_ntls = "%s,%s" % (self.chain_id, self.cpartition.num_tls_segments())
+        chain_ntls = "%s,%s" % (
+            self.chain_id, self.cpartition.num_tls_segments())
 
         tbl = table.StringTableFromMatrix(rmatrix)
-        ## E.g., for three segments, the file would look something like the following:
+        ## E.g., for three segments, the file would look something like the
+        ## following:
         ## 7.11514881827     9.86985699559     10.1031000732
         ## 9.86985699559     9.94840587829     8.74779028204
         ## 10.1031000732     8.74779028204     9.61743006191
@@ -2169,7 +2272,8 @@ class ChainNTLSAnalysisReport(Report):
             self.struct_id, self.chain_id, self.cpartition.num_tls_segments())
 
         open(filename, "w").write(str(tbl))
-        console.stdoutln("[%s] RECOMBINATION: Saving %s" % (chain_ntls, filename))
+        console.stdoutln("[%s] RECOMBINATION: Saving %s" % (
+            chain_ntls, filename))
 
         ##======================================================================
         ##<FLATFILE>
@@ -2224,7 +2328,7 @@ class ChainNTLSAnalysisReport(Report):
             ##</FLATFILE>
 
         ## recombination values
-        console.debug_stdoutln(">MATRIX: Creating RMSD B values table...") ## DEBUG
+        console.debug_stdoutln(">MATRIX: Creating RMSD B values table...")
 
         ## determine min/max values for coloring
         min_rmsd_b = rmatrix[0, 0]
@@ -2245,10 +2349,10 @@ class ChainNTLSAnalysisReport(Report):
                 scale = (rmatrix[i, j] - min_rmsd_b) / b_range
                 bright = 1.0 - (0.75 * scale)
                 rgbs = misc.rgb_f2s((bright, bright, bright))
-                tbl[i + 1, j + 1] = '<td style="background-color:%s;padding:5px;font-size:x-small">%6.2f</td>' % (
+                tbl[i + 1, j + 1] = '<td class="matrix" style="background-color:%s;">%6.2f</td>' % (
                     rgbs, rmatrix[i, j])
 
-        l = ['<table style="background-color:#bbbbff;border-width:thin;border-color:black;border-style:solid">\n']
+        l = ['<table class="matrix">\n']
         for i in xrange(m + 1):
             l.append('<tr>')
             for j in xrange(n + 1):
