@@ -16,7 +16,7 @@ def usage():
     print
     print "description:"
     print "    Performs a least squares fit of TLS tensors to the"
-    print "    tempature factors of the given structure file.  If"
+    print "    temperature factors of the given structure file.  If"
     print "    no TLS groups are defined by the TLSIN file, then"
     print "    one group is created per chain."
     print
@@ -51,7 +51,7 @@ def main(path, opt_dict):
             print "[ERROR]: TLSIN File not found %s" % (opt_dict["-t"])
             sys.exit(-1)
         
-        tls_file = TLSFile()
+        tls_file = TLS.TLSFile()
         tls_file.set_file_format(TLS.TLSFileFormatTLSOUT())
         tls_file.load(fil)
 
