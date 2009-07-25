@@ -298,13 +298,10 @@ def run_setup(opts):
 
 def make_doc(opts):
     """This is a special function to generate the documentation with
-    Epidoc.  It once used happydoc.
+    Epydoc.
     """
-    #happy = "/home/jpaint/build/HappyDoc-r2_1/happydoc"
-    #os.system("%s -d doc/api_reference -t 'Python Macromolecular Library Module Documentation' -r --no-comments --no-private-names --author='Jay Painter <jpaint@u.washington.edu>' mmLib/*.py" % (happy))
-
+    ## Requires: http://epydoc.sourceforge.net/
     os.system('epydoc --html --output doc/api_reference --name "Python Macromolecular Library" mmLib/*.py') 
-
 
 def check_deps_numeric(opts):
     ## check NumPy
