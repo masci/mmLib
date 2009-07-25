@@ -214,8 +214,8 @@ def test_module():
     
     R = AtomMath.rmatrixu(numpy.array((0.0, 0.0, 1.0), float), math.pi/2.0)
 
-    struct1 = FileIO.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
-    struct2 = FileIO.LoadStructure(fil="/home/jpaint/8rxn/8rxn.pdb")
+    struct1 = FileIO.LoadStructure(fil="8rxn.pdb")
+    struct2 = FileIO.LoadStructure(fil="8rxn.pdb")
 
     chn1 = struct1.get_chain("A")
     chn2 = struct2.get_chain("A")
