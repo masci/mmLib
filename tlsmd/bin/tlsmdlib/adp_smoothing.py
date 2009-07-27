@@ -55,7 +55,8 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
         rejected += outliers
 
         if outliers == 0 or (num_atoms - outliers) < 10:
-            console.stdoutln("SEGMENT %s-%s %d->%d" % (frag_id1, frag_id2, orig_num_atoms, orig_num_atoms - rejected))
+            console.stdoutln("SEGMENT %s-%s %d->%d" % (
+                frag_id1, frag_id2, orig_num_atoms, orig_num_atoms - rejected))
             return IT, IL, IS, IOrigin
 
 
