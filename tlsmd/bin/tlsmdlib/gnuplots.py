@@ -143,7 +143,8 @@ class GNUPlot(object):
             self.run_gnuplot(script_svg)
 
     def html_link(self, alt_text=None):
-        if not alt_text: alt_text = self.basename
+        if not alt_text:
+            alt_text = self.basename
 
         if conf.globalconf.use_svg == True:
             l = ['<object type="image/svg+xml" data="./%s" width="%d" height="%d">' % (
@@ -261,6 +262,9 @@ set title "<title>"
 """
 
 class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
+    """Least square residual vs. TLS segments for all chains plot generating
+    class.
+    """
     def __init__(self, tlsmd_analysis, **args):
         GNUPlot.__init__(self, **args)
         self.tlsmd_analysis = tlsmd_analysis
@@ -367,7 +371,7 @@ class TranslationAnalysis(GNUPlot):
         nrows = len(self.cpartition.chain)
         ncols = 1 + 3 * self.cpartition.num_tls_segments()
         tbl = table.StringTable(nrows, ncols, "?",
-                                title = "TLS Model Translation Tensor RMSD Values of  Principal Components",
+                                title = "TLS Model Translation Tensor RMSD Values of Principal Components",
                                 column_titles = ["Residue"])
 
         frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
@@ -474,13 +478,6 @@ class LibrationAnalysis(GNUPlot):
                 #atm = frag.get_atom("P") ## for nucleic acids
                 if atm is None:
                     continue
-
-                #if frag.get_atom("CA") is not None:
-                #    atm = frag.get_atom("CA")
-                #    console.stdoutln("CA_ATOM: %s" % str(atm))
-
-                #elif frag.get_atom("P") is not None:
-                #    atm = frag.get_atom("P")
 
                 i = frag.ifrag
 
