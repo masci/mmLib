@@ -19,16 +19,12 @@ from mmLib import Structure, FileIO, Gaussian, AtomMath, TLS, Constants
 ## TLSMD
 import conf
 import console
+import const    ## for "DISPLACE_ATOM_NAME_DICT"
 
 TWO_PI = 2.0 * math.pi
 
-DISPLACE_ATOM_NAME_DICT = {
-    "CA": True, "P": True, "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True,
-    "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
-    }
-
 def iter_filter_atoms(atom_iter):
-    filter = lambda atm: DISPLACE_ATOM_NAME_DICT.has_key(atm.name)
+    filter = lambda atm: const.DISPLACE_ATOM_NAME_DICT.has_key(atm.name)
     return itertools.ifilter(filter, atom_iter)
 
 def iter_fragment_range(chain, frag_id1, frag_id2):
@@ -127,7 +123,7 @@ class TLSAnimate(object):
         """
         model_id = 0
         while True:
-            model_id += 1            
+            model_id += 1
             model = self.struct.get_model(model_id)
             if model == None:
                 return model_id
@@ -142,9 +138,9 @@ class TLSAnimate(object):
         raise TLSAnimateFailure()
 
     def construct_chain_copies(self):
-        """Create two other copies 
+        """Create two other copies
         """
-        chain_id = self.chain.chain_id        
+        chain_id = self.chain.chain_id
         self.L1_chain = self.struct.get_chain(chain_id)
 
         self.L2_chain = copy.deepcopy(self.L1_chain)
@@ -182,7 +178,7 @@ class TLSAnimate(object):
 
 
     def displace_model(self, model, tls, phase, which_ntls, raw_r3d_file):
-        """Displace the given model by the tls. 
+        """Displace the given model by the tls.
         """
         tls_info  = tls.model_tls_info
         cor       = tls_info["COR"]
