@@ -88,10 +88,9 @@ class MySQLConnect():
         ## TODO: Add fail-safe
         self.db = mysql_connect()
         self.user_data_tbl = "user_data"
-        self.test_tbl = "test"
-        self.status_page = "tmp"
         self.status_page_tbl = "status_page"
         self.via_pdb_tbl = "via_pdb"
+        self.pdb_list_tbl = "pdb_list"
         self.archive_tbl = "archive"
 
     def execute_cmd(self, string, dict = None, list = None, select = None):
@@ -137,11 +136,20 @@ class MySQLConnect():
         if not self.job_exists(job_id):
             return False
 
-        ## Dump the entire contents of 'status_page' into 'archive'
         string = """INSERT INTO %s
                  SELECT * FROM %s 
                  WHERE job_id='%s';""" % (
             self.archive_tbl, self.status_page_tbl, job_id)
+        return self.execute_cmd(string)
+
+    def archive_pdb_jobs(self, job_id):
+        assert job_id.startswith("TLSMD")
+        if not self.job_exists(job_id):
+            return False
+        string = """INSERT INTO %s
+                 SELECT * FROM %s 
+                 WHERE job_id='%s';""" % (
+            self.pdb_list_tbl, self.status_page_tbl, job_id)
         return self.execute_cmd(string)
 
     def delete_jdict(self, job_id):
@@ -181,6 +189,11 @@ class MySQLConnect():
     def job_list(self):
         string = "SELECT * FROM %s ORDER BY JobID DESC;" % (
             self.status_page_tbl)
+        return self.execute_cmd(string, dict = True, list = True, select = True)
+
+    def job_pdb_list(self):
+        string = "SELECT * FROM %s ORDER BY JobID DESC;" % (
+            self.pdb_list_tbl)
         return self.execute_cmd(string, dict = True, list = True, select = True)
 
     def pdb_exists(self, pdb_id):
@@ -255,15 +268,10 @@ class MySQLConnect():
         return self.job_data_set(job_id, "header_id", header_id)
 
     def job_set_remote_addr(self, job_id, value):
-        #string = "UPDATE %s SET ip_address=INET_ATON('%s') WHERE job_id='%s';" % (
         string = "UPDATE %s SET ip_address='%s' WHERE job_id='%s';" % (
             self.status_page_tbl, value, job_id)
         return self.execute_cmd(string)
     def job_get_remote_addr(self, job_id):
-        #return self.job_data_get(job_id, "INET_NTOA(ip_address) as ip_address", dict = True)
-        #v = self.job_data_get(job_id, "INET_NTOA(ip_address) as ip", dict = True)
-        #return ["ip"]
-        #return self.job_data_get(job_id, "INET_NTOA(ip_address) as ip_address", dict = True)
         return self.job_data_get(job_id, "ip_address", dict = True)
 
     def job_set_email(self, job_id, email_address):
