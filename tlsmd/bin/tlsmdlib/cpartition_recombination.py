@@ -28,11 +28,12 @@ import opt_containers
 
 
 def segment_range_cmp(segrange1, segrange2):
-    ## Compare two fragment ids.
-    ## Performs a proper less than comparison of frament_id strings
-    ## according to their sequence number, then insertion code.
-    ## Split a string fragment_id into a 2-tuple of:
-    ##     (sequence_num, insertion_code)
+    """Compare two fragment ids.
+    Performs a proper less than comparison of frament_id strings
+    according to their sequence number, then insertion code.
+    Split a string fragment_id into a 2-tuple of:
+        (sequence_num, insertion_code)
+    """
     return Structure.fragment_id_cmp(segrange1[0], segrange2[0])
 
 
@@ -69,7 +70,7 @@ def recombination2_iter(nparts):
 
 def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     """Returns a new TLSSegment object which is the combination
-    of TLSSegment objects tls1 and tls2.  The argument tlsdict is
+    of TLSSegment objects tls1 and tls2. The argument tlsdict is
     the results from a tls_analyzer fit of the combined tls1 and tls2
     atoms, which should already have been performed.
     """
@@ -134,8 +135,9 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         rmsd_b = Constants.U2B * math.sqrt(msd)
 
         ## NOTE (by Christoph):
-        ## rmsd_b is the off-diagonal values found in the 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt'
-        ## files, where xxxx = pdbID, a = chainID, n = TLS segment
+        ## rmsd_b is the off-diagonal values found in the 
+        ## 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt' files,
+        ## where xxxx = pdbID, a = chainID, n = TLS segment
         ## E.g., for 3 segments:
         ## The matrix would look like the following:
         ##    5.87306772217     7.41067186124     6.20476161918
