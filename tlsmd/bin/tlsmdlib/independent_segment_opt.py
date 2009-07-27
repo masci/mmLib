@@ -25,16 +25,16 @@ import opt_containers
 
 
 def calc_num_subsegments(n, m):
-    """Calculates the number of possible subsegment for the chain of length n and minimum
-    subsegment length m.
+    """Calculates the number of possible subsegment for the chain of length n
+    and minimum subsegment length m.
     """
-    m = m-1
+    m = m - 1
     return (n*(n+1))/2 - (m*n - (m*(m+1))/2 + m)
 
 
 def iter_ij(num_vertex, min_len):
     """Iterates over the i,j vertex indexes defining the edges
-    to be built for the graph.  num_vertex gives the number
+    to be built for the graph. num_vertex gives the number
     of consecutive vertices to create, min_span is the minimum
     number of residues (fragments) a edge should span.
     """
@@ -45,7 +45,7 @@ def iter_ij(num_vertex, min_len):
 
 def iter_chain_subsegment_descs(chain, min_len):
     """Iterate over all possible subsegments of the given Chain object
-    with a minimum size of min_span fragments.  The segments are yielded
+    with a minimum size of min_span fragments. The segments are yielded
     as Python dictionaries containing a description of the subsegment.
     """
     frag_ids = []
@@ -267,7 +267,8 @@ class ISOptimization(hcsssp.HCSSSP):
             if edge is not None:
                 i, j, cost, frag_range, tlsdict = edge
                 wr = cost / (j - i)
-                edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (i, j, cost, frag_range, wr)
+                edge_label = "(%3d,%3d,%6.3f,%s) %6.3f" % (
+                    i, j, cost, frag_range, wr)
             else:
                 edge_label = ""
 
