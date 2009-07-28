@@ -120,7 +120,7 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
-        console.debug_stdoutln(">Entering: tlsmd_analysis.py->TLSMDAnalysis()...")
+        console.debug_stdoutln(">tlsmd_analysis.py->TLSMDAnalysis()")
         console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
         console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
         console.endln() ## LOGLINE
@@ -139,13 +139,17 @@ class TLSMDAnalysis(object):
                     continue
 
             ## count the number of amino acid residues in the chain
+            ## skip those that are too small
             naa = chain.count_amino_acids()
-            nna = chain.count_nucleic_acids()
-            num_frags = max(naa, nna)
-            if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN) or\
-               (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
+            if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN):
                 console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
                 continue
+
+            nna = chain.count_nucleic_acids()
+            if (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
+                console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
+                continue
+            num_frags = max(naa, nna)
 
             segment = ConstructSegmentForAnalysis(chain)
             segments.append(segment)
@@ -172,7 +176,7 @@ def LoadStructure(struct_source):
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
-    console.debug_stdoutln(">Entering: tlsmd_analysis.py->LoadStructure()...")
+    console.debug_stdoutln(">tlsmd_analysis.py->LoadStructure()")
 
     ## determine the argument type
     if isinstance(struct_source, str):
@@ -241,7 +245,8 @@ def ConstructSegmentForAnalysis(raw_chain):
     Chain instance which is properly modified for use in
     the this application.
     """
-    console.debug_stdoutln(">Entering: tlsmd_analysis.py->ConstructSegmentForAnalysis(chain %s)..." % raw_chain.chain_id) ## DEBUG
+    console.debug_stdoutln(">tlsmd_analysis.py->ConstructSegmentForAnalysis(chain %s)" % (
+        raw_chain.chain_id))
 
     ## NOTE: raw_chain = "Chain(1:A, Res(MET,1,A)...Res(VAL,50,A))"
     ## Sets that atm.include attribute for each atom in the chains
@@ -310,7 +315,7 @@ def IndependentTLSSegmentOptimization(analysis):
 
         console.endln() ## LOGLINE
         console.stdoutln("="*79) ## LOGLINE
-        console.debug_stdoutln(">Entering: tlsmd_analysis.py->IndependentTLSSegmentOptimization()...") ## DEBUG
+        console.debug_stdoutln(">tlsmd_analysis.py->IndependentTLSSegmentOptimization()")
         console.stdoutln("MINIMIZING CHAIN %s" % (chain)) ## LOGLINE
         isopt.prnt_detailed_paths()
 
@@ -319,7 +324,7 @@ def IndependentTLSSegmentOptimization(analysis):
 
 def RecombineIndependentTLSSegments(analysis):
     console.endln() ## LOGLINE
-    console.debug_stdoutln(">Entering: tlsmd_analysis.py->RecombineIndependentTLSSegments()...") ## DEBUG
+    console.debug_stdoutln(">tlsmd_analysis.py->RecombineIndependentTLSSegments()")
     console.stdoutln("TLS SEGMENT RECOMBINATION") ## LOGLINE
     for chain in analysis.chains:
         ## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
@@ -329,7 +334,7 @@ def FitConstrainedTLSModel(analysis):
     """
     """
     console.endln() ## LOGLINE
-    console.debug_stdoutln(">Entering: tlsmd_analysis.py->FitConstrainedTLSModel()...") ## DEBUG
+    console.debug_stdoutln(">tlsmd_analysis.py->FitConstrainedTLSModel()")
     console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION") ## LOGLINE
 
     ## EAM Feb 2008 User job was getting stuck in fit_to_chain()
@@ -349,10 +354,6 @@ def FitConstrainedTLSModel(analysis):
                 try:
                     ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
                     tls.fit_to_chain(cpartition.chain)
-
-                    ## TODO: Write out data for residual plots.
-                    #gp = gnuplots.LSQR_vs_TLS_Segments_Pre_Plot(cpartition.chain)
-                    #console.stdoutln("FIT_TO_CHAIN_PATH: %s" % analysis.struct2_file_path)
 
                 except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
                     console.stdoutln("            Runtime error for [%s]: %s, trying to continue..." % (
