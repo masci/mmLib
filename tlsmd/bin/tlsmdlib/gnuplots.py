@@ -43,7 +43,7 @@ def FormatFigureHTML(title, caption, figure_html):
 
     if caption:
         l = ['<tr><td align="center">',
-             '<p style="padding:2%%;background-color:#eeeeee;border-style:dashed;border-width:thin;border-color:black">%s</p>' % (caption),
+             '<p class="gnuplot_captions">%s</p>' % (caption),
              '</td></tr>']
         cap_html = "".join(l)
     else:
