@@ -1158,7 +1158,8 @@ class HTMLReport(Report):
             try:
                 jmol_file = self.jmol_html(chain, cpartition)
             except:
-                ## EAM FIXME:  But really something must have gone wrong before this point.
+                ## EAM FIXME:  But really something must have gone wrong 
+                ## before this point.
                 console.stdoutln("     Warning: Jmol setup failed in jmol_html")
                 print console.formatExceptionInfo()
                 jmol_file = ""
@@ -1175,7 +1176,8 @@ class HTMLReport(Report):
                 jmol_animate_file, raw_r3d_file, r3d_body_file =\
                     self.jmol_animate_html(chain, cpartition)
             except:
-                ## EAM FIXME:  But really something must have gone wrong before this point.
+                ## EAM FIXME:  But really something must have gone wrong 
+                ## before this point.
                 jmol_animate_file = ""
                 console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
                 print console.formatExceptionInfo()
@@ -1186,7 +1188,6 @@ class HTMLReport(Report):
             png_file = ""
             pml_file = ""
         else:
-            ## TODO: Only run if *.r3d files exist, 2009-07-06
             try:
                 basename = "%s_CHAIN%s_NTLS%d" % (
                     self.struct_id, chain.chain_id, 
@@ -1194,28 +1195,31 @@ class HTMLReport(Report):
                 png_file = "%s.png" % (basename)
                 pml_file = "" ## never used
 
-                gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (
-                    conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
-                os.system(gen_r3d_body_cmd)
+                if os.path.isfile("../struct.r3d"):
+                    ## only run if *.r3d files exist
+                    gen_r3d_body_cmd = "%s < %s > %s 2> /dev/null" % (
+                        conf.TLSANIM2R3D, raw_r3d_file, r3d_body_file)
+                    os.system(gen_r3d_body_cmd)
 
-                if os.path.isfile("../bases.r3d"):
-                    ## there are nucleic acids, so
-                    ## cat header.r3d static.r3d animate.r3d grey.r3d bases.r3d sugars.r3d
-                    render_cmd = "cat %s ../struct.r3d %s %s ../bases.r3d ../sugars.r3d | %s > %s 2> /dev/null" % (
-                        self.r3d_header_file, r3d_body_file, conf.GREY_R3D_FILE,
-                        conf.RENDER, png_file)
-                else:
-                    ## there are _not_ any nucleic acids, so
-                    render_cmd = "cat %s ../struct.r3d %s | %s > %s 2> /dev/null" % (
-                        self.r3d_header_file, r3d_body_file,
-                        conf.RENDER, png_file)
+                    if os.path.isfile("../bases.r3d"):
+                        ## there are nucleic acids, so
+                        ## cat header.r3d static.r3d animate.r3d grey.r3d \
+                        ## bases.r3d sugars.r3d
+                        render_cmd = "cat %s ../struct.r3d %s %s ../bases.r3d ../sugars.r3d | %s > %s 2> /dev/null" % (
+                            self.r3d_header_file, r3d_body_file, 
+                            conf.GREY_R3D_FILE, conf.RENDER, png_file)
+                    else:
+                        ## there are _not_ any nucleic acids, so
+                        render_cmd = "cat %s ../struct.r3d %s | %s > %s 2> /dev/null" % (
+                            self.r3d_header_file, r3d_body_file,
+                            conf.RENDER, png_file)
 
-                start = time.time()
-                os.system(render_cmd)
-                elapsed = (time.time() - start)
-                console.stdoutln("[%s,%s] RENDERING TIME for %s: %.2f s" % (
-                    chain.chain_id, cpartition.num_tls_segments(), 
-                    png_file, elapsed))
+                    start = time.time()
+                    os.system(render_cmd)
+                    elapsed = (time.time() - start)
+                    console.stdoutln("[%s,%s] RENDERING TIME for %s: %.2f s" % (
+                        chain.chain_id, cpartition.num_tls_segments(), 
+                        png_file, elapsed))
             except:
                 raw_r3d_file = ""
                 r3d_body_file = ""
