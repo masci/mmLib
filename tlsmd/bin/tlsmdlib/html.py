@@ -369,6 +369,10 @@ li { line-height:20px }
 p.captions {
     font-size:small; text-align:left;
     }
+p.gnuplot_captions {
+    padding:2%; background-color:#eeeeee;
+    border:thin dashed black;
+    }
 p.notes {
     width:70%; padding:10px;
     text-align:center;
@@ -1147,7 +1151,6 @@ class HTMLReport(Report):
             pass
 
         ## Jmol Viewer Script
-        ## TODO: Maybe switch from "False" to "0"? 2009-06-17
         if conf.globalconf.generate_jmol_view == False:
             jmol_file = ""
             console.stdoutln("NOTE: Skipping Jmol-viewer section")
@@ -1732,13 +1735,11 @@ class HTMLReport(Report):
              '<head>',
              '<title>Chain %s using %d TLS Groups</title>' % (
              chain.chain_id, cpartition.num_tls_segments()),
-             #'<script type="text/javascript" src="%s/Jmol.js">' % (conf.JMOL_DIR),
              '<script type="text/javascript" src="Jmol.js">',
              '</script>',
              '</head>',
              '<body>',
              '<script type="text/javascript">',
-             #'jmolInitialize("%s");' % (conf.JMOL_DIR),
              'jmolInitialize("./");',
              'jmolSetAppletColor("white");',
              'jmolApplet(%d, "%s");' % (conf.JMOL_SIZE, "".join(js)),
