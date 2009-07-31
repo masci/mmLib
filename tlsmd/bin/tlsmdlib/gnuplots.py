@@ -9,6 +9,7 @@ import subprocess
 import itertools
 import numpy
 import re ## to force residue numbers to be integers
+import os ## for flatfile path
 
 ## pymmlib
 from mmLib import Constants, Colors, Gaussian, AtomMath, TLS
@@ -22,9 +23,11 @@ import tls_calcs
 
 def create_fractional_residue_number(res_num):
     """Converts insertion residues to fractional residue numbers.
-       E.g., "5A" -> "5.0"
-       This is so gnuplot can handle x-axis number values.
+    E.g., '5A' -> '5.0'
+    This is so gnuplot can handle x-axis number values.
     """
+    ## TODO: Figure out a better way to handle insertion residues, 2008-12-03
+
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ## used for index position
 
     if re.sub(r'.?([A-Za-z]?)', '\\1', res_num) != '':
@@ -39,8 +42,22 @@ def create_fractional_residue_number(res_num):
 
     return res_num
 
-def FormatFigureHTML(title, caption, figure_html):
+def flatfile_write(name, code, type, data, chain_id, num_tls):
+    """Saves the data and the gnuplot scripts in the job_id flatfile for later
+    parsing and re-generation of _all_ the plots generated during a normal
+    TLSMD job run.
+    """
+    flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+    flatfile.write("\nCCCC %s\n" % name)
+    flatfile.write("%s %s,%s.0 <%s>\n" % (code, chain_id, num_tls, type))
+    flatfile.write("%s" % data)
+    flatfile.write("\n%s %s,%s.0 </%s>\n" % (code, chain_id, num_tls, type))
+    flatfile.close()
 
+def FormatFigureHTML(title, caption, figure_html):
+    """Converts a given gnuplot plot into an HTML-formatted string with
+    captions underneath explaining the plot.
+    """
     if caption:
         l = ['<tr><td align="center">',
              '<p class="gnuplot_captions">%s</p>' % (caption),
@@ -111,7 +128,7 @@ class GNUPlot(object):
         pobj.wait()
 
     def output_png(self):
-        """Runs gnuplot.  Expects self.plot_path and self.png_path to be set.
+        """Runs gnuplot. Expects self.plot_path and self.png_path to be set.
         """
         script0 = self.make_script()
 
@@ -179,25 +196,37 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
     residual lower, but there is an issue of diminishing returns as you go
     to larger numbers of groups.
     """
-    ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
+    ## This class is called by the function
+    ## html_chain_lsq_residual_plot(self, chain) in html.py
     def __init__(self, chain,  **args):
         GNUPlot.__init__(self, **args)
         self.chain = chain
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->LSQR_vs_TLS_Segments_Plot()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->LSQR_vs_TLS_Segments_Plot()")
         ## generate data and png paths
         basename = "%s_CHAIN%s_RESID" % (
             self.chain.partition_collection.struct.structure_id,
             self.chain.chain_id)
         self.set_basename(basename)
 
+        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile.write("\nCCCC LSQR_vs_TLS_Segments_Plot")
+
+        column_titles = "Number of TLS Groups\tRMSD B\tResidual"
+        flatfile.write("\nLSQR %s,0.0 #%s\n" % (
+            self.chain.chain_id, column_titles))
+
         tbl = table.StringTable(0, 3, "?",
                                 column_titles = ["Number of TLS Groups", "RMSD B", "Residual"])
         for ntls, cpartition in self.chain.partition_collection.iter_ntls_chain_partitions():
             tbl.append_row(ntls, cpartition.rmsd_b(), cpartition.residual())
+            flatfile.write("LSQR %s,%s.0 %s\t%s\t%s\n" % (
+                self.chain.chain_id, ntls, ntls,
+                cpartition.rmsd_b(), cpartition.residual()))
 
+        flatfile.close()
         open(self.txt_path, "w").write(str(tbl))
 
         ## modify script template
@@ -220,13 +249,15 @@ class LSQR_vs_TLS_Segments_Pre_Plot(GNUPlot):
     residual lower, but there is an issue of diminishing returns as you go
     to larger numbers of groups.
     """
-    ## This class is called by def html_chain_lsq_residual_plot(self, chain) in html.py
+    ## This class is called by def 
+    ## html_chain_lsq_residual_plot(self, chain) in html.py
     def __init__(self, chain,  **args):
         GNUPlot.__init__(self, **args)
         self.chain = chain
         self.output_png()
 
     def make_script(self):
+        #console.debug_stdoutln(">gnuplots.py->LSQR_vs_TLS_Segments_Pre_Plot()")
         ## generate data and png paths
         basename = "PRE_%s_CHAIN%s_RESID" % (
             self.chain.partition_collection.struct.structure_id,
@@ -271,7 +302,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->LSQR_vs_TLS_Segments_All_Chains_Plot()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->LSQR_vs_TLS_Segments_All_Chains_Plot()")
         struct_id = self.tlsmd_analysis.struct.structure_id
 
         ## generate data and png paths
@@ -322,7 +353,7 @@ class TranslationAnalysis(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->TranslationAnalysis()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->TranslationAnalysis()")
         basename = "%s_CHAIN%s_NTLS%s_TRANSLATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -363,6 +394,10 @@ class TranslationAnalysis(GNUPlot):
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
+        flat_script = script.replace("\n", ";")
+        flatfile_write("TranslationAnalysis", "TMTT", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
         return script
 
     def write_data_file(self):
@@ -393,6 +428,9 @@ class TranslationAnalysis(GNUPlot):
                 if t2 > 0.0: tbl[i, 2 + 3*itls] = "%6.4f" % (t2)
                 if t3 > 0.0: tbl[i, 3 + 3*itls] = "%6.4f" % (t3)
 
+        flatfile_write("TranslationAnalysis", "TMTT", "DATA", str(tbl),
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
         open(self.txt_path, "w").write(str(tbl))
 
 
@@ -413,7 +451,7 @@ class LibrationAnalysis(GNUPlot):
         self.output_png()
 
     def make_script(self):        
-        console.debug_stdoutln(">Entering: gnuplots.py->LibrationAnalysis()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->LibrationAnalysis()")
         basename = "%s_CHAIN%s_NTLS%s_LIBRATION" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -454,6 +492,10 @@ class LibrationAnalysis(GNUPlot):
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
+        flat_script = script.replace("\n", ";")
+        flatfile_write("LibrationAnalysis", "LIAN", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
         return script
 
     def write_data_file(self):
@@ -479,6 +521,13 @@ class LibrationAnalysis(GNUPlot):
                 if atm is None:
                     continue
 
+                #if frag.get_atom("CA") is not None:
+                #    atm = frag.get_atom("CA")
+                #    console.stdoutln("CA_ATOM: %s" % str(atm))
+
+                #elif frag.get_atom("P") is not None:
+                #    atm = frag.get_atom("P")
+
                 i = frag.ifrag
 
                 for n, Lx_val, Lx_vec, Lx_rho, Lx_pitch in [
@@ -494,8 +543,12 @@ class LibrationAnalysis(GNUPlot):
                     if numpy.allclose(Lval, 0.0):
                         continue
 
-                    dvec = TLS.calc_LS_displacement(O, Lval, Lvec, Lrho, Lpitch, atm.position, conf.ADP_PROB)
+                    dvec = TLS.calc_LS_displacement(O, Lval, Lvec, Lrho, 
+                        Lpitch, atm.position, conf.ADP_PROB)
                     tbl[i, 1 + 3*itls + n] = AtomMath.length(dvec)
+
+        flatfile_write("LibrationAnalysis", "LIAN", "DATA", str(tbl),
+            self.chain.chain_id, self.cpartition.num_tls_segments())
 
         open(self.txt_path, "w").write(str(tbl))
 
@@ -517,7 +570,7 @@ class CA_TLS_Differance_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->CA_TLS_Differance_Plot()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->CA_TLS_Differance_Plot()")
         basename = "%s_CHAIN%s_NTLS%s_CADIFF" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -559,6 +612,10 @@ class CA_TLS_Differance_Plot(GNUPlot):
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
+        flat_script = script.replace("\n", ";")
+        flatfile_write("CA_TLS_Differance_Plot", "CTDP", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
         return script
 
     def write_data_file(self):
@@ -589,6 +646,9 @@ class CA_TLS_Differance_Plot(GNUPlot):
 
         open(self.txt_path, "w").write(str(tbl))
 
+        flatfile_write("CA_TLS_Differance_Plot", "CTDP", "DATA", str(tbl),
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
 
 _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE = """\
 set xlabel "B_{obs} - B_{tls}"
@@ -607,7 +667,7 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->UIso_vs_UtlsIso_Histogram()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->UIso_vs_UtlsIso_Histogram()")
         tls = self.tls
 
         ## generate data and png paths
@@ -631,7 +691,8 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         bdiff_max = 0.0
 
         for atm in tls_group:
-            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, 
+                atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
 
             bdiff_min = min(bdiff_min, bdiff)
@@ -651,7 +712,8 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
 
         ## count the bins
         for atm in tls_group:
-            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
+            b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, 
+                atm.position - O)
             bdiff = atm.temp_factor - b_iso_tls
             bin = int((bdiff - bdiff_min)/ bin_width)
             bins[bin] += 1
@@ -666,8 +728,18 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id))
         fil.write("## TLS Group Residue Range --: %s\n" % (tls.display_label()))
 
+        flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile.write("\nCCCC UIso_vs_UtlsIso_Histogram\n")
+        flatfile.write("%s %s,%s.0 <DATA>\n" % ("UVUH",
+            self.chain.chain_id, self.cpartition.num_tls_segments()))
+
         for i in xrange(len(bins)):
             fil.write("%f %d\n" % (bin_names[i], bins[i]))
+            flatfile.write("%f %d\n" % (bin_names[i], bins[i]))
+
+        flatfile.write("%s %s,%s.0 </DATA>\n" % ("UVUH",
+            self.chain.chain_id, self.cpartition.num_tls_segments()))
+        flatfile.close()
 
         fil.close()
 
@@ -675,9 +747,14 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         script = _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE
         script = script.replace("<txtfile>", self.txt_path)
 
-        title = "Histogram of Observed B_{iso} - B_{tls} for TLS Group %s" % (tls.display_label())
+        title = "Histogram of Observed B_{iso} - B_{tls} for TLS Group %s" % (
+            tls.display_label())
         script = script.replace("<title>", title)
         script = script.replace("<rgb>", tls.color.rgbs)
+
+        flat_script = script.replace("\n", ";")
+        flatfile_write("UIso_vs_UtlsIso_Histogram", "UVUH", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
 
         return script
 
@@ -701,7 +778,7 @@ class BMeanPlot(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->BMeanPlot()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->BMeanPlot()")
         basename = "%s_CHAIN%s_NTLS%s_BMEAN" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -728,6 +805,9 @@ class BMeanPlot(GNUPlot):
                 tbl[i, itls + 3] = BISO[i]
 
         open(self.txt_path, "w").write(str(tbl))
+
+        flatfile_write("BMeanPlot", "BMPT", "DATA", str(tbl),
+            self.chain.chain_id, self.cpartition.num_tls_segments())
 
         ## Gnuplot Script
         script = _BMEAN_PLOT_TEMPLATE
@@ -776,6 +856,10 @@ class BMeanPlot(GNUPlot):
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
+        flat_script = script.replace("\n", ";")
+        flatfile_write("BMeanPlot", "BMPT", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
         return script
 
 
@@ -816,8 +900,11 @@ class RMSDPlot(GNUPlot):
 
         open(self.txt_path, "w").write(str(tbl))
 
+        flatfile_write("RMSDPlot", "RMPT", "DATA", str(tbl),
+            self.chain.chain_id, self.cpartition.num_tls_segments())
+
     def make_script(self):
-        console.debug_stdoutln(">Entering: gnuplots.py->RMSDPlot()::make_script()...")
+        console.debug_stdoutln(">gnuplots.py->RMSDPlot()")
         basename = "%s_CHAIN%s_NTLS%s_RMSD" % (
             self.chain.struct.structure_id,
             self.chain.chain_id,
@@ -870,6 +957,10 @@ class RMSDPlot(GNUPlot):
             plist.append(x)
 
         script += "plot " + ",\\\n    ".join(plist) + "\n"
+
+        flat_script = script.replace("\n", ";")
+        flatfile_write("RMSDPlot", "RMPT", "SCRIPT", flat_script,
+            self.chain.chain_id, self.cpartition.num_tls_segments())
 
         return script
 
