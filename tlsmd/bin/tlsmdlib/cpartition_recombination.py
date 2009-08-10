@@ -12,7 +12,7 @@
 ##         RecombineIndependentTLSSegments()
 ##         CrossChainRecombineIndependentTLSSegments()
 
-## Python
+## Python modules
 import math
 import numpy
 
@@ -76,7 +76,9 @@ def JoinTLSSegments(tls1, tls2, chain, tlsdict):
     """
 
     assert tls1.chain_id == tls2.chain_id
-    segment_ranges = join_segment_ranges(chain, tls1.segment_ranges, tls2.segment_ranges)
+    segment_ranges = join_segment_ranges(chain, 
+                                         tls1.segment_ranges, 
+                                         tls2.segment_ranges)
     tls = opt_containers.TLSSegment(chain_id = tls1.chain_id,
                                     segment_ranges = segment_ranges,
                                     residual = tlsdict["residual"],
@@ -170,7 +172,9 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
         ## float(residual_delta),
         ## tls1=A:16-75,  # <-example
         ## tls2=A:76-116, # <-example
-        ## tls1+tls2 => (A:16-75; A:76-116) # produce these types of "TLS SEGMENT RECOMBINATION" in 'log.txt'
+        ## Produce the following type of "TLS SEGMENT RECOMBINATION" in
+        ## 'log.txt':
+        ## tls1+tls2 => (A:16-75; A:76-116)
         ## tlsdict={'residual',
         ##          'num_residues', 'num_atoms',
         ##          'it':float,
@@ -190,11 +194,13 @@ def ChainPartitionRecombination(cpartition, num_return = 1):
             ## "(A:16-26)(A:27-61; 70-75)(A:62-69)(A:76-94)(A:95-105)(A:106-116)  5.10( 5.09) 6"
             ## For fields having double segment, e.g., "(A:27-61; 70-75)":
             if tls == tls1:
-                ## Creates the _first_ part of, e.g., "(A:27-61; 70-75)". I.e., "A:27-61"
+                ## Creates the _first_ part of, e.g., 
+                ##    "(A:27-61; 70-75)" -> "A:27-61"
                 combined_cp.add_tls_segment(tls12)
                 continue
             if tls == tls2:
-                ## Creates the _last_ part of, e.g., "(A:27-61; 70-75)". I.e., "70-75"
+                ## Creates the _last_ part of, e.g.,
+                ##    "(A:27-61; 70-75)" -> "70-75"
                 continue
             ## For fields _not_ having double segment, e.g., "(A:16-26)":
             combined_cp.add_tls_segment(tls.copy())
@@ -220,7 +226,7 @@ def ExtendRecombinationTree(ptree, depth, width):
 
 
 def ChainPartitionRecombinationOptimization(chain):
-    console.debug_stdoutln(">Entering: cpartition_recombination.py->ChainPartitionRecombinationOptimization()...") ## DEBUG
+    console.debug_stdoutln(">cpartition_recombination.py->ChainPartitionRecombinationOptimization()")
 
     visited = {}
 
@@ -230,8 +236,8 @@ def ChainPartitionRecombinationOptimization(chain):
         ntls_best[ntls] = cpartition
         orig_best[ntls] = cpartition
 
-    ## NOTE: Example output:
-    #for k,v in cpartition.iteritems(): console.stdoutln("cpartition=%s : %s"%(k,v)) ## DEBUG
+    ## DEBUG: Example output:
+    #for k,v in cpartition.iteritems(): console.stdoutln("cpartition=%s : %s"%(k,v))
     ## ntls_best=[1, 2, 3, 4]
     ## orig_best=[1, 2, 3, 4]
     ## ntls_best{KEYS : VALUES}=
@@ -275,10 +281,11 @@ def ChainPartitionRecombinationOptimization(chain):
                 ## ptree.cp = "(A:16-26)(A:27-61)(A:62-74; 95-116)(A:75-94)"
                 ## ptree.cp.residual_delta = "0.00150017006854"
                 if depth == max_depth:
-                    if best_at_depth is None or ptree.cp.residual_delta < best_at_depth.cp.residual_delta:
+                    if best_at_depth is None or \
+                        ptree.cp.residual_delta < best_at_depth.cp.residual_delta:
                         best_at_depth = ptree
 
-                tmp_ntls = ptree.cp.num_tls_segments() ## E.g., "3" (integer value)
+                tmp_ntls = ptree.cp.num_tls_segments() ## (integer value)
 
                 if not visited.has_key(ptree):
                     visited[ptree] = True
@@ -290,7 +297,8 @@ def ChainPartitionRecombinationOptimization(chain):
                         best_rmsd = "-----"
 
                     ## E.g., "(A:2-11; 18-23; 39-52; 58-95)(A:12-17; 24-38; 53-57)  5.42( 4.98) 2"
-                    console.stdoutln("%s %5.2f(%s) %d" % (ptree.cp, ptree.cp.rmsd_b(), best_rmsd, tmp_ntls)) ## LOGLINE
+                    console.stdoutln("%s %5.2f(%s) %d" % (
+                        ptree.cp, ptree.cp.rmsd_b(), best_rmsd, tmp_ntls))
 
                     ## NOTE: Example output:
                     ## cpartition="(A:1-9)(A:21-30)(A:31-50)"
@@ -300,7 +308,8 @@ def ChainPartitionRecombinationOptimization(chain):
                     ##    1.19667217259     2.44700956714     2.44363045774
                     ##    2.44700956714     1.90000136951     2.93313261105
                     ##    2.44363045774     2.93313261105     1.76763623176"
-                    ## NOTE: The above are the same values found in 'xxxx_CHAINa_NTLSn_RECOMBINATION.txt' files
+                    ## NOTE: The above are the same values found in
+                    ##     'xxxx_CHAINa_NTLSn_RECOMBINATION.txt' files
                     ## segment_ranges = segment_ranges,
                     ## residual = tlsdict["residual"],
                     ## method = tls1.method,
@@ -309,7 +318,8 @@ def ChainPartitionRecombinationOptimization(chain):
 
                 if ntls_best.has_key(tmp_ntls):
                     if ptree.cp.residual() < ntls_best[tmp_ntls].residual():
-                        ntls_best[tmp_ntls] = ptree.cp ## E.g., "(A:16-61)(A:62-74; 95-116)(A:75-94)"
+                        ## E.g., ptree.cp="(A:16-61)(A:62-74; 95-116)(A:75-94)"
+                        ntls_best[tmp_ntls] = ptree.cp
                 else:
                     ntls_best[tmp_ntls] = ptree.cp
 
