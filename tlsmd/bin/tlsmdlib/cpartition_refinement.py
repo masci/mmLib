@@ -15,7 +15,6 @@ from mmLib import Constants, Structure, FileIO
 import const
 import conf
 import console
-import tree
 import opt_containers
 
 
