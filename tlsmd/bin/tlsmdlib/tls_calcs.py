@@ -16,8 +16,8 @@ from mmLib import Constants, TLS, FileIO
 
 def create_fractional_residue_number(res_num):
     """Converts insertion residues to fractional residue numbers.
-       E.g., "5A" -> "5.0"
-       This is so gnuplot can handle x-axis number values.
+    E.g., "5A" -> "5.0"
+    This is so gnuplot can handle x-axis number values.
     """
     ## TODO: Figure out a better way to handle insertion residues, 2008-12-03
 
@@ -127,7 +127,8 @@ def calc_rmsd_tls_biso(tls_group):
     return rmsd
 
 def calc_mean_biso_obs(chain):
-    """Calculates the mean B value per residue in the chain (as observed in the input structure).
+    """Calculates the mean B value per residue in the chain (as observed in 
+    the input structure).
     """
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
@@ -150,8 +151,8 @@ def calc_mean_biso_obs(chain):
 
 
 def calc_mean_biso_tls(chain, cpartition):
-    """Calculated the mean B value per residue in the chain
-    as calculated in the chain optimization.
+    """Calculated the mean B value per residue in the chain (as calculated in 
+    the chain optimization).
     """
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
@@ -209,6 +210,20 @@ def calc_residue_mean_rmsd(chain, cpartition):
 
                 num_atoms += 1
 
+                ##==============================================================
+                ##<DEBUG>
+                ## Equation:
+                ##u_tls = T + (
+                ##        L[0,0]*(zz+yy) + L[1,1]*(xx+zz) + L[2,2]*(xx+yy)
+                ##        - 2.0*L[0,1]*x*y - 2.0*L[0,2]*x*z - 2.0*L[1,2]*y*z
+                ##        + 2.0*S[0]*z + 2.0*S[1]*y + 2.0*S[2]*x) / 3.0
+                ##    0   1   2
+                ## 0 0,0 0,1 0,2
+                ## 1 1,0 1,1 1,2
+                ## 2 2,0 2,1 2,2
+                ##</DEBUG>
+                ##==============================================================
+
                 b_iso_tls = Constants.U2B * TLS.calc_itls_uiso(T, L, S, atm.position - O)
                 delta = atm.temp_factor - b_iso_tls
                 msd_sum += delta**2
@@ -223,7 +238,7 @@ def calc_residue_mean_rmsd(chain, cpartition):
     return cmtx
 
 def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
-    """Use TLS model + Uiso for each atom.  Output xyzout with the
+    """Use TLS model + Uiso for each atom. Output xyzout with the
     residual Uiso only.
     """
     ## load structure
@@ -313,8 +328,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
-       Use TLS model + Uiso for each atom.  Output xyzout with the
-       residual Uiso only.
+    Use TLS model + Uiso for each atom. Output xyzout with the residual 
+    Uiso only.
     """
     ## load structure
     struct = FileIO.LoadStructure(fil = xyzin)
@@ -383,7 +398,8 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
             numpy.transpose(TR),
             numpy.dot(T, TR))
 
-        ## reset the TLS tensor values in the TLSDesc object so they can be saved
+        ## reset the TLS tensor values in the TLSDesc object so they can 
+        ## be saved
         tls_group.tls_desc.set_tls_group(tls_group)
 
         ## set atm.temp_factor
