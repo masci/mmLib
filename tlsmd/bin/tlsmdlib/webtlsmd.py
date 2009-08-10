@@ -114,7 +114,8 @@ def html_job_nav_bar(job_id):
 
     ## tarball link
     if os.path.isfile(tarball):
-        x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (tarball_url)
+        x += '<h3>Download <a href="%s">Local Copy of TLSMD Analysis output (tarball)</a></h3>' % (
+            tarball_url)
 
     x += '</center>'
     x += '<br/>'
@@ -410,7 +411,8 @@ def html_program_settings_table(fdict):
 
          '<td valign="top" class="l">',
          '<fieldset><legend>Plot Output Format</legend>',
-         '<div style="font-size:xx-small">Select the output format for plots.<br/>SVG works with the Adobe plugin and Firefox 1.5+.</div>',
+         '<div style="font-size:xx-small">Select the output format for plots.',
+         '<br/>SVG works with the Adobe plugin and Firefox 1.5+.</div>',
          '<p><label>',
          '<input name="plot_format" type="radio" value="PNG" tabindex="35" checked="checked" />',
          'PNG Images</label></p>',
@@ -466,7 +468,8 @@ def html_program_settings_table(fdict):
          ## select number of partitions per chain
          '<td valign="top" class="l">',
          '<fieldset><legend>Set number of partitions/chain</legend>',
-         '<div style="font-size:xx-small">default/max = %s</div><br/>' % (conf.NPARTS),
+         '<div style="font-size:xx-small">default/max = %s</div><br/>' % (
+         conf.NPARTS),
          '<p>',
          '<label>Maximum number of segments: </label>',
          '<input name="nparts" type="text" size="2" maxlength="2" value="%s" />' % (
@@ -537,7 +540,7 @@ def html_job_info_table(fdict):
     x  = ''
     x += '<center>'
 
-    x += '<table border="0" cellpadding="3" width="100%" class="explore_table">'
+    x += '<table class="explore_table">'
 
     ## user/email/passcode/structure name
     x += '<tr class="explore_table_head">'
@@ -732,9 +735,13 @@ def html_job_info_table(fdict):
         x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
 
         ## Job ID, user, passwd
-        x += '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index"))
+        x += '<input type="hidden" name="page" value="%s" />' % (
+            fdict.get("page", "index"))
         x += '<input type="hidden" name="edit_form" value="TRUE" />'
-        x += '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"])
+        x += '<input type="hidden" name="job_id" value="%s" />' % (
+            fdict["job_id"])
+        #x += '<input type="hidden" name="user" value="%s" />' % (fdict["user"])
+        #x += '<input type="hidden" name="passwd" value="%s" />' % (fdict["passwd"])
 
         x += '<tr>'
         x += '<td colspan="3" class="l">'
@@ -824,6 +831,8 @@ def extract_job_edit_form(form):
         return False
 
     mysql.job_set_submit_time(job_id, time.time())
+
+    ## TODO: Immediately create job dir + log.txt + ANALYSIS dir, 2009-05-26
 
     if form.has_key("private_job"):
         mysql.job_set_private_job(job_id, "1") ## 1 = True
@@ -941,10 +950,10 @@ class Page(object):
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
-        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
-        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">'
+        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen" />'
+        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print" />'
         if redirect != None:
-            x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
+            x += '<meta http-equiv="REFRESH" content="3; URL=%s" />' % (redirect)
         x += '</head>'
         x += '<body><div id="page">'
         return x
@@ -957,7 +966,8 @@ class Page(object):
 
     def html_foot(self):
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last Modified %s' % (const.VERSION, const.RELEASE_DATE),
+             '<p><small><b>Version %s</b> Last Modified %s' % (
+             const.VERSION, const.RELEASE_DATE),
              '</small></p>',
              '</center>',
              '</div></body></html>']
@@ -977,7 +987,7 @@ class ErrorPage(Page):
              html_title(title),
              html_nav_bar(),
              '<br/>',
-             '<center><p class="perror">Error<br/>' ]
+             '<center><p class="perror">Error<br/>']
 
         if self.text is not None:
             l.append(self.text)
@@ -1011,6 +1021,9 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
+        ## FIXME The following link should only point to pdb.org if it is a
+        ## real PDBid, 2008-02-20
+        #return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id)
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -1018,8 +1031,8 @@ class QueuePage(Page):
              '<html>',
              '<head>',
              '  <title>%s</title>' % (title),
-             '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
-             '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
+             '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen" />',
+             '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print" />',
              '</head>',
              '<body><div id="page">']
 
@@ -1077,8 +1090,9 @@ class QueuePage(Page):
         return "".join(l)
 
     def explore_href(self, job_id):
-        """QueuePage
+        """Returns the URL of the job_id.
         """
+        ## class QueuePage()
         jdict = mysql.job_get_dict(job_id)
 
         if self.admin:
@@ -1112,8 +1126,9 @@ class QueuePage(Page):
             page, job_id, job_id)
 
     def chain_size_string(self, jdict):
-        """QueuePage
+        """Returns a list of chain IDs and their sizes.
         """
+        ## class QueuePage()
         if jdict.has_key("chains") == False:
             return "---"
 
@@ -1140,8 +1155,10 @@ class QueuePage(Page):
         return mysql.job_list()
 
     def pid_exists(self, job_id):
-        """QueuePage
+        """Checks if a PID exists for a given job_id.
+        Returns True if PID exists; False otherwise.
         """
+        ## class QueuePage()
         pid = mysql.job_get_pid(job_id)
         if pid == None:
             ## job PID somehow did not get stored in the database, so return
@@ -1181,9 +1198,9 @@ class QueuePage(Page):
         return total
 
     def html_running_job_table(self, job_list):
-        """QueuePage
+        """Constructs an HTML table of currently running TLSMD jobs.
         """
-
+        ## class QueuePage()
         ## get an array of "running" jobs from the job dictionary
         run_jdict = []
         for jdict in job_list:
@@ -1194,7 +1211,7 @@ class QueuePage(Page):
 
         x = ['<center>',
              '<b>%d Running Jobs</b>' % (len(run_jdict)),
-             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<table class="status_table">',
              '<tr class="status_table_head">',
              '<th>Job ID</th>',
              '<th>Structure ID</th>',
@@ -1233,7 +1250,8 @@ class QueuePage(Page):
             except:
                 progress = 0
             x += '<td class="l"><div class="prog-border">'
-            x += '<div class="prog-bar" style="width: %s%%;"></div>' % (progress)
+            x += '<div class="prog-bar" style="width: %s%%;"></div>' % (
+                progress)
             x += '</div></td>'
             x += '<td class="r">%s</td></tr>' % (hours)
 
@@ -1249,8 +1267,9 @@ class QueuePage(Page):
         return "".join(x)
 
     def html_queued_job_table(self, job_list):
-        """QueuePage
+        """Constructs an HTML table of currently queued TLSMD jobs.
         """
+        ## class QueuePage()
         queued_list = []
         for jdict in job_list:
             if jdict.get("state") == "queued":
@@ -1259,7 +1278,7 @@ class QueuePage(Page):
 
         l = ['<center>',
              '<b>%d Queued Jobs</b>' % (len(queued_list)),
-             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<table class="status_table">',
              '<tr class="status_table_head">',
              '<th>Job ID</th>',
              '<th>Struct ID</th>',
@@ -1293,8 +1312,9 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_completed_job_table(self, job_list):
-        """QueuePage
+        """Constructs an HTML table of completed TLSMD jobs.
         """
+        ## class QueuePage()
         completed_list = []
         for jdict in job_list:
             if jdict.get("state") in ["completed",
@@ -1307,9 +1327,10 @@ class QueuePage(Page):
                                       "defunct"]:
                 completed_list.append(jdict)
 
-        l = ['<center><b>%d Completed Jobs</b></center>' % (len(completed_list)),
+        l = ['<center><b>%d Completed Jobs</b></center>' % (
+             len(completed_list)),
              '<center>',
-             '<table border="0" cellpadding="3" width="100%" class="status_table">',
+             '<table class="status_table">',
              '<tr class="status_table_head">',
              '<th>Job ID</th>',
              '<th>Struct ID</th>',
@@ -1377,8 +1398,9 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_limbo_job_table(self, job_list):
-        """QueuePage
+        """Constructs an HTML table of those TLSMD jobs currently in limbo.
         """
+        ## class QueuePage()
         limbo_list = []
         for jdict in job_list:
             if jdict.get("state") not in ["completed",
@@ -1397,7 +1419,7 @@ class QueuePage(Page):
         x  = ''
         x += '<center>'
         x += '<b>Partially Submitted Jobs</b>'
-        x += '<table border="0" width="100%" class="status_table">'
+        x += '<table class="status_table">'
         x += '<tr class="status_table_head">'
         x += '<th>Job ID</th>'
         x += '<th>Struct ID</th>'
@@ -1617,10 +1639,10 @@ class Submit1Page(Page):
              '</tr>',
              '</center>',
              '</table>',
-             '<br/><i><font color=red>TLSMD requires crystallographically refined B factors.',
+             '<br/><span class="warning">TLSMD requires crystallographically refined B factors.',
              '<br/>Please do not submit NMR structures, theoretical models, ',
              '<br/>or any PDB file with unrefined Bs',
-             '</font></i>',
+             '</span>',
 
              self.html_foot()]
 
@@ -1782,6 +1804,7 @@ class Submit3Page(Page):
         """Checks for any "other" problems with the user-selected chains.
         """
         ## TODO: Post-sanity checks, 2009-01-08
+        #sanity = self.form["pdbfile"].value
         chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
         ## E.g.,
@@ -1790,7 +1813,7 @@ class Submit3Page(Page):
         # chain_id: A
         # length: 39
         # desc: Chain A (39 Amino Acid Residues)
-        sum = '<table border="0" cellpadding="3" width="100%" class="status_table">'
+        sum = '<table class="status_table">'
         sum += '<tr class="status_table_head">'
         sum += '<th>Chain<th>Analyze</th><th>Residues</th>'
         sum += '<th>Ignored residues/atoms</th>'
@@ -1876,9 +1899,6 @@ class SubmitPDBPage(Page):
         r = check_upload(job_id, ln)
         if r != '':
             raise SubmissionException(str(r))
-
-        #ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        #mysql.job_set_remote_addr(job_id, ip_addr)
 
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary(pdbfile))
         if result != "":
