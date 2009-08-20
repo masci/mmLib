@@ -324,9 +324,59 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
     """Reads TLS descriptions from the REMARK records in PDB files.  These
     records are only written by REFMAC5.
     """
+
+    ##=========================================================================
+    ## REFMAC5 input format from REMARK-3 records in PDB header:
+    ##REMARK   3  TLS DETAILS
+    ##REMARK   3   NUMBER OF TLS GROUPS  : 3
+    ##REMARK   3
+    ##REMARK   3   TLS GROUP : 1
+    ##REMARK   3    NUMBER OF COMPONENTS GROUP : 1
+    ##REMARK   3    COMPONENTS        C SSSEQI   TO  C SSSEQI
+    ##REMARK   3    RESIDUE RANGE :   A    23        A   106
+    ##REMARK   3    ORIGIN FOR THE GROUP (A):  43.3300  61.2750  -0.1400
+    ##REMARK   3    T TENSOR
+    ##REMARK   3      T11:   0.0072 T22:  -0.1166
+    ##REMARK   3      T33:  -0.1198 T12:  -0.0189
+    ##REMARK   3      T13:   0.0133 T23:   0.0079
+    ##REMARK   3    L TENSOR
+    ##REMARK   3      L11:   1.4119 L22:   1.2835
+    ##REMARK   3      L33:   2.0809 L12:   0.3942
+    ##REMARK   3      L13:   0.4458 L23:   0.8102
+    ##REMARK   3    S TENSOR
+    ##REMARK   3      S11:   0.0511 S12:  -0.0559 S13:   0.0504
+    ##REMARK   3      S21:  -0.0142 S22:  -0.0301 S23:  -0.2120
+    ##REMARK   3      S31:  -0.0319 S32:   0.2292 S33:  -0.0211
+    ##=========================================================================
+    ## PHENIX input format from REMARK-3 records in PDB header:
+    ##REMARK   3  TLS DETAILS
+    ##REMARK   3   NUMBER OF TLS GROUPS  : 6
+    ##REMARK   3   TLS GROUP : 1
+    ##REMARK   3    SELECTION: CHAIN A AND RESID -2:94
+    ##REMARK   3    ORIGIN FOR THE GROUP (A):  27.6759   1.8796  16.0823
+    ##REMARK   3    T TENSOR
+    ##REMARK   3      T11:   0.7434 T22:   0.8763
+    ##REMARK   3      T33:   0.5338 T12:   0.0946
+    ##REMARK   3      T13:   0.0705 T23:  -0.0385
+    ##REMARK   3    L TENSOR
+    ##REMARK   3      L11:   5.3788 L22:   3.0831
+    ##REMARK   3      L33:   2.9430 L12:   0.9633
+    ##REMARK   3      L13:  -2.1458 L23:   0.6345
+    ##REMARK   3    S TENSOR
+    ##REMARK   3      S11:   0.0744 S12:   0.1555 S13:  -1.1965
+    ##REMARK   3      S21:   0.1582 S22:  -0.3137 S23:  -0.2880
+    ##REMARK   3      S31:   0.4884 S32:   0.4111 S33:   0.0007
+    ##=========================================================================
+    ## The important differences are:
+    ## REFMAC5: 
+    ##REMARK   3    RESIDUE RANGE :   A    23        A   106
+    ## PHENIX:
+    ##REMARK   3    SELECTION: CHAIN A AND RESID -2:94
+
     pdb_regex_dict = {
         "group":       re.compile("\s*TLS GROUP :\s+(\d+)\s*$"),
-        "range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(\w+)\s+(\w)\s+(\w+)\s*$"),
+        "range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(-?\w+)\s+(\w)\s+(-?\w+)\s*$"),
+        "phenix_range":re.compile("\s*SELECTION:\s+CHAIN\s+(\w+)\s+AND\s+RESID\s+(-?\w+):(-?\w+)\s*$"),
         "origin":      re.compile("\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:([\s\-\.0-9]+)$"),
         "t11_t22":     re.compile("\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
         "t33_t12":     re.compile("\s*T33:\s*(\S+)\s+T12:\s*(\S+)\s*$"),
@@ -335,7 +385,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
         "l33_l12":     re.compile("\s*L33:\s*(\S+)\s+L12:\s*(\S+)\s*$"),
         "l13_l23":     re.compile("\s*L13:\s*(\S+)\s+L23:\s*(\S+)\s*$"),
         "s11_s12_s13": re.compile("\s*S11:\s*(\S+)\s+S12:\s*(\S+)\s+S13:\s*(\S+)\s*$"),
-        "s21_s22_s23": re.compile( "\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
+        "s21_s22_s23": re.compile("\s*S21:\s*(\S+)\s+S22:\s*(\S+)\s+S23:\s*(\S+)\s*$"),
         "s31_s32_s33": re.compile("\s*S31:\s*(\S+)\s+S32:\s*(\S+)\s+S33:\s*(\S+)\s*$")
         }
 
@@ -460,6 +510,15 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             try:
                 self.tls_desc.add_range(
                     chain_id1, frag_id1, chain_id2, frag_id2, "")
+            except AttributeError:
+                raise TLSFileFormatError()
+
+        ## Allow for PHENIX's unique ranges
+        elif re_key == "phenix_range":
+            (chain_id1, frag_id1, frag_id2) = mx.groups()
+            try:
+                self.tls_desc.add_range(
+                    chain_id1, frag_id1, chain_id1, frag_id2, "")
             except AttributeError:
                 raise TLSFileFormatError()
 
@@ -727,17 +786,17 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
 
-###########################################################################################################################
+################################################################################
 ## START: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 class TLSFileFormatPHENIXOUT(TLSFileFormat):
     """Write PHENIX-TLSOUT files.
     """
-    #TLS
-    #RANGE  'A   8.' 'A  39.' ALL
-    #ORIGIN    45.1700  23.3521 121.5435
-    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
-    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
-    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    ##TLS
+    ##RANGE  'A   8.' 'A  39.' ALL
+    ##ORIGIN    45.1700  23.3521 121.5435
+    ##T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    ##L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    ##S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
         "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
@@ -877,12 +936,20 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
 class TLSFileFormatPHENIX(TLSFileFormat):
     """Read/Write PHENIX TLSIN/TLSOUT files.
     """
-    #TLS
-    #RANGE  'A   8.' 'A  39.' ALL
-    #ORIGIN    45.1700  23.3521 121.5435
-    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
-    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
-    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    ##TLS
+    ##RANGE  'A   8.' 'A  39.' ALL
+    ##ORIGIN    45.1700  23.3521 121.5435
+    ##T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    ##L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    ##S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    ##
+    ## Needs to look something like the following (from Pavel):
+    ##refinement.refine {
+    ## adp {
+    ##  tls="(chain A and resid 1:155)"
+    ##  tls="(chain B and resid 0:155)"
+    ##  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
+    ## }
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
         "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
@@ -891,14 +958,6 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
         }
-
-    ## Converts the above into the following (example):
-    #refinement.refine {
-    # adp {
-    #  tls="(chain A and resid 1:155)"
-    #  tls="(chain B and resid 0:155)"
-    #  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
-    # }
 
     def convert_frag_id_load(self, frag_id):
         """Converts the residue sequence code to a mmLib fragment_id.
@@ -1030,7 +1089,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
 ##
 
 def solve_TLS_Ab(A, b):
-    """Sove a overdetermined TLS system by singular value decomposition.
+    """Solve an overdetermined TLS system by singular value decomposition.
     """
     ## solve by SVD
     U, W, Vt = linalg.singular_value_decomposition(A, full_matrices=0)
