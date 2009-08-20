@@ -492,6 +492,18 @@ def library_is_nucleic_acid(res_name):
     return mdesc.is_nucleic_acid()
 
 
+def library_is_standard_residue(res_name):
+    """Returns True if the res_name is a standard amino or nucleic acid.
+    """
+    assert isinstance(res_name, str)
+
+    mdesc = library_get_monomer_desc(res_name)
+    if mdesc is None:
+        return False
+
+    return mdesc.is_standard_residue()
+
+
 def library_is_water(res_name):
     """Return True if the res_name is water.
     """
