@@ -304,8 +304,8 @@ def calc_torsion_angle(a1, a2, a3, a4):
 
     angle = math.acos(scalar_product)
 
-#    if direction<0.0:
-#        angle = -angle
+    #if direction<0.0:
+    #    angle = -angle
 
     return angle
 
@@ -364,6 +364,18 @@ def calc_anisotropy(U):
     """
     evals = linalg.eigenvalues(U)
     return min(evals) / max(evals)
+
+def diff_trace_UV(U, V):
+    """Calculates the trace difference of anisotropic ADP tensors U and V.
+    """
+    return (numpy.trace(U) - numpy.trace(V))/ 3.0
+
+def sum_square_diff(U, V):
+    """Calculates the sum of the differences of anisotropic ADP tensors
+    U and V squared.
+    """
+    return numpy.sum(numpy.subtract(U,V)**2)
+
 
 ##
 ## Calculations on groups of atoms
