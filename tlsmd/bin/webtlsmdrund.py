@@ -127,12 +127,6 @@ def log_error(err):
     ln += "ERROR: %s" % (err)
     log_write(ln)
 
-def get_cdict(chains, chain_id):
-    for cdict in chains:
-        if chains["chain_id"] == chain_id:
-            return cdict
-    return None
-
 def run_tlsmd(mysql, jdict):
     """main tlsmd fork/exec routine"""
     tlsmd = jdict["tlsmd"]
@@ -172,8 +166,6 @@ def run_job(mysql, jdict):
     log_job_start(jdict["tlsmd"])
 
     mysql.job_set_run_time_begin(job_id, time.time())
-
-    old_dir = os.getcwd()
 
     ## change to the job directory, and run TLSMD
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"])
@@ -384,9 +376,12 @@ def is_pid_running(full_cmd):
         p = Popen(full_cmd, shell=True, stdout=PIPE)
         output = p.communicate()[0]
         if re.match('.*defunct.*', output):
-            return False ## Sometimes python goes <defunct> on a PID. Job no longer running.
+            ## Sometimes python goes <defunct> on a PID. Job no longer running.
+            return False
         elif output:
-            return True ## If anything besides "defunct" is returned from ps, job is still running
+            ## If anything besides "defunct" is returned from ps,
+            ## job is still running
+            return True
     except Exception, e:
         print >>sys.stderr, "Execution failed:", e
         return False
