@@ -74,7 +74,7 @@ def analysis_main(struct_path, opt_dict):
     ## get source filename split up for use in
     ## constructing output file names
     struct_path         = os.path.realpath(struct_path)
-    
+
     directory, filename = os.path.split(struct_path)
     basename, ext       = os.path.splitext(filename)
 
@@ -114,7 +114,7 @@ def analysis_main(struct_path, opt_dict):
         tpath, tchain_id = opt_dict["-t"].split(":")
         conf.globalconf.target_struct_path = tpath
         conf.globalconf.target_struct_chain_id = tchain_id
-        
+
     if opt_dict.has_key("-v"):
         conf.globalconf.verbose = True
 
@@ -132,7 +132,7 @@ def analysis_main(struct_path, opt_dict):
 
     if opt_dict.has_key("-i"):
         conf.globalconf.struct_id = opt_dict["-i"]
- 
+
     ## set the TLS model to use
     if opt_dict.has_key("-m"):
         tls_model = opt_dict.get("-m").upper()
@@ -210,10 +210,10 @@ if __name__ == "__main__":
 
     try:
         analysis_main(path, opt_dict)
-	print "completed"
+        print "completed"
     except KeyboardInterrupt:
         print "Killed"
     except:
-	print "Died"
+        print "Died"
 
     sys.exit(0)
