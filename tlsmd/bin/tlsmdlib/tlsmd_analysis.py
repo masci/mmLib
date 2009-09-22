@@ -189,7 +189,6 @@ def LoadStructure(struct_source):
     else:
         raise ValueError
 
-    ## TODO: Is this the same load struct used during the sanity checks? 2009-05-28
     ## load struct
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
     job_dir = str(os.path.dirname(str(struct_source)))
@@ -323,9 +322,9 @@ def IndependentTLSSegmentOptimization(analysis):
         chain.partition_collection.struct = analysis.struct
 
 def RecombineIndependentTLSSegments(analysis):
-    console.endln() ## LOGLINE
+    console.endln()
     console.debug_stdoutln(">tlsmd_analysis.py->RecombineIndependentTLSSegments()")
-    console.stdoutln("TLS SEGMENT RECOMBINATION") ## LOGLINE
+    console.stdoutln("TLS SEGMENT RECOMBINATION")
     for chain in analysis.chains:
         ## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
