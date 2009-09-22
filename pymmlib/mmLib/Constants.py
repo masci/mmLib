@@ -20,3 +20,8 @@ B2U = 1.0 / (8.0 * PI2)
 
 ## Path to render (Raster3D) binary
 RENDER = "/usr/local/bin/render"
+
+AMINO_BACKBONE   = ["N", "CA", "C"]
+NUCLEIC_BACKBONE = ["P", "O5'", "C5'", "C4'", "C3'", "O3'",
+                    "P", "O5*", "C5*", "C4*", "C3*", "O3*"]
+BACKBONE_ATOMS = AMINO_BACKBONE + NUCLEIC_BACKBONE
