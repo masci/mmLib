@@ -176,7 +176,7 @@ class TLSConformationPredctionHypothosis(object):
         ## fit the isotropic TLS model to the group
         evals, evecs = numpy.linalg.eig(tls.tls_group.itls_L)
 
-        for i in (0,1,2):
+        for i in (0, 1, 2):
             eval = evals[i]
             evec = evecs[i]
 
