@@ -279,6 +279,10 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         if rec.has_key("tempFactor"):
             atm_map["temp_factor"] = rec["tempFactor"]
 
+        ## columns 67 and 68. Can be used for anything.
+        if rec.has_key("column6768"):
+            atm_map["column6768"] = rec["column6768"]
+
     def process_HETATM(self, rec):
         self.process_ATOM(rec)
 
@@ -1242,6 +1246,9 @@ class PDBFileBuilder(object):
 
         if atm.temp_factor is not None:
             atom_rec["tempFactor"] = atm.temp_factor
+
+        if atm.column6768 is not None:
+            atom_rec["column6768"] = atm.column6768
 
         if atm.charge is not None:
             atom_rec["charge"] = atm.charge
