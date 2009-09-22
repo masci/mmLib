@@ -312,9 +312,6 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##======================================================================
 
         ## "Analysis of TLS Group n Chain Segments" table
-        ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
-        ## off-diagonal matrix values? The "RMSD B Values of Combined TLS Groups"
-        ## values.
         l += ['<td align="center" valign="middle"><img src="%s" alt="%s"/></td>' % (
              cpath, tls.color.name),
              ## Input Structure ================================================
@@ -359,9 +356,10 @@ table.matrix {
 td.matrix {
     padding:5px;font-size:x-small;
     }
-td.l {width:33%;text-align:left;}
-td.c {width:33%;text-align:center;}
-td.r {width:33%;text-align:right;}
+td.l {text-align:left;}
+td.c {text-align:center;}
+td.r {text-align:right;}
+td.l, td.c, td.r { width:33%; }
 h2 {text-align:center;}
 ul { list-style-type:none; margin:0px; padding:0px; }
 li { line-height:20px }
@@ -450,6 +448,10 @@ class HTMLSummaryReport(Report):
         self.struct_id = tlsmd_analysis.struct_id
         self.struct_path = "%s.pdb" % (self.struct_id)
         self.job_id = conf.globalconf.job_id
+
+        self.flatfile_name = "%s/%s/%s/%s.dat" % (
+            conf.TLSMD_WWW_ROOT, "jobs", conf.globalconf.job_id,
+            conf.globalconf.job_id)
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
@@ -744,6 +746,10 @@ class HTMLReport(Report):
         self.pages_chain_motion_analysis = []
         self.page_refinement_prep        = None
 
+        self.flatfile_name = "%s/%s/%s/%s.dat" % (
+            conf.TLSMD_WWW_ROOT, "jobs", conf.globalconf.job_id,
+            conf.globalconf.job_id)
+
         self.orient = {}
         self.r3d_header_file = None
 
@@ -1037,7 +1043,6 @@ class HTMLReport(Report):
             #    height    = ori["pheight"],
             #    bg_color  = "White")
         except:
-            ## TODO: Create "warning_stdoutln()" in console.py, 2009-07-16
             console.stdoutln("     Warning: failed to find orientation for graphics output")
             print console.formatExceptionInfo()
             pass
@@ -2023,6 +2028,7 @@ class HTMLReport(Report):
                   '</table>']
 
         l.append(self.html_foot())
+
         return "".join(l)
 
     def write_refinement_prep(self):
