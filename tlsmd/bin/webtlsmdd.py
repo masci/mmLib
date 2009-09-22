@@ -43,155 +43,6 @@ def fatal(text):
     raise SystemExit
 
 
-class JobDatabase(object):
-    ## TODO: Most of the following is never used, 2009-06-19
-    def __init__(self, db_file):
-        self.db_file = db_file
-        self.db = bsddb.hashopen(self.db_file, "c")
-
-        if self.retrieve_globals() is None:
-            self.init_globals()
-
-    def __store_dict(self, dbkey, dictx):
-        self.db[dbkey] = cPickle.dumps(dictx)
-        self.db.sync()
-
-    def __retrieve_dict(self, dbkey):
-        try:
-            data = self.db[dbkey]
-        except KeyError:
-            return None
-        rdict = cPickle.loads(data)
-        for key, value in rdict.iteritems():
-            if isinstance(rdict, unicode):
-                rdict[key] = ""
-        return rdict
-
-    def init_globals(self):
-        gdict = dict(next_job_num = 1)
-        self.store_globals(gdict)
-
-    def retrieve_globals(self):
-        """Retrieves the globals dictionary from the database or
-        creates one and returns it if one does not exist.
-        """
-        return self.__retrieve_dict("GLOBALS")
-
-    def store_globals(self, gdict):
-        self.__store_dict("GLOBALS", gdict)
-
-    def store_jdict(self, jdict):
-        job_id = jdict["job_id"]
-        assert job_id.startswith("TLSMD")
-        self.__store_dict(job_id, jdict)
-
-    def retrieve_jdict(self, job_id):
-        assert job_id.startswith("TLSMD")
-        return self.__retrieve_dict(job_id)
-
-    def delete_jdict(self, job_id):
-        assert job_id.startswith("TLSMD")
-        if not self.db.has_key(job_id):
-            return False
-        del self.db[job_id]
-        self.db.sync()
-        return True
-
-    def job_exists(self, job_id):
-        return self.db.has_key(job_id)
-
-    def jdict_list(self):
-        """Returns a sorted list of all jdicts in the database
-        """
-        ## retrieve all jdicts from database and 
-        listx = []
-        for dbkey in self.db.keys():
-            if dbkey.startswith("TLSMD"):
-                jdict = self.retrieve_jdict(dbkey)
-
-                job_id = jdict["job_id"]
-
-                if jdict.has_key("job_num"):
-                    job_num = jdict["job_num"]
-                else:
-                    job_nums = job_id[5:]
-                    j = job_nums.find("_")
-                    job_nums = job_nums[:j]
-                    job_num = int(job_nums)
-
-                listx.append((job_num, jdict))
-
-        listx.sort()
-
-        job_list = []
-        for job_num, jdict in listx:
-            job_list.append(jdict)
-
-        return job_list
-
-    def jdict_pdb_list(self):
-        """Returns a sorted list of all jdicts with 'via_pdb' in the database
-        """
-        ## retrieve all jdicts from database with 'via_pdb'
-        listx = []
-        for dbkey in self.db.keys():
-            if dbkey.startswith("TLSMD"):
-                jdict = self.retrieve_jdict(dbkey)
-
-                job_id = jdict["job_id"]
-
-                if jdict.has_key("via_pdb"):
-                    pdb_id = jdict["via_pdb"]
-                else:
-                    continue
-
-                listx.append((pdb_id, jdict))
-
-        listx.sort()
-
-        job_list = []
-        for pdb_id, jdict in listx:
-            job_list.append(jdict)
-
-        return job_list
-
-    def job_new(self):
-        gdict = self.retrieve_globals()
-        job_num = gdict["next_job_num"]
-        gdict["next_job_num"] = job_num + 1
-        self.store_globals(gdict)
-
-        ## assign job_id
-        security_code = misc.generate_security_code()
-        job_id = "TLSMD%d_%s" % (job_num, security_code)
-
-        ## create job dictionary
-        jdict = {}
-        jdict["job_id"] = job_id
-        jdict["job_num"] = job_num
-        self.store_jdict(jdict)
-        return job_id
-
-    def job_data_set(self, job_id, key, value):
-        jdict = self.retrieve_jdict(job_id)
-        if jdict is None:
-            return False
-        jdict[key] = value
-        self.store_jdict(jdict)
-        return True
-
-    def job_data_get(self, job_id, key):
-        jdict = self.retrieve_jdict(job_id)
-        if jdict is None:
-            return ""
-        value = jdict.get(key)
-        if isinstance(value, unicode):
-            return ""
-        if value is None:
-            return ""
-        return value
-
-
 def parse_molauto(infile, outfile):
     """Parses the molauto output to force each chain to have its own unique
        colour. 2008-12-03
@@ -926,8 +777,9 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
     """Override the standard XMLRPC request handler to open the database before
     calling the method.
     """
+    ## TODO: Can this be removed? 2009-06-01
     def handle(self):
-        self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
+        #self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
         return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 
 
