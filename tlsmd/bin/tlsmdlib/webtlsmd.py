@@ -222,8 +222,6 @@ def html_job_edit_form(fdict, pdb=False):
                 x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
                     name, name)
             else:
-                ## TODO: Should value='TRUE' or 'FALSE'? 2009-06-01
-                #x = '<input type="checkbox" id="%s" name="%s" value="TRUE" />' % (
                 x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
                     name, name)
             x += '%s' % desc
@@ -1804,7 +1802,6 @@ class Submit3Page(Page):
         """Checks for any "other" problems with the user-selected chains.
         """
         ## TODO: Post-sanity checks, 2009-01-08
-        #sanity = self.form["pdbfile"].value
         chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
         ## E.g.,
@@ -2035,8 +2032,7 @@ def check_upload(job_id, file):
             ## E.g., Don't allow "100b". Force it to be "100B"
             return "Please change lowercase to uppercase for alternate residue numbers."
         elif line.startswith('ATOM') and (
-            Library.library_is_amino_acid(line[17:20].strip()) or
-            Library.library_is_nucleic_acid(line[17:20].strip())):
+            Library.library_is_standard_residue(line[17:20].strip())):
             num_total += 1
             if float(line[56:60].strip()) < 1.00:
                 ## ignore occupancies < 1.00
