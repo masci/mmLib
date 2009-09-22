@@ -2475,6 +2475,7 @@ class Atom(object):
     Atom.position    - a numpy.array[3] (Numeric Python)
     Atom.occupancy   - [1.0 - 0.0] float 
     Atom.temp_factor - float represting B-style temp factor
+    Atom.column6768  - string value. Can be used for anything.
     Atom.U           - a 6-tuple of the anisotropic values
     Atom.charge      - charge on the atom
     Atom.label_entity_id -
@@ -2503,6 +2504,7 @@ class Atom(object):
         sig_y           = None,
         sig_z           = None,
         temp_factor     = None,
+        column6768      = None,
         sig_temp_factor = None,
         occupancy       = None,
         sig_occupancy   = None,
@@ -2540,6 +2542,7 @@ class Atom(object):
         self.model_id        = model_id
         self.element         = element
         self.temp_factor     = temp_factor
+        self.column6768      = column6768
         self.sig_temp_factor = sig_temp_factor
         self.occupancy       = occupancy
         self.sig_occupancy   = sig_occupancy
@@ -2607,6 +2610,7 @@ class Atom(object):
             position        = copy.deepcopy(self.position),
             sig_position    = copy.deepcopy(self.sig_position),
             temp_factor     = copy.copy(self.temp_factor),
+            column6768      = copy.copy(self.column6768),
             sig_temp_factor = copy.copy(self.sig_temp_factor),
             occupancy       = copy.copy(self.occupancy),
             sig_occupancy   = copy.copy(self.sig_occupancy),
