@@ -73,7 +73,7 @@ def main():
             print "[%s] %10s  Bad submission status" % (t, jdict["job_id"])
 
         mysql.archive_old_jobs(jdict["job_id"])
-        webtlsmdd.remove_job(jdict["job_id"])
+        webtlsmdd.delete_job(jdict["job_id"])
 
 
 if __name__=="__main__":
