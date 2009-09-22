@@ -10,7 +10,7 @@ import sys
 import copy
 
 from mmLib.Structure   import *
-from mmLib.FileLoader  import *
+from mmLib.FileIO  import *
 from tlsmdlib.datafile import *
 
 def prnt_sep():
