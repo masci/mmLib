@@ -72,7 +72,8 @@ class TLSGroupDesc(object):
         """Adds a segment of residues to the TLS group.  Not too sure how to
         handle segments which span chains, so assert on that condition.
         """
-        assert chain_id1 == chain_id2
+        ## XXX: This is a temporary fix, 2009-08-19
+        #assert chain_id1 == chain_id2
         self.range_list.append((chain_id1, frag_id1, chain_id2, frag_id2, selection))
 
     def set_T(self, t11, t22, t33, t12, t13, t23):
@@ -175,7 +176,8 @@ class TLSGroupDesc(object):
         to the range_list definitions.
         """
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
-            assert chain_id1 == chain_id2
+            ## XXX: This is a temporary fix, 2009-08-19
+            #assert chain_id1 == chain_id2
 
             chain1 = struct.get_chain(chain_id1)
             if chain1 is None:
@@ -373,9 +375,10 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
     ## PHENIX:
     ##REMARK   3    SELECTION: CHAIN A AND RESID -2:94
 
+    #"range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(-?\w+)\s+(\w)\s+(-?\w+)\s*$"),
     pdb_regex_dict = {
         "group":       re.compile("\s*TLS GROUP :\s+(\d+)\s*$"),
-        "range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(-?\w+)\s+(\w)\s+(-?\w+)\s*$"),
+        "range":       re.compile("\s*RESIDUE RANGE :\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
         "phenix_range":re.compile("\s*SELECTION:\s+CHAIN\s+(\w+)\s+AND\s+RESID\s+(-?\w+):(-?\w+)\s*$"),
         "origin":      re.compile("\s*ORIGIN\s+FOR\s+THE\s+GROUP\s+[(]A[)]:([\s\-\.0-9]+)$"),
         "t11_t22":     re.compile("\s*T11:\s*(\S+)\s+T22:\s*(\S+)\s*$"),
@@ -786,17 +789,17 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
 
-################################################################################
+###########################################################################################################################
 ## START: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 class TLSFileFormatPHENIXOUT(TLSFileFormat):
     """Write PHENIX-TLSOUT files.
     """
-    ##TLS
-    ##RANGE  'A   8.' 'A  39.' ALL
-    ##ORIGIN    45.1700  23.3521 121.5435
-    ##T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
-    ##L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
-    ##S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
+    #TLS
+    #RANGE  'A   8.' 'A  39.' ALL
+    #ORIGIN    45.1700  23.3521 121.5435
+    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
         "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
@@ -936,20 +939,12 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
 class TLSFileFormatPHENIX(TLSFileFormat):
     """Read/Write PHENIX TLSIN/TLSOUT files.
     """
-    ##TLS
-    ##RANGE  'A   8.' 'A  39.' ALL
-    ##ORIGIN    45.1700  23.3521 121.5435
-    ##T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
-    ##L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
-    ##S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
-    ##
-    ## Needs to look something like the following (from Pavel):
-    ##refinement.refine {
-    ## adp {
-    ##  tls="(chain A and resid 1:155)"
-    ##  tls="(chain B and resid 0:155)"
-    ##  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
-    ## }
+    #TLS
+    #RANGE  'A   8.' 'A  39.' ALL
+    #ORIGIN    45.1700  23.3521 121.5435
+    #T     0.4302   0.5151   0.3667   0.0051   0.0781   0.0212
+    #L     5.4300   5.8590   8.8541  -0.2476  -2.1140  -0.3333
+    #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
         "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
@@ -958,6 +953,14 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
         }
+
+    ## Needs to look something like the following (from Pavel):
+    #refinement.refine {
+    # adp {
+    #  tls="(chain A and resid 1:155)"
+    #  tls="(chain B and resid 0:155)"
+    #  tls="(chain C and (resid 1:68 or resid 79:124 or resid 14:155))"
+    # }
 
     def convert_frag_id_load(self, frag_id):
         """Converts the residue sequence code to a mmLib fragment_id.
@@ -1135,8 +1138,8 @@ def set_TLSiso_b(b, i, Uiso, w):
     b[i] = w * Uiso
 
 def set_TLSiso_A(A, i, j, x, y, z, w):
-    """Sets the one row of matrix A starting at A[i,j] with the istropic
-    TLS model coefficents for a atom located at t position x, y, z with
+    """Sets the one row of matrix A starting at A[i,j] with the isotropic
+    TLS model coefficents for an atom located at t position x, y, z with
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
@@ -1492,7 +1495,7 @@ def calc_Utls(T, L, S, position):
 
 def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
     """Returns the amount of rotational displacement from L
-    for a atom at the given position.
+    for an atom at the given position.
     """
     Lrot     = Gaussian.GAUSS3C[prob] * calc_rmsd(Lval)
     Lorigin  = cor + Lrho
@@ -1505,7 +1508,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
 
 def set_TLS_A(A, i, j, x, y, z, w):
     """Sets the six rows of matrix A starting at A[i,j] with the TLS
-    coefficents for a atom located at position x,y,z with least-squares
+    coefficents for an atom located at position x,y,z with least-squares
     weight w.  Matrix A is filled to row i+6 and column j+20.
     """
     ## use label indexing to avoid confusion!
@@ -2058,7 +2061,7 @@ CA_PIVOT_ATOMS = {
     "GLN": "CA" }
  
 def set_L_A(A, i, j, x, y, z, w):
-    """Sets coefficents of a L tensor in matrix A for a atom at position
+    """Sets coefficents of a L tensor in matrix A for an atom at position
     x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
     Using weight w.
     """
