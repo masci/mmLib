@@ -259,7 +259,7 @@ def RemoveJob(webtlsmdd, job_id):
 
 def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
-       the next step. It will eventually have a state "warnings"
+    the next step. It will eventually have a state "warnings"
     """
     ## FIXME: Doesn't seem to work, 2009-06-12
     if not mysql.job_exists(job_id):
@@ -280,8 +280,8 @@ def SignalJob(webtlsmdd, job_id):
     return True
 
 def KillJob(webtlsmdd, job_id):
-    """Kills jobs in state "running" by pid and moves them to the 
-       "Completed Jobs" section as "killed" state
+    """Kills jobs in state "running" by pid and moves them to the
+    "Completed Jobs" section as "killed" state
     """
     ## FIXME: We want to keep the job_id around in order to inform the user
     ## that their job has been "killed", 2009-05-29
@@ -293,14 +293,19 @@ def KillJob(webtlsmdd, job_id):
     if job_dir and os.path.isdir(job_dir):
         try:
             if mysql.job_get_pid(job_id) == None:
+                sys.stderr.write("[WARNING]: Could not find job pid in database for job_id: %s\n" % job_id)
                 return False
             else:
                 pid = int(mysql.job_get_pid(job_id))
+                sys.stderr.write("[NOTE]: Found pid='%s' for job_id: %s\n" % (pid, job_id))
         except:
+            sys.stderr.write("[ERROR]: Could not connect to database for job_id: %s\n" % job_id)
             return False
         try:
             os.kill(pid, SIGHUP)
+            sys.stderr.write("[NOTE]: Killing pid for job_id: %s\n" % job_id)
         except:
+            sys.stderr.write("[ERROR]: Could not kill pid for job_id: %s\n" % job_id)
             return False
 
     return True
@@ -392,6 +397,12 @@ class WebTLSMDDaemon(object):
             KillJob(self, job_id)
         except:
             pass
+        return RemoveJob(self, job_id)
+
+    def delete_job(self, job_id):
+        """Removes/Deletes the job from both the database and working directory.
+        Note that this will only be called for jobs that are no longer running.
+        """
         return RemoveJob(self, job_id)
 
     def signal_job(self, job_id):
