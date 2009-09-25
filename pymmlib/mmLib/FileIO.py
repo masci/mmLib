@@ -22,11 +22,19 @@ class FileIOUnsupportedFormat(Exception):
 class ZCat(object):
     def __init__(self, path):
         self.path = path
+
     def __iter__(self):
-        zcat = popen2.Popen3("/bin/zcat %s" % (self.path))
-        for ln in iter(zcat.fromchild):
+        import subprocess
+        zcat = subprocess.Popen("/bin/zcat %s" % (self.path),
+                                shell=True,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                close_fds=True)
+        for ln in zcat.stdout.readlines():
             yield ln
         zcat.wait()
+
     def readlines(self):
         return iter(self)
 
@@ -44,7 +52,6 @@ def OpenFile(path, mode):
             import gzip
             return gzip.open(path, mode)
         elif ext == ".Z" and mode == "r":
-            import popen2
             return ZCat(path)
         return open(path, mode)
 
