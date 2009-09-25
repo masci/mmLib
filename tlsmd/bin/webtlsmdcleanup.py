@@ -8,18 +8,16 @@
 ## Pyton modules
 import os
 import sys
+import shutil
 import time
-import socket
-import xmlrpclib
 
 ## TLSMD
 from tlsmdlib import const, conf, misc, mysql_support
 
 SECS_IN_DAY = float(60*60*24)
-DELETE_DAYS = 14
+DELETE_DAYS = 120
 
 ## GLOBALS
-webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 mysql = mysql_support.MySQLConnect()
 
 def check_remove(jdict):
@@ -48,6 +46,20 @@ def check_remove(jdict):
 
     return False
 
+def remove_job(job_id):
+    """Removes the job from both the database and working directory.
+    """
+    if not mysql.job_exists(job_id):
+        return False
+
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    if job_dir and os.path.isdir(job_dir):
+        shutil.rmtree(job_dir)
+
+    mysql.delete_jdict(job_id)
+
+    return True
+
 def main():
     t = misc.timestamp()
     print "[%s] WebTLSMD Job Cleanup: Checking database for old jobs to remove." % t
@@ -73,8 +85,14 @@ def main():
             print "[%s] %10s  Bad submission status" % (t, jdict["job_id"])
 
         mysql.archive_old_jobs(jdict["job_id"])
-        webtlsmdd.delete_job(jdict["job_id"])
+
+        try:
+            remove_job(jdict["job_id"])
+        except:
+            print "[%s] ERROR: Could not remove files/directories associated with job_id: %s" % (
+                t, jdict["job_id"])
 
 
 if __name__=="__main__":
     main()
+
