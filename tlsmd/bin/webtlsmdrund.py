@@ -467,7 +467,7 @@ def fetch_and_run_jobs_forever():
                         break
 
         ## Check whether there is a slot free to start a new run
-        if len(running_list) >= conf.MAX_PARALLEL_JOBS:
+        if len(running_list) > conf.MAX_PARALLEL_JOBS:
             time.sleep(5.0)
             continue
 
