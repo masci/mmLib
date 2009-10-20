@@ -160,7 +160,7 @@ def cif_stats(path):
 
 if __name__ == "__main__":
 
-    for pathx in walk_pdb_cif("/home/jpaint/pdb"):
+    for pathx in walk_pdb_cif("/data/tlsmd/pdb"):
 
         if pathx.endswith(".Z") or pathx.endswith(".gz"):
             x = "gunzip %s" % (pathx)
@@ -175,7 +175,7 @@ if __name__ == "__main__":
         (dir, filename) = os.path.split(pathx)
 
         
-        dest = os.path.join("/home/jpaint/pdball", filename)
+        dest = os.path.join("/data/pdb/pdball", filename)
 
         if not os.path.isfile(dest):
             x = "cp %s %s" % (pathx, dest)
