@@ -1997,7 +1997,7 @@ set xlabel 'residue number'
 set grid
 set title 'Distribution of B factors in submitted structure (Å^2)'
 set term png font '<gnuplot_font>' enhanced truecolor
-plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 ? 999 : 0) axes x1y2 w filledcurve lt -1 notitle, \\
+plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 || $2>60.0) ? 999 : 0  axes x1y2 w filledcurve lt -1 notitle, \\
      '<webtmp_path>/<tmpfile>.dat' using 1:2:(1+column(-2)) axes x1y1 with lines lc var title 'B_{mean} per residue', \\
      '<webtmp_path>/<tmpfile>.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\
      0.05 axes x1y2 with lines lc rgb 'red' notitle
@@ -2073,8 +2073,9 @@ def check_upload(job_id, file):
             conf.WEBTMP_PATH, tmpfile)]).wait()
 
         return_string  = "Standard deviation of temperature factors is less "
-        return_string += "than 0.05 for those residues in the shaded regions "
-        return_string += "below:[%s]<br/>" % chain[1]
+        return_string += "than %s or greater than %s for those residues in " % (
+            conf.MIN_STDDEV_BFACT, conf.MAX_STDDEV_BFACT)
+        return_string += "the shaded regions below:<br/>"
         return_string += "<center><img src='%s/%s/%s.png'/></center>" % (
             conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
         return return_string
