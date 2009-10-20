@@ -1762,12 +1762,12 @@ class Submit3Page(Page):
     def complete_submission(self):
         ## check for submission key
         if not self.form.has_key("submit"):
-            raise SubmissionException('Submission Error')
+            raise SubmissionException('Submission Error: Missing end of "submit"')
 
         ## get job_id; verify job exists
         job_id = check_job_id(self.form)
         if job_id is None:
-            raise SubmissionException('Submission Error')
+            raise SubmissionException('Submission Error: Could not assign job_id')
 
         ## make sure the job is in the right state to be submitted
         state = mysql.job_get_state(job_id)
