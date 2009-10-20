@@ -1,6 +1,6 @@
 TARGET  =pdbmodule.so
 INCLUDES=
-CFLAGS 	=-g -I/usr/include/python2.6 -D_UNIX -fPIC
+CFLAGS 	=-g -I/usr/include/python2.5 -D_UNIX -fPIC
 LFLAGS 	=
 CC 	=gcc
 
