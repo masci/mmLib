@@ -368,13 +368,13 @@ def calc_anisotropy(U):
 def diff_trace_UV(U, V):
     """Calculates the trace difference of anisotropic ADP tensors U and V.
     """
-    return (numpy.trace(U) - numpy.trace(V))/ 3.0
+    return abs((numpy.trace(U) - numpy.trace(V))/ 3.0)
 
 def sum_square_diff(U, V):
     """Calculates the sum of the differences of anisotropic ADP tensors
     U and V squared.
     """
-    return numpy.sum(numpy.subtract(U,V)**2)
+    return abs(numpy.sum(numpy.subtract(U,V)**2))
 
 
 ##
@@ -470,7 +470,8 @@ def test_module():
     a1 = Structure.Atom(x=0.0, y=-1.0, z=0.0)
     a2 = Structure.Atom(x=0.0, y=0.0,  z=0.0)
     a3 = Structure.Atom(x=1.0, y=0.0,  z=0.0)
-    a4 = Structure.Atom(x=1.0, y=1.0,  z=-1.0)
+    #a4 = Structure.Atom(x=1.0, y=1.0,  z=-1.0)
+    a4 = Structure.Atom(res_name='GLY', x=1.0, y=1.0,  z=-1.0)
 
     print "a1:",a1.position
     print "calc_angle:",calc_angle(a1, a2, a3)
