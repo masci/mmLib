@@ -42,6 +42,44 @@ def cross(u, v):
 
 
 ##
+## Internal Linear Algebra (without using numpy)
+##
+def internal_cross(u, v):
+    """Returns the cross product of two vectors. Should be indentical to
+    the output of numpy.cross(u, v).
+    """
+    return(u[1]*v[2] - v[1]*u[2],
+           u[2]*v[0] - v[2]*u[0],
+           u[0]*v[1] - v[0]*u[1])
+
+def internal_dot(u, v):
+    """Returns the dot product of two vectors. Should be indentical to
+    the output of numpy.dot(u, v).
+    """
+    return u[0]*v[0] + u[1]*v[1] + u[2]*v[2]
+
+def internal_inv3x3(u):
+    """Returns the inverse of a 3x3 matrix. Should be indentical to
+    the output of numpy.linalg.inv(u).
+    """
+    inv = [[0,0,0],[0,0,0],[0,0,0]]
+    c = []
+    c.append(internal_cross(u[1], u[2])) ## c[0]
+    c.append(internal_cross(u[2], u[0])) ## c[1]
+    c.append(internal_cross(u[0], u[1])) ## c[2]
+
+    d = internal_dot(u[0], c[0])
+    if(abs(d) < 1e-30):
+        return 0.0, inv
+
+    for i in range(0,3):
+        for j in range(0,3):
+            inv[i][j] = float(c[j][i]) / float(d)
+
+    return d, inv
+
+
+##
 ## Rotation/Displacement
 ##
 def rmatrix(alpha, beta, gamma):
