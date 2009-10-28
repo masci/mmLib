@@ -41,7 +41,7 @@ class TLSAnimateFailure(Exception):
 
 
 class TLSAnimate(object):
-    """Create a multi-model PDB file which each model a frame of a TLS
+    """Create a multi-model PDB file with each model a frame of a TLS
     animation.
     """
 
@@ -60,7 +60,7 @@ class TLSAnimate(object):
 
     def copy_struct(self, struct, chain):
         """Make a copy of the argument structure to use for generating
-        the animation.  Only copy the chain specified in chain_id.
+        the animation. Only copy the chain specified in chain_id.
         """
         cp_struct = Structure.Structure(structure_id = struct.structure_id)
         chain_id = chain.chain_id
@@ -119,7 +119,7 @@ class TLSAnimate(object):
         raw_r3d_file.close()
 
     def next_model_id(self):
-        """Return the next availible model_id in self.struct
+        """Return the next available model_id in self.struct
         """
         model_id = 0
         while True:
@@ -129,7 +129,7 @@ class TLSAnimate(object):
                 return model_id
 
     def next_chain_id(self):
-        """Return the next availible chain_id in self.astruct
+        """Return the next available chain_id in self.astruct
         """
         for chain_id in string.uppercase:
             chain = self.struct.get_chain(chain_id)
@@ -236,5 +236,6 @@ class TLSAnimate(object):
                             raw_r3d_file.write("0 ")
 
                         raw_r3d_file.write("%s %s %s %s %.3f %.3f %.3f\n" % (
-                            model.model_id, self.L1_chain.chain_id, which_ntls, n,
+                            model.model_id, self.L1_chain.chain_id,
+                            which_ntls, n,
                             atm.position[0], atm.position[1], atm.position[2]))
