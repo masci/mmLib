@@ -13,7 +13,7 @@ class HCSSSP(object):
     def HCSSSP_minimize(self, V, E, hops):
         """Hop-Constrained Single Source Shorted Path minimization,
         loosely based on the Bellman-Ford SSSP algorithm using
-        Dynamic Programming.  Returns the D, P, and T matrixes.
+        Dynamic Programming. Returns the D, P, and T matrices.
         """
         assert len(V)>0
         assert len(E)>0
@@ -27,7 +27,7 @@ class HCSSSP(object):
         ## cost to reach vertex j by traversing i edges
         D = numpy.zeros((hops+1, num_vertex), float) + infinity
 
-        ## like BellmanFord, initialize the source vertex distance to 0.0
+        ## like Bellman-Ford, initialize the source vertex distance to 0.0
         for i in xrange(hops+1):
             D[i,0] = 0.0
 
@@ -70,7 +70,7 @@ class HCSSSP(object):
         Dp = D[hop_constraint - 1]
         Dc = D[hop_constraint]
 
-        ## perform relaxation for the current number of hops aginst the
+        ## perform relaxation for the current number of hops against the
         ## cost vector for the previous number of hops; this results
         ## in the current cost vector being the minimum cost using at most
         ## one more hop(edge)
@@ -82,7 +82,7 @@ class HCSSSP(object):
     def HCSSSP_maximize(self, V, E, hops):
         """Hop-Constrained Single Source Shorted Path minimization,
         loosely based on the Bellman-Ford SSSP algorithm using
-        Dynamic Programming.  Returns the D, P, and T matrixes.
+        Dynamic Programming. Returns the D, P, and T matrices.
         """
         assert len(V)>0
         assert len(E)>0
@@ -93,7 +93,7 @@ class HCSSSP(object):
         ## cost to reach vertex j by traversing i edges
         D = numpy.zeros((hops+1, num_vertex), float)
 
-        ## like BellmanFord, initialize the source vertex distance to 0.0
+        ## like Bellman-Ford, initialize the source vertex distance to 0.0
         for i in xrange(hops+1):
             D[i,0] = 0.0
 
