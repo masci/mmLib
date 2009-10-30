@@ -105,8 +105,8 @@ class TLSConformationPredctionHypothosis(object):
             self.calc_superposition(tls)
 
     def align_source_target_chains(self):
-        """Performs a sequence alginment folled by a structure alignment
-        of the target chain to the source chain.  The coordinates of the
+        """Performs a sequence alignment followed by a structure alignment
+        of the target chain to the source chain. The coordinates of the
         target chain is altered.
         """
         alignment_score, chain1_equiv, chain2_equiv, = align_chains(self.chain, self.target_chain)
