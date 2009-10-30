@@ -25,7 +25,7 @@ import opt_containers
 
 
 def calc_num_subsegments(n, m):
-    """Calculates the number of possible subsegment for the chain of length n
+    """Calculates the number of possible subsegments for the chain of length n
     and minimum subsegment length m.
     """
     m = m - 1
@@ -179,7 +179,7 @@ class ISOptimization(hcsssp.HCSSSP):
         gc.collect()
 
     def construct_tls_segment(self, edge):
-        """Returns a instance of TLSSegment fully constructed for
+        """Returns an instance of TLSSegment fully constructed for
         self.chain and the fragment range given in edge.
         """
         i, j, cost, frag_range, tlsdict = edge
