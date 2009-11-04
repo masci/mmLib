@@ -95,7 +95,6 @@ def html_job_nav_bar(job_id):
     tarball     = os.path.join(job_dir, "%s.tar.gz" % job_id)
     tarball_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "%s.tar.gz" % job_id)
 
-    ## TODO: Should this only check for the logfile? 2009-05-27
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
 
@@ -212,12 +211,17 @@ def html_job_edit_form(fdict, pdb=False):
         for c in chains.split(';'):
             x += '<tr><td>'
             x += '<label>'
+
             chid, length, selected, type = misc.parse_chains(c)
+            name = "CHAIN%s" % chid
+
             if type == "aa":
                 desc = "Chain %s (%s Amino Acid Residues)" % (chid, length)
             elif type == "na":
                 desc = "Chain %s (%s Nucleic Acid Residues)" % (chid, length)
-            name = "CHAIN%s" % chid
+            elif type == "ot":
+                desc = "Chain %s (%s Other Residues)" % (chid, length)
+
             if selected == "1":
                 x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
                     name, name)
@@ -376,11 +380,15 @@ def html_program_settings_table(fdict):
     chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
     for c in chains.split(';'):
         chid, length, selected, type = misc.parse_chains(c)
+        name = "CHAIN%s" % chid
+
         if type == "aa":
             desc = "Chain %s (%s Amino Acid Residues)" % (chid, length)
         elif type == "na":
             desc = "Chain %s (%s Nucleic Acid Residues)" % (chid, length)
-        name = "CHAIN%s" % chid
+        elif type == "ot":
+            desc = "Chain %s (%s Other Residues)" % (chid, length)
+
         if selected == "1":
             x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
                 name, name)
@@ -644,14 +652,15 @@ def html_job_info_table(fdict):
 
     chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
     for c in chains.split(';'):
-        x += '<tr><td>'
         chid, length, selected, type = misc.parse_chains(c)
         name = "CHAIN%s" % chid
+
         if selected == "1":
             if type == "aa":
                 desc = "Chain: %s (%s Amino Acid Residues)" % (chid, length)
             elif type == "na":
                 desc = "Chain: %s (%s Nucleic Acid Residues)" % (chid, length)
+
             x += '<tr>'
             x += '<td>%s</td>' % desc
 
@@ -751,7 +760,6 @@ def html_job_info_table(fdict):
     if fdict.has_key("killbutton"):
         x += '<input type="submit" name="submit" value="Kill Job" />'
 
-    ## FIXME: This is redundant
     if fdict.has_key("removebutton"):
         x += '</td>'
         x += '</form>'
@@ -762,7 +770,7 @@ def html_job_info_table(fdict):
 
 
 def check_job_id(form):
-    """Retrieves and confirms the job_id from a incomming form. Returns
+    """Retrieves and confirms the job_id from a incoming form. Returns
     None on error, or the job_id on success.
     """
     if form.has_key("job_id"):
@@ -796,7 +804,6 @@ def vet_email(email_address):
     exceed 255 characters. The entire email address length must not exceed
     320 characters.
     """
-    ## FIXME: Doesn't warn user!
     if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', email_address):
         return False
     local_part  = re.sub(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', '\\1', email_address)
@@ -1019,9 +1026,6 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
-        ## FIXME The following link should only point to pdb.org if it is a
-        ## real PDBid, 2008-02-20
-        #return '<a href="%s%s">%s</a>' % (conf.PDB_URL,struct_id,struct_id)
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -1801,7 +1805,6 @@ class Submit3Page(Page):
     def submission_summary_info(self, job_id):
         """Checks for any "other" problems with the user-selected chains.
         """
-        ## TODO: Post-sanity checks, 2009-01-08
         chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
         ## E.g.,
@@ -1813,6 +1816,7 @@ class Submit3Page(Page):
         sum = '<table class="status_table">'
         sum += '<tr class="status_table_head">'
         sum += '<th>Chain<th>Analyze</th><th>Residues</th>'
+        sum += '<th>Residue type</th>'
         sum += '<th>Ignored residues/atoms</th>'
         next_chain = ''
         for c in chains.split(';'):
@@ -1826,13 +1830,28 @@ class Submit3Page(Page):
             else:
                 sum += '<tr class="status_table_row2">'
             row1 = not row1
+
+            ## Chain id
             sum += '<td class="c">%s</td>' % chid
+
+            ## Analyze (i.e., chain selected by user)
             if selected == "1":
                 sum += '<td class="c">True</td>'
             else:
                 sum += '<td class="c">False</td>'
             sum += '<td class="c">%s</td>' % length
+
+            ## Residue type
+            if type == "aa":
+                sum += '<td class="c">amino acid</td>'
+            elif type == "na":
+                sum += '<td class="c">nucleic acid</td>'
+            elif type == "ot":
+                sum += '<td class="c">other</td>'
+
+            ## Ignored residues/atoms
             sum += '<td class="c">none</td>'
+
         sum += '</tr></table>'
 
         return sum
@@ -2021,16 +2040,22 @@ def check_upload(job_id, file):
     num_good = 0
     occupancy = 0.0
     ignore = 0
+    line_num = 0
     for line in file:
+        line_num += 1
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
         if line.startswith('EXPDTA    NMR'):
             return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
-        elif re.match('^ATOM.*[0-9][a-z]', line):
+        elif re.match('^ATOM.....................[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B"
-            return "Please change lowercase to uppercase for alternate residue numbers."
+            example = re.sub(r'^ATOM.....................([0-9][a-z]).*', '\\1', line).strip()
+            msg  = "Please change lowercase to uppercase for alternate "
+            msg += "residue numbers. (E.g., change \" %s \" to \" %s \")" % (
+                example, example.upper())
+            return msg
         elif line.startswith('ATOM') and (
             Library.library_is_standard_residue(line[17:20].strip())):
             num_total += 1
