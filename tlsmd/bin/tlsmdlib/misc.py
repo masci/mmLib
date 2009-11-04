@@ -10,7 +10,7 @@ import datetime
 import random
 import string
 import re
-import subprocess ## for render of 'struct.png'
+import subprocess
 
 ## TLSMD
 import console
@@ -28,6 +28,9 @@ def end_timing():
     return "Computation Time: %5.2f sec" % (tm)
 
 def timestamp():
+    """Generate a timestamp at the moment this function is called. This is the
+    main/global timestamp generator for all TLSMD scripts.
+    """
     ## TODO: Allow for either "-7" or "-10". 2009-03-25
     ## Also, allow for "Y-M-D" format, etc.
     return datetime.datetime.fromtimestamp(time.time()).isoformat(' ')[:-7]
@@ -72,10 +75,15 @@ def parse_chains(chains):
     ## Turns "A:100:1:aa" -> "A", "100", "1", "aa"
     ## I.e.: chain_id = A, num_residues = 100,
     ##       selected = 1/True, type = aa/amino acids
-    chid     = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\1;', chains).rstrip(";")
-    length   = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\2;', chains).rstrip(";")
-    selected = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\3;', chains).rstrip(";")
-    type     = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([na]{2});?', '\\4;', chains).rstrip(";")
+    ## NOTE:
+    ##   - aa = amino acid
+    ##   - na = nucleic acid
+    ##   - ot = other
+    chid     = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([naot]{2});?', '\\1;', chains).rstrip(";")
+    length   = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([naot]{2});?', '\\2;', chains).rstrip(";")
+    selected = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([naot]{2});?', '\\3;', chains).rstrip(";")
+    type     = re.sub(r'([A-Za-z0-9]):([0-9]{1,}):([01]):([naot]{2});?', '\\4;', chains).rstrip(";")
+
     return chid, length, selected, type
 
 def parse_molauto(infile, outfile):
