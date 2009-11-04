@@ -54,6 +54,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         return "Unable to change to conf.TLSMD_WORK_DIR = '%s'" % (
             conf.TLSMD_WORK_DIR)
 
+    ## NOTE: This is the first place the webserver creates the job directory
     try:
         os.mkdir(job_id)
     except OSError:
@@ -62,8 +63,11 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     os.chdir(job_dir)
 
-    #mysql.job_set_id(job_id)
-    #mysql.job_set_header_id(job_id, "test") ## DEBUG
+    try:
+        os.mkdir("ANALYSIS")
+    except OSError:
+        return "Unable to make ANALYSIS sub-directory for job_id: %s" % (
+            job_id)
 
     ## save PDB file
     pdb_filename = conf.PDB_FILENAME
@@ -87,13 +91,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     if not os.path.exists(log_file):
         open(log_file, 'w').close() ## touch log.txt
 
-    tarball_url       = "%s/%s.tar.gz" % (job_url, job_id)
     analysis_dir      = "%s/ANALYSIS" % (job_dir)
     analysis_base_url = "%s/ANALYSIS" % (job_url)
     analysis_url      = "%s/ANALYSIS/index.html" % (job_url)
-
-    ## TODO: Add version to MySQL status_page table
-    #mysql.job_set_version(job_id, const.VERSION)
 
     ## submission time and initial state
     submit_time = time.time()
@@ -125,8 +125,10 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     for chain in struct.iter_chains():
         naa = chain.count_amino_acids()
         nna = chain.count_nucleic_acids()
+        ota = chain.count_fragments()
         num_frags = 0
-        ## TODO: Does this work better? 2009-07-24
+
+        ## minimum number of residues (amino/nucleic) per chain
         if naa > 0:
             if naa < conf.MIN_AMINO_PER_CHAIN:
                 continue
@@ -135,35 +137,27 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             if nna < conf.MIN_NUCLEIC_PER_CHAIN:
                 continue
             num_frags = nna
+        elif naa == 0 and nna == 0:
+            ## The chain has neither amino or nucleic acid atoms, so assign
+            ## num_frags = ota -> "other atom" types
+            num_frags = ota
 
             ## this chain has nucleic acids in it, so generate r3d file for
             ## just the sugars
             misc.generate_bases_r3d(job_dir, chain.chain_id)
             misc.generate_sugars_r3d(job_dir, chain.chain_id)
 
-        ## minimum number of residues (amino/nucleic) per chain
-        ## TODO: Allow for MIN_NUCLEIC_PER_CHAIN and MIN_AMINO_PER_CHAIN diffs, 2009-07-19
-        ## TODO: Record ignored chains (because too small) in logfile, 2009-07-19
-        #if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
-        #if naa < conf.MIN_AMINO_PER_CHAIN or nna < conf.MIN_NUCLEIC_PER_CHAIN:
-        #if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN) or\
-        #   (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
-        #    #log_file = open(log_file, 'w+')
-        #    #log_file.write("Ignoring chain %s; too small" % chain.chain_id)
-        #    #log_file.close()
-        #    continue
-
         largest_chain_seen = max(num_frags, largest_chain_seen)
 
         ## create chain description labels
-        ## chains = "A:10:0:aa;B:20:1:na;C:30:0:na;"
+        ## E.g., chains_descriptions = "A:10:0:aa;B:20:1:na;C:30:0:na;"
         chain_descriptions = chain_descriptions + chain.chain_id + ":"
         if naa > 0:
             chain_descriptions = chain_descriptions + str(num_frags) + ":1:aa;"
         elif nna > 0:
             chain_descriptions = chain_descriptions + str(num_frags) + ":1:na;"
         else:
-            continue
+            chain_descriptions = chain_descriptions + str(num_frags) + ":0:ot;"
 
         for atm in chain.iter_all_atoms():
             num_atoms += 1
@@ -176,7 +170,8 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 
     if largest_chain_seen > conf.LARGEST_CHAIN_ALLOWED:
         webtlsmdd.remove_job(job_id)
-        return 'Your submitted structure contained a chain exceeding the 1700 residue limit'
+        return 'Your submitted structure contained a chain exceeding the %s residue limit' % (
+            conf.LARGEST_CHAIN_ALLOWED)
 
     mysql.job_set_chain_sizes(job_id, chain_descriptions)
 
@@ -209,7 +204,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     except ZeroDivisionError:
         return 'Your submitted structure contained no atoms'
 
-    if aniso_ratio > 0.90:
+    if aniso_ratio > conf.ANISO_RATIO:
         mysql.job_set_tls_model(job_id, "ANISO")
     else:
         mysql.job_set_tls_model(job_id, "ISOT")
@@ -243,7 +238,6 @@ def RemoveJob(webtlsmdd, job_id):
     if not mysql.job_exists(job_id):
         return False
 
-    ## TODO: Switch to using: http://docs.python.org/library/shutil.html
     ## e.g., "shutil.rmtree(path)", 2009-05-30
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and os.path.isdir(job_dir):
@@ -259,7 +253,7 @@ def RemoveJob(webtlsmdd, job_id):
 
 def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
-    the next step. It will eventually have a state "warnings"
+    the next step. It will eventually have a state "warnings".
     """
     ## FIXME: Doesn't seem to work, 2009-06-12
     if not mysql.job_exists(job_id):
@@ -274,6 +268,7 @@ def SignalJob(webtlsmdd, job_id):
         try:
             ## Send signal SIGUSR1 and try to continue to job process.
             os.kill(pid, SIGUSR1)
+            os.waitpid()
         except:
             return False
 
@@ -281,7 +276,7 @@ def SignalJob(webtlsmdd, job_id):
 
 def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the
-    "Completed Jobs" section as "killed" state
+    "Completed Jobs" section as "killed" state.
     """
     ## FIXME: We want to keep the job_id around in order to inform the user
     ## that their job has been "killed", 2009-05-29
@@ -303,6 +298,7 @@ def KillJob(webtlsmdd, job_id):
             return False
         try:
             os.kill(pid, SIGHUP)
+            os.waitpid()
             sys.stderr.write("[NOTE]: Killing pid for job_id: %s\n" % job_id)
         except:
             sys.stderr.write("[ERROR]: Could not kill pid for job_id: %s\n" % job_id)
@@ -418,7 +414,8 @@ class WebTLSMDDaemon(object):
         return KillJob(self, job_id)
 
     def requeue_job(self, job_id):
-        """Pushes the job to the back of the queue"""
+        """Pushes the job to the back of the queue.
+        """
         return RequeueJob(self, job_id)
 
     def refmac5_refinement_prep(self, job_id, chain_ntls):
@@ -430,7 +427,7 @@ class WebTLSMDDaemon(object):
         return Refmac5RefinementPrep(job_id, chain_ntls)
 
     def fetch_pdb(self, pdbid):
-        """Retrives the PDB file from RCSB"""
+        """Retrieves the PDB file from RCSB"""
         try:
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             sys.stdout.write("FOUND PDB: %s" % pdbid)
@@ -444,9 +441,7 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
     """Override the standard XMLRPC request handler to open the database before
     calling the method.
     """
-    ## TODO: Can this be removed? 2009-06-01
     def handle(self):
-        #self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
         return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 
 
@@ -499,7 +494,7 @@ def main():
         raise
 
 def inspect():
-    database_path = sys.argv[2]
+    #database_path = sys.argv[2]
 
     #webtlsmdd = WebTLSMDDaemon(database_path)
     mysql = mysql_support.MySQLConnect()
