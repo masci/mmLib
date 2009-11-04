@@ -138,20 +138,31 @@ class TLSMDAnalysis(object):
                 if chain.chain_id not in self.sel_chain_ids:
                     continue
 
-            ## count the number of amino acid residues in the chain
-            ## skip those that are too small
+            ## count the number of amino acid and/or nucleic acid residues in
+            ## the chain and skip those that are too small
             naa = chain.count_amino_acids()
-            if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN):
+            nna = chain.count_nucleic_acids()
+
+            if nna == 0 and (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN):
                 console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
                 continue
 
-            nna = chain.count_nucleic_acids()
-            if (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
+            if naa == 0 and (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
                 console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
                 continue
+
+            if naa > nna and nna > 0:
+                console.kvformat("CHAIN WITH DIFFERENT RESIDUE TYPES",
+                    chain.chain_id)
+
             num_frags = max(naa, nna)
 
             segment = ConstructSegmentForAnalysis(chain)
+            if segment == "":
+                console.kvformat("SKIPPING CHAIN WITH NO AA/NA RESIDUES",
+                    chain.chain_id)
+                continue
+
             segments.append(segment)
             segment.struct = self.struct
 
@@ -240,9 +251,8 @@ def LoadStructure(struct_source):
 
 
 def ConstructSegmentForAnalysis(raw_chain):
-    """Returns a list of Segment instance from the
-    Chain instance which is properly modified for use in
-    the this application.
+    """Returns a list of Segment instance from the Chain instance which is 
+    properly modified for use in the this application.
     """
     console.debug_stdoutln(">tlsmd_analysis.py->ConstructSegmentForAnalysis(chain %s)" % (
         raw_chain.chain_id))
@@ -257,8 +267,10 @@ def ConstructSegmentForAnalysis(raw_chain):
     ## ok, use the chain but use a segment and cut off
     ## any leading and trailing non-amino acid residues
     ## do not include a fragment with no included atoms
+    naa = nna = ota = 0
     naa = raw_chain.count_amino_acids()
     nna = raw_chain.count_nucleic_acids()
+    ota = raw_chain.count_fragments()
 
     if naa > nna:
         ## Probably a protein with (possibly) some nucleic acids.
@@ -267,7 +279,12 @@ def ConstructSegmentForAnalysis(raw_chain):
         ## Probably a nucleic acid with (possibly) some amino acids.
         iter_residues = raw_chain.iter_nucleic_acids()
 
+    if naa == 0 and nna == 0 and ota > 0:
+        ## This chain does not have any amino or nucleic acids, so skip.
+        return ""
+
     segment = Structure.Segment(chain_id = raw_chain.chain_id)
+
     for frag in iter_residues:
         for atm in frag.iter_all_atoms():
             if atm.include:
