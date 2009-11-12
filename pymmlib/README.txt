@@ -2,8 +2,8 @@ mmLib-1.1.0: Python Macromolecular Library (mmLib)
 http://pymmlib.sourceforge.net/
 
 REVISIONS:
-  * 2007-04-28: 1.0.0
   * 2008-02-26: 1.1.0: PHENIX support; Christoph Champ
+  * 2007-04-28: 1.0.0
 
 DESCRIPTION:
 The Python Macromolecular Library (mmLib) is a collection of Python 
@@ -32,6 +32,6 @@ Read INSTALL.txt
 
 PROBLEMS/BUG REPORTS/CONTACT:
 You can contact us through our SourceForge site, or email us directly at:
-    * Ethan Merritt <merritt@u.washington.edu>
-    * Christoph Champ <champc@u.washington.edu>
-    * Jay Painter <jpaint@u.washington.edu>
+  * Ethan Merritt <merritt@u.washington.edu>
+  * Christoph Champ <champc@u.washington.edu>
+  * Jay Painter <jpaint@u.washington.edu>
