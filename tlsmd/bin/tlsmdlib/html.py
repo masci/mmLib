@@ -594,7 +594,6 @@ class HTMLSummaryReport(Report):
              '<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>\n',
-             '<p>TODO: Add info on animated GIFs</p>\n',
              '<table><tr><td valign=top>',
              '<p class="captions">%s</p>\n' % (captions.MOTION_ANALYSIS_TEXT)]
 
