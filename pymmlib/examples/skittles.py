@@ -3,10 +3,13 @@
 ## DESCRIPTION: This script is provided as an example on how to validate
 ##   structures using pymmlib.
 ## AUTHORS:
-##   - Frank Zucker
-##   - P. Christoph Champ
-##   - Ethan A. Merritt
-## LAST UPDATE: 2009-10-30
+##   - P. Christoph Champ <champc _at_ u.washington.edu>
+##   - Frank Zucker <frankz _at_ u.washington.edu>
+##   - Ethan A. Merritt <merritt _at_ u.washington.edu>
+## UPDATES:
+##   - 2009-12-06: More documentation
+##   - 2009-12-05: Ready for distribution
+##   - 2009-10-30: Started script
 
 from __future__ import generators
 import sys
@@ -22,11 +25,12 @@ import tlsvld
 #from mmLib import AtomMath
 from mmLib import Library, Constants
 
+## Internal constants
 AMINO_BACKBONE   = ["N", "CA", "C"]
 NUCLEIC_BACKBONE = ["P", "O5'", "C5'", "C4'", "C3'", "O3'",
                     "P", "O5*", "C5*", "C4*", "C3*", "O3*"]
 BACKBONE_ATOMS = AMINO_BACKBONE + NUCLEIC_BACKBONE
-B2UE4 = 10000.0 / (8.0 * math.pi * math.pi )
+B2UE4 = 10000.0 / (8.0 * math.pi * math.pi)
 
 tls_regex_dict = {
     "group":       re.compile("\s*TLS GROUP :\s+(\d+)\s*$"),
@@ -127,6 +131,7 @@ def read_pdb(path):
             except KeyError:
                 continue
 
+            ## Capture the "OVERALL ANISOTROPIC B VALUE" fields
             if state == 0:
                 m = re_overall_b.match(text)
                 if m != None:
@@ -169,6 +174,7 @@ def read_pdb(path):
             #else:
             #    listx.append("TLS")
 
+            ## Capture the TLS "RANGE"s fields
             m = re_tls_range.match(text)
             if m != None:
                 (chain_id1, frag_id1, chain_id2, frag_id2) = m.groups()
@@ -180,6 +186,7 @@ def read_pdb(path):
                     chain_id1, frag_id1.rjust(5),
                     chain_id2, frag_id2.rjust(5), sel))
 
+            ## Capture the TLS "ORIGIN"s fields
             m = re_tls_origin.match(text)
             if m != None:
                 strx = m.group(1)
@@ -201,6 +208,8 @@ def read_pdb(path):
                     print "ERROR!"
                     pass
 
+            ## Capture the actual TLS values/fields.
+            ## NOTE: These can be provided via an external TLSIN/TLSOUT file.
             #m = re_tls_T.match(text)
             #if m != None:
             #if tls_desc.T is not None:
@@ -237,7 +246,7 @@ def read_pdb(path):
             #        tls_desc.S[2,0] * Constants.RAD2DEG,
             #        tls_desc.S[2,1] * Constants.RAD2DEG))
 
-        #elif rec_type == "ATOM  ":
+        ## Now, capture the ATOM and/or HETATM fields
         elif rec_type == "ATOM  " or rec_type == "HETATM":
             if Library.library_is_standard_residue(rec["resName"]) and \
                rec["name"].strip() in Constants.BACKBONE_ATOMS:
@@ -265,6 +274,7 @@ def read_pdb(path):
                 atom_dict["has_anisou"] = 0
                 atom_obj.append(atom_dict)
 
+        ## Capture the ANISOU fields, if they are present
         elif rec_type == "ANISOU":
             #print rec["serial"], rec["resName"]
             #print rec["u[0][0]"], rec["u[1][1]"], rec["u[2][2]"]
@@ -284,6 +294,7 @@ def read_pdb(path):
 
             if Library.library_is_standard_residue(rec["resName"]) and \
                rec["name"].strip() in Constants.BACKBONE_ATOMS:
+                ## We only keep the backbone atom's Uij values.
                 U11 = rec["u[0][0]"]
                 U22 = rec["u[1][1]"]
                 U33 = rec["u[2][2]"]
@@ -291,7 +302,7 @@ def read_pdb(path):
                 U13 = U31 = rec["u[0][2]"]
                 U23 = U32 = rec["u[1][2]"]
 
-                ADD_B_OVERALL = False
+                ADD_B_OVERALL = False # (default: False)
                 if ADD_B_OVERALL:
                     atom_obj[-1]["u[0][0]"] = rec["u[0][0]"] + overall[0]
                     atom_obj[-1]["u[1][1]"] = rec["u[1][1]"] + overall[1]
@@ -313,6 +324,10 @@ def read_pdb(path):
     return "\n".join(listx), overall, atom_obj
 
 def get_chain_type(res_name):
+    """Assign an integer value for residue type, identified by the actual name
+    of the residue. Assigns "0" to amino acids, "1" to nucleic acids, and "9"
+    to everything else.
+    """
     if Library.library_is_amino_acid(res_name):
         return 0
     elif Library.library_is_nucleic_acid(res_name):
@@ -323,7 +338,12 @@ def get_chain_type(res_name):
         return 9
 
 def get_res_frac(chain_type, atm_name, res_name):
+    """Assigns a fractional value to the atom type within a given residue. The
+    mod of an index of atom types should return fractional values of "0.1",
+    "0.3", and "0.7" for most amino acid residues.
+    """
     chain_type = get_chain_type(res_name)
+
     if chain_type == 0:
         frac = "%d" % (10*(int(Constants.AMINO_BACKBONE.index(atm_name)) % 3)/3.0)
     elif chain_type == 1:
@@ -346,8 +366,12 @@ if __name__ == "__main__":
         print "# %s" % listx
 
         chain_type = get_chain_type(atom_obj[0]["resName"])
+
+        ## This is the header of the output
         print "#bond_num, bond, tls_group, cc_UV, Suij, Rosenfeld, diff_trace_UV, sum_square_diff"
+
         for u in range(1, len(atom_obj)):
+            ## Example record/dictionary
             ## rec = {'u[1][1]': 5363, 'chainID': 'A', 'name': ' N',
             ##        'resSeq': 23, 'u[0][1]': -1790, 'u[0][0]': 5637,
             ##        'u[0][2]': -220, 'u[1][2]': -817, 'element': ' N',
@@ -371,6 +395,7 @@ if __name__ == "__main__":
             Vpos      = tlsvld.array([x2,y2,z2])
             tls_group = 0
 
+            ## Calculate the distance between two atoms
             d = math.sqrt( (x1-x2)**2 + (y1-y2)**2 + (x1-x2)**2 )
             #d = AtomMath.calc_distance(atom_obj[u-1], atom_obj[u])
             if ( (d > 2.0) and (cid1 == cid2) ):
@@ -383,6 +408,7 @@ if __name__ == "__main__":
                 print "\n"
                 continue
 
+            ## Assign a "bond-number" to the two given atoms
             bond = "%s-%s" % (atm_name1, atm_name2)
             try:
                 bond_pos = "%s.%s" % (
@@ -391,6 +417,7 @@ if __name__ == "__main__":
                 print "# POSSIBLE LIGAND FOUND!"
                 continue
 
+            ## Ready the data for Fortran77-style arrays
             U11 = atom_obj[u-1]["u[0][0]"]
             U22 = atom_obj[u-1]["u[1][1]"]
             U33 = atom_obj[u-1]["u[2][2]"]
@@ -406,6 +433,7 @@ if __name__ == "__main__":
             V23 = V32 = atom_obj[u]["u[1][2]"]
             V = tlsvld.array([[V11,V12,V13],[V21,V22,V23],[V31,V32,V33]])
 
+            ## Calculate all of the residuals
             Suij = rosenfeld = diff_trace_UV = sum_square_diff = 0.0
             cc_UV = tlsvld.calc_ccuij(U, V)
             #cc_UV = AtomMath.calc_CCuij([[U11,U12,U13],
@@ -417,6 +445,8 @@ if __name__ == "__main__":
             rosenfeld = tlsvld.rosenfeld(Upos, Vpos, U, V)
             sum_square_diff = tlsvld.sum_square_diff(U, V)
             diff_trace_UV = tlsvld.diff_trace_uv(U, V)
+
+            ## The actual output of this entire script.
             print "%s\t%s:%s-%s:%s\t%s\t%.10f\t%.10f\t%.10f\t%.10f\t%.10f" % (
                 bond_pos, cid1, res_name1, res_num1, bond, tls_group,
                 cc_UV, Suij, rosenfeld/10000,
