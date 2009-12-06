@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -65,7 +65,7 @@ def main(chain_id, sequence):
         seqres["resName%d"%(res_num)] = res
 
         res_num += 1
-        if res_num>13:
+        if res_num > 13:
             newrec = True
 
     pdb_file.save_file(sys.stdout)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     except IndexError:
         usage()
 
-    if len(chain_id)>1:
+    if len(chain_id) > 1:
         usage()
 
     main(chain_id, sequence)
