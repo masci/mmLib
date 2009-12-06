@@ -1,5 +1,11 @@
 #!/usr/bin/python
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+##
 ## skittles - a TLS validation tool for PDBs
+##
 ## DESCRIPTION: This script is provided as an example on how to validate
 ##   structures using pymmlib.
 ## AUTHORS:
