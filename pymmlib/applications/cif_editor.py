@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -17,19 +17,15 @@ import gtk
 
 from mmLib import mmCIF
 
-
-## constants
+## <constants>
 __version__ = "0.99.0"
 
 CIF_EDITOR_CONF = ".cif_editor"
 LARGE_DIALOG_SIZE = (400, 300)
-
-## /constants
-
+## </constants>
 
 
 ## large text edit window
-
 class EditDialog(gtk.Dialog):
     def __init__(self, context, cif_row, col_name):
         self.context = context
@@ -88,7 +84,6 @@ class EditDialog(gtk.Dialog):
                 self.cif_row, self.col_name, new_text)
 
         self.destroy()
-
 ## /large text edit window
 
 
@@ -159,8 +154,6 @@ class FileControlEditDialog(gtk.Dialog):
 
 
 ## <mmCIF EDITOR PANEL>
-
-
 class TableTreeControl(gtk.TreeView):
     def __init__(self, context):
         self.context = context
@@ -346,7 +339,7 @@ class TableTreeControl(gtk.TreeView):
         return call_again
 
     def set_cif_row_values(self, cif_row, iter = None, color = None):
-        """Called to update a row of data in the model.  If no iterator is
+        """Called to update a row of data in the model. If no iterator is
         given, then use the position of the cif_row in the self.cif_table
         to determine the row index in the model and obtain the iterator.
         """
@@ -384,7 +377,7 @@ class TableTreeControl(gtk.TreeView):
         self.model.set(iter, *row_list)        
 
     def insert_cif_row(self, cif_row):
-        """Insert a row of data into the model.  The cif_row should already
+        """Insert a row of data into the model. The cif_row should already
         be inserted into the cif_table.
         """
         if cif_row.table == self.cif_table:
@@ -396,7 +389,7 @@ class TableTreeControl(gtk.TreeView):
             self.set_cif_row(cif_row)
 
     def remove_cif_row(self, cif_row):
-        """Removes one row frm the model.  The cif_row must still be in
+        """Removes one row frm the model. The cif_row must still be in
         cif_table.
         """
         if cif_row.table == self.cif_table:
@@ -486,7 +479,7 @@ class FileTreeControl(gtk.TreeView):
         self.append_column(column)
         
     def set_cif_file(self):
-        """Sets the cif file from the current context.  After this is called
+        """Sets the cif file from the current context. After this is called
         this control assumes it is kept up to dat by the various update
         functions.
         """
@@ -556,7 +549,7 @@ class FileTreeControl(gtk.TreeView):
 
     def get_selected_cif(self):
         """Retrieves the selected cif_data, cif_table, or (cif_table, col_name)
-        instance.  If nothing is selected, returns None.
+        instance. If nothing is selected, returns None.
         """
         sel = self.get_selection()
         if sel == None:
@@ -611,7 +604,7 @@ class FileTreeControl(gtk.TreeView):
         return False
 
     def select_cif(self, cif):
-        """Selects one of the cif items in the tree view.  Will scroll if
+        """Selects one of the cif items in the tree view. Will scroll if
         necessary.
         """
         path = self.get_cif_path(cif_data)
@@ -1053,12 +1046,12 @@ class mmCIFEditorMainWindow(gtk.Window):
         self.show_all()
 
     def new_cb(self, *args):
-        """/File/New callback.  Opens a new edit window.
+        """/File/New callback. Opens a new edit window.
         """
         self.context.open_file(None)
 
     def open_cb(self, *args):
-        """/File/Open callback.  Open a FileSeletor window for
+        """/File/Open callback. Open a FileSeletor window for
         opening new files.
         """
         if not hasattr(self, "open_file_selector"):
@@ -1096,7 +1089,7 @@ class mmCIFEditorMainWindow(gtk.Window):
         self.context.save_file()
 
     def save_as_cb(self, *args):
-        """/File/Save As callback.  Open a FileSeletor window for Save As...
+        """/File/Save As callback. Open a FileSeletor window for Save As...
         """
         if not hasattr(self, "save_as_file_selector"):
             self.save_as_file_selector = gtk.FileSelection(
@@ -1217,7 +1210,7 @@ class mmCIFEditorMainWindow(gtk.Window):
 
 class mmCIFEditor:
     """Implements a mmCIF file editor using logged transactions and
-    notifications.  Transactions are listed below.
+    notifications. Transactions are listed below.
 
     Operations on mmCIFRow:
       cif_row_set_value(cif_row, col_name, value)
