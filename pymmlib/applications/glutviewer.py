@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -13,15 +13,13 @@ from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
 
-
+## pymmlib
 from mmLib import FileIO, Structure, Viewer, OpenGLDriver
-
 
 ## tweakers (tweakable constants)
 ##
 BG_COLOR         = "0.3,0.3,0.3"
 GL_DOUBLE_BUFFER = True
-
 
 ##
 ## constants
