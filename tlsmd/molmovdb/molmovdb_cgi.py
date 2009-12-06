@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2006 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -16,10 +16,10 @@ import kid
 from mmLib import ConsoleOutput
 from tlsmdlib import conf, tlsmd_analysis, table, console
 
-## <CONFIGUREURE>
-BASE_URL = "http://localhost/~jpaint/molmovdb/"
-BASE_DIR = "/home/jpaint/public_html/molmovdb/"
-STYLESHEET_URL = "http://www.drizzle.com/~jpaint/molmovdb.css"
+## <CONFIGURE>
+BASE_URL = "http://localhost/~tlsmd/molmovdb/"
+BASE_DIR = "/home/tlsmd/public_html/molmovdb/"
+STYLESHEET_URL = "molmovdb.css"
 ## </CONFIGURE>
 
 
@@ -158,7 +158,7 @@ class MorphLocations(object):
 
 def HingePredictionTable(chain):
     """Adds a table.StringTable instance to chain.tbl contining one row per
-    residue from chain.  The table's first column contains the residue
+    residue from chain. The table's first column contains the residue
     sequence number + insertion code, and the remaining columns from left
     to right contain the TLSMD inspired hinge residues from the
     2-TLS, 3-TLS, ..., N-TLS group model.
@@ -166,7 +166,8 @@ def HingePredictionTable(chain):
     cols = 3 + conf.globalconf.nparts - 1
     tbl = table.StringTable(
         len(chain), cols, "0",
-        title = "TLSMD Predicted Hinge Residues for Chain %s" % (chain.chain_id),
+        title = "TLSMD Predicted Hinge Residues for Chain %s" % (
+            chain.chain_id),
         column_titles = ["SeqNum", "ResName", "MolMovDB Hinge Prediction"] + ["%d TLS Groups" % (ntls) for ntls in xrange(2,conf.globalconf.nparts + 1)])
 
     chain.tbl = tbl
@@ -326,9 +327,8 @@ def main():
             SimpleTemplateReplace(NOID_HTML_TEMPLATE,
                                   stylesheet_url = STYLESHEET_URL))
             
-
     sys.exit(0)
 
-    
+
 if __name__ == "__main__":
     main()
