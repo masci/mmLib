@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -16,11 +15,11 @@ def usage():
     usage: python make_library.py <component.cif file>
 
     Utility to create the mmLib monomer library located
-    in mmLib/Data/Monomers.  It uses the RCSB public component dictionary
+    in mmLib/Data/Monomers. It uses the RCSB public component dictionary
     available on the web at: http://pdb.rutgers.edu/public-component-erf.cif
 
     When this utility is run, it creates the Monomers directory in the
-    current working directory.  To use it, it must be moved to its
+    current working directory. To use it, it must be moved to its
     loading location at mmLib/Data/Monomers.
     """
 
