@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002-2006 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -80,7 +80,7 @@ class mmCIFValidator(object):
                 yield columnx
 
     def lookup_parent(self, tag):
-        """Finds the parent tag of the given tag.  Recursive method.
+        """Finds the parent tag of the given tag. Recursive method.
         """
         for cif_save in self.iter_cif_saves():
             try:
@@ -197,7 +197,7 @@ class mmCIFMerge(object):
     def add_parent_values(self, cif_data):
         """Checks all linked values in the cif_data block for validity
         by checking all child values aginst parent values and ensureing
-        the parent values exist.  If the parent values do not exist, they
+        the parent values exist. If the parent values do not exist, they
         are added.
         """
         for cif_table in cif_data:
@@ -251,7 +251,7 @@ class mmCIFMerge(object):
         self, cif_data, table_name, column, old_value, new_value):
         """Changes the value of the table_name.column from old value
         to new_value, and propagates that change throughout all linked items
-        in the cif_data.  If the new_value matches a row in the root table,
+        in the cif_data. If the new_value matches a row in the root table,
         then the row containing old_value is removed instead of having its
         value changed.
         """
@@ -408,7 +408,7 @@ class mmCIFMerge(object):
     def resolve_cif_data_conflicts(self, cif_data):
         """Compares primary column values of the cif_data with values
         in the merged data and changes them to new, non conflicting
-        values.  This is done before the cif_data can be merged.
+        values. This is done before the cif_data can be merged.
         """
         for cif_table in cif_data:
             tag = self.validator.lookup_table_primary_tag(cif_table.name)
@@ -537,9 +537,9 @@ class mmCIFMerge(object):
 
     def merge_cif_row(self, ctx, cif_row, columns):
         """Adds the cif_row to the cif_table after checking to see if the
-        row is a duplicate, or a near duplicate with extra columns.  If
+        row is a duplicate, or a near duplicate with extra columns. If
         the cif_row matches a cif_row already in the cif_table, only the
-        new columns are merged into the existing row.  Returns 1 if the
+        new columns are merged into the existing row. Returns 1 if the
         row was appended to the table, and returns 0 if the row values were
         merged, or if the row was an exact match with a existing row.
         """
@@ -621,7 +621,7 @@ class mmCIFMerge(object):
         
         ## Before merging a cif_data block, it must be scanned for
         ## tables with primary key conflicts with tables already in
-        ## the merged files.  Any primary keys which confict must be
+        ## the merged files. Any primary keys which confict must be
         ## changed to a new value before the merge.
         self.resolve_cif_data_conflicts(cif_data)
 
@@ -635,7 +635,7 @@ class mmCIFMerge(object):
     ## <API CALLS>
 
     def merge_cif_file(self, cif_file, data_list = None):
-        """Merge the cif_file.  If a data_list is given, only merge
+        """Merge the cif_file. If a data_list is given, only merge
         the data sections in the list, otherwise merge all data
         sections in the cif_file.
         """
@@ -683,23 +683,23 @@ def usage():
     print '        table.column according to the loaded mmCIF dictionaries.'
     print
     print '    -u table.column=old:new'
-    print '        Uber-alles value change.  This reduces table to a one row'
-    print '        table with only the value new.  If a old value is given,'
+    print '        Uber-alles value change. This reduces table to a one row'
+    print '        table with only the value new. If a old value is given,'
     print '        any other columns of data in the row will be preserved.'
     print '        All linked data items found in the mmCIF dictionaries'
     print '        in the entire file are then changed to value new.'
     print
     print '    -d dictionary_filename'
-    print '        Specifies a mmCIF dictionary to use.  Dictionaries are'
+    print '        Specifies a mmCIF dictionary to use. Dictionaries are'
     print '        necessary for the correct merging of tables with linked'
     print '        values.'
     print
     print '    -f merge_filename'
-    print '        A mmCIF file to merge.  Use multiple times to merge'
+    print '        A mmCIF file to merge. Use multiple times to merge'
     print '        multiple files.'
     print 
     print '    -n name'
-    print '        Give the output mmCIF file data the argument name.  If'
+    print '        Give the output mmCIF file data the argument name. If'
     print '        no name is specified, XXXX is used.'
     print
 
