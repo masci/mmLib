@@ -237,6 +237,12 @@ def cleanup_job(mysql, jdict):
         tar.close()
 
     os.chdir(old_dir)
+
+    ## If job was submitted via_pdb, redirect the job_dir path used by the
+    ## logfile
+    if int(jdict["via_pdb"]) == 1:
+        job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
+
     ## check 'log.txt' for warnings
     if check_logfile_for_errors(job_dir + "/log.txt") == "warnings":
         mysql.job_set_state(job_id, "warnings")
