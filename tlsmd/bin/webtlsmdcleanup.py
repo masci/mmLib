@@ -8,11 +8,11 @@
 ## Pyton modules
 import os
 import sys
-import shutil
-import time
+from time import time
+from shutil import rmtree
 
 ## TLSMD
-from tlsmdlib import const, conf, misc, mysql_support
+from tlsmdlib import conf, misc, mysql_support
 
 SECS_IN_DAY = float(60*60*24)
 DELETE_DAYS = 120
@@ -32,7 +32,7 @@ def check_remove(jdict):
     email = jdict.get("email")
     if email: pass
 
-    days = round((time.time() - float(submit_time)) / SECS_IN_DAY)
+    days = round((time() - float(submit_time)) / SECS_IN_DAY)
     jdict["days"] = days
 
     if days > DELETE_DAYS:
@@ -48,27 +48,30 @@ def check_remove(jdict):
 
 def remove_job(job_id):
     """Removes the job from both the database and working directory.
+    If job is still running when this function is called, it will first call
+    KillJob(), then remove the associated data and files.
     """
     if not mysql.job_exists(job_id):
         return False
 
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and os.path.isdir(job_dir):
-        shutil.rmtree(job_dir)
+        rmtree(job_dir)
 
     mysql.delete_jdict(job_id)
-
     return True
 
 def main():
     t = misc.timestamp()
-    print "[%s] WebTLSMD Job Cleanup: Checking database for old jobs to remove." % t
+    msg  = "[%s] WebTLSMD Job Cleanup: " % t
+    msg += "Checking database for old jobs to remove."
+    print msg
 
     job_list = mysql.job_list()
     jdict_remove_list = []
 
     for jdict in job_list:
-        if jdict["via_pdb"]:
+        if jdict["via_pdb"] and jdict["state"] != ("running" or "queued"):
             print "[%s] saving to database PDB: %s" % (
                 t, jdict["structure_id"])
             mysql.archive_pdb_jobs(jdict["job_id"])
@@ -89,8 +92,9 @@ def main():
         try:
             remove_job(jdict["job_id"])
         except:
-            print "[%s] ERROR: Could not remove files/directories associated with job_id: %s" % (
-                t, jdict["job_id"])
+            msg  = "[%s] ERROR: Could not remove files/directories " % t
+            msg += "associated with job_id: %s" % jdict["job_id"]
+            print msg
 
 
 if __name__=="__main__":
