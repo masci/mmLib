@@ -231,9 +231,10 @@ def cleanup_job(mysql, jdict):
             raise
 
     ## create tarball
-    tar = tarfile.open("%s.tar.gz" % job_id, "w:gz")
-    tar.add("ANALYSIS")
-    tar.close()
+    if int(jdict["via_pdb"]) == 0:
+        tar = tarfile.open("%s.tar.gz" % job_id, "w:gz")
+        tar.add("ANALYSIS")
+        tar.close()
 
     os.chdir(old_dir)
     ## check 'log.txt' for warnings
