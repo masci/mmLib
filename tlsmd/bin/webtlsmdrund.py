@@ -207,9 +207,9 @@ def cleanup_job(mysql, jdict):
     """Cleanup job directory upon completion and email user
     """
     old_dir = os.getcwd()
-    job_id = jdict["job_id"]
+    job_id  = jdict["job_id"]
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    pdb_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, jdict["structure_id"])
+    pdb_id  = jdict["structure_id"]
     try:
         os.chdir(job_dir)
     except os.error, err:
@@ -219,10 +219,14 @@ def cleanup_job(mysql, jdict):
 
     ## Check if user submitted job via PDB code (i.e., from pdb.org)
     if int(jdict["via_pdb"]) == 1:
+        pdb_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
         if os.path.exists(pdb_dir):
             shutil.rmtree(pdb_dir)
         try:
-            shutil.copytree(job_dir, pdb_dir)
+            shutil.move(job_dir, pdb_dir)
+
+            flatfile = pdb_dir + "/ANALYSIS/" + job_id + ".dat"
+            shutil.copy(flatfile, conf.FLATFILES_DIR)
         except OSError:
             raise
 
