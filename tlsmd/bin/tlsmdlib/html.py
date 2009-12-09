@@ -282,8 +282,8 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##<FLATFILE>
         ## NOTE: This is in a standalone def "html_tls_group_table"
         if detail:
-            ## "Analysis of TLS Group n Chain Segments" values
-            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+            flatfile_name = "%s/%s.dat" % (os.getcwd(), conf.globalconf.job_id)
+            flatfile = open(flatfile_name, "a+")
 
             chain_ntls = "%s,%s.%s" % (chain.chain_id, ntls, i)
             flatfile.write("\nTIME %s [%s] html_tls_group_table" % (
@@ -312,6 +312,9 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##======================================================================
 
         ## "Analysis of TLS Group n Chain Segments" table
+        ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
+        ## off-diagonal matrix values? The "RMSD B Values of Combined TLS Groups"
+        ## values.
         l += ['<td align="center" valign="middle"><img src="%s" alt="%s"/></td>' % (
              cpath, tls.color.name),
              ## Input Structure ================================================
@@ -388,6 +391,15 @@ p.notes {
     }
 """
 
+_REPORT_CSS_PRINT_STYLES = """\
+body { margin:0; font-size:9pt; }
+a.imageview { list-style:none; border:0; }
+img.structimage { vertical-align:bottom; border:0; }
+table.tls_segments { margin:0; width:100%; font-size:9pt; }
+div.links, a.links, span.print { display:none; }
+div.clear { clear:both; }
+"""
+
 class Report(object):
     """Base class of HTML Report generating objects.
     """
@@ -402,6 +414,10 @@ class Report(object):
              '<!-- ',
              '%s' % _REPORT_CSS_STYLES,
              '-->',
+             '<style type="text/css" media="print">',
+             '<!-- ',
+             '%s' % _REPORT_CSS_PRINT_STYLES,
+             '-->',
              '</style>\n',
              '</head>',
              '<body>\n']
@@ -412,10 +428,10 @@ class Report(object):
         """Title for all HTML pages.
         """
         l  = ['<table class="title"><tr>\n',
-              '<td class="l title">%s</font></td>' % (misc.start_time()),
-              '<td class="c title">JobID: %s</font></td>' % (
+              '<td class="l title">%s</td>' % (misc.start_time()),
+              '<td class="c title">JobID: %s</td>' % (
                   conf.globalconf.job_id),
-              '<td class="r title">TLSMD Version %s</font></td>\n' % (
+              '<td class="r title">TLSMD Version %s</td>\n' % (
                   const.VERSION),
               '</tr></table>\n',
               '<h2>%s</h2><br/>\n' % (title)]
@@ -426,10 +442,10 @@ class Report(object):
         """Footer for all HTML pages.
         """
         l  = ['<table class="title"><tr>',
-              '<td class="l title">%s</font></td>' % (misc.start_time()),
-              '<td class="c title">JobID: %s</font></td>' % (
+              '<td class="l title">%s</td>' % (misc.start_time()),
+              '<td class="c title">JobID: %s</td>' % (
                   conf.globalconf.job_id),
-              '<td class="r title">TLSMD Version %s Released %s</font></td>' % (
+              '<td class="r title">TLSMD Version %s Released %s</td>' % (
                   const.VERSION, const.RELEASE_DATE),
               '</tr></table>',
               '</body></html>\n']
@@ -449,9 +465,7 @@ class HTMLSummaryReport(Report):
         self.struct_path = "%s.pdb" % (self.struct_id)
         self.job_id = conf.globalconf.job_id
 
-        self.flatfile_name = "%s/%s/%s/%s.dat" % (
-            conf.TLSMD_WWW_ROOT, "jobs", conf.globalconf.job_id,
-            conf.globalconf.job_id)
+        self.flatfile_name = "%s.dat" % self.job_id
 
         self.page_multi_chain_alignment  = None
         self.pages_chain_motion_analysis = []
@@ -550,7 +564,7 @@ class HTMLSummaryReport(Report):
 
         ##======================================================================
         ##<FLATFILE>
-        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile = open(self.flatfile_name, "a+")
         flatfile.write("\nGENR INITIAL_RESIDUALS: %s" % initial_residuals)
         flatfile.write("\nGENR FINAL_RESIDUALS: %s" % final_residuals)
         flatfile.write("\nGENR STDDEV_BFACT: %s" % stddev_bfact)
@@ -583,8 +597,9 @@ class HTMLSummaryReport(Report):
              self.html_title(title),
 
              ## link back to job summary page, 2009-05-26
-             '<center><a href="%s?page=explore&amp;job_id=%s">Back to job summary page</a></center>' % (
+             '<center><a href="%s?page=explore&amp;job_id=%s">' % (
                  conf.WEBTLSMD_URL, self.job_id),
+             'Back to job summary page</a></center>',
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
@@ -702,7 +717,7 @@ class HTMLSummaryReport(Report):
         ## NOTE: class HTMLSummaryReport()
         ##======================================================================
         ##<FLATFILE>
-        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        flatfile = open(self.flatfile_name, "a+")
 
         flatfile.write("\nGLOB JOB_ID: %s" % conf.globalconf.job_id)
         flatfile.write("\nGLOB STRUCT_ID: %s" % conf.globalconf.struct_id)
@@ -745,8 +760,8 @@ class HTMLReport(Report):
         self.pages_chain_motion_analysis = []
         self.page_refinement_prep        = None
 
-        self.flatfile_name = "%s/%s/%s/%s.dat" % (
-            conf.TLSMD_WWW_ROOT, "jobs", conf.globalconf.job_id,
+        self.flatfile_name = "%s/%s/%s.dat" % (
+            conf.TLSMD_WORK_DIR, conf.globalconf.job_id,
             conf.globalconf.job_id)
 
         self.orient = {}
@@ -757,6 +772,7 @@ class HTMLReport(Report):
         """
         ## class HTMLReport()
         ## create new directory and move into it
+        console.stdoutln("REPORT DIR: %s" % report_dir)
         old_dir = os.getcwd()
         if not os.path.isdir(report_dir):
             os.mkdir(report_dir)
@@ -1309,7 +1325,7 @@ class HTMLReport(Report):
              '<tr><th>',
              '<center><a href="%s" class="imageview">' % (png_file),
              '<img src="%s" height="320" alt="structimage"/></a>' % (png_file),
-             '<span class="small">Click on image for expanded view</span>',
+             '<span class="small print">Click on image for expanded view</span>',
              '</center></th></tr>',
 
              '<tr><th><center>',
@@ -1638,7 +1654,10 @@ class HTMLReport(Report):
         ##======================================================================
         ##<FLATFILE>
         chain_ntls = "%s,%s" % (chain_id, cpartition.num_tls_segments())
-        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        if os.path.basename(os.getcwd()) != "ANALYSIS":
+            flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        else:
+            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
         flatfile.write("\nTIME %s.0 [%s] write_tlsout_file" % (
             chain_ntls, misc.timestamp()))
 
@@ -1847,6 +1866,7 @@ class HTMLReport(Report):
             max = 0.00
             for val in L1_val, L2_val, L3_val:
                 if val >= max:
+                    ## TODO: Store max libration chain_id to ANIMATE.txt, 2009-08-05
                     max = val
             max_libration.append(float(max))
             n += 1
@@ -2287,7 +2307,10 @@ class ChainNTLSAnalysisReport(Report):
 
         ##======================================================================
         ##<FLATFILE>
-        flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        if os.path.basename(os.getcwd()) != "ANALYSIS":
+            flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        else:
+            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
 
         flatfile.write("\nTIME %s.0 [%s] tls_segment_recombination" % (
             chain_ntls, misc.timestamp()))
