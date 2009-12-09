@@ -38,8 +38,8 @@ dependencies it requires are installed.  The easiest way to do this is to
 use the dependency checking mode of the mmLib setup.py program.  Once mmLib
 has been downloaded, issue the following commands:
 
-# tar xzf pymmlib-0.9.9.tar.gz
-# cd pymmlib-0.9.9
+# tar xzf pymmlib-1.0.0.tar.gz
+# cd pymmlib-1.0.0
 # python setup.py checkdeps
 
 PYTHON MACROMOLECULAR LIBRARY -- SETUP PROGRAM
@@ -144,12 +144,12 @@ you didn't install from your Linux installation disks.  Here's the list:
 EASY INSTALLATION::
 
 If you already have the prerequisite software installed, here is the simple
-installation instructions for UNIX/LINUX.  If you don't have the prerequisite
-software, or you don't know what you have, read on.  If you want to read more
+installation instructions for UNIX/LINUX. If you don't have the prerequisite
+software, or you don't know what you have, read on. If you want to read more
 about what is going on here, read the next section.
 
-# tar xzf pymmlib-0.9.tar.gz
-# cd pymmlib-0.9
+# tar xzf pymmlib-1.0.0.tar.gz
+# cd pymmlib-1.0.0
 # su (root passwd)
 # python setup.py build
 # python setup.py install
@@ -158,47 +158,48 @@ about what is going on here, read the next section.
 LINUX AND PYTHON::
 
 Many Linux distributions split the Python distribution into
-separate packages.  Most Linux distributions use the RedHat
+separate packages. Most Linux distributions use the RedHat
 Package Manager (.rpm) format, and have a python-*.rpm 
 and python-dev-*.rpm/python-devel-*.rpm packages for the 
-complete distribution.  However, I've noticed some 
-Linux distributions are missing important Python libraries
+complete distribution. However, we have noticed some Linux 
+distributions are missing important Python libraries
 even when both of these packages are installed, causing the
 mmLib installer to fail.
 
 For this reason, you may have to compile and install Python from 
-source.  This may sound difficult, but in my experience it 
+source. This may sound difficult, but in out experience it 
 is usually easier than finding the python-devel-*.rpm for
-your distribution.  I recommend compiling and installing Python-2.3.3
-from http://www.python.org.  
+your distribution. We recommend compiling and installing Python-2.5.4
+from http://www.python.org. We found some bugs and incompatibilities 
+in Python-2.6.
 
 
 INSTALLING PYTHON FROM SOURCE::
 
-# (get Python-2.3.3.tgz from http://www.python.org, save to your home dir)
-# tar xzf Python-2.3.3.tgz
-# cd Python-2.3.3
-# ./configure --prefix=/usr/local/python-2.3.3
+# (get Python-2.5.4.tgz from http://www.python.org, save to your home dir)
+# tar xzf Python-2.5.4.tgz
+# cd Python-2.5.4
+# ./configure --prefix=/usr/local/python-2.5.4
 # make
 # su (root passwd)
 # make install
 # exit
-# export PATH=/usr/local/python-2.3.3/bin:$PATH
+# export PATH=/usr/local/python-2.5.4/bin:$PATH
     
 # (get numpy from http://www.numpy.org/)
-# tar xzf numpy-0.9.5.tar.gz
-# cd numpy-0.9.5
+# tar xzf numpy-1.1.1.tar.gz
+# cd numpy-1.1.1
 # python setup.py build
 # su (root passwd)
 # python setup.py install
     
-Now you have a working installation of Python-2.3.3, numpy, and mmLib.
+Now you have a working installation of Python-2.5.4, numpy, and mmLib.
 
 Python includes its own system for installing new modules called distutils.
 To use the distutils, one needs to write a setup.py file which acts much
-like a Makefile for Python.  The installer does not check for any of the
-other required Python modules.  It will install, but the programs will not
-run.  There are links to all the required software on the mmLib website.
+like a Makefile for Python. The installer does not check for any of the
+other required Python modules. It will install, but the programs will not
+run. There are links to all the required software on the mmLib website.
 
 If you want to install mmLib into your Python distribution's standard
 library, run the following command as root:
@@ -206,14 +207,14 @@ library, run the following command as root:
 # python setup.py install
 
 If you want to use mmLib without installing it as root, you can set the
-PYTHONPATH environment variable.  For example, to unpack mmLib and run the
+PYTHONPATH environment variable. For example, to unpack mmLib and run the
 example programs and applications:
 
-# tar xzf pymmlib-0.9.tar.gz
-# export PYTHONPATH=/home/jpaint/pymmlib-0.9:\
-                    /home/jpaint/pymmlib-0.9/build/lib.<your arch>/mmLib
-# cd pymmlib-0.9/tests
-# python mmlib_test.py /home/jpaint/myfile.[pdb|cif]
+# tar xzf pymmlib-1.0.0.tar.gz
+# export PYTHONPATH=/home/tlsmd/pymmlib-1.0.0:\
+                    /home/tlsmd/pymmlib-1.0.0/build/lib.<your arch>/mmLib
+# cd pymmlib-1.0.0/tests
+# python mmlib_test.py /home/tlsmd/myfile.[pdb|cif]
 
 
 Jay Painter <jpaint@u.washington.edu>
