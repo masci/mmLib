@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 ## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
@@ -17,7 +16,7 @@ except ImportError:
     DISTUTILS_FOUND = False
 else:
     DISTUTILS_FOUND = True
-    
+
 
 class package_install_data(install_data):
     def run(self):
@@ -75,14 +74,14 @@ def find_lib_paths(library, include):
     import glob
     import sys
     if sys.platform == "darwin":
-	shared_ext = "dylib"
-	static_ext = "a"
+        shared_ext = "dylib"
+        static_ext = "a"
     elif sys.platform == "win32":
-	shared_ext = "dll"
-	static_ext = "lib"
+        shared_ext = "dll"
+        static_ext = "lib"
     else:
-	shared_ext = "so"
-	static_ext = "a"
+        shared_ext = "so"
+        static_ext = "a"
 
     PATHS = assemble_paths_list()
 
@@ -92,7 +91,7 @@ def find_lib_paths(library, include):
     found_lib_path = None
     found_inc_path = None
     found_library  = None
-        
+
     for lib_path, inc_path in PATHS:
         lib_glob    = os.path.join(lib_path, shared_lib)
         shared_libs = glob.glob(lib_glob)
@@ -105,7 +104,7 @@ def find_lib_paths(library, include):
 
         found_lib_path = lib_path
         found_library  = shared_libs[0]
-        
+
         inc_check = os.path.join(inc_path, include)
 
         print "Checking Library/Include: %s %s" % (found_library, inc_check)
@@ -115,7 +114,7 @@ def find_lib_paths(library, include):
 
         found_inc_path = inc_path
         break
-        
+
     return found_lib_path, found_inc_path, found_library
 
 
@@ -128,14 +127,14 @@ def library_data(opts):
         os.path.join(os.curdir, "mmLib", "Data", "elements.cif"),
         os.path.join(os.curdir, "mmLib", "Data", "monomers.cif") ])
     ]
-  
+
     if opts["zip"]:
         inst_list.append((os.path.join("mmLib", "Data"),
             [ os.path.join(os.curdir, "mmLib", "Data", "Monomers.zip") ]))
     else:
         ## add all the monomer mmCIF files 
         mon_dir = os.path.join(os.curdir, "mmLib", "Data", "Monomers")
-        
+
         for dir1 in os.listdir(mon_dir):
             dir2 = os.path.join(mon_dir, dir1)
 
@@ -143,10 +142,10 @@ def library_data(opts):
 
             file_list = []
             inst_list.append((inst_dir, file_list)) 
-            
+
             for fil in os.listdir(dir2):
                 file_list.append(os.path.join(dir2, fil))
-            
+
     return inst_list
 
 
@@ -160,7 +159,7 @@ def pdbmodule_extension():
         include_dirs = [],
         library_dirs = [],
         libraries    = [])
-    
+
     return ext
 
 
@@ -168,7 +167,7 @@ def glaccel_extension():
     """Add the OpenGL Accelorator module.
     """
     print "OpenGL C Module (glaccel)"
-    
+
     glaccel_libs = [
         {"library":    "m",
          "header":     "math.h",
@@ -189,7 +188,7 @@ def glaccel_extension():
         {"library":    "Xmu",
          "header":     "X11/Xmu/Xmu.h",
          "desc":       "X11 Misc Library"},
-        
+
         {"library":    "GL",
          "header":     "GL/gl.h",
          "desc":       "OpenGL Library"},
@@ -197,7 +196,7 @@ def glaccel_extension():
         {"library":    "GLU",
          "header":     "GL/glu.h",
          "desc":       "OpenGLU Library"},
-        
+
         {"library":    "glut",
          "header":     "GL/glut.h",
          "desc":       "OpenGL Utility Library (or FreeGLUT)"}
@@ -276,7 +275,7 @@ def extension_list(opts):
             print "  FAILURE: OpenGL Module will NOT be built."
 
     print "="*79
-    
+
     return ext_list
 
 
@@ -336,7 +335,7 @@ def check_deps_opengl(opts):
     try:
         import OpenGL.GLUT
     except ImportError:
-        print "ERROR: OpenGL.GLUT not found.  PyOpenGL may need to be"
+        print "ERROR: OpenGL.GLUT not found. PyOpenGL may need to be"
         print "       rebuilt after installing GLUT or FreeGLUT."
     else:
         print "OK:    OpenGL.GLUT found."
@@ -347,7 +346,7 @@ def check_deps_opengl(opts):
         import pygtk
         pygtk.require("2.0")
     except (ImportError, AssertionError):
-        print "ERROR: PyGTK not found.  PyGTK 2.0 required."
+        print "ERROR: PyGTK not found. PyGTK 2.0 required."
     else:
         print "OK:    PyGTK found."
 
@@ -361,8 +360,7 @@ def check_deps_opengl(opts):
         print "OK:    PyGtkGLExt found."
 
 def check_deps(opts):
-    """
-    Checks for all required dependancies.
+    """Checks for all required dependancies.
     XXX: This is only checking for the Python modules.
     """
 
@@ -385,7 +383,7 @@ def check_deps(opts):
         elif minor == 0:
             if mminor < 1:
                 too_old = True
-            
+
     if too_old is True:
         print "ERROR: Python %s too old version >= 2.4.0 required." % (
             ver_string)
@@ -394,7 +392,7 @@ def check_deps(opts):
 
     ## check Python distutils
     if DISTUTILS_FOUND is False:
-        print "ERROR: Python Distutils not found.  You may need to install"
+        print "ERROR: Python Distutils not found. You may need to install"
         print "       the python-devel package for your Linux distribution."
     else:
         print "OK:    Python Distutils found."
@@ -414,7 +412,7 @@ def buildlib(opts):
     LIB_PATH = os.path.join("mmLib", "Data", "Monomers")
     TMP_PATH = "public-component-erf.cif"
     URL      = "http://pdb.rutgers.edu/public-component-erf.cif"
-    
+
     print "[BUILDLIB] downloading %s" % (URL)
 
     fil = open(TMP_PATH, "w")
@@ -468,24 +466,25 @@ def buildlib(opts):
 def check_pymmlib_options():
     import sys
 
-    ## Changed zip=True to zip=False, from Jay's suggestion. Christoph Champ, 2008-02-14
+    ## Changed zip=True to zip=False, from Jay's suggestion.
+    ## Christoph Champ, 2008-02-14
     opt_defaults = {
-    	"pdb": True,
-	"opengl": True,
-	"zip": False,
+        "pdb": True,
+        "opengl": True,
+        "zip": False,
         }
-    
+
     opts = {}
     for opt, default in opt_defaults.iteritems():
-	opts[opt] = default
-	flag = "--with-" + opt
+        opts[opt] = default
+        flag = "--with-" + opt
         if flag in sys.argv:
             sys.argv.remove(flag)
-	    opts[opt] = True
-	flag = "--without-" + opt
+            opts[opt] = True
+        flag = "--without-" + opt
         if flag in sys.argv:
             sys.argv.remove(flag)
-	    opts[opt] = False
+            opts[opt] = False
 
     return opts
 
@@ -498,7 +497,7 @@ def usage():
     print
     print "DESCRIPTION"
     print "    mmLib build/install program based on the Python"
-    print "    distutils package.  This setup.py script has several"
+    print "    distutils package. This setup.py script has several"
     print "    features not found in most Python seutp.py scrips."
     print
     print "COMMANDS"
@@ -522,7 +521,6 @@ def usage():
     print "        http://pdb.rutgers.edu/public-component-erf.cif and"
     print "        use it to build the mmLib monomer library in"
     print "        mmLib/Data/Monomers"
-    
 
 
 def main():
@@ -549,7 +547,7 @@ def main():
             run_setup(opts)
         else:
             print """\
-            ERROR: Python Distuils Not Found.  You may have to install
+            ERROR: Python Distuils Not Found. You may have to install
             the python-devel package on some Linux distructions.  See
             INSTALL.txt for details.
             """
