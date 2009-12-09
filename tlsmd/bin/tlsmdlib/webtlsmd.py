@@ -66,11 +66,14 @@ def html_nav_bar(page_name=None):
     """
     l = ['<div id="navcontainer">',
          '  <ul>',
-         '    <li><a href="%s/index.html">Home</a></li>' % (conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/index.html">Home</a></li>' % (
+             conf.TLSMD_BASE_URL),
          '    <li><a href="webtlsmd.cgi?page=submit1">Start a New Job</a></li>', 
          '    <li><a href="webtlsmd.cgi">Job Status</a></li>',
-         '    <li><a href="%s/examples/index.html">Examples</a></li>' % (conf.TLSMD_BASE_URL),
-         '    <li><a href="%s/documentation.html">Documentation</a></li>' % (conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/examples/index.html">Examples</a></li>' % (
+             conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/documentation.html">Documentation</a></li>' % (
+             conf.TLSMD_BASE_URL),
          '  </ul>',
          '</div>'
          ]
@@ -79,21 +82,27 @@ def html_nav_bar(page_name=None):
 def html_job_nav_bar(job_id):
     """Navigation bar to the TLSMD output files.
     """
-    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+    if mysql.job_get_via_pdb(job_id) == 1 and \
+       mysql.job_get_state(job_id) != "running":
+        pdb_id = mysql.job_get_structure_id(job_id)
+        job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
+    else:
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
 
     analysis_dir   = os.path.join(job_dir, "ANALYSIS")
     analysis_index = os.path.join(analysis_dir, "index.html")
-    analysis_url   = os.path.join(conf.TLSMD_BASE_URL, "jobs", job_id, "ANALYSIS/index.html")
+    analysis_url   = os.path.join(job_url, "ANALYSIS/index.html")
 
     summary_index = os.path.join(job_dir, "ANALYSIS/index.html")
     summary_url   = os.path.join(job_url, "ANALYSIS/index.html")
 
     logfile = os.path.join(job_dir, "log.txt")
-    log_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "log.txt")
+    log_url = os.path.join(job_url, "log.txt")
 
     tarball     = os.path.join(job_dir, "%s.tar.gz" % job_id)
-    tarball_url = os.path.join(conf.TLSMD_WORK_URL, job_id, "%s.tar.gz" % job_id)
+    tarball_url = os.path.join(job_url, "%s.tar.gz" % job_id)
 
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
@@ -102,11 +111,14 @@ def html_job_nav_bar(job_id):
     x += '<center>'
 
     ## Summary page link
-    if (mysql.job_get_state(job_id) == 'running') and os.path.isfile(summary_index):
+    if (mysql.job_get_state(job_id) == 'running') and \
+       os.path.isfile(summary_index):
         x += '<h3>View <a href="%s">Summary Analysis</a></h3>' % (summary_url)
 
-    if (mysql.job_get_state(job_id) != 'running') and os.path.isfile(analysis_index):
-        x += '<h3>View <a href="%s">Completed TLSMD Analysis</a></h3>' % (analysis_url)
+    if (mysql.job_get_state(job_id) != 'running') and \
+       os.path.isfile(analysis_index):
+        x += '<h3>View <a href="%s">Completed TLSMD Analysis</a></h3>' % (
+            analysis_url)
 
     if os.path.isfile(logfile):
         x += '<h3>View <a href="%s">TLSMD Logfile</a></h3>' % (log_url)
@@ -271,6 +283,8 @@ def html_job_edit_form(fdict, pdb=False):
     return x
 
 def html_session_info_table(fdict):
+    """Show user environment/session information.
+    """
     if fdict.has_key("submit_time"):
         date = timestring(fdict["submit_time"])
     else:
@@ -305,6 +319,8 @@ def html_session_info_table(fdict):
     return "".join(l)
 
 def html_user_info_table(fdict):
+    """Returns a small table of user data.
+    """
     l = ['<table class="inner_table">',
 
          '<tr class="inner_title"><th colspan="2">User Information</th></tr>',
@@ -430,7 +446,8 @@ def html_program_settings_table(fdict):
 
          '<td valign="top" class="l">',
          '<fieldset><legend>Atom Class Selection</legend>',
-         '<div style="font-size:xx-small">Analyze all protein atoms, or just the main chain atoms.</div>',
+         '<div style="font-size:xx-small">Analyze all protein atoms, ',
+         'or just the main chain atoms.</div>',
          '<p><label>',
          '<input name="include_atoms" type="radio" value="ALL" tabindex="35" checked="checked" />',
          'All Atoms</label></p>',
@@ -519,9 +536,11 @@ def html_job_edit_form2(fdict, title=""):
 
          '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
 
-         '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index")),
+         '<input type="hidden" name="page" value="%s" />' % (
+             fdict.get("page", "index")),
          '<input type="hidden" name="edit_form" value="TRUE" />',
-         '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"]),
+         '<input type="hidden" name="job_id" value="%s" />' % (
+             fdict["job_id"]),
 
          '<table width="100%" class="submit_table">',
          '<tr><th class="step_title">%s</th></tr>' % (title),
@@ -540,7 +559,7 @@ def html_job_edit_form2(fdict, title=""):
 
 def html_job_info_table(fdict):
     """Returns a table of information on a given job with data taken from the
-    MySQL database
+    MySQL database.
     """
 
     x  = ''
@@ -621,10 +640,12 @@ def html_job_info_table(fdict):
 
     x += '<tr><td class="r">Processing Time(HH:MM): </td>'
     if fdict.has_key("run_time_end") and fdict.has_key("run_time_begin"):
-        if (fdict["run_time_begin"] == None) or (fdict["run_time_end"] == None):
+        if (fdict["run_time_begin"] == None) or \
+           (fdict["run_time_end"] == None):
             hours = "----"
         else:
-            hours = timediffstring(fdict["run_time_begin"], fdict["run_time_end"])
+            hours = timediffstring(fdict["run_time_begin"], 
+                                   fdict["run_time_end"])
     else:
         hours = "---"
     x += '<td><b>%s</b></td></tr>' % (hours)
@@ -643,8 +664,14 @@ def html_job_info_table(fdict):
 
     ## Thumbnail image of user's structure
     if conf.THUMBNAIL:
-        x += '<tr><th colspan="3"><img src="%s"/></th></tr>' % (
-            conf.TLSMD_WORK_URL + "/" + fdict["job_id"] + "/struct.png")
+        x += '<tr><th colspan="3">'
+        if fdict["via_pdb"] == 1:
+            x += '<img src="%s"/>' % (conf.WEBTLSMDD_PDB_URL + "/" + \
+                fdict["structure_id"] + "/struct.png")
+        else:
+            x += '<img src="%s"/>' % (conf.TLSMD_WORK_URL + "/" + \
+                fdict["job_id"] + "/struct.png")
+        x += '</th></tr>'
 
     ## Selected chains information
     x += '<tr><th><font size="-5">Chain</font></th>'
@@ -664,11 +691,8 @@ def html_job_info_table(fdict):
             x += '<tr>'
             x += '<td>%s</td>' % desc
 
-            ## TODO: Record running time for each chain, 2009-05-29
             processing_time = False
-            #if cdict.has_key("processing_time"):
             if processing_time:
-                #hours = secdiffstring(cdict["processing_time"])
                 hours = "0000"
             else:
                 hours = "---"
@@ -696,7 +720,7 @@ def html_job_info_table(fdict):
         x += left_justify_string('Least Squares Weighting', 'No Weighting')
 
     ## Include Atoms
-    if fdict.get("include_atoms") is None or fdict.get("include_atoms") == "ALL":
+    if fdict.get("include_atoms") in [None, "ALL"]:
         x += left_justify_string('Include Atoms', 'Include All Atoms')
     elif fdict.get("include_atoms") == "MAINCHAIN":
         x += left_justify_string('Include Atoms', 'Main Chain Atoms')
@@ -731,7 +755,8 @@ def html_job_info_table(fdict):
     if fdict.get("nparts") == "":
         x += left_justify_string('Maximum number of segments', 'n/a')
     else:
-        x += left_justify_string('Maximum number of segments', '%s' % fdict["nparts"])
+        x += left_justify_string('Maximum number of segments', '%s' % (
+            fdict["nparts"]))
 
     x += '</pre></td>'
     x += '</tr>'
@@ -836,8 +861,6 @@ def extract_job_edit_form(form):
         return False
 
     mysql.job_set_submit_time(job_id, time.time())
-
-    ## TODO: Immediately create job dir + log.txt + ANALYSIS dir, 2009-05-26
 
     if form.has_key("private_job"):
         mysql.job_set_private_job(job_id, "1") ## 1 = True
@@ -1361,8 +1384,15 @@ class QueuePage(Page):
                 l.append('<td>%s</td>' % (jdict["structure_id"]))
 
             ## Direct link to logfile
-            logfile = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"], "log.txt")
-            log_url = conf.TLSMD_WORK_URL + "/" + jdict["job_id"] + "/log.txt"
+            if jdict["via_pdb"] == 1:
+                pdb_id = mysql.job_get_structure_id(jdict["job_id"])
+                job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
+                job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
+                logfile = os.path.join(job_dir, "log.txt")
+                log_url = job_url + "/log.txt"
+            else:
+                logfile = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"], "log.txt")
+                log_url = conf.TLSMD_WORK_URL + "/" + jdict["job_id"] + "/log.txt"
             if os.path.isfile(logfile) and jdict["private_job"] == 0:
                 l.append('<td><a href="%s">%s</a></td>' % (log_url, jdict["state"]))
             else:
@@ -1388,7 +1418,8 @@ class QueuePage(Page):
                     (float(jdict["run_time_end"]) == 0.0)):
                     hours = "---"
                 else:
-                    hours = timediffstring(jdict["run_time_begin"], jdict["run_time_end"])
+                    hours = timediffstring(jdict["run_time_begin"], 
+                                           jdict["run_time_end"])
             else:
                 hours = "---"
             l.append('<td class="r">%s</td>' % (hours))
@@ -1462,9 +1493,17 @@ class ExploreJobPage(Page):
         x += self.html_head(title, None)
         x += html_title(title)
         x += html_nav_bar()
-        x += html_job_nav_bar(job_id)
-        jdict = mysql.job_get_dict(job_id)
-        x += html_job_info_table(jdict)
+
+        try:
+            x += html_job_nav_bar(job_id)
+            jdict = mysql.job_get_dict(job_id)
+            x += html_job_info_table(jdict)
+        except:
+            ## NOTE: This should only happen if the job was archived for being
+            ## older than "DELETE_DAYS" in the webtlsmdcleanup.py script.
+            x += '<center><p class="perror">'
+            x += 'ERROR: Job summary page no longer exists</p></center>'
+
         x += self.html_foot()
 
         return x
@@ -1491,15 +1530,16 @@ class AdminJobPage(Page):
         x += html_title(title)
 
         x += html_nav_bar()
-        if jdict.get("state") in ["errors", "warnings", "killed", "died", "defunct"]:
+        if jdict.get("state") in ["errors", "warnings", "killed", 
+                                  "died", "defunct"]:
             x += html_job_nav_bar(job_id)
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
             x += self.remove(job_id)
         elif self.form.has_key("submit") and self.form["submit"].value == "Signal Job":
-            x += self.kick(job_id) ## Kick PID past stuck stage
+            x += self.kick(job_id)
         elif self.form.has_key("submit") and self.form["submit"].value == "Kill Job":
-            x += self.kill(job_id) ## Kill PID of running job_id
+            x += self.kill(job_id)
         elif self.form.has_key("submit") and self.form["submit"].value == "Requeue Job":
             x += self.requeue(job_id)
         else:
@@ -1542,17 +1582,20 @@ class AdminJobPage(Page):
         return x
 
     def kick(self, job_id):
-        """Kick PID of stuck job past current process and continue with next step.
+        """Kick PID of stuck job past current process and continue with 
+        next step.
         """
         if webtlsmdd.signal_job(job_id):
             x  = ''
             x += '<center>'
-            x += '<h3>Job %s has been signaled to kick it past the process it was stuck on.</h3>' % (job_id)
+            x += '<h3>Job %s has been signaled ' % (job_id)
+            x += 'to kick it past the process it was stuck on.</h3>'
             x += '</center>'
         else:
             x  = ''
             x += '<center>'
-            x += '<h3>Error: Can not signal job %s. Might need to kill it.</h3>' % (job_id)
+            x += '<h3>Error: Can not signal job %s. ' % (job_id)
+            x += 'Might need to kill it.</h3>' % (job_id)
             x += '</center>'
         return x
 
@@ -1562,7 +1605,8 @@ class AdminJobPage(Page):
         if webtlsmdd.kill_job(job_id):
             x  = ''
             x += '<center>'
-            x += '<h3>Job %s has died or its associated pid has been manually killed.</h3>' % (job_id)
+            x += '<h3>Job %s has died ' % (job_id)
+            x += 'or its associated pid has been manually killed.</h3>'
             x += '</center>'
         else:
             x  = ''
@@ -1578,7 +1622,8 @@ class AdminJobPage(Page):
         if result:
             x += "<h3>Job %s has been pushed to the back.</h3>" % (job_id)
         else:
-            x += "<h3>Job %s could not be requeued because it is running.</h3>" % (job_id)
+            x += "<h3>Job %s could not be requeued " % (job_id)
+            x += "because it is running.</h3>"
         x += '</center>'
         return x
 
@@ -1641,7 +1686,8 @@ class Submit1Page(Page):
              '</tr>',
              '</center>',
              '</table>',
-             '<br/><span class="warning">TLSMD requires crystallographically refined B factors.',
+             '<br/><span class="warning">',
+             'TLSMD requires crystallographically refined B factors.',
              '<br/>Please do not submit NMR structures, theoretical models, ',
              '<br/>or any PDB file with unrefined Bs',
              '</span>',
@@ -1733,15 +1779,18 @@ class Submit3Page(Page):
             l = ['<center>',
 
                  '<table class="submit_table">',
-                 '<tr><th class="step_title">Step 3: Finished!  Job successfully submitted.</th></tr>',
+                 '<tr><th class="step_title">',
+                 'Step 3: Finished!  Job successfully submitted.</th></tr>',
 
-                 '<tr><td class="c">Your job ID is <B>%s</B></td></tr>' % (job_id),
+                 '<tr><td class="c">Your job ID is <B>%s</B></td></tr>' % (
+                     job_id),
 
                  '<tr><td>%s</td></tr>' % (self.submission_summary_info(job_id)),
 
                  '<tr><td>',
                  '<p>Visit and bookmark your ',
-                 '<a href="webtlsmd.cgi?page=explore&amp;job_id=%s">Explore Job %s</a> ' % (job_id, job_id),
+                 '<a href="webtlsmd.cgi?page=explore&amp;job_id=%s">Explore Job %s</a> ' % (
+                     job_id, job_id),
                  'page, this page is the status page of your job, and it is ',
                  'updated as your job progresses through the queue.  Once your ',
                  'job is complete, a link to the completed TLSMD analysis will appear ',
@@ -1970,7 +2019,11 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
         else:
             avg_tfac.append(res_tfac/atm) # store previous guy
             res_id.append(resnum[n-1])    # store previous guy
-            fdat.write("%s\t%s\t%s\n" % (resnum[n-1], res_tfac/atm, chain[n-1]))
+
+            ## Now save values to *.dat file
+            fdat.write("%s\t%s\t%s\n" % (
+                resnum[n-1], res_tfac/atm, chain[n-1]))
+
             res_tfac = tfactor[n]
             atm = 1
             prevrestype = restype[n]
@@ -1981,6 +2034,8 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
         n = n + 1
     avg_tfac.append(res_tfac/atm)        # store last guy
     res_id.append(resnum[n-1])           # store last guy
+
+    ## Save last value to *.dat file
     fdat.write("%s\t%s\t%s\n" % (resnum[n-1], res_tfac/atm, chain[n-1]))
     fdat.close()
 
@@ -1989,12 +2044,14 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
+    ## TODO: Add chain_id to .std file, 2009-10-20
     nbad = 0
     fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
         fstd.write("%s\t%s\n" % (res_id[s], stddev11))
-        if stddev11 < conf.MIN_STDDEV_BFACT or stddev11 > conf.MAX_STDDEV_BFACT:
+        if stddev11 < conf.MIN_STDDEV_BFACT or \
+           stddev11 > conf.MAX_STDDEV_BFACT:
             nbad = nbad + 1
         if (s < len(res_id)) and (res_id[s+1] < res_id[s]):
             fstd.write("\n\n")
@@ -2040,13 +2097,14 @@ def check_upload(job_id, file):
     num_good = 0
     occupancy = 0.0
     ignore = 0
+    is_xray = 1
     line_num = 0
     for line in file:
         line_num += 1
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
-        if line.startswith('EXPDTA    NMR'):
-            return "NMR structure! Please do not submit NMR structures, theoretical models, or any PDB file with unrefined Bs."
+        if line.startswith('EXPDTA') and line.find('X-RAY DIFFRACTION') == -1:
+            is_xray = 0
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
         elif re.match('^ATOM.....................[0-9][a-z]', line):
@@ -2073,6 +2131,9 @@ def check_upload(job_id, file):
                 temp_factors.append(float(line[60:65].strip()))
         else:
             continue
+
+    if is_xray == 0:
+        return "Not an x-ray diffraction structure. Will not proceed."
 
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
