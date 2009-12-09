@@ -47,7 +47,10 @@ def flatfile_write(name, code, type, data, chain_id, num_tls):
     parsing and re-generation of _all_ the plots generated during a normal
     TLSMD job run.
     """
-    flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+    if os.path.basename(os.getcwd()) != "ANALYSIS":
+        flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+    else:
+        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
     flatfile.write("\nCCCC %s\n" % name)
     flatfile.write("%s %s,%s.0 <%s>\n" % (code, chain_id, num_tls, type))
     flatfile.write("%s" % data)
@@ -118,7 +121,8 @@ class GNUPlot(object):
                                     close_fds = True,
                                     bufsize = 8192)
         except OSError:
-            console.stderrln("gnuplot failed to execute from path: %s" % (self.gnuplot_path))
+            console.stderrln("gnuplot failed to execute from path: %s" % (
+                self.gnuplot_path))
             return
 
         pobj.stdin.write(script)
@@ -211,7 +215,10 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
             self.chain.chain_id)
         self.set_basename(basename)
 
-        flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
+        if os.path.basename(os.getcwd()) != "ANALYSIS":
+            flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        else:
+            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
         flatfile.write("\nCCCC LSQR_vs_TLS_Segments_Plot")
 
         column_titles = "Number of TLS Groups\tRMSD B\tResidual"
@@ -257,7 +264,6 @@ class LSQR_vs_TLS_Segments_Pre_Plot(GNUPlot):
         self.output_png()
 
     def make_script(self):
-        #console.debug_stdoutln(">gnuplots.py->LSQR_vs_TLS_Segments_Pre_Plot()")
         ## generate data and png paths
         basename = "PRE_%s_CHAIN%s_RESID" % (
             self.chain.partition_collection.struct.structure_id,
@@ -728,7 +734,13 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         fil.write("## Chain --------------------: %s\n" % (self.chain.chain_id))
         fil.write("## TLS Group Residue Range --: %s\n" % (tls.display_label()))
 
-        flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR,
+                               conf.globalconf.job_id, "ANALYSIS")
+        #flatfile = open("%s/%s.dat" % (job_dir, conf.globalconf.job_id), "a+")
+        if os.path.basename(os.getcwd()) != "ANALYSIS":
+            flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
+        else:
+            flatfile = open("%s.dat" % conf.globalconf.job_id, "a+")
         flatfile.write("\nCCCC UIso_vs_UtlsIso_Histogram\n")
         flatfile.write("%s %s,%s.0 <DATA>\n" % ("UVUH",
             self.chain.chain_id, self.cpartition.num_tls_segments()))
@@ -829,7 +841,8 @@ class BMeanPlot(GNUPlot):
 
         for tls in self.cpartition.iter_tls_segments():
             ls += 1
-            script += 'set style line %d lc rgb "%s" lw 3\n' % (ls, tls.color.rgbs)
+            script += 'set style line %d lc rgb "%s" lw 3\n' % (
+                ls, tls.color.rgbs)
 
             if self.tls_group_titles:
                 title = 'title "%s TLS"' % (tls.display_label())
@@ -844,7 +857,8 @@ class BMeanPlot(GNUPlot):
 
         ## first the observed mean bfactors
         ls += 1
-        x = '"%s" using 1:%d title "Observed" ls %d with lines' % (self.txt_path, 2+ls, ls)
+        x = '"%s" using 1:%d title "Observed" ls %d with lines' % (
+            self.txt_path, 2+ls, ls)
         plist.append(x)
 
         ## second the TLS calculated bfactors
