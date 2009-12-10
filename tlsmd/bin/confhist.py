@@ -1,25 +1,28 @@
-#!/usr/bin/python
+#!/bin/env python
 ## TLS Motion Determination (TLSMD)
 ## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
 
+## Python modules
 import os
 import sys
 import copy
 
-from mmLib.Structure   import *
-from mmLib.FileIO  import *
+## pymmlib
+from mmLib.Structure import *
+from mmLib.FileIO import *
+
+## TLSMD
 from tlsmdlib.datafile import *
 
 def prnt_sep():
-    print "======================================================================================="
+    print "=" * 79
 
 class SubSegConfs(object):
     def __init__(self, n, m, p):
-        """
-        number of residues: n
+        """number of residues: n
         smallest segment length: m
         number of partitions: p
         """
@@ -36,8 +39,7 @@ class SubSegConfs(object):
             self.I.append(m * (i + 1))
 
     def calc_configurations(self):
-        """
-        calculate the number of configurations there should be
+        """calculate the number of configurations there should be
         XXX: this is wrong!
         """
         n = self.n
@@ -46,8 +48,7 @@ class SubSegConfs(object):
         return ((n - p*m + 1) * (1 + ( (p-2)*(n - p*m) + 1))) / 2
 
     def check_i(self):
-        """
-        make sure there are no partitions smaller than m
+        """make sure there are no partitions smaller than m
         """
         for i in xrange(1, len(self.I)):
             assert self.I[i]-self.I[i-1] >= self.m
@@ -56,8 +57,7 @@ class SubSegConfs(object):
         self.xxx2(0)
 
     def xxx2(self, i):
-        """
-        recurse over all possible configurations
+        """recurse over all possible configurations
         """
         nvertex = self.p - 1
         istart  = self.I[i]
@@ -74,14 +74,14 @@ class SubSegConfs(object):
 
                 self.xxx2(i+1)
 
-                ## incriment position of current vertex and all
-                ## vetexes which come after it
+                ## increment position of current vertex and all vertices which
+                ## come after it
                 icur += 1
-                
+
                 segm = 1
                 j = i + 1
                 while j < nvertex:
-                    self.I[j] = icur + segm*self.m 
+                    self.I[j] = icur + segm * self.m
                     segm += 1
                     j += 1
 
@@ -93,10 +93,9 @@ class SubSegConfs(object):
                 self.I[i] = icur
                 self.process_configuration()
                 icur += 1
-                
+
     def process_configuration(self):
-        """
-        override for more interesting behavior
+        """override for more interesting behavior
         """
         print "I ",self.I
 
@@ -119,7 +118,8 @@ class ChainPartitonPointHistogram(object):
         print "ChainPartitonPointHistogram"
         for i in xrange(len(self.chain)+1):
             print "[%s]: %10d" % (self.pp_names[i], self.pp_freqs[i])
-            fil.write("%d %d %f\n" % (i, int(self.chain[i-1].fragment_id), self.pp_freqs[i]))
+            fil.write("%d %d %f\n" % (
+                i, int(self.chain[i-1].fragment_id), self.pp_freqs[i]))
 
         fil.close()
 
@@ -130,7 +130,7 @@ class Histogram(object):
         self.hmin = hmin
         self.bsize = (self.hmax - self.hmin) / self.nbins
         self.bins = [0 for x in xrange(self.nbins)]
-        
+
     def count(self, val):
         bin = int((val - self.hmin) / self.bsize)
         self.bins[bin] += 1
@@ -171,12 +171,11 @@ class ConfResidHistorgram(SubSegConfs):
 
         self.rmat, self.rmatflag = self.calc_rmat()
 
-        self.histogram    = Histogram(100, self.rmat[0,self.clen-1])
+        self.histogram    = Histogram(100, self.rmat[0, self.clen-1])
         self.cp_histogram = ChainPartitonPointHistogram(self.chain)
 
     def calc_rmat(self):
-        """
-        create a residual matrix
+        """create a residual matrix
         """
         prnt_sep()
         print "Generating a residual matrix..."
@@ -190,7 +189,8 @@ class ConfResidHistorgram(SubSegConfs):
                 frag_id1 = self.chain.fragment_list[i].fragment_id
                 frag_id2 = self.chain.fragment_list[j].fragment_id
 
-                data = self.datafile.grh_get_tls_record(self.chain.chain_id, frag_id1, frag_id2)
+                data = self.datafile.grh_get_tls_record(self.chain.chain_id, 
+                                                        frag_id1, frag_id2)
                 if data == None or data.has_key("lsq_residual") == False:
                     print "No Database Record: %s-%s" % (frag_id1, frag_id2)
                 else:
@@ -205,7 +205,7 @@ class ConfResidHistorgram(SubSegConfs):
         segments = []
 
         i = 0
-        j = 0        
+        j = 0
         for v in self.I:
             i = j
             j = v
@@ -224,7 +224,7 @@ class ConfResidHistorgram(SubSegConfs):
         lsqr = 0.0
 
         for i, j in segments:
-            if self.rmatflag[i,j]==0:
+            if self.rmatflag[i,j] == 0:
                 return
             lsqr += self.rmat[i,j]
 
@@ -247,7 +247,7 @@ class ConfResidHistorgram(SubSegConfs):
                 self.cp_histogram.count(i)
 
         self.cp_histogram.prnt()
-        
+
     def prnt_top(self):
         for lsqr, desc in self.top:
             print desc
@@ -263,13 +263,13 @@ def protein_segment(chain):
 
     return seg
 
+
 def main():
     dbfile = sys.argv[1]
 
     prnt_sep()
     print "Loading Structure..."
     struct = LoadStructure(fil=sys.argv[2])
-
 
     chain_id = sys.argv[3]
     seg = protein_segment(struct.get_chain(chain_id))
