@@ -1,7 +1,12 @@
 /*
+ * tlsanim2r3d.c
+ *
  * Create a modular Raster3D input file from a list of CA coordinates
  * with associated chain, segment, and model information.
  * We assume that a suitable header file is being created elsewhere.
+ *
+ * LAST UPDATE: 2009-12-09
+ *
  * TODO:
  *   - command-line options for trace radius, etc
  *   - color half-bonds at segment break
@@ -51,18 +56,14 @@ static color segcolor[] = {
    {0,0,0}
 };
 
-static double
-dist(CA *a, CA *b)
-{
+static double dist(CA *a, CA *b) {
     return (a->x - b->x)*(a->x - b->x)
 	 + (a->y - b->y)*(a->y - b->y)
 	 + (a->z - b->z)*(a->z - b->z);
 }
 
-int
-main(int argc, char *argv[])
-{
-/* Internal constants - may add command line options later */
+int main(int argc, char *argv[]) {
+    /* Internal constants - may add command line options later */
     double radius = 0.2;	/* Radius of trace in Angstroms */
     double gap = 5.0*5.0;	/* Square of longest allowable CA-CA distance */
     int nca = 0;		/* Number of CAs read so far for this segment */
@@ -70,12 +71,12 @@ main(int argc, char *argv[])
     int color = 0;
     int desired_libration_group = 0;
 
-/* Bookkeeping */
+    /* Bookkeeping */
     CA previous, current;
     double thickness = radius;
     int ierr;
 
-/* Informational only */
+    /* Informational only */
     fprintf(stderr,"tlsanim2r3d version 0.2\n");
     fprintf(stderr,"\tmaxcolors = %d\n",maxcolor);
 
@@ -128,7 +129,5 @@ main(int argc, char *argv[])
 		segcolor[color].R, segcolor[color].G, segcolor[color].B); 
 	previous = current;
 	nca++;
-
     }
-
 }
