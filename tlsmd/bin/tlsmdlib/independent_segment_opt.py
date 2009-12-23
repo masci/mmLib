@@ -8,6 +8,7 @@
 import math
 import numpy
 import gc ## for garbage collection
+import time ## for "CPU TIME" records
 
 ## Pymmlib
 from mmLib import Constants, TLS
@@ -33,10 +34,9 @@ def calc_num_subsegments(n, m):
 
 
 def iter_ij(num_vertex, min_len):
-    """Iterates over the i,j vertex indexes defining the edges
-    to be built for the graph. num_vertex gives the number
-    of consecutive vertices to create, min_span is the minimum
-    number of residues (fragments) a edge should span.
+    """Iterates over the i,j vertex indexes defining the edges to be built for 
+    the graph. num_vertex gives the number of consecutive vertices to create, 
+    min_span is the minimum number of residues (fragments) a edge should span.
     """
     for i in xrange(num_vertex):
         for j in xrange(i + min_len, num_vertex):
@@ -88,7 +88,7 @@ class ISOptimization(hcsssp.HCSSSP):
         return fit_method
 
     def run_minimization(self):
-        """Run the HCSSSP minimization on the self.V,self.E graph, resulting
+        """Run the HCSSSP minimization on the self.V, self.E graph, resulting
         in the creation of the self.D, self.P, and self.T arrays which
         contain 
         """
@@ -115,12 +115,16 @@ class ISOptimization(hcsssp.HCSSSP):
             vertex_label = "V%d[%s]" % (i, vertex_label)
             vertices.append(vertex_label)
 
-        ## fit chain segments with TLS model and build residual graph to minimize
-        total_num_subsegments = calc_num_subsegments(chain.count_fragments(), min_subsegment_len)
+        ## fit chain segments with TLS model and build residual graph to 
+        ## minimize
+        total_num_subsegments = calc_num_subsegments(chain.count_fragments(), 
+                                                     min_subsegment_len)
         num_subsegments = 0
         pcomplete = 0
         pcomplete_old = 0
         edges = []
+        console.stdoutln("=" * 80)
+        console.stdoutln("BUILDING RESIDUAL GRAPH TO MINIMIZE: chain_id=%s" % chain_id)
         for frag_id1, frag_id2, i, j in iter_chain_subsegment_descs(chain, min_subsegment_len):
             tlsdict = fit_method(frag_id1, frag_id2)
 
@@ -159,9 +163,12 @@ class ISOptimization(hcsssp.HCSSSP):
             edge = (i, j, cost, frag_range, tlsdict)
             edges.append(edge)
 
+        console.cpu_time_stdoutln("->ResidualGraphMinimized chain_id=%s: %s" % (
+            chain_id, time.clock()))
+
         ## perform the minimization
         if len(edges) > 0:
-            console.stdoutln("run_minimization(chain_id=%s): HCSSSP Minimizing..." % (chain_id))
+            console.stdoutln("HCSSSP Minimizing: chain_id=%s" % (chain_id))
 
             D, P, T = self.HCSSSP_minimize(vertices, edges, self.nparts)
 
@@ -171,7 +178,8 @@ class ISOptimization(hcsssp.HCSSSP):
             self.P = P
             self.T = T
         else:
-            console.stdoutln("run_minimization(chain_id=%s): Unable to minimize" % (chain_id))
+            console.stdoutln("HCSSSP Minimizing: Unable to minimize chain_id=%s" % (
+                chain_id))
             self.minimized = False
 
         ## free memory taken up from edges
@@ -179,8 +187,8 @@ class ISOptimization(hcsssp.HCSSSP):
         gc.collect()
 
     def construct_tls_segment(self, edge):
-        """Returns an instance of TLSSegment fully constructed for
-        self.chain and the fragment range given in edge.
+        """Returns an instance of TLSSegment fully constructed for self.chain 
+        and the fragment range given in edge.
         """
         i, j, cost, frag_range, tlsdict = edge
         tls = opt_containers.TLSSegment(chain_id = self.chain.chain_id,
@@ -192,8 +200,8 @@ class ISOptimization(hcsssp.HCSSSP):
         return tls
 
     def construct_chain_partition(self, nparts):
-        """Return a ChainPartition instance containing the optimal
-        TLS description of self.chain using num_tls_segments.
+        """Return a ChainPartition instance containing the optimal TLS 
+        description of self.chain using num_tls_segments.
         """
         if not self.minimized:
             return None
@@ -213,9 +221,8 @@ class ISOptimization(hcsssp.HCSSSP):
         return cpartition
 
     def construct_partition_collection(self, nparts_max = None):
-        """Returns a ChainPartitionCollection instance containing
-        the optimized ChainPartition instances using from 1 to
-        nparts_max TLS groups.
+        """Returns a ChainPartitionCollection instance containing the optimized 
+        ChainPartition instances using from 1 to nparts_max TLS groups.
         """
         if nparts_max is None:
             nparts_max = self.nparts
@@ -244,8 +251,8 @@ class ISOptimization(hcsssp.HCSSSP):
             self.__detailed_path(self.V, self.D, self.P, self.T, h)
 
     def __detailed_path(self, V, D, P, T, hop_constraint):
-        """Print out the path from the source vertex (vertex 0) to
-        the destination vertex (end vertex) given the hop_constraint.
+        """Print out the path from the source vertex (vertex 0) to the 
+        destination vertex (end vertex) given the hop_constraint.
         """
         num_vertex = len(D[0])
 
