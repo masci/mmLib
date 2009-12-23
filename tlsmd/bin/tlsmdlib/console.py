@@ -12,6 +12,7 @@ import misc
 
 console_output_enabled = True
 debug_output_enabled = False
+cpu_time_output_enabled = True
 
 import traceback
 def formatExceptionInfo(maxTBlevel=7):
@@ -78,6 +79,10 @@ def stdoutln(line):
 def debug_stdoutln(line):
     if debug_output_enabled:
         stdout("[%s] %s\n" % (misc.timestamp(), line))
+
+def cpu_time_stdoutln(line):
+    if cpu_time_output_enabled:
+        stdout("[%s] CPU_TIME %s\n" % (misc.timestamp(), line))
 
 def stderrln(line):
     stderr(line + "\n")
