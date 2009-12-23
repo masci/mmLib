@@ -27,7 +27,8 @@ def SendEmail(address, subject, body):
                                 close_fds = True,
                                 bufsize = 8192)
     except OSError:
-        sys.stderr.write("[ERROR] mail client failed to execute: %s" % (conf.MAIL))
+        sys.stderr.write("[ERROR] mail client failed to execute: %s" % (
+            conf.MAIL))
         return
 
     pobj.stdin.write(body)
