@@ -19,6 +19,7 @@ import sys
 import math
 import numpy
 import os
+import time ## For CPU_TIME
 
 ## pymmlib
 from mmLib import Constants, FileIO, TLS, Structure
@@ -46,15 +47,23 @@ def TLSMD_Main(struct_file_path  = None,
                sel_chain_ids     = None,
                html_report_dir   = None):
 
+    console.cpu_time_stdoutln("->Starting TLSMD analysis: %s" % time.clock())
+
     ## create the analysis processor and load the structure, select chains
     analysis = TLSMDAnalysis(
         struct_file_path    = struct_file_path,
         sel_chain_ids       = sel_chain_ids,
         struct2_file_path   = conf.globalconf.target_struct_path,
         struct2_chain_id    = conf.globalconf.target_struct_chain_id)
+    console.cpu_time_stdoutln("->LoadStructure: %s" % time.clock())
 
     IndependentTLSSegmentOptimization(analysis)
+    console.cpu_time_stdoutln("->IndependentTLSSegmentOptimization: %s" % (
+        time.clock()))
+
     RecombineIndependentTLSSegments(analysis)
+    console.cpu_time_stdoutln("->RecombineIndependentTLSSegments: %s" % (
+        time.clock()))
 
     if analysis.struct2_file_path is not None and \
        analysis.struct2_chain_id is not None:
@@ -69,12 +78,15 @@ def TLSMD_Main(struct_file_path  = None,
         console.stdoutln("GENERATING SUMMARY PAGE")
         summary = html.HTMLSummaryReport(analysis)
         summary.write_summary(html_report_dir)
+        console.cpu_time_stdoutln("->HTMLSummaryReport: %s" % time.clock())
 
         if not conf.globalconf.skip_html:
             ## generate in-depth HTML report pages
             console.stdoutln("GENERATING ANALYSIS/REPORT HTML PAGES")
             report = html.HTMLReport(analysis)
             report.write(html_report_dir)
+
+    console.cpu_time_stdoutln("->TLSMD::Total_time: %s" % time.clock())
 
 
 class TLSMDAnalysis(object):
@@ -384,6 +396,7 @@ def FitConstrainedTLSModel(analysis):
         ## progress_report.write(progress)
         progress_report.close()
 
+    console.cpu_time_stdoutln("->FitConstrainedTLSModel: %s" % time.clock())
     console.endln() ## LOGLINE
 
 
