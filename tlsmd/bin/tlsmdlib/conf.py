@@ -3,13 +3,14 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Installation settings.  When installed to run as a web application, the layout
+"""Installation settings. When installed to run as a web application, the layout
 of the directories from the tlsmd root directory is as follows:
 
 $TLSMD_ROOT/cgi-bin 
-$TLSMD_ROOT/jobs
-$TLSMD_ROOT/jmol
-$TLSMD_ROOT/examples
+$TLSMD_ROOT/jobs     # for user-submitted jobs (not via pdb.org)
+$TLSMD_ROOT/pdb      # for jobs submitted via pdb.org
+$TLSMD_ROOT/jmol     # Jmol jar files
+$TLSMD_ROOT/examples # examples of PDBs showing good results from TLSMD
 
 """
 import os
@@ -53,6 +54,7 @@ JMOL_PATH              = "/home/tlsmd/tlsmd/bin/jmol"
 WEBTLSMDD_PDB_URL      = "%s/pdb" % (TLSMD_PUBLIC_URL)
 WEBTLSMDD_PDB_DIR      = os.path.join(TLSMD_WWW_ROOT, "pdb")
 WEBTLSMDD_PDBID_FILE   = os.path.join(WEBTLSMDD_PDB_DIR, "pdbids.txt")
+FLATFILES_DIR          = "/data/tlsmd/flatfiles"
 TLSANIM2R3D            = "/home/tlsmd/tlsmd/bin/tlsanim2r3d"
 PDB_ANIMATE_SCRIPT     = "/home/tlsmd/tlsmd/bin/pdb_animate.pl"
 
@@ -136,7 +138,7 @@ class GlobalConfiguration(object):
         self.verbose = False
         self.use_svg = False
         self.skip_html = False
-        self.skip_jmol = False
+        self.skip_jmol = True
         self.generate_jmol_view = False
         self.generate_jmol_animate = False
         self.generate_histogram = False
