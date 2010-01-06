@@ -352,11 +352,13 @@ def calc_torsion_angle(a1, a2, a3, a4):
 ## Atomic ADPs
 ##
 def calc_CCuij(U, V):
-    """Calculate the cooralation coefficent for anisotropic ADP tensors U
+    """Calculate the correlation coefficent for anisotropic ADP tensors U
     and V.
     """
     invU = linalg.inverse(U)
     invV = linalg.inverse(V)
+    #invU = internal_inv3x3(U)
+    #invV = internal_inv3x3(V)
     
     det_invU = linalg.determinant(invU)
     det_invV = linalg.determinant(invV)
@@ -413,6 +415,14 @@ def sum_square_diff(U, V):
     U and V squared.
     """
     return abs(numpy.sum(numpy.subtract(U,V)**2))
+
+def calc_rosenfeld(a, b, d, U, V):
+    n = numpy.array([(a[0] - b[0])/d, (a[1] - b[1])/d, (a[2] - b[2])/d])
+    #Un = numpy.dot(numpy.dot(n, U), numpy.transpose(n))
+    #Vn = numpy.dot(numpy.dot(n, V), numpy.transpose(n))
+    Un = internal_dot(internal_dot(n, U), numpy.transpose(n))
+    Vn = internal_dot(internal_dot(n, V), numpy.transpose(n))
+    return abs(Un - Vn)
 
 
 ##
