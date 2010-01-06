@@ -30,22 +30,26 @@ def calc_include_atom(atm, reject_messages = False):
 
     if atm.occupancy < 0.1:
         if reject_messages == True:
-            console.stdoutln("calc_include_atom(%s): rejected because of low occupancy" % (atm))
+            msg = "rejected because of low occupancy"
+            console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
         return False
 
     if atm.occupancy > 1.0:
         atm.occupancy = 1.0
-        console.stdoutln("calc_include_atom(%s): atom occupancy greator than 1.0; truncating" % (atm))
+        msg = "atom occupancy greator than 1.0; truncating"
+        console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
 
     if numpy.trace(atm.get_U()) <= const.TSMALL:
         if reject_messages == True:
-            console.stdoutln("calc_include_atom(%s): rejected because of small Uiso magnitude " % (atm))
+            msg = "rejected because of small Uiso magnitude"
+            console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
         return False
 
     elif conf.globalconf.include_atoms == "MAINCHAIN":
         if const.MAINCHAIN_ATOM_DICT.has_key(atm.name) is False:
             if reject_messages == True:
-                console.stdoutln("calc_include_atom(%s): rejected non-mainchain atom" % (atm))
+                msg = "rejected non-mainchain atom"
+                console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
             return False
 
     return True
@@ -58,7 +62,7 @@ def calc_atom_weight(atm):
 
 def chain_to_xmlrpc_list(atom_iter):
     """Converts the Atoms of a Chain/Segment to a list of dictionaries 
-    for transfer over xmlrpc.  Only the information required to fit
+    for transfer over xmlrpc. Only the information required to fit
     TLS groups to the Atoms is set in the Atom dictionaries to
     reduce traffic over the xmlrpc calls.
     """
