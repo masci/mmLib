@@ -2642,7 +2642,7 @@ class Atom(object):
     def __lt__(self, other):
         assert isinstance(other, Atom)
 
-        if self.chain_id<other.chain_id:
+        if self.chain_id < other.chain_id:
             return True
         if self.chain_id > other.chain_id:
             return False
@@ -2747,7 +2747,7 @@ class Atom(object):
         return 0
 
     def __getitem__(self, alt_loc):
-        """This is a alternative to calling get_alt_loc, but a KeyError
+        """This is an alternative to calling get_alt_loc, but a KeyError
         exception is raised if the alt_loc Atom is not found.
         """
         assert isinstance(alt_loc, str)
