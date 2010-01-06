@@ -1,6 +1,6 @@
 #!/usr/bin/python
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2010 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
