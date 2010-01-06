@@ -135,7 +135,6 @@ class MySQLConnect():
         assert job_id.startswith("TLSMD")
         if not self.job_exists(job_id):
             return False
-
         string = """INSERT INTO %s
                  SELECT * FROM %s 
                  WHERE job_id='%s';""" % (
@@ -264,6 +263,9 @@ class MySQLConnect():
 
     def job_set_via_pdb(self, job_id, bool):
         return self.job_data_set(job_id, "via_pdb", bool)
+    def job_get_via_pdb(self, job_id):
+        return self.job_data_get(job_id, "via_pdb", dict = True)
+
     def job_set_header_id(self, job_id, header_id):
         return self.job_data_set(job_id, "header_id", header_id)
 
