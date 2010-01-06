@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -17,7 +17,7 @@ def usage():
     print
     print "description:"
     print "    Compute anisotropic ADP records from the given TLS"
-    print "    description. The TLS description is taken from the"
+    print "    description.  The TLS description is taken from the"
     print "    REMARK fields in the PDB file, or from the TLSOUT file"
     print "    written by REFMAC."
     print
@@ -125,8 +125,7 @@ def print_TLSGroup(tls):
         ("L2", "L2_pitch"),
         ("L3", "L3_pitch")]:
 
-        print "%s PITCH (A/DEG): %10.3f" % (
-            Lx, calcs[Lx_pitch]/Constants.RAD2DEG)
+        print "%s PITCH (A/DEG): %10.3f" % (Lx, calcs[Lx_pitch]/Constants.RAD2DEG)
 
 
 def main(pdb_path, tls_out_path, calc_tls):

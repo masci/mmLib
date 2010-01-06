@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
+
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-##
-## DESCRIPTION:
+
 ## This program creates "elements.cif" using the data in this file, and the
 ## CCP4 "atomsf.lib" library file
 
@@ -894,8 +894,8 @@ def new_doc():
         cif_table["symbol"] = e.symbol
         cif_table["name"] = e.name
         cif_table["number"] = str(e.atomic_number)
-        cif_table["atomic_weight"] = "%.6f" % (e.atomic_weight)
-        cif_table["van_der_walls_radius"] = "%.6f" % (e.van_der_waals_radius)
+        cif_table["atomic_weight"] = "%.6f"%(e.atomic_weight)
+        cif_table["van_der_walls_radius"] = "%.6f"%(e.van_der_waals_radius)
 
         if e.color != (1.0, 1.0, 1.0):
             cx = "#"
