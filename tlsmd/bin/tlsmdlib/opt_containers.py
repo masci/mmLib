@@ -237,8 +237,9 @@ class ChainPartition(object):
         return self.chain[-1].fragment_id
 
     def add_tls_segment(self, tls):
-        """The argument tls is a dictionary containing a bunch of great information
-        about the TLS segment which is part of the optimal partitioning.
+        """The argument tls is a dictionary containing a bunch of great 
+        information about the TLS segment which is part of the optimal 
+        partitioning.
         """
         assert isinstance(tls, TLSSegment)
         self.tls_list.append(tls)
