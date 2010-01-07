@@ -207,7 +207,8 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
 
     l = ['<table class="tls_segments">',
          '<tr>',
-         '<th align="center" colspan="12">Analysis of TLS Group %s Chain Segments ' % ntls,
+         '<th align="center" colspan="12">',
+         'Analysis of TLS Group %s Chain Segments ' % ntls,
          '(overall rmsd_b=%.2f and residual=%.2f)</th>' % (
              cpartition.rmsd_b(), cpartition.residual()),
          '</tr>',
@@ -282,6 +283,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##<FLATFILE>
         ## NOTE: This is in a standalone def "html_tls_group_table"
         if detail:
+            ## "Analysis of TLS Group n Chain Segments" values
             flatfile_name = "%s/%s.dat" % (os.getcwd(), conf.globalconf.job_id)
             flatfile = open(flatfile_name, "a+")
 
@@ -315,22 +317,23 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
         ## off-diagonal matrix values? The "RMSD B Values of Combined TLS Groups"
         ## values.
-        l += ['<td align="center" valign="middle"><img src="%s" alt="%s"/></td>' % (
-             cpath, tls.color.name),
-             ## Input Structure ================================================
-             '<td>%s</td>'    % (tls.display_label()),       ## "Segment"
-             '<td>%d</td>'    % (tls.num_residues()),        ## "Residues"
-             '<td>%d</td>'    % (tls.num_atoms()),           ## "Atoms"
-             '<td>%5.1f</td>' % (tls.mean_b()),              ## "<B>"
-             '<td>%5.2f</td>' % (stddev),                    ## "Brmsd", 2008-04-15
-             '<td>%4.2f</td>' % (tls.mean_anisotropy()),     ## "<Aniso>"
-             ## TLS Predictions ================================================
-             '<td>%5.2f</td>' % (tls.rmsd_b),                ## "RMSD B"
-             '<td>%s</td>'    % (t_data),                    ## "T^rB"
-             '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),  ## "eval(L) DEG^2"
-             '<td>%5.1f</td>' % (tls.tls_mean_b()),          ## "<B>"
-             '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()), ## "<Aniso>"
-             '</tr>']
+        l += ['<td align="center" valign="middle">',
+              '<img src="%s" alt="%s"/></td>' % (
+                 cpath, tls.color.name),
+              ## Input Structure ===============================================
+              '<td>%s</td>'    % (tls.display_label()),       ## "Segment"
+              '<td>%d</td>'    % (tls.num_residues()),        ## "Residues"
+              '<td>%d</td>'    % (tls.num_atoms()),           ## "Atoms"
+              '<td>%5.1f</td>' % (tls.mean_b()),              ## "<B>"
+              '<td>%5.2f</td>' % (stddev),                    ## "Brmsd"
+              '<td>%4.2f</td>' % (tls.mean_anisotropy()),     ## "<Aniso>"
+              ## TLS Predictions ===============================================
+              '<td>%5.2f</td>' % (tls.rmsd_b),                ## "RMSD B"
+              '<td>%s</td>'    % (t_data),                    ## "T^rB"
+              '<td>%5.2f, %5.2f, %5.2f</td>' % (L1, L2, L3),  ## "eval(L) DEG^2"
+              '<td>%5.1f</td>' % (tls.tls_mean_b()),          ## "<B>"
+              '<td>%4.2f</td>' % (tls.tls_mean_anisotropy()), ## "<Aniso>"
+              '</tr>']
 
     l.append('</table>')
     return "".join(l)
@@ -406,7 +409,8 @@ class Report(object):
     def html_head(self, title):
         """Header for all HTML pages.
         """
-        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">\n',
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
+             '"http://www.w3.org/TR/html4/loose.dtd">\n',
              '<html>',
              '<head>',
              '<title>%s</title>\n' % (title),
@@ -914,8 +918,9 @@ class HTMLReport(Report):
              self.html_title(title),
 
              ## link back to job summary page, 2009-05-26
-             '<center><a href="%s?page=explore&amp;job_id=%s">Back to job summary page</a></center>' % (
+             '<center><a href="%s?page=explore&amp;job_id=%s">' % (
                  conf.WEBTLSMD_URL, self.job_id),
+             'Back to job summary page</a></center>',
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
@@ -929,27 +934,30 @@ class HTMLReport(Report):
              '<p class="captions">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
         for xdict in self.pages_chain_motion_analysis:
-            l.append('<p><a href="%s">%s</a></p>' % (xdict["href"], xdict["title"]))
+            l.append('<p><a href="%s">%s</a></p>' % (
+                xdict["href"], xdict["title"]))
 
         l +=['</td><td valign=top><img src="summary.png"></td></tr></table>']
 
+        ## MULTI CHAIN ALIGNMENT
         l +=['<br/>',
-             ## MULTI CHAIN ALIGNMENT
              '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
              '<p class="captions">%s</p>' % (
                  captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
 
-        if self.page_multi_chain_alignment!=None:
+        if self.page_multi_chain_alignment != None:
             l.append('<p><a href="%s">%s</a></p>' % (
                 self.page_multi_chain_alignment["href"], 
                 self.page_multi_chain_alignment["title"]))
         else:
             l.append('<p><u>Only one chain was analyized in this structure, ')
-            l.append('so the multi-chain alignment analysis was not performed.</u></p>')
+            l.append('so the multi-chain alignment analysis was not ')
+            l.append('performed.</u></p>')
 
-        l +=['<br/>',
-             ## REFINEMENT PREP
-             '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
+        ## REFINEMENT PREP
+        l +=['<br/><center>',
+             '<h3>Generate input files for multigroup TLS Refinement</h3>',
+             '</center>',
              '<p class="captions">%s</p>' % (captions.REFINEMENT_PREP_TEXT),
              '<p><a href="%s">%s</a></p>' % (
                  self.page_refinement_prep["href"], 
@@ -970,7 +978,8 @@ class HTMLReport(Report):
         if conf.globalconf.weight_model == "UNIT":
             weight = 'Unit Weights (All Weights 1.0)'
         elif conf.globalconf.weight_model == "IUISO":
-            weight = 'Input Structure Atoms Weighted by <var>1.0/B<sub>iso</sub></var>'
+            weight  = 'Input Structure Atoms Weighted by '
+            weight += '<var>1.0/B<sub>iso</sub></var>'
 
         if conf.globalconf.include_atoms == "MAINCHAIN":
             include_atoms = "Main Chain Protein Atoms (N, CA, C, O, CB)"
@@ -1026,7 +1035,8 @@ class HTMLReport(Report):
         single TLS graphed chain.
         """
         ## class HTMLReport()
-        title = "Chain %s TLS Analysis of %s" % (chain.chain_id, self.struct_id)
+        title = "Chain %s TLS Analysis of %s" % (
+            chain.chain_id, self.struct_id)
 
         l  = [self.html_head(title),
               self.html_title(title),
@@ -1048,7 +1058,8 @@ class HTMLReport(Report):
         ## which highlights the chain we are examining
         try:
             self.orient = calc_orientation(self.struct, chain)
-            console.debug_stdoutln("[%s] Raster3D: calculating orientation" % (chain.chain_id))
+            console.debug_stdoutln("[%s] Raster3D: calculating orientation" % (
+                chain.chain_id))
             #    R         = ori["R"],
             #    cor       = ori["centroid"],
             #    zoom      = ori["hzoom"],
@@ -1120,9 +1131,9 @@ class HTMLReport(Report):
 
         plot.plot(plot_file)
 
-        l = ['<center><h3>TLS Partition Segment Alignment of Chain %s</h3></center>' % (
+        l = ['<center>',
+             '<h3>TLS Partition Segment Alignment of Chain %s</h3>' % (
                  chain.chain_id),
-             '<center>',
              '<table border="0" style="background-color:#dddddd">',
              '<tr><th># of TLS<br/>Groups</th>',
              '<th>Segment/Sequence Alignment</th></tr>',
@@ -1155,8 +1166,6 @@ class HTMLReport(Report):
         cpartition = chain.partition_collection.get_chain_partition(ntls)
         if cpartition == None:
             return None
-
-        #self.write_tls_pdb_file(chain, cpartition) ## write out PDB file
 
         ## Find generate Jmol viewer/animate in globals
         try:
@@ -1463,7 +1472,8 @@ class HTMLReport(Report):
         r3d_file = open(r3d_header_file, "w")
         r3d_file.write("\n".join(header_list))
         r3d_file.close()
-        console.stdoutln("Raster3D: Finish creating r3d_header %s..." % r3d_header_file)
+        console.stdoutln("Raster3D: Finish creating r3d_header %s..." % (
+            r3d_header_file))
 
         return r3d_header_file
         ##=====================================================================
@@ -1555,7 +1565,8 @@ class HTMLReport(Report):
             if tls.superposition_vscrew != None:
                 gl_tls_group.properties.update(COR_vector = tls.superposition_vscrew)
 
-            ## set width of trace according to the group's translationral tensor trace
+            ## set width of trace according to the group's translational 
+            ## tensor trace
             mtls_info = tls.model_tls_info
             tiso = (mtls_info["Tr1_eigen_val"] +\
                     mtls_info["Tr2_eigen_val"] +\
@@ -1670,7 +1681,8 @@ class HTMLReport(Report):
             tls_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
-                tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
+                tls_desc.add_range(chain_id, frag_id1, 
+                                   chain_id, frag_id2, "ALL")
                 flatfile.write("\nCCCC %s.0 TLSOUT %s:%s %f" % (
                     chain_ntls, frag_id1, frag_id2, tls.tls_group.itls_T))
 
@@ -1706,7 +1718,8 @@ class HTMLReport(Report):
             phenix_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
-                tls_desc.add_range(chain_id, frag_id1, chain_id, frag_id2, "ALL")
+                tls_desc.add_range(chain_id, frag_id1, 
+                                   chain_id, frag_id2, "ALL")
 
         phenix_file.save(open(phenixout_file, "w"))
 
@@ -1730,10 +1743,6 @@ class HTMLReport(Report):
         jmol_file = "%s_CHAIN%s_NTLS%d_JMOL.html"  % (
                     self.struct_id, chain.chain_id,
                     cpartition.num_tls_segments())
-
-        ## SEE:
-        ##    - http://wiki.jmol.org:81/index.php/AtomSets
-        ##    - http://chemapps.stolaf.edu/jmol/docs/index.htm
 
         ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
@@ -1828,7 +1837,6 @@ class HTMLReport(Report):
         basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
             self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
-        ## TODO: Include http://www.wwpdb.org/documentation/format32/sect8.html
         html_file     = "%s.html" % (basename)
         pdb_file      = "%s.pdb" % (basename)
         raw_r3d_file  = "%s.raw" % (basename)
@@ -1866,7 +1874,6 @@ class HTMLReport(Report):
             max = 0.00
             for val in L1_val, L2_val, L3_val:
                 if val >= max:
-                    ## TODO: Store max libration chain_id to ANIMATE.txt, 2009-08-05
                     max = val
             max_libration.append(float(max))
             n += 1
@@ -2107,9 +2114,9 @@ class HTMLReport(Report):
                 l.append('<option value="%d">%d</option>' % (ntls, ntls))
             l += ['</select>',
                   '</td></tr>' ]
+        l += '</table>'
 
-        l += ['</table>',
-              '</td></tr>',
+        l += ['</td></tr>',
               '<tr><td align="right">',
               '<input type="submit" value="OK">',
               '</td></tr></table>',
