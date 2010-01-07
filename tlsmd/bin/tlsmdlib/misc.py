@@ -60,6 +60,13 @@ def rgb_f2s(rgbf):
     rgbs = rgbs.replace(" ", "0")
     return rgbs
 
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 def generate_security_code(code_length = 8):
     """Generates a random 8-character string
     """
