@@ -68,6 +68,7 @@ NPARTS                = 20  ## maximum number of TLS partitons for each chain (d
 PRIVATE_JOBS          = True  ## controls the default "private" settings; overrides form!
 PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
 ADP_PROB              = 50  ## the isoprobability contour level for all visualizations
+DEFAULT_WILSON_B      = 20.00 ## controls which default Bfactor is in pure TLS PDBs
 ANISO_RATIO           = 0.90  ## aniso_ratio = num_aniso_atoms/num_atoms; sets 
                               ## the tls_model type to "ANISO" if >ANISO_RATIO;
                               ## "ISOT" otherwise (default)
