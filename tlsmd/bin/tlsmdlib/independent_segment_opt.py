@@ -76,6 +76,8 @@ class ISOptimization(hcsssp.HCSSSP):
         self.T = None
 
     def get_fit_method(self, chain):
+        """Returns the 'fit method': ISOT, ANISO, NLISOT, or NLANISO
+        """
         fit_method = None
         if conf.globalconf.tls_model == "ISOT":
             fit_method = chain.tls_analyzer.isotropic_fit_segment
@@ -236,7 +238,9 @@ class ISOptimization(hcsssp.HCSSSP):
         return partition_collection
 
     def prnt_detailed_paths(self):
-        """Debug
+        """Prints out detailed information on the minimization of each vertex
+        path for n segments with Node Label, Hops, Cost, Previous Noe, and
+        Edge.
         """
         hops = self.nparts
 
