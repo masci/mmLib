@@ -19,7 +19,7 @@ import sys
 import math
 import numpy
 import os
-import time ## For CPU_TIME
+import time
 
 ## pymmlib
 from mmLib import Constants, FileIO, TLS, Structure
@@ -132,10 +132,10 @@ class TLSMDAnalysis(object):
             chain_ids.append(chain.chain_id)
         cids = ",".join(chain_ids)
 
-        console.debug_stdoutln(">tlsmd_analysis.py->TLSMDAnalysis()")
-        console.kvformat("STRUCTURE ID", self.struct_id) ## LOGLINE 13
-        console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids) ## LOGLINE 14
-        console.endln() ## LOGLINE
+        console.debug_stdoutln(">tlsmd_analysis->TLSMDAnalysis()")
+        console.kvformat("STRUCTURE ID", self.struct_id)
+        console.kvformat("CHAIN IDs SELECTED FOR ANALYSIS", cids)
+        console.endln()
 
     def select_chains(self):
         """Selects chains for analysis.
@@ -199,15 +199,15 @@ def LoadStructure(struct_source):
     are found, then add the TLS group ADP magnitude to the B facors of
     the ATOM records.
     """
-    console.debug_stdoutln(">tlsmd_analysis.py->LoadStructure()")
+    console.debug_stdoutln(">tlsmd_analysis->LoadStructure()")
 
     ## determine the argument type
     if isinstance(struct_source, str):
         file_path = struct_source
-        console.kvformat("LOADING STRUCTURE", file_path) ## LOGLINE
+        console.kvformat("LOADING STRUCTURE", file_path)
         fobj = open(file_path, "r")
     elif hasattr(struct_source, "__iter__") and hasattr(struct_source, "seek"):
-        console.kvformat("LOADING STRUCTURE", str(struct_source)) ## LOGLINE
+        console.kvformat("LOADING STRUCTURE", str(struct_source))
         fobj = struct_source
     else:
         raise ValueError
@@ -216,10 +216,10 @@ def LoadStructure(struct_source):
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
     job_dir = str(os.path.dirname(str(struct_source)))
 
-    console.kvformat("HEADER", struct.header) ## LOGLINE 9
-    console.kvformat("TITLE", struct.title) ## LOGLINE 10
-    console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method) ## LOGLINE 11
-    console.kvformat("PATH", job_dir) ## LOGLINE
+    console.kvformat("HEADER", struct.header)
+    console.kvformat("TITLE", struct.title)
+    console.kvformat("EXPERIMENTAL METHOD", struct.experimental_method)
+    console.kvformat("PATH", job_dir)
 
     ## set the structure ID
     if conf.globalconf.struct_id is not None:
@@ -229,7 +229,7 @@ def LoadStructure(struct_source):
         conf.globalconf.struct_id = struct_id
     struct.structure_id = struct_id
 
-    console.endln() ## LOGLINE
+    console.endln()
 
     ## if there are REFMAC5 TLS groups in the REMARK records of
     ## the PDB file, then add those in
@@ -242,7 +242,8 @@ def LoadStructure(struct_source):
 
     if len(tls_file.tls_desc_list) > 0:
         console.stdoutln("ADDING TLS GROUP Bequiv TO ATOM TEMPERATURE FACTORS")
-        console.stdoutln("    NUM TLS GROUPS: %d" % (len(tls_file.tls_desc_list)))
+        console.stdoutln("    NUM TLS GROUPS: %d" % (
+            len(tls_file.tls_desc_list)))
 
         ## assume REFMAC5 groups where Utotal = Utls + Biso(temp_factor)
         for tls_desc in tls_file.tls_desc_list:
@@ -257,7 +258,7 @@ def LoadStructure(struct_source):
                 atm.temp_factor = bresi + (Constants.U2B * numpy.trace(Utls) / 3.0)
                 atm.U = (Constants.B2U * bresi * numpy.identity(3, float)) + Utls
 
-        console.endln() ## LOGLINE
+        console.endln()
 
     return struct
 
@@ -266,7 +267,7 @@ def ConstructSegmentForAnalysis(raw_chain):
     """Returns a list of Segment instance from the Chain instance which is 
     properly modified for use in the this application.
     """
-    console.debug_stdoutln(">tlsmd_analysis.py->ConstructSegmentForAnalysis(chain %s)" % (
+    console.debug_stdoutln(">tlsmd_analysis->ConstructSegmentForAnalysis(chain %s)" % (
         raw_chain.chain_id))
 
     ## NOTE: raw_chain = "Chain(1:A, Res(MET,1,A)...Res(VAL,50,A))"
@@ -341,10 +342,10 @@ def IndependentTLSSegmentOptimization(analysis):
         if not isopt.minimized:
             continue
 
-        console.endln() ## LOGLINE
-        console.stdoutln("="*79) ## LOGLINE
-        console.debug_stdoutln(">tlsmd_analysis.py->IndependentTLSSegmentOptimization()")
-        console.stdoutln("MINIMIZING CHAIN %s" % (chain)) ## LOGLINE
+        console.endln()
+        console.stdoutln("="*79)
+        console.debug_stdoutln(">tlsmd_analysis->IndependentTLSSegmentOptimization()")
+        console.stdoutln("MINIMIZING CHAIN %s" % (chain))
         isopt.prnt_detailed_paths()
 
         chain.partition_collection = isopt.construct_partition_collection(conf.globalconf.nparts)
@@ -352,18 +353,18 @@ def IndependentTLSSegmentOptimization(analysis):
 
 def RecombineIndependentTLSSegments(analysis):
     console.endln()
-    console.debug_stdoutln(">tlsmd_analysis.py->RecombineIndependentTLSSegments()")
+    console.debug_stdoutln(">tlsmd_analysis->RecombineIndependentTLSSegments()")
     console.stdoutln("TLS SEGMENT RECOMBINATION")
     for chain in analysis.chains:
         ## E.g., chain="Segment(1:A, Res(ILE,16,A)...Res(SER,116,A))"
         cpartition_recombination.ChainPartitionRecombinationOptimization(chain)
 
 def FitConstrainedTLSModel(analysis):
+    """Calculates constrained TLS model for visualization.
     """
-    """
-    console.endln() ## LOGLINE
-    console.debug_stdoutln(">tlsmd_analysis.py->FitConstrainedTLSModel()")
-    console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION") ## LOGLINE
+    console.endln()
+    console.debug_stdoutln(">tlsmd_analysis->FitConstrainedTLSModel()")
+    console.stdoutln("CALCULATING CONSTRAINED TLS MODEL FOR VISUALIZATION")
 
     ## EAM Feb 2008 User job was getting stuck in fit_to_chain()
     ## Obviously it would be nice to fix the actual error, but at least we would
@@ -375,17 +376,20 @@ def FitConstrainedTLSModel(analysis):
     progress = 0.1
 
     for chain in analysis.iter_chains():
-        console.stdoutln("CHAIN %s" % (chain.chain_id)) ## LOGLINE
+        console.stdoutln("CHAIN %s" % (chain.chain_id))
         for cpartition in chain.partition_collection.iter_chain_partitions():
-            console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments())) ## LOGLINE
+            ## cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
+
+            console.stdoutln("TLS GROUPS: %d" % (cpartition.num_tls_segments()))
+
             for tls in cpartition.iter_tls_segments():
                 try:
-                    ## NOTE: cpartition.chain = "Segment(1:A, Res(MET,1,A)...Res(VAL,50,A))"
                     tls.fit_to_chain(cpartition.chain)
-
                 except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
-                    console.stdoutln("            Runtime error for [%s]: %s, trying to continue..." % (
-                        tls, e))
+                    msg  = "            Runtime error for [%s]: %s, " % (
+                        tls, e)
+                    msg += "trying to continue..."
+                    console.stdoutln(msg)
                     print console.formatExceptionInfo()
                     pass
 
@@ -397,7 +401,7 @@ def FitConstrainedTLSModel(analysis):
         progress_report.close()
 
     console.cpu_time_stdoutln("->FitConstrainedTLSModel: %s" % time.clock())
-    console.endln() ## LOGLINE
+    console.endln()
 
 
 def SuperimposeHomologousStructure(analysis):
