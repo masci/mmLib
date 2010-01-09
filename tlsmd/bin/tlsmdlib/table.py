@@ -6,6 +6,10 @@
 import itertools
 
 class StringTable(object):
+    """Converts a given string (as an object of nrows, ncols, and actual
+    string) to a tabular format. Intended for use in plotting programs (e.g.,
+    gnuplot).
+    """
     def __init__(self, m, n,
                  default = "",
                  spacing = 5,
@@ -118,8 +122,8 @@ class StringTable(object):
 
 
 def StringTableFromMatrix(matrix):
-    """Return a StringTable instance with the dimentions and
-    values of the argument matrix.
+    """Return a StringTable instance with the dimentions and values of the 
+    argument matrix.
     """
     m, n = matrix.shape
     tbl = StringTable(m, n, "0.0")
@@ -131,7 +135,8 @@ def StringTableFromMatrix(matrix):
 
 ## testing
 def testmain():
-    t = StringTable(0, 2, title = "My Test Table", column_titles = ["Column 1", "Column 2"])
+    t = StringTable(0, 2, title = "My Test Table", 
+                    column_titles = ["Column 1", "Column 2"])
 
     for i in xrange(10):
         t.append_row(i, "stuff")
@@ -146,6 +151,6 @@ def testmain():
     t[3,4] = 5.0
     print str(t)
 
+
 if __name__ == "__main__":
     testmain()
-
