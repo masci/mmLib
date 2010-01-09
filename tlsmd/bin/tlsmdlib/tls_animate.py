@@ -129,7 +129,7 @@ class TLSAnimate(object):
                 return model_id
 
     def next_chain_id(self):
-        """Return the next available chain_id in self.astruct
+        """Return the next available chain_id in self.struct
         """
         for chain_id in string.uppercase:
             chain = self.struct.get_chain(chain_id)
@@ -153,7 +153,7 @@ class TLSAnimate(object):
 
     def construct_frame(self, phase, raw_r3d_file):
         """Create a new model in self.struct with the TLS displacements
-        caused from the three screw dispacement axes displaced by the
+        caused from the three screw displacement axes displaced by the
         sin(phase).
         """
         ## copy the original model and add it to the structure
