@@ -239,7 +239,7 @@ class ISOptimization(hcsssp.HCSSSP):
 
     def prnt_detailed_paths(self):
         """Prints out detailed information on the minimization of each vertex
-        path for n segments with Node Label, Hops, Cost, Previous Noe, and
+        path for n segments with Node Label, Hops, Cost, Previous Node, and
         Edge.
         """
         hops = self.nparts
@@ -251,7 +251,14 @@ class ISOptimization(hcsssp.HCSSSP):
         for h in xrange(1, hops + 1):
             console.endln()
             console.stdoutln("MINIMIZATON VERTEX PATH FOR %d SEGMENTS" % (h))
-            console.stdoutln("NODE LABEL              HOPS      COST      PREVIOUS NODE          EDGE")
+
+            header  = "NODE LABEL" + " "*14    # V: "V50[C-TERM]"
+            header += "HOPS" + " "*6           # D: "1"
+            header += "COST" + " "*6           # P: "0.0943"
+            header += "PREVIOUS NODE" + " "*10 # T: "V0[N-TERM]"
+            header += "EDGE"                   # h: "(0, 50, 0.094,('1', '50'))  0.002"
+            console.stdoutln(header)
+
             self.__detailed_path(self.V, self.D, self.P, self.T, h)
 
     def __detailed_path(self, V, D, P, T, hop_constraint):
