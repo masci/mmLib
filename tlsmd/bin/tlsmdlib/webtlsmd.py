@@ -138,9 +138,11 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<center>'
 
     x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
-    x += '<input type="hidden" name="page" value="%s" />' % (fdict.get("page", "index"))
+    x += '<input type="hidden" name="page" value="%s" />' % (
+             fdict.get("page", "index"))
     x += '<input type="hidden" name="edit_form" value="TRUE" />'
-    x += '<input type="hidden" name="job_id" value="%s" />' % (fdict["job_id"])
+    x += '<input type="hidden" name="job_id" value="%s" />' % (
+             fdict["job_id"])
 
     x += '<table border="1" width="100%">'
 
@@ -168,7 +170,7 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<tr>'
     x += '<td class="r"><label>EMail Address:</td><td>'
     x += '<input type="text" name="email" value="%s" size="25" maxlength="40" />' % (
-         fdict.get("email", ""))
+             fdict.get("email", ""))
     x += '</label></td>'
     x += '</tr>'
 
@@ -177,7 +179,7 @@ def html_job_edit_form(fdict, pdb=False):
         x += '<tr>'
         x += '<td class="r"><label>Structure Code:</td><td>'
         x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4" />' % (
-             fdict.get("structure_id", ""))
+                 fdict.get("structure_id", ""))
         x += '</label></td>'
         x += '</tr>'
 
@@ -1049,6 +1051,7 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
+
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -1530,8 +1533,7 @@ class AdminJobPage(Page):
         x += html_title(title)
 
         x += html_nav_bar()
-        if jdict.get("state") in ["errors", "warnings", "killed", 
-                                  "died", "defunct"]:
+        if jdict.get("state") in ["killed", "died", "defunct"]:
             x += html_job_nav_bar(job_id)
 
         if self.form.has_key("submit") and self.form["submit"].value == "Remove Job":
@@ -1565,7 +1567,8 @@ class AdminJobPage(Page):
             fdict["killbutton"]    = True
             fdict["requeuebutton"] = True
 
-        if state == "running" or state == "success" or state == "completed":
+        if state == "running" or state == "success" or \
+           state == "warnings" or state == "errors":
             x += html_job_nav_bar(job_id)
             x += html_job_info_table(fdict)
         else:
@@ -1830,11 +1833,8 @@ class Submit3Page(Page):
             raise SubmissionException("Your job is already running")
 
         ## verify the submission IP address
-        ## FIXME: This does not work yet, 2009-06-01
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
         ip_addr_verify = mysql.job_get_remote_addr(job_id)
-        #if ip_addr != ip_addr_verify:
-        #    raise SubmissionException('Submission IP Address Mismatch')
         ip_addr_verify = ip_addr ## XXX: Temporary until above is fixed, 2009-06-05
 
         ## completely remove the job
@@ -2044,7 +2044,6 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
-    ## TODO: Add chain_id to .std file, 2009-10-20
     nbad = 0
     fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5, len(avg_tfac)-5):
