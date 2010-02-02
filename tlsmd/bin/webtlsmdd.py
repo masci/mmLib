@@ -215,7 +215,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     return ""
 
 def RequeueJob(webtlsmdd, job_id):
-    """Pushes job to the end of the list
+    """Pushes job to the end of the list.
     """
     ## FIXME: This will no longer work! The BerkeleyDB code has been removed
     ## and now we must use MySQL, 2009-06-29
@@ -238,7 +238,6 @@ def RemoveJob(webtlsmdd, job_id):
     if not mysql.job_exists(job_id):
         return False
 
-    ## e.g., "shutil.rmtree(path)", 2009-05-30
     job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
     if job_dir and os.path.isdir(job_dir):
         for root, dirs, files in os.walk(job_dir, topdown = False):
@@ -306,7 +305,7 @@ def KillJob(webtlsmdd, job_id):
 
     return True
 
-def Refmac5RefinementPrep(job_id, chain_ntls):
+def Refmac5RefinementPrep(job_id, chain_ntls, wilson):
     """Called with a list of tuples (chain_id, ntls).
     Generates PDB and TLSIN files for refinement with REFMAC5 + PHENIX.
     Returns a single string if there is an error, otherwise a
@@ -356,29 +355,44 @@ def Refmac5RefinementPrep(job_id, chain_ntls):
             return "Input TLSIN File %s Not Found" % (tlsin)
         tlsins.append(tlsin)
 
+    job_num = job_id.split("_")[0]
+    secure_dir = job_id.split("_")[1]
+
+    if not os.path.exists(secure_dir):
+        os.mkdir(secure_dir)
+
     ## form unique pdbout/tlsout filenames from job_id
-    pdbout = "%s.pdb" % (job_id)
+    pdbout1 = "%s/%s_TLS+Biso.pdb" % (secure_dir, job_num)
+    pdbout2 = "%s/%s_pureTLS.pdb" %  (secure_dir, job_num)
 
     ## the tlsout from this program is going to be the tlsin
     ## for refinement, so it's important for the filename to have
     ## the tlsin extension so the user is not confused
-    tlsout = "%s.tlsin"  % (job_id)
-    phenix = "%s.phenix" % (job_id)
+    tlsout1 = "%s/%s_TLS+Biso.tlsin" % (secure_dir, job_num)
+    tlsout2 = "%s/%s_pureTLS.tlsin"  % (secure_dir, job_num)
+    phenix  = "%s/%s.phenix" % (secure_dir, job_num)
 
     ## make urls for linking
-    pdbout_url = "%s/%s" % (analysis_base_url, pdbout)
-    tlsout_url = "%s/%s" % (analysis_base_url, tlsout)
-    phenix_url = "%s/%s" % (analysis_base_url, phenix)
+    pdbout_url1 = "%s/%s" % (analysis_base_url, pdbout1)
+    pdbout_url2 = "%s/%s" % (analysis_base_url, pdbout2)
+    tlsout_url1 = "%s/%s" % (analysis_base_url, tlsout1)
+    tlsout_url2 = "%s/%s" % (analysis_base_url, tlsout2)
+    phenix_url  = "%s/%s" % (analysis_base_url, phenix)
 
     ## create the REFMAC/PHENIX files
-    tls_calcs.refmac5_prep(pdbin, tlsins, pdbout, tlsout)
+    tls_calcs.refmac5_prep(pdbin, tlsins, pdbout1, tlsout1)
+    tls_calcs.refmac_pure_tls_prep(pdbin, tlsins, wilson, pdbout2, tlsout2)
     tls_calcs.phenix_prep(pdbin, tlsins, phenix)
 
     os.chdir(old_dir)
-    return dict(pdbout = pdbout,
-                pdbout_url = pdbout_url,
-                tlsout = tlsout,
-                tlsout_url = tlsout_url,
+    return dict(pdbout1 = pdbout1,
+                pdbout_url1 = pdbout_url1,
+                pdbout2 = pdbout2,
+                pdbout_url2 = pdbout_url2,
+                tlsout1 = tlsout1,
+                tlsout_url1 = tlsout_url1,
+                tlsout2 = tlsout2,
+                tlsout_url2 = tlsout_url2,
                 phenix = phenix,
                 phenix_url = phenix_url)
 
@@ -428,13 +442,13 @@ class WebTLSMDDaemon(object):
         """
         return RequeueJob(self, job_id)
 
-    def refmac5_refinement_prep(self, job_id, chain_ntls):
+    def refmac5_refinement_prep(self, job_id, chain_ntls, wilson):
         """Called with a list of tuples (chain_id, ntls).
         Generates PDB and TLSIN files for refinement with REFMAC5 + PHENIX.
         Returns a single string if there is an error, otherwise a
         dictionary of results is returned.
         """
-        return Refmac5RefinementPrep(job_id, chain_ntls)
+        return Refmac5RefinementPrep(job_id, chain_ntls, wilson)
 
     def fetch_pdb(self, pdbid):
         """Retrieves the PDB file from RCSB"""
