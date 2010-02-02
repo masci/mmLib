@@ -313,10 +313,20 @@ def Refmac5RefinementPrep(job_id, chain_ntls):
     dictionary of results is returned.
     """
     struct_id = mysql.job_get_structure_id(job_id)
-    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    analysis_dir = os.path.join(job_dir, "ANALYSIS")
-    job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
-    analysis_base_url = "%s/ANALYSIS" % (job_url)
+    if mysql.job_get_via_pdb(job_id) == 1:
+        ## If job was submitted via pdb.org, the results are in a different
+        ## directory/path.
+        pdb_id = mysql.job_get_structure_id(job_id)
+        job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
+        analysis_dir = os.path.join(job_dir, "ANALYSIS")
+        analysis_base_url = "%s/ANALYSIS" % (job_url)
+    else:
+        ## User-submitted (non-pdb.org) result directory/path/url
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+        analysis_dir = os.path.join(job_dir, "ANALYSIS")
+        analysis_base_url = "%s/ANALYSIS" % (job_url)
 
     if not os.path.isdir(analysis_dir):
         return "Job analysis directory does not exist"
