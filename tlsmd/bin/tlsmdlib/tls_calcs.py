@@ -329,6 +329,52 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     FileIO.SaveStructure(fil = xyzout, struct = struct)
     tls_file.save(open(tlsout, "w"))
 
+def refmac_pure_tls_prep(xyzin, tlsin_list, wilson, xyzout, tlsout):
+    """Use TLS model (without Uiso) for each atom. Output xyzout with the
+    B-factors reset to either the Bmean or the Wilson B value.
+    """
+    ## load structure
+    struct = FileIO.LoadStructure(fil = xyzin)
+
+    ## load and construct TLS groups
+    tls_group_list = []
+    tls_file = TLS.TLSFile()
+    tls_file.set_file_format(TLS.TLSFileFormatPureTLSOUT())
+    tls_file_format = TLS.TLSFileFormatPureTLSOUT()
+    for tlsin in tlsin_list:
+        tls_desc_list = tls_file_format.load(open(tlsin, "r"))
+        for tls_desc in tls_desc_list:
+            tls_file.tls_desc_list.append(tls_desc)
+            tls_group = tls_desc.construct_tls_group_with_atoms(struct)
+            tls_group.tls_desc = tls_desc
+            tls_group_list.append(tls_group)
+
+    ## set the extra Uiso for each atom
+    for tls_group in tls_group_list:
+
+        Bmean = 0.0
+        sum_Biso = 0.0
+        num_atms = 0
+        for atm, Utls in tls_group.iter_atm_Utls():
+            num_atms += 1
+            sum_Biso += atm.temp_factor
+        Bmean = sum_Biso / num_atms
+
+        ## reset the TLS tensor values in the TLSDesc object so they can be
+        ## saved
+        tls_group.tls_desc.set_tls_group(tls_group)
+
+        ## reset atm.temp_factor to the Bmean for this TLS group
+        for atm, Utls in tls_group.iter_atm_Utls():
+            atm.temp_factor = Bmean
+            atm.temp_factor = wilson
+
+    ## save the new xyzout file with temp_factors reset to "wilson" value
+    FileIO.SaveStructure(fil = xyzout, struct = struct)
+
+    ## save the REFMAC-format file, but without T, L, S, and ORIGIN values
+    tls_file.save(open(tlsout, "w"))
+
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
     """
