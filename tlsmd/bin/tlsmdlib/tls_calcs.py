@@ -151,7 +151,7 @@ def calc_mean_biso_obs(chain):
 
 
 def calc_mean_biso_tls(chain, cpartition):
-    """Calculated the mean B value per residue in the chain (as calculated in 
+    """Calculates the mean B value per residue in the chain (as calculated in 
     the chain optimization).
     """
     num_res = chain.count_fragments()
@@ -183,6 +183,8 @@ def calc_mean_biso_tls(chain, cpartition):
 
 
 def calc_residue_mean_rmsd(chain, cpartition):
+    """Calculates the mean RMSD value per residue in a given chain.
+    """
     num_tls = cpartition.num_tls_segments()
     num_res = chain.count_fragments()
 
@@ -308,7 +310,8 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
             numpy.transpose(TR),
             numpy.dot(T, TR))
 
-        ## reset the TLS tensor values in the TLSDesc object so they can be saved
+        ## reset the TLS tensor values in the TLSDesc object so they can be 
+        ## saved
         tls_group.tls_desc.set_tls_group(tls_group)
 
         ## set atm.temp_factor
@@ -328,8 +331,6 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
 
 def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
     """PHENIX input file. Tells 'phenix.refine' what the TLS groups are.
-    Use TLS model + Uiso for each atom. Output xyzout with the residual 
-    Uiso only.
     """
     ## load structure
     struct = FileIO.LoadStructure(fil = xyzin)
@@ -347,71 +348,5 @@ def phenix_prep(xyzin, phenix_tlsin_list, phenix_tlsout):
             tls_group.tls_desc = tls_desc
             tls_group_list.append(tls_group)
 
-    ## set the extra Uiso for each atom
-    for tls_group in tls_group_list:
-
-        ## minimal/maximal amount of Uiso which has to be added
-        ## to the group's atoms to to make Uiso == Uiso_tls
-        min_Uiso = 0.0
-        max_Uiso = 0.0
-
-        for atm, Utls in tls_group.iter_atm_Utls():
-            tls_tf = numpy.trace(Utls) / 3.0
-            ref_tf = numpy.trace(atm.get_U()) / 3.0
-
-            if ref_tf > tls_tf:
-                max_Uiso = max(ref_tf - tls_tf, max_Uiso)
-            else:
-                min_Uiso = max(tls_tf - ref_tf, min_Uiso)
-
-        ## reduce the TLS group T tensor by min_Uiso so that
-        ## a PDB file can be written out where all atoms
-        ## Uiso == Uiso_tls
-
-        ## we must rotate the T tensor to its primary axes before
-        ## subtracting min_Uiso magnitude from it
-        (T_eval, TR) = numpy.linalg.eig(tls_group.T)
-        T = numpy.dot(TR, numpy.dot(tls_group.T, numpy.transpose(TR)))
-
-        ## FIXME: allclose(some_array, some_scalar)
-        ## The next three lines appear to cause this def to crash, 2007-10-04
-        #assert numpy.allclose(T[0,1], 0.0)
-        #assert numpy.allclose(T[0,2], 0.0)
-        #assert numpy.allclose(T[1,2], 0.0)
-
-        T[0,0] = T[0,0] - min_Uiso
-        T[1,1] = T[1,1] - min_Uiso
-        T[2,2] = T[2,2] - min_Uiso
-
-        ## now take some of the smallest principal component of T and
-        ## move it into the individual atomic temperature factors
-        min_T    = min(T[0,0], min(T[1,1], T[2,2]))
-        sub_T    = min_T * 0.50
-        add_Uiso = min_T - sub_T
-
-        T[0,0] = T[0,0] - sub_T
-        T[1,1] = T[1,1] - sub_T
-        T[2,2] = T[2,2] - sub_T
-
-        ## rotate T back to original orientation
-        tls_group.T = numpy.dot(
-            numpy.transpose(TR),
-            numpy.dot(T, TR))
-
-        ## reset the TLS tensor values in the TLSDesc object so they can 
-        ## be saved
-        tls_group.tls_desc.set_tls_group(tls_group)
-
-        ## set atm.temp_factor
-        for atm, Utls in tls_group.iter_atm_Utls():
-            tls_tf = numpy.trace(Utls) / 3.0
-            ref_tf = numpy.trace(atm.get_U()) / 3.0
-
-            if ref_tf > tls_tf:
-                atm.temp_factor = ((add_Uiso) + ref_tf - tls_tf)*Constants.U2B
-                atm.U = None
-            else:
-                atm.temp_factor = (add_Uiso) * Constants.U2B
-                atm.U = None
-
+    ## now save the PHENIX file in phenix.refine format
     tls_file.save(open(phenix_tlsout, "w"))
