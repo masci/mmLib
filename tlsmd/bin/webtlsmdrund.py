@@ -236,8 +236,6 @@ def cleanup_job(mysql, jdict):
         tar.add("ANALYSIS")
         tar.close()
 
-    os.chdir(old_dir)
-
     ## If job was submitted via_pdb, redirect the job_dir path used by the
     ## logfile
     if int(jdict["via_pdb"]) == 1:
@@ -352,7 +350,8 @@ def send_mail(jdict):
 
     job_id = jdict["job_id"]
     if jdict == False:
-        log_write("WARNING: Trying to email but job_id not found: %s" % (job_id))
+        log_write("WARNING: Trying to email but job_id not found: %s" % (
+            job_id))
         return
 
     address = jdict.get("email", "")
