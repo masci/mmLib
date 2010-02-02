@@ -47,6 +47,8 @@ def flatfile_write(name, code, type, data, chain_id, num_tls):
     parsing and re-generation of _all_ the plots generated during a normal
     TLSMD job run.
     """
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR,
+                           conf.globalconf.job_id, "ANALYSIS")
     if os.path.basename(os.getcwd()) != "ANALYSIS":
         flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
     else:
@@ -215,6 +217,8 @@ class LSQR_vs_TLS_Segments_Plot(GNUPlot):
             self.chain.chain_id)
         self.set_basename(basename)
 
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR,
+                               conf.globalconf.job_id, "ANALYSIS")
         if os.path.basename(os.getcwd()) != "ANALYSIS":
             flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
         else:
@@ -736,7 +740,6 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
 
         job_dir = os.path.join(conf.TLSMD_WORK_DIR,
                                conf.globalconf.job_id, "ANALYSIS")
-        #flatfile = open("%s/%s.dat" % (job_dir, conf.globalconf.job_id), "a+")
         if os.path.basename(os.getcwd()) != "ANALYSIS":
             flatfile = open("../%s.dat" % conf.globalconf.job_id, "a+")
         else:
@@ -805,9 +808,11 @@ class BMeanPlot(GNUPlot):
         nrows = len(self.cpartition.chain)
         ncols = 3 + self.cpartition.num_tls_segments()
         tbl = table.StringTable(nrows, ncols, "?")
-        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, self.cpartition.chain.iter_fragments())
+        frag_id_iter = itertools.imap(lambda frag: frag.fragment_id, 
+                                      self.cpartition.chain.iter_fragments())
         tbl.set_column(0, 0, frag_id_iter)
-        ifrag_iter = itertools.imap(lambda frag: frag.ifrag, self.cpartition.chain.iter_fragments())
+        ifrag_iter = itertools.imap(lambda frag: frag.ifrag, 
+                                      self.cpartition.chain.iter_fragments())
         tbl.set_column(0, 1, ifrag_iter)
         tbl.set_column(0, 2, BISO_OBS)
 
