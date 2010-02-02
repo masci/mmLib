@@ -16,6 +16,7 @@ import cgi
 ## TLSMD
 import const
 import conf
+import misc
 import mysql_support
 
 ## GLOBALS
@@ -140,6 +141,22 @@ class RefinePrepPage(Page):
                     continue
                 chain_ntls.append((chain_id, ntls))
 
+            ## Extract the "Constant B for pure TLS model (e.g., Wilson B)"
+            ## value from the refinement prep form
+            elif key.startswith("wilson"):
+                try:
+                    if misc.is_float(self.form[key].value):
+                        wilson = float(self.form[key].value)
+                        if wilson > 50.0:
+                            wilson = 50.0
+                    else:
+                        msg  = "Value for constant B '%s' is not valid. " % (
+                            self.form[key].value)
+                        msg += "Please enter a floating point number."
+                        raise RefinePrepError(msg)
+                except ValueError:
+                    continue
+
         chain_ntls.sort()
 
         ## make sure there were selections
@@ -147,27 +164,43 @@ class RefinePrepPage(Page):
             raise RefinePrepError("Form Processing Error: No Chains Selected")
 
         ## call webtlsmdd to generate files (Refmac5 + PHENIX)
-        result = webtlsmdd.refmac5_refinement_prep(job_id, chain_ntls)
+        result = webtlsmdd.refmac5_refinement_prep(job_id, chain_ntls, wilson)
         if isinstance(result, str):
             raise RefinePrepError(result)
 
         x += '<p>%s</p>' % (CAPTION)
 
         ## success! Now make download links
-        x += '<center>'
-        x += '<table border="0" style="background-color:#eeeeee">'
+        x += '<center>\n'
+        x += '<table class="submit_table">'
+        x += '<th colspan="2">REFMAC (TLS + Biso) files</th>'
         x += '<tr>'
-        x += '<td align="right"><b>PDBIN File</b></td>'
+        x += '<td align="right"><b>PDBIN File: </b></td>'
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
-            result["pdbout_url"], result["pdbout"])
+            result["pdbout_url1"], result["pdbout1"].split("/")[1])
         x += '</tr><tr>'
-        x += '<td align="right"><b>TLSIN File</b></td>'
+        x += '<td align="right"><b>TLSIN File: </b></td>'
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
-            result["tlsout_url"], result["tlsout"])
+            result["tlsout_url1"], result["tlsout1"].split("/")[1])
+        x += '</tr>'
+        x += '<tr><td colspan="2"><hr></td></tr>'
+        x += '<th colspan="2">REFMAC (Pure TLS) files</th>'
+        x += '<tr>'
+        x += '<td align="right"><b>PDBIN File: </b></td>'
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
+            result["pdbout_url2"], result["pdbout2"].split("/")[1])
         x += '</tr><tr>'
-        x += '<td align="right"><b>PHENIX File</b></td>'
+        x += '<td align="right"><b>TLSIN File: </b></td>'
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
-            result["phenix_url"], result["phenix"])
+            result["tlsout_url2"], result["tlsout2"].split("/")[1])
+        x += '</tr>'
+        x += '<tr><td colspan="2"><hr></td></tr>'
+        x += '<th colspan="2">PHENIX files</th>'
+        x += '<tr>'
+        x += '<td align="right"><b>PHENIX File: </b></td>'
+        x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
+            result["phenix_url"], result["phenix"].split("/")[1])
+        x += '</tr>'
         x += '</table>'
 
         x += '<br/>'
