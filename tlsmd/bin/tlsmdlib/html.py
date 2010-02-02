@@ -148,7 +148,7 @@ def calc_orientation(struct, chain):
     xcenter = min_x + (width / 2.0)
     ycenter = min_y + (height / 2.0)
 
-    xydelta  = numpy.array((xcenter, ycenter, 0.0), float)
+    xydelta = numpy.array((xcenter, ycenter, 0.0), float)
 
     pheight = conf.VIS_WIDTH
     pwidth  = pheight * (width/height)
@@ -303,9 +303,9 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
             flatfile.write("\nDATA %s TLS_MEAN_B: %.1f" % (chain_ntls, tls.tls_mean_b()))
             flatfile.write("\nDATA %s TLS_MEAN_ANISO: %.2f" % (chain_ntls, tls.tls_mean_anisotropy()))
 
-            ## XXX: Are the following redundant?
             flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
-            flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (chain_ntls, cpartition.residual()))
+            flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (
+                chain_ntls, cpartition.residual()))
             flatfile.write("\nTLST %s" % t_data)
 
             flatfile.close()
@@ -315,8 +315,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
 
         ## "Analysis of TLS Group n Chain Segments" table
         ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
-        ## off-diagonal matrix values? The "RMSD B Values of Combined TLS Groups"
-        ## values.
+        ## The "RMSD B Values of Combined TLS Groups" values.
         l += ['<td align="center" valign="middle">',
               '<img src="%s" alt="%s"/></td>' % (
                  cpath, tls.color.name),
@@ -632,32 +631,8 @@ class HTMLSummaryReport(Report):
              '</div></div>%s%% Complete</p>\n' % progress,
              '</center>']
 
-        l += ['</td><td valign=top><img src="summary.png" /></td></tr></table>\n']
-
-        """
-        l +=['<br/>',
-             ## MULTI CHAIN ALIGNMENT
-             '<center><h3>Multi-Chain TLS Group Alignment</h3></center>',
-             '<p class="captions">%s</p>' % (captions.MULTI_CHAIN_ALIGNMENT_TEXT)]
-
-        if self.page_multi_chain_alignment != None:
-            l.append('<p><a href="%s">%s</a></p>' % (
-                self.page_multi_chain_alignment["href"], 
-                self.page_multi_chain_alignment["title"]))
-        else:
-            l.append('<p><u>Only one chain was analyized in this structure, ')
-            l.append('so the multi-chain alignment analysis was not performed.</u></p>')
-
-        if self.page_refinement_prep is not None:
-            l +=['<br/>',
-                ## REFINEMENT PREP
-                '<center><h3>Generate input files for multigroup TLS Refinement</h3></center>',
-                '<p class="captions">%s</p>' % (
-                    captions.REFINEMENT_PREP_TEXT),
-                '<p><a href="%s">%s</a></p>' % (
-                self.page_refinement_prep["href"], 
-                self.page_refinement_prep["title"])]
-        """
+        l += ['</td><td valign=top><img src="summary.png" /></td></tr>',
+              '</table>\n']
 
         l += [self.html_foot()]
 
@@ -1744,6 +1719,10 @@ class HTMLReport(Report):
                     self.struct_id, chain.chain_id,
                     cpartition.num_tls_segments())
 
+        ## SEE:
+        ##    - http://wiki.jmol.org:81/index.php/AtomSets
+        ##    - http://chemapps.stolaf.edu/jmol/docs/index.htm
+
         ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js = ['load %s;' % (self.struct_path),
@@ -2115,6 +2094,13 @@ class HTMLReport(Report):
             l += ['</select>',
                   '</td></tr>' ]
         l += '</table>'
+
+        ## Wilson B
+        l += ['<table cellspacing="5">',
+              '<tr><td>Constant B for pure TLS model (e.g., Wilson B)</td>',
+              '<td><input type="text" name="wilson" value="%s" size="5" maxlength="5" />' % (
+                  conf.DEFAULT_WILSON_B),
+              '</td></tr></table>' ]
 
         l += ['</td></tr>',
               '<tr><td align="right">',
