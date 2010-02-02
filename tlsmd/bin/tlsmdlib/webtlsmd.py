@@ -1660,7 +1660,9 @@ class Submit1Page(Page):
              '<input type="hidden" name="page" value="submit2" />',
 
              '<table class="submit_table">',
-             '<tr><th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th></tr>',
+             '<tr>',
+             '<th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th>',
+             '</tr>',
 
              '<tr>',
              '<td class="l">Upload PDB File:</td>',
