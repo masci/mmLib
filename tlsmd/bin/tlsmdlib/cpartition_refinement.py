@@ -105,12 +105,16 @@ class Partition(object):
         self.move(num_frags)
 
     def fit_residual(self):
+        """Fit residual both right and left.
+        """
         chain = self.cpartition.chain
         self.lhs_tls.fit_residual(chain)
         self.rhs_tls.fit_residual(chain)
 
 
 def ChainPartitionList(cpartition):
+    """Returns a list of partitions in a given chain.
+    """
     segment_range_list = []
     for tls in cpartition.iter_tls_segments():
         for range in tls.iter_segment_ranges():
@@ -136,8 +140,8 @@ def ChainPartitionList(cpartition):
 
 
 def RefineChainPartitionPositions(cpartition):
-    """Refines positions of the partition points of the
-    given ChainPartition instance.
+    """Refines positions of the partition points of the given ChainPartition 
+    instance.
     """
     partitions = ChainPartitionList(cpartition)
     console.stdoutln(partitions)
