@@ -5,6 +5,9 @@
 ## included as part of this package.
 
 class Tree(object):
+    """Converts a list of strings into a "tree"-like structure.
+    """
+
     def __init__(self, name = None):
         self.__name = name
         self.__parent = None 
@@ -68,6 +71,7 @@ def testmain():
     root = Tree()
     add_tree(root, 2, 4)
 
+    ## FIXME: Can not iter_children, 2010-01-08
     for depth, tree in root.iter_children():
         print "%s:%d " % (tree, depth),
     print
