@@ -110,7 +110,7 @@ class TLSGroupDesc(object):
         self.S = numpy.array([[s11, s12, s13],
                               [s21, s22, s23],
                               [s31, s32, s33]])
-        
+
     def set_S_deg(self, s2211, s1133, s12, s13, s23, s21, s31, s32):
         """Sets the S tensor from the component arguments.  Units are in
         Degrees*Angstroms.  The trace of S is set to 0.0.
@@ -134,7 +134,7 @@ class TLSGroupDesc(object):
             tls_group.T[0,1],
             tls_group.T[0,2],
             tls_group.T[1,2])
-            
+
         self.set_L(
             tls_group.L[0,0],
             tls_group.L[1,1],
@@ -224,7 +224,7 @@ class TLSGroupDesc(object):
                 self.S[1,0],
                 self.S[2,0],
                 self.S[2,1])
-        
+
         return tls_group
 
     def construct_tls_group_with_atoms(self, struct):
@@ -233,7 +233,7 @@ class TLSGroupDesc(object):
         from the given argument Structure.
         """
         tls_group = self.construct_tls_group()
-        
+
         for atm in self.iter_atoms(struct):
             tls_group.append(atm)
 
@@ -254,14 +254,14 @@ class TLSFile(object):
         writing TLS description files.
         """
         self.file_format = file_format
-    
+
     def load(self, fil, path=None):
         """Load TLS description file using the current TLSFileFormat instance.
         """
         assert self.file_format is not None
         self.path = path
         self.tls_desc_list = self.file_format.load(fil)
-        
+
     def save(self, fil, path=None):
         """Save TLS description file using the curent TLSFileFormat instance.
         """
@@ -296,7 +296,7 @@ class TLSFile(object):
 
         return tls_group_list
 
-    
+
 class TLSFileFormat(object):
     """Base class for TLS file types.
     """
@@ -309,7 +309,7 @@ class TLSFileFormat(object):
         """Return True if file saving is supported, otherwise returns False.
         """
         return False
-    
+
     def load(self, fil):
         """Returns a list containing one TLSGroupDesc object for each TLS group
         description found in the file.
@@ -400,7 +400,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             fileobj = open(fil, "r")
         else:
             fileobj = fil
-        
+
         self.tls_desc = None
         self.tls_scrap = {}
         self.tls_desc_list = []
@@ -439,12 +439,12 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
                 self.tls_scrap["l23"])
         except AttributeError:
             raise TLSFileFormatError()
-        
+
     def complete_S(self):
         for key in ("s11","s22","s33","s12","s13","s23","s21","s31","s32"):
             if not self.tls_scrap.has_key(key):
                 return
-            
+
         ## s2211, s1133, s12, s13, s23, s21, s31, s32
         try:
             self.tls_desc.set_S_deg(
@@ -458,7 +458,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
                 self.tls_scrap["s32"])
         except AttributeError:
             raise TLSFileFormatError()
-            
+
     def process_REMARK(self, rec):
         """Callback for the PDBFile parser for REMARK records.  If the
         REMARK records contain TLS group information, then it is
@@ -487,7 +487,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             self.tls_desc = TLSGroupDesc()
             self.tls_desc_list.append(self.tls_desc)
             self.tls_scrap = {}
-        
+
         elif re_key == "origin":
             strx = mx.group(1)
             ## this is nasty -- I wish I could trust the numbers
@@ -500,7 +500,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
                 x = strx[ max(0, j-4) : j+5]
                 strx = strx[j+5:]
                 ox[i] = float(x)
-            
+
             try:
                 self.tls_desc.set_origin(ox[0], ox[1], ox[2])
             except AttributeError:
@@ -533,7 +533,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             except ValueError:
                 raise TLSFileFormatError()
             self.complete_T()
-            
+
         elif re_key == "t33_t12":
             (t33, t12) = mx.groups()
             try:
@@ -542,7 +542,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             except ValueError:
                 raise TLSFileFormatError()
             self.complete_T()
-            
+
         elif re_key == "t13_t23":
             (t13, t23) = mx.groups()
             try:
@@ -551,7 +551,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             except ValueError:
                 raise TLSFileFormatError()
             self.complete_T()
-            
+
         elif re_key == "l11_l22":
             (l11, l22) = mx.groups()
             try:
@@ -569,7 +569,7 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             except ValueError:
                 raise TLSFileFormatError()
             self.complete_L()
-            
+
         elif re_key == "l13_l23":
             (l13, l23) = mx.groups()
             try:
@@ -611,7 +611,8 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
 
 
 class TLSFileFormatTLSOUT(TLSFileFormat):
-    """Read/Write REFMAC5 TLSIN/TLSOUT files.
+    """Read/Write REFMAC TLSIN/TLSOUT files. Note that this includes TLS+Biso
+    values.
     """
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
@@ -639,7 +640,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         if frag_id[-1].isdigit():
             frag_id += "."
         return frag_id
-        
+
     def load_supported(self):
         return True
     def save_supported(self):
@@ -648,7 +649,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
     def load(self, fil):
         tls_desc_list = []
         tls_desc = None
-        
+
         for ln in fil.xreadlines():
             ln = ln.rstrip()
 
@@ -661,7 +662,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
             ## no match was found for the line
             if mx is None:
                 continue
-            
+
             ## do not allow a match if tls_info is None, because then
             ## somehow we've missed the TLS group begin line
             if tls_desc is None and re_key!="group":
@@ -708,7 +709,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
                                         float(l12), float(l13), float(l23))
                 except ValueError:
                     raise TLSFileFormatError()
-                    
+
             elif re_key == "S":
                 ## REFMAC ORDER:
                 ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
@@ -784,12 +785,124 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
         ## with this line, the tensor components will be read by some
         ## programs in a different order, mangling the tensor values
         fil.write("REFMAC\n\n")
-        
+
         for tls_desc in tls_desc_list:
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
 
-###########################################################################################################################
+
+class TLSFileFormatPureTLSOUT(TLSFileFormat):
+    """Read/Write REFMAC5 TLSIN/TLSOUT files. Note that this is "pure" TLS
+    values, in that the Biso is not included, nor are the origin, T, L, or S
+    values.
+    """
+    ## NOTE: The file format is identical to the Refmac format, except that it
+    ## does not contain the T, L, S, and origin fields.
+    tlsout_regex_dict = {
+        "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
+        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
+        "S":      re.compile("^\s*S\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$")
+        }
+
+    def convert_frag_id_load(self, frag_id):
+        """Converts the residue sequence code to a mmLib fragment_id.
+        """
+        if len(frag_id) == 0:
+            return ""
+        if frag_id[-1] == ".":
+            frag_id = frag_id[:-1]
+        return frag_id
+
+    def convert_frag_id_save(self, frag_id):
+        """Converts a mmLib fragment_id to a TLSOUT fragment id.
+        """
+        if len(frag_id) == 0:
+            return "."
+        if frag_id[-1].isdigit():
+            frag_id += "."
+        return frag_id
+
+    def load_supported(self):
+        return True
+    def save_supported(self):
+        return True
+
+    def load(self, fil):
+        tls_desc_list = []
+        tls_desc = None
+
+        for ln in fil.xreadlines():
+            ln = ln.rstrip()
+
+            ## search all regular expressions for a match
+            for (re_key, re_tls) in self.tlsout_regex_dict.items():
+                mx = re_tls.match(ln)
+                if mx is not None:
+                    break
+
+            ## no match was found for the line
+            if mx is None:
+                continue
+
+            ## do not allow a match if tls_info is None, because then
+            ## somehow we've missed the TLS group begin line
+            if tls_desc is None and re_key!="group":
+                raise TLSFileFormatError()
+
+            if re_key == "group":
+                tls_desc = TLSGroupDesc()
+                tls_desc_list.append(tls_desc)
+
+                if mx.group(1) is not None:
+                    tls_desc.set_name(mx.group(1))
+
+            elif re_key == "range":
+                (chain_id1, frag_id1, chain_id2, frag_id2, sel) = mx.groups()
+
+                frag_id1 = self.convert_frag_id_load(frag_id1)
+                frag_id2 = self.convert_frag_id_load(frag_id2)
+
+                tls_desc.add_range(chain_id1, frag_id1, chain_id2, frag_id2, sel)
+
+        return tls_desc_list
+
+    def tlsout_tls_desc(self, tls_desc):
+        """Converts TLSGroupDesc instance to a multi-line string format
+        ready to write to a TLSOUT file.
+        """        
+        listx = []
+
+        if tls_desc.name != "":
+            listx.append("TLS %s" % (tls_desc.name))
+        else:
+            listx.append("TLS")
+
+        for (chain_id1, frag_id1,
+             chain_id2, frag_id2, sel) in tls_desc.range_list:
+
+            frag_id1 = self.convert_frag_id_save(frag_id1)
+            frag_id2 = self.convert_frag_id_save(frag_id2)
+
+            listx.append("RANGE  '%s%s' '%s%s' %s" % (
+                chain_id1, frag_id1.rjust(5),
+                chain_id2, frag_id2.rjust(5), sel))
+
+        return "\n".join(listx)
+
+    def save(self, fil, tls_desc_list):
+        ## with this line, the tensor components will be read by some
+        ## programs in a different order, mangling the tensor values
+        fil.write("REFMAC\n\n")
+
+        for tls_desc in tls_desc_list:
+            tls_desc_str = self.tlsout_tls_desc(tls_desc)
+            fil.write(tls_desc_str + "\n")
+
+
+################################################################################
 ## START: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 class TLSFileFormatPHENIXOUT(TLSFileFormat):
     """Write PHENIX-TLSOUT files.
@@ -826,7 +939,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
         if frag_id[-1].isdigit():
             frag_id += "."
         return frag_id
-        
+
     def load_supported(self):
         return True
     def save_supported(self):
@@ -835,7 +948,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
     def load(self, fil):
         tls_desc_list = []
         tls_desc = None
-        
+
         for ln in fil.xreadlines():
             ln = ln.rstrip()
 
@@ -848,7 +961,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
             ## no match was found for the line
             if mx is None:
                 continue
-            
+
             ## do not allow a match if tls_info is None, because then
             ## somehow we've missed the TLS group begin line
             if tls_desc is None and re_key!="group":
@@ -895,7 +1008,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
                                         float(l12), float(l13), float(l23))
                 except ValueError:
                     raise TLSFileFormatError()
-                    
+
             elif re_key == "S":
                 ## REFMAC ORDER:
                 ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
@@ -917,7 +1030,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
         listx = []
 
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
-	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
+            listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
                 chain_id1, frag_id1, frag_id2))
 
         return "\n".join(listx)
@@ -926,13 +1039,14 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
         ## with this line, the tensor components will be read by some
         ## programs in a different order, mangling the tensor values
         fil.write("refinement.refine {\n adp {\n")
-        
+
         for tls_desc in tls_desc_list:
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
 ## END: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 ################################################################################
+
 
 ################################################################################
 ## START: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
@@ -979,7 +1093,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         if frag_id[-1].isdigit():
             frag_id += "."
         return frag_id
-        
+
     def load_supported(self):
         return True
     def save_supported(self):
@@ -988,7 +1102,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
     def load(self, fil):
         tls_desc_list = []
         tls_desc = None
-        
+
         for ln in fil.xreadlines():
             ln = ln.rstrip()
 
@@ -1001,7 +1115,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
             ## no match was found for the line
             if mx is None:
                 continue
-            
+
             ## do not allow a match if tls_info is None, because then
             ## somehow we've missed the TLS group begin line
             if tls_desc is None and re_key!="group":
@@ -1048,7 +1162,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
                                         float(l12), float(l13), float(l23))
                 except ValueError:
                     raise TLSFileFormatError()
-                    
+
             elif re_key == "S":
                 ## REFMAC ORDER:
                 ## <S22 - S11> <S11 - S33> <S12> <S13> <S23> <S21> <S31> <S32>
@@ -1070,7 +1184,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         listx = []
 
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in tls_desc.range_list:
-	    listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
+            listx.append("\ttls=\"(chain %s and resid %s:%s)\"" % (
                 chain_id1, frag_id1, frag_id2))
 
         return "\n".join(listx)
@@ -1079,7 +1193,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
         ## with this line, the tensor components will be read by some
         ## programs in a different order, mangling the tensor values
         fil.write("refinement.refine {\n adp {\n")
-        
+
         for tls_desc in tls_desc_list:
             tls_desc_str = self.ptlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
@@ -1144,10 +1258,10 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     """
     ## use label indexing to avoid confusion!
     T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
-    
+
     ## indecies of the components of U
     UISO = i
-    
+
     ## C Matrix
     xx = x*x
     yy = y*y
@@ -1172,10 +1286,11 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     A[UISO, S3]  = w * (( 2.0 * x) / 3.0)
 
 def calc_itls_uiso(T, L, S, position):
-    """Calculate the TLS predicted uiso from the isotropic TLS model for the atom at position.
+    """Calculate the TLS predicted uiso from the isotropic TLS model for the 
+    atom at position.
     """
     x, y, z = position
-    
+
     xx = x*x
     yy = y*y
     zz = z*z
@@ -1200,9 +1315,9 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     T0 = numpy.array([[iT,  0.0, 0.0],
                       [0.0,  iT, 0.0],
                       [0.0, 0.0,  iT]], float)
-    
+
     L0 = iL.copy()
-        
+
     S0 = numpy.array([ [  0.0,   0.0, iS[1]],
                        [iS[0],   0.0,  0.0],
                        [  0.0, iS[2],  0.0] ], float)
@@ -1210,7 +1325,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
     LSMALL = 0.5 * Constants.DEG2RAD2
-    
+
     rdict = {}
 
     rdict["T'"] = T0.copy()
@@ -1230,14 +1345,14 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     rdict["L1_eigen_vec"] = numpy.zeros(3, float)
     rdict["L2_eigen_vec"] = numpy.zeros(3, float)
     rdict["L3_eigen_vec"] = numpy.zeros(3, float)
-    
+
     rdict["RHO"] = numpy.zeros(3, float)
     rdict["COR"] = origin
 
     rdict["L1_rho"] = numpy.zeros(3, float)
     rdict["L2_rho"] = numpy.zeros(3, float)
     rdict["L3_rho"] = numpy.zeros(3, float)
-    
+
     rdict["L1_pitch"] = 0.0
     rdict["L2_pitch"] = 0.0
     rdict["L3_pitch"] = 0.0
@@ -1245,7 +1360,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     rdict["Tr1_eigen_val"] = 0.0
     rdict["Tr2_eigen_val"] = 0.0
     rdict["Tr3_eigen_val"] = 0.0
-    
+
     rdict["Tr1_rmsd"] = 0.0
     rdict["Tr2_rmsd"] = 0.0
     rdict["Tr3_rmsd"] = 0.0
@@ -1260,7 +1375,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         L1 = 0.0
     else:
         good_L_eigens.append(0)
-        
+
     if numpy.allclose(L2, 0.0) or isinstance(L2, complex):
         L2 = 0.0
     else:
@@ -1344,12 +1459,12 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
 
     if not numpy.allclose(linalg.determinant(RL), 1.0):
         return rdict
-    
+
     RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
     cL = numpy.dot(numpy.dot(RL, L0), RLt) 
-    
+
     ## carrot-T tensor (T tensor WRT principal axes of L)
     cT = numpy.dot(numpy.dot(RL, T0), RLt)
 
@@ -1448,11 +1563,11 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     rdict["Tr1_eigen_val"] = Tiso
     rdict["Tr2_eigen_val"] = Tiso
     rdict["Tr3_eigen_val"] = Tiso
-    
+
     rdict["Tr1_rmsd"] = calc_rmsd(Tiso)
     rdict["Tr2_rmsd"] = calc_rmsd(Tiso)
     rdict["Tr3_rmsd"] = calc_rmsd(Tiso)
-    
+
     return rdict
 
 ###############################################################################
@@ -1503,7 +1618,7 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
 
     drot = numpy.dot(D, position - Lorigin)
     dscw = (Lrot * Lpitch) * Lvec
-    
+
     return drot + dscw
 
 def set_TLS_A(A, i, j, x, y, z, w):
@@ -1561,7 +1676,7 @@ def set_TLS_A(A, i, j, x, y, z, w):
     A[U12, S2211] = w *   z
     A[U12, S31]   = w *   x
     A[U12, S32]   = w *  -y
-    
+
     A[U13, T13]   = w * 1.0
     A[U13, L22]   = w * -xz
     A[U13, L23]   = w *  xy
@@ -1570,7 +1685,7 @@ def set_TLS_A(A, i, j, x, y, z, w):
     A[U13, S1133] = w *   y
     A[U13, S23]   = w *   z
     A[U13, S21]   = w *  -x
-    
+
     A[U23, T23]   = w * 1.0
     A[U23, L11]   = w * -yz
     A[U23, L23]   = w * -xx
@@ -1608,7 +1723,7 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     for atm in atom_list:
         i += 1
         iU11 = i * 6
-        
+
         ## is this fit weighted?
         if weight_dict is not None:
             w = math.sqrt(weight_dict[atm])
@@ -1666,7 +1781,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     """
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
     LSMALL = 0.5 * Constants.DEG2RAD2
-    
+
     rdict = {}
 
     rdict["T'"] = T0.copy()
@@ -1686,14 +1801,14 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L1_eigen_vec"] = numpy.zeros(3, float)
     rdict["L2_eigen_vec"] = numpy.zeros(3, float)
     rdict["L3_eigen_vec"] = numpy.zeros(3, float)
-    
+
     rdict["RHO"] = numpy.zeros(3, float)
     rdict["COR"] = origin
 
     rdict["L1_rho"] = numpy.zeros(3, float)
     rdict["L2_rho"] = numpy.zeros(3, float)
     rdict["L3_rho"] = numpy.zeros(3, float)
-    
+
     rdict["L1_pitch"] = 0.0
     rdict["L2_pitch"] = 0.0
     rdict["L3_pitch"] = 0.0
@@ -1701,7 +1816,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["Tr1_eigen_val"] = 0.0
     rdict["Tr2_eigen_val"] = 0.0
     rdict["Tr3_eigen_val"] = 0.0
-    
+
     rdict["Tr1_rmsd"] = 0.0
     rdict["Tr2_rmsd"] = 0.0
     rdict["Tr3_rmsd"] = 0.0
@@ -1716,7 +1831,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         L1 = 0.0
     else:
         good_L_eigens.append(0)
-        
+
     if numpy.allclose(L2, 0.0) or isinstance(L2, complex):
         L2 = 0.0
     else:
@@ -1784,13 +1899,13 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     if not numpy.allclose(linalg.determinant(RL), 1.0):
         return rdict
-    
+
     RLt = numpy.transpose(RL)
 
     ## carrot-L tensor (tensor WRT principal axes of L)
     cL = numpy.dot(numpy.dot(RL, L0), RLt) 
     rdict["L^"] = cL.copy()
-    
+
     ## carrot-T tensor (T tensor WRT principal axes of L)
     cT = numpy.dot(numpy.dot(RL, T0), RLt)
     rdict["T^"] = cT.copy()
@@ -1822,7 +1937,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     crho = numpy.array([crho1, crho2, crho3], float)
     rdict["RHO^"] = crho.copy()
-    
+
     ## rho: the origin-shift vector in orthogonal coordinates
     rho = numpy.dot(RLt, crho)
     rdict["RHO"] = rho
@@ -1945,11 +2060,11 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["Tr1_eigen_val"] = Tr1
     rdict["Tr2_eigen_val"] = Tr2
     rdict["Tr3_eigen_val"] = Tr3
-    
+
     rdict["Tr1_rmsd"] = calc_rmsd(Tr1)
     rdict["Tr2_rmsd"] = calc_rmsd(Tr2)
     rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
-    
+
     return rdict
 
 ###############################################################################
@@ -1978,7 +2093,7 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
             w = 1.0
         else:
             w = math.sqrt(weight_dict[atm])
-        
+
         ## set the b vector
         U = atm.get_U()
         assert numpy.trace(U)>0.0
@@ -2059,7 +2174,7 @@ CA_PIVOT_ATOMS = {
     "ARG": "CA",
     "ASN": "CA",
     "GLN": "CA" }
- 
+
 def set_L_A(A, i, j, x, y, z, w):
     """Sets coefficents of a L tensor in matrix A for an atom at position
     x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
@@ -2191,7 +2306,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     L = numpy.array([ [ X[L11], X[L12], X[L13] ],
                       [ X[L12], X[L22], X[L23] ],
                       [ X[L13], X[L23], X[L33] ] ], float)
-    
+
     s11, s22, s33 = calc_s11_s22_s33(X[S2211], X[S1133])
 
     S = numpy.array([ [    s11, X[S12], X[S13] ],
@@ -2209,7 +2324,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
         CA_L = numpy.array([ [ X[iL11],   X[iL11+3], X[iL11+4] ],
                              [ X[iL11+3], X[iL11+1], X[iL11+5] ],
                              [ X[iL11+4], X[iL11+5], X[iL11+2] ] ], float)
-        
+
         frag_L_dict[frag] = CA_L
         eval = linalg.eigenvalues(CA_L) * Constants.RAD2DEG2
 
@@ -2286,7 +2401,7 @@ class TLSGroup(Structure.AtomList):
             self.S[0,2], self.S[1,2], self.S[1,0], self.S[2,0], self.S[2,1])
 
         return tstr
-    
+
     def set_origin(self, x, y, z):
         """Sets the x, y, z components of the TLS origin vector.
         """
@@ -2357,7 +2472,7 @@ class TLSGroup(Structure.AtomList):
         L = self.L
         S = self.S
         o = self.origin
-        
+
         for atm in self:
             Utls = calc_Utls(T, L, S, atm.position - o)
             yield atm, Utls
@@ -2377,7 +2492,7 @@ class TLSGroup(Structure.AtomList):
         self.origin = cor_desc["COR"].copy()
 
         return cor_desc
-        
+
     def calc_tls_info(self):
         """Calculates a number of statistics about the TLS group tensors,
         goodness of fit, various parameter averages, center of reaction
@@ -2447,7 +2562,7 @@ class TLSStructureAnalysis(object):
         include_hydrogens       = args.get("include_hydrogens", False)
         include_frac_occupancy  = args.get("include_frac_occupancy", False)
         include_single_bond     = args.get("include_single_bond", True)
-        
+
         ## omit atoms which are not at full occupancy
         if not include_frac_occupancy and atm.occupancy<1.0:
             return False
@@ -2463,9 +2578,9 @@ class TLSStructureAnalysis(object):
         ## omit atoms with a single bond 
         if not include_single_bond and len(atm.bond_list)<=1:
             return False
-                        
+
         return True
-        
+
     def iter_fit_TLS_segments(self, **args):
         """Run the algorithm to fit TLS parameters to segments of the
         structure.  This method has many options, which are outlined in
@@ -2474,7 +2589,7 @@ class TLSStructureAnalysis(object):
         involved, and the TLS object itself.
         """
         import copy
-        
+
         ## arguments
         chain_ids               = args.get("chain_ids", None)
         origin                  = args.get("origin_of_calc")
@@ -2485,7 +2600,7 @@ class TLSStructureAnalysis(object):
         include_single_bond     = args.get("include_single_bond", True)
         calc_pivot_model        = args.get("calc_pivot_model", False)
 
-        
+
         for chain in self.struct.iter_chains():
 
             ## skip some chains
@@ -2495,19 +2610,19 @@ class TLSStructureAnalysis(object):
             ## don't bother with non-biopolymers and small chains
             if chain.count_amino_acids()<residue_width:
                 continue
-            
+
             for segment in self.iter_segments(chain, residue_width):
                 frag_id1     = segment[0].fragment_id
                 frag_id2     = segment[-1].fragment_id
                 name         = "%s-%s" % (frag_id1, frag_id2)
                 frag_id_cntr = segment[len(segment)/2].fragment_id
-                
+
                 ## create the TLSGroup
                 pv_struct = Structure.Structure()
                 pv_seg    = Structure.Chain(chain_id=segment.chain_id,
                                   model_id=segment.model_id)
                 pv_struct.add_chain(pv_seg)
-                
+
                 tls_group = TLSGroup()
 
                 ## add atoms into the TLSGroup
@@ -2531,7 +2646,7 @@ class TLSStructureAnalysis(object):
                         "error":        "Not Enough Atoms"}
                     yield tls_info
                     continue
-                
+
                 tls_group.origin = tls_group.calc_centroid()
                 lsq_residual     = tls_group.calc_TLS_least_squares_fit()
                 tls_group.shift_COR()
@@ -2552,7 +2667,7 @@ class TLSStructureAnalysis(object):
                 tls_info["tls_group"] = tls_group
                 tls_info["residues"]  = segment
                 tls_info["segment"]   = segment
-                    
+
                 ## this TLS group passes all our tests -- yield it
                 yield tls_info
 
@@ -2833,7 +2948,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
 
     def gldl_install_draw_methods(self):
         Viewer.GLAtomList.gldl_install_draw_methods(self)
-        
+
         self.gldl_draw_method_install(
             { "name":                "fan",
               "func":                self.draw_fan,
@@ -2845,7 +2960,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
         for draw_flag in Viewer.GLAtomList.gldl_iter_multidraw_self(self):
             for draw_flag2 in self.gldl_iter_multidraw_animate():
                 yield True
-            
+
     def gldl_iter_multidraw_animate(self):
         """
         """
@@ -2857,7 +2972,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
             phase_tuple = (1.0, 0.66, 0.33, 0.0, -0.33, -0.66, -1.0)
         else:
             phase_tuple = (1.0,)
-        
+
         for Lx_axis, Lx_rho, Lx_pitch, Lx_rot, Lx_scale in (
             ("L1_eigen_vec", "L1_rho", "L1_pitch", "L1_rot", "L1_scale"),
             ("L2_eigen_vec", "L2_rho", "L2_pitch", "L2_rot", "L2_scale"),
@@ -2877,19 +2992,19 @@ class GLTLSAtomList(Viewer.GLAtomList):
 
                 rot   = sign * self.properties[Lx_rot] *  self.properties[Lx_scale]
                 screw = axis * (rot * pitch)
-                
+
                 if numpy.allclose(rot, 0.0):
                     if zero_rot:
                         continue
                     zero_rot = True
-                    
+
                 self.driver.glr_push_matrix()
 
                 self.driver.glr_translate(rho)
                 self.driver.glr_rotate_axis(rot, axis)
                 self.driver.glr_translate(-rho + screw)
                 yield True
-            
+
                 self.driver.glr_pop_matrix()
 
     def glal_iter_atoms(self):
@@ -2912,7 +3027,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
         return self.glal_calc_color_U(atom)
     def glal_calc_color_Urms(self, atom):
         return self.glal_calc_color_U(atom)
-    
+
     def glal_calc_color_trace(self):
         return self.gldl_property_color_rgbf("tls_color") 
 
@@ -2966,7 +3081,7 @@ class GLTLSAtomList(Viewer.GLAtomList):
         self.driver.glr_light_two_sides_disable()
         self.driver.glr_normalize_disable()
         self.driver.glr_lighting_disable()
-        
+
 
 class GLTLSGroup(Viewer.GLDrawList):
     """Top level visualization object for a TLS group.
@@ -3045,7 +3160,7 @@ class GLTLSGroup(Viewer.GLDrawList):
             "L2_eigen_vec", "gl_atom_list", "L2_eigen_vec")
         self.glo_link_child_property(
             "L3_eigen_vec", "gl_atom_list", "L3_eigen_vec")
-        
+
         self.glo_link_child_property(
             "L1_eigen_val", "gl_atom_list", "L1_eigen_val")
         self.glo_link_child_property(
@@ -3076,7 +3191,7 @@ class GLTLSGroup(Viewer.GLDrawList):
 
         self.glo_link_child_property(
             "both_phases", "gl_atom_list", "both_phases")
-         
+
         ## initalize properties
         self.glo_add_update_callback(self.tls_update_cb)
 
@@ -3321,7 +3436,7 @@ class GLTLSGroup(Viewer.GLDrawList):
               "type":        "float",
               "default":     0.0,
               "action":      "recompile" })
-        
+
         ## Show/Hide
         self.glo_add_property(
             { "name":        "symmetry",
@@ -3429,7 +3544,7 @@ class GLTLSGroup(Viewer.GLDrawList):
               "type":        "boolean",
               "default":     False,
               "action":      "recompile_Utls_rms" })
-                
+
         self.glo_add_property(
             { "name":        "L1_visible",
               "desc":        "Show Screw L1 Displacement Surface", 
@@ -3451,7 +3566,7 @@ class GLTLSGroup(Viewer.GLDrawList):
               "type":        "boolean",
               "default":     False,
               "action":      "recompile_surface" })
-        
+
         ## TLS
         self.glo_add_property(
             { "name":        "add_biso",
@@ -3615,7 +3730,7 @@ class GLTLSGroup(Viewer.GLDrawList):
               "visible_property":    "L3_visible",
               "opacity_property":    "surface_opacity",
               "recompile_action":    "recompile_surface" })
-         
+
     def tls_update_cb(self, updates, actions):
         if "time" in updates or "adp_prob" in updates:
             self.update_time()
@@ -3647,7 +3762,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         """
         if self.properties["symmetry"]==False:
             yield True
-            
+
         else:
 
             gl_struct = self.glo_get_glstructure()
@@ -3669,7 +3784,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         L = self.tls_group.L
         S = self.tls_group.S
         o = self.tls_group.origin
-        
+
         for atm, visible in self.gl_atom_list.glal_iter_atoms_filtered():
             if not visible:
                 continue
@@ -3679,9 +3794,9 @@ class GLTLSGroup(Viewer.GLDrawList):
             if self.properties["add_biso"] == True:
                 if atm.temp_factor is not None:
                     Utls = Utls + (Constants.B2U * atm.temp_factor * numpy.identity(3, float))
-            
+
             yield atm, Utls
-    
+
     def draw_tensors(self):
         """Draw tensor axis.
         """
@@ -3703,14 +3818,14 @@ class GLTLSGroup(Viewer.GLDrawList):
             self.driver.glr_axis(-vec2 / 2.0, vec2, self.properties["L_axis_radius"])
 
         self.driver.glr_set_material_rgb(r, g, b)
-        
+
         ## T: units (A^2)
         self.driver.glr_Uellipse((0.0,0.0,0.0), self.properties["rT"], self.properties["adp_prob"])
 
         ## L: units (DEG^2)
         L_scale = self.properties["L_axis_scale"]
 
-        
+
         for Lx_eigen_val, Lx_eigen_vec, Lx_rho, Lx_pitch in [
             ("L1_eigen_val", "L1_eigen_vec", "L1_rho", "L1_pitch"),
             ("L2_eigen_val", "L2_eigen_vec", "L2_rho", "L2_pitch"),
@@ -3753,7 +3868,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         """
         if self.tls_group.is_null():
             return
-        
+
         prob = self.properties["adp_prob"]
         rgbf = self.gldl_property_color_rgbf("tls_color")
 
@@ -3768,7 +3883,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         """
         if self.tls_group.is_null():
             return
-        
+
         prob    = self.properties["adp_prob"]
         r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["ellipse_opacity"]
@@ -3785,7 +3900,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         """
         if self.tls_group.is_null():
             return
-        
+
         r, g, b = self.gldl_property_color_rgbf("tls_color")
         a       = self.properties["rms_opacity"]
         self.driver.glr_set_material_rgb(r, g, b, a)
@@ -3838,7 +3953,7 @@ class GLTLSGroup(Viewer.GLDrawList):
             for bond in atm.iter_bonds():
                 if in_dict.has_key(bond.get_partner(atm)):
                     bond_list.append(bond)
-        
+
         ## this just won't work...
         if numpy.allclose(Lx_eigen_val, 0.0):
             return
@@ -3894,7 +4009,7 @@ class GLTLSGroup(Viewer.GLDrawList):
                     v2 = numpy.dot(Rstep2, pos1) + screw2
                     v3 = numpy.dot(Rstep2, pos2) + screw2
                     v4 = numpy.dot(Rstep1, pos2) + screw1
-                    
+
                     ## one normal perpendicular to the quad
                     glr_normal(numpy.cross(v2-v1, v4-v1))
 
@@ -4049,7 +4164,7 @@ class GLTLSChain(Viewer.GLDrawList):
               "type":        "boolean",
               "default":     False,
               "action":      "" })
-        
+
         ## TLS
         self.glo_add_property(
             { "name":        "add_biso",
@@ -4157,17 +4272,17 @@ class GLTLSChain(Viewer.GLDrawList):
         if "style1" in actions and self.properties["style1"]==True:
             self.properties.update(style1=False)
             self.set_style1()
-            
+
     def set_style1(self):
         self.properties.update(
             L1_visible         = True,
             L2_visible         = True,
             L3_visible         = True)
-        
+
         for gl_tls_group in self.glo_iter_children():
             gl_tls_group.properties.update(
                 time               = 0.25)
-            
+
             gl_tls_group.gl_atom_list.properties.update(
                 trace        = False,
                 ball_stick   = True,
@@ -4184,7 +4299,7 @@ class GLTLSChain(Viewer.GLDrawList):
             except IndexError:
                 colori = 2
                 tls_color = Colors.COLOR_NAMES_CAPITALIZED[colori]
-                                                                
+
             gl_tls_group.properties.update(
                 visible = True,
                 tls_color=tls_color)
@@ -4195,7 +4310,7 @@ class GLTLSChain(Viewer.GLDrawList):
         """Color TLS Groups by goodness-of-fit.
         """
         gof_list = []
-        
+
         for gl_tls_group in self.glo_iter_children():
             gof = gl_tls_group.properties["gof"]
             gof_list.append((gof, gl_tls_group))
@@ -4236,11 +4351,11 @@ class GLTLSChain(Viewer.GLDrawList):
                     visible = True,
                     tls_color = "gray")
             return
-        
+
         for gof, gl_tls_group in gof_list:
             goodness = 1.0 - (gof - min_gof) / gof_range
             tls_color = "%4.2f,%4.2f,%4.2f" % (goodness_color(goodness))
-            
+
             ## set TLS color for group based on goodness of fit
             gl_tls_group.properties.update(
                 visible   = True,
@@ -4252,7 +4367,7 @@ class GLTLSChain(Viewer.GLDrawList):
 
     def add_gl_tls_group(self, gl_tls_group):
         self.glo_add_child(gl_tls_group)
-        
+
         child_id = gl_tls_group.glo_get_properties_id()
 
         self.glo_link_child_property(
@@ -4355,7 +4470,7 @@ def test_module():
 
 ##     fil = open(sys.argv[1], "r")
 ##     tls_list = LoadTLSGroups(fil)
-    
+
 ##     for tls in tls_list:
 ##         print "----- TLS Group #%d ---" % (tls_list.index(tls))
 ##         print tls
@@ -4368,8 +4483,8 @@ def test_module():
 ##         print "-----------------------"
 
 ##     print "==============================================="
-    
+
 if __name__ == "__main__":
     test_module()
-    
+
 ## </testing>
