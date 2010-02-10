@@ -309,6 +309,9 @@ class MySQLConnect():
 
     def job_set_tls_model(self, job_id, tls_model):
         return self.job_data_set(job_id, "tls_model", tls_model)
+    def job_get_tls_model(self, job_id):
+        return self.job_data_get(job_id, "tls_model", dict = True)
+
     def job_set_weight_model(self, job_id, weight_model):
         return self.job_data_set(job_id, "weight", weight_model)
     def job_set_include_atoms(self, job_id, include_atoms):
