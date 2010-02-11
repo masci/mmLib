@@ -376,6 +376,30 @@ def html_program_settings_table(fdict):
          '<tr><td class="c">',
          '<table width="100%">']
 
+    ## Center table: "Choose TLS Model"
+    which_model = mysql.job_get_tls_model(fdict["job_id"])
+    if which_model == "ANISO":
+        l += ['<tr><td class="c" valign="top" colspan="2">',
+              '<table class="ninner_table">',
+              '<tr><td class="l">',
+
+              '<fieldset><legend>Choose TLS Model:</legend>',
+              '<div style="font-size:xx-small">',
+              'Note: Your structure contains ANISOU records.<br/>',
+              'Warning: Anisotropic jobs take much longer to run!',
+              '</div>',
+              '<p><label>',
+              '<input name="tls_model" type="radio" value="ISOT" />',
+              'Isotropic run</label></p>',
+              '<p><label>',
+              '<input name="tls_model" type="radio" value="ANISO" ',
+                     'checked="checked" />',
+              'Anisotropic run</label></p>',
+              '</fieldset>',
+
+              '</td>',
+              '</table></td>']
+
     ## Left table: "Keep Job Private"
     l += ['<tr><td class="c" valign="top">',
           '<table class="ninner_table">',
