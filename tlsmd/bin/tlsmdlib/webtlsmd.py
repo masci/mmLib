@@ -237,10 +237,10 @@ def html_job_edit_form(fdict, pdb=False):
                 desc = "Chain %s (%s Other Residues)" % (chid, length)
 
             if selected == "1":
-                x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
+                x += '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
                     name, name)
             else:
-                x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
+                x += '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
                     name, name)
             x += '%s' % desc
             x += '</label>'
@@ -296,13 +296,17 @@ def html_session_info_table(fdict):
 
          '<tr class="inner_title"><th>',
          '<a id="cid2" href="javascript:',
-         "ToggleDivVisibility('cid2','id2','Show Session Information','Hide Session Information')",
+         "ToggleDivVisibility('cid2','id2',\
+                              'Show Session Information',\
+                              'Hide Session Information')",
          '">Show Session Information</a>',
          '</th></tr>',
 
          '<tr><td class="c">',
 
-         '<div id="id2" style="display:none"><table class="ninner_table">',
+         '<div id="id2" style="display:none">',
+         '<table class="ninner_table">',
+
          '<tr><td class="r">TLSMD Job ID:</td>',
          '<td><b>%s</b></td></tr>' % (fdict["job_id"]),
 
@@ -314,6 +318,7 @@ def html_session_info_table(fdict):
 
          '<tr><td class="r">Submission Date: </td>',
          '<td><b>%s</b></td></tr>' % (date),
+
          '</table></div>',
 
          '</table>']
@@ -333,22 +338,25 @@ def html_user_info_table(fdict):
          ## User name
          '<tr>',
          '<td class="r"><label for="user_name">Your Name</label></td>',
-         '<td><input type="text" id="user_name" name="user_name" value="%s" size="25" maxlength="40" /></td>' % (
-             fdict.get("user_name","")),
+         '<td><input type="text" id="user_name" name="user_name" ',
+                    'value="%s" size="25" maxlength="40" /></td>' % (
+                    fdict.get("user_name","")),
          '</tr>',
 
          ## User email address
          '<tr>',
          '<td class="r"><label for="email">EMail Address</label></td>',
-         '<td><input type="text" id="email" name="email" value="%s" size="25" maxlength="40" /></td>' % (
-             fdict.get("email", "")),
+         '<td><input type="text" id="email" name="email" ',
+                    'value="%s" size="25" maxlength="40" /></td>' % (
+                    fdict.get("email", "")),
          '</tr>',
 
          ## User associated notes
          '<tr>',
          '<td class="r"><label for="user_comment">Associated Notes</label></td>',
-         '<td><input type="text" id="user_comment" name="user_comment" value="%s" size="40" maxlength="128" /></td>' % (
-             fdict.get("user_comment","")),
+         '<td><input type="text" id="user_comment" name="user_comment" ',
+                    'value="%s" size="40" maxlength="128" /></td>' % (
+                    fdict.get("user_comment","")),
          '</tr>',
 
          '</table>',
@@ -358,43 +366,47 @@ def html_user_info_table(fdict):
 
 def html_program_settings_table(fdict):
     """Used in 'Step 2: Fill out Submission Form'. Also allows the user to
-    selected advanced options before completing submission.
+    select advanced options before completing submission.
     """
 
+    ## "TLSMD Program Options" table
     l = ['<table class="inner_table">',
          '<tr class="inner_title"><th>TLSMD Program Options</th></tr>',
 
          '<tr><td class="c">',
-         '<table width="100%">',
-         '<tr><td class="c" valign="top">',
+         '<table width="100%">']
 
-         ## left table
-         '<table class="ninner_table">',
+    ## Left table: "Keep Job Private"
+    l += ['<tr><td class="c" valign="top">',
+          '<table class="ninner_table">',
+          '<tr><td class="l">']
 
-         '<tr><td class="l">']
     if conf.PRIVATE_JOBS:
-         l += '<input type="checkbox" id="private_job" name="private_job" value="TRUE" checked="checked" />'
+         l += ['<input type="checkbox" id="private_job" name="private_job" ',
+                      'value="TRUE" checked="checked" />']
     else:
-         l += '<input type="checkbox" id="private_job" name="private_job" value="TRUE" />'
+         l += ['<input type="checkbox" id="private_job" name="private_job" ',
+                      'value="TRUE" />']
 
     l += ['<label for="private_job">Keep Job Private</label>',
-         '</td></tr>',
+          '</td></tr>']
 
-         '<tr><td class="l">',
-         '<label for="structure_id">4-Letter Structure ID </label>',
-         '<input type="text" id="structure_id" name="structure_id" value="%s" size="4" maxlength="4" />' % (
-         fdict.get("structure_id", "")),
-         '</td></tr>',
+    ## Left table: "4-Letter Structure ID"
+    l += ['<tr><td class="l">',
+          '<label for="structure_id">4-Letter Structure ID </label>',
+          '<input type="text" id="structure_id" name="structure_id" ',
+                 'value="%s" size="4" maxlength="4" />' % (
+                 fdict.get("structure_id", "")),
+          '</td></tr>',
 
-         '</table>',
+          '</table></td>']
 
-         '</td><td class="c" valign="top">',
+    ## Right table: "Select Chains for Analysis"
+    l += ['<td class="c" valign="top">',
+          '<table class="ninner_table">',
+          '<tr style="line-height:2em">',
+          '<th>Select Chains for Analysis</th></tr>']
 
-         ## right table
-         '<table class="ninner_table">',
-         '<tr style="line-height:2em"><th>Select Chains for Analysis</th></tr>']
-
-    ## Select Chains for Analysis
     chains = mysql.job_get_chain_sizes(fdict["job_id"]).rstrip(";")
     for c in chains.split(';'):
         chid, length, selected, type = misc.parse_chains(c)
@@ -409,106 +421,134 @@ def html_program_settings_table(fdict):
 
         if selected == "1":
             x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
-                name, name)
+                 name, name)
         else:
             x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
-                name, name)
+                 name, name)
 
         l +=['<tr><td class="l">', x, desc, '</td></tr>']
 
-    l +=['</table>',
+    l +=['</table></td>',
 
-         '</td></tr>',
-         '</table>',
+         ## End of "TLSMD Program Options" table
+         '</tr></table>']
 
-         ## advanced options
-         '<tr class="inner_title"><th>',
-         '<a id="cid1" href="javascript:',
-         "ToggleDivVisibility('cid1','id1','Show Advanced Program Options','Hide Advanced Program Options')",
-         '">Show Advanced Program Options</a>',
-         '</th></tr>',
+    ## "Advanced Program Options" table
+    l += ['<tr class="inner_title"><th>',
+          '<a id="cid1" href="javascript:',
+          "ToggleDivVisibility('cid1','id1',\
+                               'Show Advanced Program Options',\
+                               'Hide Advanced Program Options')",
+          '">Show Advanced Program Options</a>',
+          '</th></tr>',
+ 
+          '<tr><td class="c">',
+          '<div id="id1" style="display:none">',
+          '<table class="ninner_table">',
+          '<tr>',
+ 
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Plot Output Format</legend>',
+          '<div style="font-size:xx-small">'
+          'Select the output format for plots.<br/>',
+          'SVG works with the Adobe plugin and Firefox 1.5+.',
+          '</div>',
+          '<p><label>',
+          '<input name="plot_format" type="radio" value="PNG" tabindex="35" ',
+                 'checked="checked" />',
+          'PNG Images</label></p>',
+          '<p><label>',
+          '<input name="plot_format" type="radio" value="SVG" tabindex="35" />',
+          'SVG</label></p>',
+          '</fieldset>',
+          '</td>',
+ 
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Atom Class Selection</legend>',
+          '<div style="font-size:xx-small">',
+          'Analyze all protein atoms, or just the main chain atoms.<br/>',
+          '</div>',
+          '<p><label>',
+          '<input name="include_atoms" type="radio" value="ALL" ',
+                 'checked="checked" />',
+          'All Atoms</label></p>',
+          '<p><label>',
+          '<input name="include_atoms" type="radio" value="MAINCHAIN" />',
+          'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})',
+          '</label></p>',
+          '</fieldset>',
+          '</td>',
+ 
+          '</tr><tr>'
 
-         '<tr><td class="c">',
-         '<div id="id1" style="display:none">',
-         '<table class="ninner_table">',
-         '<tr>',
+          ## Jmol toggle switches (default=True/"yes")
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Jmol toggle switches</legend>',
+          '<p>',
+          '<label>Generate Jmol-viewer pages: </label>',
+          '<input name="generate_jmol_view" type="radio" value="True" ',
+                 'checked="checked" />yes',
+          '<input name="generate_jmol_view" type="radio" value="False" />no',
+          '</p>',
+          '<p>',
+          '<label>Generate Jmol-animation pages: </label>',
+          '<input name="generate_jmol_animate" type="radio" value="True" ',
+                 'checked="checked" />yes',
+          '<input name="generate_jmol_animate" type="radio" value="False" />no',
+          '</p>',
+          '</fieldset>',
+          '</td>',
+ 
+          ## Histogram toggle switches (default=False/"no")
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Histogram toggle switches</legend>',
+          '<p>',
+          '<label>Generate histogram plots: </label>',
+          '<input name="generate_histogram" type="radio" value="True" />yes',
+          '<input name="generate_histogram" type="radio" value="False" ',
+                 'checked="checked" />no',
+          '</p>',
+          '<p></p>', ## formatting
+          '</fieldset>',
+          '</td>',
+ 
+          '</tr><tr>'
+ 
+          ## select number of partitions per chain
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Set number of partitions/chain</legend>',
+          '<div style="font-size:xx-small">default/max = %s</div><br/>' % (
+          conf.NPARTS),
+          '<p>',
+          '<label>Maximum number of segments: </label>',
+          '<input name="nparts" type="text" size="2" maxlength="2" ',
+                 'value="%s" />' % (conf.NPARTS),
+          '</p>',
+          '</fieldset>',
+          '</td>',
+ 
+          ## turn cross-chain analysis on/off
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Cross-Chain analysis</legend>',
+          '<div style="font-size:xx-small">',
+          'Turn Cross-Chain analysis on/off.</div><br/>',
+          '<p>',
+          '<label>Generate Cross-Chain analysis: </label>',
+          '<input name="cross_chain_analysis" type="radio" value="True" />yes',
+          '<input name="cross_chain_analysis" type="radio" value="False" ',
+                 'checked="checked" />no',
+          '</p>',
+          '</fieldset>',
+          '</td>',
+ 
+          '</tr>',
+          '</table>',
+ 
+          '</div>',
+          '</td></tr>',
 
-         '<td valign="top" class="l">',
-         '<fieldset><legend>Plot Output Format</legend>',
-         '<div style="font-size:xx-small">Select the output format for plots.',
-         '<br/>SVG works with the Adobe plugin and Firefox 1.5+.</div>',
-         '<p><label>',
-         '<input name="plot_format" type="radio" value="PNG" tabindex="35" checked="checked" />',
-         'PNG Images</label></p>',
-         '<p><label>',
-         '<input name="plot_format" type="radio" value="SVG" tabindex="35" />',
-         'SVG</label></p>',
-         '</fieldset>',
-         '</td>',
-
-         '<td valign="top" class="l">',
-         '<fieldset><legend>Atom Class Selection</legend>',
-         '<div style="font-size:xx-small">Analyze all protein atoms, ',
-         'or just the main chain atoms.</div>',
-         '<p><label>',
-         '<input name="include_atoms" type="radio" value="ALL" tabindex="35" checked="checked" />',
-         'All Atoms</label></p>',
-         '<p><label>',
-         '<input name="include_atoms" type="radio" value="MAINCHAIN" tabindex="35" />',
-         'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})',
-         '</label></p>',
-         '</fieldset>',
-         '</td>',
-
-         '</tr><tr>'
-         ## Generate Jmol view/animate? (default=True)
-         '<td valign="top" class="l">',
-         '<fieldset><legend>Jmol toggle switches</legend>',
-         '<p>',
-         '<label>Generate Jmol-viewer pages: </label>',
-         '<input name="generate_jmol_view" type="radio" value="True" checked="checked" />yes',
-         '<input name="generate_jmol_view" type="radio" value="False" />no',
-         '</p>',
-         '<p>',
-         '<label>Generate Jmol-animation pages: </label>',
-         '<input name="generate_jmol_animate" type="radio" value="True" checked="checked" />yes',
-         '<input name="generate_jmol_animate" type="radio" value="False" />no',
-         '</p>',
-         '</fieldset>',
-         '</td>',
-
-         ## Generate histogram plot? (default=False)
-         '<td valign="top" class="l">',
-         '<fieldset><legend>Histogram toggle switches</legend>',
-         '<p>',
-         '<label>Generate histogram plots: </label>',
-         '<input name="generate_histogram" type="radio" value="True" />yes',
-         '<input name="generate_histogram" type="radio" value="False" checked="checked" />no',
-         '</p>',
-         '</fieldset>',
-         '</td>',
-
-         '</tr><tr>'
-
-         ## select number of partitions per chain
-         '<td valign="top" class="l">',
-         '<fieldset><legend>Set number of partitions/chain</legend>',
-         '<div style="font-size:xx-small">default/max = %s</div><br/>' % (
-         conf.NPARTS),
-         '<p>',
-         '<label>Maximum number of segments: </label>',
-         '<input name="nparts" type="text" size="2" maxlength="2" value="%s" />' % (
-         conf.NPARTS),
-         '</p>',
-         '</fieldset>',
-         '</td>',
-
-         '</tr>',
-         '</table>',
-
-         '</div>',
-         '</td></tr>',
-         '</table>']
+          ## End of "Advanced Program Options" table
+          '</table>']
 
     return "".join(l)
 
@@ -909,7 +949,9 @@ def extract_job_edit_form(form):
             update_chains = update_chains + "%s:%s:%s:%s;" % (
                 chid, length, "0", type)
     if num_chains_selected == 0:
-        raise SubmissionException('You did not select any chains. Will not proceed any further.')
+        msg  = "You did not select any chains. "
+        msg += "Will not proceed any further."
+        raise SubmissionException(msg)
     mysql.job_set_chain_sizes(job_id, update_chains)
 
     if form.has_key("tls_model"):
@@ -960,7 +1002,9 @@ def extract_job_edit_form(form):
     if form.has_key("nparts"):
         nparts_value = form["nparts"].value.strip()
         if nparts_value.isdigit() == False:
-            raise SubmissionException("Integer value required for 'Maximum number of segments: %s'" % nparts_value)
+            msg  = "Integer value required for "
+            msg += "'Maximum number of segments: %s'" % nparts_value
+            raise SubmissionException(msg)
             return False
         if int(nparts_value) > conf.NPARTS or int(nparts_value) < 1:
             ## not a valid input; force value to be int(2)
