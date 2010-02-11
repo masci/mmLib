@@ -8,12 +8,14 @@
 ## program info
 ## NOTE: 3rd decimal place is for internal development (on Verdandi)
 LINK_SPACE    = '&nbsp;&nbsp;&nbsp;&nbsp;'
-VERSION       = "1.3.0"
-RELEASE_DATE  = "19 June 2009"
+VERSION       = "1.4.0"
+RELEASE_DATE  = "11 February 2010"
 AUTHOR        = "Ethan Merritt"
 EMAIL         = "merritt@u.washington.edu"
 
+## pymmlib
 from mmLib import Constants
+
 ## unreasonably small T/L eigenvalues B <= 0.01
 TSMALL = 0.1 * Constants.B2U
 
@@ -21,7 +23,7 @@ TSMALL = 0.1 * Constants.B2U
 LSMALL = (0.1)**2 * Constants.DEG2RAD2
 
 ## mainchain atom definitions
-AMINO_ACID_MAINCHAIN_ATOMS = ["N", "CA", "C", "O", "CB"]
+AMINO_ACID_MAINCHAIN_ATOMS   = ["N", "CA", "C", "O", "CB"]
 NUCLEIC_ACID_MAINCHAIN_ATOMS = ["P", "O5*", "C5*", "C4*", "C3*", "O3*",
                                      "O5'", "C5'", "C4'", "C3'", "O3'"]
 MAINCHAIN_ATOMS = AMINO_ACID_MAINCHAIN_ATOMS + NUCLEIC_ACID_MAINCHAIN_ATOMS
