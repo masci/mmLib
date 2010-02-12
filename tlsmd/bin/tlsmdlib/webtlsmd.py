@@ -553,20 +553,6 @@ def html_program_settings_table(fdict):
           '</fieldset>',
           '</td>',
  
-          ## turn cross-chain analysis on/off
-          '<td valign="top" class="l">',
-          '<fieldset><legend>Cross-Chain analysis</legend>',
-          '<div style="font-size:xx-small">',
-          'Turn Cross-Chain analysis on/off.</div><br/>',
-          '<p>',
-          '<label>Generate Cross-Chain analysis: </label>',
-          '<input name="cross_chain_analysis" type="radio" value="True" />yes',
-          '<input name="cross_chain_analysis" type="radio" value="False" ',
-                 'checked="checked" />no',
-          '</p>',
-          '</fieldset>',
-          '</td>',
- 
           '</tr>',
           '</table>',
  
