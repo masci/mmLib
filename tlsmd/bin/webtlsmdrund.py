@@ -23,7 +23,6 @@ import tarfile
 ## TLSMD
 from tlsmdlib import const, conf, email, misc, mysql_support
 
-## XXX: This is never used, 2009-05-29
 ## if there are no lines of output from the tlsmd process
 ## in TIMEOUT_SECS, then kill the process
 TIMEOUT_SECS = 1 * (60 * 60)
@@ -59,6 +58,8 @@ def chain_type_string(chain_sizes):
     return ";".join(listx)
 
 def log_job_end(jdict):
+    """Prints details about a finished job to the logfile.
+    """
     ln  = ""
     ln += "Finished Job %s" % (jdict["job_id"])
     log_write(ln)
@@ -128,7 +129,8 @@ def log_error(err):
     log_write(ln)
 
 def run_tlsmd(mysql, jdict):
-    """main tlsmd fork/exec routine"""
+    """The main tlsmd fork/exec routine.
+    """
     tlsmd = jdict["tlsmd"]
 
     ## write the tlsmd execution command out to a file
@@ -162,6 +164,9 @@ def run_tlsmd(mysql, jdict):
     return
 
 def run_job(mysql, jdict):
+    """Main function to actually call run_tlsmd(), after making sure
+    everything checks out.
+    """
     job_id = jdict["job_id"]
     log_job_start(jdict["tlsmd"])
 
@@ -179,7 +184,8 @@ def run_job(mysql, jdict):
     return
 
 def check_logfile_for_errors(file):
-    """Searches through the log.txt file for warnings and errors
+    """Searches through the log.txt file for warnings and errors; changes
+    "state" depending on what it finds in the log.txt file.
     """
     warnings = False
     errors = False
@@ -204,7 +210,7 @@ def check_logfile_for_errors(file):
     return "success"
 
 def cleanup_job(mysql, jdict):
-    """Cleanup job directory upon completion and email user
+    """Cleanup job directory upon completion and email user.
     """
     old_dir = os.getcwd()
     job_id  = jdict["job_id"]
@@ -230,7 +236,7 @@ def cleanup_job(mysql, jdict):
         except OSError:
             raise
 
-    ## create tarball
+    ## create tarball (does not create tarballs for jobs submitted via pdb.org)
     if int(jdict["via_pdb"]) == 0:
         tar = tarfile.open("%s.tar.gz" % job_id, "w:gz")
         tar.add("ANALYSIS")
@@ -327,7 +333,7 @@ def get_job(mysql):
 MAIL_MESSAGE = """\
 This is an automated message sent to you by the TLS Motion 
 Determination (TLSMD) Server to inform you the analysis of the structure
-you submitted is complete.  The link below will take you directly
+you submitted is complete. The link below will take you directly
 to the completed analysis:
 
 <BASE_URL><ANALYSIS_URL>
@@ -447,7 +453,7 @@ def job_completed(mysql, jdict):
     return True
 
 def fetch_and_run_jobs_forever():
-    log_write("starting webtlsmdrund.py  version %s" % (const.VERSION))
+    log_write("starting webtlsmdrund.py version %s" % (const.VERSION))
     log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
 
     mysql = mysql_support.MySQLConnect()
@@ -461,11 +467,13 @@ def fetch_and_run_jobs_forever():
             if myjdict.get("state") == None:
                 ## This is a "Partially Submitted" job, so go to next in list
                 continue
+
             ## Comment out the following three lines to refresh the states in
             ## the database
             if myjdict.get("state") != "running":
                 ## Check for any other states besides None and "running"
                 continue
+
             if job_completed(mysql, myjdict):
                 for n in range(len(running_list)):
                     if myjdict["job_id"] == running_list[n]:
