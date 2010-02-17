@@ -1,4 +1,4 @@
-C Copyright 2009 by PyMMLib Development Group (see AUTHORS file)
+C Copyright 2009-2010 by PyMMLib Development Group (see AUTHORS file)
 C This code is part of the PyMMLib distribution and governed by
 C its license.  Please see the LICENSE file that should have been
 C included as part of this package.
@@ -11,12 +11,12 @@ C  - Frank Zucker,
 C  - Ethan A. Merritt (EAM)
 C REQUIREMENTS: f2py (part of the Numpy package)
 C
-********************************************************************************
+************************************************************************
 * UPDATES
 * PCC Sep 2009  - added sum_square_diff() + diff_trace_uv()
 * PCC Aug 2009  - initial version
 *
-********************************************************************************
+************************************************************************
 
 C     ******************************************************************
       SUBROUTINE calc_ccuij(corwij,U,V)
@@ -393,6 +393,7 @@ C     ******************************************************************
       stop
       end
 
+
 ************************************************************************
 *              Matrix inversion via LU decomposition                   *
 *       adapted from Numerical Recipes in Fortran (1986)               *
@@ -512,6 +513,7 @@ C
         enddo
         return
         end
+
 
 ************************************************************************
 * Find eigenvalues and eigenvectors of nxn symmetric matrix using      *
