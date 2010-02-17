@@ -2,7 +2,7 @@
 // Jay Painter <jpaint@u.washington.edu>
 // March 10, 2006
 // 
-// Copyright 2006 by TLSMD Development Group (see AUTHORS file)
+// Copyright 2006-2010 by TLSMD Development Group (see AUTHORS file)
 // This code is part of the TLSMD distribution and governed by
 // its license.  Please see the LICENSE file that should have been
 // included as part of this package.
