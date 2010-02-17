@@ -1259,7 +1259,7 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     ## use label indexing to avoid confusion!
     T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
 
-    ## indecies of the components of U
+    ## indices of the components of U
     UISO = i
 
     ## C Matrix
@@ -1630,7 +1630,7 @@ def set_TLS_A(A, i, j, x, y, z, w):
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
 
-    ## indecies of the components of U
+    ## indices of the components of U
     U11 =       i
     U22 = U11 + 1
     U33 = U11 + 2
@@ -2182,7 +2182,7 @@ def set_L_A(A, i, j, x, y, z, w):
     """
     L11, L22, L33, L12, L13, L23 = (j, j+1, j+2, j+3, j+4, j+5)
 
-    ## indecies of the components of U
+    ## indices of the components of U
     U11 =       i
     U22 = U11 + 1
     U33 = U11 + 2
@@ -2235,7 +2235,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
     ## calculate the number of parameters in the model
     num_atoms = segment.count_atoms()
 
-    ## calculate the CB pivot L11 indexes for each fragment
+    ## calculate the CB pivot L11 indices for each fragment
     num_pivot_frags = 0
     i = 20
     iL11p = {}
