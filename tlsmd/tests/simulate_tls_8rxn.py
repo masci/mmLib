@@ -1,5 +1,5 @@
 ## TLS Motion Determination (TLSMD)
-## Copyright 2002-2009 by TLSMD Development Group (see AUTHORS file)
+## Copyright 2002-2010 by TLSMD Development Group (see AUTHORS file)
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -96,6 +96,7 @@ def main(path, opt_dict):
             tls = tls_desc.construct_tls_group_with_atoms(struct)
             tls.tls_desc = tls_desc
             tls_group_list.append(tls)
+            print tls.name
 
     else:
         tls_desc = TLS.TLSGroupDesc()
