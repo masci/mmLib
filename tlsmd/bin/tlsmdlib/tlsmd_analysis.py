@@ -156,11 +156,13 @@ class TLSMDAnalysis(object):
             nna = chain.count_nucleic_acids()
 
             if nna == 0 and (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN):
-                console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
+                console.kvformat("SKIPPING SMALL AMINO ACID CHAIN", 
+                    chain.chain_id)
                 continue
 
             if naa == 0 and (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
-                console.kvformat("SKIPPING SMALL CHAIN", chain.chain_id)
+                console.kvformat("SKIPPING SMALL NUCLEIC ACID CHAIN", 
+                    chain.chain_id)
                 continue
 
             if naa > nna and nna > 0:
@@ -306,7 +308,8 @@ def ConstructSegmentForAnalysis(raw_chain):
 
     ## apply data smooth if desired (default is "0")
     if conf.globalconf.adp_smoothing > 0:
-        adp_smoothing.IsotropicADPDataSmoother(segment, conf.globalconf.adp_smoothing)
+        adp_smoothing.IsotropicADPDataSmoother(segment, 
+                                               conf.globalconf.adp_smoothing)
 
     ## this is useful: for each fragment in the minimization
     ## set an attribute for its index position
