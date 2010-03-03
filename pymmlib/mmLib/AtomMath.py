@@ -175,8 +175,8 @@ def rmatrixz(vec):
 ##
 def rquaternionu(u, theta):
     """Returns a quaternion representing the right handed rotation of theta
-    radians about vector u.Quaternions are typed as Numeric Python numpy.arrays of
-    length 4.
+    radians about vector u. Quaternions are typed as Numeric Python 
+    numpy.arrays of length 4.
     """
     u = normalize(u)
 
@@ -442,8 +442,8 @@ def calc_atom_centroid(atom_iter):
     return centroid / num
 
 def calc_atom_mean_temp_factor(atom_iter):
-    """Calculates the adverage temperature factor of all contained
-    Atom instances and returns the adverage temperature factor.
+    """Calculates the average temperature factor of all contained
+    Atom instances and returns the average temperature factor.
     """
     num_tf = 0
     adv_tf = 0.0
