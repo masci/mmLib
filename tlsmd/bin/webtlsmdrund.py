@@ -370,13 +370,13 @@ def send_mail(mysql, jdict):
     ## job_url is different for jobs submitted via pdb.org
     if mysql.job_get_via_pdb(job_id) == 1:
         pdb_id = mysql.job_get_structure_id(job_id)
-        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
+        job_dir = "/pdb/%s" % pdb_id
         user_comment = "submitted via pdb.org"
     else:
-        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+        job_dir = "/jobs/%s" % job_id
         user_comment = jdict.get("user_comment", "")
 
-    analysis_url = "%s/ANALYSIS/index.html" % (job_url)
+    analysis_url = "%s/ANALYSIS/index.html" % (job_dir)
     if len(analysis_url) == 0:
         log_write("WARNING: no analysis_url: %s" % job_id)
         return
@@ -386,7 +386,7 @@ def send_mail(mysql, jdict):
 
     ## send mail using msmtp
     mail_message = MAIL_MESSAGE
-    mail_message = mail_message.replace("<BASE_URL>", conf.BASE_PUBLIC_URL)
+    mail_message = mail_message.replace("<BASE_URL>", conf.TLSMD_PUBLIC_URL)
     mail_message = mail_message.replace("<ANALYSIS_URL>", analysis_url)
     mail_message = mail_message.replace("<USER_COMMENT>", user_comment)
     email.SendEmail(
