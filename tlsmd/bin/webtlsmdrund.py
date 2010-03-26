@@ -255,7 +255,7 @@ def cleanup_job(mysql, jdict):
     log_job_end(mysql.job_get_dict(job_id))
 
     ## send email now that the job is complete
-    send_mail(jdict)
+    send_mail(mysql, jdict)
 
 def get_job(mysql):
     """Remove the top job from the queue file and return it.
@@ -349,7 +349,10 @@ Ethan Merritt <merritt@u.washington.edu>
 
 """
 
-def send_mail(jdict):
+def send_mail(mysql, jdict):
+    if mysql == "error":
+        ## webtlsmdrund.py was not called via the web server
+        return
     if not os.path.isfile(conf.MAIL):
         log_write("ERROR: mail client not found: %s" % (conf.MAIL))
         return
@@ -364,13 +367,20 @@ def send_mail(jdict):
     if len(address) == 0:
         return
 
-    job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
+    ## job_url is different for jobs submitted via pdb.org
+    if mysql.job_get_via_pdb(job_id) == 1:
+        pdb_id = mysql.job_get_structure_id(job_id)
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
+        user_comment = "submitted via pdb.org"
+    else:
+        job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
+        user_comment = jdict.get("user_comment", "")
+
     analysis_url = "%s/ANALYSIS/index.html" % (job_url)
     if len(analysis_url) == 0:
         log_write("WARNING: no analysis_url: %s" % job_id)
         return
 
-    user_comment = jdict.get("user_comment", "")
     if len(user_comment) == 0:
         user_comment = "no comment"
 
@@ -510,7 +520,7 @@ def main():
 
 if __name__=="__main__":
     if len(sys.argv) == 2:
-        send_mail(sys.argv[1])
+        send_mail("error", sys.argv[1])
     else:
         main()
 
