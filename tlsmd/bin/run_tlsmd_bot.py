@@ -29,6 +29,10 @@ from tlsmdlib import conf, console, const, misc, mysql_support
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 mysql = mysql_support.MySQLConnect()
 
+## JOB SELECT (example):
+# mysql -B -N -e 'select id from pdb.remarks where tlsmd IS NULL order by rand() limit 1;'
+# for i in `mysql -B -N -e 'select pdb_id from tlsmddb.via_pdb;'`; do mysql -e "UPDATE pdb.remarks SET tlsmd='1' WHERE id='$i';"; done
+
 def timestring(secs):
     tm_struct = time.localtime(secs)
     return time.strftime("%Y-%m-%d %H:%M %Z", tm_struct)
