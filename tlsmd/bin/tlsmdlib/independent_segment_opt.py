@@ -3,6 +3,8 @@
 ## This code is part of the TLSMD distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+##
+## DESCRIPTION: Contains routines for independent segment optimization.
 
 ## Python modules
 import math
@@ -32,7 +34,6 @@ def calc_num_subsegments(n, m):
     m = m - 1
     return (n*(n+1))/2 - (m*n - (m*(m+1))/2 + m)
 
-
 def iter_ij(num_vertex, min_len):
     """Iterates over the i,j vertex indexes defining the edges to be built for 
     the graph. num_vertex gives the number of consecutive vertices to create, 
@@ -41,7 +42,6 @@ def iter_ij(num_vertex, min_len):
     for i in xrange(num_vertex):
         for j in xrange(i + min_len, num_vertex):
             yield i, j
-
 
 def iter_chain_subsegment_descs(chain, min_len):
     """Iterate over all possible subsegments of the given Chain object
@@ -57,6 +57,7 @@ def iter_chain_subsegment_descs(chain, min_len):
         frag_id1 = frag_ids[vertex_i]
         frag_id2 = frag_ids[vertex_j-1]
         yield frag_id1, frag_id2, vertex_i, vertex_j
+
 
 class ISOptimization(hcsssp.HCSSSP):
     """Finds the minimal TLS description of a given Chain instance using
