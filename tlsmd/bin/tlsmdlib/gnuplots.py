@@ -136,11 +136,18 @@ class GNUPlot(object):
     def output_png(self):
         """Runs gnuplot. Expects self.plot_path and self.png_path to be set.
         """
+        ## if a basename is given, then write the GnuPlot script as a file
         script0 = self.make_script()
 
-        ## if a basename is given, then write the GnuPlot script as a file
-        chain_seg = re.sub(r'^.{1,}_CHAIN([A-Za-z0-9])_NTLS([0-9]{1,2})_.*\.png$', '\\1,\\2', self.png_path)
-        console.stdoutln("[%s] GNUPLot: Saving %s" % (chain_seg, self.png_path))
+        ## this is only for the log file
+        if not re.match(r'.*CHAIN.*', self.png_path):
+            console.stdoutln("GNUPLot: Saving %s" % self.png_path)
+        elif re.match(r'.*NTLS.*', self.png_path):
+            chain_seg = re.sub(r'^.{1,}_CHAIN([A-Za-z0-9])_NTLS([0-9]{1,2})_.*\.png$', '\\1,\\2', self.png_path)
+            console.stdoutln("[%s] GNUPLot: Saving %s" % (chain_seg, self.png_path))
+        else:
+            chain_id = re.sub(r'^.{1,}_CHAIN([A-Za-z0-9])_.*\.png$', '\\1', self.png_path)
+            console.stdoutln("[%s,0] GNUPLot: Saving %s" % (chain_id, self.png_path))
 
         ## set output size
         l = ['set term png font "%s" %d size %d,%d enhanced' % (
@@ -405,8 +412,9 @@ class TranslationAnalysis(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("TranslationAnalysis", "TMTT", "SCRIPT", flat_script,
-            self.chain.chain_id, self.cpartition.num_tls_segments())
+        flatfile_write("TranslationAnalysis: script", "TMTT", "SCRIPT", 
+            flat_script, self.chain.chain_id, 
+            self.cpartition.num_tls_segments())
 
         return script
 
@@ -438,7 +446,7 @@ class TranslationAnalysis(GNUPlot):
                 if t2 > 0.0: tbl[i, 2 + 3*itls] = "%6.4f" % (t2)
                 if t3 > 0.0: tbl[i, 3 + 3*itls] = "%6.4f" % (t3)
 
-        flatfile_write("TranslationAnalysis", "TMTT", "DATA", str(tbl),
+        flatfile_write("TranslationAnalysis: data", "TMTT", "DATA", str(tbl),
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
         open(self.txt_path, "w").write(str(tbl))
@@ -503,8 +511,9 @@ class LibrationAnalysis(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("LibrationAnalysis", "LIAN", "SCRIPT", flat_script,
-            self.chain.chain_id, self.cpartition.num_tls_segments())
+        flatfile_write("LibrationAnalysis: script", "LIAN", "SCRIPT", 
+            flat_script, self.chain.chain_id, 
+            self.cpartition.num_tls_segments())
 
         return script
 
@@ -557,7 +566,7 @@ class LibrationAnalysis(GNUPlot):
                         Lpitch, atm.position, conf.ADP_PROB)
                     tbl[i, 1 + 3*itls + n] = AtomMath.length(dvec)
 
-        flatfile_write("LibrationAnalysis", "LIAN", "DATA", str(tbl),
+        flatfile_write("LibrationAnalysis: data", "LIAN", "DATA", str(tbl),
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
         open(self.txt_path, "w").write(str(tbl))
@@ -623,8 +632,9 @@ class CA_TLS_Differance_Plot(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("CA_TLS_Differance_Plot", "CTDP", "SCRIPT", flat_script,
-            self.chain.chain_id, self.cpartition.num_tls_segments())
+        flatfile_write("CA_TLS_Differance_Plot: script", "CTDP", "SCRIPT", 
+            flat_script, self.chain.chain_id, 
+            self.cpartition.num_tls_segments())
 
         return script
 
@@ -656,8 +666,9 @@ class CA_TLS_Differance_Plot(GNUPlot):
 
         open(self.txt_path, "w").write(str(tbl))
 
-        flatfile_write("CA_TLS_Differance_Plot", "CTDP", "DATA", str(tbl),
-            self.chain.chain_id, self.cpartition.num_tls_segments())
+        flatfile_write("CA_TLS_Differance_Plot: data", "CTDP", "DATA", 
+            str(tbl), self.chain.chain_id, 
+            self.cpartition.num_tls_segments())
 
 
 _UISO_VS_UTLSISO_HISTOGRAM_TEMPLATE = """\
@@ -768,8 +779,9 @@ class UIso_vs_UtlsIso_Histogram(GNUPlot):
         script = script.replace("<rgb>", tls.color.rgbs)
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("UIso_vs_UtlsIso_Histogram", "UVUH", "SCRIPT", flat_script,
-            self.chain.chain_id, self.cpartition.num_tls_segments())
+        flatfile_write("UIso_vs_UtlsIso_Histogram: script", "UVUH", "SCRIPT", 
+            flat_script, self.chain.chain_id, 
+            self.cpartition.num_tls_segments())
 
         return script
 
@@ -823,7 +835,7 @@ class BMeanPlot(GNUPlot):
 
         open(self.txt_path, "w").write(str(tbl))
 
-        flatfile_write("BMeanPlot", "BMPT", "DATA", str(tbl),
+        flatfile_write("BMeanPlot: data", "BMPT", "DATA", str(tbl),
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
         ## Gnuplot Script
@@ -876,7 +888,7 @@ class BMeanPlot(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("BMeanPlot", "BMPT", "SCRIPT", flat_script,
+        flatfile_write("BMeanPlot: script", "BMPT", "SCRIPT", flat_script,
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
         return script
@@ -919,7 +931,7 @@ class RMSDPlot(GNUPlot):
 
         open(self.txt_path, "w").write(str(tbl))
 
-        flatfile_write("RMSDPlot", "RMPT", "DATA", str(tbl),
+        flatfile_write("RMSDPlot: data", "RMPT", "DATA", str(tbl),
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
     def make_script(self):
@@ -978,7 +990,7 @@ class RMSDPlot(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         flat_script = script.replace("\n", ";")
-        flatfile_write("RMSDPlot", "RMPT", "SCRIPT", flat_script,
+        flatfile_write("RMSDPlot: script", "RMPT", "SCRIPT", flat_script,
             self.chain.chain_id, self.cpartition.num_tls_segments())
 
         return script
