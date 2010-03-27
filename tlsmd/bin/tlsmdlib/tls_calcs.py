@@ -149,21 +149,22 @@ def calc_mean_biso_obs(chain):
 
     return biso
 
-
 def calc_mean_biso_tls(chain, cpartition):
     """Calculates the mean B value per residue in the chain (as calculated in 
     the chain optimization).
     """
+    chain_id = chain.chain_id
+    num_tls = cpartition.num_tls_segments()
     num_res = chain.count_fragments()
     biso = numpy.zeros(num_res, float)
 
     for i, tls in enumerate(cpartition.iter_tls_segments()):
         tls_group = tls.tls_group
 
-        T = tls_group.itls_T
-        L = tls_group.itls_L
-        S = tls_group.itls_S
-        O = tls_group.origin
+        T = tls_group.itls_T # float(3)
+        L = tls_group.itls_L # array(3,3)
+        S = tls_group.itls_S # array(3): S[0], S[1], S[2]
+        O = tls_group.origin # array(3)
 
         for frag in tls.iter_fragments():
             n = 0
@@ -330,7 +331,7 @@ def refmac5_prep(xyzin, tlsin_list, xyzout, tlsout):
     tls_file.save(open(tlsout, "w"))
 
 def refmac_pure_tls_prep(xyzin, tlsin_list, wilson, xyzout, tlsout):
-    """Use TLS model (without Uiso) for each atom. Output xyzout with the
+    """Use TLS model (without Uiso) for each atom. Output xyzout with the 
     B-factors reset to either the Bmean or the Wilson B value.
     """
     ## load structure
@@ -360,7 +361,7 @@ def refmac_pure_tls_prep(xyzin, tlsin_list, wilson, xyzout, tlsout):
             sum_Biso += atm.temp_factor
         Bmean = sum_Biso / num_atms
 
-        ## reset the TLS tensor values in the TLSDesc object so they can be
+        ## reset the TLS tensor values in the TLSDesc object so they can be 
         ## saved
         tls_group.tls_desc.set_tls_group(tls_group)
 
