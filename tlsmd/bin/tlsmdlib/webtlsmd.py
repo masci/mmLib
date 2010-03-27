@@ -19,6 +19,7 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 import subprocess
+import pickle
 
 ## Pymmlib
 from mmLib import Library ## checks if is_{amino,nucleic}_acid()
@@ -378,7 +379,9 @@ def html_program_settings_table(fdict):
 
     ## Center table: "Choose TLS Model"
     which_model = mysql.job_get_tls_model(fdict["job_id"])
-    if which_model == "ANISO":
+    #if which_model == "ANISO":
+    which_model = True
+    if which_model:
         l += ['<tr><td class="c" valign="top" colspan="2">',
               '<table class="ninner_table">',
               '<tr><td class="l">',
@@ -719,7 +722,8 @@ def html_job_info_table(fdict):
     ## Thumbnail image of user's structure
     if conf.THUMBNAIL:
         x += '<tr><th colspan="3">'
-        if fdict["via_pdb"] == 1:
+        if fdict["via_pdb"] == 1 and \
+           fdict["state"] not in ["running", "queued", "died"]:
             x += '<img src="%s"/>' % (conf.WEBTLSMDD_PDB_URL + "/" + \
                 fdict["structure_id"] + "/struct.png")
         else:
@@ -746,7 +750,9 @@ def html_job_info_table(fdict):
             x += '<td>%s</td>' % desc
 
             processing_time = False
+            #if cdict.has_key("processing_time"):
             if processing_time:
+                #hours = secdiffstring(cdict["processing_time"])
                 hours = "0000"
             else:
                 hours = "---"
@@ -903,6 +909,19 @@ def vet_pdb_id(pdbid):
         return False
     return True
 
+def write_to_file_form_info(job_id):
+    """Saves all information enter into the form by the user to a file for
+    later use by html.py when it creates the static HTML pages of the
+    analysis.
+    """
+    jdict = mysql.job_get_dict(job_id)
+    job_dir = conf.WEBTMP_PATH
+    file = open(job_dir + "/%s.txt" % job_id, "w")
+    file.write(pickle.dumps(jdict))
+    file.close()
+
+    return ''
+
 def extract_job_edit_form(form):
     """Extract the input from the Job Edit Form and update the MySQL
     database with the information.
@@ -1023,6 +1042,11 @@ def extract_job_edit_form(form):
             nparts_value = int(conf.NPARTS)
         mysql.job_set_nparts(job_id, int(nparts_value))
 
+    ## Save all information enter into the form by the user to a file
+    r = write_to_file_form_info(job_id)
+    if r != '':
+        raise SubmissionException('Could not save form data')
+
     return True
 
 
@@ -1032,7 +1056,8 @@ class Page(object):
 
     def html_head_nocgi(self, title, redirect=None):
         x  = ''
-        x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'
+        x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
+        x += '     "http://www.w3.org/TR/html4/loose.dtd">'
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
@@ -1111,7 +1136,8 @@ class QueuePage(Page):
         return struct_id
 
     def html_head_nocgi(self, title):
-        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
+        l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
+             '     "http://www.w3.org/TR/html4/loose.dtd">',
              '<html>',
              '<head>',
              '  <title>%s</title>' % (title),
