@@ -22,8 +22,8 @@ def iter_mainchain_atoms(atom_iter):
     return itertools.ifilter(filter, atom_iter)
 
 def calc_include_atom(atm, reject_messages = False):
-    """Filter out atoms from the model which will cause problems or
-    can't contribute to the TLS analysis.
+    """Filter out atoms from the model which will cause problems or can not 
+    contribute to the TLS analysis.
     """
     if atm.position == None:
         return False
@@ -37,6 +37,12 @@ def calc_include_atom(atm, reject_messages = False):
     if atm.occupancy > 1.0:
         atm.occupancy = 1.0
         msg = "atom occupancy greator than 1.0; truncating"
+        console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
+
+    if atm.occupancy == .999:
+        ## This is for testing purposes.
+        #atm.occupancy = 1.0
+        msg = "atom occupancy is .999"
         console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
 
     if numpy.trace(atm.get_U()) <= const.TSMALL:
@@ -61,10 +67,10 @@ def calc_atom_weight(atm):
     return atm.occupancy
 
 def chain_to_xmlrpc_list(atom_iter):
-    """Converts the Atoms of a Chain/Segment to a list of dictionaries 
-    for transfer over xmlrpc. Only the information required to fit
-    TLS groups to the Atoms is set in the Atom dictionaries to
-    reduce traffic over the xmlrpc calls.
+    """Converts the Atoms of a Chain/Segment to a list of dictionaries for 
+    transfer over xmlrpc. Only the information required to fit TLS groups to 
+    the Atoms is set in the Atom dictionaries to reduce traffic over the 
+    xmlrpc calls.
     """
     xmlrpc_chain = []
 
