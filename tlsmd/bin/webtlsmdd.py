@@ -217,8 +217,6 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 def RequeueJob(webtlsmdd, job_id):
     """Pushes job to the end of the list.
     """
-    ## FIXME: This will no longer work! The BerkeleyDB code has been removed
-    ## and now we must use MySQL, 2009-06-29
     if mysql.job_get_state(job_id) == 'running':
         return False
     else:
@@ -254,7 +252,6 @@ def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
     the next step. It will eventually have a state "warnings".
     """
-    ## FIXME: Doesn't seem to work, 2009-06-12
     if not mysql.job_exists(job_id):
         return False
 
@@ -277,9 +274,6 @@ def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the
     "Completed Jobs" section as "killed" state.
     """
-    ## FIXME: We want to keep the job_id around in order to inform the user
-    ## that their job has been "killed", 2009-05-29
-
     if not mysql.job_exists(job_id):
         return False
 
@@ -451,7 +445,8 @@ class WebTLSMDDaemon(object):
         return Refmac5RefinementPrep(job_id, chain_ntls, wilson)
 
     def fetch_pdb(self, pdbid):
-        """Retrieves the PDB file from RCSB"""
+        """Retrieves the PDB file from RCSB.
+        """
         try:
             cdata = urllib.urlopen("%s/%s.pdb.gz" % (conf.GET_PDB_URL,pdbid)).read()
             sys.stdout.write("FOUND PDB: %s" % pdbid)
