@@ -97,6 +97,10 @@ class TLSSegmentAlignmentPlot(object):
     def plot(self, path):
         """Plot and write the png plot image to the specified path.
         """
+        ## Force an ignore of deprecated functions
+        import warnings
+        warnings.filterwarnings("ignore")
+
         if len(self.frag_list) == 0 or len(self.chain_partition_list) == 0:
             return False
 
@@ -118,6 +122,7 @@ class TLSSegmentAlignmentPlot(object):
         assert img_width > 0 and img_height > 0
         image = Image.new("RGBA", (img_width, img_height), self.bg_color)
         idraw = ImageDraw.Draw(image)
+
         idraw.setfill(True)
         idraw.setfont(ImageFont.truetype(conf.GNUPLOT_FONT, 12))
 
