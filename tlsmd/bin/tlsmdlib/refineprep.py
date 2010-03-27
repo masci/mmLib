@@ -173,6 +173,8 @@ class RefinePrepPage(Page):
         ## success! Now make download links
         x += '<center>\n'
         x += '<table class="submit_table">'
+
+        ## "REFMAC (TLS + Biso) files"
         x += '<th colspan="2">REFMAC (TLS + Biso) files</th>'
         x += '<tr>'
         x += '<td align="right"><b>PDBIN File: </b></td>'
@@ -183,6 +185,8 @@ class RefinePrepPage(Page):
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
             result["tlsout_url1"], result["tlsout1"].split("/")[1])
         x += '</tr>'
+
+        ## "REFMAC (Pure TLS) files"
         x += '<tr><td colspan="2"><hr></td></tr>'
         x += '<th colspan="2">REFMAC (Pure TLS) files</th>'
         x += '<tr>'
@@ -194,6 +198,8 @@ class RefinePrepPage(Page):
         x += '<td><a href="%s" type="text/plain">%s</a></td>' % (
             result["tlsout_url2"], result["tlsout2"].split("/")[1])
         x += '</tr>'
+
+        ## "PHENIX files"
         x += '<tr><td colspan="2"><hr></td></tr>'
         x += '<th colspan="2">PHENIX files</th>'
         x += '<tr>'
@@ -205,6 +211,7 @@ class RefinePrepPage(Page):
 
         x += '<br/>'
 
+        ## Documentation link
         x += '<center>\n'
         x += '<h3>'
         x += 'Step 3: Read this '
@@ -213,6 +220,7 @@ class RefinePrepPage(Page):
         x += '</center>'
 
         x += self.html_foot()
+
         return x
 
 
