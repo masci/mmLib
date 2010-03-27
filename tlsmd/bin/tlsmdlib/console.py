@@ -80,6 +80,9 @@ def debug_stdoutln(line):
     if debug_output_enabled:
         stdout("[%s] %s\n" % (misc.timestamp(), line))
 
+def warning_stdoutln(line):
+    stdout("[%s]     Warning: %s\n" % (misc.timestamp(), line))
+
 def cpu_time_stdoutln(line):
     if cpu_time_output_enabled:
         stdout("[%s] CPU_TIME %s\n" % (misc.timestamp(), line))
