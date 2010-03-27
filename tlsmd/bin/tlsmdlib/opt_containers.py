@@ -335,5 +335,7 @@ class ChainPartitionCollection(object):
         return min(self.iter_ntls())
 
     def get_chain_id(self):
+        """Returns chain_id as an alphanumeric string (single character).
+        """
         ## Added. Christoph Champ, 2008-04-04
         return self.chain_id
