@@ -192,7 +192,9 @@ def check_logfile_for_errors(file):
     completed = False
     infil = open(file,'r').readlines()
     for line in infil:
-        if re.match(r'^\s*Warning:', line):
+        if re.match(r'\[....-..-.. ..:..:..\] TITLE', line):
+            continue
+        elif re.match(r'^\s*Warning:', line):
             warnings = True
         elif re.match(r'^.*[Ee][Rr][Rr][Oo][Rr]', line):
             errors = True
