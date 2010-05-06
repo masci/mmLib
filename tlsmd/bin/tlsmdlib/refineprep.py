@@ -147,8 +147,8 @@ class RefinePrepPage(Page):
                 try:
                     if misc.is_float(self.form[key].value):
                         wilson = float(self.form[key].value)
-                        if wilson > 50.0:
-                            wilson = 50.0
+                        if wilson > conf.MAX_WILSON_B:
+                            wilson = conf.MAX_WILSON_B
                     else:
                         msg  = "Value for constant B '%s' is not valid. " % (
                             self.form[key].value)
