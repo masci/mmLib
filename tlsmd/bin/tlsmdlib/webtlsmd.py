@@ -379,31 +379,36 @@ def html_program_settings_table(fdict):
 
     ## Center table: "Choose TLS Model"
     which_model = mysql.job_get_tls_model(fdict["job_id"])
-    #if which_model == "ANISO":
-    which_model = True
-    if which_model:
-        l += ['<tr><td class="c" valign="top" colspan="2">',
-              '<table class="ninner_table">',
-              '<tr><td class="l">',
 
-              '<fieldset><legend>Choose TLS Model:</legend>',
-              '<div style="font-size:xx-small">',
-              'Note: Your structure contains ANISOU records.<br/>',
-              'Note: TLSMD may find a more accurate result if it uses ',
-              'this information, but anisotropic analysis takes much ',
-              'longer to run!',
-              '</div>',
-              '<p><label>',
-              '<input name="tls_model" type="radio" value="ISOT" ',
-                     'checked="checked" />',
-              'Isotropic analysis</label></p>',
-              '<p><label>',
-              '<input name="tls_model" type="radio" value="ANISO" />',
-              'Anisotropic analysis</label></p>',
-              '</fieldset>',
+    model_note = ''
+    if which_model == "ANISO":
+        model_note += 'Note: Your structure contains ANISOU records.<br/>'
+        model_note += 'Note: TLSMD may find a more accurate result if it uses '
+        model_note += 'this information, but anisotropic analysis takes much '
+        model_note += 'longer to run!'
 
-              '</td>',
-              '</table></td>']
+    if which_model == "ISOT":
+        model_note += 'Note: Your structure does not contain any ANISOU '
+        model_note += 'records. You should choose to run your structure '
+        model_note += 'through TLSMD using the isotropic analysis model.'
+
+    l += ['<tr><td class="c" valign="top" colspan="2">',
+          '<table class="ninner_table">',
+          '<tr><td class="l">',
+
+          '<fieldset><legend>Choose TLS Model:</legend>',
+          '<div style="font-size:xx-small">%s</div>' % model_note,
+          '<p><label>',
+          '<input name="tls_model" type="radio" value="ISOT" '
+                 'checked="checked" />',
+          'Isotropic analysis</label></p>',
+          '<p><label>',
+          '<input name="tls_model" type="radio" value="ANISO" />',
+          'Anisotropic analysis</label></p>',
+          '</fieldset>',
+
+          '</td>',
+          '</table></td>']
 
     ## Left table: "Keep Job Private"
     l += ['<tr><td class="c" valign="top">',
@@ -669,7 +674,10 @@ def html_job_info_table(fdict):
         jobstate = (fdict["state"])
     else:
         jobstate = "unknown"
-    x += '<td><b>%s</b></td></tr>' % (jobstate)
+    if jobstate == "died":
+        x += '<td class="perror"><b>%s</b></td></tr>' % (jobstate)
+    else:
+        x += '<td><b>%s</b></td></tr>' % (jobstate)
 
     x += '<tr><td class="r">Submission IP Address: </td>'
     x += '<td><b>%s</b></td></tr>' % (fdict.get("ip_address", ""))
@@ -750,9 +758,7 @@ def html_job_info_table(fdict):
             x += '<td>%s</td>' % desc
 
             processing_time = False
-            #if cdict.has_key("processing_time"):
             if processing_time:
-                #hours = secdiffstring(cdict["processing_time"])
                 hours = "0000"
             else:
                 hours = "---"
@@ -1132,7 +1138,6 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
-
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -1649,8 +1654,7 @@ class AdminJobPage(Page):
             fdict["killbutton"]    = True
             fdict["requeuebutton"] = True
 
-        if state == "running" or state == "success" or \
-           state == "warnings" or state == "errors":
+        if state in ["running", "success", "warnings", "errors", "died"]:
             x += html_job_nav_bar(job_id)
             x += html_job_info_table(fdict)
         else:
@@ -2058,7 +2062,7 @@ class SubmitPDBPage(Page):
         """If a given PDB (from pdb.org) has already been analyzed, inform
         user and redirect them to correct analysis page.
         """
-        # check to see if this job is still running
+        ## check to see if this job is still running
         try:
             os.chdir(conf.WEBTLSMDD_PDB_DIR + '/' + pdbid)
         except OSError:
