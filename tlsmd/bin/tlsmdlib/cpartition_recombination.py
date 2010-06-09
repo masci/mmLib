@@ -226,7 +226,7 @@ def ExtendRecombinationTree(ptree, depth, width):
 
 
 def ChainPartitionRecombinationOptimization(chain):
-    console.debug_stdoutln(">cpartition_recombination.py->ChainPartitionRecombinationOptimization()")
+    console.debug_stdoutln(">cpartition_recombination->ChainPartitionRecombinationOptimization()")
 
     visited = {}
 
