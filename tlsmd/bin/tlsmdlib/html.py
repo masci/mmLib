@@ -2189,6 +2189,9 @@ class ChainNTLSAnalysisReport(Report):
             os.chdir(self.root)
 
     def generate_subtitle(self):
+        """Generates an HTML subtitle from the user_comment field of the input
+        form.
+        """
         ## class ChainNTLSAnalysisReport()
         file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
         jdict = pickle.load(file)
