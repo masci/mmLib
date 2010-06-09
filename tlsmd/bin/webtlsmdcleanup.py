@@ -38,10 +38,7 @@ def check_remove(jdict):
     if days > DELETE_DAYS:
         return True
 
-    if state == "submit1" and days > 1:
-        return True
-
-    if state == "lost_directory" and days > 1:
+    if state in ["submit1", "lost_directory", "syserror"] and days > 1:
         return True
 
     return False
