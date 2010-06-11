@@ -5,7 +5,7 @@
  * with associated chain, segment, and model information.
  * We assume that a suitable header file is being created elsewhere.
  *
- * LAST UPDATE: 2009-12-09
+ * LAST UPDATE: 2010-06-10
  *
  * TODO:
  *   - command-line options for trace radius, etc
@@ -130,4 +130,6 @@ int main(int argc, char *argv[]) {
 	previous = current;
 	nca++;
     }
+
+    return 0;
 }
