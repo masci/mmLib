@@ -400,9 +400,16 @@ def library_construct_monomer_desc(res_name):
     chem_comp_atom = rcsb_cif_data.get_table("chem_comp_atom")
     if chem_comp_atom is not None:
         for cif_row in chem_comp_atom:
-            name   = cif_row.getitem_lower("atom_id")
-            symbol = cif_row.getitem_lower("type_symbol")
-            
+            name = cif_row.getitem_lower("atom_id")
+
+            try:
+                symbol = cif_row.getitem_lower("type_symbol")
+            except KeyError:
+                ## this should occur when an atom name does not match the ones
+                ## found in a monomer file
+                ## NOTE: If we get here, this atom will be ignored.
+                symbol = "?"
+
             mon_desc.atom_list.append({"name": name, "symbol": symbol})
             mon_desc.atom_dict[name] = symbol
             try:
@@ -419,7 +426,7 @@ def library_construct_monomer_desc(res_name):
             atom2 = cif_row.getitem_lower("atom_id_2")
             mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
 
-    ## data from mmLib supplimental library in mmLib/Monomers/monomers.cif
+    ## data from mmLib supplimental library in mmLib/Data/monomers.cif
     mmlib_cif_data = MMLIB_MONOMERS_CIF.get_data(res_name)
     if mmlib_cif_data is not None:
         ## get additional chemical information on amino acids
@@ -433,7 +440,8 @@ def library_construct_monomer_desc(res_name):
         if torsion_angles is not None:
             for cif_row in torsion_angles:
                 mon_desc.torsion_angle_dict[cif_row["name"]] = (
-                    cif_row["atom1"], cif_row["atom2"], cif_row["atom3"], cif_row["atom4"])              
+                    cif_row["atom1"], cif_row["atom2"], 
+                    cif_row["atom3"], cif_row["atom4"])
 
     ## set some derived flags on the monomer description
     mon_type = mon_desc.type.upper()
