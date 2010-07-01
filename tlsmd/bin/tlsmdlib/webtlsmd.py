@@ -1138,6 +1138,7 @@ class QueuePage(Page):
             return "----"
         elif struct_id.lower() == "xxxx":
             return struct_id
+
         return struct_id
 
     def html_head_nocgi(self, title):
@@ -2167,13 +2168,14 @@ plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 || $2>60.0) ? 999 : 0  axes x
 """
 
 def check_upload(job_id, file):
-    """Runs sanity checks on uploaded file
+    """Runs sanity checks on uploaded structure file.
     """
-    ## Checks if PDB contains valids aa/na residues
-    ## PDB must have at least 30 ATOMs
-    ## PDB can not have lowercase alt. res. numbers
-    ## Check Standard deviation of temp. factors
-    ## Check that not all occupancies are 0.00
+    ## NOTE:
+    ##     - Checks if the PDB file contains valid aa/na residues
+    ##     - PDB file must have at least 30 ATOMs
+    ##     - PDB file can not have lowercase alt. res. numbers
+    ##     - Checks standard deviation of temp. factors
+    ##     - Checks that not all occupancies are 0.00
     atom_num = []
     res_type = []
     res_num = []
@@ -2184,16 +2186,21 @@ def check_upload(job_id, file):
     num_good = 0
     occupancy = 0.0
     ignore = 0
-    is_xray = 1
     line_num = 0
     for line in file:
         line_num += 1
+
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
+
         if line.startswith('EXPDTA') and line.find('X-RAY DIFFRACTION') == -1:
-            is_xray = 0
+            msg  = "Not an X-ray diffraction structure. TLSMD currently only "
+            msg += "performs analysis on X-ray models. Will not proceed."
+            return msg
+
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
+
         elif re.match('^ATOM.....................[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B"
             example = re.sub(r'^ATOM.....................([0-9][a-z]).*', '\\1', line).strip()
@@ -2201,6 +2208,7 @@ def check_upload(job_id, file):
             msg += "residue numbers. (E.g., change \" %s \" to \" %s \")" % (
                 example, example.upper())
             return msg
+
         elif line.startswith('ATOM') and (
             Library.library_is_standard_residue(line[17:20].strip())):
             num_total += 1
@@ -2216,11 +2224,9 @@ def check_upload(job_id, file):
                 chain.append(line[21:22])
                 occupancy += float(line[56:60].strip())
                 temp_factors.append(float(line[60:65].strip()))
+
         else:
             continue
-
-    if is_xray == 0:
-        return "Not an x-ray diffraction structure. Will not proceed."
 
     if(len(atom_num) < 30):
         return "Not a PDB structure or has unrecognized residue names."
