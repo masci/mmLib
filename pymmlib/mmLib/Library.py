@@ -367,7 +367,7 @@ def library_open_monomer_lib_file(monomer_name):
 def library_construct_monomer_desc(res_name):
     """Constructs the MonomerDesc object for the given residue name.
     """
-    ## return None when the res_name is the empty string
+    ## return None when the res_name is an empty string
     if len(res_name) < 1:
         return None
 
@@ -407,8 +407,10 @@ def library_construct_monomer_desc(res_name):
             except KeyError:
                 ## this should occur when an atom name does not match the ones
                 ## found in a monomer file
-                ## NOTE: If we get here, this atom will be ignored.
-                symbol = "?"
+                symbol = name
+                msg = "unrecognized atom name: '%s' in residue '%s'" % (
+                    symbol, res_name)
+                ConsoleOutput.warning(msg)
 
             mon_desc.atom_list.append({"name": name, "symbol": symbol})
             mon_desc.atom_dict[name] = symbol
@@ -516,13 +518,15 @@ def library_is_water(res_name):
     """Return True if the res_name is water.
     """
     assert isinstance(res_name, str)
+
     if res_name == "HOH" or res_name == "WAT":
         return True
+
     return False
 
 
 def library_guess_element_from_name(name0, res_name):
-    """Try everything I can possibly think of to extract the element
+    """Try everything we can possibly think of to extract the element
     symbol from the atom name.  If availible, use the monmer dictionary
     to help narrow down the search.
     """
@@ -544,7 +548,9 @@ def library_guess_element_from_name(name0, res_name):
             return "O"
 
         if mdesc.is_amino_acid():
-            ConsoleOutput.warning("invalid amino acid atom name %s" % (name))
+            msg = "invalid amino acid atom name '%s' in residue '%s'" % (
+                name, res_name)
+            ConsoleOutput.warning(msg)
 
     ## ok, that didn't work...
 
@@ -571,7 +577,7 @@ def library_guess_element_from_name(name0, res_name):
     e1_symbol = alpha_name[0]
     e1_valid  = ELEMENT_SYMBOL_DICT.has_key(e1_symbol)
 
-    if len(alpha_name)>1:
+    if len(alpha_name) > 1:
         e2_symbol = alpha_name[:2]
         e2_valid  = ELEMENT_SYMBOL_DICT.has_key(e2_symbol)
     else:
@@ -606,7 +612,7 @@ def test_module():
     h = library_get_element_desc("H")
 
     for cif_data in ELEMENT_CIF_FILE:
-        if len(cif_data.name)==1:
+        if len(cif_data.name) == 1:
             print '    "%s" : True, "%s" : True,' % (
                 cif_data.name, cif_data.name.lower())
         else:
