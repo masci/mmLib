@@ -152,8 +152,11 @@ class TLSMDAnalysis(object):
 
             ## count the number of amino acid and/or nucleic acid residues in
             ## the chain and skip those that are too small
+            ## also, warn the user if a chain contains non-standard residue
+            ## types
             naa = chain.count_amino_acids()
             nna = chain.count_nucleic_acids()
+            non = chain.count_non_standard_residues()
 
             if nna == 0 and (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN):
                 console.kvformat("SKIPPING SMALL AMINO ACID CHAIN", 
@@ -167,6 +170,10 @@ class TLSMDAnalysis(object):
 
             if naa > nna and nna > 0:
                 console.kvformat("CHAIN WITH DIFFERENT RESIDUE TYPES",
+                    chain.chain_id)
+
+            if non > 0:
+                console.kvformat("CHAIN CONTAINS NON-STANDARD RESIDUE TYPES",
                     chain.chain_id)
 
             num_frags = max(naa, nna)
