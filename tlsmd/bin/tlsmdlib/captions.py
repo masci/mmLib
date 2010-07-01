@@ -43,6 +43,14 @@ Given the number of TLS groups you would like to use for each chain, TLSMD will 
 Given the number of TLS groups you would like to use for each chain, TLSMD will generate a single file for input to PHENIX that describes the residues making up each group.  PHENIX does not currently allow you to input a starting model for the TLS parameters themselves.
 """
 
+REFINEMENT_FILES_DOWNLOAD_INFO = """\
+<p><b>Refmac5:</b> Download both the modified PDBIN file for your structure and
+the corresponding TLSIN file. Feed these to REFMAC5 as a starting point for
+multi-TLS group refinement. See the TLSMD documentation for detailed instructions.</p>
+<p><b>PHENIX:</b> The PHENIX file contains a description of the TLS groups you
+selected. This file is intended to be read by the PHENIX.refine input scripts.</p>
+"""
+
 LSQR_CAPTION = """\
 TLSMD selects the optimal partition of a chain into 1 to 20 TLS groups by minimizing
 an overall residual function.
