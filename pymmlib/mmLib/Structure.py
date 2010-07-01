@@ -393,7 +393,7 @@ class Structure(object):
         """
         n = 0
         for chain in self.iter_chains():
-            n += chain.count_amino_acids()
+            n += chain.count_nucleic_acids()
         return n
     
     def iter_nucleic_acids(self):
@@ -678,11 +678,16 @@ class Structure(object):
                     edesc1 = Library.library_get_element_desc(atm1.element)
                     edesc2 = Library.library_get_element_desc(atm2.element)
 
+                    ## this will usually occur if an atom name does not match
+                    ## the one found in the associated monomor library
                     if edesc1 is None or edesc2 is None:
                         continue
 
                     bond_dist = edesc1.covalent_radius + edesc2.covalent_radius + 0.54
 
+                    ## this will usually occur if the bond distance between
+                    ## between two atoms does not match the description in
+                    ## in the monomer library
                     if dist > bond_dist:
                         continue
 
@@ -3883,7 +3888,7 @@ def test_module():
         chain_id = "A",
         res_name = "GLY",
         fragment_id = "1")
-    
+
     struct.add_atom(atm)
 
 if __name__ == "__main__":
