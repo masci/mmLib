@@ -14,8 +14,9 @@ import cgitb; cgitb.enable()
 import cgi
 
 ## TLSMD
-import const
+import captions
 import conf
+import const
 import misc
 import mysql_support
 
@@ -23,16 +24,6 @@ import mysql_support
 webtlsmdd = xmlrpclib.ServerProxy(conf.WEBTLSMDD)
 mysql = mysql_support.MySQLConnect()
 
-CAPTION = """\
-<p><b>Refmac5:</b> Download both the modified PDBIN file for your structure and
-the corresponding TLSIN file. Feed these to REFMAC5 as a starting point for
-multi-TLS group refinement.
-See the TLSMD documentation for detailed instructions.</p>
-<p>
-<b>PHENIX:</b> The PHENIX file contains a description of the TLS groups you
-selected.
-This file is intended to be read by the PHENIX.refine input scripts.</p>
-"""
 
 class Page(object):
     """Formats HTML in the refinement preparation page.
@@ -59,16 +50,16 @@ class Page(object):
         return x
 
     def html_head(self, title):
-        x = ''
+        x  = ''
         x += 'Content-Type: text/html\n\n'
         x += self.html_head_nocgi(title)
         return x
 
     def html_foot(self):
-        x = ''
+        x  = ''
         x += '<center>'
         x += '<p><small><b>Version %s</b> Released %s' % (
-            const.VERSION, const.RELEASE_DATE)
+             const.VERSION, const.RELEASE_DATE)
         x += ' by %s ' % (const.AUTHOR)
         x += '<i>%s</i></small></p>' % (const.EMAIL)
         x += '</center>'
@@ -115,25 +106,29 @@ class RefinePrepPage(Page):
     given structure and it TLS partitions.
     """
 
+    def __init__(self, form):
+        self.form = form
+
     def html_page(self):
-        job_id = check_job_id(self.form)
+        """Creates the input files for needed for TLS Refinement.
+        """
 
-        title = 'Input Files for TLS Refinement'
-
-        x  = ''
-        x += self.html_head(title)
-        x += self.html_title(title)
-
-        x += '<center>\n'
-        x += '<h3>'
-        x += 'Step 2: Download the generated XYZIN(PDBIN), TLSIN, and PHENIX files below'
-        x += '</h3>'
-        x += '</center>'
-
-        ## extract ntls selections from CGI form
+        ## initialize values (some are just dummy values)
+        job_id = "TLSMD0000_xxxxxxxx"
+        struct_id = "XXXX"
         chain_ntls = []
+        wilson = float(conf.MAX_WILSON_B)
+
+        ## now fill in the initialized values with those in the web form.
         for key in self.form.keys():
-            if key.startswith("NTLS_CHAIN"):
+            if key.startswith("job_id"):
+                job_id = self.form[key].value
+
+            elif key.startswith("struct_id"):
+                struct_id = self.form[key].value
+
+            ## extract ntls selections from CGI form
+            elif key.startswith("NTLS_CHAIN"):
                 chain_id = key[-1]
                 try:
                     ntls = int(self.form[key].value)
@@ -164,13 +159,27 @@ class RefinePrepPage(Page):
             raise RefinePrepError("Form Processing Error: No Chains Selected")
 
         ## call webtlsmdd to generate files (Refmac5 + PHENIX)
-        result = webtlsmdd.refmac5_refinement_prep(job_id, chain_ntls, wilson)
+        result = webtlsmdd.refmac5_refinement_prep(job_id, struct_id, 
+                                                   chain_ntls, wilson)
         if isinstance(result, str):
             raise RefinePrepError(result)
 
-        x += '<p>%s</p>' % (CAPTION)
+        ## Success! Now provide a description and make download links for the
+        ## input files needed for refinement.
+        title = 'Input Files for TLS Refinement'
 
-        ## success! Now make download links
+        x  = ''
+        x += self.html_head(title)
+        x += self.html_title(title)
+
+        x += '<center>\n'
+        x += '<h3>'
+        x += 'Step 2: Download the generated XYZIN(PDBIN), TLSIN, and PHENIX files below'
+        x += '</h3>'
+        x += '</center>'
+
+        x += '<p>%s</p>' % (captions.REFINEMENT_FILES_DOWNLOAD_INFO)
+
         x += '<center>\n'
         x += '<table class="submit_table">'
 
@@ -234,20 +243,15 @@ def check_job_id(form):
             if job_id.startswith("TLSMD"):
                 if mysql.job_exists(job_id):
                     return job_id
+            elif mysql.pdb_exists(job_id):
+                return job_id
     return None
 
 
 def main():
     form = cgi.FieldStorage()
 
-    page = None
-    job_id = check_job_id(form)
-    if job_id == None:
-        fault_html = "The Job ID seems to be expired or invalid."
-        page = ErrorPage(form, fault_html)
-    else:
-        page = RefinePrepPage(form)
-
+    page = RefinePrepPage(form)
     try:
         print page.html_page()
 
@@ -256,12 +260,13 @@ def main():
         page = ErrorPage(form, text)
         print page.html_page()
 
-    except xmlrpclib.Fault, fault:
-        fault_html  = "xmlrpclib.Fault from refineprep.py:<br/>"
-        fault_html += "fault code: %s<br/>fault string: %s" % (
-            fault.faultCode, fault.faultString)
-        page = ErrorPage(form, fault_html)
-        print page.html_page()
+    ## XXX: Might be used for debugging.
+    #except xmlrpclib.Fault, fault:
+    #    fault_html  = "xmlrpclib.Fault from refineprep.py:<br/>"
+    #    fault_html += "fault code: %s<br/>fault string: '%s'" % (
+    #        fault.faultCode, fault.faultString)
+    #    page = ErrorPage(form, fault_html)
+    #    print page.html_page()
 
     except socket.error, err:
         page = ErrorPage(form, "socket.error: " + str(err))
