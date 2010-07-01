@@ -465,7 +465,7 @@ def job_completed(mysql, jdict):
     return True
 
 def fetch_and_run_jobs_forever():
-    log_write("starting webtlsmdrund.py version %s" % (const.VERSION))
+    log_write("STARTING webtlsmdrund.py version................: %s" % (const.VERSION))
     log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
 
     mysql = mysql_support.MySQLConnect()
