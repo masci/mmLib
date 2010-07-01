@@ -109,7 +109,7 @@ class MySQLConnect():
                 return False
 
         self.db.commit()
-        if rows == None:
+        if rows == None or len(rows) == 0:
             return None
         elif list:
             return rows
@@ -220,39 +220,61 @@ class MySQLConnect():
         string = "UPDATE %s SET %s='%s' WHERE job_id='%s';" % (
             self.status_page_tbl, column, value, job_id)
         return self.execute_cmd(string)
+
     def job_data_get(self, job_id, column, dict):
         string = "SELECT %s FROM %s WHERE job_id='%s';" % (
             column, self.status_page_tbl, job_id)
+
         if dict == False:
             return self.execute_cmd(string, dict, select = True)
+
+        ## Check the current ("status_page") for the job_id
         v = self.execute_cmd(string, dict, select = True)
+
         if v == None:
-            return None
+            ## job_id is probably too old, so let's check the archive
+            string = "SELECT %s FROM %s WHERE job_id='%s';" % (
+                column, self.archive_tbl, job_id)
+            v = self.execute_cmd(string, dict, select = True)
+
+            if v == None:
+                ## Not found in archive
+                return None
+            else:
+                ## Good! We found the job_id in the archive
+                return v[column]
         else:
+            ## Good! We found the job_id in the current status_page
             return v[column]
 
     def job_set_pid(self, job_id, pid):
         return self.job_data_set(job_id, "pid", pid)
+
     def job_get_pid(self, job_id):
         return self.job_data_get(job_id, "pid", dict = True)
 
     def job_set_submit_time(self, job_id, submit_time):
         return self.job_data_set(job_id, "submit_time", submit_time)
+
     def job_set_submit_date(self, job_id, submit_date):
         ## This is for internal use only
         return self.job_data_set(job_id, "submit_date", submit_date)
+
     def job_set_run_time_begin(self, job_id, run_time_begin):
         return self.job_data_set(job_id, "run_time_begin", run_time_begin)
+
     def job_set_run_time_end(self, job_id, run_time_end):
         return self.job_data_set(job_id, "run_time_end", run_time_end)
 
     def job_set_state(self, job_id, state):
         return self.job_data_set(job_id, "state", state)
+
     def job_get_state(self, job_id):
         return self.job_data_get(job_id, "state", dict = True)
 
     def job_set_via_pdb(self, job_id, bool):
         return self.job_data_set(job_id, "via_pdb", bool)
+
     def job_get_via_pdb(self, job_id):
         return self.job_data_get(job_id, "via_pdb", dict = True)
 
@@ -263,58 +285,73 @@ class MySQLConnect():
         string = "UPDATE %s SET ip_address='%s' WHERE job_id='%s';" % (
             self.status_page_tbl, value, job_id)
         return self.execute_cmd(string)
+
     def job_get_remote_addr(self, job_id):
         return self.job_data_get(job_id, "ip_address", dict = True)
 
     def job_set_email(self, job_id, email_address):
         status = self.job_data_set(job_id, "email", email_address)
         return status
+
     def job_get_email(self, job_id):
         return self.job_data_get(job_id, "email", dict = True)
 
     def job_set_user_name(self, job_id, user_name):
         return self.job_data_set(job_id, "user_name", user_name)
+
     def job_get_user_name(self, job_id):
         return self.job_data_get(job_id, "user_name", dict = True)
 
     def job_set_structure_id(self, job_id, structure_id):
         return self.job_data_set(job_id, "structure_id", structure_id)
+
     def job_get_structure_id(self, job_id):
         return self.job_data_get(job_id, "structure_id", dict = True)
 
     def job_set_user_comment(self, job_id, user_comment):
         return self.job_data_set(job_id, "user_comment", user_comment)
+
     def job_get_user_comment(self, job_id):
         return self.job_data_get(job_id, "user_comment", dict = True)
 
     def job_set_private_job(self, job_id, private_job):
         return self.job_data_set(job_id, "private_job", private_job)
+
     def job_get_private_job(self, job_id):
         return self.job_data_get(job_id, "private_job", dict = True)
 
     def job_set_chain_sizes(self, job_id, chain_sizes):
         return self.job_data_set(job_id, "chain_sizes", chain_sizes)
+
     def job_get_chain_sizes(self, job_id):
         return self.job_data_get(job_id, "chain_sizes", dict = True)
 
     def job_set_tls_model(self, job_id, tls_model):
         return self.job_data_set(job_id, "tls_model", tls_model)
+
     def job_get_tls_model(self, job_id):
         return self.job_data_get(job_id, "tls_model", dict = True)
 
     def job_set_weight_model(self, job_id, weight_model):
         return self.job_data_set(job_id, "weight", weight_model)
+
     def job_set_include_atoms(self, job_id, include_atoms):
         return self.job_data_set(job_id, "include_atoms", include_atoms)
+
     def job_set_plot_format(self, job_id, plot_format):
         return self.job_data_set(job_id, "plot_format", plot_format)
+
     def job_set_jmol_view(self, job_id, generate_jmol_view):
         return self.job_data_set(job_id, "generate_jmol_view", generate_jmol_view)
+
     def job_set_jmol_animate(self, job_id, generate_jmol_animate):
         return self.job_data_set(job_id, "generate_jmol_animate", generate_jmol_animate)
+
     def job_set_histogram(self, job_id, generate_histogram):
         return self.job_data_set(job_id, "generate_histogram", generate_histogram)
+
     def job_set_cross_chain_analysis(self, job_id, cross_chain_analysis):
         return self.job_data_set(job_id, "cross_chain_analysis", cross_chain_analysis)
+
     def job_set_nparts(self, job_id, nparts):
         return self.job_data_set(job_id, "nparts", nparts)
