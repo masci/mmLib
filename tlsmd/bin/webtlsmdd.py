@@ -299,17 +299,21 @@ def KillJob(webtlsmdd, job_id):
 
     return True
 
-def Refmac5RefinementPrep(job_id, chain_ntls, wilson):
-    """Called with a list of tuples (chain_id, ntls).
+def Refmac5RefinementPrep(job_id, struct_id, chain_ntls, wilson):
+    """Called with a list of tuples (job_id, struct_id, [chain_id, ntls], wilson).
     Generates PDB and TLSIN files for refinement with REFMAC5 + PHENIX.
     Returns a single string if there is an error, otherwise a
     dictionary of results is returned.
     """
-    struct_id = mysql.job_get_structure_id(job_id)
+    try:
+        struct_id = mysql.job_get_structure_id(job_id)
+    except:
+        return "Could not find the directory related to job_id: %s" % job_id
+
     if mysql.job_get_via_pdb(job_id) == 1:
         ## If job was submitted via pdb.org, the results are in a different
         ## directory/path.
-        pdb_id = mysql.job_get_structure_id(job_id)
+        pdb_id = struct_id
         job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
         job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
         analysis_dir = os.path.join(job_dir, "ANALYSIS")
@@ -379,6 +383,7 @@ def Refmac5RefinementPrep(job_id, chain_ntls, wilson):
     tls_calcs.phenix_prep(pdbin, tlsins, phenix)
 
     os.chdir(old_dir)
+
     return dict(pdbout1 = pdbout1,
                 pdbout_url1 = pdbout_url1,
                 pdbout2 = pdbout2,
@@ -393,7 +398,6 @@ def Refmac5RefinementPrep(job_id, chain_ntls, wilson):
 
 class WebTLSMDDaemon(object):
     def __init__(self, db_file):
-        #self.db_file = db_file
         self.jobdb = None
 
     def set_structure_file(self, job_id, struct_bin):
@@ -436,13 +440,13 @@ class WebTLSMDDaemon(object):
         """
         return RequeueJob(self, job_id)
 
-    def refmac5_refinement_prep(self, job_id, chain_ntls, wilson):
-        """Called with a list of tuples (chain_id, ntls).
+    def refmac5_refinement_prep(self, job_id, struct_id, chain_ntls, wilson):
+        """Called with a list of tuples (job_id, struct_id, [chain_id, ntls], wilson).
         Generates PDB and TLSIN files for refinement with REFMAC5 + PHENIX.
         Returns a single string if there is an error, otherwise a
         dictionary of results is returned.
         """
-        return Refmac5RefinementPrep(job_id, chain_ntls, wilson)
+        return Refmac5RefinementPrep(job_id, struct_id, chain_ntls, wilson)
 
     def fetch_pdb(self, pdbid):
         """Retrieves the PDB file from RCSB.
@@ -483,8 +487,7 @@ def daemon_main():
     host_port = ("localhost", int(port))
 
     sys.stdout.write("STARTING webtlsmdd.py DAEMON..................: %s\n" % misc.timestamp())
-    sys.stdout.write("webtlsmdd.py xmlrpc server version %s\n" % (const.VERSION))
-    sys.stdout.write("using database file...........................: %s\n" % (conf.WEBTLSMDD_DATABASE))
+    sys.stdout.write("webtlsmdd.py xmlrpc server version............: %s\n" % (const.VERSION))
     sys.stdout.write("listening for incoming connections at URL.....: %s\n" % (conf.WEBTLSMDD))
     sys.stdout.write("job (working) directory.......................: %s\n" % (conf.TLSMD_WORK_DIR))
 
@@ -513,24 +516,15 @@ def main():
         raise
 
 def inspect():
-    #database_path = sys.argv[2]
-
-    #webtlsmdd = WebTLSMDDaemon(database_path)
     mysql = mysql_support.MySQLConnect()
 
     if sys.argv[1] == "list":
         for dbkey in mysql.job_list():
             print dbkey["jobID"], dbkey["job_id"], dbkey["submit_date"]
 
-    #if sys.argv[1] == "list":
-    #    for dbkey in webtlsmdd.db.keys():
-    #        jdict = webtlsmdd.job_get_dict(dbkey)
-    #        print dbkey, jdict.get("email")
-
     if sys.argv[1] == "remove":
-        dbkey = sys.argv[2]
-        del webtlsmdd.db[dbkey]
-        webtlsmdd.db.sync()
+        ## This does not work yet.
+        print "nothing to do."
 
 def usage():
     print "webtlsmdd.py [list | remove] args..."
