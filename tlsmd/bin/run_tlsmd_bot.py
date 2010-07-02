@@ -80,6 +80,7 @@ def vet_struct_id(data, max_len):
     return True
 
 def start_job(pdbid):
+    pdbid = pdbid.upper()
 
     if mysql.pdb_exists(pdbid) != None:
         return "PDB: %s was already run" % pdbid
@@ -91,7 +92,9 @@ def start_job(pdbid):
 
     job_id = prepare_submission(pdbfile)
 
-    if not mysql.set_pdb_db(pdbid):
+    try:
+        mysql.set_pdb_db(pdbid)
+    except:
         return "ERROR: Could not write to internal PDB DB"
 
     mysql.job_set_via_pdb(job_id, "1")
@@ -131,13 +134,6 @@ def prepare_submission(pdbfile):
 def redirect_page(self, pdbid):
     return ""
 
-def min_subsegment_stddev(atomnum, restype, resnum, chain, tfactor):
-    """Calculates a running standard deviation for residue windows the same
-    size as whatever the global 'min_subsegment_size' in conf.py is set to.
-    """
-    ## TODO: Doesn't do anything yet, 2009-06-05
-    min_subsegment_size = conf.globalconf.min_subsegment_size
-
 def running_stddev(atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
     of a given set of residues (controlled by the 'window' variable).
@@ -172,7 +168,6 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
-    ## TODO: Add chain_id to .std file, 2009-10-20
     nbad = 0
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
