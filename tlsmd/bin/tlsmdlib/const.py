@@ -30,6 +30,8 @@ MAINCHAIN_ATOMS = AMINO_ACID_MAINCHAIN_ATOMS + NUCLEIC_ACID_MAINCHAIN_ATOMS
 MAINCHAIN_ATOM_DICT = {}
 for res_name in MAINCHAIN_ATOMS:
     MAINCHAIN_ATOM_DICT[res_name] = True
+import re ## used when needing a regular expressions match
+RE_MAINCHAIN_ATOMS = re.compile("^ATOM.*  (N|CA|C|O|CB|P|O5\*|O5'|C5\*|C5'|C4\*|C4'|C3\*|C3'|O3\*|O3') (.){20}.*$", re.I)
 
 ## used in tls_animate.py to filter selected atoms
 DISPLACE_ATOM_NAME_DICT = {
