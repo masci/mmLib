@@ -2019,7 +2019,9 @@ class SubmitPDBPage(Page):
 
         job_id = self.prepare_submission(pdbfile)
 
-        if not mysql.set_pdb_db(pdbid):
+        try:
+            mysql.set_pdb_db(pdbid)
+        except:
             raise SubmissionException("Could not write to internal PDB DB")
 
         mysql.job_set_via_pdb(job_id, "1")
