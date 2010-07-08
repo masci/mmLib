@@ -173,7 +173,7 @@ class TLSMDAnalysis(object):
                     chain.chain_id)
 
             if non > 0:
-                console.kvformat("CHAIN CONTAINS NON-STANDARD RESIDUE TYPES",
+                console.kvformat("CHAIN WITH NON-STANDARD RESIDUE TYPES",
                     chain.chain_id)
 
             num_frags = max(naa, nna)
