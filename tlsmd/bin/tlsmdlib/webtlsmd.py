@@ -130,7 +130,7 @@ def html_job_nav_bar(job_id):
             tarball_url)
 
     x += '</center>'
-    x += '<br/>'
+    x += '<br>'
     return x
 
 
@@ -139,10 +139,10 @@ def html_job_edit_form(fdict, pdb=False):
     x += '<center>'
 
     x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
-    x += '<input type="hidden" name="page" value="%s" />' % (
+    x += '<input type="hidden" name="page" value="%s">' % (
              fdict.get("page", "index"))
-    x += '<input type="hidden" name="edit_form" value="TRUE" />'
-    x += '<input type="hidden" name="job_id" value="%s" />' % (
+    x += '<input type="hidden" name="edit_form" value="TRUE">'
+    x += '<input type="hidden" name="job_id" value="%s">' % (
              fdict["job_id"])
 
     x += '<table border="1" width="100%">'
@@ -161,7 +161,7 @@ def html_job_edit_form(fdict, pdb=False):
         x += '<tr><td></td>'
         x += '<td>'
         x += '<label>'
-        x += '<input type="checkbox" name="private_job" value="TRUE" />'
+        x += '<input type="checkbox" name="private_job" value="TRUE">'
         x += 'Keep Job Private'
         x += '</label>'
         x += '</td>'
@@ -170,7 +170,7 @@ def html_job_edit_form(fdict, pdb=False):
     ## email address
     x += '<tr>'
     x += '<td class="r"><label>EMail Address:</td><td>'
-    x += '<input type="text" name="email" value="%s" size="25" maxlength="40" />' % (
+    x += '<input type="text" name="email" value="%s" size="25" maxlength="40">' % (
              fdict.get("email", ""))
     x += '</label></td>'
     x += '</tr>'
@@ -179,7 +179,7 @@ def html_job_edit_form(fdict, pdb=False):
     if not pdb:
         x += '<tr>'
         x += '<td class="r"><label>Structure Code:</td><td>'
-        x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4" />' % (
+        x += '<input disabled type="text" name="structure_id" value="%s" size="4" maxlength="4">' % (
                  fdict.get("structure_id", ""))
         x += '</label></td>'
         x += '</tr>'
@@ -238,10 +238,10 @@ def html_job_edit_form(fdict, pdb=False):
                 desc = "Chain %s (%s Other Residues)" % (chid, length)
 
             if selected == "1":
-                x += '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
+                x += '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked">' % (
                     name, name)
             else:
-                x += '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
+                x += '<input type="checkbox" id="%s" name="%s" value="FALSE">' % (
                     name, name)
             x += '%s' % desc
             x += '</label>'
@@ -254,7 +254,7 @@ def html_job_edit_form(fdict, pdb=False):
         for c in chains.split(';'):
             chid, length, selected, type = misc.parse_chains(c)
             name = "CHAIN%s" % chid
-            x += '<input type="hidden" name="%s" value="TRUE" />' % name
+            x += '<input type="hidden" name="%s" value="TRUE">' % name
 
     x += '</table>'
     ## end form
@@ -266,17 +266,17 @@ def html_job_edit_form(fdict, pdb=False):
 
     x += '<td class="l">'
     if fdict.has_key("removebutton"):
-        x += '<input type="submit" name="submit" value="Remove Job" />'
+        x += '<input type="submit" name="submit" value="Remove Job">'
     if fdict.has_key("signalbutton"):
-        x += '<input type="submit" name="submit" value="Signal Job" />'
+        x += '<input type="submit" name="submit" value="Signal Job">'
     if fdict.has_key("killbutton"):
-        x += '<input type="submit" name="submit" value="Kill Job" />'
+        x += '<input type="submit" name="submit" value="Kill Job">'
     if fdict.has_key("requeuebutton"):
-        x += '<input type="submit" name="submit" value="Requeue Job" />'
+        x += '<input type="submit" name="submit" value="Requeue Job">'
     x += '</td>'
 
     x += '<td class="r">'
-    x += '<input type="submit" name="submit" value="Next" />'
+    x += '<input type="submit" name="submit" value="Next">'
     x += '</tr>'
     x += '</table>'
 
@@ -340,7 +340,7 @@ def html_user_info_table(fdict):
          '<tr>',
          '<td class="r"><label for="user_name">Your Name</label></td>',
          '<td><input type="text" id="user_name" name="user_name" ',
-                    'value="%s" size="25" maxlength="40" /></td>' % (
+                    'value="%s" size="25" maxlength="40"></td>' % (
                     fdict.get("user_name","")),
          '</tr>',
 
@@ -348,7 +348,7 @@ def html_user_info_table(fdict):
          '<tr>',
          '<td class="r"><label for="email">EMail Address</label></td>',
          '<td><input type="text" id="email" name="email" ',
-                    'value="%s" size="25" maxlength="40" /></td>' % (
+                    'value="%s" size="25" maxlength="40"></td>' % (
                     fdict.get("email", "")),
          '</tr>',
 
@@ -356,7 +356,7 @@ def html_user_info_table(fdict):
          '<tr>',
          '<td class="r"><label for="user_comment">Associated Notes</label></td>',
          '<td><input type="text" id="user_comment" name="user_comment" ',
-                    'value="%s" size="40" maxlength="128" /></td>' % (
+                    'value="%s" size="40" maxlength="128"></td>' % (
                     fdict.get("user_comment","")),
          '</tr>',
 
@@ -382,7 +382,7 @@ def html_program_settings_table(fdict):
 
     model_note = ''
     if which_model == "ANISO":
-        model_note += 'Note: Your structure contains ANISOU records.<br/>'
+        model_note += 'Note: Your structure contains ANISOU records.<br>'
         model_note += 'Note: TLSMD may find a more accurate result if it uses '
         model_note += 'this information, but anisotropic analysis takes much '
         model_note += 'longer to run!'
@@ -400,10 +400,10 @@ def html_program_settings_table(fdict):
           '<div style="font-size:xx-small">%s</div>' % model_note,
           '<p><label>',
           '<input name="tls_model" type="radio" value="ISOT" '
-                 'checked="checked" />',
+                 'checked="checked">',
           'Isotropic analysis</label></p>',
           '<p><label>',
-          '<input name="tls_model" type="radio" value="ANISO" />',
+          '<input name="tls_model" type="radio" value="ANISO">',
           'Anisotropic analysis</label></p>',
           '</fieldset>',
 
@@ -417,10 +417,10 @@ def html_program_settings_table(fdict):
 
     if conf.PRIVATE_JOBS:
          l += ['<input type="checkbox" id="private_job" name="private_job" ',
-                      'value="TRUE" checked="checked" />']
+                      'value="TRUE" checked="checked">']
     else:
          l += ['<input type="checkbox" id="private_job" name="private_job" ',
-                      'value="TRUE" />']
+                      'value="TRUE">']
 
     l += ['<label for="private_job">Keep Job Private</label>',
           '</td></tr>']
@@ -429,7 +429,7 @@ def html_program_settings_table(fdict):
     l += ['<tr><td class="l">',
           '<label for="structure_id">4-Letter Structure ID </label>',
           '<input type="text" id="structure_id" name="structure_id" ',
-                 'value="%s" size="4" maxlength="4" />' % (
+                 'value="%s" size="4" maxlength="4">' % (
                  fdict.get("structure_id", "")),
           '</td></tr>',
 
@@ -454,10 +454,10 @@ def html_program_settings_table(fdict):
             desc = "Chain %s (%s Other Residues)" % (chid, length)
 
         if selected == "1":
-            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked" />' % (
+            x = '<input type="checkbox" id="%s" name="%s" value="TRUE" checked="checked">' % (
                  name, name)
         else:
-            x = '<input type="checkbox" id="%s" name="%s" value="FALSE" />' % (
+            x = '<input type="checkbox" id="%s" name="%s" value="FALSE">' % (
                  name, name)
 
         l +=['<tr><td class="l">', x, desc, '</td></tr>']
@@ -484,15 +484,15 @@ def html_program_settings_table(fdict):
           '<td valign="top" class="l">',
           '<fieldset><legend>Plot Output Format</legend>',
           '<div style="font-size:xx-small">'
-          'Select the output format for plots.<br/>',
+          'Select the output format for plots.<br>',
           'SVG works with the Adobe plugin and Firefox 1.5+.',
           '</div>',
           '<p><label>',
           '<input name="plot_format" type="radio" value="PNG" tabindex="35" ',
-                 'checked="checked" />',
+                 'checked="checked">',
           'PNG Images</label></p>',
           '<p><label>',
-          '<input name="plot_format" type="radio" value="SVG" tabindex="35" />',
+          '<input name="plot_format" type="radio" value="SVG" tabindex="35">',
           'SVG</label></p>',
           '</fieldset>',
           '</td>',
@@ -500,14 +500,14 @@ def html_program_settings_table(fdict):
           '<td valign="top" class="l">',
           '<fieldset><legend>Atom Class Selection</legend>',
           '<div style="font-size:xx-small">',
-          'Analyze all protein atoms, or just the main chain atoms.<br/>',
+          'Analyze all protein atoms, or just the main chain atoms.<br>',
           '</div>',
           '<p><label>',
           '<input name="include_atoms" type="radio" value="ALL" ',
-                 'checked="checked" />',
+                 'checked="checked">',
           'All Atoms</label></p>',
           '<p><label>',
-          '<input name="include_atoms" type="radio" value="MAINCHAIN" />',
+          '<input name="include_atoms" type="radio" value="MAINCHAIN">',
           'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})',
           '</label></p>',
           '</fieldset>',
@@ -521,14 +521,14 @@ def html_program_settings_table(fdict):
           '<p>',
           '<label>Generate Jmol-viewer pages: </label>',
           '<input name="generate_jmol_view" type="radio" value="True" ',
-                 'checked="checked" />yes',
-          '<input name="generate_jmol_view" type="radio" value="False" />no',
+                 'checked="checked">yes',
+          '<input name="generate_jmol_view" type="radio" value="False">no',
           '</p>',
           '<p>',
           '<label>Generate Jmol-animation pages: </label>',
           '<input name="generate_jmol_animate" type="radio" value="True" ',
-                 'checked="checked" />yes',
-          '<input name="generate_jmol_animate" type="radio" value="False" />no',
+                 'checked="checked">yes',
+          '<input name="generate_jmol_animate" type="radio" value="False">no',
           '</p>',
           '</fieldset>',
           '</td>',
@@ -538,9 +538,9 @@ def html_program_settings_table(fdict):
           '<fieldset><legend>Histogram toggle switches</legend>',
           '<p>',
           '<label>Generate histogram plots: </label>',
-          '<input name="generate_histogram" type="radio" value="True" />yes',
+          '<input name="generate_histogram" type="radio" value="True">yes',
           '<input name="generate_histogram" type="radio" value="False" ',
-                 'checked="checked" />no',
+                 'checked="checked">no',
           '</p>',
           '<p></p>', ## formatting
           '</fieldset>',
@@ -551,12 +551,12 @@ def html_program_settings_table(fdict):
           ## select number of partitions per chain
           '<td valign="top" class="l">',
           '<fieldset><legend>Set number of partitions/chain</legend>',
-          '<div style="font-size:xx-small">default/max = %s</div><br/>' % (
+          '<div style="font-size:xx-small">default/max = %s</div><br>' % (
           conf.NPARTS),
           '<p>',
           '<label>Maximum number of segments: </label>',
           '<input name="nparts" type="text" size="2" maxlength="2" ',
-                 'value="%s" />' % (conf.NPARTS),
+                 'value="%s">' % (conf.NPARTS),
           '</p>',
           '</fieldset>',
           '</td>',
@@ -575,7 +575,7 @@ def html_program_settings_table(fdict):
 
 def html_job_edit_form2(fdict, title=""):
     if fdict.has_key("removebutton"):
-        remove_button = '<input type="submit" name="submit" value="Remove Job" />'
+        remove_button = '<input type="submit" name="submit" value="Remove Job">'
     else:
         remove_button = ''
 
@@ -598,10 +598,10 @@ def html_job_edit_form2(fdict, title=""):
 
          '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
 
-         '<input type="hidden" name="page" value="%s" />' % (
+         '<input type="hidden" name="page" value="%s">' % (
              fdict.get("page", "index")),
-         '<input type="hidden" name="edit_form" value="TRUE" />',
-         '<input type="hidden" name="job_id" value="%s" />' % (
+         '<input type="hidden" name="edit_form" value="TRUE">',
+         '<input type="hidden" name="job_id" value="%s">' % (
              fdict["job_id"]),
 
          '<table width="100%" class="submit_table">',
@@ -611,7 +611,7 @@ def html_job_edit_form2(fdict, title=""):
          '<tr><td class="c">', html_program_settings_table(fdict), '</td></tr>',
          '<tr><td class="c">', html_session_info_table(fdict), '</td></tr>',
 
-         '<tr><td class="c"><input type="submit" name="submit" value="Submit Job" /></td></tr>',
+         '<tr><td class="c"><input type="submit" name="submit" value="Submit Job"></td></tr>',
 
          '</table>',
          '</form>',
@@ -833,23 +833,23 @@ def html_job_info_table(fdict):
         x += '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">'
 
         ## Job ID, user, passwd
-        x += '<input type="hidden" name="page" value="%s" />' % (
+        x += '<input type="hidden" name="page" value="%s">' % (
             fdict.get("page", "index"))
-        x += '<input type="hidden" name="edit_form" value="TRUE" />'
-        x += '<input type="hidden" name="job_id" value="%s" />' % (
+        x += '<input type="hidden" name="edit_form" value="TRUE">'
+        x += '<input type="hidden" name="job_id" value="%s">' % (
             fdict["job_id"])
-        #x += '<input type="hidden" name="user" value="%s" />' % (fdict["user"])
-        #x += '<input type="hidden" name="passwd" value="%s" />' % (fdict["passwd"])
+        #x += '<input type="hidden" name="user" value="%s">' % (fdict["user"])
+        #x += '<input type="hidden" name="passwd" value="%s">' % (fdict["passwd"])
 
         x += '<tr>'
         x += '<td colspan="3" class="l">'
-        x += '<input type="submit" name="submit" value="Remove Job" />'
+        x += '<input type="submit" name="submit" value="Remove Job">'
 
     if fdict.has_key("signalbutton"):
-        x += '<input type="submit" name="submit" value="Signal Job" />'
+        x += '<input type="submit" name="submit" value="Signal Job">'
 
     if fdict.has_key("killbutton"):
-        x += '<input type="submit" name="submit" value="Kill Job" />'
+        x += '<input type="submit" name="submit" value="Kill Job">'
 
     if fdict.has_key("removebutton"):
         x += '</td>'
@@ -1067,10 +1067,11 @@ class Page(object):
         x += '<html>'
         x += '<head>'
         x += '  <title>%s</title>' % (title)
-        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen" />'
-        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print" />'
+        x += '  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">\n'
+        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
+        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">'
         if redirect != None:
-            x += '<meta http-equiv="REFRESH" content="3; URL=%s" />' % (redirect)
+            x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
         x += '</head>'
         x += '<body><div id="page">'
         return x
@@ -1103,8 +1104,8 @@ class ErrorPage(Page):
         l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar(),
-             '<br/>',
-             '<center><p class="perror">Error<br/>']
+             '<br>',
+             '<center><p class="perror">Error<br>']
 
         if self.text is not None:
             l.append(self.text)
@@ -1143,14 +1144,15 @@ class QueuePage(Page):
 
     def html_head_nocgi(self, title):
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
-             '     "http://www.w3.org/TR/html4/loose.dtd">',
-             '<html>',
-             '<head>',
+             '     "http://www.w3.org/TR/html4/loose.dtd">\n',
+             '<html>\n',
+             '<head>\n',
              '  <title>%s</title>' % (title),
-             '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen" />',
-             '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print" />',
-             '</head>',
-             '<body><div id="page">']
+             '  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">\n'
+             '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">',
+             '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">',
+             '</head>\n',
+             '<body>\n<div id="page">']
 
         return "".join(l)
 
@@ -1175,14 +1177,14 @@ class QueuePage(Page):
              'Or click on the Job ID you wish to view',
              '</b></center>',
              self.html_running_job_table(job_list),
-             '<br/>',
+             '<br>',
              self.html_queued_job_table(job_list),
-             '<br/>',
+             '<br>',
              self.html_completed_job_table(job_list)]
 
         limbo = self.html_limbo_job_table(job_list)
         if limbo != None:
-            l.append('<br/>')
+            l.append('<br>')
             l.append(limbo)
 
         l.append(self.html_foot())
@@ -1191,14 +1193,14 @@ class QueuePage(Page):
 
     def html_private_form(self):
         l = ['<form action="webtlsmd.cgi" method="post">',
-             '<input type="hidden" name="page" value="explore" />',
+             '<input type="hidden" name="page" value="explore">',
 
              '<center>',
              '<b>To access a private job, enter its Job ID below</b>',
              '</center>',
 
              '<center>',
-             '<input type="text" name="job_id" size="50" />',
+             '<input type="text" name="job_id" size="50">',
              '</center>',
 
              '</form>']
@@ -1221,13 +1223,13 @@ class QueuePage(Page):
                 page, job_id, job_id)]
 
             if jdict["user_name"] != "":
-                l.append('<br/>%s' % (jdict["user_name"]))
+                l.append('<br>%s' % (jdict["user_name"]))
 
             if jdict["user_comment"] != "" or jdict["user_comment"] != None:
-                l.append('<br/>%s' % (jdict["user_comment"]))
+                l.append('<br>%s' % (jdict["user_comment"]))
 
             if jdict["email"] != "":
-                l.append('<br/>%s' % (jdict["email"]))
+                l.append('<br>%s' % (jdict["email"]))
 
             return "".join(l)
 
@@ -1261,7 +1263,7 @@ class QueuePage(Page):
 
             strx += " ".join(l3)
             if len(listx) > 0:
-                strx += '<br/>'
+                strx += '<br>'
 
         return '%s' % (strx)
 
@@ -1731,7 +1733,7 @@ SUBMIT1_NOTE = """\
 Analysis of large structures is
 computationally expensive, so you may have to wait hours to days for
 the server to generate a complete analysis depending on how
-heavily it is loaded.<br/><br/>
+heavily it is loaded.<br><br>
 """
 
 class Submit1Page(Page):
@@ -1744,7 +1746,7 @@ class Submit1Page(Page):
              '<center>',
 
              '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
-             '<input type="hidden" name="page" value="submit2" />',
+             '<input type="hidden" name="page" value="submit2">',
 
              '<table class="submit_table">',
              '<tr>',
@@ -1753,11 +1755,11 @@ class Submit1Page(Page):
 
              '<tr>',
              '<td class="l">Upload PDB File:</td>',
-             '<td><input name="pdbfile" size="50" type="file" /></td>',
+             '<td><input name="pdbfile" size="50" type="file"></td>',
              '</tr>',
 
              '<tr><td colspan="2" class="c">',
-             '<input value="Upload File and Proceed to Step 2" type="submit" />',
+             '<input value="Upload File and Proceed to Step 2" type="submit">',
              '</td></tr>',
              '</table>',
              '</form>',
@@ -1770,18 +1772,18 @@ class Submit1Page(Page):
              '<center>',
 
              '<form action="webtlsmd.cgi" method="post">',
-             '<input type="hidden" name="page" value="submit_pdb" />',
+             '<input type="hidden" name="page" value="submit_pdb">',
              '<table class="submit_table">',
              '<tr><th colspan="2" class="step_title">Enter a PDB ID:</th>',
-             '<td><input name="pdbid" size="4" maxlength="4" type="text" /></td>',
-             '<td><input value="Submit" type="submit" /></td>',
+             '<td><input name="pdbid" size="4" maxlength="4" type="text"></td>',
+             '<td><input value="Submit" type="submit"></td>',
              '</tr>',
              '</center>',
              '</table>',
-             '<br/><span class="warning">',
+             '<br><span class="warning">',
              'TLSMD requires crystallographically refined B factors.',
-             '<br/>Please do not submit NMR structures, theoretical models, ',
-             '<br/>or any PDB file with unrefined Bs',
+             '<br>Please do not submit NMR structures, theoretical models, ',
+             '<br>or any PDB file with unrefined Bs',
              '</span>',
 
              self.html_foot()]
@@ -1800,7 +1802,7 @@ class Submit2Page(Page):
         try:
             job_id = self.prepare_submission()
         except SubmissionException, err:
-             l.append('<center><p class="perror">ERROR:<br/>%s</p></center>' % (err))
+             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
         else:            
             l.append(self.job_edit_form(job_id))
 
@@ -1864,7 +1866,7 @@ class Submit3Page(Page):
             job_id = self.complete_submission()
         except SubmissionException, err:
             title = 'TLSMD: Job Submission Failed'
-            html  = '<center><p class="perror">ERROR:<br/>%s</p></center>' % (err)
+            html  = '<center><p class="perror">ERROR:<br>%s</p></center>' % (err)
         else:
             title = 'TLSMD: Job Submission Succeeded'
 
@@ -2081,9 +2083,9 @@ class SubmitPDBPage(Page):
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
                     '<center>',
-                    '<br/><h2>Click below to see the results:</h2>',
+                    '<br><h2>Click below to see the results:</h2>',
                     '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
-                    '<br/><br/>',
+                    '<br><br>',
                     '<font size=-2>You will be redirected automatically in 3 seconds</font>'
                     '</center>'
                     ]
@@ -2256,7 +2258,7 @@ def check_upload(job_id, file):
         return_string  = "Standard deviation of temperature factors is less "
         return_string += "than %s or greater than %s for those residues in " % (
             conf.MIN_STDDEV_BFACT, conf.MAX_STDDEV_BFACT)
-        return_string += "the shaded regions below:<br/>"
+        return_string += "the shaded regions below:<br>"
         return_string += "<center><img src='%s/%s/%s.png'/></center>" % (
             conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
         return return_string
@@ -2294,8 +2296,8 @@ def main():
     try:
         print page.html_page()
     except xmlrpclib.Fault, fault:
-        fault_html = "xmlrpclib.Fault:<br/>fault code: %s<br/>fault string: %s" % (
-            fault.faultCode, fault.faultString.replace("\n","<br/>"))
+        fault_html = "xmlrpclib.Fault:<br>fault code: %s<br>fault string: %s" % (
+            fault.faultCode, fault.faultString.replace("\n","<br>"))
 
         page = ErrorPage(form, fault_html)
         print page.html_page()
