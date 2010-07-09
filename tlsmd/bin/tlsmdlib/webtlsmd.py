@@ -884,9 +884,9 @@ def vet_struct_id(data, max_len):
 
 def cleanup_input(data):
     """Vet all user-input via forms. Allow only alphanumeric characters and
-    some punctuation: " ", "_", ",", "."
+    some punctuation: " ", "_", ",", ".", "(", ")", "-", ":".
     """
-    data = re.sub(r'[^0-9A-Za-z _,.]', '', data)
+    data = re.sub(r'[^0-9A-Za-z ()_,.-:]', '', data)
     return data
 
 def vet_email(email_address):
