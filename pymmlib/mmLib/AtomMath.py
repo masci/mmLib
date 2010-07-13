@@ -315,8 +315,10 @@ def calc_angle(a1, a2, a3):
 
     return math.acos(numpy.dot(a21, a23))
 
-def calc_torsion_angle(a1, a2, a3, a4):
+def calc_torsion_angle_old(a1, a2, a3, a4):
     """Calculates the torsion angle between the four argument atoms.
+    Note: This "old" subroutine doesn't appear to do what it claims. Please
+    see the 'new' calc_torsion_angle() function below.
     """
     if a1 == None or a2 == None or a3 == None or a4 == None:
         return None
@@ -342,10 +344,59 @@ def calc_torsion_angle(a1, a2, a3, a4):
 
     angle = math.acos(scalar_product)
 
-    #if direction<0.0:
-    #    angle = -angle
+    ## E.g, direction = [0.70710678, 0.0, 0.0]
+    if direction.all() < 0.0:
+        ## True if _all_ elements of 'direction' are true (or if 'direction'
+        ## is empty)
+        angle = -angle
 
     return angle
+
+def calc_torsion_angle(a1, a2, a3, a4, sqrt=math.sqrt, acos=math.acos):
+    """Calculates the torsion angle between the four argument atoms.
+    """
+    if a1 == None or a2 == None or a3 == None or a4 == None:
+        return None
+
+    v12x = a1.position[0] - a2.position[0]
+    v12y = a1.position[1] - a2.position[1]
+    v12z = a1.position[2] - a2.position[2]
+
+    v32x = a3.position[0] - a2.position[0]
+    v32y = a3.position[1] - a2.position[1]
+    v32z = a3.position[2] - a2.position[2]
+
+    v43x = a4.position[0] - a3.position[0]
+    v43y = a4.position[1] - a3.position[1]
+    v43z = a4.position[2] - a3.position[2]
+
+    vn13x = v12y*v32z - v12z*v32y
+    vn13y = v12z*v32x - v12x*v32z
+    vn13z = v12x*v32y - v12y*v32x
+
+    vn24x = v32z*v43y - v32y*v43z
+    vn24y = v32x*v43z - v32z*v43x
+    vn24z = v32y*v43x - v32x*v43y
+
+    v12 = vn13x*vn24x + vn13y*vn24y + vn13z*vn24z
+    v11 = vn13x**2 + vn13y**2 + vn13z**2
+    v22 = vn24x**2 + vn24y**2 + vn24z**2
+
+    angle = v12/sqrt(v11*v22)
+    if angle >= 1.0:
+        return 0.0
+    elif angle <= -1.0:
+        return -180.0
+    else:
+        angle = acos(angle) * Constants.RAD2DEG
+
+    vtmp = vn13x * (vn24y*v32z - vn24z*v32y) + \
+           vn13y * (vn24z*v32x - vn24x*v32z) + \
+           vn13z * (vn24x*v32y - vn24y*v32x) < 0.0
+    if vtmp:
+        return -angle
+    else:
+        return angle
 
 
 ##
@@ -355,6 +406,7 @@ def calc_CCuij(U, V):
     """Calculate the correlation coefficent for anisotropic ADP tensors U
     and V.
     """
+    ## FIXME: Check for non-positive Uij's, 2009-08-19
     invU = linalg.inverse(U)
     invV = linalg.inverse(V)
     #invU = internal_inv3x3(U)
@@ -369,6 +421,7 @@ def calc_CCuij(U, V):
 def calc_Suij(U, V):
     """Calculate the similarity of anisotropic ADP tensors U and V.
     """
+    ## FIXME: Check for non-positive Uij's, 2009-08-19
     eqU = numpy.trace(U) / 3.0
     eqV = numpy.trace(V) / 3.0
 
@@ -521,9 +574,41 @@ def test_module():
     #a4 = Structure.Atom(x=1.0, y=1.0,  z=-1.0)
     a4 = Structure.Atom(res_name='GLY', x=1.0, y=1.0,  z=-1.0)
 
-    print "a1:",a1.position
-    print "calc_angle:",calc_angle(a1, a2, a3)
-    print "calc_torsion_angle:",calc_torsion_angle(a1, a2, a3, a4)
+    ## Example taken from 1HMP.pdb
+    #ATOM     25  N   VAL A   8      55.799  56.415  16.693  1.00 25.51           N
+    #ATOM     26  CA  VAL A   8      55.049  57.431  15.929  1.00 20.42           C
+    #ATOM     27  C   VAL A   8      55.655  57.849  14.605  1.00 21.66           C
+    #ATOM     28  O   VAL A   8      56.846  58.112  14.504  1.00 31.38           O
+    #ATOM     29  CB  VAL A   8      54.697  58.659  16.709  1.00 16.90           C
+    #ATOM     30  CG1 VAL A   8      54.131  59.664  15.699  1.00 19.06           C
+    #ATOM     31  CG2 VAL A   8      53.640  58.304  17.738  1.00 14.10           C
+    #ATOM     32  N   ILE A   9      54.810  57.974  13.593  1.00 20.18           N
+    #ATOM     33  CA  ILE A   9      55.221  58.358  12.242  1.00 16.49           C
+    #ATOM     34  C   ILE A   9      54.461  59.575  11.722  1.00 28.07           C
+    #ATOM     35  O   ILE A   9      53.439  59.455  11.009  1.00 31.82           O
+    #ATOM     36  CB  ILE A   9      55.028  57.196  11.301  1.00 13.73           C
+    #ATOM     37  CG1 ILE A   9      55.941  56.045  11.712  1.00 20.33           C
+    #ATOM     38  CG2 ILE A   9      55.327  57.611   9.860  1.00 13.91           C
+    #ATOM     39  CD1 ILE A   9      55.871  54.892  10.733  1.00 21.80           C
+    #ATOM     40  N   SER A  10      54.985  60.748  12.087  1.00 30.09           N
+    #
+    # PHI: C'-N-CA-C'
+    a1 = Structure.Atom(x=55.655, y=57.849, z=14.605, res_name='VAL')
+    a2 = Structure.Atom(x=54.810, y=57.974, z=13.593, res_name='ILE')
+    a3 = Structure.Atom(x=55.221, y=58.358, z=12.242, res_name='ILE')
+    a4 = Structure.Atom(x=54.461, y=59.575, z=11.722, res_name='ILE')
+    print "PHI: %.3f" % calc_torsion_angle(a1, a2, a3, a4)
+    # PSI: N-CA-C'-N
+    a1 = Structure.Atom(x=54.810, y=57.974, z=13.593, res_name='ILE')
+    a2 = Structure.Atom(x=55.221, y=58.358, z=12.242, res_name='ILE')
+    a3 = Structure.Atom(x=54.461, y=59.575, z=11.722, res_name='ILE')
+    a4 = Structure.Atom(x=54.985, y=60.748, z=12.087, res_name='SER')
+    print "PSI: %.3f" % calc_torsion_angle(a1, a2, a3, a4)
+    print "="*40
+
+    print "a1:", a1.position
+    print "calc_angle:", calc_angle(a1, a2, a3)
+    print "calc_torsion_angle:", calc_torsion_angle(a1, a2, a3, a4)
 
 if __name__ == "__main__":
     test_module()
