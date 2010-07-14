@@ -2480,7 +2480,7 @@ class Atom(object):
     Atom.position    - a numpy.array[3] (Numeric Python)
     Atom.occupancy   - [1.0 - 0.0] float 
     Atom.temp_factor - float represting B-style temp factor
-    Atom.column6768  - string value. Can be used for anything.
+    Atom.column6768  - string value. Can be used for anything in columns 67+68
     Atom.U           - a 6-tuple of the anisotropic values
     Atom.charge      - charge on the atom
     Atom.label_entity_id -
@@ -3750,7 +3750,7 @@ class FragmentID(object):
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
                 
 class AtomList(list):
-    """Provides the functionallity of a Python list class for containing
+    """Provides the functionality of a Python list class for containing
     Atom instances.  It also provides class methods for performing some
     useful calculations on the list of atoms.
     """
@@ -3767,8 +3767,8 @@ class AtomList(list):
         return centroid / num
         
     def calc_adv_temp_factor(self):
-        """Calculates the adverage temperature factor of all contained
-        Atom instances and returns the adverage temperature factor.
+        """Calculates the average temperature factor of all contained Atom 
+        instances and returns the average temperature factor.
         """
         num_tf = 0
         adv_tf = 0.0
@@ -3781,9 +3781,8 @@ class AtomList(list):
         return adv_tf / num_tf
 
     def calc_adv_U(self):
-        """Calculates the adverage U matrix of all contained Atom
-        instances and returns the 3x3 symmetric U matrix of that
-        adverage.
+        """Calculates the average U matrix of all contained Atom instances and 
+        returns the 3x3 symmetric U matrix of that average.
         """
         num_U = 0
         adv_U = numpy.zeros((3,3), float)
@@ -3799,7 +3798,7 @@ class AtomList(list):
         return adv_U / num_U
 
     def calc_adv_anisotropy(self):
-        """Calculates the adverage anisotropy for all Atoms in the AtomList.
+        """Calculates the average anisotropy for all Atoms in the AtomList.
         """
         num_atoms = 0
         adv_aniso = 0.0
@@ -3815,8 +3814,8 @@ class AtomList(list):
         return adv_aniso / num_atoms
         
     def calc_adv_anisotropy3(self):
-        """Calculates the adverage anisotropy 3-tuple for all Atoms
-        in the AtomList.
+        """Calculates the average anisotropy 3-tuple for all Atoms in the 
+        AtomList.
         """
         num_atoms  = 0
         adv_aniso1 = 0.0
@@ -3881,8 +3880,8 @@ def test_module():
 
 
     ## make some exceptions happen
-    atm = Atom(
-        name = "CA",
+    chk_atm = Atom(
+        name = "CX",
         alt_loc = "B",
         model = "1",
         chain_id = "A",
@@ -3890,6 +3889,8 @@ def test_module():
         fragment_id = "1")
 
     struct.add_atom(atm)
+    #for a in struct.iter_atoms():
+    #    print "WARNING! Bad atom name: ", a
 
 if __name__ == "__main__":
     test_module()
