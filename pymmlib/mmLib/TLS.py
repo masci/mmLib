@@ -241,8 +241,7 @@ class TLSGroupDesc(object):
 
 
 class TLSFile(object):
-    """Read/Write a TLS files containing one or more TLSGroupDesc
-    objects.
+    """Read/Write TLS files containing one or more TLSGroupDesc objects.
     """
     def __init__(self):
         self.path          = None
@@ -460,9 +459,9 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
             raise TLSFileFormatError()
 
     def process_REMARK(self, rec):
-        """Callback for the PDBFile parser for REMARK records.  If the
-        REMARK records contain TLS group information, then it is
-        extracted and added to the TLSGroups list.
+        """Callback for the PDBFile parser for REMARK records. If the REMARK 
+        records contain TLS group information, then it is extracted and added 
+        to the TLSGroups list.
         """
         ## TLS REMARKs use remarkNum 3
         if rec.get("remarkNum", 0) != 3:
@@ -1236,7 +1235,8 @@ def solve_TLS_Ab(A, b):
     return x
 
 def calc_rmsd(msd):
-    """Calculate RMSD from a given MSD."""
+    """Calculate RMSD from a given MSD.
+    """
     if msd < 0.0:
         return 0.0
     return math.sqrt(msd)
@@ -1609,8 +1609,8 @@ def calc_Utls(T, L, S, position):
                         [u13, u23, u33]], float)
 
 def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
-    """Returns the amount of rotational displacement from L
-    for an atom at the given position.
+    """Returns the amount of rotational displacement from L for an atom at the 
+    given position.
     """
     Lrot     = Gaussian.GAUSS3C[prob] * calc_rmsd(Lval)
     Lorigin  = cor + Lrho
@@ -1776,7 +1776,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     COR: Center of Reaction
 
-    T',S',L': T,L,S tensors in origonal coordinate system
+    T',S',L': T,L,S tensors in original coordinate system
               with the origin shifted to the center of reaction.
     """
     ## LSMALL is the smallest magnitude of L before it is considered 0.0
@@ -2227,10 +2227,9 @@ def set_L_A(A, i, j, x, y, z, w):
     A[U23, L12] = w * xz
 
 def calc_TLSCA_least_squares_fit(segment, origin):
-    """Perform a LSQ-TLS fit on the given Segment object using
-    the TLS model with amino acid side chains which can pivot
-    about the CA atom.  This model uses 20 TLS parameters and 6
-    libration parameters per side chain.
+    """Perform a LSQ-TLS fit on the given Segment object using the TLS model 
+    with amino acid side chains which can pivot about the CA atom. This model 
+    uses 20 TLS parameters and 6 libration parameters per side chain.
     """
     ## calculate the number of parameters in the model
     num_atoms = segment.count_atoms()
@@ -2274,7 +2273,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
             if atm.name in ["N", "CA", "C", "O"]:
                 continue
 
-            ## get the name of the pivot atom for this resiude
+            ## get the name of the pivot atom for this residue
             patom_name = CA_PIVOT_ATOMS.get(frag.res_name)
             if patom_name is not None:
                 patm = frag.get_atom(patom_name)
@@ -2343,7 +2342,7 @@ def calc_TLSCA_least_squares_fit(segment, origin):
 
         udict[atm] = U
 
-    ## caclculate the center of reaction for the group and
+    ## calculate the center of reaction for the group and
     rdict = {}
 
     rdict["T"] = T
@@ -2443,8 +2442,8 @@ class TLSGroup(Structure.AtomList):
         return s11, s22, s33
 
     def is_null(self):
-        """Returns True if the T,L,S tensors are not set, or are set
-        with values of zero.
+        """Returns True if the T,L,S tensors are not set, or are set with 
+        values of zero.
         """
         if numpy.allclose(numpy.trace(self.T), 0.0) or numpy.allclose(numpy.trace(self.L), 0.0):
             return True
@@ -2464,9 +2463,9 @@ class TLSGroup(Structure.AtomList):
         return lsq_residual
 
     def iter_atm_Utls(self):
-        """Iterates all the atoms in the TLS object, returning the 2-tuple
-        (atm, U) where U is the calcuated U value from the current values
-        of the TLS object's T,L,S, tensors and origin.
+        """Iterates over all the atoms in the TLS object, returning the 2-tuple
+        (atm, U) where U is the calcuated U value from the current values of 
+        the TLS object's T,L,S, tensors and origin.
         """
         T = self.T
         L = self.L
@@ -2540,11 +2539,10 @@ class TLSStructureAnalysis(object):
         self.struct = struct
 
     def iter_segments(self, chain, seg_len):
-        """This iteratar yields a series of Segment objects of width
-        seg_len.  The start at the beginning Fragment of the Chain,
-        and the start point walks the chain one Fragment at a time
-        until there are not enough Fragments left to cut Segments of
-        seg_width.
+        """This iterator yields a series of Segment objects of width seg_len. 
+        The start at the beginning Fragment of the Chain, and the start point 
+        walks the chain one Fragment at a time until there are not enough 
+        Fragments left to cut Segments of seg_width.
         """
         chain_len = len(chain)
 
@@ -2608,7 +2606,7 @@ class TLSStructureAnalysis(object):
                 continue
 
             ## don't bother with non-biopolymers and small chains
-            if chain.count_amino_acids()<residue_width:
+            if chain.count_amino_acids() < residue_width:
                 continue
 
             for segment in self.iter_segments(chain, residue_width):
@@ -2635,7 +2633,7 @@ class TLSStructureAnalysis(object):
                         pv_seg.add_atom(atm_cp)
 
                 ## check for enough atoms(parameters) after atom filtering
-                if len(tls_group)<20:
+                if len(tls_group) < 20:
                     tls_info = {
                         "name":         name,
                         "chain_id":     chain.chain_id,
@@ -2663,7 +2661,7 @@ class TLSStructureAnalysis(object):
                 tls_info["chain_id"]  = chain.chain_id
                 tls_info["frag_id1"]  = frag_id1
                 tls_info["frag_id2"]  = frag_id2
-                tls_info["frag_id_cntr"]  = frag_id_cntr
+                tls_info["frag_id_cntr"] = frag_id_cntr
                 tls_info["tls_group"] = tls_group
                 tls_info["residues"]  = segment
                 tls_info["segment"]   = segment
@@ -2672,7 +2670,7 @@ class TLSStructureAnalysis(object):
                 yield tls_info
 
     def fit_TLS_segments(self, **args):
-        """Returns the list iterated by iter_fit_TLS_segments
+        """Returns the list iterated by iter_fit_TLS_segments.
         """
         tls_info_list = []
         for tls_info in self.iter_fit_TLS_segments(**args):
