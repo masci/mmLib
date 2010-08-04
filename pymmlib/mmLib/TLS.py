@@ -162,8 +162,7 @@ class TLSGroupDesc(object):
         return False
 
     def calc_tls_name(self):
-        """Creates a name for the TLS group using the selected
-        residue ranges.
+        """Creates a name for the TLS group using the selected residue ranges.
         """
         listx = []
         for (chain_id1, frag_id1, chain_id2, frag_id2, sel) in self.range_list:
@@ -208,10 +207,12 @@ class TLSGroupDesc(object):
             tls_group.set_origin(self.origin[0], self.origin[1], self.origin[2])
 
         if self.T is not None:
-            tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2], self.T[0,1], self.T[0,2], self.T[1,2])
+            tls_group.set_T(self.T[0,0], self.T[1,1], self.T[2,2], 
+                            self.T[0,1], self.T[0,2], self.T[1,2])
 
         if self.L is not None:
-            tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2], self.L[0,1], self.L[0,2], self.L[1,2])
+            tls_group.set_L(self.L[0,0], self.L[1,1], self.L[2,2], 
+                            self.L[0,1], self.L[0,2], self.L[1,2])
 
         if self.S is not None:
             ## s2211, s1133, s12, s13, s23, s21, s31, s32)
@@ -229,8 +230,8 @@ class TLSGroupDesc(object):
 
     def construct_tls_group_with_atoms(self, struct):
         """Creates a TLSGroup() object with the origin, T, L, and S tensors
-        set according to the TLS description, the add the Atoms to the TLSGroup
-        from the given argument Structure.
+        set according to the TLS description, then add the Atoms to the 
+        TLSGroup from the given argument Structure.
         """
         tls_group = self.construct_tls_group()
 
@@ -374,7 +375,6 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
     ## PHENIX:
     ##REMARK   3    SELECTION: CHAIN A AND RESID -2:94
 
-    #"range":       re.compile("\s*RESIDUE RANGE :\s+(\w)\s+(-?\w+)\s+(\w)\s+(-?\w+)\s*$"),
     pdb_regex_dict = {
         "group":       re.compile("\s*TLS GROUP :\s+(\d+)\s*$"),
         "range":       re.compile("\s*RESIDUE RANGE :\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s*$"),
@@ -489,16 +489,32 @@ class TLSFileFormatPDB(TLSFileFormat, PDB.RecordProcessor):
 
         elif re_key == "origin":
             strx = mx.group(1)
+            ox = [0.0, 0.0, 0.0]
+
+            ## Example origin lines. Note the shifted decimals in the last one.
+            ## strx= "REMARK   3    ORIGIN FOR THE GROUP (A): -19.1703 -24.0598   8.2757"
+            ## strx= "REMARK   3    ORIGIN FOR THE GROUP (A): -19.1703-124.0598   8.2757"
+            ## strx= "REMARK   3    ORIGIN FOR THE GROUP (A):   -0.576   -34.88 -34.8830"
+
             ## this is nasty -- I wish I could trust the numbers
             ## to stay in fixed columns, but I can't
-            ox = [0.0, 0.0, 0.0]
-            for i in (0,1,2):
-                j = strx.find(".")
-                if j==-1:
-                    break
-                x = strx[ max(0, j-4) : j+5]
-                strx = strx[j+5:]
-                ox[i] = float(x)
+            #for i in (0,1,2):
+            #    j = strx.find(".")
+            #    if j==-1:
+            #        break
+            #    x = strx[ max(0, j-4) : j+5]
+            #    strx = strx[j+5:]
+            #    ox[i] = float(x)
+
+            j = strx.find(".") ## find the first decimal in the string
+            if j == -1:
+                ## no decimal found anywhere in the string
+                #raise TLSFileFormatError()
+                raise "ERROR: Could not find a decimal point in the ORGIN values."
+            x = strx[j-4:] ## capture just the x,y,z values
+            ox[0] = float(x[0:9].strip())
+            ox[1] = float(x[9:18].strip())
+            ox[2] = float(x[18:].strip())
 
             try:
                 self.tls_desc.set_origin(ox[0], ox[1], ox[2])
@@ -1043,6 +1059,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
+
 ## END: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 ################################################################################
 
@@ -1197,6 +1214,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
             tls_desc_str = self.ptlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
+
 ## END: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
 ###############################################################################
 
@@ -1257,7 +1275,8 @@ def set_TLSiso_A(A, i, j, x, y, z, w):
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
-    T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
+    T, L11, L22, L33, L12, L13, L23, S1, S2, S3 = (
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j)
 
     ## indices of the components of U
     UISO = i
@@ -1387,7 +1406,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         good_L_eigens.append(2)
 
     ## no good L eigen values
-    if len(good_L_eigens)==0:
+    if len(good_L_eigens) == 0:
         Tr1, Tr2, Tr3 = linalg.eigenvalues(T0)
 
         if numpy.allclose(Tr1, 0.0) or isinstance(Tr1, complex):
@@ -1407,7 +1426,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         return rdict
 
     ## one good eigen value -- reconstruct RL about it
-    elif len(good_L_eigens)==1:
+    elif len(good_L_eigens) == 1:
         i = good_L_eigens[0]
         evec = RL[i]
 
@@ -1415,25 +1434,25 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         xevec = numpy.dot(RZt, numpy.array([1.0, 0.0, 0.0], float))
         yevec = numpy.dot(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
-        if i==0:
+        if i == 0:
             RL[1] = xevec
             RL[2] = yevec
-        elif i==1:
+        elif i == 1:
             RL[0] = xevec
             RL[2] = yevec
-        elif i==2:
+        elif i == 2:
             RL[0] = xevec
             RL[1] = yevec
 
     ## two good eigen values -- reconstruct RL about them
-    elif len(good_L_eigens)==2:
+    elif len(good_L_eigens) == 2:
         i = good_L_eigens[0]
         j = good_L_eigens[1]
 
         xevec = AtomMath.normalize(numpy.cross(RL[i], RL[j]))
         for k in range(3):
-            if k==i: continue
-            if k==j: continue
+            if k == i: continue
+            if k == j: continue
             RL[k] = xevec
             break
 
@@ -1627,8 +1646,10 @@ def set_TLS_A(A, i, j, x, y, z, w):
     weight w.  Matrix A is filled to row i+6 and column j+20.
     """
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
-        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j,13+j,14+j,15+j,16+j,17+j,18+j,19+j)
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+        j,1+j,2+j,3+j,4+j,5+j,6+j,7+j,8+j,9+j,10+j,11+j,12+j,13+j,14+j,15+j,
+        16+j,17+j,18+j,19+j)
 
     ## indices of the components of U
     U11 =       i
@@ -1742,7 +1763,8 @@ def calc_TLS_least_squares_fit(atom_list, origin, weight_dict=None):
     X = solve_TLS_Ab(A, B)
 
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = numpy.array([ [ X[T11], X[T12], X[T13] ],
@@ -1843,11 +1865,11 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         good_L_eigens.append(2)
 
     ## no good L eigen values
-    if len(good_L_eigens)==0:
+    if len(good_L_eigens) == 0:
         return rdict
 
     ## one good eigen value -- reconstruct RL about it
-    elif len(good_L_eigens)==1:
+    elif len(good_L_eigens) == 1:
         i = good_L_eigens[0]
         evec = RL[i]
 
@@ -1855,25 +1877,25 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
         xevec = numpy.dot(RZt, numpy.array([1.0, 0.0, 0.0], float))
         yevec = numpy.dot(RZt, numpy.array([0.0, 1.0, 0.0], float))
 
-        if i==0:
+        if i == 0:
             RL[1] = xevec
             RL[2] = yevec
-        elif i==1:
+        elif i == 1:
             RL[0] = xevec
             RL[2] = yevec
-        elif i==2:
+        elif i == 2:
             RL[0] = xevec
             RL[1] = yevec
 
     ## two good eigen values -- reconstruct RL about them
-    elif len(good_L_eigens)==2:
+    elif len(good_L_eigens) == 2:
         i = good_L_eigens[0]
         j = good_L_eigens[1]
 
         xevec = AtomMath.normalize(numpy.cross(RL[i], RL[j]))
         for k in range(3):
-            if k==i: continue
-            if k==j: continue
+            if k == i: continue
+            if k == j: continue
             RL[k] = xevec
             break
 
@@ -1985,19 +2007,19 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     ## intersecting screw axes, with one
 
     ## libration axis 1 shift in the L coordinate system        
-    if abs(L1)>LSMALL:
+    if abs(L1) > LSMALL:
         cL1rho = numpy.array([0.0, -cSp[0,2]/L1, cSp[0,1]/L1], float)
     else:
         cL1rho = numpy.zeros(3, float)
 
     ## libration axis 2 shift in the L coordinate system
-    if abs(L2)>LSMALL:
+    if abs(L2) > LSMALL:
         cL2rho = numpy.array([cSp[1,2]/L2, 0.0, -cSp[1,0]/L2], float)
     else:
         cL2rho = numpy.zeros(3, float)
 
     ## libration axis 2 shift in the L coordinate system
-    if abs(L3)>LSMALL:
+    if abs(L3) > LSMALL:
         cL3rho = numpy.array([-cSp[2,1]/L3, cSp[2,0]/L3, 0.0], float)
     else:
         cL3rho = numpy.zeros(3, float)
@@ -2009,17 +2031,17 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     rdict["L3_rho"] = numpy.dot(RLt, cL3rho)
 
     ## calculate screw pitches (A*R / R*R) = (A/R)
-    if abs(L1)>LSMALL:
+    if abs(L1) > LSMALL:
         rdict["L1_pitch"] = cS[0,0]/L1
     else:
         rdict["L1_pitch"] = 0.0
 
-    if L2>LSMALL:
+    if L2 > LSMALL:
         rdict["L2_pitch"] = cS[1,1]/L2
     else:
         rdict["L2_pitch"] = 0.0
 
-    if L3>LSMALL:
+    if L3 > LSMALL:
         rdict["L3_pitch"] = cS[2,2]/L3
     else:
         rdict["L3_pitch"] = 0.0
@@ -2029,17 +2051,17 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
 
     for i in (0, 1, 2):
         for k in (0, 1, 2):
-            if i==k:
+            if i == k:
                 continue
-            if abs(cL[k,k])>LSMALL:
+            if abs(cL[k,k]) > LSMALL:
                 cTred[i,i] -= (cS[k,i]**2) / cL[k,k]
 
     for i in (0, 1, 2):
         for j in (0, 1, 2):
             for k in (0, 1, 2):
-                if j==i:
+                if j == i:
                     continue
-                if abs(cL[k,k])>LSMALL:
+                if abs(cL[k,k]) > LSMALL:
                     cTred[i,j] -= (cS[k,i]*cS[k,j]) / cL[k,k]
 
     ## rotate the newly calculated reduced-T tensor from the carrot
@@ -2096,7 +2118,7 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
 
         ## set the b vector
         U = atm.get_U()
-        assert numpy.trace(U)>0.0
+        assert numpy.trace(U) > 0.0
         set_TLS_b(B, iU11, U[0,0], U[1,1], U[2,2], U[0,1], U[0,2], U[1,2], w)
 
         ## set the A matrix
@@ -2112,7 +2134,8 @@ def calc_TLS_plus_b_least_squares_fit(atom_list, origin, weight_dict=None):
     X = solve_TLS_Ab(A, B)
 
     ## use label indexing to avoid confusion!
-    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, S1133, S2211, S12, S13, S23, S21, S31, S32 = (
+    T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
+    S1133, S2211, S12, S13, S23, S21, S31, S32 = (
         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
     T = numpy.array([ [ X[T11], X[T12], X[T13] ],
@@ -2327,7 +2350,8 @@ def calc_TLSCA_least_squares_fit(segment, origin):
         frag_L_dict[frag] = CA_L
         eval = linalg.eigenvalues(CA_L) * Constants.RAD2DEG2
 
-        print "%s %s: %6.2f %6.2f %6.2f" % (frag.fragment_id, frag.res_name, eval[0],eval[1],eval[2])
+        print "%s %s: %6.2f %6.2f %6.2f" % (
+            frag.fragment_id, frag.res_name, eval[0],eval[1],eval[2])
 
     ## calculate TLSCA-U
     udict = {}
@@ -2550,7 +2574,7 @@ class TLSStructureAnalysis(object):
             start = i
             end   = i + seg_len
 
-            if end>chain_len:
+            if end > chain_len:
                 break
 
             yield chain[start:end]
@@ -2652,7 +2676,7 @@ class TLSStructureAnalysis(object):
                 tls_info["lsq_residual"] = lsq_residual
 
                 ## calculate using CA-pivot TLS model for side chains
-                if calc_pivot_model==True:
+                if calc_pivot_model == True:
                     rdict = calc_CB_pivot_TLS_least_squares_fit(pv_seg)
                     tls_info["ca_pivot"] = rdict
 
