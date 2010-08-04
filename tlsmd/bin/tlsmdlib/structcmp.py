@@ -17,9 +17,7 @@ except ImportError:
 from mmLib import Constants, AtomMath, Structure, Superposition, TLS
 
 ## TLSMD
-import console
-
-SUPER_ATOMS = ["N","CA","C"]
+import console, const
 
 def calc_angle(a, b):
     cos_ab = numpy.dot(a, b)/ (AtomMath.length(a) * AtomMath.length(b))
@@ -143,7 +141,7 @@ class TLSConformationPredctionHypothosis(object):
                 frag2 = self.srctgt_equiv[frag1]
             except KeyError:
                 continue
-            for name in SUPER_ATOMS:
+            for name in const.SUPER_ATOMS:
                 atm1 = frag1.get_atom(name)
                 atm2 = frag2.get_atom(name)
                 if atm1 == None or atm2 == None:
