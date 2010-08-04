@@ -84,9 +84,9 @@ class ISOptimization(hcsssp.HCSSSP):
             fit_method = chain.tls_analyzer.isotropic_fit_segment
         elif conf.globalconf.tls_model == "ANISO":
             fit_method = chain.tls_analyzer.anisotropic_fit_segment
-        elif conf.globalconf.tls_model=="NLISOT":
+        elif conf.globalconf.tls_model == "NLISOT":
             fit_method = chain.tls_analyzer.constrained_isotropic_fit_segment
-        elif conf.globalconf.tls_model=="NLANISO":
+        elif conf.globalconf.tls_model == "NLANISO":
             fit_method = chain.tls_analyzer.constrained_anisotropic_fit_segment
         return fit_method
 
@@ -142,8 +142,10 @@ class ISOptimization(hcsssp.HCSSSP):
                 console.stderrln("no TLS group %s{%s..%s}" % (
                     chain_id, frag_id1, frag_id2))
                 raise SystemExit
+
             if tlsdict.has_key("error") is True:
                 continue
+
             if not tlsdict.has_key("residual"):
                 console.stderrln("no residual! %s{%s..%s}" % (
                     chain_id, frag_id1, frag_id2))
@@ -184,6 +186,7 @@ class ISOptimization(hcsssp.HCSSSP):
             console.stdoutln("HCSSSP Minimizing: Unable to minimize chain_id=%s" % (
                 chain_id))
             self.minimized = False
+            raise SystemExit
 
         ## free memory taken up from edges
         edges = None
