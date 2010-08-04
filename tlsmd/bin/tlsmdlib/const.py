@@ -33,9 +33,18 @@ for res_name in MAINCHAIN_ATOMS:
 import re ## used when needing a regular expressions match
 RE_MAINCHAIN_ATOMS = re.compile("^ATOM.*  (N|CA|C|O|CB|P|O5\*|O5'|C5\*|C5'|C4\*|C4'|C3\*|C3'|O3\*|O3') (.){20}.*$", re.I)
 
+## used in structcmp.TLSConformationPredctionHypothosis to calc_superposition
+SUPER_ATOMS = ["N","CA","C"]
+
+## used with Skittles
+JUNCTION_ATOMS = ["N", "C", "O3'", "O3*", "P"]
+
 ## used in tls_animate.py to filter selected atoms
 DISPLACE_ATOM_NAME_DICT = {
     "CA": True, "P": True, 
     "O5*": True, "C5*": True, "C4*": True, "C3*": True, "O3*": True,
     "O5'": True, "C5'": True, "C4'": True, "C3'": True, "O3'": True
     }
+
+## used for index position
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
