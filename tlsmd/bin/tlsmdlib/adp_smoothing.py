@@ -61,11 +61,11 @@ def IsotropicFitSegmentOutlierRejection(chain, frag_id1, frag_id2):
 
 
 def IsotropicADPDataSmoother(chain, num_smooth = 1):
-    """Experimental data smoothing of temperature factors
+    """Experimental data smoothing of temperature factors.
     """
     console.endln()
     console.stdoutln("SMOOTHING CHAIN %s ADPs" % (chain.chain_id))
-    conesole.kvformat("SMOOTH WINDOW", 2 * num_smooth + 1)
+    console.kvformat("SMOOTH WINDOW", 2 * num_smooth + 1)
 
     num_frags = len(chain)
 
@@ -81,18 +81,21 @@ def IsotropicADPDataSmoother(chain, num_smooth = 1):
         IT, IL, IS, IOrigin = IsotropicFitSegmentOutlierRejection(
             chain, frag1.fragment_id, frag2.fragment_id)
 
-        for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+        for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), 
+                                            IT, IL, IS, IOrigin):
             smooth_uiso[atm] = uiso
 
         if ifrag == ifrag_start:
             for i in range(ifrag_start):
                 smooth_frag = chain[i]
-                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(),
+                                                    IT, IL, IS, IOrigin):
                     smooth_uiso[atm] = uiso
         elif ifrag == ifrag_end:
             for i in range(ifrag_end + 1, num_frags):
                 smooth_frag = chain[i]
-                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(), IT, IL, IS, IOrigin):
+                for atm, uiso in TLS.iter_itls_uiso(smooth_frag.iter_all_atoms(),
+                                                    IT, IL, IS, IOrigin):
                     smooth_uiso[atm] = uiso
 
     for atm, uiso in smooth_uiso.iteritems():
