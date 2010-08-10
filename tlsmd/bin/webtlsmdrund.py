@@ -475,6 +475,10 @@ def fetch_and_run_jobs_forever():
         ## First clear out any jobs in run queue that have finished
         ## Get information on jobs in queue
         job_list = mysql.job_list()
+        if job_list == None:
+            ## No jobs have been completed before
+            continue
+
         for myjdict in job_list:
             if myjdict.get("state") == None:
                 ## This is a "Partially Submitted" job, so go to next in list
