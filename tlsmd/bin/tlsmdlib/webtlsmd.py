@@ -1270,6 +1270,9 @@ class QueuePage(Page):
     def get_job_list(self):
         """Get a list of all the jobs in the job queue file.
         """
+        job_list = []
+        if mysql.job_list() == None:
+            return job_list
         return mysql.job_list()
 
     def pid_exists(self, job_id):
@@ -1457,6 +1460,13 @@ class QueuePage(Page):
              '<th>Total Residues</th>',
              '<th>Processing Time (HH:MM.SS)</th>',
              '</tr>']
+
+        if len(completed_list) == 0:
+            l += ['<tr>',
+                  '<td colspan="6" class="c">',
+                  'No Jobs Completed',
+                  '</td>',
+                  '</tr>']
 
         row1 = True
         for jdict in completed_list:
