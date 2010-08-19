@@ -105,7 +105,7 @@ Chain::FragmentIDMap::operator[](const std::string& frag_id) {
   if (has_icode) {
     std::size_t sz = cell.icode_table_.size();
     if (icode_idx >= sz) {
-      std::cout << "ADDING ICODE " << seq_num_idx + seq_num1_ << ":" << icode_idx;
+      std::cout << "ADDING ICODE " << seq_num_idx + seq_num1_ << ":" << icode_idx << "\n";
       cell.icode_table_.resize(icode_idx + 1);
       cell.icode_table_has_key_.resize(icode_idx + 1, false);
     }
