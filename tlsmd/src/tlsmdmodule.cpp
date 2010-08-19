@@ -22,29 +22,29 @@
 #include "tls_model_engine.h"
 
 // names for return dictionaries
-char *U_PARAM_NAMES[] = {
+const char *U_PARAM_NAMES[] = {
   "u11", "u22", "u33", "u12", "u13", "u23"
 };
 
-char *ITLS_PARAM_NAMES[] = {
+const char *ITLS_PARAM_NAMES[] = {
   "it",
   "il11", "il22", "il33", "il12", "il13", "il23",
   "is1", "is2", "is3"
 };
 
-char *ATLS_PARAM_NAMES[] = {
+const char *ATLS_PARAM_NAMES[] = {
   "t11", "t22", "t33", "t12", "t13", "t23",
   "l11", "l22", "l33", "l12", "l13", "l23",
   "s2211", "s1133", "s12", "s13", "s23", "s21", "s31", "s32"
 };
 
-char *NL_ITLS_PARAM_NAMES[] = {
+const char *NL_ITLS_PARAM_NAMES[] = {
   "nl_t",
   "nl_lx", "nl_ly", "nl_lz", "nl_la", "nl_lb", "nl_lc",
   "nl_s1", "nl_s2", "nl_s3"
 };
 
-char *NL_ATLS_PARAM_NAMES[] = {
+const char *NL_ATLS_PARAM_NAMES[] = {
   "nl_t11", "nl_t22", "nl_t33", "nl_t12", "nl_t13", "nl_t23",
   "nl_lx", "nl_ly", "nl_lz", "nl_la", "nl_lb", "nl_lc",
   "nl_s2211", "nl_s1133", "nl_s12", "nl_s13",  "nl_s23", "nl_s21", "nl_s31", "nl_s32"
@@ -85,7 +85,7 @@ AddIsotropicTLSModelToPyDict(const TLSMD::IsotropicTLSModel &itls_model, PyObjec
   AddTLSModelToPyDict(itls_model, rdict);
 
   int num_params = itls_model.num_params();
-  char** param_name = ITLS_PARAM_NAMES;
+  const char** param_name = ITLS_PARAM_NAMES;
   const double* param = itls_model.get_params();
   for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
     PyObject* py_floatx = PyFloat_FromDouble(*param);
@@ -99,7 +99,7 @@ AddAnisotropicTLSModelToPyDict(const TLSMD::AnisotropicTLSModel &atls_model, PyO
   AddTLSModelToPyDict(atls_model, rdict);
 
   int num_params = atls_model.num_params();
-  char** param_name = ATLS_PARAM_NAMES;
+  const char** param_name = ATLS_PARAM_NAMES;
   const double* param = atls_model.get_params();
   for (int i = 0; i < num_params; ++i, ++param, ++param_name) {
     PyObject* py_floatx = PyFloat_FromDouble(*param);
