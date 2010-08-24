@@ -150,7 +150,7 @@ class GNUPlot(object):
             console.stdoutln("[%s,0] GNUPLot: Saving %s" % (chain_id, self.png_path))
 
         ## set output size
-        l = ['set term png font "%s" %d size %d,%d enhanced' % (
+        l = ['set term png font "%s,%d" size %d,%d enhanced' % (
              self.font_path, self.font_size, self.width, self.height),
              'set output "%s"' % (self.png_path),
              '']
@@ -345,7 +345,7 @@ class LSQR_vs_TLS_Segments_All_Chains_Plot(GNUPlot):
         script += "plot " + ",\\\n    ".join(plist) + "\n"
 
         ## Make a thumbnail (half-size) version for the summary page
-        script += "set term png font '%s' 8 size 400,320 linewidth 0.5\n" % conf.GNUPLOT_FONT
+        script += "set term png font '%s,8' size 400,320 linewidth 0.5\n" % conf.GNUPLOT_FONT
         script += "set output 'summary.png'\n"
         script += "unset title; set ylabel 'Residual' offset 1; replot\n"
 
