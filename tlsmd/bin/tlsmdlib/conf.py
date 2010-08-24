@@ -61,7 +61,7 @@ PDB_ANIMATE_SCRIPT     = "/home/tlsmd/tlsmd/bin/pdb_animate.pl"
 
 ## General defaults
 MAX_PARALLEL_JOBS     = 4   ## maximum number of parallel jobs allowable at the same time
-MAX_JOB_ID_LEN        = 19  ## maximum string length of "job_id" (e.g., "TLSMD1225_CrjLhBTM")
+MAX_JOB_ID_LEN        = 20  ## maximum string length of "job_id" (e.g., "TLSMD15620_CrjLhBTM")
 LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger than this
 MIN_AMINO_PER_CHAIN   = 10  ## minimum (amino acid) residues per chain
 MIN_NUCLEIC_PER_CHAIN = 5   ## minimum (nucleic acid) residues per chain
