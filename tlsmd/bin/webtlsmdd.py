@@ -9,6 +9,7 @@
 ## Python
 import os
 import sys
+import shutil
 import time
 import string
 import random
@@ -68,6 +69,16 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     except OSError:
         return "Unable to make ANALYSIS sub-directory for job_id: %s" % (
             job_id)
+
+    ## Copy sanity.png from "All atoms" sanity check (in tlsmdlib/webtlsmd.py)
+    ## to job_dir
+    try:
+        src_png_file = "%s/%s.png" % (conf.WEBTMP_PATH, job_id)
+        dst_png_file = "%s/%s/sanity.png" % (conf.TLSMD_WORK_DIR, job_id)
+        if os.path.exists(src_png_file):
+            shutil.copy(src_png_file, dst_png_file)
+    except OSError:
+        return "Unable to copy sanity.png for job_id: %s" % job_id
 
     ## save PDB file
     pdb_filename = conf.PDB_FILENAME
@@ -178,7 +189,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     ## set defaults
     mysql.job_set_user_name(job_id, "")
     mysql.job_set_email(job_id, "")
-    mysql.job_set_user_comment(job_id, "")
+    mysql.job_set_user_comment(job_id, conf.globalconf.user_comment)
     mysql.job_set_plot_format(job_id, "PNG")
     mysql.job_set_nparts(job_id, conf.globalconf.nparts)
     mysql.job_set_via_pdb(job_id, "0")
@@ -217,6 +228,8 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
 def RequeueJob(webtlsmdd, job_id):
     """Pushes job to the end of the list.
     """
+    ## FIXME: This will no longer work! The BerkeleyDB code has been removed
+    ## and now we must use MySQL, 2009-06-29
     if mysql.job_get_state(job_id) == 'running':
         return False
     else:
@@ -236,15 +249,14 @@ def RemoveJob(webtlsmdd, job_id):
     if not mysql.job_exists(job_id):
         return False
 
-    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    if job_dir and os.path.isdir(job_dir):
-        for root, dirs, files in os.walk(job_dir, topdown = False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        os.rmdir(job_dir)
+    try:
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+        shutil.rmtree(job_dir)
+    except:
+        return False
 
+    ## TODO: Also delete data in 'pdb_list' and 'via_pdb' tables, _if_ they
+    ## were submitted via pdb.org. 2010-04-01
     mysql.delete_jdict(job_id)
     return True
 
@@ -252,6 +264,7 @@ def SignalJob(webtlsmdd, job_id):
     """Causes a job stuck on a certain task to skip that step and move on to
     the next step. It will eventually have a state "warnings".
     """
+    ## FIXME: Doesn't seem to work, 2009-06-12
     if not mysql.job_exists(job_id):
         return False
 
@@ -274,6 +287,9 @@ def KillJob(webtlsmdd, job_id):
     """Kills jobs in state "running" by pid and moves them to the
     "Completed Jobs" section as "killed" state.
     """
+    ## FIXME: We want to keep the job_id around in order to inform the user
+    ## that their job has been "killed", 2009-05-29
+
     if not mysql.job_exists(job_id):
         return False
 
@@ -311,22 +327,24 @@ def Refmac5RefinementPrep(job_id, struct_id, chain_ntls, wilson):
         return "Could not find the directory related to job_id: %s" % job_id
 
     if mysql.job_get_via_pdb(job_id) == 1:
-        ## If job was submitted via pdb.org, the results are in a different
-        ## directory/path.
+        ## If a job was submitted via pdb.org, the results/analyses files are
+        ## in a different directory/path and so does the URL.
         pdb_id = struct_id
         job_dir = os.path.join(conf.WEBTLSMDD_PDB_DIR, pdb_id)
         job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
         analysis_dir = os.path.join(job_dir, "ANALYSIS")
         analysis_base_url = "%s/ANALYSIS" % (job_url)
     else:
-        ## User-submitted (non-pdb.org) result directory/path/url
+        ## User-submitted (non-pdb.org) results/analyses files are in the
+        ## standard place (aka directory/path/url) and are deleted every 
+        ## DELETE_DAYS (see webtlsmdcleanup.py) days.
         job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
         job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "jobs", job_id)
         analysis_dir = os.path.join(job_dir, "ANALYSIS")
         analysis_base_url = "%s/ANALYSIS" % (job_url)
 
     if not os.path.isdir(analysis_dir):
-        return "Job analysis directory does not exist"
+        return "Job analysis directory does not exist: %s" % analysis_dir
 
     old_dir = os.getcwd()
     os.chdir(analysis_dir)
@@ -396,8 +414,8 @@ def Refmac5RefinementPrep(job_id, struct_id, chain_ntls, wilson):
                 phenix_url = phenix_url)
 
 
-class WebTLSMDDaemon(object):
-    def __init__(self, db_file):
+class WebTLSMDDaemon():
+    def __init__(self):
         self.jobdb = None
 
     def set_structure_file(self, job_id, struct_bin):
@@ -496,7 +514,7 @@ def daemon_main():
     ## Switched from handle_SIGCHLD to SIG_IGN. Christoph Champ, 2008-03-10
     signal.signal(signal.SIGCHLD, SIG_IGN)
 
-    webtlsmdd = WebTLSMDDaemon(conf.WEBTLSMDD_DATABASE)    
+    webtlsmdd = WebTLSMDDaemon()
 
     try:
         xmlrpc_server = WebTLSMD_XMLRPCServer(host_port)
@@ -522,9 +540,9 @@ def inspect():
         for dbkey in mysql.job_list():
             print dbkey["jobID"], dbkey["job_id"], dbkey["submit_date"]
 
+    ## FIXME: This does not work yet. 2010-07-02
     if sys.argv[1] == "remove":
-        ## This does not work yet.
-        print "nothing to do."
+        print "This option does not work yet."
 
 def usage():
     print "webtlsmdd.py [list | remove] args..."
