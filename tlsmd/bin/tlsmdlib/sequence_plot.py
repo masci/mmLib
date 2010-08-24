@@ -124,7 +124,7 @@ class TLSSegmentAlignmentPlot(object):
         idraw = ImageDraw.Draw(image)
 
         idraw.setfill(True)
-        idraw.setfont(ImageFont.truetype(conf.GNUPLOT_FONT, 12))
+        idraw.setfont(ImageFont.truetype(conf.GNUPLOT_FONT_PATH, 12))
 
         x_start = self.border_width
 
