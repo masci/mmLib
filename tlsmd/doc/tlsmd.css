@@ -38,11 +38,13 @@ body {
 	}
 
 /* style classes used by documentation */
+/*
 #caption {
 	margin-left:8%;
 	margin-right:8%;
 	font-size:-1
 	}
+*/
 
 
 /* style classes used by webtlsmd.cgi */
@@ -73,7 +75,7 @@ body {
 
 .ninner_table {
 	font-size:small;
-	width:95%;
+	width:100%;
 	padding:2%;
 	border:thin solid #aaa;
 	background-color:#eee;
@@ -82,6 +84,14 @@ body {
 .perror {
 	text-align:left;
 	font-size:x-small;
+	width:70%;
+	padding:10px;
+	border:thin solid #f00;
+	background-color:#faa;
+	}
+
+.note {
+	text-align:left;
 	width:70%;
 	padding:10px;
 	border:thin solid #f00;
@@ -115,10 +125,13 @@ td.l { text-align:left; }
 td.r { text-align:right; }
 tr.r { text-align:right; }
 
-span.warning {
+.warning {
+	text-align:center;
 	color:#f00;
 	font-style:italic;
 	}
+
+span.small { font-size:x-small; }
 
 .prog-border {
 	height: 100%;

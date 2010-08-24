@@ -28,13 +28,13 @@
 
 <td>
 <font size="+1"><b>TLS Motion Determination (TLSMD)</b></font>
-analyzes a protein crystal structure for evidence of flexibility, 
-e.g. local or inter-domain motions.  It does this by partitioning the 
-protein chains into multiple segments that are modeled as rigid bodies
+analyzes a macromolecular crystal structure for evidence of flexibility, 
+e.g. local or inter-domain motions.  It does this by partitioning
+individual chains into multiple segments that are modeled as rigid bodies
 undergoing TLS (Translation/Libration/Screw) vibrational motion. 
-It generates all possible partitions up to a specified maximum number 
-of TLS groups. Each trial partition is scored by how well it predicts
-the observed atomic displacement parameters ("thermal parameters") that came out of crystallographic refinement.
+It generates all possible partitions up to a maximum number of segments.
+Each trial partition is scored by how well it explains the observed
+atomic displacement parameters ("B values") that came out of crystallographic refinement.
 </td>
 
 <td valign="top" rowspan="3" style="border: 1px solid black;" >
@@ -56,7 +56,9 @@ The complete analysis is
 
 <tr>
 <td align="center" valign="bottom"><br>
+<!---
 <font size="+1" color="#0a990a"><b><i>Welcome to a new, higher throughput server</i></b></font>
+  --->
 </td>
 </tr>
 
@@ -66,7 +68,7 @@ The complete analysis is
 using the <a href="/~tlsmd/cgi-bin/webtlsmd.cgi?page=submit1">Start a New Job</a>
 page.
 TLSMD is computationally expensive, so jobs are handled by a run queue.
-You can monitor the progress of your submission on the
+You can monitor the progress of your run on the
 <a href="/~tlsmd/cgi-bin/webtlsmd.cgi">Job Status</a> page.
 The server will notify you by Email when the job has finished.
 </td>
@@ -91,8 +93,7 @@ The server will notify you by Email when the job has finished.
 
 <p><font size="+1"><b>More information </b></font>
 about TLS groups, interpretation of the TLS parameters, and interactive
-visualization of the results from TLSMD analysis can be found in the
-reprints below, and in the
+visualization of TLS models can be found in the reprints below, and in the
 <a href="http://pymmlib.sourceforge.net/doc/tlsview/tlsview.html">TLSView Manual</a>.
 TLSView is part of the <a href="http://pymmlib.sourceforge.net/">Python Macromolecular Library (mmLib)</a>.
 </p>
@@ -131,7 +132,7 @@ reprint: (<a href="JApplCryst_39_109.pdf">PDF</a>)</td>
 
 <!-- ENDBLOCK -->
 
-<center><p><small>Last Modified 11 February 2010</small></p></center>
+<center><p><small>Last Modified 30 July 2010</small></p></center>
 </div>
 </body></html>
 
