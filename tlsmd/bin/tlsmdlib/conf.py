@@ -146,6 +146,7 @@ class GlobalConfiguration(object):
         self.generate_jmol_animate = False
         self.generate_histogram = False
         self.cross_chain_analysis = False
+        self.user_comment = ""
         self.webtlsmdd = None
         self.job_id = None
         self.struct_id = None
