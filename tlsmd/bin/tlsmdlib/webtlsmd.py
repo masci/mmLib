@@ -19,7 +19,6 @@ import xmlrpclib
 import cgitb; cgitb.enable()
 import cgi
 import subprocess
-import pickle
 
 ## Pymmlib
 from mmLib import Library ## checks if is_{amino,nucleic}_acid()
@@ -58,7 +57,7 @@ def left_justify_string(keyword, value):
     return '%s' % keyword .ljust(40, ".") + ": " + '%s\n' % value
 
 def html_title(title):
-    """Title
+    """Generates an HTML-formatted title.
     """
     return '<center><h1>%s</h1></center>' % (title)
 
@@ -330,16 +329,16 @@ def html_user_info_table(fdict):
     """Returns a small table of user data.
     """
     l = ['<table class="inner_table">',
-
          '<tr class="inner_title"><th colspan="2">User Information</th></tr>',
 
          '<tr><td class="c">',
+         '<center>',
          '<table class="ninner_table">',
 
          ## User name
          '<tr>',
          '<td class="r"><label for="user_name">Your Name</label></td>',
-         '<td><input type="text" id="user_name" name="user_name" ',
+         '<td class="l"><input type="text" id="user_name" name="user_name" ',
                     'value="%s" size="25" maxlength="40"></td>' % (
                     fdict.get("user_name","")),
          '</tr>',
@@ -347,7 +346,7 @@ def html_user_info_table(fdict):
          ## User email address
          '<tr>',
          '<td class="r"><label for="email">EMail Address</label></td>',
-         '<td><input type="text" id="email" name="email" ',
+         '<td class="l"><input type="text" id="email" name="email" ',
                     'value="%s" size="25" maxlength="40"></td>' % (
                     fdict.get("email", "")),
          '</tr>',
@@ -355,17 +354,18 @@ def html_user_info_table(fdict):
          ## User associated notes
          '<tr>',
          '<td class="r"><label for="user_comment">Associated Notes</label></td>',
-         '<td><input type="text" id="user_comment" name="user_comment" ',
+         '<td class="l"><input type="text" id="user_comment" name="user_comment" ',
                     'value="%s" size="40" maxlength="128"></td>' % (
                     fdict.get("user_comment","")),
          '</tr>',
-
          '</table>',
+         '</center>',
+
          '</td></tr></table>']
 
     return "".join(l)
 
-def html_program_settings_table(fdict):
+def html_program_settings_table(fdict, run_mainchain_only = None):
     """Used in 'Step 2: Fill out Submission Form'. Also allows the user to
     select advanced options before completing submission.
     """
@@ -408,7 +408,8 @@ def html_program_settings_table(fdict):
           '</fieldset>',
 
           '</td>',
-          '</table></td>']
+          '</table>'
+          '</td>']
 
     ## Left table: "Keep Job Private"
     l += ['<tr><td class="c" valign="top">',
@@ -462,10 +463,21 @@ def html_program_settings_table(fdict):
 
         l +=['<tr><td class="l">', x, desc, '</td></tr>']
 
-    l +=['</table></td>',
+    l += ['</table></td>',
 
-         ## End of "TLSMD Program Options" table
-         '</tr></table>']
+          ## End of "TLSMD Program Options" table
+          '</tr></table>']
+
+    if run_mainchain_only:
+        sanity_png = "%s/%s/sanity.png" % (conf.TLSMD_WORK_URL, fdict["job_id"])
+        l += ['<tr><td class="note">The variation in the B factors of ',
+              'adjacent atoms in some regions of your structure is not ',
+              'reasonable (you can see an analysis <a href="%s">here</a>) ' % (
+               sanity_png),
+              'However, if only main chain atoms are considered, the ',
+              'variation in B is more reasonable. Please select "Mainchain ',
+              'Atoms" from the "Atom Class Selection" section in the ',
+              'Advanced Program Options below.</td></tr>']
 
     ## "Advanced Program Options" table
     l += ['<tr class="inner_title"><th>',
@@ -476,9 +488,14 @@ def html_program_settings_table(fdict):
           '">Show Advanced Program Options</a>',
           '</th></tr>',
  
-          '<tr><td class="c">',
-          '<div id="id1" style="display:none">',
-          '<table class="ninner_table">',
+          '<tr><td class="c">']
+
+    if run_mainchain_only:
+        l += '<div id="id1" style="display:inline">'
+    else:
+        l += '<div id="id1" style="display:none">'
+
+    l += ['<table class="ninner_table">',
           '<tr>',
  
           '<td valign="top" class="l">',
@@ -502,14 +519,24 @@ def html_program_settings_table(fdict):
           '<div style="font-size:xx-small">',
           'Analyze all protein atoms, or just the main chain atoms.<br>',
           '</div>',
-          '<p><label>',
-          '<input name="include_atoms" type="radio" value="ALL" ',
-                 'checked="checked">',
-          'All Atoms</label></p>',
-          '<p><label>',
-          '<input name="include_atoms" type="radio" value="MAINCHAIN">',
-          'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})',
-          '</label></p>',
+          '<p><label>']
+
+    if run_mainchain_only:
+        l += ['<input name="include_atoms" type="radio" value="ALL">',
+              'All Atoms</label></p>',
+              '<p><label>',
+              '<input name="include_atoms" type="radio" value="MAINCHAIN" ',
+                     'checked="checked">',
+              'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})']
+    else:
+        l += ['<input name="include_atoms" type="radio" value="ALL" ',
+                     'checked="checked">',
+              'All Atoms</label></p>',
+              '<p><label>',
+              '<input name="include_atoms" type="radio" value="MAINCHAIN">',
+              'Mainchain Atoms ({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*})']
+
+    l += ['</label></p>',
           '</fieldset>',
           '</td>',
  
@@ -573,7 +600,7 @@ def html_program_settings_table(fdict):
     return "".join(l)
 
 
-def html_job_edit_form2(fdict, title=""):
+def html_job_edit_form2(fdict, title="", run_mainchain_only = None):
     if fdict.has_key("removebutton"):
         remove_button = '<input type="submit" name="submit" value="Remove Job">'
     else:
@@ -608,14 +635,21 @@ def html_job_edit_form2(fdict, title=""):
          '<tr><th class="step_title">%s</th></tr>' % (title),
 
          '<tr><td class="c">', html_user_info_table(fdict), '</td></tr>',
-         '<tr><td class="c">', html_program_settings_table(fdict), '</td></tr>',
-         '<tr><td class="c">', html_session_info_table(fdict), '</td></tr>',
+         '<tr><td class="c">']
 
-         '<tr><td class="c"><input type="submit" name="submit" value="Submit Job"></td></tr>',
+    if run_mainchain_only:
+        l += html_program_settings_table(fdict, run_mainchain_only = True)
+    else:
+        l += html_program_settings_table(fdict, run_mainchain_only = False)
 
-         '</table>',
-         '</form>',
-         '</center>']
+    l += ['</td></tr>',
+          '<tr><td class="c">', html_session_info_table(fdict), '</td></tr>',
+
+          '<tr><td class="c"><input type="submit" name="submit" value="Submit Job"></td></tr>',
+
+          '</table>',
+          '</form>',
+          '</center>']
 
     return "".join(l)
 
@@ -757,8 +791,11 @@ def html_job_info_table(fdict):
             x += '<tr>'
             x += '<td>%s</td>' % desc
 
+            ## TODO: Record running time for each chain, 2009-05-29
             processing_time = False
+            #if cdict.has_key("processing_time"):
             if processing_time:
+                #hours = secdiffstring(cdict["processing_time"])
                 hours = "0000"
             else:
                 hours = "---"
@@ -884,7 +921,7 @@ def vet_struct_id(data, max_len):
 
 def cleanup_input(data):
     """Vet all user-input via forms. Allow only alphanumeric characters and
-    some punctuation: " ", "_", ",", ".", "(", ")", "-", ":".
+    some punctuation: " ", "_", ",", ".", "(", ")", "-", ":"
     """
     data = re.sub(r'[^0-9A-Za-z ()_,.-:]', '', data)
     return data
@@ -895,6 +932,7 @@ def vet_email(email_address):
     exceed 255 characters. The entire email address length must not exceed
     320 characters.
     """
+    ## FIXME: Doesn't warn user!
     if not re.match(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', email_address):
         return False
     local_part  = re.sub(r'^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$', '\\1', email_address)
@@ -914,19 +952,6 @@ def vet_pdb_id(pdbid):
        re.match(r'^[0-9][A-Za-z0-9]{3}$', pdbid):
         return False
     return True
-
-def write_to_file_form_info(job_id):
-    """Saves all information enter into the form by the user to a file for
-    later use by html.py when it creates the static HTML pages of the
-    analysis.
-    """
-    jdict = mysql.job_get_dict(job_id)
-    job_dir = conf.WEBTMP_PATH
-    file = open(job_dir + "/%s.txt" % job_id, "w")
-    file.write(pickle.dumps(jdict))
-    file.close()
-
-    return ''
 
 def extract_job_edit_form(form):
     """Extract the input from the Job Edit Form and update the MySQL
@@ -969,6 +994,7 @@ def extract_job_edit_form(form):
         ## store only the first 128 characters
         user_comment = cleanup_input(user_comment[:128])
         mysql.job_set_user_comment(job_id, user_comment)
+        conf.globalconf.user_comment = user_comment
 
     ## Selected chains for analysis
     num_chains_selected = 0
@@ -1048,11 +1074,6 @@ def extract_job_edit_form(form):
             nparts_value = int(conf.NPARTS)
         mysql.job_set_nparts(job_id, int(nparts_value))
 
-    ## Save all information enter into the form by the user to a file
-    r = write_to_file_form_info(job_id)
-    if r != '':
-        raise SubmissionException('Could not save form data')
-
     return True
 
 
@@ -1063,17 +1084,17 @@ class Page(object):
     def html_head_nocgi(self, title, redirect=None):
         x  = ''
         x += '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" '
-        x += '     "http://www.w3.org/TR/html4/loose.dtd">'
-        x += '<html>'
-        x += '<head>'
-        x += '  <title>%s</title>' % (title)
+        x += '     "http://www.w3.org/TR/html4/loose.dtd">\n'
+        x += '<html>\n'
+        x += '<head>\n'
+        x += '  <title>%s</title>\n' % (title)
         x += '  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">\n'
-        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">'
-        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">'
+        x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">\n'
+        x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">\n'
         if redirect != None:
             x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
-        x += '</head>'
-        x += '<body><div id="page">'
+        x += '</head>\n'
+        x += '<body>\n<div id="page">\n'
         return x
 
     def html_head(self, title, redirect=None):
@@ -1083,7 +1104,7 @@ class Page(object):
             return 'Content-Type: text/html\n\n' + self.html_head_nocgi(title, redirect)
 
     def html_foot(self):
-        l = ['<center>',
+        l = ['<center>\n',
              '<p><small><b>Version %s</b> Last Modified %s' % (
              const.VERSION, const.RELEASE_DATE),
              '</small></p>',
@@ -1125,6 +1146,7 @@ class QueuePage(Page):
             self.admin = False
 
     def verify_admin(self, passcode):
+        ## class QueuePage
         try:
             code = open(conf.ADMIN_PASSWORD_FILE, "r").read().strip()
         except IOError:
@@ -1132,6 +1154,7 @@ class QueuePage(Page):
         return code == passcode
 
     def rcsb_href(self, jdict):
+        ## class QueuePage
         if jdict.get("private_job", False):
             return "----"
         struct_id = jdict.get("structure_id", "xxxx")
@@ -1143,6 +1166,7 @@ class QueuePage(Page):
         return struct_id
 
     def html_head_nocgi(self, title):
+        ## class QueuePage
         l = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" ',
              '     "http://www.w3.org/TR/html4/loose.dtd">\n',
              '<html>\n',
@@ -1157,8 +1181,9 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_foot(self):
+        ## class QueuePage
         l = ['<center>',
-             '<p><small><b>Version %s</b> Last updated %s PST</p>' % (
+             '<p><small><b>Version %s</b> Last updated %s PDT</p>' % (
              const.VERSION, misc.timestamp()),
              '</center>',
              '</div></body></html>']
@@ -1166,6 +1191,7 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_page(self):
+        ## class QueuePage
         title = 'TLSMD: Job Status'
         job_list = self.get_job_list()
 
@@ -1173,9 +1199,8 @@ class QueuePage(Page):
              html_title(title),
              html_nav_bar("queue"),
              self.html_private_form(),
-             '<center><b>',
-             'Or click on the Job ID you wish to view',
-             '</b></center>',
+             '<center><b>Or click on the Job ID you wish to view</b></center>',
+             '<br>',
              self.html_running_job_table(job_list),
              '<br>',
              self.html_queued_job_table(job_list),
@@ -1192,6 +1217,7 @@ class QueuePage(Page):
         return "".join(l)
 
     def html_private_form(self):
+        ## class QueuePage
         l = ['<form action="webtlsmd.cgi" method="post">',
              '<input type="hidden" name="page" value="explore">',
 
@@ -1200,7 +1226,7 @@ class QueuePage(Page):
              '</center>',
 
              '<center>',
-             '<input type="text" name="job_id" size="50">',
+             '<input type="text" name="job_id" size="20">',
              '</center>',
 
              '</form>']
@@ -1438,8 +1464,7 @@ class QueuePage(Page):
         ## class QueuePage()
         completed_list = []
         for jdict in job_list:
-            if jdict.get("state") in ["completed",
-                                      "success",
+            if jdict.get("state") in ["success",
                                       "errors",   # completed w/errors
                                       "warnings", # completed w/warnings
                                       "killed",
@@ -1539,8 +1564,7 @@ class QueuePage(Page):
         ## class QueuePage()
         limbo_list = []
         for jdict in job_list:
-            if jdict.get("state") not in ["completed",
-                                          "queued",
+            if jdict.get("state") not in ["queued",
                                           "running",
                                           "success",
                                           "errors",   # completed w/errors
@@ -1740,10 +1764,9 @@ class SubmissionException(Exception):
 
 
 SUBMIT1_NOTE = """\
-Analysis of large structures is
-computationally expensive, so you may have to wait hours to days for
-the server to generate a complete analysis depending on how
-heavily it is loaded.<br><br>
+Analysis of large structures is computationally expensive, so you may have to 
+wait hours to days for the server to generate a complete analysis depending on 
+how heavily it is loaded.<br><br>
 """
 
 class Submit1Page(Page):
@@ -1753,48 +1776,45 @@ class Submit1Page(Page):
         l = [self.html_head(title, None),
              html_title(title),
              html_nav_bar(),
-             '<center>',
+             '<center>\n',
 
-             '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">',
-             '<input type="hidden" name="page" value="submit2">',
+             '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">\n',
+             '<input type="hidden" name="page" value="submit2">\n',
 
              '<table class="submit_table">',
-             '<tr>',
+             '<tr>\n',
              '<th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th>',
              '</tr>',
 
-             '<tr>',
+             '<tr>\n',
              '<td class="l">Upload PDB File:</td>',
              '<td><input name="pdbfile" size="50" type="file"></td>',
              '</tr>',
 
-             '<tr><td colspan="2" class="c">',
+             '<tr>\n<td colspan="2" class="c">',
              '<input value="Upload File and Proceed to Step 2" type="submit">',
              '</td></tr>',
              '</table>',
-             '</form>',
-
-             '</center>',
+             '</form>\n',
 
              ## Submit from pdb.org ============================================
-             '<center><h4>OR</h4></center>',
+             '<h4>OR</h4>\n',
 
-             '<center>',
-
-             '<form action="webtlsmd.cgi" method="post">',
-             '<input type="hidden" name="page" value="submit_pdb">',
+             '<form action="webtlsmd.cgi" method="post">\n',
+             '<input type="hidden" name="page" value="submit_pdb">\n',
              '<table class="submit_table">',
              '<tr><th colspan="2" class="step_title">Enter a PDB ID:</th>',
              '<td><input name="pdbid" size="4" maxlength="4" type="text"></td>',
              '<td><input value="Submit" type="submit"></td>',
              '</tr>',
-             '</center>',
              '</table>',
-             '<br><span class="warning">',
+             '</form>',
+             '</center>\n',
+             '<br><div class="warning">',
              'TLSMD requires crystallographically refined B factors.',
              '<br>Please do not submit NMR structures, theoretical models, ',
              '<br>or any PDB file with unrefined Bs',
-             '</span>',
+             '</div>\n',
 
              self.html_foot()]
 
@@ -1807,34 +1827,45 @@ class Submit2Page(Page):
         title = 'TLSMD: Start a New Job'
 
         l = [self.html_head(title, None),
-             html_title(title),html_nav_bar() ]
+             html_title(title), html_nav_bar()]
 
+        run_mainchain_only = False
         try:
-            job_id = self.prepare_submission()
+            job_id, run_mainchain_only = self.prepare_submission()
         except SubmissionException, err:
-             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
-        else:            
-            l.append(self.job_edit_form(job_id))
+            l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
+        else:
+            if run_mainchain_only:
+                l.append(self.job_edit_form(job_id, run_mainchain_only = True))
+            else:
+                l.append(self.job_edit_form(job_id, run_mainchain_only = False))
 
         l.append(self.html_foot())
         return "".join(l)
 
-    def job_edit_form(self, job_id, show_warnings = False):
+    def job_edit_form(self, job_id, run_mainchain_only):
         fdict = mysql.job_get_dict(job_id)
         fdict["page"] = "submit3"
-        return html_job_edit_form2(fdict, "Step 2: Fill out Submission Form, then Submit Job")
+        title = "Step 2: Fill out Submission Form, then Submit Job"
+        return html_job_edit_form2(fdict, title, run_mainchain_only)
 
     def prepare_submission(self):
-        if self.form.has_key("pdbfile") == False or self.form["pdbfile"].file is None:
+        """Prepares the uploaded structure by first running some sanity checks
+        on it.
+        """
+        ## class Submit2Page
+        if self.form.has_key("pdbfile") == False or \
+           self.form["pdbfile"].file is None:
             raise SubmissionException("No PDB file uploaded")
 
         ## allocate a new JobID
         job_id = mysql.job_new()
 
+        ## record user's IP address
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
         mysql.job_set_remote_addr(job_id, ip_addr)
 
-        ## save PDB file
+        ## read in all of the lines in the structure file
         infil = self.form["pdbfile"].file
         line_list = []
         while True:
@@ -1843,22 +1874,33 @@ class Submit2Page(Page):
                 break
             line_list.append(ln)
 
-        ## error out if there weren't many lines
+        ## proceed no further if there were not sufficient lines in uploaded
+        ## structure file
         if len(line_list) < 10:
             webtlsmdd.remove_job(job_id)
-            raise SubmissionException('Only Recieved %d lines of upload' % (len(line_list)))
+            raise SubmissionException('Only Recieved %d lines of upload' % (
+                len(line_list)))
 
-        ## basic sanity checks
-        r = check_upload(job_id, line_list)
+        ## basic sanity checks (for non-via-pdb.org structures)
+        run_mainchain_only = False
+        r, tmpfile = check_upload(job_id, line_list, mainchain = False)
         if r != '':
-            raise SubmissionException(str(r))
+            ## "All atoms" failed the sanity check. Let's try just the
+            ## mainchain atoms.
+            r, garbage = check_upload(job_id, line_list, mainchain = True)
+            if r != '':
+                ## No good. The structure failed both sanity checks.
+                ## Can not proceed with this structure.
+                raise SubmissionException(str(r))
+            else:
+                run_mainchain_only = True
 
         ## pass the PDB file to the application server
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary("".join(line_list)))
         if result != "":
             raise SubmissionException(result)
 
-        return job_id
+        return job_id, run_mainchain_only
 
 
 SUBMIT3_CAP1 = """\
@@ -1934,8 +1976,11 @@ class Submit3Page(Page):
             raise SubmissionException("Your job is already running")
 
         ## verify the submission IP address
+        ## FIXME: This does not work yet, 2009-06-01
         ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        ip_addr_verify = mysql.job_get_remote_addr(job_id)
+        #ip_addr_verify = mysql.job_get_remote_addr(job_id)
+        #if ip_addr != ip_addr_verify:
+        #    raise SubmissionException('Submission IP Address Mismatch')
         ip_addr_verify = ip_addr ## XXX: Temporary until above is fixed, 2009-06-05
 
         ## completely remove the job
@@ -1953,8 +1998,9 @@ class Submit3Page(Page):
         return job_id
 
     def submission_summary_info(self, job_id):
-        """Checks for any "other" problems with the user-selected chains.
+        """Provides a summary table of the user-selected chains.
         """
+        #sanity = self.form["pdbfile"].value
         chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
         ## E.g.,
@@ -2029,54 +2075,63 @@ class SubmitPDBPage(Page):
         if len(pdbfile) == 0:
             raise SubmissionException("Could not download PDB File from RCSB.")
 
-        job_id = self.prepare_submission(pdbfile)
-
+        errors = 0
         try:
             mysql.set_pdb_db(pdbid)
         except:
+            errors = 1
             raise SubmissionException("Could not write to internal PDB DB")
 
-        mysql.job_set_via_pdb(job_id, "1")
-        mysql.job_set_jmol_view(job_id, "1")
-        mysql.job_set_jmol_animate(job_id, "1")
-        mysql.job_set_histogram(job_id, "1")
-        mysql.job_set_private_job(job_id, "0")
+        l = []
+        if errors == 0:
+            job_id = self.prepare_submission(pdbfile)
 
-        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
-        mysql.job_set_remote_addr(job_id, ip_addr)
-
-        fdict = mysql.job_get_dict(job_id)
-        fdict["page"] = "submit3"
-
-        title = "Enter contact info:"
-        l = [self.html_head(title, None), html_title(title)]
-        l.append(html_job_edit_form(fdict, pdb=True))
-        l.append(self.html_foot())
+            mysql.job_set_via_pdb(job_id, "1")
+            mysql.job_set_jmol_view(job_id, "1")
+            mysql.job_set_jmol_animate(job_id, "1")
+            mysql.job_set_histogram(job_id, "1")
+            mysql.job_set_private_job(job_id, "0")
+    
+            ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+            mysql.job_set_remote_addr(job_id, ip_addr)
+    
+            fdict = mysql.job_get_dict(job_id)
+            fdict["page"] = "submit3"
+    
+            title = "Enter contact info:"
+            l = [self.html_head(title, None), html_title(title)]
+            l.append(html_job_edit_form(fdict, pdb=True))
+            l.append(self.html_foot())
 
         return "".join(l)
 
     def prepare_submission(self, pdbfile):
-        """class SubmitPDBPage
+        """Run some sanity checks and if all is well, send the PDB as a
+        binary stream via XML-RPC to the webtlsmdd daemon.
         """
+        ## class SubmitPDBPage
         job_id = mysql.job_new()
 
         ## basic sanity checks
         ## If check_upload returns anything but a empty string, the server will
         ## inform the user of the problem and not proceed any further.
         ln = pdbfile.split("\n")
-        r = check_upload(job_id, ln)
+        r, garbage = check_upload(job_id, ln, mainchain = False)
         if r != '':
             raise SubmissionException(str(r))
 
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary(pdbfile))
         if result != "":
             raise SubmissionException("Failed to submit structure. Please try again.")
+
         return job_id
 
     def redirect_page(self, pdbid):
-        """If a given PDB (from pdb.org) has already been analyzed, inform
-        user and redirect them to correct analysis page.
+        """If a given PDB (from pdb.org) has already been analyzed, inform the
+        user and redirect them to the correct analysis page.
         """
+        ## class SubmitPDBPage
+
         ## check to see if this job is still running
         try:
             os.chdir(conf.WEBTLSMDD_PDB_DIR + '/' + pdbid)
@@ -2087,7 +2142,7 @@ class SubmitPDBPage(Page):
                     self.html_foot()]
             return "".join(page)
 
-        title = "This protein has already been analyzed"
+        title = "This structure has already been analyzed"
         analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
@@ -2100,13 +2155,14 @@ class SubmitPDBPage(Page):
                     '</center>'
                     ]
         redirect.append(self.html_foot())
+
         return "".join(redirect)
 
-def running_stddev(atomnum, restype, resnum, chain, tfactor):
+
+def running_stddev(tmpfile, atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
-    of a given set of residues (controlled by the 'window' variable).
+    of a given set of residues.
     """
-    tmpfile = misc.generate_security_code()
     n = atm = res_tfac = 0
     avg_tfac = []
     res_id = []
@@ -2175,21 +2231,24 @@ set xlabel 'residue number'
 set grid
 set title 'Distribution of B factors in submitted structure (Å^2)'
 set term png font '<gnuplot_font>' enhanced truecolor
-plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.1 || $2>60.0) ? 999 : 0  axes x1y2 w filledcurve lt -1 notitle, \\
+    plot '<webtmp_path>/<tmpfile>.std' using 1:($2<0.01 || $2>60.0) ? 999 : 0  axes x1y2 w filledcurve lt -1 notitle, \\
      '<webtmp_path>/<tmpfile>.dat' using 1:2:(1+column(-2)) axes x1y1 with lines lc var title 'B_{mean} per residue', \\
      '<webtmp_path>/<tmpfile>.std' using 1:2 axes x1y2 lt 1 pt 1 title 'RMSD(B) +/-5 residues', \\
      0.05 axes x1y2 with lines lc rgb 'red' notitle
 """
 
-def check_upload(job_id, file):
+def check_upload(job_id, file, mainchain = None):
     """Runs sanity checks on uploaded structure file.
     """
     ## NOTE:
+    ##     - Requires uploaded structures to be X-ray EXPDTA
     ##     - Checks if the PDB file contains valid aa/na residues
     ##     - PDB file must have at least 30 ATOMs
     ##     - PDB file can not have lowercase alt. res. numbers
     ##     - Checks standard deviation of temp. factors
     ##     - Checks that not all occupancies are 0.00
+    ##     - Checks for properly formatted ATOM lines
+    tmpfile = None ## this is the second part of the return
     atom_num = []
     res_type = []
     res_num = []
@@ -2201,16 +2260,17 @@ def check_upload(job_id, file):
     occupancy = 0.0
     ignore = 0
     line_num = 0
+
     for line in file:
         line_num += 1
 
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
 
-        if line.startswith('EXPDTA') and line.find('X-RAY DIFFRACTION') == -1:
+        elif line.startswith('EXPDTA') and line.find('X-RAY DIFFRACTION') == -1:
             msg  = "Not an X-ray diffraction structure. TLSMD currently only "
             msg += "performs analysis on X-ray models. Will not proceed."
-            return msg
+            return msg, tmpfile
 
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
@@ -2221,11 +2281,23 @@ def check_upload(job_id, file):
             msg  = "Please change lowercase to uppercase for alternate "
             msg += "residue numbers. (E.g., change \" %s \" to \" %s \")" % (
                 example, example.upper())
-            return msg
+            return msg, tmpfile
 
-        elif line.startswith('ATOM') and (
-            Library.library_is_standard_residue(line[17:20].strip())):
+        elif mainchain == True and line.startswith('ATOM') and \
+            const.RE_MAINCHAIN_ATOMS.match(line) and \
+            Library.library_is_standard_residue(line[17:20].strip()):
+            ## Only pass mainchain atoms to the running_stddev() function
+            tmpfile = misc.generate_security_code()
             num_total += 1
+
+            try:
+                int(line[7:11].strip())
+                int(line[23:26].strip())
+                float(line[56:60].strip())
+                float(line[60:66].strip())
+            except:
+                return "Not a proper ATOM line: <pre>%s</pre>" % line, tmpfile
+
             if float(line[56:60].strip()) < 1.00:
                 ## ignore occupancies < 1.00
                 ignore += 1
@@ -2237,18 +2309,48 @@ def check_upload(job_id, file):
                 res_num.append(int(line[23:26].strip()))
                 chain.append(line[21:22])
                 occupancy += float(line[56:60].strip())
-                temp_factors.append(float(line[60:65].strip()))
+                temp_factors.append(float(line[60:66].strip()))
+
+        elif mainchain == False and line.startswith('ATOM') and (
+            Library.library_is_standard_residue(line[17:20].strip())):
+            tmpfile = job_id
+            num_total += 1
+
+            try:
+                int(line[7:11].strip())
+                int(line[23:26].strip())
+                float(line[56:60].strip())
+                float(line[60:66].strip())
+            except:
+                return "Not a proper ATOM line: <pre>%s</pre>" % line, tmpfile
+
+            if float(line[56:60].strip()) < 1.00:
+                ## ignore occupancies < 1.00
+                ignore += 1
+                continue
+            else:
+                num_good += 1
+                atom_num.append(int(line[7:11].strip()))
+                res_type.append(line[17:20].strip())
+                res_num.append(int(line[23:26].strip()))
+                chain.append(line[21:22])
+                occupancy += float(line[56:60].strip())
+                temp_factors.append(float(line[60:66].strip()))
 
         else:
             continue
 
-    if(len(atom_num) < 30):
-        return "Not a PDB structure or has unrecognized residue names."
+    msg = "Not a PDB structure or has unrecognized residue names."
+    if mainchain and num_good < 5:
+        return msg, tmpfile
+    elif not mainchain and num_good < 30:
+        return msg, tmpfile
 
     if(occupancy / num_good == 0.0):
-        return "All occupancies are 0.0. TLSMD won't run on this structure."
+        return "All occupancies are 0.0. TLSMD won't run on this structure.", tmpfile
 
-    bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
+    bad_std, tmpfile = running_stddev(tmpfile, atom_num, res_type, res_num, 
+                                      chain, temp_factors)
     if bad_std > 0:
         ## If there are a string of "bad" B-factors, return a plot showing the
         ## "bad" regions and do not proceed any further in the analysis.
@@ -2269,11 +2371,16 @@ def check_upload(job_id, file):
         return_string += "than %s or greater than %s for those residues in " % (
             conf.MIN_STDDEV_BFACT, conf.MAX_STDDEV_BFACT)
         return_string += "the shaded regions below:<br>"
-        return_string += "<center><img src='%s/%s/%s.png'/></center>" % (
-            conf.BASE_PUBLIC_URL, "webtmp", tmpfile)
-        return return_string
+        return_string += "<center><img src='%s/%s.png'/></center>" % (
+            conf.WEBTMP_URL, tmpfile)
+        return_string += "<br><h3>NOTE: Your structure was run through a "
+        return_string += "sanity check twice: (1) using all atoms in your "
+        return_string += "structure; and (2) using only the mainchain atoms "
+        return_string += "({N,CA,C,O,CB} or {P,O5*,C5*,C4*,C3*,O3*}). "
+        return_string += "Both sanity checks failed.</h3>"
+        return return_string, tmpfile
 
-    return ''
+    return '', tmpfile
 
 
 def main():
@@ -2306,7 +2413,8 @@ def main():
     try:
         print page.html_page()
     except xmlrpclib.Fault, fault:
-        fault_html = "xmlrpclib.Fault:<br>fault code: %s<br>fault string: %s" % (
+        fault_html  = "xmlrpclib.Fault:<br>"
+        fault_html += "fault code: %s<br>fault string: %s" % (
             fault.faultCode, fault.faultString.replace("\n","<br>"))
 
         page = ErrorPage(form, fault_html)
