@@ -23,7 +23,7 @@ import traceback
 from tlsmdlib import conf, tlsmd_analysis, email
 
 def usage():
-    print "tlsmd.py - search for TLS rigid domains in x-ray crystal"
+    print "tlsmd.py - search for TLS rigid domains in X-ray crystal"
     print "           structures refined with individual atomic"
     print "           B-factors (temperature factors)"
     print
@@ -43,6 +43,7 @@ def usage():
     print "            [--generate-jmol-animate] skip generating JMOL-animation files (default=False)"
     print "            [--skip-html] skip generating HTML files (default=False)"
     print "            [--generate-histogram] skip generating histogram files (default=True)"
+    print "            [--user-comment=] optional. Must be in quotes! (default=None)"
     print "            [-t struct.pdb:chain_id ] compare TLS displacments with another structure"
     print "            [-e] recombine linear TLSMD segments to find disjoint TLS groups"
     print "            [-o <num_adjecent_residues>] ADP smoothing using the given number of residues (default=0)"
@@ -171,6 +172,9 @@ def analysis_main(struct_path, opt_dict):
     if opt_dict.has_key("--generate-histogram"):
         conf.globalconf.generate_histogram = True
 
+    if opt_dict.has_key("--user-comment="):
+        conf.globalconf.user_comment = opt_dict["--user-comment="]
+
     if opt_dict.has_key("--help") or opt_dict.has_key("-h"):
         usage()
 
@@ -194,7 +198,8 @@ if __name__ == "__main__":
             "skip-html",
             "generate-jmol-viewer",
             "generate-jmol-animate",
-            "generate-histogram"])
+            "generate-histogram",
+            "user-comment="])
     except getopt.GetoptError, err:
         print str(err)
         usage()
