@@ -1702,7 +1702,6 @@ class HTMLReport(Report):
             tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
-            console.stdoutln("TLS_GROUP: %s" % tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, 
                                    chain_id, frag_id2, "ALL")
