@@ -256,18 +256,19 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
                   '<td colspan="12" align-text="center">Error</td></tr>']
             continue
 
+        ## Libration (L) data
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
         L2 = mtls_info["L2_eigen_val"] * Constants.RAD2DEG2
         L3 = mtls_info["L3_eigen_val"] * Constants.RAD2DEG2
 
-        if tls_model=="ISOT":
+        ## Translation (T) data
+        if tls_model == "ISOT":
             t_data = "%5.1f" % (mtls_info["Tr1_eigen_val"] * Constants.U2B)
-
         else:
             Tr1 = mtls_info["Tr1_eigen_val"] * Constants.U2B
             Tr2 = mtls_info["Tr2_eigen_val"] * Constants.U2B
             Tr3 = mtls_info["Tr3_eigen_val"] * Constants.U2B
-            t_data = '%5.1f, %5.1f, %5.1f' % (Tr1, Tr2, Tr3),
+            t_data = '%5.1f, %5.1f, %5.1f' % (Tr1, Tr2, Tr3)
 
         ## alternate row background color
         if bgcolor_flag:
@@ -309,7 +310,6 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
             flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
             flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (
                 chain_ntls, cpartition.residual()))
-            flatfile.write("\nTLST %s" % t_data)
 
             flatfile.close()
             i += 1 ## increment segment within the partition
@@ -368,7 +368,7 @@ td.c {text-align:center;}
 td.r {text-align:right;}
 td.l, td.c, td.r { width:33%; }
 h2, h3 {text-align:center;}
-ul { list-style-type:none; margin:0px; padding:0px; }
+ul { list-style-type:none; margin:0; padding:0; }
 li { line-height:20px }
 
 p.captions {
@@ -390,13 +390,13 @@ p.notes {
     background:#fff;border:1px solid black;text-align:left;
     }
 .prog-bar {
-    margin:0px;padding:0;height:10px;
+    margin:0;padding:0;height:10px;
     background:#8FBC8F;
     }
 """
 
 _REPORT_CSS_PRINT_STYLES = """\
-body { margin:0; font-size:9pt; background-color: white !important; }
+body { width:auto; border:0; margin:0; padding:0; font-size:9pt; background-color: white !important; }
 a.imageview { list-style:none; border:0; }
 img.structimage { vertical-align:bottom; border:0; }
 table.tls_segments { margin:0; width:100%; font-size:9pt; }
@@ -492,6 +492,7 @@ class HTMLSummaryReport(Report):
         self.flatfile_globals()
 
         ## These are the Jmol Java files needed for the viewer and animator
+        ## TODO: Only copy Jmol files if job not submitted via_pdb, 2009-12-08
         shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.js", analysis_dir)
@@ -550,6 +551,7 @@ class HTMLSummaryReport(Report):
             ## add tables for all TLS group selections using 1 TLS group
             ## up to max_ntls
             gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
+
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
         residual_log.close()
@@ -590,10 +592,15 @@ class HTMLSummaryReport(Report):
         console.stdoutln("HTML: Saving summary index.html")
 
     def generate_subtitle(self):
-        file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
-        jdict = pickle.load(file)
-        subtitle = "%s" % jdict["user_comment"]
-        file.close()
+        try:
+            file = open("../user_info.dat", "r")
+            jdict = pickle.load(file)
+            subtitle = "%s" % jdict["user_comment"]
+            file.close()
+        except:
+            ## This exception should only happen if a job was submitted via
+            ## the CLI
+            return ""
 
         return subtitle
 
@@ -603,7 +610,8 @@ class HTMLSummaryReport(Report):
         """
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
              self.html_title(title, subtitle),
@@ -897,10 +905,15 @@ class HTMLReport(Report):
         WEBTMP_PATH directory.
         """
         ## class HTMLReport()
-        file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
-        jdict = pickle.load(file)
-        subtitle = "%s" % jdict["user_comment"]
-        file.close()
+        try:
+            file = open("../user_info.dat", "r")
+            jdict = pickle.load(file)
+            subtitle = "%s" % jdict["user_comment"]
+            file.close()
+        except:
+            ## This exception should only happen if a job was submitted via
+            ## the CLI
+            return ""
 
         return subtitle
 
@@ -911,7 +924,8 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
              self.html_title(title, subtitle),
@@ -926,7 +940,9 @@ class HTMLReport(Report):
              '<br/>',
 
              ## MOTION ANALYSIS
+             #'<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
+             #'</center>',
              '<table><tr><td valign=top>',
              '<p class="captions">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
@@ -1035,17 +1051,18 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: Chain %s TLS Analysis" % (
             self.struct_id, chain.chain_id)
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
 
         l  = [self.html_head(title),
               self.html_title(title, subtitle),
               '<center><a href="index.html">Back to Index</a></center>',
               '<br/>' ]
 
-        ## if there were no valid chain configurations found
-        ## then write out a useful error message
+        ## if there were no valid chain configurations found then write out a 
+        ## useful error message
         if chain.partition_collection.num_chain_partitions() == 0:
-            l += ['<p>%s</p>' % (NO_VALID_CONFIGURATIONS),
+            l += ['<p>%s</p>' % (captions.NO_VALID_CONFIGURATIONS),
                   self.html_foot()]
             return "".join(l)
 
@@ -1685,6 +1702,7 @@ class HTMLReport(Report):
             tls_desc = TLS.TLSGroupDesc()
             tls_file.tls_desc_list.append(tls_desc)
             tls_desc.set_tls_group(tls.tls_group)
+            console.stdoutln("TLS_GROUP: %s" % tls.tls_group)
             for frag_id1, frag_id2 in tls.iter_segment_ranges():
                 tls_desc.add_range(chain_id, frag_id1, 
                                    chain_id, frag_id2, "ALL")
@@ -2004,7 +2022,8 @@ class HTMLReport(Report):
         """
         ## class HTMLReport()
         title = self.page_multi_chain_alignment["title"]
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
 
         l = [ self.html_head(title),
               self.html_title(title, subtitle),
@@ -2092,7 +2111,8 @@ class HTMLReport(Report):
     def html_refinement_prep(self):
         ## class HTMLReport()
         title = self.page_refinement_prep["title"]
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
 
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
@@ -2109,6 +2129,8 @@ class HTMLReport(Report):
                  conf.REFINEPREP_URL),
              '<input type="hidden" name="job_id" value="%s">' % (
                  conf.globalconf.job_id),
+             '<input type="hidden" name="struct_id" value="%s">\n' % (
+                 self.struct_id),
              '<p>%s</p>' % (captions.REFINEMENT_PREP_INFO),
              '<center><table><tr><td>',
              plot.html_link(),
@@ -2193,10 +2215,15 @@ class ChainNTLSAnalysisReport(Report):
         form.
         """
         ## class ChainNTLSAnalysisReport()
-        file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
-        jdict = pickle.load(file)
-        subtitle = "%s" % jdict["user_comment"]
-        file.close()
+        try:
+            file = open("../user_info.dat", "r")
+            jdict = pickle.load(file)
+            subtitle = "%s" % jdict["user_comment"]
+            file.close()
+        except:
+            ## This exception should only happen if a job was submitted via
+            ## the CLI
+            return ""
 
         return subtitle
 
@@ -2206,7 +2233,8 @@ class ChainNTLSAnalysisReport(Report):
         ## class ChainNTLSAnalysisReport()
         title = "%s: Chain %s Partitioned by %d TLS Groups" % (
             self.struct_id, self.chain_id, self.ntls)
-        subtitle = self.generate_subtitle()
+        #subtitle = self.generate_subtitle()
+        subtitle = conf.globalconf.user_comment
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
 
         l = [self.html_head(title),
