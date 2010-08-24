@@ -38,6 +38,13 @@ def check_remove(jdict):
     if days > DELETE_DAYS:
         return True
 
+    ## This is a temporary setting to clear out jobs submitted during
+    ## development. DEBUG is normally set to False
+    DEBUG = False
+    if DEBUG:
+        if state in ["died", "errors", "submit1"]:
+            return True
+
     if state in ["submit1", "lost_directory", "syserror"] and days > 1:
         return True
 
@@ -51,9 +58,11 @@ def remove_job(job_id):
     if not mysql.job_exists(job_id):
         return False
 
-    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
-    if job_dir and os.path.isdir(job_dir):
+    try:
+        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
         rmtree(job_dir)
+    except:
+        return False
 
     mysql.delete_jdict(job_id)
     return True
