@@ -154,6 +154,11 @@ class ISOptimization(hcsssp.HCSSSP):
             residual = tlsdict["residual"]
             num_atoms = tlsdict["num_atoms"]
             num_residues = tlsdict["num_residues"]
+
+            if residual < 0.0:
+                console.stdoutln("ERROR: Residual is negative!")
+                continue
+
             msd = residual / num_residues
             rmsd = math.sqrt(msd)
             rmsd_b = rmsd * Constants.U2B
