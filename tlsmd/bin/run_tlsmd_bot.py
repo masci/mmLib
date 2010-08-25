@@ -164,10 +164,9 @@ def running_stddev(atomnum, restype, resnum, chain, tfactor):
     res_id.append(resnum[n-1])           # store last guy
 
     ## Save RMSD(B) +/-5 residues
-    ### FIXME EAM
-    ### Not correct, because it crosses chain boundaries
-    ### and because the wrong value is calculated (std of mean, 
-    ### rather than the std of the atoms)
+    ## FIXME EAM
+    ## Not correct, because it crosses chain boundaries and because the wrong 
+    ## value is calculated (std of mean, rather than the std of the atoms)
     nbad = 0
     for s in range(5, len(avg_tfac)-5):
         stddev11 = numpy.std(avg_tfac[s-5:s+5])
@@ -199,17 +198,17 @@ def check_upload(job_id, file):
         line_num += 1
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
-        if line.startswith('EXPDTA    NMR'):
-            return "%s: NMR structure! Skipping."
+
+        elif line.startswith('EXPDTA    NMR'):
+            return "NMR structure! Skipping: %s [%s]" % (job_id, header_id)
+
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
+
         elif re.match('^ATOM.....................[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B"
-            example = re.sub(r'^ATOM.....................([0-9][a-z]).*', '\\1', line).strip()
-            msg  = "Please change lowercase to uppercase for alternate "
-            msg += "residue numbers. (E.g., change \" %s \" to \" %s \")" % (
-                example, example.upper())
-            return msg
+            return "Lowercase alternate residue names: %s [%s]" % (job_id, header_id)
+
         elif line.startswith('ATOM') and (
             Library.library_is_standard_residue(line[17:20].strip())):
             num_total += 1
@@ -229,12 +228,12 @@ def check_upload(job_id, file):
             continue
 
     if(len(atom_num) < 30):
-        return "%s: not a PDB structure or has unrecognized residue names." % (
-            job_id)
+        return "Not a PDB structure or has unrecognized residue names: %s [%s]" % (
+            job_id, header_id)
 
     if(occupancy / num_good == 0.0):
-        return "%s: All occupancies are 0.0. TLSMD won't run on this structure." % (
-            job_id)
+        return "All occupancies are 0.0. TLSMD won't run on this structure: %s [%s]" % (
+            job_id, header_id)
 
     bad_std, tmpfile = running_stddev(atom_num, res_type, res_num, chain, temp_factors)
     if bad_std > 0:
