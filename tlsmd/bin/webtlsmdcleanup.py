@@ -58,11 +58,9 @@ def remove_job(job_id):
     if not mysql.job_exists(job_id):
         return False
 
-    try:
-        job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    job_dir = os.path.join(conf.TLSMD_WORK_DIR, job_id)
+    if job_dir and os.path.isdir(job_dir):
         rmtree(job_dir)
-    except:
-        return False
 
     mysql.delete_jdict(job_id)
     return True
