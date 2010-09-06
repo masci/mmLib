@@ -256,6 +256,18 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
                   '<td colspan="12" align-text="center">Error</td></tr>']
             continue
 
+        ## XXX: DEBUG
+        DEBUG = False
+        if DEBUG:
+            console.stdoutln("tls.tls_info: %s" % tls.tls_info)
+            console.stdoutln("tls.itls_info: %s" % tls.itls_info)
+            console.stdoutln("tls.model: %s" % tls.model)
+            console.stdoutln("tls.rmsd_b: %s" % tls.rmsd_b)
+            console.stdoutln("tls.segments: %s" % tls.segments)
+            console.stdoutln("cpartition.residual: %s" % cpartition.residual())
+            for key in sorted(mtls_info.iterkeys()):
+                console.stdoutln("TLS_INFO: %s = %s" % (key, mtls_info[key]))
+
         ## Libration (L) data
         L1 = mtls_info["L1_eigen_val"] * Constants.RAD2DEG2
         L2 = mtls_info["L2_eigen_val"] * Constants.RAD2DEG2
@@ -287,7 +299,6 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##<FLATFILE>
         ## NOTE: This is in a standalone def "html_tls_group_table"
         if detail:
-            ## "Analysis of TLS Group n Chain Segments" values
             flatfile_name = "%s/%s.dat" % (os.getcwd(), conf.globalconf.job_id)
             flatfile = open(flatfile_name, "a+")
 
@@ -306,7 +317,6 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
             flatfile.write("\nDATA %s EVAL_L: %.2f,%.2f,%.2f" % (chain_ntls, L1, L2, L3))
             flatfile.write("\nDATA %s TLS_MEAN_B: %.1f" % (chain_ntls, tls.tls_mean_b()))
             flatfile.write("\nDATA %s TLS_MEAN_ANISO: %.2f" % (chain_ntls, tls.tls_mean_anisotropy()))
-
             flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
             flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (
                 chain_ntls, cpartition.residual()))
@@ -492,7 +502,6 @@ class HTMLSummaryReport(Report):
         self.flatfile_globals()
 
         ## These are the Jmol Java files needed for the viewer and animator
-        ## TODO: Only copy Jmol files if job not submitted via_pdb, 2009-12-08
         shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.js", analysis_dir)
@@ -610,7 +619,6 @@ class HTMLSummaryReport(Report):
         """
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
@@ -619,7 +627,10 @@ class HTMLSummaryReport(Report):
              ## link back to job summary page, 2009-05-26
              '<center><a href="%s?page=explore&amp;job_id=%s">' % (
                  conf.WEBTLSMD_URL, self.job_id),
-             'Back to job summary page</a></center>',
+             'Back to job summary page</a>',
+             '%s' % (const.LINK_SPACE),
+             '<a href="%s/%s/log.txt">logfile</a></center>' % (
+                 conf.TLSMD_WORK_URL, self.job_id),
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
@@ -924,7 +935,6 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
@@ -933,16 +943,17 @@ class HTMLReport(Report):
              ## link back to job summary page, 2009-05-26
              '<center><a href="%s?page=explore&amp;job_id=%s">' % (
                  conf.WEBTLSMD_URL, self.job_id),
-             'Back to job summary page</a></center>',
+             'Back to job summary page</a>',
+             '%s' % (const.LINK_SPACE),
+             '<a href="%s/%s/log.txt">logfile</a></center>' % (
+                 conf.TLSMD_WORK_URL, self.job_id),
 
              ## OPTIMIZATION PARAMETERS
              self.html_globals(),
              '<br/>',
 
              ## MOTION ANALYSIS
-             #'<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
-             #'</center>',
              '<table><tr><td valign=top>',
              '<p class="captions">%s</p>' % (captions.MOTION_ANALYSIS_TEXT)]
 
@@ -1051,7 +1062,6 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: Chain %s TLS Analysis" % (
             self.struct_id, chain.chain_id)
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l  = [self.html_head(title),
@@ -1085,7 +1095,10 @@ class HTMLReport(Report):
             #    height    = ori["pheight"],
             #    bg_color  = "White")
         except:
-            console.stdoutln("     Warning: failed to find orientation for graphics output")
+            ## TODO: Create "warning_stdoutln()" in console.py, 2009-07-16
+            msg  = "     Warning: failed to find orientation for graphics "
+            msg += "output for chain %s" % chain.chain_id
+            console.stdoutln(msg)
             print console.formatExceptionInfo()
             pass
 
@@ -1096,7 +1109,9 @@ class HTMLReport(Report):
             try:
                 self.r3d_header_file = self.generate_raster3d_header(chain)
             except:
-                console.stdoutln("     Warning: failed to generate Raster3D header")
+                msg  = "     Warning: failed to generate Raster3D header for "
+                msg += "chain %s" % chain.chain_id
+                console.stdoutln(msg)
                 print console.formatExceptionInfo()
 
         ## add tables for all TLS group selections using 1 TLS group
@@ -1229,7 +1244,9 @@ class HTMLReport(Report):
                 ## EAM FIXME:  But really something must have gone wrong 
                 ## before this point.
                 jmol_animate_file = ""
-                console.stdoutln("     Warning: Jmol setup failed in jmol_animate_html")
+                msg  = "     Warning: [%s] Jmol setup failed in " % chain_seg
+                msg += "jmol_animate_html"
+                console.stdoutln(msg)
                 print console.formatExceptionInfo()
                 pass
 
@@ -1273,7 +1290,9 @@ class HTMLReport(Report):
                 raw_r3d_file = ""
                 r3d_body_file = ""
                 png_file = ""
-                console.stdoutln("     Warning: failure in rendering PNG file")
+                msg = "     Warning: [%s] failure in rendering PNG file." % (
+                    chain_seg)
+                console.stdoutln(msg)
                 print console.formatExceptionInfo()
                 pass
 
@@ -1281,7 +1300,7 @@ class HTMLReport(Report):
         if conf.REFMAC_SKIP:
             tlsout_file = ""
             phenixout_file = ""
-            console.stdoutln("[%s] NOTE: Skipping Refmac/Phenix section" % (
+            console.stdoutln("[%s] NOTE: Skipping Refmac/Phenix section." % (
                 chain_seg))
         else:
             try:
@@ -1291,7 +1310,9 @@ class HTMLReport(Report):
             except:
                 tlsout_file = ""
                 phenixout_file = ""
-                console.stdoutln("     Warning: failed to create Refmac/Phenix files")
+                msg  = "     Warning: [%s] failed to create " % chain_seg
+                msg += "Refmac/Phenix files."
+                console.stdoutln(msg)
                 print console.formatExceptionInfo()
                 pass
 
@@ -1299,7 +1320,8 @@ class HTMLReport(Report):
         try:
             ntls_analysis = self.chain_ntls_analysis(chain, cpartition)
         except:
-            console.stderr("ERROR: Analysis of this partition failed")
+            msg = "ERROR: [%s] Analysis of this partition failed." % chain_seg
+            console.stderr(msg)
             print console.formatExceptionInfo()
             pass
 
@@ -1321,7 +1343,7 @@ class HTMLReport(Report):
              '<a href="%s">Full TLS Partition Analysis</a>' % (
                  ntls_analysis.url),
 
-             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '%s' % (const.LINK_SPACE),
 
              '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (
                  jmol_file),
@@ -1329,7 +1351,7 @@ class HTMLReport(Report):
                  conf.JMOL_SIZE, conf.JMOL_SIZE),
              'return false;">View with Jmol</a>',
 
-             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '%s' % (const.LINK_SPACE),
 
              '<a href="." onClick="'\
              'window.open('\
@@ -1342,9 +1364,13 @@ class HTMLReport(Report):
 
              '<br/>',
              '<a href="%s">Download TLSOUT File for TLSView</a>' % (tlsout_file),
-             '&nbsp;&nbsp;&nbsp;&nbsp;',
+
+             '%s' % (const.LINK_SPACE),
+
              '<a href="%s">Group description for PHENIX</a>' % (phenixout_file),
-             '&nbsp;&nbsp;&nbsp;&nbsp;',
+
+             '%s' % (const.LINK_SPACE),
+
              '<a href="%s">Generate PDBIN/TLSIN Files for REFMAC5/PHENIX</a>' % (
              "%s_REFINEMENT_PREP.html" % (self.struct_id)),
 
@@ -1766,10 +1792,6 @@ class HTMLReport(Report):
                     self.struct_id, chain.chain_id,
                     cpartition.num_tls_segments())
 
-        ## SEE:
-        ##    - http://wiki.jmol.org:81/index.php/AtomSets
-        ##    - http://chemapps.stolaf.edu/jmol/docs/index.htm
-
         ## create the Jmol script using cartoons and consistant
         ## coloring to represent the TLS groups
         js = ['load %s;' % (self.struct_path),
@@ -1867,15 +1889,18 @@ class HTMLReport(Report):
         pdb_file      = "%s.pdb" % (basename)
         raw_r3d_file  = "%s.raw" % (basename)
         r3d_body_file = "%s.r3d" % (basename)
+        chain_seg = "%s,%s" % (chain.chain_id, cpartition.num_tls_segments())
 
         ## generate animation PDB file
         try:
-            console.stdoutln("[%s,%s] TLSAnimate: creating animation PDB file..." % (
-                chain.chain_id, cpartition.num_tls_segments()))
+            console.stdoutln("[%s] TLSAnimate: creating animation PDB file..." % (
+                chain_seg))
             tlsa = TLSAnimate(chain, cpartition)
             tlsa.construct_animation(pdb_file, raw_r3d_file)
         except TLSAnimateFailure:
-            console.stdoutln("     Warning: failed to create animation PDB file.")
+            msg = "     Warning: [%s] failed to create animation PDB file." % (
+                chain_seg)
+            console.stdoutln(msg)
             print console.formatExceptionInfo()
             pass
 
@@ -1989,8 +2014,7 @@ class HTMLReport(Report):
 
         open(html_file, "w").write("".join(l))
 
-        console.stdoutln("[%s,%s] HTML: Saving %s" % (
-            chain.chain_id, cpartition.num_tls_segments(), html_file))
+        console.stdoutln("[%s] HTML: Saving %s" % (chain_seg, html_file))
 
         return html_file, raw_r3d_file, r3d_body_file
 
@@ -2021,7 +2045,6 @@ class HTMLReport(Report):
         """
         ## class HTMLReport()
         title = self.page_multi_chain_alignment["title"]
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [ self.html_head(title),
@@ -2110,7 +2133,6 @@ class HTMLReport(Report):
     def html_refinement_prep(self):
         ## class HTMLReport()
         title = self.page_refinement_prep["title"]
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
@@ -2232,7 +2254,6 @@ class ChainNTLSAnalysisReport(Report):
         ## class ChainNTLSAnalysisReport()
         title = "%s: Chain %s Partitioned by %d TLS Groups" % (
             self.struct_id, self.chain_id, self.ntls)
-        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
 
@@ -2241,7 +2262,7 @@ class ChainNTLSAnalysisReport(Report):
 
              '<center>',
              '<a href="../index.html">Back to Index</a>',
-             '&nbsp;&nbsp;&nbsp;&nbsp;',
+             '%s' % (const.LINK_SPACE),
              '<a href="../%s">Back to Chain %s Analysis</a>' % (
                  path, self.chain_id),
              '</center>',
