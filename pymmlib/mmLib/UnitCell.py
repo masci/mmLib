@@ -31,7 +31,7 @@ class UnitCell(object):
                  b = 1.0,
                  c = 1.0,
                  alpha = 90.0,
-                 beta = 90.0,
+                 beta  = 90.0,
                  gamma = 90.0,
                  space_group = "P1",
                  angle_units = "deg"):
@@ -82,7 +82,7 @@ class UnitCell(object):
         return math.degrees(self.gamma)
 
     def calc_v(self):
-        """Calculates the volume of the rhombohedrial created by the
+        """Calculates the volume of the rhombohedral created by the
         unit vectors a1/|a1|, a2/|a2|, a3/|a3|.
         """
         cos_alpha = math.cos(self.alpha)
@@ -152,7 +152,7 @@ class UnitCell(object):
         return orth_to_frac
         
     def calc_fractionalization_matrix(self):
-        """Fractional to cartesian coordinates.
+        """Fractional to Cartesian coordinates.
         """
         sin_alpha = math.sin(self.alpha)
         sin_beta  = math.sin(self.beta)
@@ -213,17 +213,17 @@ class UnitCell(object):
         """Returns the cell integer 3-Tuple where the xyz fractional
         coordinates are located.
         """
-        if xyz[0]<0.0:
+        if xyz[0] < 0.0:
             cx = int(xyz[0] - 1.0)
         else:
             cx = int(xyz[0] + 1.0)
             
-        if xyz[1]<0.0:
+        if xyz[1] < 0.0:
             cy = int(xyz[1] - 1.0)
         else:
             cy = int(xyz[1] + 1.0)
 
-        if xyz[2]<0.0:
+        if xyz[2] < 0.0:
             cz = int(xyz[2] - 1.0)
         else:
             cz = int(xyz[2] + 1.0)
@@ -256,8 +256,8 @@ class UnitCell(object):
         ccell = self.calc_cell(self.calc_orth_to_frac(centroid))
         centroid_cell = numpy.array(ccell, float)
 
-        ## compute the distance from the centroid to the
-        ## farthest point from it in the structure
+        ## compute the distance from the centroid to the farthest point from 
+        ## it in the structure.
         max_dist = 0.0
         for frag in struct.iter_amino_acids():
             for atm in frag.iter_atoms():
@@ -275,7 +275,7 @@ class UnitCell(object):
                  xyz_symm  = symop_t(xyz)
                  centroid2 = self.calc_frac_to_orth(xyz_symm)
                  
-                 if AtomMath.length(centroid - centroid2)<=max_dist2:
+                 if AtomMath.length(centroid - centroid2) <= max_dist2:
                      yield self.calc_orth_symop(symop_t)
 
 
@@ -306,10 +306,10 @@ def test_module():
 
 
     print uc
-    print "volume                   = ",uc.calc_v()
-    print "cell volume              = ",uc.calc_volume()
-    print "fractionalization matrix =\n",uc.calc_fractionalization_matrix()
-    print "orthogonalization matrix =\n",uc.calc_orthogonalization_matrix()
+    print "volume                   = ", uc.calc_v()
+    print "cell volume              = ", uc.calc_volume()
+    print "fractionalization matrix =\n", uc.calc_fractionalization_matrix()
+    print "orthogonalization matrix =\n", uc.calc_orthogonalization_matrix()
 
     print "orth * e =\n", numpy.dot(
         uc.calc_orthogonalization_matrix(), e)
@@ -342,8 +342,8 @@ def test_module():
 
     ruc = uc.calc_reciprocal_unit_cell()
     print ruc
-    print "volume      = ",ruc.calc_v()
-    print "cell volume = ",ruc.calc_volume()
+    print "volume      = ", ruc.calc_v()
+    print "cell volume = ", ruc.calc_volume()
     
     print "================================================="
 
@@ -369,6 +369,6 @@ def test_module():
         print unitx.calc_orth_symop(symop)
         print
 
-if __name__=="__main__":
+if __name__ == "__main__":
     test_module()
 ## </testing>
