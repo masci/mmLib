@@ -283,7 +283,7 @@ def library_construct_element_desc(symbol):
 
 def library_get_element_desc(symbol):
     """Loads/caches/returns a instance of the ElementDesc class for the given
-    element symbol.  The source of the element data is the
+    element symbol. The source of the element data is the
     mmLib/Data/elements.cif file.
     """
     assert isinstance(symbol, str)
@@ -428,7 +428,7 @@ def library_construct_monomer_desc(res_name):
             atom2 = cif_row.getitem_lower("atom_id_2")
             mon_desc.bond_list.append({"atom1": atom1, "atom2": atom2}) 
 
-    ## data from mmLib supplimental library in mmLib/Data/monomers.cif
+    ## data from mmLib supplemental library in mmLib/Data/monomers.cif
     mmlib_cif_data = MMLIB_MONOMERS_CIF.get_data(res_name)
     if mmlib_cif_data is not None:
         ## get additional chemical information on amino acids
@@ -527,8 +527,8 @@ def library_is_water(res_name):
 
 def library_guess_element_from_name(name0, res_name):
     """Try everything we can possibly think of to extract the element
-    symbol from the atom name.  If availible, use the monmer dictionary
-    to help narrow down the search.
+    symbol from the atom name. If available, use the monomer dictionary to
+    help narrow down the search.
     """
     ## strip any space from the name, and return now if there
     ## is nothing left to work with
@@ -536,27 +536,27 @@ def library_guess_element_from_name(name0, res_name):
     if name == "":
         return None
 
-    ## try the easy way out -- look up the atom in the monomer dictionary
-    mdesc = library_get_monomer_desc(res_name)
-    if mdesc is not None:
-        if mdesc.atom_dict.has_key(name):
-            symbol = mdesc.atom_dict[name]
-            if symbol is not None:
-                return symbol
+    if name0 != res_name:
+        ## try the easy way out -- look up the atom in the monomer dictionary
+        mdesc = library_get_monomer_desc(res_name)
+        if mdesc is not None:
+            if mdesc.atom_dict.has_key(name):
+                symbol = mdesc.atom_dict[name]
+                if symbol is not None:
+                    return symbol
+    
+            if mdesc.is_amino_acid() and name == "OXT":
+                return "O"
+    
+            if mdesc.is_amino_acid():
+                msg = "invalid amino acid atom name '%s' in residue '%s'" % (
+                    name, res_name)
+                ConsoleOutput.warning(msg)
 
-        if mdesc.is_amino_acid() and name == "OXT":
-            return "O"
+    ## okay, that didn't work...
 
-        if mdesc.is_amino_acid():
-            msg = "invalid amino acid atom name '%s' in residue '%s'" % (
-                name, res_name)
-            ConsoleOutput.warning(msg)
-
-    ## ok, that didn't work...
-
-    ## set the space_flag to true if the name starts with a space
-    ## which can indicate the name of the atom is only 1 charactor
-    ## long
+    ## set the space_flag to true if the name starts with a space, which can 
+    ## indicate the name of the atom is only 1 character long.
     if name0.startswith(" "):
         space_flag = True
     else:
@@ -569,8 +569,8 @@ def library_guess_element_from_name(name0, res_name):
             alpha_name += c
 
     ## look up two possible element symbols in the library:
-    ## e1 is the possible one-charactor symbol
-    ## e2 is the possible two-charactor symbol
+    ## e1 is the possible one-character symbol
+    ## e2 is the possible two-character symbol
     if len(alpha_name) == 0:
         return None
 
@@ -584,7 +584,7 @@ def library_guess_element_from_name(name0, res_name):
         e2_symbol = None
         e2_valid  = False
 
-    ## e1 or e2 must return somthing for us to proceed, otherwise,
+    ## e1 or e2 must return something for us to proceed, otherwise,
     ## there's just no possible element symbol contained in the atom
     ## name
     if e1_valid == False and e2_valid == False:
