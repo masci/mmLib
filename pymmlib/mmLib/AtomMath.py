@@ -2,7 +2,7 @@
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Mathmatical operations performed on mmLib.Strcuture.Atom objects.
+"""Mathematical operations performed on mmLib.Strcuture.Atom objects.
 """
 import math
 
@@ -45,22 +45,22 @@ def cross(u, v):
 ## Internal Linear Algebra (without using numpy)
 ##
 def internal_cross(u, v):
-    """Returns the cross product of two vectors. Should be indentical to
-    the output of numpy.cross(u, v).
+    """Returns the cross product of two vectors. Should be identical to the 
+    output of numpy.cross(u, v).
     """
     return(u[1]*v[2] - v[1]*u[2],
            u[2]*v[0] - v[2]*u[0],
            u[0]*v[1] - v[0]*u[1])
 
 def internal_dot(u, v):
-    """Returns the dot product of two vectors. Should be indentical to
-    the output of numpy.dot(u, v).
+    """Returns the dot product of two vectors. Should be identical to the 
+    output of numpy.dot(u, v).
     """
     return u[0]*v[0] + u[1]*v[1] + u[2]*v[2]
 
 def internal_inv3x3(u):
-    """Returns the inverse of a 3x3 matrix. Should be indentical to
-    the output of numpy.linalg.inv(u).
+    """Returns the inverse of a 3x3 matrix. Should be identical to the 
+    output of numpy.linalg.inv(u).
     """
     inv = [[0,0,0],[0,0,0],[0,0,0]]
     c = []
@@ -194,7 +194,7 @@ def rquaternionu(u, theta):
     return q
 
 def addquaternion(q1, q2):
-    """Adds quaterions q1 and q2. Quaternions are typed as Numeric
+    """Adds quaternions q1 and q2. Quaternions are typed as Numeric
     Python numpy.arrays of length 4.
     """
     assert numpy.allclose(math.sqrt(numpy.dot(q1,q1)), 1.0)
@@ -403,7 +403,7 @@ def calc_torsion_angle(a1, a2, a3, a4, sqrt=math.sqrt, acos=math.acos):
 ## Atomic ADPs
 ##
 def calc_CCuij(U, V):
-    """Calculate the correlation coefficent for anisotropic ADP tensors U
+    """Calculate the correlation coefficient for anisotropic ADP tensors U
     and V.
     """
     ## FIXME: Check for non-positive Uij's, 2009-08-19
@@ -510,7 +510,7 @@ def calc_atom_mean_temp_factor(atom_iter):
 
 
 def calc_inertia_tensor(atom_iter, origin):
-    """Calculate a moment-of-intertia tensor at the given origin assuming all
+    """Calculate a moment-of-inertia tensor at the given origin assuming all
     atoms have the same mass.
     """
     I = numpy.zeros((3,3), float)
@@ -534,7 +534,7 @@ def calc_inertia_tensor(atom_iter, origin):
     evals, evecs = linalg.eigenvectors(I)
 
     ## order the tensor such that the largest
-    ## principal compent is along the z-axis, and
+    ## principal component is along the z-axis, and
     ## the second largest is along the y-axis
     if evals[0] >= evals[1] and evals[0] >= evals[2]:
         if evals[1] >= evals[2]:

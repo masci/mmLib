@@ -11,8 +11,8 @@ import mmCIF
 
 
 class mmCIFDB(mmCIF.mmCIFData):
-    """Database class for the storage and access of structural data.  This
-    database is organized according to mmCIF data tags.  Methods to lookup
+    """Database class for the storage and access of structural data. This
+    database is organized according to mmCIF data tags. Methods to lookup
     common structure items are included.
     """
     def __str__(self):
@@ -87,7 +87,7 @@ class mmCIFDB(mmCIF.mmCIFData):
         self.set_single("entry", "id", idcode)
             
     def get_deposition_date(self):
-        """Return the origional depositoin date as stored in
+        """Return the original deposition date as stored in
         _database_pdb_ref.date_original.
         """
         return self.get_single("database_pdb_rev", "date_original")

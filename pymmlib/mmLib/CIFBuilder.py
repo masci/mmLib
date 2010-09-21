@@ -46,7 +46,7 @@ class CIFStructureBuilder(StructureBuilder.StructureBuilder):
 
     def get_cell_parameters(self):
         """Read unit information form various tags and compute
-        the fractional-to-Cartesion conversion matrix.
+        the fractional-to-Cartesian conversion matrix.
         """
         a = CIF.makeNumber(self.cif.tags["cell_length_a"])
         b = CIF.makeNumber(self.cif.tags["cell_length_b"])

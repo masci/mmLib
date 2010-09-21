@@ -120,7 +120,7 @@ class Structure(object):
             return self.default_model[chain_idx]
         except TypeError:
             raise KeyError, chain_idx
-            
+
     def __iter__(self):
         """Iterates the Chain objects in the Structure.
         """
@@ -157,7 +157,7 @@ class Structure(object):
         raise TypeError, model_chain
 
     def sort(self):
-        """Sorts all Models and Chains in the Structure occording to standard
+        """Sorts all Models and Chains in the Structure according to standard
         model_id, chain_id, and fragment_id sorting rules.
         """
         self.model_list.sort()
@@ -165,9 +165,9 @@ class Structure(object):
             model.sort()
 
     def add_model(self, model, delay_sort=True):
-        """Adds a Model to a Structure.  Raises the ModelOverwrite exception
+        """Adds a Model to a Structure. Raises the ModelOverwrite exception
         if the model_id of the Model matches the model_id of a Model
-        already in the Structure.  If there are no Models in the Structure,
+        already in the Structure. If there are no Models in the Structure,
         the Model is used as the default Model.
         """
         assert isinstance(model, Model)
@@ -269,7 +269,7 @@ class Structure(object):
         self.model_dict[chain.model_id].remove_chain(chain)
 
     def get_chain(self, chain_id):
-        """Returns the Chain object matching the chain_id charactor.
+        """Returns the Chain object matching the chain_id character.
         """
         if self.default_model is None:
             return None
@@ -329,7 +329,7 @@ class Structure(object):
     def iter_fragments(self):
         """Iterates over all Fragment objects in the default Model.
         The iteration is performed in order according the the parent
-        Chain's chain_id, and the Fragment's positioin within the chain.
+        Chain's chain_id, and the Fragment's position within the chain.
         """
         if self.default_model is None:
             raise StopIteration
@@ -341,7 +341,7 @@ class Structure(object):
     def iter_all_fragments(self):
         """Iterates over all Fragment objects in all Models.
         The iteration is performed in order according the the parent
-        Chain's chain_id, and the Fragment's positioin within the chain.
+        Chain's chain_id, and the Fragment's position within the chain.
         """
         for model in self.model_list:
             for chain in model.chain_list:
@@ -398,7 +398,7 @@ class Structure(object):
     
     def iter_nucleic_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
-        subclas NucleicAcidResidue.
+        subclass NucleicAcidResidue.
         """
         for chain in self.iter_chains():
             for frag in chain.iter_nucleic_acids():
@@ -421,7 +421,7 @@ class Structure(object):
         return False
 
     def count_standard_residues(self):
-        """Counts the number of stardard residues in the default Model.
+        """Counts the number of standard residues in the default Model.
         """
         n = 0
         for na in self.iter_standard_residues():
@@ -679,7 +679,7 @@ class Structure(object):
                     edesc2 = Library.library_get_element_desc(atm2.element)
 
                     ## this will usually occur if an atom name does not match
-                    ## the one found in the associated monomor library
+                    ## the one found in the associated monomer library
                     if edesc1 is None or edesc2 is None:
                         continue
 
@@ -810,7 +810,7 @@ class Model(object):
         chain.model = None
 
     def get_chain(self, chain_id):
-        """Returns the Chain object matching the chain_id charactor.
+        """Returns the Chain object matching the chain_id character.
         """
         if self.chain_dict.has_key(chain_id):
             return self.chain_dict[chain_id]
@@ -859,9 +859,9 @@ class Model(object):
         return n
 
     def iter_fragments(self):
-        """Iterates over all Fragment objects.  The iteration is performed
+        """Iterates over all Fragment objects. The iteration is performed
         in order according the the parent Chain's chain_id, and the
-        Fragment's positioin within the chain.
+        Fragment's position within the chain.
         """
         for chain in self.chain_list:
             for frag in chain.fragment_list:
@@ -1242,7 +1242,7 @@ class Segment(object):
         raise TypeError, fragment_idx
 
     def index(self, fragment):
-        """Return the 0-based index of the Framgent in the segment list.
+        """Return the 0-based index of the fragment in the segment list.
         """
         return self.fragment_list.index(fragment)
 
@@ -1532,8 +1532,8 @@ class Segment(object):
             frag.set_chain_id(chain_id)
 
     def is_homolog(self, segment2):
-        """Returns True if there are no dissagreements in the
-        sequences of this segment and segment2.
+        """Returns True if there are no disagreements in the sequences of 
+        this segment and segment2.
         """
         hdict = {}
 
@@ -1547,7 +1547,7 @@ class Segment(object):
         return True
 
 class Chain(Segment):
-    """Chain objects conatain a ordered list of Fragment objects.
+    """Chain objects contain an ordered list of Fragment objects.
     """
     def __init__(self,
                  model_id = 1,
@@ -1976,7 +1976,7 @@ class Fragment(object):
         return len(self.atom_list)
 
     def iter_all_atoms(self):
-        """Iterates of all Atoms in the Fragment includeing Altlocs.
+        """Iterates of all Atoms in the Fragment including Altlocs.
         """
         for atm in self.atom_order_list:
             if isinstance(atm, Atom):
@@ -2037,7 +2037,7 @@ class Fragment(object):
         return self.chain.model.structure
 
     def create_bonds(self):
-        """Contructs bonds within a fragment.  Bond definitions are retrieved
+        """Constructs bonds within a fragment. Bond definitions are retrieved
         from the monomer library.
         """
         mdesc = Library.library_get_monomer_desc(self.res_name)
@@ -2141,7 +2141,7 @@ class Residue(Fragment):
 
     def get_offset_residue(self, offset):
         """Returns the residue along the chain at the given integer offset
-        from self.  Returns None if there is no residue at that offset, or
+        from self. Returns None if there is no residue at that offset, or
         if the fragment found is not the same type of residue as self.
         """
         assert isinstance(offset, int)
@@ -2151,9 +2151,9 @@ class Residue(Fragment):
         return None
 
     def create_bonds(self):
-        """Contructs bonds within a fragment.  Bond definitions are retrieved
-        from the monomer library.  This version also constructs the bonds
-        between adjectent residues.
+        """Constructs bonds within a fragment. Bond definitions are retrieved
+        from the monomer library. This version also constructs the bonds
+        between adjacent residues.
         """
         Fragment.create_bonds(self)
         return
@@ -2239,7 +2239,7 @@ class AminoAcidResidue(Residue):
     def calc_mainchain_bond_angle(self):
         """Calculates main chain bond angles (N-CA-C, N-CA-CB, CB-CA-C,
         CA-C-O, CA-C-(next)N, C-(next residue)N-(next residue)CA) and
-        returnst the result as a 6-tuple in that order.  Angles involving
+        returns the result as a 6-tuple in that order. Angles involving
         missing atoms are returned as None in the tuple.
         """
         aN       = self.get_atom('N')
@@ -2463,12 +2463,12 @@ class Altloc(dict):
 
 class Atom(object):
     """Class representing a single atom.  Atoms have the following default
-    attributes.  If a attribue has the value None, then the attribue was
-    never set.  If the attribue has a default, then it is required.
+    attributes.  If an attribute has the value None, then the attribute was
+    never set.  If the attribute has a default, then it is required.
 
     Atom[alt_loc]    - Atom objects in alternate locations can be accessed
                        by using Python's dictionary syntax with the alt_loc
-                       charactor
+                       character
     iter(Atom)       - iterates over all alt_loc versions of the Atom
     Atom.name        - label of the atom
     Atom.alt_loc     - alternate location indicater for the atom
@@ -2825,8 +2825,8 @@ class Atom(object):
                     atom2_symop       = None,
                     standard_res_bond = False):
 
-        """Creates a bond between this atom and the argumentatom.  The
-        arugment bond_type is a string, atom1_symop and atom2_symop are
+        """Creates a bond between this atom and the argumentatom. The
+        argument bond_type is a string, atom1_symop and atom2_symop are
         symmetry operations to be applied to self and the argument atom
         before distance calculations, and standard_res_bond is a flag
         used to indicate this bond is a standard bond.
@@ -3113,8 +3113,8 @@ class Bond(object):
         return None
 
     def get_atom1(self):
-        """Returns atom #1 of the pair of bonded atoms.  This is also
-        accessable by bond.atom1.
+        """Returns atom #1 of the pair of bonded atoms. This is also 
+        accessible by bond.atom1.
         """
         return self.atom1
 
@@ -3657,32 +3657,32 @@ def fragment_id_split(frag_id):
         return (int(frag_id[:-1]), frag_id[-1:])
 
 def fragment_id_eq(frag_id1, frag_id2):
-    """Performs a proper equivelancy of frament_id strings according
+    """Performs a proper equivalency of fragment_id strings according
     to their sequence number, then insertion code.
     """
     return frag_id1 == frag_id2
     
 def fragment_id_lt(frag_id1, frag_id2):
-    """Performs a proper less than comparison of frament_id strings
+    """Performs a proper less than comparison of fragment_id strings
     according to their sequence number, then insertion code.
     """
     return fragment_id_split(frag_id1) < fragment_id_split(frag_id2)
     
 def fragment_id_le(frag_id1, frag_id2):
-    """Performs a proper less than or equal to comparison of frament_id
+    """Performs a proper less than or equal to comparison of fragment_id
     strings according to their sequence number, then insertion code.
     """
     return fragment_id_split(frag_id1) <= fragment_id_split(frag_id2)
 
 def fragment_id_gt(frag_id1, frag_id2):
-    """Performs a proper greator than comparison of frament_id strings
+    """Performs a proper greater than comparison of fragment_id strings
     according to their sequence number, then insertion code.
     """
     return fragment_id_split(frag_id1) > fragment_id_split(frag_id2)
     
 def fragment_id_ge(frag_id1, frag_id2):
-    """Performs a proper greator then or equal to comparison of
-    frament_id strings according to their sequence number, then
+    """Performs a proper greater than or equal to comparison of
+    fragment_id strings according to their sequence number, then
     insertion code.
     """
     return fragment_id_split(frag_id1) >= fragment_id_split(frag_id2)
@@ -3714,7 +3714,7 @@ def iter_fragments(fragiter, start_frag_id = None, stop_frag_id = None):
 
 class FragmentID(object):
     """Stores a fragment_id as integer residue sequence number and a
-    single-charactor insertion code.
+    single-character insertion code.
     """
     def __init__(self, frag_id):
         self.res_seq = 1
@@ -3888,9 +3888,8 @@ def test_module():
         res_name = "GLY",
         fragment_id = "1")
 
-    struct.add_atom(atm)
-    #for a in struct.iter_atoms():
-    #    print "WARNING! Bad atom name: ", a
+    for a in struct.iter_atoms():
+        print "WARNING! Bad atom name: ", a
 
 if __name__ == "__main__":
     test_module()

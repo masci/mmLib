@@ -90,25 +90,25 @@ class StructureBuilder(object):
         self.name_service_list = []
 
     def read_atoms(self):
-        """This method needs to be reimplemented in a fuctional subclass.
+        """This method needs to be reimplemented in a functional subclass.
         The subclassed read_atoms method should call load_atom once for
-        every atom in the sturcture, and should not call any other
+        every atom in the structure, and should not call any other
         load_* methods.
         """
         pass
 
     def load_atom(self, atm_map):
-        """Called repeatedly by the implementation of read_atoms to
-        load all the data for a single atom.  The data is contained
-        in the atm_map argument, and is not well documented at this
-        point.  Look at this function and you'll figure it out.
+        """Called repeatedly by the implementation of read_atoms to load all 
+        the data for a single atom. The data is contained in the atm_map 
+        argument, and is not well documented at this point. 
+        Look at this function and you'll figure it out.
         """
         ## create atom object
         atm = Structure.Atom(**atm_map)
 
-        ## survey the atom and structure and determine if the atom requres
+        ## survey the atom and structure and determine if the atom requires
         ## being passed to the naming service
-        ## absence of requred fields
+        ## absence of required fields
         if not atm.fragment_id or not atm.chain_id:
             self.name_service_list.append(atm)
             return atm
@@ -127,9 +127,9 @@ class StructureBuilder(object):
         return atm
 
     def name_service(self):
-        """Runs the name service on all atoms needing to be named.  This is
-        a complicated function which corrects most commonly found errors and
-        omitions from PDB files.
+        """Runs the name service on all atoms needing to be named. This is a
+        complicated function which corrects most commonly found errors and
+        omissions from PDB files.
         """
         if len(self.name_service_list) == 0:
             return
@@ -152,15 +152,15 @@ class StructureBuilder(object):
 
         ## NAME SERVICE FOR POLYMER ATOMS
 
-        ## what if we are given a list of atoms with res_name, frag_id,
-        ## and model_id where the frag_id are sequental?  they can be
-        ## sequental several ways using insertion codes, but large breaks
-        ## often denote chain breaks
+        ## What if we are given a list of atoms with res_name, frag_id,
+        ## and model_id where the frag_id are sequential? They can be
+        ## sequential several ways using insertion codes, but large breaks
+        ## often denote chain breaks.
 
-        ## I need to handle the special case of a list of polymer residues
-        ## which do not have chain_ids.   This requires a first pass over
-        ## the atom list usind different rules than what I use for sorting
-        ## out non-polymers
+        ## We need to handle the special case of a list of polymer residues
+        ## which do not have chain_ids. This requires a first pass over the
+        ## atom list using different rules than what we use for sorting out
+        ## non-polymers.
 
         current_polymer_type      = None
         current_polymer_model_id  = None
@@ -181,7 +181,7 @@ class StructureBuilder(object):
             elif Library.library_is_nucleic_acid(atm.res_name):
                 polymer_type = "dna"
             else:
-                ## if the atom is not a polymer, we definately have a break
+                ## if the atom is not a polymer, we definitely have a break
                 ## in this chain
                 current_polymer_type      = None
                 current_polymer_model_id  = None
@@ -262,7 +262,7 @@ class StructureBuilder(object):
             num_chains = max(num_chains, len(frag_list))
 
         for chain_index in xrange(num_chains):
-            ## get next availible chain_id
+            ## get next available chain_id
             chain_id = next_chain_id("")
 
             ## assign the chain_id to all the atoms in the chain
@@ -365,9 +365,9 @@ class StructureBuilder(object):
             ## get model dictionary
             model_dict = cr_dict[cr_key]
 
-            ## inspect the model dictionary to determine the number
-            ## of fragments in each model -- they should be the same
-            ## and have a 1:1 cooraspondance; if not, match up the
+            ## inspect the model dictionary to determine the number of 
+            ## fragments in each model -- they should be the same
+            ## and have a 1:1 correspondence; if not, match up the
             ## fragments as much as possible
             max_frags = -1
             for (model, frag_list) in model_dict.iteritems():
@@ -409,7 +409,7 @@ class StructureBuilder(object):
         """After loading all atom records, use the list of atom records to
         build the structure.
         """
-        ## name atoms which didn't fit into the Structure hierarch with
+        ## name atoms which didn't fit into the Structure hierarchy with
         ## their names from the file
         self.name_service()
 
@@ -418,7 +418,7 @@ class StructureBuilder(object):
             self.struct.sort()
 
     def read_metadata(self):
-        """This method needs to be reimplemented in a fuctional subclass.
+        """This method needs to be reimplemented in a functional subclass.
         The subclassed read_metadata method should call the various
         load_* methods to set non-atom coordinate data for the Structure.
         """
@@ -432,7 +432,7 @@ class StructureBuilder(object):
 
     def load_unit_cell(self, ucell_map):
         """Called by the implementation of load_metadata to load the
-        unit cell pararameters for the structure.
+        unit cell parameters for the structure.
         """
         for key in ("a", "b", "c", "alpha", "beta", "gamma"):
             if not ucell_map.has_key(key):
@@ -621,16 +621,15 @@ class StructureBuilder(object):
         pass
     
     def read_end(self):
-        """This method needs to be reimplemented in a fuctional subclass.
+        """This method needs to be reimplemented in a functional subclass.
         The subclassed read_end method can be used for any clean up from
         the file loading process you need, or may be left unimplemented.
         """
         pass
 
     def read_end_finalize(self):
-        """Called for final cleanup after structure source readinging is
-        done.  Currently, this method does nothing but may be used in
-        future versions.
+        """Called for final cleanup after structure source reading is done. 
+        Currently, this method does nothing but may be used in future versions.
         """
         ConsoleOutput.debug("read_end_finalize()")
         

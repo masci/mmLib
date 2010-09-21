@@ -13,8 +13,8 @@ DEG2RAD  = PI / 180.0
 RAD2DEG2 = RAD2DEG**2
 DEG2RAD2 = DEG2RAD**2
 
-## converting between U (angstrom^2) temp factor values and B temp
-## factor values
+## converts between U (angstrom^2) temperature factor values and B temperature
+## factor values.
 U2B = 8.0 * PI2
 B2U = 1.0 / (8.0 * PI2)
 B2UE4 = B2U * 10000.0

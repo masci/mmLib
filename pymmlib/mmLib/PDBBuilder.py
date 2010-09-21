@@ -12,7 +12,7 @@ import Structure
 import StructureBuilder
 
 
-## class specification for alpha helicies mapping mmLib classification
+## class specification for alpha helices mapping mmLib classification
 ## strings with PDB helix class integers, -1 where no PDB helix class
 ## would apply; here is the PDB helix class description
 ##
@@ -108,8 +108,8 @@ def setmapi(smap, skey, dmap, dkey):
 
 
 def setmapf(smap, skey, dmap, dkey):
-    """Sets the dmap/dkey with the float value from smap/skey or
-    default if not smap/skey value is found.
+    """Sets the dmap/dkey with the float value from smap/skey or default if 
+    not smap/skey value is found.
     """
     if smap.has_key(skey) and smap[skey]!="":
         try:
@@ -204,7 +204,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         ## process the non-coordinate records
         self.process_pdb_records(self.pdb_file, filter_func)
 
-        ## load chemical bond informaton
+        ## load chemical bond information
         self.load_bonds(self.bond_map)
         del self.bond_map
 
@@ -485,8 +485,8 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         except KeyError:
             return
 
-        ## get the dictionary describing this helix or
-        ## create it if it doesn't exist
+        ## get the dictionary describing this helix or create it if it does 
+        ## not exist
         helix = None
         for helix_x in self.helix_list:
             if helix_x["helix_id"]==helix_id:
@@ -522,8 +522,8 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         except KeyError:
             return
 
-        ## get the dictionary describing this sheet or
-        ## create it if it doesn't exist
+        ## get the dictionary describing this sheet or create it if it does 
+        ## not exist
         sheet = None
         for sheet_x in self.beta_sheet_list:
             if sheet_x["sheet_id"]==sheet_id:
@@ -586,8 +586,8 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
         except KeyError:
             return
 
-        ## get the dictionary describing this site or
-        ## create it if it doesn't exist
+        ## get the dictionary describing this site or create it if it does 
+        ## not exist
         site = None
         for site_x in self.site_list:
             if site_x["site_id"] == site_id:
@@ -607,7 +607,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
             seq_key   = "seq%d" % (i)
             icode_key = "icode%d" % (i)
 
-            ## check for manditory fields
+            ## check for mandatory fields
             try:
                 rec[chain_key]
                 rec[seq_key]
@@ -630,7 +630,7 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
                 site["fragment_list"] = [residue]
 
     def bond_processor(self, **args):
-        """Complicated method.  Required arguments are:
+        """Complicated method. Required arguments are:
         rec = PDB record
         atm1/2 = Atom object, if you want to override the lookup
         chain_id_field1/2: PDB field name for the chain ID
@@ -688,8 +688,8 @@ class PDBStructureBuilder(StructureBuilder.StructureBuilder,
             return None
 
         ## the bond map is keyed from the 2-tuple of the atoms involved in
-        ## the bond; they are sorted by their object ID just to have
-        ## a definate order
+        ## the bond; they are sorted by their object ID just to have a 
+        ## definite order
         if id(atm1) < id(atm2):
             bkey = (atm1, atm2)
         else:
@@ -968,7 +968,7 @@ class PDBFileBuilder(object):
             author["authorList"] = ",".join(name_list)
 
     def add_primary_structure_section(self):
-        """DBREF,SEQADV,SEQRES,MODRES
+        """DBREF, SEQADV, SEQRES, MODRES
         """
         for chain in self.struct.iter_chains():
             if len(chain.sequence) == 0:
@@ -997,15 +997,15 @@ class PDBFileBuilder(object):
                     seq_index += 1
 
     def add_heterogen_section(self):
-        """HET,HETNAM,HETSYN,FORMUL
+        """HET, HETNAM, HETSYN, FORMUL
         """
         pass
 
     def add_secondary_structure_section(self):
-        """HELIX,SHEET,TURN
+        """HELIX, SHEET, TURN
         PDB files do not put separate secondary structure descriptions
         within MODEL definitions, so you have to hope the models
-        do not differ in secondary structure.  mmLib allows separate
+        do not differ in secondary structure. mmLib allows separate
         MODELs to have different secondary structure, but one MODEL must
         be chosen for the PDF file, so the default Model of the Structure
         is used.
@@ -1088,7 +1088,7 @@ class PDBFileBuilder(object):
                     pass
 
     def add_connectivity_annotation_section(self):
-        """SSBOND,LINK,SLTBRG,CISPEP
+        """SSBOND, LINK, SLTBRG, CISPEP
         """
         pass
 
@@ -1128,7 +1128,7 @@ class PDBFileBuilder(object):
                 pass
 
     def add_crystallographic_coordinate_transformation_section(self):
-        """CRYST1,ORIGXn,SCALEn,MTRIXn,TVECT
+        """CRYST1, ORIGXn, SCALEn, MTRIXn, TVECT
         """
         cryst1 = PDB.CRYST1()
         self.pdb_file.append(cryst1)
@@ -1144,7 +1144,7 @@ class PDBFileBuilder(object):
         cryst1["sgroup"] = self.struct.unit_cell.space_group.pdb_name
 
     def add_coordinate_section(self):
-        """ MODEL,ATOM,SIGATM,ANISOU,SIGUIJ,TER,HETATM,ENDMDL 
+        """MODEL, ATOM, SIGATM, ANISOU, SIGUIJ, TER, HETATM, ENDMDL
         """
         if len(self.struct.model_list) > 1:
             ## case 1: multiple models
@@ -1174,7 +1174,7 @@ class PDBFileBuilder(object):
         pass
     
     def bookkeeping_section(self):
-        """MASTER,END
+        """MASTER, END
         """
         ## END
         end = PDB.END()
@@ -1203,7 +1203,7 @@ class PDBFileBuilder(object):
                 ter_rec["resSeq"]  = res_seq
                 ter_rec["iCode"]   = icode
 
-        ## hetatm records for non-standard groups
+        ## HETATM records for non-standard groups
         for chain in self.struct.iter_chains():
             for frag in chain.iter_non_standard_residues():
                 for atm in frag.iter_all_atoms():

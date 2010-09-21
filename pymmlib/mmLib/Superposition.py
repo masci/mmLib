@@ -175,8 +175,8 @@ def SuperimposeAtoms(atom_pair_list):
 
 
 def SuperimposeAtomsOutlierRejection(alist, rmsd_cutoff = 1.0, max_cycles = 100):
-    """Superimpose two homologus protein chains. The argument alist is a list of
-    2-tuples.  The 2-tuples are the 1:1 atoms to superimpose.  The alignment
+    """Superimpose two homologous protein chains. The argument alist is a list of
+    2-tuples. The 2-tuples are the 1:1 atoms to superimpose. The alignment
     procedure incrementally omits atoms with large deviations until the rmsd of
     the least squares superposition is less than or equal to rmsd_cutoff, or the
     number of cycles exceeds max_cycles.

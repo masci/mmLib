@@ -1059,7 +1059,6 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
             tls_desc_str = self.tlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
-
 ## END: PHENIX (OUTPUT) class. Christoph Champ, 2007-12-17
 ################################################################################
 
@@ -1214,7 +1213,6 @@ class TLSFileFormatPHENIX(TLSFileFormat):
             tls_desc_str = self.ptlsout_tls_desc(tls_desc)
             fil.write(tls_desc_str + "\n")
         fil.write(" }\n}\n")
-
 ## END: PHENIX (INPUT) class. Christoph Champ, 2007-11-02
 ###############################################################################
 
@@ -1231,7 +1229,7 @@ def solve_TLS_Ab(A, b):
     V  = numpy.transpose(Vt)
     Ut = numpy.transpose(U)
 
-    ## analize singular values and generate smallness cutoff
+    ## analyze singular values and generate smallness cutoff
     cutoff = max(W) * 1E-10
 
     ## make W
@@ -1271,7 +1269,7 @@ def set_TLSiso_b(b, i, Uiso, w):
 
 def set_TLSiso_A(A, i, j, x, y, z, w):
     """Sets the one row of matrix A starting at A[i,j] with the isotropic
-    TLS model coefficents for an atom located at t position x, y, z with
+    TLS model coefficients for an atom located at t position x, y, z with
     least-squares weight w.  Matrix A is filled to coumn j+12.
     """
     ## use label indexing to avoid confusion!
@@ -1405,7 +1403,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     else:
         good_L_eigens.append(2)
 
-    ## no good L eigen values
+    ## no good L eigenvalues
     if len(good_L_eigens) == 0:
         Tr1, Tr2, Tr3 = linalg.eigenvalues(T0)
 
@@ -1425,7 +1423,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
         rdict["Tr3_rmsd"] = calc_rmsd(Tr3)
         return rdict
 
-    ## one good eigen value -- reconstruct RL about it
+    ## one good eigenvalue -- reconstruct RL about it
     elif len(good_L_eigens) == 1:
         i = good_L_eigens[0]
         evec = RL[i]
@@ -1444,7 +1442,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
             RL[0] = xevec
             RL[1] = yevec
 
-    ## two good eigen values -- reconstruct RL about them
+    ## two good eigenvalues -- reconstruct RL about them
     elif len(good_L_eigens) == 2:
         i = good_L_eigens[0]
         j = good_L_eigens[1]
@@ -1528,7 +1526,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
                           [-crho[2],     0.0,  crho[0]],
                           [ crho[1], -crho[0],     0.0] ], float)
 
-    ## calculate tranpose of cPRHO, ans cS
+    ## calculate transpose of cPRHO, ans cS
     cSt = numpy.transpose(cS)
     cPRHOt = numpy.transpose(cPRHO)
 
@@ -1561,8 +1559,7 @@ def calc_itls_center_of_reaction(iT, iL, iS, origin):
     cL2rho = numpy.zeros(3, float)
     cL3rho = numpy.zeros(3, float)
 
-    ## libration axes shifts in the origional orthogonal
-    ## coordinate system
+    ## libration axes shifts in the original orthogonal coordinate system
     rdict["L1_rho"] = numpy.dot(RLt, cL1rho)
     rdict["L2_rho"] = numpy.dot(RLt, cL2rho)
     rdict["L3_rho"] = numpy.dot(RLt, cL3rho)
@@ -1642,8 +1639,8 @@ def calc_LS_displacement(cor, Lval, Lvec, Lrho, Lpitch, position, prob):
 
 def set_TLS_A(A, i, j, x, y, z, w):
     """Sets the six rows of matrix A starting at A[i,j] with the TLS
-    coefficents for an atom located at position x,y,z with least-squares
-    weight w.  Matrix A is filled to row i+6 and column j+20.
+    coefficients for an atom located at position x,y,z with least-squares
+    weight w. Matrix A is filled to row i+6 and column j+20.
     """
     ## use label indexing to avoid confusion!
     T11, T22, T33, T12, T13, T23, L11, L22, L33, L12, L13, L23, \
@@ -1864,11 +1861,11 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     else:
         good_L_eigens.append(2)
 
-    ## no good L eigen values
+    ## no good L eigenvalues
     if len(good_L_eigens) == 0:
         return rdict
 
-    ## one good eigen value -- reconstruct RL about it
+    ## one good eigenvalue -- reconstruct RL about it
     elif len(good_L_eigens) == 1:
         i = good_L_eigens[0]
         evec = RL[i]
@@ -1887,7 +1884,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
             RL[0] = xevec
             RL[1] = yevec
 
-    ## two good eigen values -- reconstruct RL about them
+    ## two good eigenvalues -- reconstruct RL about them
     elif len(good_L_eigens) == 2:
         i = good_L_eigens[0]
         j = good_L_eigens[1]
@@ -1975,7 +1972,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
                           [-crho[2],     0.0,  crho[0]],
                           [ crho[1], -crho[0],     0.0] ], float)
 
-    ## calculate tranpose of cPRHO, ans cS
+    ## calculate transpose of cPRHO, ans cS
     cSt = numpy.transpose(cS)
     cPRHOt = numpy.transpose(cPRHO)
 
@@ -2024,8 +2021,7 @@ def calc_TLS_center_of_reaction(T0, L0, S0, origin):
     else:
         cL3rho = numpy.zeros(3, float)
 
-    ## libration axes shifts in the origional orthogonal
-    ## coordinate system
+    ## libration axes shifts in the original orthogonal coordinate system
     rdict["L1_rho"] = numpy.dot(RLt, cL1rho)
     rdict["L2_rho"] = numpy.dot(RLt, cL2rho)
     rdict["L3_rho"] = numpy.dot(RLt, cL3rho)
@@ -2199,8 +2195,8 @@ CA_PIVOT_ATOMS = {
     "GLN": "CA" }
 
 def set_L_A(A, i, j, x, y, z, w):
-    """Sets coefficents of a L tensor in matrix A for an atom at position
-    x,y,z and weight w.  This starts at A[i,j] and ends at A[i+6,j+6]
+    """Sets coefficients of a L tensor in matrix A for an atom at position
+    x,y,z and weight w. This starts at A[i,j] and ends at A[i+6,j+6]
     Using weight w.
     """
     L11, L22, L33, L12, L13, L23 = (j, j+1, j+2, j+3, j+4, j+5)
@@ -2213,7 +2209,7 @@ def set_L_A(A, i, j, x, y, z, w):
     U13 = U11 + 4
     U23 = U11 + 5
 
-    ## TLS coefficents
+    ## TLS coefficients
     xx = x * x
     yy = y * y
     zz = z * z
@@ -3766,7 +3762,7 @@ class GLTLSGroup(Viewer.GLDrawList):
         ## time should be in the range 0.0-0.1.0
         sin_tm = math.sin(2.0 * math.pi * self.properties["period"] * self.properties["time"])
 
-        ## calculate L eignvalue displacements at the given
+        ## calculate L eigenvalue displacements at the given
         ## probability levels
         C = Gaussian.GAUSS3C[self.properties["adp_prob"]]
 

@@ -43,8 +43,7 @@ def OpenFile(path, mode):
     """Right now this only supports opening GZip'ed files, in the future
     it might be extended for URLs.
     """
-    ## if path is not a string, assume it is a file object and
-    ## return it
+    ## if path is not a string, assume it is a file object and return it
     
     if isinstance(path, str):
         base, ext = os.path.splitext(path)
@@ -64,7 +63,7 @@ def get_file_extension(path, default_extension = "PDB"):
     if not isinstance(path, str):
         return default_extension
     
-    ## check/remove compressed file extention
+    ## check/remove compressed file extension
     base, ext = os.path.splitext(path)
     if ext.lower() in ('.z', '.gz', '.bz2'):
         path = base
@@ -106,7 +105,7 @@ def LoadStructure(**args):
 
     file = <file object or path; required>
     format = <'PDB'|'CIF'; defaults to 'PDB'>
-    structure = <mmLib.Structure object to build on; defaults to createing new>
+    structure = <mmLib.Structure object to build on; defaults to creating new>
     sequence_from_structure = [True|False] <infer sequence from structure file, default False>
     library_bonds = [True|False] <build bonds from monomer library, default False>
     distance_bonds = [True|False] <build bonds from covalent distance calculations, default False>

@@ -136,7 +136,7 @@ class SymOp(object):
         return numpy.allclose(self.R, symop[0]) and numpy.allclose(self.t, symop[1])
 
     def is_identity(self):
-        """Returns True if this SymOp is a identity symmetry operation
+        """Returns True if this SymOp is an identity symmetry operation
         (no rotation, no translation), otherwise returns False.
         """
         if numpy.allclose(self.R, numpy.identity(3, float)) and \
@@ -173,8 +173,8 @@ class SpaceGroup(object):
         return iter(self.symop_list)
 
     def check_group_name(self, name):
-        """Checks if the given name is a name for this space group,
-        returns True or False.  The space group name can be in several forms:
+        """Checks if the given name is a name for this space group, returns 
+        True or False. The space group name can be in several forms:
         the short name, the longer PDB-style name, or the space group number.
         """
         if name == self.short_name:       return True
@@ -184,9 +184,9 @@ class SpaceGroup(object):
         return False
 
     def iter_equivalent_positions(self, vec):
-        """Iterate the symmetry equivelant positions of the argument vector.
-        The vector must already be in fractional coordinates, and the
-        symmetry equivelant vectors are also in fractional coordinates.
+        """Iterate the symmetry equivalent positions of the argument vector.
+        The vector must already be in fractional coordinates, and the symmetry 
+        equivalent vectors are also in fractional coordinates.
         """
         for symop in self.symop_list:
             yield symop(vec)
@@ -7754,8 +7754,8 @@ SpaceGroupList = [
 
 
 def GetSpaceGroup(name):
-    """Returns the SpaceGroup instance for the given name.  If the
-    space group is not found, return the P1 space group as default.
+    """Returns the SpaceGroup instance for the given name. If the space group 
+    is not found, return the P1 space group as default.
     """
     for sg in SpaceGroupList:
         if sg.check_group_name(name):

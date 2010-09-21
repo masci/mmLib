@@ -2,8 +2,8 @@
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""Brookhaven PDB v2.2 file parser.  All records in the PDB v2.2
-specification have coorasponding classes defined here.  PDB files are
+"""Brookhaven PDB v2.2 file parser. All records in the PDB v2.2
+specification have corresponding classes defined here. PDB files are
 loaded into a list of these cassed, and also can be constrcted/modified
 and written back out as PDB files.
 """
@@ -57,7 +57,7 @@ class PDBRecord(dict):
             field_char_len = end - start + 1
             
             ## access the namespace of this class to write the field
-            ## if a class has a special function defined for retrieveing
+            ## if a class has a special function defined for retrieving
             ## this record, it should use it
             if get_func:
                 ln += get_func(self)
@@ -151,14 +151,14 @@ class PDBRecord(dict):
         return retval
 
     def reccat_list(self, rec_list, field, sep):
-        """Call reccat, then split the result by the seperator.
+        """Call reccat, then split the result by the separator.
         """
         listx = self.reccat(rec_list, field).split(sep)
         listx = [x.strip() for x in listx]
         return listx
 
     def reccat_tuplelist(self, rec_list, field, sep1, sep2):
-        """Call reccat_list with sep1 as the list seperator, then split
+        """Call reccat_list with sep1 as the list separator, then split
         the items into tuples by sep2.
         """
         listx = []
@@ -458,7 +458,7 @@ class EXPDTA(PDBRecord):
 
     def process(self, recs):
         """Returns a list of 2-tuples: (technique, comment) where technique
-        is one of the accepted tequniques.
+        is one of the accepted techniques.
         """
         expdta_list = []
 
@@ -957,7 +957,7 @@ class CISPEP(PDBRecord):
         ("modNum", 44, 46, "integer", "rjust", None),
         ("measure", 54, 59, "float.2", "rjust", None)]
     
-## SECTION 7: Miscellanious Features Section
+## SECTION 7: Miscellaneous Features Section
 class SITE(PDBRecord):
     """The SITE records supply the identification of groups comprising
     important sites in the macromolecule.
@@ -1531,8 +1531,8 @@ class RecordProcessor(object):
     """
     """
     def __is_sucsessive_record(self, prev_rec, rec):
-        """Returns True if the current record looks like it is the sucessive
-        PDB record in a list of records.  Filds like continuation and serNum
+        """Returns True if the current record looks like it is the successive
+        PDB record in a list of records.  Fields like continuation and serNum
         are checked, as well as record name.
         """
         ## check record names
@@ -1543,7 +1543,7 @@ class RecordProcessor(object):
         ##       here to catch common mistakes which are found in PDB
         ##       files
 
-        ## check for "continuation" field continous records
+        ## check for "continuation" field continuous records
         if prev_rec.has_key("continuation") or rec.has_key("continuation"):
             prev_continuation = prev_rec.get("continuation", 1)
             continuation = rec.get("continuation", 1)
