@@ -1,5 +1,12 @@
-# speed test for the C PDB reading module -- it looks like it's about
-# 450% faster than the Python implementation
+#!/usr/bin/env python
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""Speed test for the C PDB reading module -- it appears to be about 450%
+faster than the Python implementation.
+"""
+
 from __future__ import generators
 
 import sys
@@ -59,7 +66,7 @@ def mk_aniso_dict():
 
 def inc_aniso_dict(aniso_dict, aniso):
     assert aniso > 0.0
-    
+
     x = aniso / aniso_bin_width
     r = x % 1.0
     if r > 0.0:
@@ -204,12 +211,12 @@ def read_pdb(path):
         stats["Uadv_prot"] = Uadv_prot / Unum_prot
     except ZeroDivisionError:
         pass
-    
+
     try:
         stats["Aadv_prot"] = Aadv_prot / Anum_prot
     except ZeroDivisionError:
         pass
-    
+
     return stats
 
 def prnt_stats(stats):
@@ -240,4 +247,3 @@ if __name__ == "__main__":
             db = shelve.open("anisodb.dat")
             db[stats["id"]] = stats
             db.close()
-               
