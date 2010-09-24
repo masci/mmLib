@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-## This program performs some basic tests in the mmLib.Structure object model
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""This program performs some basic tests in the mmLib.Structure object model.
+"""
 
 import sys
 import time
@@ -35,7 +40,7 @@ def bond_test(bond, atom, stats):
     """Tests the mmLib.Structure.Bond object
     """
     stats["bond_count"] += 1
-    
+
     assert isinstance(bond, Structure.Bond)
     assert bond.atom1 != bond.atom2
     assert bond.atom1 == atom or bond.atom2 == atom
@@ -48,20 +53,20 @@ def bond_test(bond, atom, stats):
     assert bond.get_partner(bond.atom1) == bond.atom2
     assert bond.get_partner(bond.atom2) == bond.atom1
 
-    assert bond.get_atom1()==bond.atom1
-    assert bond.get_atom2()==bond.atom2
+    assert bond.get_atom1() == bond.atom1
+    assert bond.get_atom2() == bond.atom2
 
-    assert bond.get_fragment1()==bond.atom1.fragment
-    assert bond.get_fragment2()==bond.atom2.fragment
+    assert bond.get_fragment1() == bond.atom1.fragment
+    assert bond.get_fragment2() == bond.atom2.fragment
 
-    assert bond.get_chain1()==bond.atom1.fragment.chain
-    assert bond.get_chain2()==bond.atom2.fragment.chain
+    assert bond.get_chain1() == bond.atom1.fragment.chain
+    assert bond.get_chain2() == bond.atom2.fragment.chain
 
-    assert bond.get_model1()==bond.atom1.fragment.chain.model
-    assert bond.get_model2()==bond.atom2.fragment.chain.model
+    assert bond.get_model1() == bond.atom1.fragment.chain.model
+    assert bond.get_model2() == bond.atom2.fragment.chain.model
 
-    assert bond.get_structure1()==bond.atom1.fragment.chain.model.structure
-    assert bond.get_structure2()==bond.atom2.fragment.chain.model.structure
+    assert bond.get_structure1() == bond.atom1.fragment.chain.model.structure
+    assert bond.get_structure2() == bond.atom2.fragment.chain.model.structure
 
 
 def atom_test(atom, stats):
@@ -71,14 +76,14 @@ def atom_test(atom, stats):
     stats["testing"]     = atom
 
     len(atom)
-    
+
     alt_loc = atom.get_structure().get_default_alt_loc()
 
     atom.get_fragment()
     atom.get_chain()
     atom.get_model()
     atom.get_structure()
-    
+
     visited_atm_list = []
     for atm in atom.iter_alt_loc():
         assert isinstance(atm, Structure.Atom)
@@ -128,18 +133,18 @@ def fragment_test(frag, stats):
         assert isinstance(atm, Structure.Atom)
         assert atm in frag
         assert atm.name in frag
-        
+
         assert atm not in visited_atm_list
         visited_atm_list.append(atm)
 
         assert frag[atm.name] == atm
         assert frag.get_atom(atm.name) == atm
-        assert atm.get_fragment()==frag
-        assert atm.get_chain()==frag.get_chain()
-        assert atm.get_model()==frag.get_model()
-        assert atm.get_structure()==frag.get_structure()
+        assert atm.get_fragment() == frag
+        assert atm.get_chain() == frag.get_chain()
+        assert atm.get_model() == frag.get_model()
+        assert atm.get_structure() == frag.get_structure()
 
-        assert atm.alt_loc==alt_loc or atm.alt_loc==""
+        assert atm.alt_loc == alt_loc or atm.alt_loc == ""
 
     ## test iter_all_atoms
     for atm in frag.iter_all_atoms():
@@ -151,7 +156,7 @@ def fragment_test(frag, stats):
         assert isinstance(bond, Structure.Bond)
         assert bond.atom1 in frag or bond.atom2 in frag
         num_bonds += 1
-        
+
     f = frag.get_offset_fragment(-1)
     f = frag.get_offset_fragment(1)
 
@@ -196,10 +201,10 @@ def chain_test(chain, stats):
         assert chain[chain.index(frag)] == frag
         assert chain.get_fragment(frag.fragment_id) == frag
 
-        assert frag.get_chain()==chain
-        assert frag.get_model()==chain.get_model()
-        assert frag.get_structure()==chain.get_structure()
-    
+        assert frag.get_chain() == chain
+        assert frag.get_model() == chain.get_model()
+        assert frag.get_structure() == chain.get_structure()
+
     chain.has_amino_acids()
     chain.count_amino_acids()
     for frag in chain.iter_amino_acids():
@@ -226,18 +231,18 @@ def chain_test(chain, stats):
     chain.count_waters()
     for frag in chain.iter_waters():
         assert frag.is_water()
-        
+
     for atm in chain.iter_atoms():
         assert isinstance(atm, Structure.Atom)
-        assert atm.get_chain()==chain
-        assert atm.get_model()==chain.get_model()
-        assert atm.get_structure()==chain.get_structure()
+        assert atm.get_chain() == chain
+        assert atm.get_model() == chain.get_model()
+        assert atm.get_structure() == chain.get_structure()
 
     for atm in chain.iter_all_atoms():
         assert isinstance(atm, Structure.Atom)
-        assert atm.get_chain()==chain
-        assert atm.get_model()==chain.get_model()
-        assert atm.get_structure()==chain.get_structure()
+        assert atm.get_chain() == chain
+        assert atm.get_model() == chain.get_model()
+        assert atm.get_structure() == chain.get_structure()
 
     for bond in chain.iter_bonds():
         assert isinstance(bond, Structure.Bond)
@@ -252,23 +257,23 @@ def model_test(model, stats):
 
     for chain in model.iter_chains():
         assert isinstance(chain, Structure.Chain)
-        assert chain.get_model()==model
-        assert chain.get_structure()==model.get_structure()
+        assert chain.get_model() == model
+        assert chain.get_structure() == model.get_structure()
 
     for frag in model.iter_fragments():
         assert isinstance(frag, Structure.Fragment)
-        assert frag.get_model()==model
-        assert frag.get_structure()==model.get_structure()
+        assert frag.get_model() == model
+        assert frag.get_structure() == model.get_structure()
 
     for atm in model.iter_atoms():
         assert isinstance(atm, Structure.Atom)
-        assert atm.get_model()==model
-        assert atm.get_structure()==model.get_structure()
+        assert atm.get_model() == model
+        assert atm.get_structure() == model.get_structure()
 
     for atm in model.iter_all_atoms():
         assert isinstance(atm, Structure.Atom)
-        assert atm.get_model()==model
-        assert atm.get_structure()==model.get_structure()
+        assert atm.get_model() == model
+        assert atm.get_structure() == model.get_structure()
 
     model.has_amino_acids()
     model.count_amino_acids()
@@ -306,8 +311,8 @@ def model_test(model, stats):
     ## test AlphaHelix
     for helix in model.iter_alpha_helicies():
         assert isinstance(helix, Structure.AlphaHelix)
-        assert helix.get_model()==model
-        assert helix.get_structure()==model.get_structure()
+        assert helix.get_model() == model
+        assert helix.get_structure() == model.get_structure()
 
         for frag in helix.iter_fragments():
             assert isinstance(frag, Structure.Fragment)
@@ -321,8 +326,8 @@ def model_test(model, stats):
     ## test BetaSheet
     for sheet in model.iter_beta_sheets():
         assert isinstance(sheet, Structure.BetaSheet)
-        assert sheet.get_model()==model
-        assert sheet.get_structure()==model.get_structure()
+        assert sheet.get_model() == model
+        assert sheet.get_structure() == model.get_structure()
 
         for frag in sheet.iter_fragments():
             assert isinstance(frag, Structure.Fragment)
@@ -335,8 +340,8 @@ def model_test(model, stats):
 
         for strand in sheet.iter_strands():
             assert isinstance(strand, Structure.Strand)
-            assert strand.get_model()==model
-            assert strand.get_structure()==model.get_structure()
+            assert strand.get_model() == model
+            assert strand.get_structure() == model.get_structure()
 
             for frag in strand.iter_fragments():
                 assert isinstance(frag, Structure.Fragment)
@@ -350,8 +355,8 @@ def model_test(model, stats):
     ## test Site
     for site in model.iter_sites():
         assert isinstance(site, Structure.Site)
-        assert site.get_model()==model
-        assert site.get_structure()==model.get_structure()
+        assert site.get_model() == model
+        assert site.get_structure() == model.get_structure()
 
         for frag in site.iter_fragments():
             assert isinstance(frag, Structure.Fragment)
@@ -361,7 +366,6 @@ def model_test(model, stats):
 
         for atm in site.iter_all_atoms():
             assert isinstance(atm, Structure.Atom)
-
 
 
 def struct_test(struct, stats):
@@ -376,12 +380,12 @@ def struct_test(struct, stats):
     ## iterate over all atoms
     for atm in struct.iter_all_atoms():
         assert isinstance(atm, Structure.Atom)
-        assert atm.get_structure()==struct
+        assert atm.get_structure() == struct
 
     ## make sure the default alt_loc was used when constructing the
     ## structure
     for atm in struct.iter_atoms():
-        assert atm.alt_loc=="" or atm.alt_loc==struct.default_alt_loc
+        assert atm.alt_loc == "" or atm.alt_loc == struct.default_alt_loc
 
     for frag in struct.iter_all_fragments():
         assert isinstance(frag,Structure. Fragment)        
@@ -414,7 +418,7 @@ def struct_test(struct, stats):
         assert frag.is_water()
 
     old_model = struct.get_default_model()
-    
+
     for model in struct.iter_models():
         struct.set_default_model(model)
 
@@ -470,7 +474,7 @@ def struct_test(struct, stats):
         struct.count_bonds()
 
     struct.set_model(old_model)
-    
+
     stats["testing"] = None
 
 
@@ -520,51 +524,51 @@ def cmp_struct(struct1, struct2):
     assert struct1.count_fragments() == struct2.count_fragments()
     assert struct1.count_atoms()     == struct2.count_atoms()
     assert struct1.count_all_atoms() == struct2.count_all_atoms()
-    
+
     def cmp_atoms(atm1, atm2):
         try:
             assert atm1.element == atm2.element
         except AssertionError:
             print "%s != %s" % (atm1.element, atm2.element)
             raise
-        
-        assert atm1.name          == atm2.name
-        assert atm1.fragment_id   == atm2.fragment_id
-        assert atm1.res_name      == atm2.res_name
-        assert atm1.chain_id      == atm2.chain_id
-        assert atm1.model_id      == atm2.model_id
-        assert atm1.alt_loc       == atm2.alt_loc
 
-        assert (atm1.position==None and atm2.position==None) or \
+        assert atm1.name        == atm2.name
+        assert atm1.fragment_id == atm2.fragment_id
+        assert atm1.res_name    == atm2.res_name
+        assert atm1.chain_id    == atm2.chain_id
+        assert atm1.model_id    == atm2.model_id
+        assert atm1.alt_loc     == atm2.alt_loc
+
+        assert (atm1.position == None and atm2.position == None) or \
                numpy.allclose(atm1.position, atm2.position)
 
-        assert (atm1.sig_position==None and atm2.sig_position==None) or \
+        assert (atm1.sig_position == None and atm2.sig_position == None) or \
                numpy.allclose(atm1.sig_position, atm2.sig_position)
-        
-        assert atm1.occupancy==atm2.occupancy or \
+
+        assert atm1.occupancy == atm2.occupancy or \
                numpy.allclose(atm1.occupancy, atm2.occupancy)
 
-        assert atm1.sig_occupancy==atm2.sig_occupancy or \
+        assert atm1.sig_occupancy == atm2.sig_occupancy or \
                numpy.allclose(atm1.sig_occupancy, atm2.sig_occupancy)
 
-        assert atm1.temp_factor==atm2.temp_factor or \
+        assert atm1.temp_factor == atm2.temp_factor or \
                numpy.allclose(atm1.temp_factor, atm2.temp_factor)
 
-        assert atm1.sig_temp_factor==atm2.sig_temp_factor or \
+        assert atm1.sig_temp_factor == atm2.sig_temp_factor or \
                numpy.allclose(atm1.sig_temp_factor, atm2.sig_temp_factor)
 
-        assert atm1.charge==atm2.charge or \
+        assert atm1.charge == atm2.charge or \
                numpy.allclose(atm1.charge, atm2.charge)
-        
+
         U1 = atm1.get_U()
         U2 = atm2.get_U()
-        assert (U1==None and U2==None) or numpy.allclose(U1, U2)
+        assert (U1 == None and U2 == None) or numpy.allclose(U1, U2)
 
     for atm1 in struct1.iter_all_atoms():
         model2 = struct2.get_model(atm1.model_id)
         chain2 = model2.get_chain(atm1.chain_id)
         frag2  = chain2.get_fragment(atm1.fragment_id)
-        atm2  = frag2.get_atom(atm1.name, atm1.alt_loc)
+        atm2   = frag2.get_atom(atm1.name, atm1.alt_loc)
 
         try:
             cmp_atoms(atm1, atm2)
@@ -588,7 +592,7 @@ def file_verify(path, struct, stats):
     structure and the file description.
     """
     print "[file verify %s]" % path
-    
+
     if get_file_extension(path) == "PDB":
         fil_stats = test_util.pdb_stats(path)
 
@@ -609,19 +613,19 @@ def save_verify(struct, stats):
     print "[temp.pdb]"
     FileIO.SaveStructure(fil = "temp.pdb", struct = struct, format = "PDB")
     pdb_struct = FileIO.LoadStructure(
-        fil              = "temp.pdb",
-        library_bonds    = True);
+        fil           = "temp.pdb",
+        library_bonds = True);
     cmp_struct(struct, pdb_struct)
-    
+
     ## mmCIF
     print "[temp.cif]"
     FileIO.SaveStructure(fil = "temp.cif", struct = struct, format = "CIF")
-    
+
     cif_struct = FileIO.LoadStructure(
-        fil              = "temp.cif",
-        library_bonds    = True)
+        fil           = "temp.cif",
+        library_bonds = True)
     cmp_struct(struct, cif_struct)
-    
+
 
 WEAKREF_LIST = []
 WEAKREF_PATH = {}
@@ -629,7 +633,7 @@ def weakref_callback(ref):
     print "STRUCTURE DESTROYED: ",WEAKREF_PATH[ref]
     del WEAKREF_PATH[ref]
     WEAKREF_LIST.remove(ref)
-    
+
 
 def main(walk_path, start_path):
     print "Running Python Macromolecular Library Test Program"
@@ -637,7 +641,6 @@ def main(walk_path, start_path):
     print "This program will throw a AssertionError (or worse!) if it"
     print "runs into any problems."
     print
-
 
     for path in test_util.walk_pdb_cif(walk_path, start_path):
         print "[%s]" % (path)
@@ -652,7 +655,6 @@ def main(walk_path, start_path):
         sref = weakref.ref(struct, weakref_callback)
         WEAKREF_PATH[sref] = path
         WEAKREF_LIST.append(sref)
-
 
         ## test the mmLib.Structure object API and
         ## with massive sanity checking
@@ -690,7 +692,6 @@ def main(walk_path, start_path):
         time2 = time.time()
         print "Tests Time (sec)-----:",int(time2-time1)
 
-
         ## dereference!
         struct    = None
         struct_cp = None
@@ -700,7 +701,6 @@ def main(walk_path, start_path):
         ## force garbage collection
         gc.collect()
         print
-
 
 
 def usage():
@@ -717,6 +717,5 @@ if __name__ == "__main__":
         start_path = sys.argv[2]
     except IndexError:
         start_path = None
-    
-    main(path, start_path)
 
+    main(path, start_path)

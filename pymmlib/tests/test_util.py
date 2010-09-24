@@ -1,12 +1,18 @@
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""Misc. testing utility code common to the test programs.
+"""
+
+## Python
 from __future__ import generators
 import os
 import sys
 import re
 
+## pymmlib
 from mmLib import FileIO
-
-"""Misc. testing utility code code common to the test programs.
-"""
 
 pdb_regex = ("[\w+\.]+pdb",
              "[\w\.]+pdb\.gz",
@@ -55,7 +61,7 @@ def walk(path, start_path = None, regex_args = ()):
 
         if do_yield:
             yield pathx
-            
+
 def walk_pdb(path, start_path = None):
     return walk(path, start_path=start_path, regex_args=pdb_regex)
 
@@ -154,7 +160,7 @@ def cif_stats(path):
 	    sys.exit(1)
 	else:
 	    atom_site_ids[aid] = ln
-        
+
     return stats
 
 
@@ -166,7 +172,7 @@ if __name__ == "__main__":
             x = "gunzip %s" % (pathx)
             print "CMD: ",x
             os.system(x)
-            
+
             if pathx.endswith(".Z"):
                 pathx = pathx[:-2]
             else:
@@ -174,7 +180,6 @@ if __name__ == "__main__":
 
         (dir, filename) = os.path.split(pathx)
 
-        
         dest = os.path.join("/data/pdb/pdball", filename)
 
         if not os.path.isfile(dest):

@@ -1,9 +1,16 @@
 #!/usr/bin/env python
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""This example uses the Python code profiler to load a file with mmLib.
+We use this to help performance tune mmLib.
+"""
 
-## This example uses the Python code profiler to load a file with mmLib
-## I use this to help performance tune mmLib
-
+## Python
 import sys
+
+## pymmlib
 import test_util
 from mmLib import FileIO
 

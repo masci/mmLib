@@ -1,12 +1,18 @@
 #!/usr/bin/env python
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
 
+## Python
 import os
 import sys
 import popen2
-import test_util
 import gc
 
+## pymmlib
 import kid
+import test_util
 from mmLib import mmCIF, FileIO
 
 NOTFOUND = "########"
@@ -27,7 +33,7 @@ class mmCIFRowKid(object):
             return self.cif_row[x]
         except (KeyError, TypeError):
             return NOTFOUND
-        
+
 
 class mmCIFTableKid(object):
     def __init__(self, cif_table = None):
@@ -67,10 +73,10 @@ class mmCIFDataKid(object):
         except (KeyError, TypeError):
             return mmCIFTableKid()
 
-        
+
 def cif2html(cif_path, html_path):
     fileobj = FileIO.OpenFile(cif_path, "r")
-    
+
     cif_file = mmCIF.mmCIFFile()
     print "loading..."
     cif_file.load_file(fileobj)
