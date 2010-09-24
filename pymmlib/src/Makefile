@@ -1,10 +1,10 @@
-TARGET  =pdbmodule.so
-INCLUDES=
-CFLAGS 	=-g -I/usr/include/python2.5 -D_UNIX -fPIC
-LFLAGS 	=
-CC 	=gcc
+TARGET	= pdbmodule.so
+INCLUDES= 
+CFLAGS	= -g -I/usr/include/python2.5 -D_UNIX -fPIC
+LFLAGS	= 
+CC 	= gcc
 
-SOURCE 	= pdbmodule.c
+SOURCE	= pdbmodule.c
 OBJ	= pdbmodule.o
 
 all: $(TARGET)
