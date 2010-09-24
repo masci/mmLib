@@ -1,33 +1,34 @@
 #!/usr/bin/env python
-
 ## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distrobution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
+"""This program creates "elements.cif" using the data in this file, and the
+CCP4 "atomsf.lib" library file.
+"""
 
-## This program creates "elements.cif" using the data in this file, and the
-## CCP4 "atomsf.lib" library file
-
+## Python
 import os
 import sys
 
+## pymmlib
 from mmLib.mmCIF import *
 
 class Element(object):
     """Class for holding the properties of a atomic element.
     """
     def __init__(self,
-                 name                    = "",
-                 symbol                  = "",
-                 group                   = "",
-                 period                  = "",
-                 atomic_number           = 0,
-                 atomic_weight           = 0.0,
-                 atomic_radius           = 0.0,
-                 covalent_radius         = 0.0,
-                 van_der_waals_radius    = 2.0,
-                 electronegativity       = 0.0,
-                 color                   = (1.0, 1.0, 1.0)):
+                 name                 = "",
+                 symbol               = "",
+                 group                = "",
+                 period               = "",
+                 atomic_number        = 0,
+                 atomic_weight        = 0.0,
+                 atomic_radius        = 0.0,
+                 covalent_radius      = 0.0,
+                 van_der_waals_radius = 2.0,
+                 electronegativity    = 0.0,
+                 color                = (1.0, 1.0, 1.0)):
 
         self.name                 = name
         self.symbol               = symbol
@@ -1042,4 +1043,3 @@ if __name__ == "__main__":
     add_CCP4_atomsf(doc, "atomsf.lib")
 
     doc.save_file(fil=sys.stdout)
-
