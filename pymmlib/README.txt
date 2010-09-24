@@ -12,19 +12,19 @@ and the files which describe them.
 
 REQUIREMENTS:
   * Python >= 2.4 (the iterators use yield, True/False)
-  * numpy >= 1.0
+  * numpy  >= 1.0
 
 Additional requirements for the mmCIF Editor and tlsview.py Viewer:
-  * PyOpenGL         >= 2.0.0.44 (http://pyopengl.sourceforge.net/)
-  * gtk              >= 2.0/2.2  (http://www.gtk.org/)
-  * PyGtk            >= 1.99.16  (http://www.pygtk.org/)
-  * GtkGLExt         >= 1.0      (http://gtkglext.sourceforge.net)
-  * PyGtkGLExt       >= 1.0      (http://gtkglext.sourceforge.net)
+  * PyOpenGL   >= 2.0.0.44 (http://pyopengl.sourceforge.net/)
+  * gtk        >= 2.0/2.2  (http://www.gtk.org/)
+  * PyGtk      >= 1.99.16  (http://www.pygtk.org/)
+  * GtkGLExt   >= 1.0      (http://gtkglext.sourceforge.net)
+  * PyGtkGLExt >= 1.0      (http://gtkglext.sourceforge.net)
 
 HARDWARE:
 If you want to use the GLViewer.py module, or use the mmLib Molecular 
 Viewer, you will need OpenGL hardware acceleration provided by your video
-card and driver.  I have tested this on a NVIDIA 5200FX using RedHat 9.0
+card and driver. We have tested this on a NVIDIA 5200FX using RedHat 9.0
 and the latest NVIDIA-6106 driver.
 
 INSTALLATION:
