@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Copyright 2002-2009 by PyMMLib Development Group (see AUTHORS file)
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
@@ -13,11 +13,14 @@ import re
 import pygtk
 pygtk.require("2.0")
 
+
 import gobject
 import gtk
 import gtk.gtkgl
 
+
 import OpenGL
+
 from OpenGL.GL            import *
 from OpenGL.GLU           import *
 from OpenGL.GLUT          import *
@@ -26,8 +29,9 @@ from mmLib import Constants, FileIO, Viewer, R3DDriver, OpenGLDriver, Structure,
 
 
 ###############################################################################
-### Debug
+### Debuggin
 ###
+
 def print_U(tensor):
     print "%7.4f %7.4f %7.4f\n"\
           "%7.4f %7.4f %7.4f\n"\
@@ -40,6 +44,7 @@ def print_U(tensor):
 ###############################################################################
 ### Utility Widgets
 ###
+
 class DictListTreeView(gtk.TreeView):
     """If you ever thought a multi-column listbox should be as easy as
     creating a list of Python dictionaries, this class is for you!
@@ -193,7 +198,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
         glFlush()
 
     def gl_begin(self):
-        """Sets up the OpenGL drawing context for drawing. If
+        """Sets up the OpenGL drawing context for drawing.  If
         no context is availible (hiddent window, not created yet),
         this method returns False, otherwise it returns True.
         """
@@ -302,6 +307,7 @@ class GtkGLViewer(gtk.gtkgl.DrawingArea, Viewer.GLViewer):
         dialog = R3DDialog(path)
         dialog.run()
         dialog.destroy()
+
 
 
 ###############################################################################
@@ -488,7 +494,7 @@ class GLPropertyEditor(gtk.Notebook):
         return table
 
     def destroy(self, widget):
-        """Called after this widget is destroyed. Make sure to remove the
+        """Called after this widget is destroyed.  Make sure to remove the
         callback we installed to monitor property changes.
         """
         self.gl_object.glo_remove_update_callback(self.properties_update_cb)
@@ -733,7 +739,7 @@ class GLPropertyEditor(gtk.Notebook):
 
 class GLPropertyTreeControl(gtk.TreeView):
     """Hierarchical tree view of the GLObjects which make up
-    the molecular viewer. The purpose of this widget is to alllow
+    the molecular viewer.  The purpose of this widget is to alllow
     easy navigation through the hierarchy.
     """
     
@@ -889,7 +895,7 @@ class GLPropertyEditDialog(gtk.Window):
 
     def view_combo_activate(self, entry, junk):
         pass
-
+    
 
 class GLPropertyBrowserDialog(gtk.Dialog):
     """Dialog for manipulating the properties of a GLViewer.
@@ -1203,7 +1209,7 @@ def calc_atom_weight(atm):
 
 class TLSDialog(gtk.Dialog):
     """Dialog for the visualization and analysis of TLS model parameters
-    describing rigid body motion of a structure. The TLS model parameters
+    describing rigid body motion of a structure.  The TLS model parameters
     can either be extracted from PDB REMARK statements, or loaded from a
     CCP4/REFMAC TLSIN file.
     """    
@@ -1428,7 +1434,7 @@ class TLSDialog(gtk.Dialog):
 
     def add_tls_group(self, tls):
         """Adds the TLS group and creates tls.gl_tls OpenGL
-        renderer. The tls argument is a dictionary.
+        renderer.  The tls argument is a dictionary.
         """
         self.tls_list.append(tls)
 
@@ -2621,7 +2627,7 @@ class MainWindow(object):
             tab["gl_prop_browser"].rebuild_gl_object_tree()
 
     def add_struct(self, struct, new_tab=False, new_window=False):
-        """Adds the Structure to the window. Returns the newly created
+        """Adds the Structure to the window.  Returns the newly created
         StructureContext for the window.
         """
         ## create a StructureContext used by the viewer for
@@ -2815,7 +2821,7 @@ class MainWindow(object):
 
 
 class ViewerApp(object):
-    """Viewer application manages the windows. One
+    """Viewer application manages the windows.  One
     one of these objects is created and used globally.
     """
     def __init__(self, first_path=None):
