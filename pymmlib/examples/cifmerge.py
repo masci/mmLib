@@ -17,7 +17,7 @@ class mmCIFValidator(object):
         self.dict_list = []
         self.cif_save_cache = {}
         self.parent_tag_cache = {}
-        
+
     def load_dictionary(self, path):
         """Loads a mmCIF dictionary into the manager
         """
@@ -41,7 +41,7 @@ class mmCIFValidator(object):
         return "_%s.%s" % (table_name, column)
 
     def lookup_cif_save(self, tag):
-        """Returns the first save block found in the list of dictionaries
+        """Returns the first save block found in the list of dictionaries.
         """
         try:
             return self.cif_save_cache[tag]
@@ -69,7 +69,7 @@ class mmCIFValidator(object):
             table_namex, columnx = self.split_tag(tag)
             if table_name == table_namex:
                 yield cif_save
-                
+
     def iter_mandatory_columns(self, table_name):
         """Iterates the mandatory subsection names of a section.
         """
@@ -125,8 +125,7 @@ class mmCIFValidator(object):
         return child_tag_list
 
     def is_root_tag(self, tag):
-        """Returns True if the tag has linked children and no
-        parent tags.
+        """Returns True if the tag has linked children and no parent tags.
         """
         children = self.lookup_children(tag)
         if len(children) == 0:
@@ -142,7 +141,7 @@ class Any(object):
     """
     def __eq__(self, other):
         return True
-    
+
 
 class mmCIFMerge(object):
     def __init__(self, name, validator):
@@ -191,21 +190,20 @@ class mmCIFMerge(object):
         for cif_table in cif_data:
             for cif_row in cif_table:
                 for (column, value) in cif_row.items():
-                    if value=="." or value=="?" or value=="":
+                    if value == "." or value == "?" or value == "":
                         del cif_row[column]
 
     def add_parent_values(self, cif_data):
-        """Checks all linked values in the cif_data block for validity
-        by checking all child values aginst parent values and ensureing
-        the parent values exist.  If the parent values do not exist, they
-        are added.
+        """Checks all linked values in the cif_data block for validity by 
+        checking all child values aginst parent values and ensureing the 
+        parent values exist. If the parent values do not exist, they are added.
         """
         for cif_table in cif_data:
             for column in cif_table.columns:
                 tag        = self.validator.join_tag(cif_table.name, column)
                 parent_tag = self.validator.lookup_parent(tag)
 
-                if parent_tag==tag:
+                if parent_tag == tag:
                     continue
 
                 ## if we get here, then this table/column has a parent
@@ -228,7 +226,7 @@ class mmCIFMerge(object):
                         continue
 
                     parent_add_list.append(child_value)
-                    
+
                 ## add any unaccounted for parent values
                 for value in parent_add_list:
                     try:
@@ -249,9 +247,9 @@ class mmCIFMerge(object):
 
     def change_root_value(
         self, cif_data, table_name, column, old_value, new_value):
-        """Changes the value of the table_name.column from old value
-        to new_value, and propagates that change throughout all linked items
-        in the cif_data.  If the new_value matches a row in the root table,
+        """Changes the value of the table_name.column from old value to 
+        new_value, and propagates that change throughout all linked items
+        in the cif_data. If the new_value matches a row in the root table,
         then the row containing old_value is removed instead of having its
         value changed.
         """
@@ -273,25 +271,25 @@ class mmCIFMerge(object):
 
             ## check for a row in the table matching the new value
             for cif_row in cif_table:
-                if cif_row.get(column)==new_value:
+                if cif_row.get(column) == new_value:
                     new_cif_row = cif_row
-                elif cif_row.get(column)==old_value:
+                elif cif_row.get(column) == old_value:
                     old_cif_row = cif_row
 
             ## if there was a row in the table already matching the new
             ## value, then use it and remove the old row
-            if old_cif_row==None and new_cif_row==None:
+            if old_cif_row == None and new_cif_row == None:
                 cif_row = mmCIFRow()
                 cif_table.append(cif_row)
                 cif_row[column] = new_value
 
-            elif old_cif_row!=None and new_cif_row==None:
+            elif old_cif_row != None and new_cif_row == None:
                 old_cif_row[column] = new_value
 
-            elif old_cif_row==None and new_cif_row!=None:
+            elif old_cif_row == None and new_cif_row != None:
                 cif_table.remove(old_cif_row)
 
-            elif old_cif_row!=None and new_cif_row!=None:
+            elif old_cif_row != None and new_cif_row != None:
                 cif_table.remove(old_cif_row)
 
         ## set the child values
@@ -313,7 +311,7 @@ class mmCIFMerge(object):
                 except KeyError:
                     pass
                 else:
-                    if value==old_value:
+                    if value == old_value:
                         num_changed += 1
                         cif_row[column] = new_value
 
@@ -344,42 +342,41 @@ class mmCIFMerge(object):
             ## the new value if they exist
             old_cif_row = None
             new_cif_row = None
-            
+
             for cif_row in cif_table:
-                if cif_row.get(column)==old_value:
+                if cif_row.get(column) == old_value:
                     old_cif_row = cif_row
-                if cif_row.get(column)==new_value:
+                if cif_row.get(column) == new_value:
                     new_cif_row = cif_row
 
             keep_cif_row = None
 
-            if new_cif_row!=None:
+            if new_cif_row != None:
                 keep_cif_row = new_cif_row
 
-            elif old_cif_row!=None:
+            elif old_cif_row != None:
                 old_cif_row[column] = new_value
                 keep_cif_row = old_cif_row
 
             else:
                 if column not in cif_table.columns:
                     cif_table.columns.append(column)
-                
+
                 keep_cif_row = cif_row = mmCIFRow()
                 cif_table.append(cif_row)
                 cif_row[column] = new_value
-                
-            ## remove all the rows except for the one matching
-            ## the new_value
+
+            ## remove all the rows except for the one matching the new_value
             remove_list = []
             for cif_row in cif_table:
-                if cif_row!=keep_cif_row:
+                if cif_row != keep_cif_row:
                     remove_list.append(cif_row)
 
             for cif_row in remove_list:
                 cif_table.remove(cif_row)
 
         ## STEP 2:
-        ## Now get their little children too!  If the child tables exist
+        ## Now get their little children too! If the child tables exist
         ## in the cif_data at all, then set the appropriate column of
         ## every row to new_value.
         root_tag = self.validator.join_tag(table_name, column)
@@ -414,14 +411,14 @@ class mmCIFMerge(object):
             tag = self.validator.lookup_table_primary_tag(cif_table.name)
             if tag == None:
                 continue
-            
+
             table_name, column = self.validator.split_tag(tag)
 
             ## we are only interested in primary tags which are also
             ## root tags
             if self.validator.is_root_tag(tag) == False:
                 continue
-            
+
             if column not in cif_table.columns:
                 continue
 
@@ -455,12 +452,12 @@ class mmCIFMerge(object):
                 ## and nothing needs to be done
                 will_merge = True
                 for (col, val) in cif_row.items():
-                    if crx.has_key(col)==False:
+                    if crx.has_key(col) == False:
                         continue
-                    if crx[col]!=val:
+                    if crx[col] != val:
                         will_merge = False
                         break
-                if will_merge==True:
+                if will_merge == True:
                     continue
 
                 ## after a lot of thought, this seems to make sense
@@ -490,7 +487,7 @@ class mmCIFMerge(object):
         """Returns a tuple of the values in cif_row in the order of columns.
         For rows which do not have data for a column, the special class
         Any() is created which compares True against any value.
-        
+
         merge_accel: (cif_row[column1], cif_row[column2], ...)
         """
         merge_accel = []
@@ -513,7 +510,7 @@ class mmCIFMerge(object):
         for column in columns:
             value = crx.get(column)
 
-            if value==None or value=="" or value=="?" or value==".":
+            if value == None or value == "" or value == "?" or value == ".":
                 try:
                     crx[column] = cif_row[column]
                 except KeyError:
@@ -537,21 +534,21 @@ class mmCIFMerge(object):
 
     def merge_cif_row(self, ctx, cif_row, columns):
         """Adds the cif_row to the cif_table after checking to see if the
-        row is a duplicate, or a near duplicate with extra columns.  If
+        row is a duplicate, or a near duplicate with extra columns. If
         the cif_row matches a cif_row already in the cif_table, only the
-        new columns are merged into the existing row.  Returns 1 if the
+        new columns are merged into the existing row. Returns 1 if the
         row was appended to the table, and returns 0 if the row values were
-        merged, or if the row was an exact match with a existing row.
+        merged, or if the row was an exact match with an existing row.
         """
         merge_accel = self.make_comare_accelerator(cif_row, columns)
 
         match_found = False
         for accel in self.merge_accel_list:
-            if accel==merge_accel:
+            if accel == merge_accel:
                 match_found = True
                 break
 
-        if match_found==True:
+        if match_found == True:
             ## CASE 1
             ## there is a row which matches this row already in the table
             ## merge any extra columns of data this row may have into
@@ -613,15 +610,15 @@ class mmCIFMerge(object):
         ## Before merging, remove any blank values from the cif_data
         ## block
         self.remove_blank_values(cif_data)
-        
+
         ## Before merging a cif_data block, it needs have tables
         ## with linked data fully filled in to avoid accidental
         ## data overlaps when merging with other files
         self.add_parent_values(cif_data)
-        
+
         ## Before merging a cif_data block, it must be scanned for
         ## tables with primary key conflicts with tables already in
-        ## the merged files.  Any primary keys which confict must be
+        ## the merged files. Any primary keys which confict must be
         ## changed to a new value before the merge.
         self.resolve_cif_data_conflicts(cif_data)
 
@@ -635,7 +632,7 @@ class mmCIFMerge(object):
     ## <API CALLS>
 
     def merge_cif_file(self, cif_file, data_list = None):
-        """Merge the cif_file.  If a data_list is given, only merge
+        """Merge the cif_file. If a data_list is given, only merge
         the data sections in the list, otherwise merge all data
         sections in the cif_file.
         """
@@ -683,23 +680,23 @@ def usage():
     print '        table.column according to the loaded mmCIF dictionaries.'
     print
     print '    -u table.column=old:new'
-    print '        Uber-alles value change.  This reduces table to a one row'
-    print '        table with only the value new.  If a old value is given,'
+    print '        Uber-alles value change. This reduces table to a one row'
+    print '        table with only the value new. If an old value is given,'
     print '        any other columns of data in the row will be preserved.'
     print '        All linked data items found in the mmCIF dictionaries'
     print '        in the entire file are then changed to value new.'
     print
     print '    -d dictionary_filename'
-    print '        Specifies a mmCIF dictionary to use.  Dictionaries are'
+    print '        Specifies a mmCIF dictionary to use. Dictionaries are'
     print '        necessary for the correct merging of tables with linked'
     print '        values.'
     print
     print '    -f merge_filename'
-    print '        A mmCIF file to merge.  Use multiple times to merge'
+    print '        A mmCIF file to merge. Use multiple times to merge'
     print '        multiple files.'
     print 
     print '    -n name'
-    print '        Give the output mmCIF file data the argument name.  If'
+    print '        Give the output mmCIF file data the argument name. If'
     print '        no name is specified, XXXX is used.'
     print
 
@@ -710,7 +707,7 @@ def decode_change_arg(change_arg):
     """Decodes the string:table.column=old:new into:(table, column, old, new).
     """
     ieq = change_arg.find("=")
-    if ieq==-1:
+    if ieq == -1:
         return None
 
     table_name_column = change_arg[:ieq].strip()
@@ -721,12 +718,12 @@ def decode_change_arg(change_arg):
 
     old_new = change_arg[ieq+1:].strip()
 
-    if old_new[0]=="'" or old_new[0]=='"':
+    if old_new[0] == "'" or old_new[0] == '"':
         quote = old_new[0]
     else:
         quote = None
 
-    if quote==None:
+    if quote == None:
         try:
             old, new = old_new.split(":")
         except ValueError:
@@ -755,25 +752,25 @@ def main():
     output_file = None
 
     for (opt, item) in opts:
-        if opt=="-h" or opt=="-?":
+        if opt == "-h" or opt == "-?":
             usage()
 
-        elif opt=="-s":
+        elif opt == "-s":
             s_arg_list.append(decode_change_arg(item))
 
-        elif opt=="-u":
+        elif opt == "-u":
             u_arg_list.append(decode_change_arg(item))
 
-        elif opt=="-d":
+        elif opt == "-d":
             d_arg_list.append(item)
 
-        elif opt=="-f":
+        elif opt == "-f":
             f_arg_list.append(item)
 
-        elif opt=="-n":
+        elif opt == "-n":
             n_arg = item
 
-    if len(args)!=1:
+    if len(args) != 1:
         raise UsageException("One ouput file path required.")
     output_path = args[0]
 
@@ -823,5 +820,5 @@ if __name__ == "__main__":
     except UsageException, uerr:
         print "[USAGE ERROR]: %s" % (uerr.text)
         print
+
         usage()
-        
