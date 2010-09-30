@@ -364,7 +364,7 @@ DEPOSITION_TABLES = [
 
 def rcsb_get_deposition_table(table_name):
     for table_desc in DEPOSITION_TABLES:
-        if table_desc["table"]==table_name:
+        if table_desc["table"] == table_name:
             return table_desc
     return None
 
@@ -383,7 +383,7 @@ def rcsb_report_missing(cif_data):
         cif_table = cif_data.get_table(table_name)
 
         ## table does not exist
-        if cif_table==None:
+        if cif_table == None:
             print "[ERROR] missing RCSB required table: %s" % (
                 table_name)
 
@@ -391,7 +391,7 @@ def rcsb_report_missing(cif_data):
         else:
             for col_desc in table_desc["columns"]:
                 col = col_desc["name"]
-                
+
                 for row in cif_table:
                     if not row.has_key(col):
                         print "[ERROR] missing RCSB required column %s.%s" % (
@@ -416,18 +416,18 @@ def usage():
 def vet_merge_cif_table_entry_id(cif_table, entry_id):
     """Gives a cif_table a proper vetting before it is merged.
     """
-    if cif_table.name=="entry":
+    if cif_table.name == "entry":
         return
-        
+
     for col in cif_table.columns:
-        if col=="entry_id":
+        if col == "entry_id":
             for cif_row in cif_table:
                 if cif_row.has_key("entry_id"):
                     cif_row["entry_id"] = entry_id
 
 def add_entry_id(cif_table, entry_id):
-    """If there is a entry_id column in the table, ensure all rows
-    have a entry_id field.
+    """If there is an entry_id column in the table, ensure all rows
+    have an entry_id field.
     """
     if cif_table.has_column("entry_id"):
         for row in cif_table:
@@ -447,7 +447,7 @@ def merge_cif_table_multi(dest_table, src_table):
 def null_val(val):
     """Return True if the value is a mmCIF NULL charactor: ? or .
     """
-    if val=="?" or val==".":
+    if val == "?" or val == ".":
         return True
     return False
 
@@ -460,46 +460,45 @@ def merge_cif_table_single(dest_table, src_table):
     except IndexError:
         return
 
-    if len(dest_table)==0:
+    if len(dest_table) == 0:
         dest_row = dest_table.new_row()
     else:
         dest_row = dest_table[0]
 
     for key, val in src_row.items():
 
-        ## if the source and destination rows both have values
-        ## for the same field, check for NULL values in the source
-        ## row so the dest row doesn't have a good value overwriten
-        ## by a NULL value
+        ## If the source and destination rows both have values for the same 
+        ## field, check for NULL values in the source row so the dest row 
+        ## does not have a good value overwriten by a NULL value.
         if dest_row.has_key(key):
 
-            ## if the destination value is null, merge the value
-            ## without complaint
+            ## if the destination value is null, merge the value without 
+            ## complaint
             dval = dest_row[key]
 
             if null_val(dval):
                 dest_row[key] = val
 
             else:
-                ## don't merge a null source value into a non-null
+                ## do not merge a null source value into a non-null
                 ## destination value
                 if null_val(val):
                     pass
 
-                ## if source and destination values are non-null,
-                ## then warn the user but merge anyway
+                ## if source and destination values are non-null, then warn 
+                ## the user but merge anyway
                 else:
                     print "[WARNING] merge overwrite: %s.%s = %s -> %s" % (
                         dest_table.name, key, str(dest_row[key]), str(val))
                     dest_row[key] = val
-    
+
     for col in src_table.columns:
         if not dest_table.has_column(col):
             dest_table.append_column(col)
 
 def default_table_merge(dest_data, src_table):
-    """Merges the src_table into the dest_data mmCIF block.  The merging
-    is controlled by optional table definitions.
+    """Merges the src_table into the dest_data mmCIF block. The merging is 
+    controlled by optional table definitions.
     """
     ## get a description of this table if it is defined
     table_desc = rcsb_get_deposition_table(src_table.name)
@@ -508,10 +507,10 @@ def default_table_merge(dest_data, src_table):
     dest_table = dest_data.get_table(src_table.name)
 
     ## mergin a new mmCIF table
-    if dest_table==None:
+    if dest_table == None:
 
         ## undefined tables are copied in directly
-        if table_desc==None:
+        if table_desc == None:
             dest_data.append(copy.deepcopy(src_table))
 
         ## defined tables are handled more carefully
@@ -520,15 +519,15 @@ def default_table_merge(dest_data, src_table):
             dest_table.set_columns(table_desc_columns(table_desc))
             merge_cif_table_multi(dest_table, src_table)
 
-    ## merging rows into a existing table
+    ## merging rows into an existing table
     else:
         ## undefined tables are merged as multi-row tables
-        if table_desc==None:
+        if table_desc == None:
             merge_cif_table_multi(dest_table, src_table)
 
         ## defined tables are merged by the defined method
         else:
-            if table_desc["single_row"]==True:
+            if table_desc["single_row"] == True:
                 merge_cif_table_single(dest_table, src_table)
             else:
                 merge_cif_table_multi(dest_table, src_table)
@@ -536,9 +535,9 @@ def default_table_merge(dest_data, src_table):
 
 
 def cif_merge(merge_paths, output_path, entry_id):
-    """Merge the mmCIF files in merge_paths into a mmCIF file which
-    will be written to the output_path.  This merging is configured for
-    a crystallographic structure, and the entry_ids of all tables are
+    """Merge the mmCIF files in merge_paths into a mmCIF file which will be 
+    written to the output_path. This merging is configured for a 
+    crystallographic structure, and the entry_ids of all tables are
     overridden with the given entry_id.
     """
     output_cif_file = mmCIF.mmCIFFile()
@@ -558,7 +557,7 @@ def cif_merge(merge_paths, output_path, entry_id):
             for src_table in src_data:
 
                 ## don't merge the entry table
-                if src_table.name=="entry":
+                if src_table.name == "entry":
                     continue
 
                 vet_merge_cif_table_entry_id(src_table, entry_id)
@@ -584,18 +583,18 @@ def main():
     output_path = None
 
     for (opt, item) in opts:
-        if opt=="-h" or opt=="-?":
+        if opt == "-h" or opt == "-?":
             usage()
-        elif opt=="-f":
+        elif opt == "-f":
             merge_paths.append(item)
-        elif opt=="-e":
+        elif opt == "-e":
             entry_id = item
 
-    if len(args)!=1:
+    if len(args) != 1:
         print "[ERROR] Output mmCIF path required."
         usage()
 
-    if len(merge_paths)==0:
+    if len(merge_paths) == 0:
         print "[ERROR] Input mmCIF paths required."
         usage()
 
