@@ -1,18 +1,23 @@
 #!/usr/bin/env python
-## This program exersizes the PDB parser by walking through a directory
-## of PDB files and processing each one.  The MyPDBProcessor class is a
-## very simple custom PDB file processor
+## Copyright 2002-2010 by PyMMLib Development Group (see AUTHORS file)
+## This code is part of the PyMMLib distribution and governed by
+## its license.  Please see the LICENSE file that should have been
+## included as part of this package.
+"""This program exersizes the PDB parser by walking through a directory
+of PDB files and processing each one. The MyPDBProcessor class is a
+very simple custom PDB file processor.
+"""
 
 import os, sys
 from mmLib import PDB
 
 
 class MyPDBProcessor(PDB.RecordProcessor):
-    """Implement callbacks for PDB record types.  If you want the callback
-    with the raw mmLib.PDB classes, prefix the method name with 'process_',
-    if you want callback argument to be the result of the mmLib.PDB record
-    class's 'process' method, then use the prefix 'preprocess_'.
-    Implement only the callback you want to handle.
+    """Implement callbacks for PDB record types. If you want the callback with
+    the raw mmLib.PDB classes, prefix the method name with 'process_', if you 
+    want callback argument to be the result of the mmLib.PDB record class's 
+    'process' method, then use the prefix 'preprocess_'. Implement only the 
+    callback you want to handle.
     """
     def process_ATOM(self, pdb_record):
         pass
