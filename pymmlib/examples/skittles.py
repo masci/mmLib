@@ -326,7 +326,7 @@ def read_pdb(path):
 
                     atom_obj[-1]["has_anisou"] = 1
                 has_anisou = 1
-  
+
     return "\n".join(listx), overall, atom_obj
 
 def get_chain_type(res_name):
