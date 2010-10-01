@@ -1026,7 +1026,7 @@ class PDBFileBuilder(object):
             helix["initResName"] = alpha_helix.res_name1
             helix["initChainID"] = alpha_helix.chain_id1
             try:
-                helix["initSeqNum"], helix["initICode"] = Structure.fragment_id_split( alpha_helix.fragment_id1)
+                helix["initSeqNum"], helix["initICode"] = Structure.fragment_id_split(alpha_helix.fragment_id1)
             except ValueError:
                 pass
 
