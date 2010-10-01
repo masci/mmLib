@@ -54,9 +54,9 @@ class FragmentOverwrite(StructureError):
     pass
 
 class AtomOverwrite(StructureError):
-    """Raised by Structure.add_atom() or Fragment.add_atom() when a Atom
+    """Raised by Structure.add_atom() or Fragment.add_atom() when an Atom
     added to a Structure or Fragment has the same chain_id, fragment_id,
-    name, and alt_loc as a Atom already in the Structure or Fragment.
+    name, and alt_loc as an Atom already in the Structure or Fragment.
     """
     def __init__(self, text):
         StructureError.__init__(self)
@@ -66,7 +66,7 @@ class AtomOverwrite(StructureError):
 
 class Structure(object):
     """The Structure object is the parent container object for the entire
-    macromolecular data structure.  It contains a list of the Chain objects
+    macromolecular data structure. It contains a list of the Chain objects
     in the structure hierarchy, and contains these additional data
     objects:
 
@@ -93,7 +93,7 @@ class Structure(object):
 
     def __str__(self):
         return "Struct(%s)" % (self.structure_id)
- 
+
     def __deepcopy__(self, memo):
         structure = Structure(
             cifdb     = copy.deepcopy(self.cifdb, memo),
@@ -111,7 +111,7 @@ class Structure(object):
             return len(self.default_model)
         except TypeError:
             return 0
-    
+
     def __getitem__(self, chain_idx):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
@@ -188,12 +188,12 @@ class Structure(object):
             self.model_list.sort()
 
     def remove_model(self, model):
-        """Removes a child Model object.  If the Model object is the default
+        """Removes a child Model object. If the Model object is the default
         Model, then choose the Model with the lowest model_id as the
         new default Model, or None if there are no more Models.
         """
         assert isinstance(model, Model)
-        
+
         self.model_list.remove(model)
         del self.model_dict[model.model_id]
         model.structure = None
@@ -218,9 +218,9 @@ class Structure(object):
         """Returns the default Model object.
         """
         return self.default_model
-    
+
     def set_default_model(self, model_id):
-        """Sets the default Model for the Structure to model_id.  Returns
+        """Sets the default Model for the Structure to model_id. Returns
         False if a Model with the proper model_id does
         not exist in the Structure.
         """
@@ -232,7 +232,7 @@ class Structure(object):
 
     def set_model(self, model_id):
         """DEP: Use set_default_model()
-        Sets the default Model for the Structure to model_id.  Returns
+        Sets the default Model for the Structure to model_id. Returns
         False if a Model with the proper model_id does
         not exist in the Structure.
         """
@@ -247,10 +247,10 @@ class Structure(object):
         """Counts all Model objects in the Structure.
         """
         return len(self.model_list)
-    
+
     def add_chain(self, chain, delay_sort = True):
-        """Adds a Chain object to the Structure.  Creates necessary parent
-        Model if necessary
+        """Adds a Chain object to the Structure. Creates necessary parent
+        Model if necessary.
         """
         assert isinstance(chain, Chain)
 
@@ -325,7 +325,7 @@ class Structure(object):
         for chain in self.iter_chains():
             n += chain.count_fragments()
         return n
-    
+
     def iter_fragments(self):
         """Iterates over all Fragment objects in the default Model.
         The iteration is performed in order according the the parent
@@ -333,7 +333,7 @@ class Structure(object):
         """
         if self.default_model is None:
             raise StopIteration
-        
+
         for chain in self.default_model.chain_list:
             for frag in chain.fragment_list:
                 yield frag
@@ -347,7 +347,7 @@ class Structure(object):
             for chain in model.chain_list:
                 for frag in chain.fragment_list:
                     yield frag
-    
+
     def has_amino_acids(self):
         """Returns True if there are AminoAcidResidue objects in the
         default Model of the Structure.
@@ -355,7 +355,7 @@ class Structure(object):
         for frag in self.iter_amino_acids():
             return True
         return False
-                    
+
     def count_amino_acids(self):
         """Counts all AminoAcidResidue objects in the default Model.
         """
@@ -363,7 +363,7 @@ class Structure(object):
         for chain in self.iter_chains():
             n += chain.count_amino_acids()
         return n
-    
+
     def iter_amino_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass AminoAcidResidue.
@@ -387,7 +387,7 @@ class Structure(object):
         for frag in self.iter_nucleic_acids():
             return True
         return False
-                  
+
     def count_nucleic_acids(self):
         """Counts all NucleicAcidResidue objects in the default Model.
         """
@@ -395,7 +395,7 @@ class Structure(object):
         for chain in self.iter_chains():
             n += chain.count_nucleic_acids()
         return n
-    
+
     def iter_nucleic_acids(self):
         """Same as iter_fragments() but only iterates over Fragments of the
         subclass NucleicAcidResidue.
@@ -427,7 +427,7 @@ class Structure(object):
         for na in self.iter_standard_residues():
             n += 1
         return n
-    
+
     def iter_standard_residues(self):
         """Iterates over standard residues in the default Model.
         """
@@ -449,10 +449,10 @@ class Structure(object):
         for frag in self.iter_non_standard_residues():
             n += 1
         return n
-    
+
     def iter_non_standard_residues(self):
         """Iterates over non-standard residues in the default Model.
-        Non-standard residues are any Fragments which are not a amino or
+        Non-standard residues are any Fragments which are not an amino or
         nucleic acid.
         """
         fpred = lambda f: f.is_standard_residue()
@@ -480,7 +480,7 @@ class Structure(object):
         return itertools.ifilter(fpred, self.iter_fragments())
 
     def add_atom(self, atom, delay_sort = False):
-        """Adds a Atom object to the Structure.  If a collision occurs, a
+        """Adds an Atom object to the Structure. If a collision occurs, an
         error is raised.
         """
         assert isinstance(atom, Atom)
@@ -495,7 +495,7 @@ class Structure(object):
         ## optimized add_atom()
         chain_id    = atom.chain_id
         fragment_id = atom.fragment_id
-            
+
         if model.chain_dict.has_key(chain_id):
             chain = model.chain_dict[chain_id]
 
@@ -512,19 +512,19 @@ class Structure(object):
             model.add_atom(atom, delay_sort)
 
     def remove_atom(self, atom):
-        """Removes a Atom.
+        """Removes an Atom.
         """
         assert isinstance(atom, Atom)
         self.model_dict[atom.model_id].remove_atom(atom)
 
     def iter_atoms(self):
         """Iterates over all Atom objects in the default Model, using the
-        default alt_loc.  The iteration is preformed in order according to
+        default alt_loc. The iteration is preformed in order according to
         the Chain and Fragment ordering rules the Atom object is a part of.
         """
         if self.default_model is None:
             raise StopIteration
-        
+
         for chain in self.default_model.chain_list:
             for frag in chain.fragment_list:
                 for atm in frag.atom_list:
@@ -538,11 +538,11 @@ class Structure(object):
         for chain in self.iter_chains():
             n += chain.count_atoms()
         return n
-                
+
     def iter_all_atoms(self):
-        """Iterates over all Atom objects in the Structure.  The iteration
-        is performed according to common PDB ordering rules, over all Models
-        and all alternate conformations.
+        """Iterates over all Atom objects in the Structure. The iteration is
+        performed according to common PDB ordering rules, over all Models and
+        all alternate conformations.
         """
         for model in self.iter_models():
             for atm in model.iter_all_atoms():
@@ -566,7 +566,7 @@ class Structure(object):
             return None
 
     def iter_bonds(self):
-        """Iterates over all Bond objects.  The iteration is preformed by
+        """Iterates over all Bond objects. The iteration is preformed by
         iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects.
         """
@@ -598,7 +598,7 @@ class Structure(object):
         return al_list
 
     def add_alpha_helix(self, alpha_helix):
-        """Adds a AlphaHelix to the default Model object.
+        """Adds an AlphaHelix to the default Model object.
         """
         assert self.default_model is not None
         self.default_model.add_alpha_helix(alpha_helix)
@@ -616,7 +616,7 @@ class Structure(object):
         """
         assert self.default_model is not None
         self.default_model.add_beta_sheet(beta_sheet)
-        
+
     def iter_beta_sheets(self):
         """Iterate over all beta sheets in the Structure.
         """
@@ -658,13 +658,13 @@ class Structure(object):
 
     def add_bonds_from_covalent_distance(self):
         """Builds a Structure's bonds by atomic distance distance using
-        the covalent radii in element.cif.  A bond is built if the the
+        the covalent radii in element.cif. A bond is built if the the
         distance between them is less than or equal to the sum of their
         covalent radii + 0.54A.
         """
         for model in self.iter_models():
             xyzdict = GeometryDict.XYZDict(2.0)
-            
+
             for atm in model.iter_all_atoms():
                 if atm.position is not None:
                     xyzdict.add(atm.position, atm)
@@ -693,11 +693,11 @@ class Structure(object):
 
                     if atm1.get_bond(atm2) is None:
                         atm1.create_bond(atom = atm2, standard_res_bond = False)
-        
+
     def add_bonds_from_library(self):
-        """Builds bonds for all Fragments in the Structure from bond
-        tables for monomers retrieved from the Library implementation
-        of the Structure.
+        """Builds bonds for all Fragments in the Structure from bond tables
+        for monomers retrieved from the Library implementation of the
+        Structure.
         """
         for frag in self.iter_all_fragments():
             frag.create_bonds()
@@ -731,11 +731,11 @@ class Model(object):
     def __lt__(self, other):
         assert isinstance(other, Model)
         return int(self.model_id) < int(other.model_id)
-        
+
     def __le__(self, other):
         assert isinstance(other, Model)
         return int(self.model_id) <= int(other.model_id)
-        
+
     def __gt__(self, other):
         assert isinstance(other, Model)
         return int(self.model_id) > int(other.model_id)
@@ -748,7 +748,7 @@ class Model(object):
         """Returns the number of stored Chain objects.
         """
         return len(self.chain_list)
-    
+
     def __getitem__(self, chain_idx):
         """Same as get_chain, but raises KeyError if the requested chain_id
         is not found.
@@ -841,7 +841,7 @@ class Model(object):
                 model_id = fragment.model_id,
                 chain_id = fragment.chain_id)
             self.add_chain(chain, delay_sort)
-        
+
         chain.add_fragment(fragment, delay_sort)
 
     def remove_fragment(self, fragment):
@@ -961,7 +961,7 @@ class Model(object):
         chain.add_atom(atom, delay_sort)
 
     def remove_atom(self, atom):
-        """Removes a Atom object.
+        """Removes an Atom object.
         """
         assert isinstance(atom, Atom)
         assert atom.model_id == self.model_id        
@@ -1011,19 +1011,19 @@ class Model(object):
             return None
 
     def add_alpha_helix(self, alpha_helix):
-        """Adds a AlphaHelix object to the Model.
+        """Adds an AlphaHelix object to the Model.
         """
         assert isinstance(alpha_helix, AlphaHelix)
         self.alpha_helix_list.append(alpha_helix)
         alpha_helix.model = self
 
     def remove_alpha_helix(self, alpha_helix):
-        """Removes a AlphaHelix object from the Model.
+        """Removes an AlphaHelix object from the Model.
         """
         assert isinstance(alpha_helix, AlphaHelix)
         self.alpha_helix_list.remove(alpha_helix)
         alpha_helix.model = None
-        
+
     def iter_alpha_helicies(self):
         """Iterates over all AlphaHelix objects in the Model.
         """
@@ -1066,14 +1066,14 @@ class Model(object):
         """Iterate over all active/important sites defined in the Structure.
         """
         return iter(self.site_list)
-    
+
     def get_structure(self):
         """Returns the parent Structure.
         """
         return self.structure
 
     def iter_bonds(self):
-        """Iterates over all Bond objects.  The iteration is preformed by
+        """Iterates over all Bond objects. The iteration is preformed by
         iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects.
         """
@@ -1114,7 +1114,7 @@ class Model(object):
 
 class Segment(object):
     """Segment objects are a container for Fragment objects, but are
-    disaccociated with the Structure object hierarch.  Chain objects are
+    disassociated with the Structure object hierarch. Chain objects are
     a subclass of Segment objects which are part of the Structure hierarchy.
     """
     def __init__(self,
@@ -1131,8 +1131,8 @@ class Segment(object):
         self.model_id = model_id
         self.chain_id = chain_id
 
-        ## fragments are contained in the list and also cached in
-        ## a dictionary for fast random-access lookup
+        ## fragments are contained in the list and also cached in a
+        ## dictionary for fast random-access lookup
         self.fragment_list  = []
         self.fragment_dict  = {}
 
@@ -1155,19 +1155,19 @@ class Segment(object):
             segment.add_fragment(copy.deepcopy(fragment, memo), True)
 
         return segment
-    
+
     def __lt__(self, other):
         """Less than operator based on the chain_id.
         """
         assert isinstance(other, Segment)
         return self.chain_id < other.chain_id
-        
+
     def __le__(self, other):
         """Less than or equal operator based on chain_id.
         """
         assert isinstance(other, Segment)
         return self.chain_id <= other.chain_id
-        
+
     def __gt__(self, other):
         """Greator than operator based on chain_id.
         """
@@ -1186,12 +1186,12 @@ class Segment(object):
         return len(self.fragment_list)
 
     def __getitem__(self, fragment_idx):
-        """Retrieve a Fragment within the Segment.  This can take a integer
+        """Retrieve a Fragment within the Segment. This can take an integer
         index of the Fragment's position within the segment, the fragment_id
         string of the Fragment to retrieve, or a slice of the Segment to
         return a new Segment object containing the sliced subset of Fragments.
         If the slice values are fragment_id strings, then the Segment which
-        is returned includes those Fragments.  If the slice values are
+        is returned includes those Fragments. If the slice values are
         integers, then normal list slicing rules apply.
         """
         if isinstance(fragment_idx, int):
@@ -1201,12 +1201,11 @@ class Segment(object):
             return self.fragment_dict[fragment_idx]
 
         elif isinstance(fragment_idx, slice):
-            
             ## determine if the slice is on list indexes or on fragment_id
             ## strings
             start = fragment_idx.start
             stop  = fragment_idx.stop
-            
+
             ## check for index (list) slicing
             if (start is None and stop is None) or \
                (start is None and isinstance(stop, int)) or \
@@ -1217,7 +1216,7 @@ class Segment(object):
                 for frag in self.fragment_list[start:stop]:
                     segment.add_fragment(frag, True)
                 return segment
-            
+
             ## check for fragment_id slicing
             if (start is None and isinstance(stop, str)) or \
                (stop is None  and isinstance(start, str)) or \
@@ -1265,19 +1264,19 @@ class Segment(object):
         return segment
 
     def construct_sub_segment(self, start_frag_id, stop_frag_id):
-        """Construct and return a sub-Segment between start_frag_id 
-        and stop_frag_id.  If start_frag_id is None, then the slice
-        is taken from the beginning of this Segment, and if stop_frag_id
-        is None it is taken to the end of this Segment.
+        """Construct and return a sub-Segment between start_frag_id and
+        stop_frag_id. If start_frag_id is None, then the slice is taken from
+        the beginning of this Segment, and if stop_frag_id is None it is taken 
+        to the end of this Segment.
         """
         fragiter = iter_fragments(iter(self.fragment_list), start_frag_id, stop_frag_id)
         segment = self.construct_segment()
         for frag in fragiter:
             segment.add_fragment(frag, True)
         return segment
-    
+
     def add_fragment(self, fragment, delay_sort = False):
-        """Adds a Fragment instance to the Segment.  If delay_sort is True,
+        """Adds a Fragment instance to the Segment. If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         segment.
         """
@@ -1308,9 +1307,8 @@ class Segment(object):
         return None
 
     def iter_fragments(self, frag_id_begin = None, frag_id_end = None):
-        """Iterates over all Fragment objects.  The iteration is performed
-        in order according to the Fragment's position within the Segment
-        object.
+        """Iterates over all Fragment objects. The iteration is performed in
+        order according to the Fragment's position within the Segment object.
         """
         return iter_fragments(iter(self.fragment_list), frag_id_begin, frag_id_end)
 
@@ -1331,7 +1329,7 @@ class Segment(object):
             if frag.is_amino_acid():
                 n += 1
         return n
-    
+
     def iter_amino_acids(self):
         fpred = lambda f: f.is_amino_acid()
         return itertools.ifilter(fpred, self.fragment_list)
@@ -1405,7 +1403,7 @@ class Segment(object):
         return itertools.ifilter(fpred, self.fragment_list)
 
     def add_atom(self, atom, delay_sort = False):
-        """Adds a Atom.
+        """Adds an Atom.
         """
         assert isinstance(atom, Atom)
         assert atom.model_id == self.model_id
@@ -1413,7 +1411,7 @@ class Segment(object):
 
         ## add new fragment if necessary 
         if not self.fragment_dict.has_key(atom.fragment_id):
-            
+
             if Library.library_is_amino_acid(atom.res_name):
                 fragment = AminoAcidResidue(
                     model_id    = atom.model_id,
@@ -1442,9 +1440,9 @@ class Segment(object):
                 raise FragmentOverwrite()
 
         fragment.add_atom(atom)
-            
+
     def remove_atom(self, atom):
-        """Removes a Atom object.
+        """Removes an Atom object.
         """
         assert isinstance(atom, Atom)
         self.fragment_dict[atom.fragment_id].remove_atom(atom)
@@ -1462,9 +1460,9 @@ class Segment(object):
         for frag in self.iter_fragments():
             n += frag.count_atoms()
         return n
-    
+
     def iter_all_atoms(self):
-        """Performs a in-order iteration of all atoms in the Segment,
+        """Performs an in-order iteration of all atoms in the Segment,
         including alternate conformations.
         """
         for frag in self.fragment_list:
@@ -1485,7 +1483,7 @@ class Segment(object):
             return self.fragment_dict[atom.fragment_id].atom_dict[atom.name]
         except KeyError:
             return None
-                
+
     def iter_bonds(self):
         """Iterates over all Bond objects attached to Atom objects within the
         Segment.
@@ -1507,7 +1505,7 @@ class Segment(object):
         """Returns the parent Model object.
         """
         return self.model
-            
+
     def get_structure(self):
         """Returns the parent Structure object.
         """
@@ -1574,7 +1572,7 @@ class Chain(Segment):
         for fragment in self.fragment_list:
             chain.add_fragment(copy.deepcopy(fragment, memo), True)
         return chain
-        
+
     def construct_segment(self):
         """Constructs a new Segment object so that it has a valid .chain
         reference.
@@ -1590,7 +1588,7 @@ class Chain(Segment):
 
     def set_sequence(self, sequence_list):
         """The sequence_list is a list of 3-letter residue name codes which
-        define the polymer sequence for the chain.  Setting the sequence
+        define the polymer sequence for the chain. Setting the sequence
         attempts to map the sequence codes to Fragment objects.
         """
         self.sequence_fragment_list = []
@@ -1618,7 +1616,7 @@ class Chain(Segment):
         return self.sequence_fragment_list[seq_index][1]
 
     def add_fragment(self, fragment, delay_sort=False):
-        """Adds a Fragment instance to the Chain.  If delay_sort is True,
+        """Adds a Fragment instance to the Chain. If delay_sort is True,
         then the fragment is not inserted in the proper position within the
         chain.
         """
@@ -1630,7 +1628,7 @@ class Chain(Segment):
         """
         Segment.remove_fragment(self, fragment)
         fragment.chain = None
-            
+
     def set_chain_id(self, chain_id):
         """Sets a new ID for the Chain, updating the chain_id
         for all objects in the Structure hierarchy.
@@ -1649,11 +1647,12 @@ class Chain(Segment):
 
 
 class Fragment(object):
-    """Fragment objects are a basic unit for organizing small groups of
-    Atoms.  Amino acid residues are fragments, as well as nucleic
-    acids and other small molecules.  In terms of a PDB file, they are
-    all the atoms from a unique residue in a chain.  Fragments have the
-    following attributes:
+    """Fragment objects are a basic unit for organizing small groups of Atoms.
+    Amino acid residues are fragments, as well as nucleic acids and other 
+    small molecules. In terms of a PDB file, they are all the atoms from a 
+    unique residue in a chain.
+
+    Fragments have the following attributes:
 
     Fragment.res_name     - the fragment/residue name
     Fragment.res_seq      - the sequence id of the fragment/residue
@@ -1680,8 +1679,8 @@ class Fragment(object):
 
         self.default_alt_loc = "A"
 
-        ## Atom objects stored in the original order as
-        ## they were added to the Fragment
+        ## Atom objects stored in the original order as they were added to 
+        ## the Fragment.
         self.atom_order_list = []
 
         ## dictionary of atom name->Altloc objects
@@ -1697,7 +1696,7 @@ class Fragment(object):
             self.res_name,
             self.fragment_id,
             self.chain_id)
-    
+
     def __deepcopy__(self, memo):
         fragment = Fragment(
             model_id    = self.model_id,
@@ -1713,7 +1712,7 @@ class Fragment(object):
     def __lt__(self, other):
         assert isinstance(other, Fragment)
         return fragment_id_lt(self.fragment_id, other.fragment_id)
-        
+
     def __le__(self, other):
         assert isinstance(other, Fragment)
         return fragment_id_le(self.fragment_id, other.fragment_id)
@@ -1728,12 +1727,12 @@ class Fragment(object):
 
     def __len__(self):
         return len(self.atom_list)
-    
+
     def __getitem__(self, name_idx):
-        """Lookup a atom contained in a fragment by its name, or by its index
-        within the fragment's private atom_list.  If the atom is not found,
-        a exception is raised.  The type of exception depends on the argument
-        type.  If the argument was a integer, then a IndexError is raised.
+        """Lookup an atom contained in a fragment by its name, or by its index
+        within the fragment's private atom_list. If the atom is not found,
+        an exception is raised. The type of exception depends on the argument
+        type. If the argument was an integer, then an IndexError is raised.
         If the argument was a string, then a KeyError is raised.
         """
         if isinstance(name_idx, str):
@@ -1743,7 +1742,7 @@ class Fragment(object):
         raise TypeError, name_idx
 
     def __iter__(self):
-        """Iterates the atoms within the fragment.  If the fragment contains
+        """Iterates the atoms within the fragment. If the fragment contains
         atoms in alternate conformations, only the atoms with the structure's
         default_alt_loc are iterated.
         """
@@ -1803,9 +1802,9 @@ class Fragment(object):
                     except IndexError:
                         self.atom_list.append(atmx)
                     self.atom_dict[atmx.name] = atmx
-        
+
     def add_atom(self, atom):
-        """Adds a atom to the fragment, and sets the atom's atom.fragment
+        """Adds an atom to the fragment, and sets the atom's atom.fragment
         attribute to the fragment.
         """
         assert isinstance(atom, Atom)
@@ -1821,8 +1820,8 @@ class Fragment(object):
                 ## CASE:
                 ##     add atom without alt_loc partners to the fragment
                 ## procedure:
-                ##     check if a atom with the same name is already in the
-                ##     fragment, and raise a AtomOverwrite exception if
+                ##     check if an atom with the same name is already in the
+                ##     fragment, and raise an AtomOverwrite exception if
                 ##     it is, otherwise, add the atom to the fragment
 
                 if not self.atom_dict.has_key(name):
@@ -1838,7 +1837,9 @@ class Fragment(object):
                     atomA = self.atom_dict[name]
                     assert atomA != atom
 
-                    ConsoleOutput.warning("atom name clash %s, automatically assigning ALTLOC labels" % (str(atomA)))
+                    msg  = "atom name clash %s, " % (str(atomA))
+                    msg += "automatically assigning ALTLOC labels"
+                    ConsoleOutput.warning(msg)
 
                     iA = self.atom_order_list.index(atomA)
 
@@ -1860,11 +1861,10 @@ class Fragment(object):
                 altloc.add_atom(atom)
                 self.set_default_alt_loc(self.default_alt_loc)
 
-                
         else: ## alt_loc!=""
 
             ## CASE:
-            ##     add a atom with alt_loc partners to the
+            ##     add an atom with alt_loc partners to the
             ##     fragment for the first time
             ## procedure:
             ##    *check for atoms without alt_locs already in the
@@ -1879,7 +1879,7 @@ class Fragment(object):
 
                 if not self.atom_dict.has_key(name):
                     ## CASE:
-                    ##     add a atom with alt_loc partners to the
+                    ##     add an atom with alt_loc partners to the
                     ##     fragment for the first time
                     self.alt_loc_dict[name] = altloc = Altloc()
                     altloc.add_atom(atom)
@@ -1907,21 +1907,21 @@ class Fragment(object):
 
             else:
                 ## CASE:
-                ##     add a atom with alt_loc partners to the
+                ##     add an atom with alt_loc partners to the
                 ##     fragment when there are already alt_loc
                 ##     partner atoms in the fragment
                 altloc = self.alt_loc_dict[name]
                 altloc.add_atom(atom)
 
             self.set_default_alt_loc(self.default_alt_loc)
-            
+
         atom.fragment = self
 
     def remove_atom(self, atom):
         """Removes the Atom instance from the Fragment.
         """
         assert atom.fragment == self
-        
+
         if self.alt_loc_dict.has_key(atom.name):
             altloc = self.alt_loc_dict[atom.name]
             if altloc.has_key(atom.alt_loc):
@@ -1954,7 +1954,7 @@ class Fragment(object):
             if not self.atom_dict.has_key(name):
                 return None
             return self.atom_dict[name]
-    
+
     def get_equivalent_atom(self, atom):
         """Returns the atom with the same fragment_id and name as the
         argument atom, or None if it is not found.
@@ -1963,7 +1963,7 @@ class Fragment(object):
             return self.atom_dict[atom.name]
         except KeyError:
             return None
-        
+
     def iter_atoms(self):
         """Iterates over all Atom objects contained in the Fragment matching
         the current model and default alt_loc.
@@ -1997,7 +1997,7 @@ class Fragment(object):
         return n
 
     def iter_bonds(self):
-        """Iterates over all Bond objects.  The iteration is preformed by
+        """Iterates over all Bond objects. The iteration is preformed by
         iterating over all Atom objects in the same order as iter_atoms(),
         then iterating over each Atom's Bond objects."""
         visited = {}
@@ -2009,7 +2009,7 @@ class Fragment(object):
 
     def get_offset_fragment(self, offset):
         """Returns the fragment in the same chain at integer offset from
-        self.  Returns None if no fragment is found.
+        self. Returns None if no fragment is found.
         """
         assert isinstance(offset, int)
 
@@ -2060,13 +2060,13 @@ class Fragment(object):
 
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
-        PDB defined standard residues.  PDB standard residues are amino
+        PDB defined standard residues. PDB standard residues are amino
         and nucleic acid residues.
         """
         return False
 
     def is_amino_acid(self):
-        """Returns True if the Fragment is a Amino Acid residue.
+        """Returns True if the Fragment is an Amino Acid residue.
         """
         return False
 
@@ -2092,8 +2092,7 @@ class Fragment(object):
             atm.set_model_id(model_id)
 
     def set_chain_id(self, chain_id):
-        """Sets the chain_id of the Fragment and all contained Atom
-        objects.
+        """Sets the chain_id of the Fragment and all contained Atom objects.
         """
         assert isinstance(chain_id, str)
         self.chain_id = chain_id
@@ -2130,7 +2129,7 @@ class Fragment(object):
         for atm in self.iter_atoms():
             atm.set_res_name(res_name)
 
-            
+
 class Residue(Fragment):
     """A subclass of Fragment representing one residue in a polymer chain.
     """
@@ -2201,9 +2200,9 @@ class AminoAcidResidue(Residue):
         and nucleic acid residues.
         """
         return True
-    
+
     def is_amino_acid(self):
-        """Returns True if the Fragment is a Amino Acid residue.
+        """Returns True if the Fragment is an Amino Acid residue.
         """
         return True
 
@@ -2212,10 +2211,10 @@ class AminoAcidResidue(Residue):
         otherwise.
         """
         return False
-    
+
     def calc_mainchain_bond_length(self):
         """Calculates the main chain bond lengths: (N-CA, CA-C, C-O, CA-CB,
-        CA-(next)N).  The result is returned as a 5-tuple in that order.  Bond
+        CA-(next)N). The result is returned as a 5-tuple in that order. Bond
         lengths involving missing atoms are returned as None in the tuple.
         """
         aN  = self.get_atom('N')
@@ -2228,7 +2227,7 @@ class AminoAcidResidue(Residue):
             naN = self.get_offset_residue(1).get_atom('N')
         except AttributeError:
             naN = None
-     
+
         N_CA  = AtomMath.calc_distance(aN, aCA)
         CA_C  = AtomMath.calc_distance(aCA, aC)
         C_O   = AtomMath.calc_distance(aC, aO)
@@ -2265,7 +2264,7 @@ class AminoAcidResidue(Residue):
         return (N_CA_C, N_CA_CB, CB_CA_C, CA_C_O, CA_C_nN, C_nN_nCA) 
 
     def calc_torsion_psi(self):
-        """Calculates the Psi torsion angle of the amino acid.  Raises a
+        """Calculates the Psi torsion angle of the amino acid. Raises a
         CTerminal exception if called on a C-terminal residue which does
         not have a Psi torsion angle.
         """
@@ -2280,8 +2279,8 @@ class AminoAcidResidue(Residue):
         return AtomMath.calc_torsion_angle(aN, aCA, aC, naN)
 
     def calc_torsion_phi(self):
-        """Calculates the Phi torsion angle of the amino acid.  Raises a
-        NTerminal exception if called on a N-terminal residue which does
+        """Calculates the Phi torsion angle of the amino acid. Raises a
+        NTerminal exception if called on an N-terminal residue which does
         not have a Phi torsion angle.
         """
         prev_res = self.get_offset_residue(-1)
@@ -2297,7 +2296,7 @@ class AminoAcidResidue(Residue):
     def calc_torsion_omega(self):
         """Calculates the Omega torsion angle of the amino acid. Raises a
         CTerminal exception if called on a C-terminal residue which does
-        not have a Omega torsion angle.
+        not have an Omega torsion angle.
         """
         next_res = self.get_offset_residue(1)
         if next_res is None:
@@ -2328,7 +2327,7 @@ class AminoAcidResidue(Residue):
         return False
 
     def calc_torsion(self, torsion_angle_name):
-        """Calculates the given torsion angle for the monomer.  The torsion
+        """Calculates the given torsion angle for the monomer. The torsion
         angles are defined by name in monomers.cif.
         """
         mdesc = Library.library_get_monomer_desc(self.res_name)
@@ -2344,7 +2343,7 @@ class AminoAcidResidue(Residue):
         atom2 = self.get_atom(atom2_name)
         atom3 = self.get_atom(atom3_name)
         atom4 = self.get_atom(atom4_name)
-        
+
         return AtomMath.calc_torsion_angle(atom1, atom2, atom3, atom4)
 
     def calc_torsion_chi1(self):
@@ -2362,7 +2361,7 @@ class AminoAcidResidue(Residue):
     def calc_torsion_chi(self):
         """Calculates CHI side-chain torsion angles according to the
         amino acid specific definitions in the AminoAcids library.
-        Returns the 4-tuple (CHI1, CHI2, CHI3, CHI4).  Angles involving
+        Returns the 4-tuple (CHI1, CHI2, CHI3, CHI4). Angles involving
         missing atoms, or angles which do not exist for the amino acid
         are returned as None in the tuple.
         """
@@ -2370,14 +2369,14 @@ class AminoAcidResidue(Residue):
                 self.calc_torsion("chi2"),
                 self.calc_torsion("chi3"),
                 self.calc_torsion("chi4"))
-        
+
     def calc_pucker_torsion(self):
-        """Calculates the Pucker torsion of a ring system.  Returns None
+        """Calculates the Pucker torsion of a ring system. Returns None
         for Amino Acids which do not have Pucker torsion angles.
         """
         return self.calc_torsion("pucker")
 
-    
+
 class NucleicAcidResidue(Residue):
     """A subclass of Residue representing one nuclic acid in a strand of
     DNA or RNA.
@@ -2393,10 +2392,10 @@ class NucleicAcidResidue(Residue):
             fragment.add_atom(copy.deepcopy(atom, memo))
 
         return fragment
-    
+
     def is_standard_residue(self):
         """Returns True if the Fragment/Residue object is one of the
-        PDB defined standard residues.  PDB standard residues are amino
+        PDB defined standard residues. PDB standard residues are amino
         and nucleic acid residues.
         """
         return True
@@ -2422,7 +2421,7 @@ class Altloc(dict):
         for atom in self.itervalues():
             altloc.add_atom(copy.deepcopy(atom, memo))
         return altloc
-    
+
     def __iter__(self):
         """Iterates over all Altloc representations of this Atom.
         """
@@ -2430,9 +2429,9 @@ class Altloc(dict):
         alt_locs.sort()
         for alt_loc in alt_locs:
             yield self[alt_loc]
-    
+
     def add_atom(self, atom):
-        """Adds a atom to the Altloc.
+        """Adds an atom to the Altloc.
         """
         if self.has_key(atom.alt_loc) or atom.alt_loc == "":
             atom.alt_loc = self.calc_next_alt_loc_id(atom)
@@ -2446,7 +2445,7 @@ class Altloc(dict):
         assert atom.altloc == self
         del self[atom.alt_loc]
         atom.altloc = None
-    
+
     def calc_next_alt_loc_id(self, atom):
         """Returns the next vacant alt_loc letter to be used for a key.
         This is part of a half-ass algorithm to deal with disordered
@@ -2457,14 +2456,14 @@ class Altloc(dict):
         for alt_loc in string.uppercase:
             if not self.has_key(alt_loc):
                 return alt_loc
-            
+
         raise AtomOverwrite("exhausted availible alt_loc labels for "+str(atom))
-        
+
 
 class Atom(object):
-    """Class representing a single atom.  Atoms have the following default
-    attributes.  If an attribute has the value None, then the attribute was
-    never set.  If the attribute has a default, then it is required.
+    """Class representing a single atom. Atoms have the following default
+    attributes. If an attribute has the value None, then the attribute was
+    never set. If the attribute has a default, then it is required.
 
     Atom[alt_loc]    - Atom objects in alternate locations can be accessed
                        by using Python's dictionary syntax with the alt_loc
@@ -2598,7 +2597,7 @@ class Atom(object):
         return "Atom(n=%s alt=%s res=%s chn=%s frag=%s mdl=%d)" % (
             self.name, self.alt_loc, self.res_name,
             self.chain_id, self.fragment_id, self.model_id)
-        
+
         return "Atom(%4s%2s%4s%2s%4s%2d)" % (
             self.name, self.alt_loc, self.res_name,
             self.chain_id, self.fragment_id, self.model_id)
@@ -2625,7 +2624,7 @@ class Atom(object):
             label_entity_id = self.label_entity_id,
             label_asym_id   = self.label_asym_id,
             label_seq_id    = self.label_seq_id)
-        
+
         for bond in self.bond_list:
             partner = bond.get_partner(self)
             if memo.has_key(id(partner)):
@@ -2638,10 +2637,10 @@ class Atom(object):
                 else:
                     bond_cpy.atom1 = partner_cpy
                     bond_cpy.atom2 = atom_cpy
-                
+
                 atom_cpy.bond_list.append(bond_cpy)
                 partner_cpy.bond_list.append(bond_cpy)
-        
+
         return atom_cpy
 
     def __lt__(self, other):
@@ -2668,7 +2667,7 @@ class Atom(object):
             return True
 
         return self.name < other.name
-            
+
     def __le__(self, other):
         assert isinstance(other, Atom)
 
@@ -2756,7 +2755,7 @@ class Atom(object):
         exception is raised if the alt_loc Atom is not found.
         """
         assert isinstance(alt_loc, str)
-        
+
         if self.altloc is None:
             if self.alt_loc == alt_loc:
                 return self
@@ -2778,8 +2777,8 @@ class Atom(object):
                 yield self.altloc[alt_loc]
 
     def __contains__(self, atom_alt_loc):
-        """Returns True if the argument matches a alternate conformation of
-        the Atom.  The argument can be a alt_loc label, or a Atom object.
+        """Returns True if the argument matches an alternate conformation of
+        the Atom. The argument can be an alt_loc label, or an Atom object.
         """
         if isinstance(atom_alt_loc, Atom):
             if self.altloc is None:
@@ -2792,7 +2791,7 @@ class Atom(object):
                 return atom_alt_loc == self.alt_loc
             else:
                 return self.altloc.__contains__(atom_alt_loc)
-            
+
         return False
 
     def remove_alt_loc(self, atom):
@@ -2925,10 +2924,9 @@ class Atom(object):
             yield partner
 
     def get_bonded_atom(self, name_list):
-        """From atom, follow the bonding path specified by
-        a sequence of atom names given in name_list and return the last
-        atom instance in the list.  Returns None if any atom in the
-        bonding path cannot be found.
+        """From atom, follow the bonding path specified by a sequence of atom 
+        names given in name_list and return the last atom instance in the 
+        list. Returns None if any atom in the bonding path cannot be found.
         """
         current_atom = self
         for name in name_list:
@@ -2956,7 +2954,7 @@ class Atom(object):
         """Returns the parent Model object.
         """
         return self.fragment.chain.model
-    
+
     def get_structure(self):
         """Returns the parent Structure object.
         """
@@ -3016,11 +3014,11 @@ class Atom(object):
         elist = [e1, e2, e3]
         elist.sort()
         e1, e2, e3 = elist
-        
+
         return (min(e1, e2) / max(e1, e2),
                 min(e1, e3) / max(e1, e3),
                 min(e2, e3) / max(e2, e3))
-        
+
     def iter_atoms_by_distance(self, max_distance = None):
         """Iterates all atoms in the Structure object from the closest to the
         farthest up to the cutoff distance max_distance if given.  Yields
@@ -3071,7 +3069,7 @@ class Atom(object):
         assert isinstance(res_name, str)
         for atm in self.iter_alt_loc():
             atm.res_name = res_name
-            
+
 
 class Bond(object):
     """Indicates two atoms are bonded together.
@@ -3085,7 +3083,7 @@ class Bond(object):
         atom2_symop       = None,
         standard_res_bond = False,
         **args):
-        
+
         self.atom1             = atom1
         self.atom2             = atom2
         self.bond_type         = bond_type
@@ -3102,7 +3100,7 @@ class Bond(object):
             atom1_symop       = self.atom1_symop,
             atom2_symop       = self.atom2_symop,
             standard_res_bond = self.standard_res_bond)
-    
+
     def get_partner(self, atm):
         """Returns the other atom involved in the bond.
         """
@@ -3221,8 +3219,8 @@ class AlphaHelix(object):
             self.fragment_id2)
 
     def add_segment(self, segment):
-        """Adds the Segment object this AlphaHelix spans.  If the AlphaHelix
-        already has a Segment, then it is replaced.  The Segment objects added
+        """Adds the Segment object this AlphaHelix spans. If the AlphaHelix
+        already has a Segment, then it is replaced. The Segment objects added
         to AlphaHelix objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
@@ -3240,7 +3238,7 @@ class AlphaHelix(object):
             frag2 = segment[-1]
         except IndexError:
             return
-        
+
         self.chain_id1    = frag1.chain_id
         self.fragment_id1 = frag1.fragment_id
         self.res_name1    = frag1.res_name
@@ -3281,7 +3279,7 @@ class AlphaHelix(object):
         return True
 
     def get_chain(self):
-        """Returns the parent Chain object.  If the AlphaHelix does not have
+        """Returns the parent Chain object. If the AlphaHelix does not have
         a Segment child the raised AttributeError.
         """
         return self.segment.chain
@@ -3361,7 +3359,7 @@ class Strand(object):
         assert isinstance(reg_prev_atom, str)
 
         self.beta_sheet            = None
-        
+
         self.chain_id1             = chain_id1
         self.fragment_id1          = frag_id1
         self.res_name1             = res_name1
@@ -3376,7 +3374,7 @@ class Strand(object):
         self.reg_prev_fragment_id  = reg_prev_frag_id
         self.reg_prev_res_name     = reg_prev_res_name
         self.reg_prev_atom         = reg_prev_atom
-        
+
         self.segment               = None
 
     def __str__(self):
@@ -3388,8 +3386,8 @@ class Strand(object):
             self.reg_prev_atom)
 
     def add_segment(self, segment):
-        """Adds the Segment object this Strand spans.  If the Strand
-        already has a Segment, then it is replaced.  The Segment objects added
+        """Adds the Segment object this Strand spans. If the Strand
+        already has a Segment, then it is replaced. The Segment objects added
         to Strand objects must have the attribute segment.chain referencing
         the source Chain object the Segment was sliced from.
         """
@@ -3406,7 +3404,7 @@ class Strand(object):
             frag2 = segment[-1]
         except IndexError:
             return
-        
+
         self.chain_id1    = frag1.chain_id
         self.fragment_id1 = frag1.fragment_id
         self.res_name1    = frag1.res_name
@@ -3449,7 +3447,7 @@ class Strand(object):
         return self.beta_sheet
 
     def get_chain(self):
-        """Returns the parent Chain object.  If the Strand does not have
+        """Returns the parent Chain object. If the Strand does not have
         a Segment child the raised AttributeError.
         """
         return self.segment.chain
@@ -3494,7 +3492,7 @@ class Strand(object):
 
 
 class BetaSheet(object):
-    """Class containing information on a protein beta sheet.  BetaSheet
+    """Class containing information on a protein beta sheet. BetaSheet
     objects contain a list of Segments spanning the beta sheet.
     """
     def __init__(self,
@@ -3502,7 +3500,7 @@ class BetaSheet(object):
                  **args):
 
         assert isinstance(sheet_id, str)
-        
+
         self.model       = None
 
         self.sheet_id    = sheet_id
@@ -3591,7 +3589,7 @@ class Site(object):
             fragment_dict["chain_id"]    = fragment.chain_id
             fragment_dict["frag_id"]     = fragment.fragment_id
             fragment_dict["res_name"]    = fragment.res_name
-            
+
             if fragment_dict not in self.fragment_dict_list:
                 self.fragment_dict_list.append(fragment_dict)
 
@@ -3661,13 +3659,13 @@ def fragment_id_eq(frag_id1, frag_id2):
     to their sequence number, then insertion code.
     """
     return frag_id1 == frag_id2
-    
+
 def fragment_id_lt(frag_id1, frag_id2):
     """Performs a proper less than comparison of fragment_id strings
     according to their sequence number, then insertion code.
     """
     return fragment_id_split(frag_id1) < fragment_id_split(frag_id2)
-    
+
 def fragment_id_le(frag_id1, frag_id2):
     """Performs a proper less than or equal to comparison of fragment_id
     strings according to their sequence number, then insertion code.
@@ -3679,7 +3677,7 @@ def fragment_id_gt(frag_id1, frag_id2):
     according to their sequence number, then insertion code.
     """
     return fragment_id_split(frag_id1) > fragment_id_split(frag_id2)
-    
+
 def fragment_id_ge(frag_id1, frag_id2):
     """Performs a proper greater than or equal to comparison of
     fragment_id strings according to their sequence number, then
@@ -3698,7 +3696,7 @@ def fragment_id_cmp(frag_id1, frag_id2):
 
 def iter_fragments(fragiter, start_frag_id = None, stop_frag_id = None):
     """Given a fragment iterator and a start and end fragment id,
-    return a iterator which yields only fragments within the range.
+    return an iterator which yields only fragments within the range.
     """
     if start_frag_id and stop_frag_id:
         dpred = lambda f: fragment_id_lt(f.fragment_id, start_frag_id)
@@ -3748,10 +3746,11 @@ class FragmentID(object):
     def __ge__(self, other):
         assert isinstance(other, FragmentID)
         return (self.res_seq, self.icode) >= (other.res_seq, other.icode)
-                
+
+
 class AtomList(list):
     """Provides the functionality of a Python list class for containing
-    Atom instances.  It also provides class methods for performing some
+    Atom instances. It also provides class methods for performing some
     useful calculations on the list of atoms.
     """
     def calc_centroid(self):
@@ -3765,7 +3764,7 @@ class AtomList(list):
                 centroid += atm.position
                 num += 1
         return centroid / num
-        
+
     def calc_adv_temp_factor(self):
         """Calculates the average temperature factor of all contained Atom 
         instances and returns the average temperature factor.
@@ -3812,7 +3811,7 @@ class AtomList(list):
                 num_atoms += 1
 
         return adv_aniso / num_atoms
-        
+
     def calc_adv_anisotropy3(self):
         """Calculates the average anisotropy 3-tuple for all Atoms in the 
         AtomList.
