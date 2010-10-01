@@ -32,6 +32,8 @@ import conf, misc
 ##        cross_chain_analysis BOOLEAN, nparts INT(2), resolution DECIMAL(4,2), 
 ##        UNIQUE KEY `job_id` (`job_id`), PRIMARY KEY (jobID));
 
+# cat /proc/sys/kernel/pid_max -> 32768
+
 ## Config
 HOST   = "localhost"
 USER   = "tlsmd"
@@ -53,6 +55,8 @@ def force_reconnect(conn):
         except MySQLdb.OperationalError, message:  # loss of connection
             conn = None  # we lost database connection
     if conn is None:  # if no valid database handle
+        #db = MySQLdb.connect(...)  # connect to database
+        #log_write("WARNING: MySQLdb.connect is None")
         conn = MySQLdb.connect(host = HOST,
                                user = USER,
                                passwd = PASSWD,
@@ -63,6 +67,7 @@ def mysql_connect():
     """connects to the MySQL server
     """
     conn = None
+    #conn = force_reconnect(conn)
     try:
         conn = MySQLdb.connect(host = HOST,
                                user = USER,
@@ -73,11 +78,14 @@ def mysql_connect():
     except MySQLdb.Error, e:
         log_write("ERROR: %d: %s" % (e.args[0], e.args[1]))
         conn = force_reconnect(conn)
+        #sys.exit (1)
+        #return ''
         return conn
 
 
 class MySQLConnect():
     def __init__(self):
+        ## TODO: Add fail-safe
         self.db = mysql_connect()
         self.user_data_tbl = "user_data"
         self.status_page_tbl = "status_page"
@@ -102,7 +110,9 @@ class MySQLConnect():
                 rows = cursor.fetchall()
             cursor.close()
         except MySQLdb.Error, e:
+            ## FIXME: This error message should be logged
             error = ("ERROR: %d: %s" % (e.args[0], e.args[1]))
+            #self.db.commit()
             if select:
                 return None
             else:
@@ -125,6 +135,7 @@ class MySQLConnect():
         assert job_id.startswith("TLSMD")
         if not self.job_exists(job_id):
             return False
+
         string = """INSERT INTO %s
                  SELECT * FROM %s 
                  WHERE job_id='%s';""" % (
