@@ -299,6 +299,7 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##<FLATFILE>
         ## NOTE: This is in a standalone def "html_tls_group_table"
         if detail:
+            ## "Analysis of TLS Group n Chain Segments" values
             flatfile_name = "%s/%s.dat" % (os.getcwd(), conf.globalconf.job_id)
             flatfile = open(flatfile_name, "a+")
 
@@ -317,6 +318,8 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
             flatfile.write("\nDATA %s EVAL_L: %.2f,%.2f,%.2f" % (chain_ntls, L1, L2, L3))
             flatfile.write("\nDATA %s TLS_MEAN_B: %.1f" % (chain_ntls, tls.tls_mean_b()))
             flatfile.write("\nDATA %s TLS_MEAN_ANISO: %.2f" % (chain_ntls, tls.tls_mean_anisotropy()))
+
+            ## XXX: Are the following redundant?
             flatfile.write("\nDATA %s CHECK_RMSD_B: %.2f" % (chain_ntls, cpartition.rmsd_b()))
             flatfile.write("\nDATA %s CHECK_RESIDUAL: %.2f" % (
                 chain_ntls, cpartition.residual()))
@@ -327,6 +330,8 @@ def html_tls_group_table(ntls, chain, cpartition, report_root = None, detail = N
         ##======================================================================
 
         ## "Analysis of TLS Group n Chain Segments" table
+        ## FIXME: Why are the 'tls.rmsd_b'/"RMSD B" values different from the
+        ## off-diagonal matrix values? 
         ## The "RMSD B Values of Combined TLS Groups" values.
         l += ['<td align="center" valign="middle">',
               '<img src="%s" alt="%s"/></td>' % (
@@ -502,6 +507,7 @@ class HTMLSummaryReport(Report):
         self.flatfile_globals()
 
         ## These are the Jmol Java files needed for the viewer and animator
+        ## TODO: Only copy Jmol files if job not submitted via_pdb, 2009-12-08
         shutil.copy(conf.JMOL_PATH + "/JmolApplet.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.jar", analysis_dir)
         shutil.copy(conf.JMOL_PATH + "/Jmol.js", analysis_dir)
@@ -560,7 +566,12 @@ class HTMLSummaryReport(Report):
             ## add tables for all TLS group selections using 1 TLS group
             ## up to max_ntls
             gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
-
+            ## TODO: Why loop over all segments? 2010-02-03
+            #for ntls in chain.partition_collection.iter_ntls():
+            #    gp = gnuplots.LSQR_vs_TLS_Segments_Plot(chain)
+            #    ## maybe this will help with the memory problems...
+            #    import gc
+            #    gc.collect()
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
 
         residual_log.close()
@@ -601,6 +612,10 @@ class HTMLSummaryReport(Report):
         console.stdoutln("HTML: Saving summary index.html")
 
     def generate_subtitle(self):
+        ##FIXME: This file has write permission problems, 2010-09-25
+        #file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
+        #file = "%s/%s/%s/user_info.dat" % (conf.TLSMD_WWW_ROOT, "jobs", 
+        #                                   self.job_id)
         try:
             file = open("../user_info.dat", "r")
             jdict = pickle.load(file)
@@ -619,6 +634,7 @@ class HTMLSummaryReport(Report):
         """
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
@@ -637,6 +653,7 @@ class HTMLSummaryReport(Report):
              '<br/>\n',
 
              ## MOTION ANALYSIS
+             ## TODO: Add info on animated GIFs, 2009-11-17
              '<center>',
              '<h3>TLS Partitions and Motion Analysis of Individual Chains</h3>',
              '</center>\n',
@@ -671,6 +688,7 @@ class HTMLSummaryReport(Report):
         """
         ## NOTE: class HTMLSummaryReport()
 
+        ## TODO: Add flag to choose tls_model, 2009-02-04
         if conf.globalconf.tls_model in ["ISOT", "NLISOT"]:
             tls_model = "Isotropic"
         elif conf.globalconf.tls_model in ["ANISO", "NLANISO"]:
@@ -723,6 +741,7 @@ class HTMLSummaryReport(Report):
         """Store globals in flatfile
         """
         ## NOTE: class HTMLSummaryReport()
+        ## TODO: Make sure this is only called once, 2009-05-22
         ##======================================================================
         ##<FLATFILE>
         flatfile = open(self.flatfile_name, "a+")
@@ -916,6 +935,9 @@ class HTMLReport(Report):
         WEBTMP_PATH directory.
         """
         ## class HTMLReport()
+        #file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
+        #file = "%s/%s/%s/user_info.dat" % (conf.TLSMD_WWW_ROOT, "jobs",
+        #                                   self.job_id)
         try:
             file = open("../user_info.dat", "r")
             jdict = pickle.load(file)
@@ -935,6 +957,7 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: TLSMD Thermal Parameter Analysis of Structure" % (
             self.struct_id)
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [self.html_head(title),
@@ -1062,6 +1085,7 @@ class HTMLReport(Report):
         ## class HTMLReport()
         title = "%s: Chain %s TLS Analysis" % (
             self.struct_id, chain.chain_id)
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l  = [self.html_head(title),
@@ -1343,6 +1367,7 @@ class HTMLReport(Report):
              '<a href="%s">Full TLS Partition Analysis</a>' % (
                  ntls_analysis.url),
 
+             #'&nbsp;&nbsp;&nbsp;&nbsp;',
              '%s' % (const.LINK_SPACE),
 
              '<a href="." onClick="window.open(&quot;%s&quot;,&quot;&quot;,&quot;' % (
@@ -1781,6 +1806,8 @@ class HTMLReport(Report):
         """
         ## class HTMLReport()
         report = ChainNTLSAnalysisReport(chain, cpartition)
+        console.stdoutln("CPU_TIME ->HTMLReport::chain_ntls_analysis: %s" % (
+            time.clock()))
         return report
 
     def jmol_html(self, chain, cpartition):
@@ -1875,6 +1902,7 @@ class HTMLReport(Report):
                             atm.position[0], atm.position[1], atm.position[2]))
         raw_r3d_filename.close()
 
+        console.stdoutln("CPU_TIME ->HTMLReport::generate_raw_backbone_file: %s" % time.clock())
         return raw_r3d_file, r3d_body_file
 
     def jmol_animate_html(self, chain, cpartition):
@@ -1885,6 +1913,7 @@ class HTMLReport(Report):
         basename = "%s_CHAIN%s_NTLS%d_ANIMATE" % (
             self.struct_id, chain.chain_id, cpartition.num_tls_segments())
 
+        ## TODO: Include http://www.wwpdb.org/documentation/format32/sect8.html
         html_file     = "%s.html" % (basename)
         pdb_file      = "%s.pdb" % (basename)
         raw_r3d_file  = "%s.raw" % (basename)
@@ -1925,6 +1954,7 @@ class HTMLReport(Report):
             max = 0.00
             for val in L1_val, L2_val, L3_val:
                 if val >= max:
+                    ## TODO: Store max libration chain_id to ANIMATE.txt, 2009-08-05
                     max = val
             max_libration.append(float(max))
             n += 1
@@ -2015,6 +2045,8 @@ class HTMLReport(Report):
         open(html_file, "w").write("".join(l))
 
         console.stdoutln("[%s] HTML: Saving %s" % (chain_seg, html_file))
+        console.stdoutln("CPU_TIME ->HTMLReport::jmol_animate_html: %s" % (
+            time.clock()))
 
         return html_file, raw_r3d_file, r3d_body_file
 
@@ -2045,6 +2077,7 @@ class HTMLReport(Report):
         """
         ## class HTMLReport()
         title = self.page_multi_chain_alignment["title"]
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         l = [ self.html_head(title),
@@ -2108,6 +2141,7 @@ class HTMLReport(Report):
 
         l.append(self.html_foot())
 
+        console.stdoutln("CPU_TIME ->HTMLReport::html_multi_chain_alignment: %s" % time.clock())
         console.stdoutln("="*80)
         return "".join(l)
 
@@ -2133,6 +2167,7 @@ class HTMLReport(Report):
     def html_refinement_prep(self):
         ## class HTMLReport()
         title = self.page_refinement_prep["title"]
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
 
         plot = gnuplots.LSQR_vs_TLS_Segments_All_Chains_Plot(self.tlsmd_analysis)
@@ -2236,6 +2271,10 @@ class ChainNTLSAnalysisReport(Report):
         form.
         """
         ## class ChainNTLSAnalysisReport()
+        ## FIXME: Does not work if job was started via the CLI, 2010-04-01
+        #file = open("%s/%s.txt" % (conf.WEBTMP_PATH, self.job_id), "r")
+        #file = "%s/%s/%s/user_info.dat" % (conf.TLSMD_WWW_ROOT, "jobs",
+        #                                   self.job_id)
         try:
             file = open("../user_info.dat", "r")
             jdict = pickle.load(file)
@@ -2254,6 +2293,7 @@ class ChainNTLSAnalysisReport(Report):
         ## class ChainNTLSAnalysisReport()
         title = "%s: Chain %s Partitioned by %d TLS Groups" % (
             self.struct_id, self.chain_id, self.ntls)
+        #subtitle = self.generate_subtitle()
         subtitle = conf.globalconf.user_comment
         path = "%s_CHAIN%s_ANALYSIS.html" % (self.struct_id, self.chain_id)
 
