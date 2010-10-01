@@ -253,6 +253,17 @@ def ChainPartitionRecombinationOptimization(chain):
 
     for ntls, cpartition in chain.partition_collection.iter_ntls_chain_partitions():
         if ntls < 2:
+            if float(cpartition.rmsd_b()) < 0.0:
+                ## FIXME: This doesn't work yet, 2009-06-05
+                ## Why doesn't it? 2010-04-02
+                msg  = "**** STOP! No need to continue. "
+                msg += "Residual is already best for NTLS=%s ****" % (
+                    cpartition.rmsd_b())
+                console.stdoutln("%s" % msg)
+                break
+            #console.stdoutln("TYPE: [%s] -> type(%s); float(%s)" % (
+            #    cpartition.rmsd_b(), type(cpartition.rmsd_b()), 
+            #    float(cpartition.rmsd_b())))
             console.stdoutln("RMSD-%sc: %s" % (ntls, cpartition.rmsd_b()))
             console.stdoutln("RESIDUAL-%sc: %s" % (ntls, cpartition.residual()))
 
