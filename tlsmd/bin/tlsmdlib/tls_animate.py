@@ -37,6 +37,7 @@ def iter_fragment_range(chain, frag_id1, frag_id2):
 
 
 class TLSAnimateFailure(Exception):
+    ## TODO: Return an exception message, 2009-11-11
     pass
 
 
@@ -67,6 +68,7 @@ class TLSAnimate(object):
 
         for chain in struct.iter_chains():
 
+            ## TODO: Move "200" to conf.py, 2009-06-19
             if chain.chain_id == chain_id or chain.count_fragments() < 200:
                 include_chain = True
             else:
@@ -210,6 +212,7 @@ class TLSAnimate(object):
             D = AtomMath.dmatrixu(Lvec, Lrot)
             d_screw = (Lrot * Lpitch) * Lvec
 
+            ## TODO: Add max(L) chain_id to ANIMATE.txt, 2009-08-06
             if n == 1:
                 chain_id = self.L1_chain.chain_id
             elif n == 2:
