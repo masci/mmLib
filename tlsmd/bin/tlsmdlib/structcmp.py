@@ -7,6 +7,7 @@
 import math
 import numpy
 
+## TODO: Maybe try installing BioPython? 2009-07-16
 try:
     from Bio import pairwise2
 except ImportError:
