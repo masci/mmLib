@@ -4,9 +4,11 @@
 ## included as part of this package.
 """Structural database based on mmCIF.
 """
+## Python
 from __future__ import generators
 import copy
 
+## pymmlib
 import mmCIF
 
 
@@ -39,7 +41,7 @@ class mmCIFDB(mmCIF.mmCIFData):
 
     def add_table(self, table):
         self.append(copy.deepcopy(table))
-    
+
     def add_tables(self, tables):
         for table in tables:
             self.append(copy.deepcopy(table))
@@ -55,8 +57,8 @@ class mmCIFDB(mmCIF.mmCIFData):
         return table
 
     def get_single(self, table_name, col_name):
-        """Utility function for getting a table where there should only
-        be a single row of data.
+        """Utility function for getting a table where there should only be a
+        single row of data.
         """
         try:
             return self[table_name][col_name]
@@ -64,12 +66,12 @@ class mmCIFDB(mmCIF.mmCIFData):
             return None
 
     def set_single(self, table_name, col_name, val):
-        """Utility function for setting a table where there should only be
-        a single row of data.
+        """Utility function for setting a table where there should only be a
+        single row of data.
         """
         if val == None:
             return
-        
+
         table = self.confirm_table(table_name)
         if len(table):
             table[0][col_name] = val
@@ -85,7 +87,7 @@ class mmCIFDB(mmCIF.mmCIFData):
 
     def set_entry_id(self, idcode):
         self.set_single("entry", "id", idcode)
-            
+
     def get_deposition_date(self):
         """Return the original deposition date as stored in
         _database_pdb_ref.date_original.
@@ -97,30 +99,29 @@ class mmCIFDB(mmCIF.mmCIFData):
 
     def get_struct_keywords(self):
         """Return structure keywords as stored in
-        _struct_keywords.text
+        _struct_keywords.text.
         """
         return self.get_single("struct_keywords", "text")
     def set_struct_keywords(self, text):
         self.set_single("struct_keywords", "text", text)
-        
+
     def get_struct_keywords(self):
         """Return structure keywords as stored in
-        _struct_keywords.text
+        _struct_keywords.text.
         """
         return self.get_single("struct_keywords", "text")
     def set_struct_keywords(self, text):
         self.set_single("struct_keywords", "text", text)
 
-    
 
-##     ## generic data
-##     set_ims("database_pdb_rev", "date_original", info_map, "date")
-##         set_ims("struct_keywords", "text", info_map, "keywords")
-##         set_ims("struct_keywords", "pdbx_keywords", info_map, "pdbx_keywords")
-##         set_ims("struct", "title", info_map, "title")
-        
-##         ## X-ray experimental data
-##         set_imf("refine", "ls_R_factor_R_work", info_map, "R_fact")
-##         set_imf("refine", "ls_R_factor_R_free", info_map, "free_R_fact")
-##         set_imf("refine", "ls_d_res_high", info_map, "res_high")
-##         set_imf("refine", "ls_d_res_low", info_map, "res_low")
+## ## generic data
+## set_ims("database_pdb_rev", "date_original", info_map, "date")
+## set_ims("struct_keywords", "text", info_map, "keywords")
+## set_ims("struct_keywords", "pdbx_keywords", info_map, "pdbx_keywords")
+## set_ims("struct", "title", info_map, "title")
+
+## ## X-ray experimental data
+## set_imf("refine", "ls_R_factor_R_work", info_map, "R_fact")
+## set_imf("refine", "ls_R_factor_R_free", info_map, "free_R_fact")
+## set_imf("refine", "ls_d_res_high", info_map, "res_high")
+## set_imf("refine", "ls_d_res_low", info_map, "res_low")
