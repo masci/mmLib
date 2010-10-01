@@ -22,7 +22,7 @@ ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
 MMLIB_MONOMER_DATA_PATH = os.path.join(MMLIB_PATH, "Data", "monomers.cif")
 RCSB_MONOMER_DATA_FILE  = os.path.join(MMLIB_PATH, "Data", "Monomers.zip") 
 RCSB_MONOMER_DATA_PATH  = os.path.join(MMLIB_PATH, "Data", "Monomers") 
-    
+
 ###############################################################################
 ## Caches
 ##
@@ -31,7 +31,7 @@ MONOMER_RES_NAME_CACHE = {}
 
 ELEMENT_CIF_FILE = mmCIF.mmCIFFile()
 ELEMENT_CIF_FILE.load_file(open(ELEMENT_DATA_PATH, "r"))
-        
+
 MMLIB_MONOMERS_CIF = mmCIF.mmCIFFile()
 MMLIB_MONOMERS_CIF.load_file(open(MMLIB_MONOMER_DATA_PATH, "r"))
 
@@ -173,7 +173,7 @@ ALT_RES_NAME_DICT = {
     "U+": "U", "Ur": "U", "+U": "U",
     "Ad": "A", "Td": "T", "Gd": "G", "Cd": "C",
     }
-    
+
 ###############################################################################
 ## Library Description Objects
 ##
@@ -218,16 +218,16 @@ class MonomerDesc(object):
         self.amino_acid         = False
         self.nucleic_acid       = False
         self.water              = False
-        
+
     def is_amino_acid(self):
-        """Returns True if the Monomer is a amino acid, otherwise
-        returns False.
+        """Returns True if the Monomer is an amino acid, otherwise returns 
+        False.
         """
         return self.amino_acid
-            
+
     def is_nucleic_acid(self):
-        """Returns True if the Monomer is a nucleic acid, otherwise
-        returns False.
+        """Returns True if the Monomer is a nucleic acid, otherwise returns 
+        False.
         """
         return self.nucleic_acid
 
@@ -272,7 +272,7 @@ def library_construct_element_desc(symbol):
     element_desc.atomic_weight   = float(element["atomic_weight"])
     element_desc.vdw_radius      = float(element["van_der_walls_radius"])
     element_desc.covalent_radius = float(element.get("covalent_radius", 0.0))
-    
+
     rgb8 = element["color_rgb"]
     element_desc.color_rgbf = (int(rgb8[1:3], 16) / 255.0,
                                int(rgb8[3:5], 16) / 255.0,
@@ -282,7 +282,7 @@ def library_construct_element_desc(symbol):
 
 
 def library_get_element_desc(symbol):
-    """Loads/caches/returns a instance of the ElementDesc class for the given
+    """Loads/caches/returns an instance of the ElementDesc class for the given
     element symbol. The source of the element data is the
     mmLib/Data/elements.cif file.
     """
@@ -297,14 +297,14 @@ def library_get_element_desc(symbol):
     if element_desc is None:
         ConsoleOutput.warning("element description not found for %s" % (symbol))
         return None
-    
+
     ELEMENT_CACHE[symbol] = element_desc
     return element_desc
 
 
 def library_use_monomer_zipfile():
     """Returns True if the zipfile version of the monomer library should be used,
-    or False if the uncompressed directory hierarchy should be used.  If the
+    or False if the uncompressed directory hierarchy should be used. If the
     """
     ## check if monomers are available in a zip file
     global RCSB_USE_ZIP
@@ -339,7 +339,7 @@ def library_open_monomer_lib_zipfile(monomer_name):
 
 def library_open_monomer_lib_directory(monomer_name):
     """Returns the open file object for the mmCIF monomer library file if it
-    is found as a uncompressed mmCIF file at the path:
+    is found as an uncompressed mmCIF file at the path:
         mmLib/Data/Monomers/NAME[0]/NAME.cif
     """
     assert len(monomer_name) > 0
@@ -362,7 +362,7 @@ def library_open_monomer_lib_file(monomer_name):
         return libfil
     libfil = library_open_monomer_lib_zipfile(monomer_name)
     return libfil
-    
+
 
 def library_construct_monomer_desc(res_name):
     """Constructs the MonomerDesc object for the given residue name.
@@ -447,7 +447,7 @@ def library_construct_monomer_desc(res_name):
 
     ## set some derived flags on the monomer description
     mon_type = mon_desc.type.upper()
-    
+
     if mon_type == "L-PEPTIDE LINKING":
         mon_desc.amino_acid = True
 
@@ -458,7 +458,7 @@ def library_construct_monomer_desc(res_name):
         mon_desc.water = True
 
     return mon_desc
-    
+
 def library_get_monomer_desc(res_name):
     """Loads/caches/returns the monomer description objec MonomerDesc
     for the given monomer residue name.
@@ -479,7 +479,7 @@ def library_get_monomer_desc(res_name):
 
 
 def library_is_amino_acid(res_name):
-    """Returns True if the res_name is a amino acid.
+    """Returns True if the res_name is an amino acid.
     """
     assert isinstance(res_name, str)
 
@@ -544,10 +544,10 @@ def library_guess_element_from_name(name0, res_name):
                 symbol = mdesc.atom_dict[name]
                 if symbol is not None:
                     return symbol
-    
+
             if mdesc.is_amino_acid() and name == "OXT":
                 return "O"
-    
+
             if mdesc.is_amino_acid():
                 msg = "invalid amino acid atom name '%s' in residue '%s'" % (
                     name, res_name)
