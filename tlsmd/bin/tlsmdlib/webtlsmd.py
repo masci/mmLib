@@ -74,6 +74,8 @@ def html_nav_bar(page_name=None):
              conf.TLSMD_BASE_URL),
          '    <li><a href="%s/documentation.html">Documentation</a></li>' % (
              conf.TLSMD_BASE_URL),
+         '    <li><a href="%s/user_guide.html">User Guide</a></li>' % (
+             conf.TLSMD_BASE_URL),
          '  </ul>',
          '</div>'
          ]
@@ -104,6 +106,7 @@ def html_job_nav_bar(job_id):
     tarball     = os.path.join(job_dir, "%s.tar.gz" % job_id)
     tarball_url = os.path.join(job_url, "%s.tar.gz" % job_id)
 
+    ## TODO: Should this only check for the logfile? 2009-05-27
     if not os.path.isfile(analysis_index) and not os.path.isfile(logfile):
         return ''
 
@@ -588,6 +591,20 @@ def html_program_settings_table(fdict, run_mainchain_only = None):
           '</fieldset>',
           '</td>',
  
+          ## turn cross-chain analysis on/off
+          '<td valign="top" class="l">',
+          '<fieldset><legend>Cross-Chain analysis</legend>',
+          '<div style="font-size:xx-small">',
+          'Turn Cross-Chain analysis on/off.</div><br>',
+          '<p>',
+          '<label>Generate Cross-Chain analysis: </label>',
+          '<input name="cross_chain_analysis" type="radio" value="True">yes',
+          '<input name="cross_chain_analysis" type="radio" value="False" ',
+                 'checked="checked">no',
+          '</p>',
+          '</fieldset>',
+          '</td>',
+ 
           '</tr>',
           '</table>',
  
@@ -635,6 +652,7 @@ def html_job_edit_form2(fdict, title="", run_mainchain_only = None):
          '<tr><th class="step_title">%s</th></tr>' % (title),
 
          '<tr><td class="c">', html_user_info_table(fdict), '</td></tr>',
+         #'<tr><td class="c">', html_program_settings_table(fdict, run_mainchain_only), '</td></tr>',
          '<tr><td class="c">']
 
     if run_mainchain_only:
@@ -861,6 +879,14 @@ def html_job_info_table(fdict):
         x += left_justify_string('Maximum number of segments', '%s' % (
             fdict["nparts"]))
 
+    ## Cross-Chain analysis settings. 2008-11-25
+    if fdict.get("cross_chain_analysis") == True:
+        x += left_justify_string('Cross-Chain analysis', 'True')
+    elif fdict.get("cross_chain_analysis") == False:
+        x += left_justify_string('Cross-Chain analysis', 'False')
+    else:
+        x += left_justify_string('Cross-Chain analysis', 'n/a')
+
     x += '</pre></td>'
     x += '</tr>'
 
@@ -888,6 +914,7 @@ def html_job_info_table(fdict):
     if fdict.has_key("killbutton"):
         x += '<input type="submit" name="submit" value="Kill Job">'
 
+    ## FIXME: This is redundant
     if fdict.has_key("removebutton"):
         x += '</td>'
         x += '</form>'
@@ -966,8 +993,11 @@ def extract_job_edit_form(form):
 
     mysql.job_set_submit_time(job_id, time.time())
 
+    ## TODO: Immediately create job dir + log.txt + ANALYSIS dir, 2009-05-26
+
     if form.has_key("private_job"):
         mysql.job_set_private_job(job_id, "1") ## 1 = True
+        #mysql.job_set_private_job(job_id, True) ## 1 = True
 
     if form.has_key("user_name"):
         user_name = form["user_name"].value.strip()
@@ -994,12 +1024,14 @@ def extract_job_edit_form(form):
         ## store only the first 128 characters
         user_comment = cleanup_input(user_comment[:128])
         mysql.job_set_user_comment(job_id, user_comment)
-        conf.globalconf.user_comment = user_comment
+        conf.globalconf.user_comment = user_comment ## FIXME: Doesn't seem to work, 2010-07-08
+        #raise SubmissionException('User comment: %s' % conf.globalconf.user_comment)
 
     ## Selected chains for analysis
     num_chains_selected = 0
     update_chains = ""
     chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
+    #raise SubmissionException('FORM DUMP: [%s])' % (form)) ## DEBUG
     for c in chains.split(';'):
         chid, length, selected, type = misc.parse_chains(c)
         name = "CHAIN%s" % chid
@@ -1060,6 +1092,14 @@ def extract_job_edit_form(form):
             mysql.job_set_histogram(job_id, "1")
         else:
             mysql.job_set_histogram(job_id, "0")
+
+    ## Generate Cross-Chain analysis (default=False)
+    if form.has_key("cross_chain_analysis"):
+        cross_chain_analysis = form["cross_chain_analysis"].value.strip()
+        if cross_chain_analysis == "True":
+            mysql.job_set_cross_chain_analysis(job_id, "1")
+        else:
+            mysql.job_set_cross_chain_analysis(job_id, "0")
 
     ## Select number of partition/chain (default/max=20)
     if form.has_key("nparts"):
@@ -1245,8 +1285,12 @@ class QueuePage(Page):
             page = "explore"
 
         if self.admin:
-            l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
-                page, job_id, job_id)]
+            if jdict["tls_model"] == "ANISO":
+                l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a> (ANISO)' % (
+                    page, job_id, job_id)]
+            else:
+                l = ['<a href="webtlsmd.cgi?page=%s&amp;job_id=%s">%s</a>' % (
+                    page, job_id, job_id)]
 
             if jdict["user_name"] != "":
                 l.append('<br>%s' % (jdict["user_name"]))
@@ -1378,6 +1422,7 @@ class QueuePage(Page):
 
             x += ['<td>%s</td>' % (self.explore_href(jdict["job_id"])),
                   '<td>%s</td>' % (self.rcsb_href(jdict)),
+                  #'<td>%s</td>' % (self.total_number_of_residues(jdict["chain_sizes"])),
                   '<td>%s</td>' % (self.total_number_of_residues(jdict)),
                   '<td>%s</td>' % (timestring(jdict["submit_time"]))]
 
@@ -1505,6 +1550,7 @@ class QueuePage(Page):
             l.append('<td>%s</td>' % (self.explore_href(jdict["job_id"])))
 
             ## "Struct ID"
+            #l.append('<td>%s</td>' % (self.rcsb_href(jdict)))
             if ((jdict["structure_id"] == None) or \
                 (jdict["structure_id"].lower() == "xxxx")):
                 l.append('<td>----</td>')
@@ -1592,6 +1638,7 @@ class QueuePage(Page):
 
             ## Return job number only (non-clickable)
             job_number = re.match(r'[^_]*', jdict["job_id"])
+            #x += '<td>%s</td>' % (self.explore_href(jdict))
             x += '<td>%s</td>' % (job_number.group(0))
             x += '<td>%s</td>' % (self.rcsb_href(jdict))
             x += '<td>%s</td>' % (jdict.get("state"))
@@ -1895,6 +1942,7 @@ class Submit2Page(Page):
             else:
                 run_mainchain_only = True
 
+        ## TODO: Figure out how to do this without webtlsmdd, 2009-05-29
         ## pass the PDB file to the application server
         result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary("".join(line_list)))
         if result != "":
@@ -2000,6 +2048,7 @@ class Submit3Page(Page):
     def submission_summary_info(self, job_id):
         """Provides a summary table of the user-selected chains.
         """
+        ## TODO: Post-sanity checks, 2009-01-08
         #sanity = self.form["pdbfile"].value
         chains = mysql.job_get_chain_sizes(job_id).rstrip(";")
 
@@ -2008,15 +2057,19 @@ class Submit3Page(Page):
         # selected: True
         # chain_id: A
         # length: 39
+        # preview: MET ILE TYR ALA GLY
         # desc: Chain A (39 Amino Acid Residues)
         sum = '<table class="status_table">'
         sum += '<tr class="status_table_head">'
         sum += '<th>Chain<th>Analyze</th><th>Residues</th>'
+        #sum += '<th>Preview</th>
         sum += '<th>Residue type</th>'
         sum += '<th>Ignored residues/atoms</th>'
         next_chain = ''
+        #for list in summary_data:
         for c in chains.split(';'):
             chid, length, selected, type = misc.parse_chains(c)
+            #if next_chain != list["chain_id"]:
             if next_chain != chid:
                 sum += '</tr>'
                 row1 = True
@@ -2036,6 +2089,9 @@ class Submit3Page(Page):
             else:
                 sum += '<td class="c">False</td>'
             sum += '<td class="c">%s</td>' % length
+
+            ## Preview
+            #sum += '<td>%s ...</td>' % list["preview"]
 
             ## Residue type
             if type == "aa":
@@ -2068,6 +2124,7 @@ class SubmitPDBPage(Page):
             raise SubmissionException("Not a valid PDB ID")
 
         if mysql.pdb_exists(pdbid) != None:
+            #raise SubmissionException("PDB: [%s]" % mysql.pdb_exists(pdbid)) ## DEBUG
             return self.redirect_page(pdbid)
 
         pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
@@ -2159,6 +2216,13 @@ class SubmitPDBPage(Page):
         return "".join(redirect)
 
 
+def min_subsegment_stddev(atomnum, restype, resnum, chain, tfactor):
+    """Calculates a running standard deviation for residue windows the same
+    size as whatever the global 'min_subsegment_size' in conf.py is set to.
+    """
+    ## TODO: Doesn't do anything yet, 2009-06-05
+    min_subsegment_size = conf.globalconf.min_subsegment_size
+
 def running_stddev(tmpfile, atomnum, restype, resnum, chain, tfactor):
     """Calculates a running standard deviation for the average B-factors
     of a given set of residues.
@@ -2203,6 +2267,7 @@ def running_stddev(tmpfile, atomnum, restype, resnum, chain, tfactor):
     ### Not correct, because it crosses chain boundaries
     ### and because the wrong value is calculated (std of mean, 
     ### rather than the std of the atoms)
+    ## TODO: Add chain_id to .std file, 2009-10-20
     nbad = 0
     fstd = open('%s/%s.std' % (conf.WEBTMP_PATH, tmpfile),'w')
     for s in range(5, len(avg_tfac)-5):
@@ -2266,6 +2331,16 @@ def check_upload(job_id, file, mainchain = None):
 
         if line.startswith('HEADER'):
             header_id = re.sub(r"^HEADER.{56}(....)", '\\1', line).strip()
+            ## FIXME: Calls to MySQL can not be made in this def, 2009-06-16
+            #mysql.job_set_header_id(job_id, str(header_id))
+
+        #if line.startswith('EXPDTA    NMR') or \
+        #   line.startswith('EXPDTA    SOLUTION NMR'):
+        #    ## TODO: Might need to add "SOLID-STATE NMR", 2009-11-10
+        #    msg  = "NMR structure! "
+        #    msg += "Please do not submit NMR structures, theoretical models, "
+        #    msg += "or any PDB file with unrefined Bs."
+        #    return msg
 
         elif line.startswith('EXPDTA') and line.find('X-RAY DIFFRACTION') == -1:
             msg  = "Not an X-ray diffraction structure. TLSMD currently only "
@@ -2274,6 +2349,8 @@ def check_upload(job_id, file, mainchain = None):
 
         elif re.match(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', line):
             resolution = re.sub(r'^REMARK   2 RESOLUTION\. ([0-9\.]{1,}) ANGSTROMS.*', '\\1', line).strip()
+            ## FIXME: Calls to MySQL can not be made in this def, 2009-06-16
+            #mysql.job_set_resolution(job_id, resolution)
 
         elif re.match('^ATOM.....................[0-9][a-z]', line):
             ## E.g., Don't allow "100b". Force it to be "100B"
@@ -2340,6 +2417,14 @@ def check_upload(job_id, file, mainchain = None):
         else:
             continue
 
+    #return "Number of atoms: %s (%s) (%s)" % (num_total, len(temp_factors), num_good)
+
+    ## TODO: Add check for ANISOU that are pure ISOT, 2010-03-23
+
+    ## FIXME: This does not work yet.
+    #if(ignore == num_total):
+    #    return "All occupancies are less than 1.0, so all atoms will be ignored. Nothing to do."
+
     msg = "Not a PDB structure or has unrecognized residue names."
     if mainchain and num_good < 5:
         return msg, tmpfile
@@ -2361,6 +2446,8 @@ def check_upload(job_id, file, mainchain = None):
         script = script.replace("<webtmp_path>", conf.WEBTMP_PATH)
         script = script.replace("<tmpfile>", tmpfile)
         script = script.replace("<gnuplot_font>", conf.GNUPLOT_FONT)
+        #script = script.replace("<min_stddev_bfact>", conf.MIN_STDDEV_BFACT)
+        #script = script.replace("<max_stddev_bfact>", conf.MAX_STDDEV_BFACT)
 
         f.write(script)
         f.close()
