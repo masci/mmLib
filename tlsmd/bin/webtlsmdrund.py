@@ -23,6 +23,7 @@ import tarfile
 ## TLSMD
 from tlsmdlib import const, conf, email, misc, mysql_support
 
+## XXX: This is never used, 2009-05-29
 ## if there are no lines of output from the tlsmd process
 ## in TIMEOUT_SECS, then kill the process
 TIMEOUT_SECS = 1 * (60 * 60)
@@ -75,6 +76,12 @@ def log_job_end(jdict):
     run_time_end = jdict.get('run_time_end', 0.0)
     processing_time = timediff(run_time_begin, run_time_end)
 
+    ## TODO: Store the following somewhere so they can be logged:
+    ##  - Max segs
+    ##  - Resolution
+    ##  - Initial residuals
+    ##  - Final residuals
+    ##  - STDDEV Bfact
     l = ["[Submit time: %s]"  % (timestring(submit_time)), ## 2009-04-21 17:31 PDT
          "[Start time: %s] " % (timestring(run_time_begin)),
          "[End time: %s] " % (timestring(run_time_end)),
@@ -137,6 +144,7 @@ def run_tlsmd(mysql, jdict):
     open("tlsmdcmd.txt", "w").write(" ".join(tlsmd) + '\n')
 
     ## FORK SECTION: fork/execvp; 2008-01-22
+    ## removed "-xhttp://localhost:10100" from command, 2009-05-01
     ## e.g., args="python tlsmd.py -b -rANALYSIS -jTLSMD9370_iNMLMncN \
     ##               -i1FIN -mISOT -cA -aALL struct.pdb"
     args = ["python"] + tlsmd
@@ -153,12 +161,19 @@ def run_tlsmd(mysql, jdict):
         mysql.job_set_pid(jdict["job_id"], save_pid)
 
         ## Set up the environment
+        ## TODO Find out which keys to clear. Christoph Champ, 2008-02-12
+        ## os.environ.clear()  ## probably too drastic, but some cleaning might be good
         pwd = {}
         pwd["PWD"] = os.path.join(conf.TLSMD_WORK_DIR, jdict["job_id"])
         os.environ.update(pwd)
+        #print os.environ.values
 
         os.execvp("python", args)
         ## NOTE: We never come back from 'execvp()'
+
+        ## TODO: Attempt to get rid of "<defunct>" process, 2009-10-06
+        #os.waitpid()
+        #os.wait()
 
     time.sleep(5.0)
     return
@@ -231,6 +246,8 @@ def cleanup_job(mysql, jdict):
         if os.path.exists(pdb_dir):
             shutil.rmtree(pdb_dir)
         try:
+            ## XXX
+            #shutil.copytree(job_dir, pdb_dir)
             shutil.move(job_dir, pdb_dir)
 
             flatfile = pdb_dir + "/ANALYSIS/" + job_id + ".dat"
@@ -239,10 +256,14 @@ def cleanup_job(mysql, jdict):
             raise
 
     ## create tarball (does not create tarballs for jobs submitted via pdb.org)
+    ## TODO: try/except for missing tarballs, 2009-07-08
     if int(jdict["via_pdb"]) == 0:
         tar = tarfile.open("%s.tar.gz" % job_id, "w:gz")
         tar.add("ANALYSIS")
         tar.close()
+
+    ## XXX: Is this necessary? 2009-11-10
+    #os.chdir(old_dir)
 
     ## If job was submitted via_pdb, redirect the job_dir path used by the
     ## logfile
@@ -313,6 +334,9 @@ def get_job(mysql):
     ## set maximum number of segments
     tlsmd.append("-n%s" % (jdict["nparts"]))
 
+    ## select LSQ weighting
+    #tlsmd.append("-w%s" % (jdict["weight"]))
+
     ## select chain IDs to analyze
     cids = []
     chains = jdict["chain_sizes"].rstrip(";")
@@ -367,17 +391,20 @@ def send_mail(mysql, jdict):
 
     address = jdict.get("email", "")
     if len(address) == 0:
+        #log_write("NOTE: no email address: %s" % job_id)
         return
 
     ## job_url is different for jobs submitted via pdb.org
     if mysql.job_get_via_pdb(job_id) == 1:
         pdb_id = mysql.job_get_structure_id(job_id)
+        #job_url = os.path.join(conf.TLSMD_PUBLIC_URL, "pdb", pdb_id)
         job_dir = "/pdb/%s" % pdb_id
         user_comment = "submitted via pdb.org"
     else:
         job_dir = "/jobs/%s" % job_id
         user_comment = jdict.get("user_comment", "")
 
+    #job_url = "%s/%s" % (conf.TLSMD_WORK_URL, job_id)
     analysis_url = "%s/ANALYSIS/index.html" % (job_dir)
     if len(analysis_url) == 0:
         log_write("WARNING: no analysis_url: %s" % job_id)
@@ -385,9 +412,12 @@ def send_mail(mysql, jdict):
 
     if len(user_comment) == 0:
         user_comment = "no comment"
+        #log_write("NOTE: no user_comment: %s" % job_id)
+        #return ## this was stopping "via_pdb" from emailing the user
 
     ## send mail using msmtp
     mail_message = MAIL_MESSAGE
+    #mail_message = mail_message.replace("<BASE_URL>", conf.BASE_PUBLIC_URL)
     mail_message = mail_message.replace("<BASE_URL>", conf.TLSMD_PUBLIC_URL)
     mail_message = mail_message.replace("<ANALYSIS_URL>", analysis_url)
     mail_message = mail_message.replace("<USER_COMMENT>", user_comment)
@@ -468,6 +498,7 @@ def fetch_and_run_jobs_forever():
     log_write("STARTING webtlsmdrund.py version................: %s" % (const.VERSION))
     log_write("using xmlrpc server webtlsmdd.py at URL.........: %s" % (conf.WEBTLSMDD))
 
+    ## TODO: This can probably be removed and called locally, 2009-06-14
     mysql = mysql_support.MySQLConnect()
 
     running_list = [] ## New array to hold list of jobs currently running
@@ -491,6 +522,8 @@ def fetch_and_run_jobs_forever():
                 continue
 
             if job_completed(mysql, myjdict):
+                ## TODO: Switch to using 'running_list.remove(job_id)' for
+                ## state != "running"; it is more efficient, 2009-05-30
                 for n in range(len(running_list)):
                     if myjdict["job_id"] == running_list[n]:
                         if mysql.job_get_state(myjdict["job_id"]) != "died":
@@ -501,7 +534,8 @@ def fetch_and_run_jobs_forever():
                         break
 
         ## Check whether there is a slot free to start a new run
-        if len(running_list) == conf.MAX_PARALLEL_JOBS:
+        if len(running_list) == conf.MAX_PARALLEL_JOBS or \
+            os.getloadavg()[0] > float(conf.MAX_PARALLEL_JOBS):
             time.sleep(5.0)
             continue
 
