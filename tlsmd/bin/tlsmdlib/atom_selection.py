@@ -35,12 +35,13 @@ def calc_include_atom(atm, reject_messages = False):
         return False
 
     if atm.occupancy > 1.0:
+        ## FIXME: Does this really work? 2009-07-15
         atm.occupancy = 1.0
         msg = "atom occupancy greator than 1.0; truncating"
         console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
 
+    ## FIXME: Figure out how to keep these .999, 2008-12-23
     if atm.occupancy == .999:
-        ## This is for testing purposes.
         #atm.occupancy = 1.0
         msg = "atom occupancy is .999"
         console.stdoutln("calc_include_atom(%s): %s" % (atm, msg))
