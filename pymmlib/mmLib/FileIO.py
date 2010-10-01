@@ -40,11 +40,11 @@ class ZCat(object):
 
 
 def OpenFile(path, mode):
-    """Right now this only supports opening GZip'ed files, in the future
-    it might be extended for URLs.
+    """Right now this only supports opening GZip'ed files, in the future it 
+    might be extended for URLs.
     """
     ## if path is not a string, assume it is a file object and return it
-    
+
     if isinstance(path, str):
         base, ext = os.path.splitext(path)
         if ext == ".gz":
@@ -62,7 +62,7 @@ def get_file_extension(path, default_extension = "PDB"):
     """
     if not isinstance(path, str):
         return default_extension
-    
+
     ## check/remove compressed file extension
     base, ext = os.path.splitext(path)
     if ext.lower() in ('.z', '.gz', '.bz2'):
@@ -99,9 +99,9 @@ def open_fileobj(fil, file_mode):
 
 
 def LoadStructure(**args):
-    """Loads a mmCIF file(.cif) or PDB file(.pdb) into a 
-    Structure class and returns it.  The function takes 5 named arguments,
-    one is required:
+    """Loads a mmCIF file(.cif) or PDB file(.pdb) into a Structure class and 
+    returns it.
+    The function takes 5 named arguments, one is required:
 
     file = <file object or path; required>
     format = <'PDB'|'CIF'; defaults to 'PDB'>
@@ -111,12 +111,12 @@ def LoadStructure(**args):
     distance_bonds = [True|False] <build bonds from covalent distance calculations, default False>
     """
     fil = get_file_arg(args)
-    
+
     if not args.has_key("format"):
         args["format"] = get_file_extension(fil)
     else:
         args["format"] = args["format"].upper()
-    
+
     args["fil"] = open_fileobj(fil, "r")
 
     if args["format"] == "PDB":
@@ -139,14 +139,14 @@ def SaveStructure(**args):
     format = <'PDB' or 'CIF'; defaults to 'PDB'>
     """
     fil = get_file_arg(args)
-    
+
     if not args.has_key("format"):
         args["format"] = get_file_extension(fil)
     else:
         args["format"] = args["format"].upper()
-    
+
     fileobj = open_fileobj(fil, "w")
-    
+
     try:
         struct = args["struct"]
     except KeyError:
