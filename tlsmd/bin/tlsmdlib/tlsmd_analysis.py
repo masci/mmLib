@@ -86,6 +86,26 @@ def TLSMD_Main(struct_file_path  = None,
             report = html.HTMLReport(analysis)
             report.write(html_report_dir)
 
+        ## TODO: Figure out a way to gzip all TXT files once TLSMD is done
+        ## with them. 2010-09-24
+        #import fnmatch
+        #import gzip
+        #abs_report_path = "%s/%s/%s" % (
+        #    conf.TLSMD_WORK_DIR, conf.globalconf.job_id, html_report_dir)
+        #console.stdoutln("GZIP: Attempting to gzip all TXT files in: %s" % abs_report_path)
+        #for path, dirs, files in os.walk(abs_report_path):
+        #    console.stdoutln("GZIP: report_dir = %s" % abs_report_path)
+        #    for f in files:
+        #        if fnmatch.fnmatch(f, '*.txt'):
+        #            console.stdoutln("GZIP: found a TXT file: %s" % f)
+        #            ## If we find a TXT file, gzip it
+        #            f_in = open('%s/%s' % (abs_report_path, f), 'rb')
+        #            f_out = gzip.open('%s/%s.gz' % (abs_report_path, f), 'wb')
+        #            f_out.writelines(f_in)
+        #            f_out.close()
+        #            f_in.close()
+        #            os.remove(f)
+
     console.cpu_time_stdoutln("->TLSMD::Total_time: %s" % time.clock())
 
 
@@ -221,6 +241,7 @@ def LoadStructure(struct_source):
     else:
         raise ValueError
 
+    ## TODO: Is this the same load struct used during the sanity checks? 2009-05-28
     ## load struct
     struct = FileIO.LoadStructure(file = fobj, distance_bonds = True)
     job_dir = str(os.path.dirname(str(struct_source)))
@@ -348,6 +369,9 @@ def IndependentTLSSegmentOptimization(analysis):
             conf.globalconf.min_subsegment_size,
             conf.globalconf.nparts)
 
+        ## TODO: Divide this into two CPU times, 2009-12-10
+        #console.stdoutln("CPU_TIME ->ISOptResidualGraph: %s" % time.clock())
+
         isopt.run_minimization()
         if not isopt.minimized:
             continue
@@ -395,6 +419,11 @@ def FitConstrainedTLSModel(analysis):
             for tls in cpartition.iter_tls_segments():
                 try:
                     tls.fit_to_chain(cpartition.chain)
+
+                    ## TODO: Write out data for residual plots.
+                    #gp = gnuplots.LSQR_vs_TLS_Segments_Pre_Plot(cpartition.chain)
+                    #console.stdoutln("FIT_TO_CHAIN_PATH: %s" % analysis.struct2_file_path)
+
                 except (RuntimeError, numpy.linalg.linalg.LinAlgError), e:
                     msg  = "            Runtime error for [%s]: %s, " % (
                         tls, e)
