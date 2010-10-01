@@ -70,7 +70,7 @@ class UnitCell(object):
         """Returns the alpha angle in degrees.
         """
         return math.degrees(self.alpha)
-    
+
     def calc_beta_deg(self):
         """Returns the beta angle in degrees.
         """
@@ -148,9 +148,9 @@ class UnitCell(object):
         orth_to_frac = numpy.array([ [f11, f12, f13],
                                      [0.0, f22, f23],
                                      [0.0, 0.0, f33] ], float)
-        
+
         return orth_to_frac
-        
+
     def calc_fractionalization_matrix(self):
         """Fractional to Cartesian coordinates.
         """
@@ -206,7 +206,7 @@ class UnitCell(object):
         ORF = numpy.dot(self.frac_to_orth, RF)
         Rt  = numpy.dot(symop.R, symop.t)
         ORt = numpy.dot(self.frac_to_orth, Rt)
-        
+
         return SpaceGroups.SymOp(ORF, ORt)
 
     def calc_cell(self, xyz):
@@ -217,7 +217,7 @@ class UnitCell(object):
             cx = int(xyz[0] - 1.0)
         else:
             cx = int(xyz[0] + 1.0)
-            
+
         if xyz[1] < 0.0:
             cy = int(xyz[1] - 1.0)
         else:
@@ -227,7 +227,7 @@ class UnitCell(object):
             cz = int(xyz[2] - 1.0)
         else:
             cz = int(xyz[2] + 1.0)
-            
+
         return (cx, cy, cz)
 
     def cell_search_iter(self):
@@ -235,7 +235,7 @@ class UnitCell(object):
         other methods for searching nearby unit cells.
         """
         cube = (-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0)
-        
+
         for i in cube:
             for j in cube:
                 for k in cube:
@@ -274,7 +274,7 @@ class UnitCell(object):
                  xyz       = self.calc_orth_to_frac(centroid)
                  xyz_symm  = symop_t(xyz)
                  centroid2 = self.calc_frac_to_orth(xyz_symm)
-                 
+
                  if AtomMath.length(centroid - centroid2) <= max_dist2:
                      yield self.calc_orth_symop(symop_t)
 
@@ -288,7 +288,7 @@ def strRT(R, T):
         R[1,0], R[1,1], R[1,2], T[1])
     x += "[%6.3f %6.3f %6.3f %6.3f]\n" % (
         R[2,0], R[2,1], R[2,2], T[2])
-    
+
     return x
 
 
@@ -321,7 +321,7 @@ def test_module():
         numpy.array([0.5, 0.5, 0.5]),
         numpy.array([1.0, 1.0, 1.0]),
         numpy.array([-0.13614, 0.15714, -0.07165]) ]
-    
+
     for v in vlist:
         ov = uc.calc_frac_to_orth(v)
         v2 = uc.calc_orth_to_frac(ov)
@@ -335,7 +335,7 @@ def test_module():
     print "================================================="
 
     print
-    
+
     print "================================================="
     print "TEST CASE #2: Reciprocal of above unit cell "
     print
@@ -344,7 +344,7 @@ def test_module():
     print ruc
     print "volume      = ", ruc.calc_v()
     print "cell volume = ", ruc.calc_volume()
-    
+
     print "================================================="
 
     print
