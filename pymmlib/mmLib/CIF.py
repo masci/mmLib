@@ -101,8 +101,8 @@ class DataBlock:
 
 
 class Table:
-
-    "CIF data table."
+    """CIF data table.
+    """
 
     def __init__(self, lexer, filename):
         self.columns = []
@@ -140,8 +140,8 @@ class Table:
 # Lexical analyzer classes
 #
 class Lexer:
-
-    "Lexical analyzer for reading a CIF 1.1 file."
+    """Lexical analyzer for reading a CIF 1.1 file.
+    """
 
     def __init__(self, f, filename):
         self.f = f
@@ -262,8 +262,10 @@ class Lexer:
                 if not c or c in whitespace:
                     break
                 chars.append(c)
+
             data = ''.join(chars)
             lc = data.lower()
+
             if lc.startswith("data_"):
                 return self.token(L_DATA, data[5:])
             elif lc.startswith("loop_"):
@@ -305,9 +307,8 @@ class Lexer:
 
 
 class Token:
-
-    "Lexical token with type, value and line number."
-
+    """Lexical token with type, value and line number.
+    """
     def __init__(self, type, value, line):
         self.type = type
         self.value = value
@@ -321,6 +322,8 @@ def formatMessage(filename, line, msg):
     return "%s(%d): %s" % (filename, line, msg)
 
 def makeNumber(s):
+    print "%s\n" % s ## DEBUG
+
     paren = s.find('(')         # ) for balance in vim
     if paren != -1:
         s = s[:paren]
@@ -330,30 +333,32 @@ def makeNumber(s):
         return float(s)
 
 
-#
-# Module tests
-#
+### <TESTING>
 if __name__ == "__main__":
-        def lexer_test(test_file):
-                f = open(test_file)
-                lexer = Lexer(f, test_file)
-                while True:
-                        token = lexer.next_token()
-                        if token.type is L_EOF:
-                                break
-                        print formatMessage(test_file, token.line,
-                                        "%s: %s" % (token.type, token.value))
-                f.close()
+    """Module tests.
+    """
+    def lexer_test(test_file):
+        f = open(test_file)
+        lexer = Lexer(f, test_file)
+        while True:
+            token = lexer.next_token()
+            if token.type is L_EOF:
+                break
+            print formatMessage(test_file, token.line,
+                "%s: %s" % (token.type, token.value))
 
-        def parser_test(test_file):
-                cif = CIFFile()
-                cif.load_file(test_file)
-                print "%d data blocks" % len(cif.data_blocks)
-                import pprint
-                for db in cif.data_blocks:
-                    print "%s: %d tags, %d tables" % (db.name,
-                            len(db.tags), len(db.tables))
-                    pprint.pprint(db.tags)
+        f.close()
 
-        #lexer_test("ccd.cif")
-        parser_test("ccd.cif")
+    def parser_test(test_file):
+        cif = CIFFile()
+        cif.load_file(test_file)
+        print "%d data blocks" % len(cif.data_blocks)
+        import pprint
+        for db in cif.data_blocks:
+            print "%s: %d tags, %d tables" % (db.name,
+                len(db.tags), len(db.tables))
+            pprint.pprint(db.tags)
+
+    #lexer_test("ccd.cif")
+    parser_test("ccd.cif")
+### </TESTING>
