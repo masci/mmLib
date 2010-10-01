@@ -80,6 +80,9 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     except OSError:
         return "Unable to copy sanity.png for job_id: %s" % job_id
 
+    #mysql.job_set_id(job_id)
+    #mysql.job_set_header_id(job_id, "test") ## DEBUG
+
     ## save PDB file
     pdb_filename = conf.PDB_FILENAME
     filobj = open(pdb_filename, "w")
@@ -102,9 +105,13 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
     if not os.path.exists(log_file):
         open(log_file, 'w').close() ## touch log.txt
 
+    #tarball_url       = "%s/%s.tar.gz" % (job_url, job_id)
     analysis_dir      = "%s/ANALYSIS" % (job_dir)
     analysis_base_url = "%s/ANALYSIS" % (job_url)
     analysis_url      = "%s/ANALYSIS/index.html" % (job_url)
+
+    ## TODO: Add version to MySQL status_page table
+    #mysql.job_set_version(job_id, const.VERSION)
 
     ## submission time and initial state
     submit_time = time.time()
@@ -140,6 +147,7 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         num_frags = 0
 
         ## minimum number of residues (amino/nucleic) per chain
+        ## TODO: Does this work better? 2009-07-24
         if naa > 0:
             if naa < conf.MIN_AMINO_PER_CHAIN:
                 continue
@@ -157,6 +165,17 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             ## just the sugars
             misc.generate_bases_r3d(job_dir, chain.chain_id)
             misc.generate_sugars_r3d(job_dir, chain.chain_id)
+
+        ## TODO: Allow for MIN_NUCLEIC_PER_CHAIN and MIN_AMINO_PER_CHAIN diffs, 2009-07-19
+        ## TODO: Record ignored chains (because too small) in logfile, 2009-07-19
+        #if num_frags < conf.MIN_RESIDUES_PER_CHAIN:
+        #if naa < conf.MIN_AMINO_PER_CHAIN or nna < conf.MIN_NUCLEIC_PER_CHAIN:
+        #if (naa > 0 and naa < conf.MIN_AMINO_PER_CHAIN) or\
+        #   (nna > 0 and nna < conf.MIN_NUCLEIC_PER_CHAIN):
+        #    #log_file = open(log_file, 'w+')
+        #    #log_file.write("Ignoring chain %s; too small" % chain.chain_id)
+        #    #log_file.close()
+        #    continue
 
         largest_chain_seen = max(num_frags, largest_chain_seen)
 
@@ -482,7 +501,9 @@ class WebTLSMD_XMLRPCRequestHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandle
     """Override the standard XMLRPC request handler to open the database before
     calling the method.
     """
+    ## TODO: Can this be removed? 2009-06-01
     def handle(self):
+        #self.server.webtlsmdd.jobdb = JobDatabase(self.server.webtlsmdd.db_file)
         return SimpleXMLRPCServer.SimpleXMLRPCRequestHandler.handle(self)
 
 
