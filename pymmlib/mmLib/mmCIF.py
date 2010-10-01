@@ -2,11 +2,10 @@
 ## This code is part of the PyMMLib distribution and governed by
 ## its license.  Please see the LICENSE file that should have been
 ## included as part of this package.
-"""mmCIF file and mmCIF dictionary parser.  Files are parsed
-into a set of data structures where they can be further processed.  The
-data structures can also be constructed and written back out as mmCIF.
-A CIF dictionary parser is also included as a specialized version of the
-mmCIF parser.
+"""mmCIF file and mmCIF dictionary parser. Files are parsed into a set of data 
+structures where they can be further processed. The data structures can also 
+be constructed and written back out as mmCIF. A CIF dictionary parser is also 
+included as a specialized version of the mmCIF parser.
 """
 from __future__ import generators
 
@@ -47,8 +46,8 @@ class mmCIFSyntaxError(Exception):
 
 
 class mmCIFRow(dict):
-    """Contains one row of data.  In a mmCIF file, this is one complete
-    set of data found under a section.  The data can be accessed by using
+    """Contains one row of data. In a mmCIF file, this is one complete
+    set of data found under a section. The data can be accessed by using
     the column names as class attributes.
     """
     __slots__ = ["table"]
@@ -98,7 +97,7 @@ class mmCIFRow(dict):
     
 
 class mmCIFTable(list):
-    """Contains columns and rows of data for a mmCIF section.  Rows of data
+    """Contains columns and rows of data for a mmCIF section. Rows of data
     are stored as mmCIFRow classes.
     """
     __slots__ = ["name", "columns", "columns_lower", "data"]
@@ -137,7 +136,7 @@ class mmCIFTable(list):
     
     def __getitem__(self, x):
         """Retrieves mmCIFRow at index x from the table if the argument is
-        a integer.  If the argument is a string, then the data from the
+        an integer. If the argument is a string, then the data from the
         first row is returned.
         """
         if isinstance(x, int):
@@ -191,7 +190,7 @@ class mmCIFTable(list):
         list.remove(self, row)
 
     def set_columns(self, columns):
-        """Sets the list of of column(subsection) names to the list of names in
+        """Sets the list of column(subsection) names to the list of names in
         columns.
         """
         self.columns = list()
@@ -226,7 +225,7 @@ class mmCIFTable(list):
         del self.columns_lower[clower]
         
     def autoset_columns(self):
-        """Automaticly sets the mmCITable column names by inspecting all
+        """Automatically sets the mmCIFTable column names by inspecting all
         mmCIFRow objects it contains.
         """
         clower_used = {}
@@ -250,11 +249,11 @@ class mmCIFTable(list):
 
     def get_row(self, *args):
         """Preforms a SQL-like 'AND' select aginst all the rows in the table,
-        and returns the first matching row found.  The arguments are a
+        and returns the first matching row found. The arguments are a
         variable list of tuples of the form:
           (<lower-case-column-name>, <column-value>)
         For example:
-          ger_row(('atom_id','CA'),('entity_id', '1'))
+          get_row(('atom_id','CA'),('entity_id', '1'))
         returns the first matching row with atom_id==1 and entity_id==1.
         """
         if len(args) == 1:
@@ -295,7 +294,7 @@ class mmCIFTable(list):
 
     def row_index_dict(self, clower):
         """Return a dictionary mapping the value of the row's value in
-        column 'key' to the row itself.  If there are multiple rows with
+        column 'key' to the row itself. If there are multiple rows with
         the same key value, they will be overwritten with the last found
         row.
         """
@@ -311,9 +310,9 @@ class mmCIFTable(list):
 class mmCIFData(list):
     """Contains all information found under a data_ block in a mmCIF file.
     mmCIF files are represented differently here than their file format
-    would suggest.  Since a mmCIF file is more-or-less a SQL database dump,
+    would suggest. Since a mmCIF file is more-or-less a SQL database dump,
     the files are represented here with their sections as "Tables" and
-    their subsections as "Columns".  The data is stored in "Rows".
+    their subsections as "Columns". The data is stored in "Rows".
     """
     __slots__ = ["name", "file"]
     
@@ -378,8 +377,8 @@ class mmCIFData(list):
         self.remove(self[x])
 
     def append(self, table):
-        """Append a mmCIFTable.  This will trigger the removal of any
-        table with the same name.
+        """Append a mmCIFTable. This will trigger the removal of any table 
+        with the same name.
         """
         assert isinstance(table, mmCIFTable)
         try:
@@ -426,7 +425,7 @@ class mmCIFData(list):
             return True
         
     def get_table(self, name):
-        """Looks up and returns a stored mmCIFTable class by it's name.  This
+        """Looks up and returns a stored mmCIFTable class by its name. This
         name is the section key in the mmCIF file.
         """
         try:
@@ -468,9 +467,9 @@ class mmCIFData(list):
 
 
 class mmCIFSave(mmCIFData):
-    """Class to store data from mmCIF dictionary save_ blocks.  I treat
-    them as non-nested sections along with data_ sections.  This may
-    not be correct.
+    """Class to store data from mmCIF dictionary save_ blocks. We treat
+    them as non-nested sections along with data_ sections. 
+    This may not be correct!
     """
     pass
 
@@ -513,14 +512,14 @@ class mmCIFFile(list):
         raise TypeError, x
     
     def __delitem__(self, x):
-        """Remove a mmCIFData by index or data name.  Raises IndexError
+        """Remove a mmCIFData by index or data name. Raises IndexError
         or KeyError if the mmCIFData object is not found, the error raised
         depends on the argument type.
         """
         self.remove(self[x])
 
     def append(self, cdata):
-        """Append a mmCIFData object.  This will trigger the removal of any
+        """Append a mmCIFData object. This will trigger the removal of any
         mmCIFData object in the file with the same name.
         """
         assert isinstance(cdata, mmCIFData)
@@ -570,7 +569,7 @@ class mmCIFFile(list):
         mmCIFFileWriter().write_file(fileobj, self)
 
     def get_data(self, name):
-        """Returns the mmCIFData object with the given name.  Returns None
+        """Returns the mmCIFData object with the given name. Returns None
         if no such object exists.
         """
         try:
@@ -590,8 +589,8 @@ class mmCIFFile(list):
 
 
 class mmCIFDictionary(mmCIFFile):
-    """Class representing a mmCIF dictionary.  The constructor of this class
-    takes two arguments.  The first is the string path for the file, or
+    """Class representing a mmCIF dictionary. The constructor of this class
+    takes two arguments. The first is the string path for the file, or
     alternativly a file object.
     """
     pass
@@ -640,8 +639,8 @@ class mmCIFFileParser(object):
     def parse(self, token_iter, cif_file):
         """Stateful parser for mmCIF files.
 
-        XXX: _loop, _data, _save tags are handled in a case-sensitive
-             manor.  These tokens are case-insensitive.
+        XXX: loop_, data_, save_ tags are handled in a case-sensitive
+             manor. These tokens are case-insensitive.
         """
 
         cif_table_cache = dict()
@@ -749,18 +748,16 @@ class mmCIFFileParser(object):
                 tblx, colx, strx, tokx = token_iter.next()
                 continue
 
-
-            ##
+            ###
             ## PROCESS DATA IN RD_LOOP STATE
             ##
             ## This is entered upon the beginning of a loop, and
             ## the loop is read completely before exiting.
             ###
             elif state == "RD_LOOP":
-
                 ## the first section.subsection (tblx.colx) is read
                 ## to create the section(table) name for the entire loop
-                tblx,colx,strx,tokx = token_iter.next()
+                tblx, colx, strx, tokx = token_iter.next()
 
                 if tblx is None or colx is None:
                     self.syntax_error("bad token #5")
@@ -780,7 +777,7 @@ class mmCIFFileParser(object):
 
                 cif_table.append_column(colx)
 
-                ## read the remaining subsection definitions for the loop
+                ## read the remaining subsection definitions for the loop_
                 while True:
                     tblx, colx, strx, tokx = token_iter.next()
                     
@@ -788,11 +785,10 @@ class mmCIFFileParser(object):
                         break
 
                     if tblx != cif_table.name:
-                        self.syntax_error("changed section names in _loop")
+                        self.syntax_error("changed section names in loop_")
                         return
 
                     cif_table.append_column(colx)
-
 
                 ## before starting to read data, check tokx for any control
                 ## tokens
@@ -829,7 +825,7 @@ class mmCIFFileParser(object):
                         rword, name = self.split_token(tokx)
                         if rword is not None:
                             break
-                        
+
                 continue
 
             elif state == "RD_DATA":
@@ -1043,7 +1039,7 @@ class mmCIFFileWriter(object):
                 self.write_mstring(x)
 
     def write_multi_row_table(self, cif_table):
-        ## write the key description for the _loop
+        ## write the key description for the loop_
         self.writeln("loop_")
         for col in cif_table.columns:
             key = "_%s.%s" % (cif_table.name, col)
@@ -1089,7 +1085,6 @@ class mmCIFFileWriter(object):
                         col_dtype_map[col] = "mstring"
                     elif col_dtype == "token" and dtype == "qstring":
                         col_dtype_map[col] = "qstring"
-
 
         ## form a write list of the column names with values of None to
         ## indicate a newline
@@ -1158,7 +1153,6 @@ class mmCIFFileWriter(object):
                         listx.append(".\n")
                     add_space = False
 
-
             add_space = False
             listx.append("\n")
 
@@ -1180,6 +1174,7 @@ def test_module():
     except IndexError:
         print "usage: mmCIF.py <mmCIF file path>"
         raise SystemExit
+
     cif = mmCIFDictionary()
     cif.load_file(path)
     cif.save_file(sys.stdout)
