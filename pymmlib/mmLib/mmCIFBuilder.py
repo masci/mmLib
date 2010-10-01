@@ -4,8 +4,10 @@
 ## included as part of this package.
 """Convert a Structure object into its mmCIFFile description.
 """
+## Python
 import copy
 
+## pymmlib
 import ConsoleOutput
 import mmCIF
 import StructureBuilder
@@ -55,7 +57,7 @@ def setmapf_cif(smap, skey, dmap, dkey):
 
 
 class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
-    """Builds a new Structure object by loading a mmCIF file.
+    """Builds a new Structure object by loading an mmCIF file.
     """
 
     def read_start(self, filobj):
@@ -63,7 +65,7 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
         self.cif_file = mmCIF.mmCIFFile()
         self.cif_file.load_file(filobj)
 
-        ## for a mmCIF file for a structure, assume the first data item
+        ## for an mmCIF file for a structure, assume the first data item
         ## contains the structure; if there is no data in the mmCIF
         ## file, halt
         try:
@@ -220,17 +222,20 @@ class mmCIFStructureBuilder(StructureBuilder.StructureBuilder):
                        "atom_sites_alt"]
         
         for table in self.cif_data:
+            print "DEBUG: %s" % table
             if table.name not in skip_tables:
                 self.struct.cifdb.add_table(table)
 
         self.read_sequence()
+
         ## read unit cell table
         self.read_unit_cell()
+
         ## read bond information
         self.read_struct_conn()
 
     def read_sequence(self):
-        """Read the sequence 
+        """Read the sequence. 
         """
 
     def read_structure_id(self):
@@ -510,8 +515,8 @@ class mmCIFFileBuilder(object):
         row["id"] = self.entry_id
 
     def add__entity(self):
-        """Adds the entity table.  The entity names are faked here, since
-        it's really not clear to me how the names are chosen by the PDB.
+        """Adds the entity table. The entity names are faked here, since
+        it is really not clear to us how the names are chosen by the PDB.
         """
         ## maps fragment -> entity_id
         entity = self.get_table("entity")
