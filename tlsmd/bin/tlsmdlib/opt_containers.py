@@ -21,6 +21,7 @@ import tls_calcs
 class TLSSegment(object):
     """Information on a TLS rigid body segment of a protein chain.
     """
+    ## TODO: Add ability to dump tls_info, 2010-01-08
     def __init__(self, segment_ranges = [], **args):
         self.segment_ranges = segment_ranges
         self.chain_id = args.get("chain_id")
@@ -329,6 +330,7 @@ class ChainPartitionCollection(object):
         return None
 
     def max_ntls(self):
+        ## TODO: Use this to stop analysis when residual reaches 0.00, 2010-03-23
         return max(self.iter_ntls())
 
     def min_ntls(self):
@@ -337,5 +339,4 @@ class ChainPartitionCollection(object):
     def get_chain_id(self):
         """Returns chain_id as an alphanumeric string (single character).
         """
-        ## Added. Christoph Champ, 2008-04-04
         return self.chain_id
