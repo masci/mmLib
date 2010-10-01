@@ -18,6 +18,11 @@ import time
 import const
 import console
 
+## BEGIN: ENVIRONMENT VARIABLES CONFIGURATION
+os.environ["GDFONTPATH"]             = "/usr/local/share/fonts"
+os.environ["GNUPLOT_DEFAULT_GDFONT"] = "verdana"
+## END: ENVIRONMENT VARIABLES CONFIGURATION
+
 ## BEGIN: CONFIGURATION PATHS AND URLS
 BASE_PUBLIC_URL        = "http://skuld.bmsc.washington.edu"
 TLSMD_ROOT             = os.environ.get("TLSMD_ROOT", "/home/tlsmd/tlsmd")
@@ -25,7 +30,7 @@ TLSMD_WWW_ROOT         = "/home/tlsmd/public_html"
 TLSMD_PUBLIC_URL       = "http://skuld.bmsc.washington.edu/~tlsmd"
 TLSMD_BASE_URL         = "/~tlsmd"
 WEBTLSMDD              = "http://localhost:10100"
-WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db"
+#WEBTLSMDD_DATABASE     = "/home/tlsmd/database/webtlsmd.db" ## no longer used
 ADMIN_PASSWORD_FILE    = "/home/tlsmd/database/cgi-admin"
 MAIL                   = "/bin/mail"
 TRACEBACK_EMAIL        = "tlsmdtraceback"
@@ -44,6 +49,7 @@ if os.path.exists(ALTCONF):
 TLSMD_PROGRAM_PATH     = os.path.join(TLSMD_ROOT, "bin", "tlsmd.py")
 WEBTLSMD_URL           = "%s/cgi-bin/webtlsmd.cgi" % (TLSMD_PUBLIC_URL)
 WEBTMP_PATH            = "/var/www/webtmp"
+WEBTMP_URL             = "%s/webtmp" % BASE_PUBLIC_URL
 GNUPLOT                = "/usr/local/bin/gnuplot"
 GNUPLOT_FONT_PATH      = os.path.join(TLSMD_ROOT, "fonts/LucidaSansOblique.ttf")
 GNUPLOT_FONT           = "LucidaSansOblique"
@@ -66,7 +72,7 @@ LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger tha
 MIN_AMINO_PER_CHAIN   = 10  ## minimum (amino acid) residues per chain
 MIN_NUCLEIC_PER_CHAIN = 5   ## minimum (nucleic acid) residues per chain
 NPARTS                = 20  ## maximum number of TLS partitons for each chain (default/max allowed = 20)
-PRIVATE_JOBS          = True  ## controls the default "private" settings; overrides form!
+PRIVATE_JOBS          = False  ## controls the default "private" settings; overrides form!
 PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
 ADP_PROB              = 50  ## the isoprobability contour level for all visualizations
 DEFAULT_WILSON_B      = 20.00 ## controls which default Bfactor is in pure TLS PDBs
@@ -117,7 +123,7 @@ GEN_RAW_GREY   = True
 
 ## the following are used for the summary/thumb 'struct.png' image.
 ## These are optional. Uses internal 'parse_molauto.pl' script!
-THUMBNAIL      = False  ## (default: False)
+THUMBNAIL      = True  ## (default: False)
 MOLAUTO        = "/usr/local/bin/molauto"
 PARSE_MOLAUTO_SCRIPT = "/home/tlsmd/tlsmd/bin/parse_molauto.pl"
 MOLSCRIPT      = "/usr/local/bin/molscript"
