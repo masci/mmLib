@@ -59,10 +59,10 @@ class StructureBuilder(object):
 
         ## if anything goes wrong, setting self.halt=True will stop the madness
         self.halt = False
-        
+
         ## build the structure by executing this fixed sequence of methods
         self.read_start(args["fil"])
-        
+
         if not self.halt: self.read_start_finalize()
         if not self.halt: self.read_atoms()
         if not self.halt: self.read_atoms_finalize()
@@ -84,8 +84,8 @@ class StructureBuilder(object):
         pass
 
     def read_start_finalize(self):
-        """Called after the read_start method.  Does nothing currently,
-        but may be used in the future.
+        """Called after the read_start method. Does nothing currently, but may 
+        be used in the future.
         """
         self.name_service_list = []
 
@@ -107,8 +107,7 @@ class StructureBuilder(object):
         atm = Structure.Atom(**atm_map)
 
         ## survey the atom and structure and determine if the atom requires
-        ## being passed to the naming service
-        ## absence of required fields
+        ## being passed to the naming service, absence of required fields
         if not atm.fragment_id or not atm.chain_id:
             self.name_service_list.append(atm)
             return atm
@@ -141,21 +140,22 @@ class StructureBuilder(object):
                 chain = self.struct.get_chain(suggest_chain_id)
                 if not chain:
                     return suggest_chain_id
-            
+
+            ## TODO: Add the following alphanumeric string to Constants.py, 2010-09-21
             for chain_id in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789":
                 chain = self.struct.get_chain(chain_id)
                 if not chain:
                     return chain_id
-                
+
             raise StructureBuilderError("name_service exhausted new chain_ids")
-        
+
 
         ## NAME SERVICE FOR POLYMER ATOMS
 
-        ## What if we are given a list of atoms with res_name, frag_id,
-        ## and model_id where the frag_id are sequential? They can be
-        ## sequential several ways using insertion codes, but large breaks
-        ## often denote chain breaks.
+        ## What if we are given a list of atoms with res_name, frag_id, and 
+        ## model_id where the frag_id are sequential? They can be sequential 
+        ## several ways using insertion codes, but large breaks often denote 
+        ## chain breaks.
 
         ## We need to handle the special case of a list of polymer residues
         ## which do not have chain_ids. This requires a first pass over the
@@ -168,13 +168,12 @@ class StructureBuilder(object):
         current_polymer_frag_id   = None
         current_polymer_res_name  = None
         current_polymer_name_dict = None
-    
+
         polymer_model_dict = {}
         current_frag       = None
         current_frag_list  = None
 
         for atm in self.name_service_list[:]:
-            
             ## determine the polymer type of the atom
             if Library.library_is_amino_acid(atm.res_name):
                 polymer_type = "protein"
@@ -201,7 +200,7 @@ class StructureBuilder(object):
                atm.model_id!=current_polymer_model_id or \
                atm.chain_id!=current_polymer_chain_id or \
                fragment_id<current_polymer_frag_id:
-                
+
                 current_polymer_type      = polymer_type
                 current_polymer_model_id  = atm.model_id
                 current_polymer_chain_id  = atm.chain_id
@@ -212,7 +211,7 @@ class StructureBuilder(object):
                 ## create new fragment
                 current_frag = [atm]
                 current_frag_list = [current_frag]
-                
+
                 ## create new fragment list (chain)
                 try:
                     model = polymer_model_dict[atm.model_id]
@@ -222,8 +221,8 @@ class StructureBuilder(object):
                 else:
                     model.append(current_frag_list)
 
-                ## we have now dealt with the atom, so it can be removed
-                ## from the name service list
+                ## we have now dealt with the atom, so it can be removed from 
+                ## the name service list
                 self.name_service_list.remove(atm)
                 continue
 
@@ -235,14 +234,13 @@ class StructureBuilder(object):
             ## atom name cannot conflict with the names of atoms already in
             ## in the fragment
             if atm.res_name != current_polymer_res_name or current_polymer_name_dict.has_key(atm.name):
-                
                 current_polymer_res_name  = atm.res_name
                 current_polymer_name_dict = {atm.name: True}
 
                 ## create new fragment and add it to the current fragment list
                 current_frag = [atm]
                 current_frag_list.append(current_frag)
-  
+
                 ## we have now dealt with the atom, so it can be removed
                 ## from the name service list
                 self.name_service_list.remove(atm)
@@ -266,7 +264,7 @@ class StructureBuilder(object):
             chain_id = next_chain_id("")
 
             ## assign the chain_id to all the atoms in the chain
-            ## TODO: check fragment_id too
+            ## TODO: check fragment_id too, 2010-09-22
             for model in model_list:
                 frag_list = model[chain_index]
 
@@ -280,7 +278,6 @@ class StructureBuilder(object):
         del model_list
 
 
-        
         ## NAME SERVICE FOR NON-POLYMER ATOMS
         ## cr = (chain_id, res_name)
         ##
@@ -291,10 +288,9 @@ class StructureBuilder(object):
         ## frag_list = [ frag1, frag2, frag3, ...]
         ##
         ## frag = [atm1, atm2, atm3, ...]
-        
         cr_dict      = {}
         cr_key_list  = []
-        
+
         frag_id   = None
         frag      = None
         name_dict = {}
@@ -310,17 +306,19 @@ class StructureBuilder(object):
             if atm_frag_id==frag_id and not name_dict.has_key(atm_id):
                 frag.append(atm)
                 name_dict[atm_id] = True
-                
+
             else:
                 cr_key = (atm.chain_id, atm.res_name)
-                
+
                 ### debug
                 if frag:
-                    ConsoleOutput.debug("name_service: fragment detected in cr=%s" % (str(cr_key)))
+                    msg = "name_service: fragment detected in cr=%s" % (
+                        str(cr_key))
+                    ConsoleOutput.debug(msg)
                     for a in frag:
                         ConsoleOutput.debug("  " + str(a))
                 ### /debug
-                
+
                 try:
                     model_dict = cr_dict[cr_key]
                 except KeyError:
@@ -345,8 +343,10 @@ class StructureBuilder(object):
 
         for cr_key in cr_key_list:
             ### debug
-            ConsoleOutput.debug("name_service: chain_id / res_name keys")
-            ConsoleOutput.debug("  cr_key: chain_id='%s' res_name='%s'" % (cr_key[0],cr_key[1]))
+            msg  = "name_service: chain_id / res_name keys\n"
+            msg += "  cr_key: chain_id='%s' res_name='%s'" % (
+                cr_key[0], cr_key[1])
+            ConsoleOutput.debug(msg)
             ### /debug
 
             ## get the next chain ID, use the cfr group's
@@ -387,7 +387,7 @@ class StructureBuilder(object):
             ## the new chain_id and fragment_id
             for i in xrange(max_frags):
                 fragment_id_num += 1
-                
+
                 for frag_list in model_dict.itervalues():
                     try:
                         frag = frag_list[i]
@@ -409,7 +409,7 @@ class StructureBuilder(object):
         """After loading all atom records, use the list of atom records to
         build the structure.
         """
-        ## name atoms which didn't fit into the Structure hierarchy with
+        ## name atoms which did not fit into the Structure hierarchy with
         ## their names from the file
         self.name_service()
 
@@ -419,8 +419,8 @@ class StructureBuilder(object):
 
     def read_metadata(self):
         """This method needs to be reimplemented in a functional subclass.
-        The subclassed read_metadata method should call the various
-        load_* methods to set non-atom coordinate data for the Structure.
+        The subclassed read_metadata method should call the various load_* 
+        methods to set non-atom coordinate data for the Structure.
         """
         pass
 
@@ -431,8 +431,8 @@ class StructureBuilder(object):
         self.struct.structure_id = structure_id
 
     def load_unit_cell(self, ucell_map):
-        """Called by the implementation of load_metadata to load the
-        unit cell parameters for the structure.
+        """Called by the implementation of load_metadata to load the unit cell 
+        parameters for the structure.
         """
         for key in ("a", "b", "c", "alpha", "beta", "gamma"):
             if not ucell_map.has_key(key):
@@ -458,8 +458,8 @@ class StructureBuilder(object):
                 gamma = ucell_map["gamma"])
 
     def load_bonds(self, bond_map):
-        """Call by the implementation of load_metadata to load bond
-        information on the structure.  The keys of the bond map are a 2-tuple
+        """Call by the implementation of load_metadata to load bond 
+        information on the structure. The keys of the bond map are a 2-tuple
         of the bonded Atom instances, and the value is a dictionary
         containing information on the type of bond, which may also
         be a symmetry operator.
@@ -471,7 +471,7 @@ class StructureBuilder(object):
         [bond_data_map]
         bond_type -> text description of bond type: covalent, salt bridge,
                      hydrogen, cispeptide
-                     
+
         atm1_symop -> symmetry operation (if any) to be applied to atm1
         atm2_symop -> same as above, for atom 2
 
@@ -479,8 +479,7 @@ class StructureBuilder(object):
         values composed of the 3x3 rotation matrix and the 3x1 translation.
         """
 
-        ### XXX: fix this to build bonds in all models!!!
-        
+        ### TODO: Fix this to build bonds in all models! 2010-09-22
         for ((atm1, atm2), bd_map) in bond_map.iteritems():
 
             ## check for files which, for some reason, define have a bond
@@ -488,7 +487,7 @@ class StructureBuilder(object):
             if atm1 == atm2:
                 ConsoleOutput.warning("silly file defines self bonded atom")
                 continue
-            
+
             atm1.create_bonds(
                 atom = atm2,
                 bond_type = bd_map.get("bond_type"),
@@ -514,7 +513,6 @@ class StructureBuilder(object):
             chain = model.get_chain(chain_id)
             if chain:
                 chain.sequence.set_from_three_letter(sequence_list)
-
 
     def load_alpha_helicies(self, helix_list):
         """The argument helix_list is a list of Python dictionaries with
@@ -580,7 +578,7 @@ class StructureBuilder(object):
             ## each Model
             for model in self.struct.iter_models():
                 beta_sheet = Structure.BetaSheet(model=model.model_id, **sheet)
-        
+
                 for strand in sheet["strand_list"]:
                     ## required strand info
                     try:
@@ -602,7 +600,6 @@ class StructureBuilder(object):
         information to build build Site objects into the Structure.
         """
         for site_desc in site_list:
-            
             ## check for required site info
             try:
                 site_desc["site_id"]
@@ -614,12 +611,12 @@ class StructureBuilder(object):
                 site = Structure.Site(**site_desc)
                 model.add_site(site)
                 site.construct_fragments()
-        
+
     def read_metadata_finalize(self):
         """Called after the the metadata loading is complete.
         """
         pass
-    
+
     def read_end(self):
         """This method needs to be reimplemented in a functional subclass.
         The subclassed read_end method can be used for any clean up from
@@ -632,7 +629,7 @@ class StructureBuilder(object):
         Currently, this method does nothing but may be used in future versions.
         """
         ConsoleOutput.debug("read_end_finalize()")
-        
+
         ## calculate sequences for all chains
         if self.calc_sequence is True:
             for model in self.struct.iter_models():
@@ -647,4 +644,3 @@ class StructureBuilder(object):
         ## build bonds by covalent distance calculations
         if self.distance_bonds is True:
             self.struct.add_bonds_from_covalent_distance()
-            
