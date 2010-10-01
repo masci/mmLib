@@ -112,6 +112,12 @@ class RefinePrepPage(Page):
     def html_page(self):
         """Creates the input files for needed for TLS Refinement.
         """
+        ## FIXME: This does not work as it should.
+        #job_id = check_job_id(self.form)
+        #if self.form.has_key("job_id"):
+        #    job_id = self.form["job_id"].value
+        #else:
+        #    job_id = "XXXX"
 
         ## initialize values (some are just dummy values)
         job_id = "TLSMD0000_xxxxxxxx"
@@ -252,6 +258,7 @@ def main():
     form = cgi.FieldStorage()
 
     page = RefinePrepPage(form)
+
     try:
         print page.html_page()
 
