@@ -113,3 +113,5 @@ individual groups on the diagonal, and the RMSD B values of combined groups as
 off-diagonal elements.  This helps identify non-contiguous protein
 segments which may be combined into a single TLS group.
 """
+
+## TODO: Add captions for animated GIFs, 2009-07-08
