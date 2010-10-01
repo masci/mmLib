@@ -164,6 +164,7 @@ class ISOptimization(hcsssp.HCSSSP):
             rmsd_b = rmsd * Constants.U2B
             chi2 = msd * num_atoms
 
+            ## XXX: Why is this set to 40? 2010-08-20
             if num_atoms < 40:
                 continue
 
