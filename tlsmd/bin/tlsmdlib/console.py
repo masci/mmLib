@@ -39,7 +39,8 @@ def formatExceptionInfo(maxTBlevel=7):
     except KeyError:
         excArgs = "<no args>"
     excTb = traceback.format_tb(trbk, maxTBlevel)
-    return (excName, excArgs, excTb)
+    return (excName, excArgs, excTb) ## <- Use this one for _very_ verbose!
+    #return excTb ## <- Less verbose.
 
 def stdout(text):
     """Simple STDOUT printing redirected to log.txt
@@ -80,6 +81,7 @@ def debug_stdoutln(line):
     if debug_output_enabled:
         stdout("[%s] %s\n" % (misc.timestamp(), line))
 
+## TODO: Add warning function, 2009-01-08
 def warning_stdoutln(line):
     stdout("[%s]     Warning: %s\n" % (misc.timestamp(), line))
 
