@@ -72,7 +72,7 @@ LARGEST_CHAIN_ALLOWED = 1700  ## don't allow any chains with residues larger tha
 MIN_AMINO_PER_CHAIN   = 10  ## minimum (amino acid) residues per chain
 MIN_NUCLEIC_PER_CHAIN = 5   ## minimum (nucleic acid) residues per chain
 NPARTS                = 20  ## maximum number of TLS partitons for each chain (default/max allowed = 20)
-PRIVATE_JOBS          = False  ## controls the default "private" settings; overrides form!
+PRIVATE_JOBS          = True  ## controls the default "private" settings; overrides form!
 PDB_FILENAME          = "struct.pdb"  ## This is the default name given to structures
 ADP_PROB              = 50  ## the isoprobability contour level for all visualizations
 DEFAULT_WILSON_B      = 20.00 ## controls which default Bfactor is in pure TLS PDBs
