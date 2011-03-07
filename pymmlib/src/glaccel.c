@@ -1,4 +1,4 @@
-/* glaccel.c - OpenGL C accelorator for GLViewer.py
+/* glaccel.c - OpenGL C accelerator for GLViewer.py
  *
  */
 #include "Python.h"
@@ -248,7 +248,7 @@ peanut_func(float U[6], float v[3], float w[3])
 
   d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
-  /* abort before we take the sqare root of a negitive
+  /* abort before we take the sqare root of a negative
    * number */
   if (d < 0.0) {
     w[0] = 0.0;
@@ -272,7 +272,7 @@ peanut_normal(float U[6], float v[3], float n[3])
 
   d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
-  /* abort before we take the sqare root of a negitive
+  /* abort before we take the sqare root of a negative
    * number */
   if (d < 0.0) {
     n[0] = v[0];
@@ -497,7 +497,7 @@ ellipse_func(float U[6], float C, float v[3], float w[3])
 
   d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
 
-  /* abort before we take the sqare root of a negitive number */
+  /* abort before we take the sqare root of a negative number */
   if (d < 0.0) {
     w[0] = 0.0;
     w[1] = 0.0;
@@ -520,7 +520,7 @@ ellipse_normal(float U[6], float C, float v[3], float n[3])
   d = U[0]*v[0]*v[0] + U[1]*v[1]*v[1] + U[2]*v[2]*v[2] + 2.0*U[3]*v[0]*v[1] + 2.0*U[4]*v[0]*v[2] + 2.0*U[5]*v[1]*v[2];
   d = 1.0 / d;
 
-  /* abort before we take the sqare root of a negitive  number */
+  /* abort before we take the sqare root of a negative  number */
   if (d < 0.0) {
     n[0] = v[0];
     n[1] = v[1];
