@@ -168,7 +168,10 @@ class MySQLConnect():
         string = "SELECT MAX(job_num) FROM %s;" % (
             self.status_page_tbl)
         max_num = self.execute_cmd(string, dict = False, select = True)
-        job_num = int(max_num) + 1
+	if max_num:
+            job_num = int(max_num) + 1
+	else:
+            job_num = 1001
 
         ## assign job_id
         security_code = misc.generate_security_code()
