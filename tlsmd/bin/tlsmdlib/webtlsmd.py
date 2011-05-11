@@ -2123,9 +2123,16 @@ class SubmitPDBPage(Page):
         if not vet_struct_id(pdbid, 4):
             raise SubmissionException("Not a valid PDB ID")
 
-        if mysql.pdb_exists(pdbid) != None:
+        #if mysql.pdb_exists(pdbid) != None:
             #raise SubmissionException("PDB: [%s]" % mysql.pdb_exists(pdbid)) ## DEBUG
+	if os.path.exists(conf.WEBTLSMDD_PDB_DIR + '/' + pdbid + '/ANALYSIS/index.html'):
             return self.redirect_page(pdbid)
+
+    	db_dir_head = conf.WEBTLSMDD_PDB_DIR 
+	db_dir_tail = 'DATABASE/' + pdbid[1:3]
+    	db_file = db_dir_head + '/' + db_dir_tail + '/'+ pdbid + '/ANALYSIS/index.html'
+	if os.path.exists(db_file):
+            return self.redirect_page_path(pdbid, db_dir_head, db_dir_tail)
 
         pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
         pdbfile = pdbfile_bin.data
@@ -2201,6 +2208,39 @@ class SubmitPDBPage(Page):
 
         title = "This structure has already been analyzed"
         analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, pdbid)
+        analysis_title = "Analysis of %s" % (pdbid)
+        redirect = [self.html_head(title, redirect=analysis_url), 
+                    html_title(title),
+                    '<center>',
+                    '<br><h2>Click below to see the results:</h2>',
+                    '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
+                    '<br><br>',
+                    '<font size=-2>You will be redirected automatically in 3 seconds</font>'
+                    '</center>'
+                    ]
+        redirect.append(self.html_foot())
+
+        return "".join(redirect)
+
+    def redirect_page_path(self, pdbid, path_head, path_tail):
+        """If a given PDB (from pdb.org) has already been analyzed in the 
+	TLSMD database, inform the user and redirect them to the correct 
+	analysis page.
+        """
+        ## class SubmitPDBPage
+
+        ## check to see if this job is still running
+        try:
+            os.chdir(os.path.join(path_head, path_tail, pdbid))
+        except OSError:
+            title = "This structure is currently being analyzed, please check back later."
+            page = [self.html_head(title),
+                    html_title(title),
+                    self.html_foot()]
+            return "".join(page)
+
+        title = "This structure has already been analyzed"
+        analysis_url = "%s/pdb/%s/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, path_tail, pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
                     html_title(title),
