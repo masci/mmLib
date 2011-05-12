@@ -124,6 +124,7 @@ td.c { text-align:center; }
 td.l { text-align:left; }
 td.r { text-align:right; }
 tr.r { text-align:right; }
+td.small { font-size:small; }
 
 .warning {
 	text-align:center;
