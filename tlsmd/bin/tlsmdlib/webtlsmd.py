@@ -1132,7 +1132,7 @@ class Page(object):
         x += '  <link rel="stylesheet" href="../tlsmd.css" type="text/css" media="screen">\n'
         x += '  <link rel="stylesheet" href="../tlsmd_print.css" type="text/css" media="print">\n'
         if redirect != None:
-            x += '<meta http-equiv="REFRESH" content="3; URL=%s">' % (redirect)
+            x += '<meta http-equiv="REFRESH" content="10; URL=%s">' % (redirect)
         x += '</head>\n'
         x += '<body>\n<div id="page">\n'
         return x
@@ -1828,18 +1828,25 @@ class Submit1Page(Page):
              '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">\n',
              '<input type="hidden" name="page" value="submit2">\n',
 
-             '<table class="submit_table">',
+             '<table width="95%" class="submit_table">',
              '<tr>\n',
-             '<th colspan="2" class="step_title">Step 1: Select your PDB file to upload</th>',
+             '<th class="step_title" colspan=2>Step 1: Select a PDB file to analyze</th>',
              '</tr>',
 
              '<tr>\n',
-             '<td class="l">Upload PDB File:</td>',
-             '<td><input name="pdbfile" size="50" type="file"></td>',
+             '<td class="l">Upload local PDB File:</td>',
+             '<td><input name="pdbfile" size="40" type="file"></td>',
+             '</tr>',
+
+             '<tr>\n<td class="l">or</td></tr>\n',
+
+             '<tr>\n',
+             '<td class="l">Enter a PDB ID for custom analysis:</td>',
+             '<td><input name="pdbid" size="4" maxlength="4" type="text"></td>',
              '</tr>',
 
              '<tr>\n<td colspan="2" class="c">',
-             '<input value="Upload File and Proceed to Step 2" type="submit">',
+             '<input value="Upload File and Proceed to Step 2, analysis options" type="submit">',
              '</td></tr>',
              '</table>',
              '</form>\n',
@@ -1849,11 +1856,14 @@ class Submit1Page(Page):
 
              '<form action="webtlsmd.cgi" method="post">\n',
              '<input type="hidden" name="page" value="submit_pdb">\n',
-             '<table class="submit_table">',
-             '<tr><th colspan="2" class="step_title">Enter a PDB ID:</th>',
-             '<td><input name="pdbid" size="4" maxlength="4" type="text"></td>',
-             '<td><input value="Submit" type="submit"></td>',
+             '<table width="95%" class="submit_table">',
+             '<tr>\n<th colspan="2" class="step_title">Database of previously analyzed PDB entries</th></tr>',
+	     '<tr>\n<td class="l">Enter a PDB ID:',
+	     '    <input name="pdbid" size="4" maxlength="4" type="text"></td><td></td></tr>',
+	     '<tr>\n<td class="c" colspan="2"><input value="Submit PDB entry with default anaylsis"',
+	     'type="submit"></td>',
              '</tr>',
+             '<tr>\n<td colspan="2" class="small"><i>Uses default settings; very fast for PDB entries that have already been done, but no animated figures produced</i></td></tr>\n',
              '</table>',
              '</form>',
              '</center>\n',
@@ -1879,6 +1889,7 @@ class Submit2Page(Page):
         run_mainchain_only = False
         try:
             job_id, run_mainchain_only = self.prepare_submission()
+
         except SubmissionException, err:
             l.append('<center><p class="perror">ERROR:<br>%s</p></center>' % (err))
         else:
@@ -1901,9 +1912,11 @@ class Submit2Page(Page):
         on it.
         """
         ## class Submit2Page
-        if self.form.has_key("pdbfile") == False or \
-           self.form["pdbfile"].file is None:
-            raise SubmissionException("No PDB file uploaded")
+        if (self.form.has_key("pdbfile") == False or \
+           self.form["pdbfile"].file is None or \
+           self.form["pdbfile"].value <= ' '):
+            jobid =  self.prepare_pdbid_entry()
+            return jobid, False
 
         ## allocate a new JobID
         job_id = mysql.job_new()
@@ -1949,6 +1962,49 @@ class Submit2Page(Page):
             raise SubmissionException(result)
 
         return job_id, run_mainchain_only
+
+    def prepare_pdbid_entry(self):
+        """Prepares the entered pdb id by first running some sanity checks
+        on it.
+        """
+        ## class Submit2Page
+        pdbid = self.form["pdbid"].value.upper()
+        if vet_pdb_id(pdbid) == False:
+            if pdbid is None or pdbid == "":
+                raise SubmissionException("No PDB file uploaded and no PDB ID given. Please try again.")
+            else:
+                raise SubmissionException("Invalid PDB ID '"+pdbid+"'. Please try again.")
+
+        ## allocate a new JobID
+        job_id = mysql.job_new()
+
+        ## record user's IP address
+        ip_addr = os.environ.get("REMOTE_ADDR", "Unknown")
+        mysql.job_set_remote_addr(job_id, ip_addr)
+
+        ## Fetch and upload PDB entry by PDB ID for custom analysis
+        if not vet_struct_id(pdbid, 4):
+            raise SubmissionException("Not a valid PDB structure ID")
+
+        pdbfile_bin = webtlsmdd.fetch_pdb(pdbid)
+        pdbentry = pdbfile_bin.data
+        if len(pdbentry) == 0:
+            raise SubmissionException("Could not download PDB entry "+pdbid+" from RCSB.")
+	## Custom analysis from PDB ID: simple sanity check
+
+        ## basic sanity checks
+        ## If check_upload returns anything but a empty string, the server will
+        ## inform the user of the problem and not proceed any further.
+        ln = pdbentry.split("\n")
+        r, garbage = check_upload(job_id, ln, mainchain = False)
+        if r != '':
+            raise SubmissionException(str(r))
+
+        result = webtlsmdd.set_structure_file(job_id, xmlrpclib.Binary(pdbentry))
+        if result != "":
+            raise SubmissionException("Failed to submit structure for PDB ID "+pdbid+": " + str(result) + "<br>Please try again.")
+
+        return job_id
 
 
 SUBMIT3_CAP1 = """\
@@ -2215,7 +2271,7 @@ class SubmitPDBPage(Page):
                     '<br><h2>Click below to see the results:</h2>',
                     '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
                     '<br><br>',
-                    '<font size=-2>You will be redirected automatically in 3 seconds</font>'
+                    '<font size=-2>You will be redirected automatically in 10 seconds</font>'
                     '</center>'
                     ]
         redirect.append(self.html_foot())
@@ -2248,7 +2304,7 @@ class SubmitPDBPage(Page):
                     '<br><h2>Click below to see the results:</h2>',
                     '<h3><a href="%s">%s</a>' % (analysis_url, analysis_title),
                     '<br><br>',
-                    '<font size=-2>You will be redirected automatically in 3 seconds</font>'
+                    '<font size=-2>You will be redirected automatically in 10 seconds</font>'
                     '</center>'
                     ]
         redirect.append(self.html_foot())
