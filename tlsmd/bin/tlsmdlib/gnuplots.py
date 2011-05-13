@@ -165,7 +165,7 @@ class GNUPlot(object):
 
         ## XXX: hack svg output
         if conf.globalconf.use_svg == True:
-            l = ['set term svg size %d %d dynamic fsize 12 enhanced' % (
+            l = ['set term svg size %d %d fixed fsize 12 enhanced mouse jsdir "/gnuplot"' % (
                  self.width, self.height),
                  'set output "%s"' % (self.svg_path),
                  '']
