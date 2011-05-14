@@ -1828,7 +1828,7 @@ class Submit1Page(Page):
              '<form enctype="multipart/form-data" action="webtlsmd.cgi" method="post">\n',
              '<input type="hidden" name="page" value="submit2">\n',
 
-             '<table width="95%" class="submit_table">',
+             '<table width="75%" class="submit_table">',
              '<tr>\n',
              '<th class="step_title" colspan=2>Step 1: Select a PDB file to analyze</th>',
              '</tr>',
@@ -1856,7 +1856,7 @@ class Submit1Page(Page):
 
              '<form action="webtlsmd.cgi" method="post">\n',
              '<input type="hidden" name="page" value="submit_pdb">\n',
-             '<table width="95%" class="submit_table">',
+             '<table width="75%" class="submit_table">',
              '<tr>\n<th colspan="2" class="step_title">Database of previously analyzed PDB entries</th></tr>',
 	     '<tr>\n<td class="l">Enter a PDB ID:',
 	     '    <input name="pdbid" size="4" maxlength="4" type="text"></td><td></td></tr>',
@@ -2262,7 +2262,7 @@ class SubmitPDBPage(Page):
                     self.html_foot()]
             return "".join(page)
 
-        title = "This structure has already been analyzed"
+        title = "This structure has been analyzed previously"
         analysis_url = "%s/pdb/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
@@ -2295,7 +2295,7 @@ class SubmitPDBPage(Page):
                     self.html_foot()]
             return "".join(page)
 
-        title = "This structure has already been analyzed"
+        title = "This structure has been analyzed previously"
         analysis_url = "%s/pdb/%s/%s/ANALYSIS" % (conf.TLSMD_PUBLIC_URL, path_tail, pdbid)
         analysis_title = "Analysis of %s" % (pdbid)
         redirect = [self.html_head(title, redirect=analysis_url), 
