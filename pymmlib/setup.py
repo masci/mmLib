@@ -285,7 +285,7 @@ def run_setup(opts):
     s0 = setup(
         cmdclass     = {'install_data': package_install_data},
         name         = "pymmlib",
-        version      = "1.1.0",
+        version      = "1.2.0",
         author       = "Jay Painter",
         author_email = "jpaint@u.washington.edu",
         url          = "http://pymmlib.sourceforge.net/",

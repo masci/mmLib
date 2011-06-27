@@ -1,7 +1,8 @@
-mmLib-1.1.0: Python Macromolecular Library (mmLib)
+mmLib-1.2.0: Python Macromolecular Library (mmLib)
 http://pymmlib.sourceforge.net/
 
 REVISIONS:
+  * 2011-03-27: 1.2.0: Skittles/validation support
   * 2008-02-26: 1.1.0: PHENIX support; Christoph Champ
   * 2007-04-28: 1.0.0
 

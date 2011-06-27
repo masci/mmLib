@@ -138,6 +138,11 @@ you didn't install from your Linux installation disks. Here's the list:
   # python setup.py install
   # exit
 
+  If you want to build a new copy of the documentation
+  (requires the program epydoc):
+
+  # python setup.py doc
+
 * PyGTK 2.x
   URL: http://www.pygtk.org/
   Any newer Linux distribution comes with the PyGTK bindings. If they are
@@ -226,4 +231,4 @@ Christoph Champ <champc@u.washington.edu>
 Dr. Ethan Merritt <merritt@u.washington.edu>
 
 DATE: 19 Jul 2006
-LAST UPDATE: 23 Sep 2010
+LAST UPDATE: 27 Jun 2011
