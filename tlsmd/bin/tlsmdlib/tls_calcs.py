@@ -348,7 +348,10 @@ def refmac_pure_tls_prep(xyzin, tlsin_list, wilson, xyzout, tlsout):
         for atm, Utls in tls_group.iter_atm_Utls():
             num_atms += 1
             sum_Biso += atm.temp_factor
-        Bmean = sum_Biso / num_atms
+	## EAM Aug 2011: num_atms goes to zero if there are atom selection problems.
+	## The output files will contain empty groups, but at least it doesn't crash.
+        if num_atms > 0:
+	    Bmean = sum_Biso / num_atms
 
         ## reset the TLS tensor values in the TLSDesc object so they can be 
         ## saved
