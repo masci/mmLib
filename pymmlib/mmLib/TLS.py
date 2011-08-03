@@ -631,7 +631,7 @@ class TLSFileFormatTLSOUT(TLSFileFormat):
     """
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
@@ -815,7 +815,7 @@ class TLSFileFormatPureTLSOUT(TLSFileFormat):
     ## does not contain the T, L, S, and origin fields.
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
@@ -930,7 +930,7 @@ class TLSFileFormatPHENIXOUT(TLSFileFormat):
     #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
@@ -1076,7 +1076,7 @@ class TLSFileFormatPHENIX(TLSFileFormat):
     #S    -0.2126   0.0250   0.0406  -0.1994   0.2472   0.3260   0.3855  -0.4986
     tlsout_regex_dict = {
         "group":  re.compile("(?:^\s*TLS\s*$)|(?:^\s*TLS\s+(.*)$)"),
-        "range":  re.compile("^\s*RANGE\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s+[']([A-Z])\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
+        "range":  re.compile("^\s*RANGE\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s+['](\w)\s*([-0-9A-Z.]+)\s*[']\s*(\w*).*$"),
         "origin": re.compile("^\s*ORIGIN\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "T":      re.compile("^\s*T\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
         "L":      re.compile("^\s*L\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+).*$"),
