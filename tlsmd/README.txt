@@ -1,7 +1,8 @@
-TLS Minimized Domains 1.3.0
+TLS Minimized Domains 1.4.3	16-May-2011
 http://skuld.bmsc.washington.edu/~tlsmd/
 
-REVISIONS:
+MAJOR REVISIONS:
+  * 2010-02-11: 1.4.0
   * 2009-06-19: 1.3.0
   * 2008-02-15: 1.0.0
 
