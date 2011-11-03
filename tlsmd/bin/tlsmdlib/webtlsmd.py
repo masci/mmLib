@@ -406,7 +406,10 @@ def html_program_settings_table(fdict, run_mainchain_only = None):
                  'checked="checked">',
           'Isotropic analysis</label></p>',
           '<p><label>',
-          '<input name="tls_model" type="radio" value="ANISO">',
+          '<input name="tls_model" type="radio" value="ANISO"']
+    if which_model == "ISOT":
+	l += [' disabled']
+    l += ['>',
           'Anisotropic analysis</label></p>',
           '</fieldset>',
 
