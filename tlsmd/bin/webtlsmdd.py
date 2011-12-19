@@ -152,10 +152,12 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
             if naa < conf.MIN_AMINO_PER_CHAIN:
                 continue
             num_frags = naa
+            largest_chain_seen = max(naa, largest_chain_seen)
         elif nna > 0:
             if nna < conf.MIN_NUCLEIC_PER_CHAIN:
                 continue
             num_frags = nna
+            largest_chain_seen = max(nna, largest_chain_seen)
         elif naa == 0 and nna == 0:
             ## The chain has neither amino or nucleic acid atoms, so assign
             ## num_frags = ota -> "other atom" types
@@ -176,8 +178,6 @@ def SetStructureFile(webtlsmdd, job_id, struct_bin):
         #    #log_file.write("Ignoring chain %s; too small" % chain.chain_id)
         #    #log_file.close()
         #    continue
-
-        largest_chain_seen = max(num_frags, largest_chain_seen)
 
         ## create chain description labels
         ## E.g., chains_descriptions = "A:10:0:aa;B:20:1:na;C:30:0:na;"
@@ -416,8 +416,8 @@ def Refmac5RefinementPrep(job_id, struct_id, chain_ntls, wilson):
 
     ## create the REFMAC/PHENIX files
     tls_calcs.refmac5_prep(pdbin, tlsins, pdbout1, tlsout1)
-    tls_calcs.refmac_pure_tls_prep(pdbin, tlsins, wilson, pdbout2, tlsout2)
     tls_calcs.phenix_prep(pdbin, tlsins, phenix)
+    tls_calcs.refmac_pure_tls_prep(pdbin, tlsins, wilson, pdbout2, tlsout2)
 
     os.chdir(old_dir)
 
