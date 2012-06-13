@@ -74,7 +74,7 @@ def html_nav_bar(page_name=None):
              conf.TLSMD_BASE_URL),
          '    <li><a href="%s/documentation.html">Documentation</a></li>' % (
              conf.TLSMD_BASE_URL),
-         '    <li><a href="%s/user_guide.html">User Guide</a></li>' % (
+         '    <li><a href="%s/references.html">References</a></li>' % (
              conf.TLSMD_BASE_URL),
          '  </ul>',
          '</div>'
