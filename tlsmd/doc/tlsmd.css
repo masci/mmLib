@@ -45,7 +45,10 @@ body {
 	font-size:-1
 	}
 */
-
+#bibliography ul li {
+        font-size:small;
+        margin-top:0.5em;
+        }
 
 /* style classes used by webtlsmd.cgi */
 
