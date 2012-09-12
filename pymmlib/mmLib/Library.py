@@ -16,7 +16,11 @@ import mmCIF
 ###############################################################################
 ## Library Data Locations
 ##
-(MMLIB_PATH, JUNK) = os.path.split(__file__)
+if getattr(sys, 'frozen', False):
+    MMLIB_PATH = os.path.dirname(sys.executable)
+elif __file__:
+    MMLIB_PATH = os.path.dirname(__file__)
+
 DATA_PATH               = os.path.join(MMLIB_PATH, "Data")
 ELEMENT_DATA_PATH       = os.path.join(MMLIB_PATH, "Data", "elements.cif")
 MMLIB_MONOMER_DATA_PATH = os.path.join(MMLIB_PATH, "Data", "monomers.cif")

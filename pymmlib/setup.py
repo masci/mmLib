@@ -406,24 +406,34 @@ def check_deps(opts):
 def buildlib(opts):
     """Download and construct the mmLib monomer library.
     """
-    import urllib
+    import urllib2
 
     LIB_FILE = os.path.join("mmLib", "Data", "Monomers.zip")
     LIB_PATH = os.path.join("mmLib", "Data", "Monomers")
-    TMP_PATH = "public-component-erf.cif"
-    URL      = "http://pdb.rutgers.edu/public-component-erf.cif"
+    TMP_PATH = "components.cif"
+    URL      = "ftp://ftp.wwpdb.org/pub/pdb/data/monomers/components.cif"
 
     print "[BUILDLIB] downloading %s" % (URL)
 
     fil = open(TMP_PATH, "w")
 
-    opener = urllib.FancyURLopener()
-    con = opener.open(URL)
-    for ln in con.readlines():
-        fil.write(ln)
-    con.close()
-    fil.close()
+    furl = urllib2.urlopen(URL)
+    meta = furl.info()
+    size = None
+    if len(meta.getheaders("Content-Length")):
+        size = int(meta.getheaders("Content-Length")[0])/1000
 
+    block_sz = 8192
+    downloaded = 0
+    while True:
+        buffer = furl.read(block_sz)
+        if not buffer: break
+        downloaded += len(buffer)
+        fil.write(buffer)
+        print "\r[BUILDLIB] progress: %d KB out of %s    " % (downloaded/1000, 
+            '--' if not size else str(size)),  
+    fil.close()
+    print ''
     print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
 
     import mmLib.mmCIF
