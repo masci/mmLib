@@ -317,7 +317,7 @@ def library_use_monomer_zipfile():
     if RCSB_USE_ZIP is None:
         import zipfile
         try:
-            RCSB_ZIP = zipfile.ZipFile(RCSB_MONOMER_DATA_FILE)
+            RCSB_ZIP = zipfile.ZipFile(RCSB_MONOMER_DATA_FILE, compression=zipfile.ZIP_DEFLATED)
         except IOError:
             RCSB_USE_ZIP = False
         else:
