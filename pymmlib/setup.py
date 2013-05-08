@@ -18,6 +18,9 @@ else:
     DISTUTILS_FOUND = True
 
 
+CIF_URL = "ftp://ftp.wwpdb.org/pub/pdb/data/monomers/components.cif.gz"
+
+
 class package_install_data(install_data):
     def run(self):
         ## need to change self.install_dir to the actual library dir
@@ -407,44 +410,51 @@ def buildlib(opts):
     """Download and construct the mmLib monomer library.
     """
     import urllib2
+    import zipfile
+    import gzip
+    import mmLib.mmCIF
+    import cStringIO
 
     LIB_FILE = os.path.join("mmLib", "Data", "Monomers.zip")
     LIB_PATH = os.path.join("mmLib", "Data", "Monomers")
-    TMP_PATH = "components.cif"
-    URL      = "ftp://ftp.wwpdb.org/pub/pdb/data/monomers/components.cif"
+    CIF_ARCHIVE_PATH = "components.cif.gz"
+    CIF_PATH = "components.cif"
 
-    print "[BUILDLIB] downloading %s" % (URL)
+    if not os.path.exists(CIF_ARCHIVE_PATH) and not os.path.exists(CIF_PATH):
+        print "[BUILDLIB] downloading %s" % CIF_URL
 
-    fil = open(TMP_PATH, "w")
+        fil = open(CIF_ARCHIVE_PATH, "w")
 
-    furl = urllib2.urlopen(URL)
-    meta = furl.info()
-    size = None
-    if len(meta.getheaders("Content-Length")):
-        size = int(meta.getheaders("Content-Length")[0])/1000
+        furl = urllib2.urlopen(CIF_URL)
+        meta = furl.info()
+        size = None
+        if len(meta.getheaders("Content-Length")):
+            size = int(meta.getheaders("Content-Length")[0])/1000
 
-    block_sz = 8192
-    downloaded = 0
-    while True:
-        buffer = furl.read(block_sz)
-        if not buffer: break
-        downloaded += len(buffer)
-        fil.write(buffer)
-        print "\r[BUILDLIB] progress: %d KB out of %s    " % (downloaded/1000, 
-            '--' if not size else str(size)),  
-    fil.close()
-    print ''
-    print "[BUILDLIB] constructing library from %s" % (TMP_PATH)
+        block_sz = 8192
+        downloaded = 0
+        while True:
+            buffer = furl.read(block_sz)
+            if not buffer: break
+            downloaded += len(buffer)
+            fil.write(buffer)
+            print "\r[BUILDLIB] progress: %d KB out of %s        " % (downloaded/1000, '--' if not size else str(size)),
+        print ''
+        fil.close()
 
-    import mmLib.mmCIF
+    if not os.path.exists(CIF_PATH):
+        # inflate components.cif
+        with gzip.open(CIF_ARCHIVE_PATH, 'rb') as zf:
+            with open(CIF_PATH, 'wb') as f_out:
+                f_out.writelines(zf)
+
+    print "[BUILDLIB] constructing library from %s" % (CIF_PATH)
 
     if opts["zip"]:
-        import zipfile
-        import cStringIO
-        zf = zipfile.ZipFile(LIB_FILE, "w")
+        zf = zipfile.ZipFile(LIB_FILE, "w", zipfile.ZIP_DEFLATED)
 
     cif_file = mmLib.mmCIF.mmCIFFile()
-    cif_file.load_file(TMP_PATH)
+    cif_file.load_file(CIF_PATH)
 
     if not os.path.isdir(LIB_PATH):
         os.mkdir(LIB_PATH)
@@ -528,7 +538,7 @@ def usage():
     print "        Epidoc program."
     print "    buildlib"
     print "        Download the RCSB monomer library from"
-    print "        http://pdb.rutgers.edu/public-component-erf.cif and"
+    print "        " + CIF_URL
     print "        use it to build the mmLib monomer library in"
     print "        mmLib/Data/Monomers"
 
